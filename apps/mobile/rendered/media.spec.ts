@@ -194,6 +194,49 @@ test('last approved photo removal immediately revokes retained candidate preview
   await expect(active(page, 'profile-discovery')).toHaveCount(0);
 });
 
+for (const removeOutcome of ['error', 'malformed']) test(`owner removal ${removeOutcome} stays private through moderator reapproval and purge retry`, async ({ page }) => {
+  await eligibleMedia(page);
+  const id = (await assets(page))[0]!;
+  await active(page, 'media-profile').click();
+  await active(page, 'profile-preview').click();
+  await expect(active(page, 'candidate-preview')).toBeVisible();
+  await expect(active(page, 'candidate-photo-0')).toBeVisible();
+  await active(page, 'development-link').click();
+  await active(page, 'dev-profile-return').click();
+  await active(page, 'profile-media').click();
+  // The original candidate stays mounted; a fresh page would erase this regression.
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+  await outcome(page, removeOutcome);
+  await active(page, `media-remove-${id}`).click();
+  await expect(page.getByRole('alert').filter({ visible: true })).toBeVisible();
+  await expect(status(page, id)).toHaveText('Approved');
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await expect(page.getByTestId('candidate-photo-0')).toHaveCount(0);
+  await expect(page.getByTestId('candidate-unavailable')).toHaveCount(1);
+
+  await outcome(page, 'success');
+  await active(page, `media-restrict-${id}`).click();
+  await expect(status(page, id)).toHaveText('Review pending');
+  await active(page, `media-approve-${id}`).click();
+  await expect(status(page, id)).toHaveText('Approved');
+  // Moderator approval cannot undo the owner's still-pending removal intent.
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await expect(page.getByTestId('candidate-photo-0')).toHaveCount(0);
+  await expect(page.getByTestId('owner-preview').getByTestId('profile-effective-visibility')
+    .getByText('Visibility: blocked', { exact: true })).toHaveCount(1);
+  await active(page, 'media-reload').click();
+  await expect(page.getByText('Current photo status loaded.', { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(status(page, id)).toHaveText('Approved');
+  await expect(page.getByTestId('candidate-unavailable')).toHaveCount(1);
+
+  await active(page, `media-remove-${id}`).click();
+  await expect(status(page, id)).toHaveText('Removal pending');
+  await active(page, `media-purge-${id}`).click();
+  await expect(status(page, id)).toHaveText('Removed');
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await expect(page.getByTestId('candidate-photo-0')).toHaveCount(0);
+});
+
 test('pause survives media changes and fresh resume denies missing approved photos', async ({ page }) => {
   await eligibleMedia(page);
   const id = (await assets(page))[0]!;

@@ -71,7 +71,20 @@ Only provider upload completion moves upload_pending → quarantined. Only syste
 review moves quarantined → review_pending. Moderator approval/rejection requires
 the current provisional policy; approval creates a synthetic approved reference.
 Moderator restriction removes that reference and returns approved → review_pending.
-Owner remove immediately revokes the accepted reference and enters removal_pending.
+Owner remove immediately withholds delivery; validated adoption enters
+removal_pending. A failed or malformed removal response may leave the accepted
+lifecycle approved, but its owner-removal revocation remains in force. Owner
+removal and temporary moderation restriction have separate revocation records:
+later moderator approval may clear only the moderation restriction. It cannot
+undo an outstanding owner removal, restore candidate delivery or permit discovery
+through that photo. Retained screens and reloads consume the same withheld
+projection. Retrying owner removal and matching provider purge still work.
+
+Both revocation records survive same-owner, same-generation suspension or session
+expiry when the adapter retains that asset identity. They clear with owner or
+generation replacement, or explicit full fixture reseeding that replaces the
+collection. These records remain process-local; durable revocation is a P11 proof.
+
 Provider purge alone enters removed. Failed, interrupted or exhausted purge stays
 pending; duplicate/out-of-order events cannot complete another removal.
 

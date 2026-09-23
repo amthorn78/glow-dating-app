@@ -35,6 +35,27 @@ current evidence. Final implementation/candidate/merge/tree identities and CI
 links belong to the external closure report because a commit cannot contain its
 own hash. Do not infer final publication or Done from this containing document.
 
+P04.3's initial [PR 8](https://github.com/amthorn78/glow-dating-app/pull/8) merged
+as `b7fb0f87a79827ebb00f9a409b59e61019652f35` after all four candidate jobs passed
+(171 mobile, 44 rendered cases). Automatic code review completed after merge and
+identified a failed-removal/reapproval resurrection bug. P04.3 stayed In progress.
+The repair branch `app-builder-1/p04-3-removal-revocation-fix` starts from that
+actual main and preserves owner-removal revocation separately from moderation
+restriction, including same-owner/generation authority loss/restoration. The
+[checkpoint](../testing/p04-3-checkpoint.md) preserves the original checked merge
+and review timing. Reconcile the follow-up PR, its final candidate and merged-main
+checks plus AB1-R008 before deciding current status; do not treat the initial
+merge or its passing tests as final acceptance.
+
+The first PR 9 candidate `f58475ee02462eb87435200859a6ce2939fac7dd` passed its
+push run but failed one inherited retained birth test in its PR run (45/46,
+all 16 media cases passed). Safe diagnostics found an empty date after date/place
+input. PR 9's follow-up therefore also replaces render-captured birth draft
+merge/submit state with synchronous guarded snapshots and adds a same-task input
+regression; the resulting 47 rendered cases include all original assertions.
+Consult the checkpoint and final external report for actual later results. The
+earlier failures and evidence limits are preserved rather than erased by reruns.
+
 ### Read and reconcile before continuing
 
 Read repository/mobile AGENTS, GAPP-PF00/PF01 (especially D08/P04/P11),

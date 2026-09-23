@@ -5,6 +5,29 @@ test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status === testInfo.expectedStatus) return;
   const screens = await page.locator('[data-testid^="screen-"]:visible').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-testid'))).catch(() => []);
   console.info('Visible screen identities after failure:', screens);
+  // Diagnose a failed retained-form transition without logging any entered data.
+  // Counts/booleans distinguish missing controls, disabled submission and blank
+  // drafts; alert presence does not expose provider text or private values.
+  const birthDiagnostics = await page.evaluate(() => {
+    const visible = (node: Element) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const controls = (testId: string) => Array.from(document.querySelectorAll(`[data-testid="${testId}"]`)).filter(visible);
+    const submissions = controls('birth-submit');
+    const fieldState = (testId: string) => controls(testId).map(node => ({
+      empty: node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement ? node.value.length === 0 : null,
+    }));
+    return {
+      submitCount: submissions.length,
+      submitDisabled: submissions.map(node => node.getAttribute('aria-disabled') === 'true' || node.hasAttribute('disabled')),
+      dateFields: fieldState('birth-date'),
+      placeFields: fieldState('birth-place'),
+      visibleAlertPresent: Array.from(document.querySelectorAll('[role="alert"]')).some(visible),
+    };
+  }).catch(() => null);
+  console.info('Private birth control diagnostics after failure:', birthDiagnostics);
 });
 async function reachBirth(page: Page) {
   await page.goto('/account');
@@ -86,6 +109,41 @@ for (const retained of [false, true]) {
     }
   });
 }
+
+test('same-task birth input events preserve both fields in a retained correction', async ({ page }) => {
+  await reachBirth(page);
+  await active(page, 'birth-back').click();
+  await active(page, 'development-link').click();
+  await active(page, 'return-current').click();
+  await expect(active(page, 'screen-birth')).toBeVisible();
+  await expect(page.getByTestId('adult-date')).toHaveCount(1);
+  await expect(active(page, 'adult-date')).toHaveCount(0);
+  // Exercise the real controlled inputs in one browser task. The native setter
+  // bypasses React's DOM value tracker so both bubbling input events reach the
+  // normal onChangeText callbacks; no fixture store or component state is edited.
+  await active(page, 'screen-birth').evaluate(screen => {
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    if (!setValue) throw new Error('Native input setter unavailable.');
+    for (const [id, value] of [
+      ['birth-date', '2010-09-23'],
+      ['birth-place', 'Same-task Fictional Harbor'],
+    ]) {
+      const field = screen.querySelector(`[data-testid="${id}"]`);
+      if (!(field instanceof HTMLInputElement)) throw new Error('Expected birth input missing.');
+      setValue.call(field, value);
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: value }));
+    }
+  });
+  await expect(active(page, 'birth-date')).toHaveValue('2010-09-23');
+  await expect(active(page, 'birth-place')).toHaveValue('Same-task Fictional Harbor');
+  await active(page, 'birth-submit').click();
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
+  await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+  await active(page, 'eligibility-submit').click();
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
+  await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+  await expect(page.getByText(/Current age check: fail/).filter({ visible: true })).toBeVisible();
+});
 
 test('retained eligibility consent cannot silently restore withdrawn consent', async ({ page }) => {
   await reachBirth(page);

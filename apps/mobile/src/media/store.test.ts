@@ -123,6 +123,63 @@ test('malformed removal is not accepted on reload and local delivery remains rev
   await subject.remove(id); assert.equal(subject.getSnapshot().collection.items[0]!.state, 'removal_pending');
 });
 
+for (const outcome of ['error', 'malformed'] as const) {
+  test(`${outcome} owner removal remains revoked after moderator restriction, reapproval, reload and cleanup`, async () => {
+    const subject = createFixtureOnboardingStore(options); subject.scenario('eligible');
+    const id = subject.media.getSnapshot().collection.items[0]!.asset_id;
+    const retained = subject.profiles.candidateContext();
+    assert.ok(subject.profiles.candidatePreview(retained));
+    await subject.media.remove(id, outcome);
+    assert.ok(subject.media.getSnapshot().error);
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'approved');
+    assert.equal(subject.profiles.candidatePreview(), null);
+    const deliverySeen: string[][] = [];
+    subject.media.subscribe(() => deliverySeen.push(subject.media.approvedCollection().items.map(item => item.asset_id)));
+    await subject.media.developerEvent(id, 'restrict_media');
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'review_pending');
+    await subject.media.developerEvent(id, 'approve');
+    assert.equal(subject.media.getSnapshot().error, null);
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'approved');
+    assert.equal(subject.media.approvedCollection().items.length, 0);
+    assert.equal(subject.profiles.getSnapshot().canDiscover, false);
+    assert.equal(subject.profiles.candidatePreview(retained), null);
+    assert.equal(subject.profiles.candidatePreview(), null);
+    await subject.media.reload();
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'approved');
+    assert.equal(subject.media.approvedCollection().items.length, 0);
+    assert.equal(subject.profiles.candidatePreview(), null);
+    await subject.media.remove(id);
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'removal_pending');
+    await subject.media.developerEvent(id, 'purged');
+    assert.equal(subject.media.getSnapshot().collection.items[0]!.state, 'removed');
+    assert.ok(deliverySeen.every(ids => !ids.includes(id)));
+  });
+}
+
+test('moderator reapproval restores delivery when the owner has not requested removal', async () => {
+  const subject = store(), id = await approve(subject);
+  await subject.developerEvent(id, 'restrict_media');
+  assert.equal(subject.approvedCollection().items.length, 0);
+  await subject.developerEvent(id, 'approve');
+  assert.equal(subject.getSnapshot().error, null);
+  assert.deepEqual(subject.approvedCollection().items.map(item => item.asset_id), [id]);
+});
+
+test('failed removal remains revoked through same-owner same-generation authority loss and restoration', async () => {
+  for (const inactive of [{ ...authority, sessionState: 'expired' }, { ...authority, accountState: 'suspended' }]) {
+    const subject = store(), id = await approve(subject);
+    await subject.remove(id, 'error');
+    subject.synchronize(inactive);
+    assert.equal(subject.getSnapshot().collection.items.length, 0);
+    subject.synchronize(authority);
+    assert.equal(subject.getSnapshot().collection.items[0]!.state, 'approved');
+    assert.equal(subject.approvedCollection().items.length, 0);
+    await subject.reload(); assert.equal(subject.approvedCollection().items.length, 0);
+    await subject.remove(id); await subject.developerEvent(id, 'purged');
+    assert.equal(subject.getSnapshot().collection.items[0]!.state, 'removed');
+  }
+});
+
 test('approved-only order is reflected in candidate delivery and last-photo loss revokes retained preview', async () => {
   const subject = createFixtureOnboardingStore(options); subject.scenario('eligible');
   const first = subject.media.getSnapshot().collection.items[0]!.asset_id;
