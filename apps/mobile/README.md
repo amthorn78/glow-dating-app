@@ -1,6 +1,6 @@
 # Glow native development foundation
 
-An iOS/Android Expo Router application with the P04.1 fixture account/onboarding journey. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Maintained production authentication, likes, matching, messaging, photo upload, persistence and HDE connections remain unavailable.
+An iOS/Android Expo Router application with fixture account/onboarding and P04.2 profile/preferences/visibility journeys. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Maintained production authentication, likes, matching, messaging, photo upload, persistence and HDE connections remain unavailable.
 
 ## Reproduce
 
@@ -27,8 +27,9 @@ Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical 
 
 ## Implementation boundary
 
-- `src/app`: guarded account, verification/recovery, adult/consent and private birth screens; ordinary onboarding stops at remaining profile work. Recommended/explore layouts require the explicit eligible development scenario.
+- `src/app`: guarded account, verification/recovery, adult/consent, private birth and owner profile/preferences screens. Ordinary onboarding can save an incomplete profile; unresolved media/chart/policy requirements still prevent discovery. Recommended/explore layouts require current eligibility in the explicit fictional eligible scenario.
 - `src/onboarding`: explicit synthetic adapter, versioned state/checkpoint boundary, civil-date policy and fixed-route allowlist. No local-storage, credential persistence or production endpoint is introduced.
+- `src/profiles`: owner-bound in-memory adapter and drafts using existing generated profile/preferences/visibility contracts; provisional catalog, version/idempotency checks, completeness/visibility and candidate projection. No production protocol or durable persistence is added.
 - `src/contracts/recommendations.ts`: closed `gapp-dev-v1` response projection using generated TypeScript and standalone runtime schema validators. Rejects private/unrecognized fields, HDE scores/ready results, duplicate IDs and underage records. These checks are defense in depth; real eligibility must be enforced by the API in later phases.
 - `src/data/recommendations.ts`: credential-free, bounded GET to `/api/v1/development/recommendations`, with cancellation and response validation. No writes.
 - `src/config/development.ts`: explicit fixture configuration and origin validation.
@@ -75,7 +76,8 @@ Enter private fictional birth facts using YYYY-MM-DD and, if supplied, HH:MM:SS.
 Known and approximate times preserve their supplied values; unknown is null.
 Historical timezone/provenance remain null. Resolution fixtures cover pending,
 ambiguous, unavailable and unsupported; no form creates a chart. Saving ends at
-**profile incomplete**, never discovery. P04.2 and P04.3 own the later work.
+**profile incomplete**, never discovery. Choose **Your profile and preferences**
+to continue the P04.2 owner journey below. P04.3 owns actual media lifecycle work.
 
 Back navigation retains deliberate private-form edits within the current in-memory
 session. Correcting the eligibility date clears obsolete saved/unsaved birth facts
@@ -108,6 +110,63 @@ product platforms remain iOS and Android, and release guards still reject unsafe
 environments with the harness flag set. It tests interaction, guards and a
 320px enlarged-text layout, not device keyboard behavior, VoiceOver/TalkBack,
 secure storage, real links/email or signed builds. Failure traces and automatic
-screenshots are disabled; only an empty account-form layout is explicitly captured.
+screenshots are disabled; only empty account and profile form layouts are explicitly captured.
 See [P04.1 evidence](../../docs/testing/p04-1-checkpoint.md) and
 [fixture architecture](../../docs/architecture/onboarding-fixtures.md).
+
+## P04.2 profile and preferences walkthrough
+
+From the remaining-onboarding screen choose **Your profile and preferences**.
+The same owner-area link appears in recommendation and explore previews. An active,
+verified session can manage its own profile even while discovery requirements are
+missing; signed-out and restricted accounts cannot use the owner forms.
+
+1. Choose **Create profile** or **Edit profile**. Enter a fictional display name
+   and biography. A name must be nonblank and at most 80 contract characters;
+   the biography can be exactly empty or nonblank up to 500. Whitespace-only text
+   is rejected. Empty biography saves as incomplete; filling text does not approve
+   photos or resolve a chart.
+2. Choose **Leave and keep draft**, then return to the form. Deliberate unsaved
+   edits remain in the same live session. **Cancel edits** returns to current
+   accepted details without saving. **Save profile** updates the accepted record
+   only after current ownership/version/response checks.
+3. Use **Choose profile fixture outcome** to exercise **Temporary error**,
+   **Invalid response** and **Version conflict**. The panel is labeled
+   **SYNTHETIC TEST CONTROLS**. Retry a temporary error with Success; use
+   **Refresh saved details** to inspect changed source state after a conflict.
+4. Open **Edit private preferences**. The **PROVISIONAL PREVIEW CHOICES** use
+   `development-preferences-1`, dimension `demo_connection`, and **Demo option A/B**
+   (`demo_a`/`demo_b`). These are fictional editing examples, not selected launch
+   geography, gender/orientation or matching policy. Preferences remain private.
+5. Open **Preview saved profile**. The owner preview shows saved details, not
+   unfinished edits. It is available for incomplete profiles and does not establish
+   public visibility. The separate fictional eligible-viewer projection remains
+   unavailable unless current candidate/viewer requirements pass.
+
+Ordinary onboarding remains incomplete because this assignment does not supply
+approved media, real chart resolution or approved launch policy. The dashboard
+lists current missing requirements instead of silently granting discovery.
+An empty or saved profile is different from a complete/visible profile.
+
+To exercise visibility, use the explicit eligible development scenario. It seeds
+fictional media/chart/moderation/reciprocal evidence, not actual provider work.
+From the owner dashboard choose **Pause profile**. New recommendations and the
+eligible-viewer preview become unavailable. Edit while paused; the saved profile
+stays paused. **Resume profile** rechecks current eligibility and cannot restore
+past contact permissions. Saving changed preferences invalidates the reciprocal
+fixture evidence and does not automatically make the profile visible again.
+
+The development screen can change synthetic profile, preferences, policy, media
+or reciprocal source evidence while forms are retained. Revisit the forms to
+inspect reconciliation and candidate/recommendation revocation. Stale callbacks,
+logout, account changes, expiry and restriction must not restore earlier private
+details or visibility. The existing P04.1 birth-date/consent/challenge and recovery
+regressions remain part of the required evidence.
+
+Saved records and drafts last only for the current in-memory session. Reloading or
+closing the app clears them; no browser storage or cross-device recovery is added.
+Use fictional input only. Do not capture populated private forms, credentials or
+traces as public evidence. Run the same `check`, `check:expo`,
+`export:development` and `test:rendered` commands above. See
+[P04.2 architecture](../../docs/architecture/profiles-preferences-fixtures.md) and
+[P04.2 evidence](../../docs/testing/p04-2-checkpoint.md) for actual results and limits.

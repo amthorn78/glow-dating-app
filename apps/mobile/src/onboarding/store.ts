@@ -4,6 +4,7 @@ import { createFixtureAdapter, FixtureFailure, RECOVERY_MESSAGE, FIXTURE_ACCOUNT
   type OnboardingAdapter, type FixtureOutcome, type BirthOutcome, type AccountMode } from './fixture-adapter.ts';
 import { adultOutcome, birthInputValid, FIXTURE_CLOCK, FIXTURE_POLICY, validCivilDate,
   type AdultPolicy, type FixtureClock, type PredicateOutcome } from './policy.ts';
+import { createFixtureProfileStore, type ProfileStore } from '../profiles/store.ts';
 
 export { FIXTURE_PASSWORD, RECOVERY_MESSAGE } from './fixture-adapter.ts';
 export { FIXTURE_POLICY } from './policy.ts';
@@ -29,7 +30,7 @@ export interface OnboardingSnapshot {
 type Checkpoint = { format: 'gapp-synthetic-onboarding-1'; generation: number; revision: number;
   accountId: string; accountVersion: number; adultBirthDate: string | null;
   consent: OnboardingEligibility; birth: OwnBirthInput | null };
-type StoreOptions = { isDevelopment: boolean; mode: string | undefined; clock?: FixtureClock };
+type StoreOptions = { isDevelopment: boolean; mode: string | undefined; clock?: FixtureClock; pause?: () => Promise<void> };
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -43,6 +44,8 @@ const blankConsent = (): OnboardingEligibility => ({ kind: 'onboarding', version
 
 /** Owner-only in-memory presentation state. It is never a server authorization source. */
 export class OnboardingStore {
+  readonly profiles: ProfileStore;
+  private synchronizingProfiles = false;
   private adapter: OnboardingAdapter;
   private clock: FixtureClock;
   private policy: AdultPolicy | null = FIXTURE_POLICY;
@@ -51,7 +54,6 @@ export class OnboardingStore {
   private revision = 0;
   private operation = 0;
   private sequence = 0;
-  private eligibleDemo = false;
   private checkpoint: Checkpoint | null = null;
   private listeners = new Set<() => void>();
   private snapshot: OnboardingSnapshot;
@@ -63,6 +65,15 @@ export class OnboardingStore {
     this.adapter = adapter;
     this.clock = options.clock ?? FIXTURE_CLOCK;
     this.snapshot = this.empty();
+    this.profiles = createFixtureProfileStore(options);
+    this.profiles.subscribe(() => {
+      if (this.synchronizingProfiles) return;
+      // Profile/preference/visibility changes cannot restore an older checkpoint
+      // or accept a pending onboarding permission based on an earlier revision.
+      this.checkpoint = null; this.revision += 1; this.operation += 1;
+      this.adapter.cancelPending();
+      this.publish({ busy: false });
+    });
   }
 
   private empty(): OnboardingSnapshot {
@@ -86,20 +97,32 @@ export class OnboardingStore {
     if (adult !== 'pass') requirements.push('adult_policy');
     if (!consentCurrent) requirements.push('consent');
     if (!this.policy) requirements.push('region_policy');
-    if (!this.eligibleDemo) requirements.push('profile');
+    if (!this.profiles.getSnapshot().canDiscover) requirements.push('profile');
     if (account?.session_state === 'valid') {
       if (['suspended', 'deletion_pending', 'deleted'].includes(account.state)) stage = 'restricted';
       else if (account.state === 'unverified') stage = 'verification';
       else if (adult !== 'pass' || !consentCurrent) stage = 'eligibility';
-      else if (this.eligibleDemo) stage = 'eligible';
+      else if (this.profiles.getSnapshot().canDiscover) stage = 'eligible';
       else stage = value.birth ? 'remaining' : 'birth';
     }
     return { ...value, stage, adult, consent: { ...value.consent, requirements }, checkpointAvailable: this.checkpoint !== null };
   }
 
   private publish(patch: Partial<OnboardingSnapshot>): void {
-    this.snapshot = freeze(this.derive({ ...this.snapshot, ...clone(patch), generation: this.generation, birthDraftRevision: this.birthDraftRevision }));
+    const next = { ...this.snapshot, ...clone(patch), generation: this.generation, birthDraftRevision: this.birthDraftRevision };
+    this.synchronizeProfiles(next);
+    this.snapshot = freeze(this.derive(next));
     this.listeners.forEach(listener => listener());
+  }
+  private synchronizeProfiles(value: OnboardingSnapshot): void {
+    this.synchronizingProfiles = true;
+    try {
+      this.profiles.synchronize({ ownerId: value.account?.account_id ?? null, generation: this.generation,
+        accountVersion: value.account?.version ?? 0, accountState: value.account?.state ?? 'none',
+        sessionState: value.account?.session_state ?? 'none', adult: adultOutcome(value.adultBirthDate, this.policy, this.clock) === 'pass',
+        consentCurrent: this.policy !== null && value.consent.state === 'accepted' && value.consent.policy_version === this.policy.version,
+        sourceRevision: this.birthDraftRevision, consentRevision: `${value.consent.version}:${value.consent.policy_version ?? 'none'}` });
+    } finally { this.synchronizingProfiles = false; }
   }
   private mutate(patch: Partial<OnboardingSnapshot>): void {
     this.adapter.cancelPending();
@@ -134,8 +157,9 @@ export class OnboardingStore {
   }
   private clear(): void {
     this.adapter.invalidate(); this.generation += 1; this.revision += 1; this.operation += 1;
-    this.checkpoint = null; this.eligibleDemo = false; this.policy = FIXTURE_POLICY;
+    this.checkpoint = null; this.policy = FIXTURE_POLICY;
     this.snapshot = this.empty();
+    this.synchronizeProfiles(this.snapshot);
     this.listeners.forEach(listener => listener());
   }
 
@@ -196,11 +220,9 @@ export class OnboardingStore {
     // A changed eligibility date cannot retain a conflicting private birth draft or its mapping.
     if (this.snapshot.birth && this.snapshot.birth.input.birth_date !== date) {
       this.adapter.discardBirth(this.context());
-      this.eligibleDemo = false;
       this.mutate({ adultBirthDate: date, birth: null, message: 'The date changed. Re-enter private birth input; its previous mapping was cleared.' });
       return;
     }
-    this.eligibleDemo = false;
     this.mutate({ adultBirthDate: date });
   }
   setConsent(accepted: boolean): void {
@@ -230,7 +252,6 @@ export class OnboardingStore {
       if (!validateOwnBirthInput(value) || value.resolution === 'resolved' || value.mapping_version !== null ||
           !birthInputValid(value.input, this.clock) || JSON.stringify(value.input) !== JSON.stringify(input)) throw new FixtureFailure('invalid');
       this.adapter.acknowledgeBirth(context, value.version);
-      this.eligibleDemo = false;
       this.birthDraftRevision += 1;
       this.mutate({ birth: value, adultBirthDate: value.input.birth_date,
         message: 'Private synthetic birth input saved. Chart resolution and profile completion remain separate.' });
@@ -250,7 +271,7 @@ export class OnboardingStore {
   }
 
   saveCheckpoint(): unknown {
-    if (!this.ownerReady() || this.snapshot.busy) { this.fail('A current verified fixture session is required to save a navigation checkpoint.'); return null; }
+    if (!this.ownerReady() || this.snapshot.busy || this.profiles.getSnapshot().busy) { this.fail('A current verified fixture session is required to save a navigation checkpoint.'); return null; }
     this.checkpoint = { format: 'gapp-synthetic-onboarding-1', generation: this.generation, revision: this.revision,
       accountId: this.snapshot.account!.account_id, accountVersion: this.snapshot.account!.version,
       adultBirthDate: this.snapshot.adultBirthDate, consent: clone(this.snapshot.consent), birth: clone(this.snapshot.birth) };
@@ -281,12 +302,12 @@ export class OnboardingStore {
       state: name === 'suspended' ? 'suspended' : name === 'deletion_pending' ? 'deletion_pending' : 'active', session_state: 'valid' };
     this.adapter.seed(account, this.generation);
     this.policy = name === 'unknown_policy' ? null : FIXTURE_POLICY;
-    this.eligibleDemo = name === 'eligible';
     const consent: OnboardingEligibility = { kind: 'onboarding', version: 1,
       state: name === 'withdrawn_consent' ? 'withdrawn' : name === 'stale_consent' ? 'required' : 'accepted',
       policy_version: name === 'stale_consent' ? 'development-consent-old' : this.policy?.version ?? null, requirements: [] };
     this.mutate({ account, email: 'alex@example.invalid', adultBirthDate: name === 'underage' ? '2010-09-23' : '1990-06-15',
       consent, message: 'Explicit development scenario loaded. This is synthetic state, not a production permission.' });
+    if (name === 'eligible') this.profiles.seedEligible();
   }
 }
 

@@ -17,6 +17,7 @@ export default function ExploreScreen() {
     {state.status === 'error' && <View style={styles.group}><Text style={styles.body}>The development preview could not load.</Text><Button label="Try again" onPress={reload} /></View>}
     {state.status === 'ready' && state.items.length === 0 && <Text style={styles.body}>No profiles in this preview.</Text>}
     {state.status === 'ready' && state.items.map((profile) => <ProfileCard key={profile.profile_id} profile={profile} />)}
+    <Button label="Your profile and preferences" testID="open-profile" secondary onPress={() => router.push('/profile')} />
     <Button label="Log out" testID="logout" secondary onPress={() => { store.logout(); router.replace('/'); }} />
     <Button label="Development scenarios" testID="development-link" secondary onPress={() => router.push('/development')} />
   </Page>;

@@ -37,6 +37,7 @@ export default function RecommendedScreen() {
     {state.status === 'ready' && <Text style={styles.small}>Source: {state.source === 'api' ? 'development API fixtures' : 'bundled fixtures'}. Nothing here is a mutual match.</Text>}
     <View style={styles.group}><Button label="Explore more" secondary onPress={() => router.push('/explore')} hint="Open the broader discovery layout preview." />
       <Text style={styles.small}>Messaging becomes available only after a mutual match in the future implemented flow.</Text></View>
+    <Button label="Your profile and preferences" testID="open-profile" secondary onPress={() => router.push('/profile')} />
     <Button label="Log out" testID="logout" secondary onPress={() => { store.logout(); router.replace('/'); }} />
     <Button label="Development scenarios" testID="development-link" secondary onPress={() => router.push('/development')} />
   </Page>;

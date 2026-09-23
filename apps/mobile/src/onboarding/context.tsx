@@ -42,3 +42,11 @@ export function useBirthDraft() {
   if (!context) throw new Error('Private draft provider is required.');
   return context;
 }
+
+/** The store owns private drafts so retained screens never keep a second private copy. */
+export function useProfiles() {
+  const { store } = useOnboarding();
+  const profiles = store.profiles;
+  const state = useSyncExternalStore(profiles.subscribe, profiles.getSnapshot, profiles.getSnapshot);
+  return { profiles, state };
+}
