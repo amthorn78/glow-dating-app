@@ -103,6 +103,20 @@ class FlowAcceptanceTests(unittest.TestCase):
             self.check("F05", "remove", state, "removal_pending", OWNER, "allowed")
         self.check("F05", "purged", "removal_pending", "removed", OWNER, "forbidden")
 
+    def test_f05_private_collection_requires_current_owner_session(self):
+        self.assertEqual(read_projection("F05", "MediaCollection", OWNER), "allowed")
+        for context in (
+            replace(OWNER, actor_id="other-owner"),
+            replace(OWNER, session_state="revoked"),
+            replace(OWNER, session_state="expired"),
+            STAFF,
+            SYSTEM,
+            Context(None, "provider", None),
+            Context(None, "public", None),
+        ):
+            with self.subTest(context=context):
+                self.assertEqual(read_projection("F05", "MediaCollection", context), "not_found")
+
     def test_f06_resume_is_not_automatic(self):
         self.check("F06", "pause", "visible", "paused", OWNER, "allowed")
         self.check(

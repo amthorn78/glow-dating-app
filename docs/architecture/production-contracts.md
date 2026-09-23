@@ -56,7 +56,7 @@ The following index is generated from the committed flow registry. Detailed proj
 | F02 | identity/consent / App | ConsentIntent → OnboardingEligibility | Unverified/underage/withdrawn/suspended cannot use discovery; old consent version rejected |
 | F03 | birth/engine mapping / App private input/mapping; HDE charts | BirthInputIntent → OwnBirthInput | Unknown time remains unknown; changed input invalidates old mapping; engine identifiers never invented |
 | F04 | profiles/preferences / App | ProfileIntent, PreferencesIntent, OwnedObjectRequest → OwnProfile, OwnPreferences | Wrong owner edit/read rejected; unknown dimension/option policy rejected; public birth leakage rejected |
-| F05 | profiles/media / App status; provider bytes | MediaIntent, OwnedObjectRequest → MediaLifecycle, MediaUploadGrant | Upload cannot skip quarantine/review; wrong owner reorder/remove fails; provider purge completion separate |
+| F05 | profiles/media / App status; provider bytes | MediaIntent, OwnedObjectRequest → MediaLifecycle, MediaUploadGrant, MediaCollection | Upload cannot skip quarantine/review; wrong owner reorder/remove fails; provider purge completion separate |
 | F06 | profiles/eligibility / App | VisibilityIntent → OwnProfile | Pause invalidates queues; resume rechecks current visibility eligibility; unknown pause/contact policy denies contact |
 | F07 | eligibility/discovery / App bounded queue; HDE permitted output | PageRequest → CandidatePage | Wrong-viewer/stale cursor rejected; no eligible candidates returns empty and no provider call |
 | F08 | interactions / App | InteractionIntent → InteractionOutcome | Repeated key identical intent yields same result; changed payload conflicts; stale/ineligible target denied |
@@ -82,6 +82,51 @@ Rematch is absent from legal transitions until its policy is selected. Unblock r
 MediaUploadGrant contains an opaque app grant reference and expiry; the later media adapter maps it to the selected provider's supported upload mechanism with owner/type/size/count restrictions and approved origin. It is neither a provider endpoint nor proof of an uploaded asset. Original/quarantined/rejected/removed media cannot expose an approved-delivery reference. Upload grants and export-download grants are secrets outside routine logs, and must be rechecked on use. Export ready requires a delivery grant and expiry; other states cannot expose one. Completed deletion has no unresolved obligation labels. Engine deletion rights and shared-chart obligations remain A01; provider evidence and retention decisions are required before completion, never inferred from a schema-valid payload.
 
 F20 serializes disabled only; no purchase intent, price, provider activation or owner-selected paid scope exists. F19 consumes the other contracts and has no authorization role. Actual screen readers, denied permissions, devices, deep links, signed builds and store acceptance remain later work. Generated JavaScript export is not native acceptance.
+
+### P04.3 media collection and binding clarification
+
+The existing per-asset `MediaLifecycle.version` could not supply the aggregate
+precondition needed for a complete approved-photo reorder. P04.3 adds the closed
+owner response `MediaCollection`: `kind: media_collection`, positive `version`,
+and at most 20 `MediaLifecycle` items with unique `asset_id` values. The empty
+collection has version 1. The 20-item bound is a transport ceiling; the separately
+versioned development policy may impose a lower active-photo limit. Existing
+`MediaIntent`, `MediaLifecycle` and `MediaUploadGrant` payloads do not gain fields.
+This new response discriminator extends the unpublished design catalog and is
+consumed by the generated fixture client in this same repository. No HTTP route
+or deployed-client negotiation is activated. Older validators reject the new
+discriminator; a deployed transport must negotiate support before returning it.
+The rule requiring a negotiated version for changed existing closed payloads
+continues to apply.
+
+`request_upload` and `reorder` use `CommandMeta.expected_version` against the
+current owner's collection revision; `remove` uses the target asset revision.
+`request_upload` keeps null `asset_id` and an empty order list. `remove` requires
+its owned asset and an empty order list. `reorder` keeps null `asset_id` and sends
+the complete nonempty permutation of currently approved owned assets. It cannot
+omit or inject an asset, approve media, or restore an asset concurrently removed
+or restricted. Collection revisions advance on accepted membership, lifecycle
+and ordering changes, so stale commands fail even when a particular asset's
+revision was unchanged. The response carries no owner assertion; authenticated
+owner/session context governs lookup and the validated result adoption boundary.
+
+Immutable selected bytes, detected content properties and the policy revision
+bind to the captured owner/session/generation, asset, grant and upload attempt
+inside the media adapter. They are not undeclared intent fields or public
+projection fields. A grant is a capability reference to that immutable binding,
+not a filename or permission to substitute bytes. Idempotency compares the same
+captured intent and private selection binding: same key/same payload may replay
+only after current authorization; changed selection or payload conflicts. Grant
+replacement creates a fresh identity and cannot be consumed by a delayed earlier
+attempt. Fixture acknowledgment validates the staged result before mutation;
+that boundary does not prove PostgreSQL/provider atomicity.
+
+The existing 32 models and two unapplied migration definitions remain unchanged.
+`MediaAsset` already defines owner, per-asset version, state, position, storage and
+approved-variant references. Durable aggregate revisions, private byte/grant
+binding, replay receipts and provider-event transactions still require the P11
+persistence design and integration cases; static agreement does not provide
+those guarantees.
 
 ### Compound actions and model projections
 

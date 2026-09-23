@@ -2843,6 +2843,9 @@
             },
             {
               "$ref": "#/$defs/MediaUploadGrant"
+            },
+            {
+              "$ref": "#/$defs/MediaCollection"
             }
           ]
         }
@@ -2869,6 +2872,30 @@
         },
         "expires_at": {
           "$ref": "#/$defs/Instant"
+        }
+      }
+    },
+    "MediaCollection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version",
+        "items"
+      ],
+      "properties": {
+        "kind": {
+          "const": "media_collection"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/MediaLifecycle"
+          }
         }
       }
     }

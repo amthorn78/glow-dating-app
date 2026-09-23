@@ -2117,6 +2117,20 @@
       "integrity": "sha512-aTh2J5eCxf+rSRMBJTnP8Ib5/k8DYFVDuEX1xqesN9F9aqTXocwMv/aQRVBNUs/iogDWhHIJz2pN97IsrrTcoA=="
     },
     {
+      "path": "node_modules/expo-image-loader",
+      "version": "57.0.1",
+      "license": "MIT",
+      "development": false,
+      "integrity": "sha512-uhrZKLT/cTl2mXyR28kPpVkS5O+PK9N1QA/07IFM4f5T4g0lTW1JHT3NEWwEEsGFldPmVX4j7LwUVVZxE+woug=="
+    },
+    {
+      "path": "node_modules/expo-image-picker",
+      "version": "57.0.19",
+      "license": "MIT",
+      "development": false,
+      "integrity": "sha512-SWKY235q7TOmlGhFTUWhJZnRqrW/HYHG/6USypa1qgnaQ0ndvToUGjZwVMeAlqtJeqJCXOXSAJzXTxkw7jJc+A=="
+    },
+    {
       "path": "node_modules/expo-linking",
       "version": "57.0.10",
       "license": "MIT",

@@ -30,7 +30,10 @@ const config: ExpoConfig = {
   scheme: 'glow-development',
   userInterfaceStyle: 'dark',
   backgroundColor: '#17151E',
-  plugins: ['expo-router'],
+  plugins: ['expo-router', ['expo-image-picker', {
+    photosPermission: 'Choose a synthetic test photo for the private media preview.',
+    cameraPermission: false, microphonePermission: false,
+  }]],
   experiments: { typedRoutes: true },
   ios: { supportsTablet: true },
   android: { blockedPermissions: ['android.permission.RECORD_AUDIO'] },

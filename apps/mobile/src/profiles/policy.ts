@@ -70,9 +70,9 @@ export function requirements(profile: OwnProfile | null, preferences: OwnPrefere
 }
 
 /** Explicit allowlist. This function does not independently authorize disclosure. */
-export function projectCandidate(profile: OwnProfile): CandidateProfile {
+export function projectCandidate(profile: OwnProfile, deliveryRefs: string[] = []): CandidateProfile {
   const candidate: CandidateProfile = { profile_id: profile.profile_id, display_name: profile.display_name,
-    age: 36, summary: profile.summary, media_delivery_refs: [], compatibility: { status: 'unavailable' } };
+    age: 36, summary: profile.summary, media_delivery_refs: [...deliveryRefs], compatibility: { status: 'unavailable' } };
   // The fictional media reference is never a live grant or provider URL.
   const value = parseAppResponse({ contract_version: 'gapp-api-v1', request_id: PROFILE_REQUEST_ID,
     data: { kind: 'recommendations', batch_id: PROFILE_REQUEST_ID, version: 1,

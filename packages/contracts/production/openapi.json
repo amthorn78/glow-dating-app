@@ -181,6 +181,9 @@
       },
       "MediaUploadGrant": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/MediaUploadGrant"
+      },
+      "MediaCollection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MediaCollection"
       }
     }
   },
