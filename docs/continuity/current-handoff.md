@@ -3,12 +3,52 @@
 Recorded 23 September 2026 for a **fresh execution session**. Nathan Amthor owns
 product/resource decisions. **App Planner 1** coordinates and manages the build;
 **App Builder 1** implements and reports to App Planner 1. The current assignment
-is **AP1-P04.1-001**, native shell and fixture account/onboarding only. Read the
+is **AP1-P04.1-002**, focused state correction and revalidation of the existing
+native shell and fixture account/onboarding only. Read the
 actual publication and Notion evidence below before treating it as complete.
 Assume no earlier chat, local checkout, credentials, processes or dependencies
 survive. Do not start P04.2 automatically from this assignment.
 
-## Repository and evidence identity
+## Current corrective checkpoint — AP1-P04.1-002
+
+P04.1 was reopened under AP1-ACK005. This repair starts from verified main
+**c544b654e0af3e75f31b579f72e5a02e5e577e84**, tree
+**4636d88599474309cf9b2533e1fd48415c427df0**; all **168 baseline blobs/modes**
+matched before editing, with no open PRs. Shell Git authentication was unavailable;
+the isolated snapshot's synthetic Git history is only a diff aid. Publication uses
+actual remote parent commits through the authenticated GitHub connector.
+
+Branch **app-builder-1/p04-1-state-corrections**, [PR 6](https://github.com/amthorn78/glow-dating-app/pull/6).
+The first commit **06ceef6f04e517ce2d5c2e8cb49c8b8c0704a29c** added only rendered
+regressions over unchanged main. [Baseline rendered run](https://github.com/amthorn78/glow-dating-app/actions/runs/35902177478)
+passed the seven original cases and ordinary underage return, and reproduced
+obsolete accepted/unsaved drafts, retained eligibility date and both restricted
+session expiry failures. Two additional failures were test synchronization/history
+assumptions, explicitly recorded in the checkpoint, not product evidence.
+
+The repair binds birth edits/submits to a monotonic authoritative revision,
+reconciles retained eligibility fields independently, routes expired sessions to
+account entry while preserving restriction semantics on later authentication, and
+makes challenge expiry terminal until resend. Stale challenge completions cannot
+mutate a replacement. The navigator stays mounted and recovery retry is preserved.
+The original 39 mobile and seven rendered cases are unchanged. The candidate adds
+19 mobile regressions and nine rendered cases. Local mobile checks now cover 58
+cases; actual final rendered and merge evidence belongs to **AB1-R006** in the
+[shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f).
+
+The containing candidate must pass all four Foundation jobs on its actual head.
+Do not infer a merge or green rendered result from this file alone. Verify PR 6,
+current main, its tree relationship and merged-main CI; AB1-R006 records exact
+final hashes and run links after completion. Notion owns P04.1's Verified → Done
+transition. **P04.2/P04.3 remain Planned and unstarted by this assignment.**
+
+[Full correction prompt](https://app.notion.com/p/3e44590a05eb818a8f56e08a3d085eab)
+is the current execution instruction. Read it and all reports after AP1-ACK005.
+The PR 5 publication facts below remain historical. This repair changes only the
+mobile fixture, regression tests and relevant app documentation, with no lock,
+API/contract, workflow, database, HDE/provider or Railway change.
+
+## Prior implementation publication — AP1-P04.1-001
 
 Private [amthorn78/glow-dating-app](https://github.com/amthorn78/glow-dating-app),
 repository ID **1383293037**, default branch **main**. This execution verified main
@@ -176,7 +216,7 @@ is development-only and locked; the license inventory records it.
 
 All four Foundation jobs must pass on the exact final candidate and merged main:
 **API checks**, **Mobile checks** (including rendered journey), **API mobile smoke**,
-and **API artifact checks**. Final evidence belongs in the checkpoint and AB1-R005.
+and **API artifact checks**. Final repair evidence belongs in the checkpoint and AB1-R006.
 If interrupted, inspect remote branch/PR first, compare current main and published
 head, rerun only concrete remaining checks, then finish eligible publication and
 Notion updates. Preserve dirty/unrelated work and never recreate uncertain writes.

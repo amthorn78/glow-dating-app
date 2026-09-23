@@ -1,33 +1,28 @@
 import { createContext, useContext, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 import type { BirthInput } from '../contracts/generated/gapp-api-v1';
-import { createFixtureOnboardingStore, type OnboardingSnapshot, type OnboardingStore } from './store';
+import { createFixtureOnboardingStore, type BirthOutcome, type OnboardingStore } from './store';
+import { bindBirthDraftAction, birthDraftOwner, initialBirthDraft } from './birth-draft';
 
 const StoreContext = createContext<OnboardingStore | null>(null);
 type Draft = BirthInput;
-const emptyDraft: Draft = { birth_date: '', local_time: null, time_precision: 'unknown', place_label: '', timezone_name: null, timezone_provenance: null };
-const DraftContext = createContext<{ draft: Draft; setDraft: (draft: Draft) => void } | null>(null);
-
-function draftOwner(state: OnboardingSnapshot): string {
-  return `${state.account?.account_id ?? 'signed-out'}:${state.account?.state ?? 'none'}:${state.account?.session_state ?? 'none'}:${state.generation}`;
-}
+const DraftContext = createContext<{ draft: Draft; setDraft: (draft: Draft) => void; saveDraft: (outcome: BirthOutcome) => Promise<void> | undefined } | null>(null);
 
 function DraftProvider({ children }: PropsWithChildren) {
   const { state, store } = useOnboarding();
-  const owner = draftOwner(state);
-  const initialDraft = state.account?.state === 'active' && state.account.session_state === 'valid'
-    ? state.birth?.input ?? emptyDraft : emptyDraft;
+  const owner = birthDraftOwner(state);
+  const initialDraft = initialBirthDraft(state);
   const [saved, setSaved] = useState(() => ({ owner, draft: initialDraft }));
   // Adjust only this provider's state before its children render. A React key
   // here would also remount the navigator, clearing recovery forms and history.
   const draft = saved.owner === owner ? saved.draft : initialDraft;
   if (saved.owner !== owner) setSaved({ owner, draft: initialDraft });
   function setDraft(next: Draft) {
-    const current = store.getSnapshot();
-    // A callback retained by an older screen cannot write into a new session.
-    if (draftOwner(current) !== owner || current.account?.state !== 'active' || current.account.session_state !== 'valid') return;
-    setSaved({ owner, draft: next });
+    bindBirthDraftAction(store, state, () => setSaved({ owner, draft: next }))();
   }
-  return <DraftContext.Provider value={{ draft, setDraft }}>{children}</DraftContext.Provider>;
+  function saveDraft(outcome: BirthOutcome) {
+    return bindBirthDraftAction(store, state, () => store.saveBirth(draft, outcome))();
+  }
+  return <DraftContext.Provider value={{ draft, setDraft, saveDraft }}>{children}</DraftContext.Provider>;
 }
 
 export function OnboardingProvider({ children }: PropsWithChildren) {

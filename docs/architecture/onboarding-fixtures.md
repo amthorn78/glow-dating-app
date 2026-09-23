@@ -1,6 +1,6 @@
 # P04.1 native account and onboarding fixtures
 
-This document owns the mobile implementation notes for **AP1-P04.1-001**. The
+This document owns the mobile implementation notes for **AP1-P04.1-001** and correction **AP1-P04.1-002**. The
 authoritative app contracts remain [the production contract baseline](production-contracts.md),
 `packages/contracts/production/flows-v1.json`, and
 `packages/contracts/production/gapp-api-v1.schema.json`. F01 owns account access,
@@ -72,10 +72,19 @@ resend, recovery, reset and birth operations. Publicly documented fictional
 sign-in presentation select the same bounded synthetic identity set; neither
 provisions a real account or retains a new password.
 
-Account entry returns an unverified account. Only the controlled adapter's
+Ordinary account entry returns an unverified account. Explicitly seeded suspended,
+deletion-pending or deleted fixture identities retain that restriction across
+sign-in, logout, expiry and recovery within this adapter instance. Only an explicit
+development scenario replaces that fixture constraint; no durable account registry
+is introduced. Only the controlled adapter's
 verification result can transition it to active. Challenges bind to fixture
 generation and account context, carry an explicit expiry, and are consumed once.
-The adapter rejects used, expired or wrong-context challenges. Outcome controls
+The adapter rejects used, expired or wrong-context challenges. Simulated expiry
+permanently expires the matching current challenge; selecting Success cannot
+restore it. A resend/request creates a fresh challenge. Each consumption captures
+the exact challenge before waiting and rejects a replacement, so an older request
+cannot expire or consume a newer challenge. Context validation precedes mutation;
+retryable transport/rate-limit errors leave a live challenge usable. Outcome controls
 exercise invalid, expired, wrong-context, replayed, unavailable and rate-limited
 responses without creating actual verification links. Resend replaces the current
 synthetic challenge. Fixture timing is deterministic and is not a production
@@ -118,7 +127,9 @@ generated closed contract shapes and versioned state.
 session, explicit adult result, current consent/policy and remaining profile
 requirement. Missing policy adds `region_policy`; anything other than an adult
 pass or current accepted consent keeps eligibility incomplete. Suspended,
-deletion-pending and deleted account states derive the restricted stage. Fixture
+deletion-pending and deleted account states derive the restricted stage only while
+the session is valid. Expired sessions derive account entry, clear private state
+and deny protected routes; ordinary sign-in can return the still-restricted account. Fixture
 scenario selection is an explicit state replacement that clears the earlier
 session, not a production permission mechanism.
 
@@ -131,11 +142,21 @@ invalidate earlier operations and clear the issued checkpoint. State snapshots
 are frozen; public subscriptions receive a current read-only presentation view.
 
 Resumability has two bounded layers. The React context retains the unsaved private
-birth draft across navigation, bound to account, account/session state and generation.
+birth draft across navigation, bound to account, account/session state, generation
+and a monotonic authoritative birth-draft revision. Date corrections invalidate
+both saved and unsaved obsolete drafts; accepted birth replacements advance the
+same revision. Resolution-only retries, unchanged dates, consent publications and
+checkpoint messages do not discard deliberate unsaved edits. New drafts use the
+current eligibility date and empty place/time facts when no accepted birth remains.
+Both edit and submit callbacks check the live owner/revision; returning later to
+the same date cannot revive an older callback.
 Account/session replacement supplies a fresh draft synchronously without remounting
 navigation or unrelated recovery forms; stale draft callbacks reject new owners.
-The eligibility form separately resets its private date and consent controls on
-owner replacement. The explicit synthetic
+The eligibility form resets on owner replacement and reconciles each field when
+its authoritative source changes while the screen is retained. A date update does
+not reset deliberate consent edits, and consent updates do not reset a deliberately
+edited date. Stale submit callbacks reject changed birth/consent revisions. Neither
+correction remounts the navigator or signed-out recovery form. The explicit synthetic
 checkpoint stores already accepted adult/consent/birth state in the same store
 instance. Restoration requires the exact checkpoint issued by that instance,
 matching generation/revision/account/account-version, valid closed contract
@@ -186,7 +207,8 @@ The separate
 [AB1-DBA-001 audit](https://app.notion.com/p/3e44590a05eb81908661fc44eca0ce20)
 is completed read-only evidence, not P04.1 database authorization. It supports
 the owner-preferred shared logical database only after reviewed app schema/role
-isolation. The exact 32-model physical mapping is still open. Preserve the `hde`
+isolation. The completed audit maps all 32 provisional models to new app-owned relations if
+retained. Final schema/search-path/auth-migration/role design remains P11 work. Preserve the `hde`
 schema, `public.hde_body_graphs_current` and current legacy dependencies; no
 fixture implementation changes those objects or performs their retirement.
 

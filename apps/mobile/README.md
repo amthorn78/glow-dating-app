@@ -56,9 +56,12 @@ Official scaffold: `create-expo-app@5.0.0` with `expo-template-default@57.0.26`,
 
 Start at the account screen. Use **alex@example.invalid** or **sam@example.invalid**
 and the displayed non-secret **fixture-passphrase**. Registration and sign-in both
-lead to a controlled synthetic verification challenge. Use the outcome controls
+normally lead to a controlled synthetic verification challenge. A seeded restricted
+fixture account keeps its restriction after expiry/sign-in/recovery until an
+explicit development scenario replaces it. Use the outcome controls
 to exercise expired/invalid/wrong-context/replayed, temporary-error or rate-limited
-results; resend replaces a verification challenge. Recovery receipts are neutral
+results. After Expired, selecting Success still rejects the same challenge;
+Resend creates a new usable one. Recovery receipts are neutral
 for unrelated fictional addresses and never deliver email. A successful synthetic
 reset requires a fresh sign-in.
 
@@ -74,10 +77,19 @@ Historical timezone/provenance remain null. Resolution fixtures cover pending,
 ambiguous, unavailable and unsupported; no form creates a chart. Saving ends at
 **profile incomplete**, never discovery. P04.2 and P04.3 own the later work.
 
-Back navigation retains the private form within the current in-memory session.
+Back navigation retains deliberate private-form edits within the current in-memory
+session. Correcting the eligibility date clears obsolete saved/unsaved birth facts
+and initializes the private date from that correction. An old form callback cannot
+restore them. Ordinary publications and resolution retries retain deliberate edits.
+If a submitted private birth date makes the age check fail, retained eligibility
+screens show that new date; a no-edit Save cannot restore an older adult date.
+Consent controls follow the current authoritative decision without silently
+reaccepting a withdrawn value.
 Development scenarios provide explicit eligible, underage, unknown-policy,
 stale/withdrawn-consent, suspended and deletion-pending cases. Selecting a scenario,
-logging out or expiring a session clears its private draft. Checkpoints accept only
+logging out or expiring a session clears its private draft. Expiring a suspended
+or deletion-pending session returns to account entry without requiring a scenario
+reset; sign-in still enforces the same account restriction. Checkpoints accept only
 validated snapshots issued by this live store for the same current account,
 session and revision. They are not durable process-restart or cross-device storage.
 

@@ -16,11 +16,22 @@ export default function EligibilityScreen() {
 
 function EligibilityForm() {
   const { state, store } = useOnboarding();
-  const [date, setDate] = useState(state.adultBirthDate ?? '');
-  const [accepted, setAccepted] = useState(state.consent.state === 'accepted' && state.consent.policy_version === FIXTURE_POLICY.version);
+  const consentSource = `${state.consent.version}:${state.consent.state}:${state.consent.policy_version}`;
+  const currentAccepted = state.consent.state === 'accepted' && state.consent.policy_version === FIXTURE_POLICY.version;
+  const [dateField, setDateField] = useState({ source: state.adultBirthDate, value: state.adultBirthDate ?? '' });
+  const [consentField, setConsentField] = useState({ source: consentSource, value: currentAccepted });
+  // The stack can retain this screen. Reconcile each authoritative field before
+  // rendering children, preserving local edits to the other unchanged field.
+  const date = dateField.source === state.adultBirthDate ? dateField.value : state.adultBirthDate ?? '';
+  const accepted = consentField.source === consentSource ? consentField.value : currentAccepted;
+  if (dateField.source !== state.adultBirthDate) setDateField({ source: state.adultBirthDate, value: date });
+  if (consentField.source !== consentSource) setConsentField({ source: consentSource, value: accepted });
+  const setDate = (value: string) => { if (isCurrentOwner()) setDateField({ source: state.adultBirthDate, value }); };
+  const setAccepted = (value: boolean) => { if (isCurrentOwner()) setConsentField({ source: consentSource, value }); };
   function isCurrentOwner() {
     const current = store.getSnapshot();
     return current.generation === state.generation && current.account?.account_id === state.account?.account_id &&
+      current.birthDraftRevision === state.birthDraftRevision && current.consent.version === state.consent.version &&
       current.account?.state === 'active' && current.account.session_state === 'valid';
   }
   function continueOnboarding() {

@@ -12,6 +12,7 @@ export type Stage = 'account' | 'verification' | 'eligibility' | 'birth' | 'rema
 export type Scenario = 'new' | 'eligible' | 'underage' | 'unknown_policy' | 'stale_consent' | 'withdrawn_consent' | 'suspended' | 'deletion_pending';
 export interface OnboardingSnapshot {
   readonly generation: number;
+  readonly birthDraftRevision: number;
   readonly account: AccountAccess | null;
   readonly email: string | null;
   readonly busy: boolean;
@@ -46,6 +47,7 @@ export class OnboardingStore {
   private clock: FixtureClock;
   private policy: AdultPolicy | null = FIXTURE_POLICY;
   private generation = 0;
+  private birthDraftRevision = 0;
   private revision = 0;
   private operation = 0;
   private sequence = 0;
@@ -64,7 +66,7 @@ export class OnboardingStore {
   }
 
   private empty(): OnboardingSnapshot {
-    return freeze({ generation: this.generation, account: null, email: null, busy: false, error: null,
+    return freeze({ generation: this.generation, birthDraftRevision: this.birthDraftRevision, account: null, email: null, busy: false, error: null,
       message: null, stage: 'account', adult: 'unknown', adultBirthDate: null, consent: blankConsent(),
       birth: null, checkpointAvailable: false, recoveryReady: false });
   }
@@ -85,9 +87,9 @@ export class OnboardingStore {
     if (!consentCurrent) requirements.push('consent');
     if (!this.policy) requirements.push('region_policy');
     if (!this.eligibleDemo) requirements.push('profile');
-    if (account && ['suspended', 'deletion_pending', 'deleted'].includes(account.state)) stage = 'restricted';
-    else if (account?.session_state === 'valid') {
-      if (account.state === 'unverified') stage = 'verification';
+    if (account?.session_state === 'valid') {
+      if (['suspended', 'deletion_pending', 'deleted'].includes(account.state)) stage = 'restricted';
+      else if (account.state === 'unverified') stage = 'verification';
       else if (adult !== 'pass' || !consentCurrent) stage = 'eligibility';
       else if (this.eligibleDemo) stage = 'eligible';
       else stage = value.birth ? 'remaining' : 'birth';
@@ -96,7 +98,7 @@ export class OnboardingStore {
   }
 
   private publish(patch: Partial<OnboardingSnapshot>): void {
-    this.snapshot = freeze(this.derive({ ...this.snapshot, ...clone(patch), generation: this.generation }));
+    this.snapshot = freeze(this.derive({ ...this.snapshot, ...clone(patch), generation: this.generation, birthDraftRevision: this.birthDraftRevision }));
     this.listeners.forEach(listener => listener());
   }
   private mutate(patch: Partial<OnboardingSnapshot>): void {
@@ -141,7 +143,8 @@ export class OnboardingStore {
     this.clear();
     const generation = this.generation;
     await this.run(() => this.adapter.account(mode, email, password, generation, outcome), value => {
-      if (!validateAccountAccess(value) || value.state !== 'unverified' || value.session_state !== 'valid') throw new FixtureFailure('invalid');
+      if (!validateAccountAccess(value) || !['unverified', 'suspended', 'deletion_pending', 'deleted'].includes(value.state) ||
+          value.session_state !== 'valid') throw new FixtureFailure('invalid');
       this.mutate({ account: value, email });
     });
   }
@@ -188,6 +191,8 @@ export class OnboardingStore {
     if (!validCivilDate(date) || !Number.isFinite(this.clock().getTime()) || date > this.clock().toISOString().slice(0, 10)) {
       this.fail('Enter a real civil date that is not in the future.'); return;
     }
+    // Invalidate accepted and unsaved forms only when authoritative birth facts change.
+    if (this.snapshot.adultBirthDate !== date) this.birthDraftRevision += 1;
     // A changed eligibility date cannot retain a conflicting private birth draft or its mapping.
     if (this.snapshot.birth && this.snapshot.birth.input.birth_date !== date) {
       this.adapter.discardBirth(this.context());
@@ -226,6 +231,7 @@ export class OnboardingStore {
           !birthInputValid(value.input, this.clock) || JSON.stringify(value.input) !== JSON.stringify(input)) throw new FixtureFailure('invalid');
       this.adapter.acknowledgeBirth(context, value.version);
       this.eligibleDemo = false;
+      this.birthDraftRevision += 1;
       this.mutate({ birth: value, adultBirthDate: value.input.birth_date,
         message: 'Private synthetic birth input saved. Chart resolution and profile completion remain separate.' });
     });
@@ -270,7 +276,7 @@ export class OnboardingStore {
   }
   scenario(name: Scenario): void {
     this.clear();
-    if (name === 'new') return;
+    if (name === 'new') { this.adapter.seed(null, this.generation); return; }
     const account: AccountAccess = { kind: 'account_access', account_id: FIXTURE_ACCOUNT_IDS.alex, version: 1,
       state: name === 'suspended' ? 'suspended' : name === 'deletion_pending' ? 'deletion_pending' : 'active', session_state: 'valid' };
     this.adapter.seed(account, this.generation);
