@@ -5,6 +5,7 @@ import { createFixtureAdapter, FixtureFailure, RECOVERY_MESSAGE, FIXTURE_ACCOUNT
 import { adultOutcome, birthInputValid, FIXTURE_CLOCK, FIXTURE_POLICY, validCivilDate,
   type AdultPolicy, type FixtureClock, type PredicateOutcome } from './policy.ts';
 import { createFixtureProfileStore, type ProfileStore } from '../profiles/store.ts';
+import { MediaStore } from '../media/store.ts';
 
 export { FIXTURE_PASSWORD, RECOVERY_MESSAGE } from './fixture-adapter.ts';
 export { FIXTURE_POLICY } from './policy.ts';
@@ -45,6 +46,7 @@ const blankConsent = (): OnboardingEligibility => ({ kind: 'onboarding', version
 /** Owner-only in-memory presentation state. It is never a server authorization source. */
 export class OnboardingStore {
   readonly profiles: ProfileStore;
+  readonly media: MediaStore;
   private synchronizingProfiles = false;
   private adapter: OnboardingAdapter;
   private clock: FixtureClock;
@@ -66,6 +68,8 @@ export class OnboardingStore {
     this.clock = options.clock ?? FIXTURE_CLOCK;
     this.snapshot = this.empty();
     this.profiles = createFixtureProfileStore(options);
+    this.media = new MediaStore({ ...options, now: () => this.clock().getTime() }, collection => this.profiles.synchronizeMedia(collection));
+    this.profiles.bindMedia(() => this.media.approvedCollection(), () => this.media.restrictApproved());
     this.profiles.subscribe(() => {
       if (this.synchronizingProfiles) return;
       // Profile/preference/visibility changes cannot restore an older checkpoint
@@ -117,11 +121,13 @@ export class OnboardingStore {
   private synchronizeProfiles(value: OnboardingSnapshot): void {
     this.synchronizingProfiles = true;
     try {
-      this.profiles.synchronize({ ownerId: value.account?.account_id ?? null, generation: this.generation,
+      const authority = { ownerId: value.account?.account_id ?? null, generation: this.generation,
         accountVersion: value.account?.version ?? 0, accountState: value.account?.state ?? 'none',
         sessionState: value.account?.session_state ?? 'none', adult: adultOutcome(value.adultBirthDate, this.policy, this.clock) === 'pass',
         consentCurrent: this.policy !== null && value.consent.state === 'accepted' && value.consent.policy_version === this.policy.version,
-        sourceRevision: this.birthDraftRevision, consentRevision: `${value.consent.version}:${value.consent.policy_version ?? 'none'}` });
+        sourceRevision: this.birthDraftRevision, consentRevision: `${value.consent.version}:${value.consent.policy_version ?? 'none'}` };
+      this.profiles.synchronize(authority);
+      this.media.synchronize(authority);
     } finally { this.synchronizingProfiles = false; }
   }
   private mutate(patch: Partial<OnboardingSnapshot>): void {
@@ -307,7 +313,7 @@ export class OnboardingStore {
       policy_version: name === 'stale_consent' ? 'development-consent-old' : this.policy?.version ?? null, requirements: [] };
     this.mutate({ account, email: 'alex@example.invalid', adultBirthDate: name === 'underage' ? '2010-09-23' : '1990-06-15',
       consent, message: 'Explicit development scenario loaded. This is synthetic state, not a production permission.' });
-    if (name === 'eligible') this.profiles.seedEligible();
+    if (name === 'eligible') { this.media.seedEligible(); this.profiles.seedEligible(); }
   }
 }
 

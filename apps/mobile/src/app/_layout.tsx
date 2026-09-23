@@ -40,7 +40,7 @@ function Navigation() {
     <Stack.Protected guard={canAccessRoute('/eligibility', state)}><Stack.Screen name="eligibility" /></Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/birth', state)}><Stack.Screen name="birth" /></Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/profile', state)}>
-      <Stack.Screen name="profile" /><Stack.Screen name="profile-edit" /><Stack.Screen name="preferences" /><Stack.Screen name="profile-preview" />
+      <Stack.Screen name="profile" /><Stack.Screen name="profile-edit" /><Stack.Screen name="preferences" /><Stack.Screen name="profile-preview" /><Stack.Screen name="media" />
     </Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/remaining', state)}><Stack.Screen name="remaining" /></Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/restricted', state)}><Stack.Screen name="restricted" /></Stack.Protected>

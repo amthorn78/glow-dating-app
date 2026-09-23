@@ -7,6 +7,10 @@ logical operations. This slice adds no HTTP route, production DTO, authenticatio
 provider, database, media service or HDE calculation. Actual checks, review
 dispositions and limitations belong to [P04.2 evidence](../testing/p04-2-checkpoint.md).
 
+The P04.3 integration section below records the combined runtime's later media
+source. Earlier P04.2 descriptions remain the historical implementation boundary;
+they do not imply that its boolean media seed still governs the combined runtime.
+
 ## Runtime, ownership and contract boundary
 
 `apps/mobile/src/profiles/fixture-adapter.ts` supplies the explicit development-only
@@ -204,6 +208,50 @@ state. This also applies to retained hidden screens; waiting only for effect cle
 would allow a render of an earlier owner's or revoked candidate list. The hook
 retains its existing configured-API error/retry behavior without falling back to
 bundled fixtures after an API failure.
+
+## P04.3 integration with the media collection
+
+The combined onboarding store now owns `MediaStore` and binds the profile store
+to `media.approvedCollection()`. Its media-change callback runs
+`profiles.synchronizeMedia(collection)`. The standalone P04.2 adapter's synthetic
+seed remains for its isolated fixtures, but the combined runtime derives media
+evidence from current owned approved assets with an approved delivery reference.
+The owner cannot set that evidence through a profile edit.
+
+`approvedCollection()` also checks the active owner, adult/consent authority and
+current `development-media-1` policy, and filters local revocations. The profile
+adapter replaces `media_ids` with that current ordered set and derives its media
+requirement from whether at least one remains. Synchronization invalidates pending
+profile commands, advances profile authority/object and discovery revisions, and
+preserves existing saved visibility. A source change therefore can leave saved
+visibility `visible` while effective disclosure is blocked. It does not invent
+an F04/F06 transition. Explicit `paused` remains paused through media changes;
+resume still requires a fresh check of every eligibility condition.
+
+Removal and moderator restriction revoke the affected reference before awaiting
+completion. Losing the last eligible photo blocks completeness/discovery and
+invalidates retained candidate/recommendation contexts and pending resume work.
+Other valid approved photos can still satisfy the provisional media requirement.
+Reordering updates the ordered source; it cannot approve an asset or restore a
+removed one. Revocation does not claim that provider bytes were purged.
+
+`candidatePreview()` rereads the live approved collection and requires its ordered
+IDs to equal the accepted profile's `media_ids`, in addition to the existing current
+viewer/object checks. It projects only those approved references. These references
+are non-delivering fixture strings; the screen displays **Approved synthetic photo**
+placeholders, not private originals or URLs. The earlier P04.2 empty-reference
+projection is therefore superseded in the combined runtime, while compatibility
+remains unavailable and all private-field exclusions above remain in force.
+
+The explicit eligible scenario now seeds an approved synthetic asset alongside
+the existing fictional profile, preferences, chart/moderation/reciprocal and
+viewer evidence. Ordinary upload/review cannot create those unrelated prerequisites.
+Local PNG checks establish container structure and bounds only; safe decoding,
+metadata removal, actual moderation/delivery/purge and native byte reading remain
+unverified. See [media semantics](private-media-fixtures.md),
+[provider mapping](media-provider-mapping.md) and the
+[mobile walkthrough](../../apps/mobile/README.md). This section records inspected
+source behavior, not a rendered-suite or production acceptance result.
 
 ## Evidence limits and next boundary
 

@@ -50,3 +50,10 @@ export function useProfiles() {
   const state = useSyncExternalStore(profiles.subscribe, profiles.getSnapshot, profiles.getSnapshot);
   return { profiles, state };
 }
+
+export function useMedia() {
+  const { store } = useOnboarding();
+  const media = store.media;
+  const state = useSyncExternalStore(media.subscribe, media.getSnapshot, media.getSnapshot);
+  return { media, state };
+}

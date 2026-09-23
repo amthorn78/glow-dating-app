@@ -36,6 +36,7 @@ export default function ProfileScreenRoute() {
       <Text style={styles.small}>Writing your profile does not approve photos or resolve Human Design inputs. An owner preview does not make your profile visible.</Text>
     </View>
     <Button label={profile ? 'Edit profile' : 'Create profile'} testID="profile-edit" onPress={() => router.push('/profile-edit')} />
+    <Button label="Manage your photos" testID="profile-media" secondary onPress={() => router.push('/media')} />
     <Button label="Edit private preferences" testID="preferences-edit" secondary onPress={() => router.push('/preferences')} />
     <Button label="Preview saved profile" testID="profile-preview" secondary onPress={() => router.push('/profile-preview')} />
     {profile?.visibility === 'visible' && <Button label="Pause profile" testID="profile-pause" secondary onPress={() => void profiles.setVisibility('pause', outcome)} />}

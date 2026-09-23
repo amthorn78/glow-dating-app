@@ -446,7 +446,8 @@
       ],
       "response_contracts": [
         "MediaLifecycle",
-        "MediaUploadGrant"
+        "MediaUploadGrant",
+        "MediaCollection"
       ],
       "private_projection": "Own pending/rejected/review states; private originals",
       "public_projection": "Approved delivery reference only",
@@ -588,6 +589,9 @@
           "owner"
         ],
         "MediaUploadGrant": [
+          "owner"
+        ],
+        "MediaCollection": [
           "owner"
         ]
       }

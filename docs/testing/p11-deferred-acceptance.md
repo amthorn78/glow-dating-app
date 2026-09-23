@@ -37,3 +37,25 @@ No retry limit, service capacity, retention duration, geography, history policy 
 moderation owner is approved by this matrix. Resolve the existing A01/A02/A04–A08
 dependencies at their responsible phases. Failed tooling is not a behavioral
 test failure; missing live evidence remains deferred rather than passed.
+
+## P04.3 carryforward
+
+P04.3 adds an in-memory media lifecycle and a narrow picker boundary. It does not
+close any row above. Its actual-byte parser checks PNG structure, CRC and declared
+dimension/encoded-resource bounds; it does not decode pixels, strip metadata or
+establish server enforcement. System/moderator/provider events are synthetic and
+approved references do not deliver images. The existing API/runtime guards remain
+required. See [media semantics](../architecture/private-media-fixtures.md) and
+[provider mapping](../architecture/media-provider-mapping.md).
+
+| Existing case | Specific remaining media proof |
+|---|---|
+| PV04 | Exercise the selected real private provider and server processing with bounded synthetic files: actual safe decoding/resource isolation, malformed compressed data, metadata removal, quarantine and moderator controls, current viewer/object authorization, approved variants only, abandoned/expired uploads, grant replacement and late-completion reconciliation, immediate app revocation and actual provider deletion. Prove cache/revocation limits; a signed URL or upload notice is not current disclosure permission. |
+| PV07 | Verify media export/deletion against every selected processor, including unresolved or failed purge, retries, retention exceptions and backup/cache behavior. A hidden row or synthetic `removed` state cannot prove real-byte erasure. |
+| DB07 | Demonstrate durable media command/outbox ownership, collection/asset versions and idempotency across crash/restart, including provider acknowledgment arriving around the commit boundary. Fixture stage/validate/adopt is not a PostgreSQL/provider transaction. |
+| DB08 | Authenticate actual provider events and reconcile their exact account/object/upload-or-removal identity before durable admission. Duplicate, stale, conflicting and out-of-order results must not approve an obsolete asset, consume a replacement grant, resurrect removal or falsely finish another purge. Images Notifications and R2 Queue transports require their own verified integration. |
+| N01 | Verify the pinned Expo picker in signed native builds: permission denial/limited access/cancellation, Android activity destruction, stale result disposal, layout/large text, VoiceOver/TalkBack and offline interruption. Implement and verify a bounded native byte reader before allowing native selection to obtain an upload grant. Current native assets return unsupported; the size-bounded web `File` path does not prove native access. |
+
+The `development-media-1` limits and review requirements are provisional test
+inputs. They do not approve launch policy, provider quotas, retention, operating
+ownership or budget. Existing non-media deferred cases remain unchanged.

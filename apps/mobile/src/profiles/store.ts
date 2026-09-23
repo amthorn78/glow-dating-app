@@ -1,4 +1,4 @@
-import type { CandidateProfile, OwnPreferences, OwnProfile, PreferenceSelection, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
+import type { CandidateProfile, MediaCollection, OwnPreferences, OwnProfile, PreferenceSelection, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { parseAppIntent, parseAppResponse } from '../contracts/production.ts';
 import { createProfileAdapter, ProfileFailure, type DevelopmentChange, type ProfileAdapter,
   type ProfileContext, type ProfileOutcome, type ProfileRecords } from './fixture-adapter.ts';
@@ -41,6 +41,8 @@ export class ProfileStore {
   private operation = 0;
   private sequence = 0;
   private adapter: ProfileAdapter;
+  private mediaSource: (() => MediaCollection) | null = null;
+  private mediaRevoker: (() => void) | null = null;
   private pauseRequested = false;
   private pendingIntents = new Map<string, { signature: string; intent: ProfileIntent | PreferencesIntent | VisibilityIntent }>();
   private fictionalViewer: { generation: number; policyVersion: string; active: true; adult: true;
@@ -227,9 +229,11 @@ export class ProfileStore {
     this.fictionalViewer = { generation: this.authority.generation, policyVersion: this.adapter.inspect().policy!.version,
       active: true, adult: true, consent: true, complete: true, visible: true, moderation: true, bothBlocksClear: true };
     this.adopt(this.adapter.inspect(), true);
+    if (this.mediaSource) this.synchronizeMedia(this.mediaSource());
     this.publish({ message: 'Fictional profile, media, chart and reciprocal eligibility evidence loaded. No real service was used.' });
   }
   developmentChange(change: DevelopmentChange): void {
+    if (change === 'media' && this.mediaRevoker) { this.mediaRevoker(); return; }
     try {
       this.cancel(); this.adapter.developmentChange(change); this.pendingIntents.clear();
       this.adopt(this.adapter.inspect());
@@ -249,7 +253,17 @@ export class ProfileStore {
     if (!context || !current || !equal(context, current) || !this.snapshot.canDiscover || !this.snapshot.profile || !viewer ||
         viewer.generation !== this.authority.generation || viewer.policyVersion !== this.snapshot.policyVersion ||
         !viewer.active || !viewer.adult || !viewer.consent || !viewer.complete || !viewer.visible || !viewer.moderation || !viewer.bothBlocksClear) return null;
-    return projectCandidate(this.snapshot.profile);
+    const media = this.mediaSource?.();
+    if (media && (media.items.length === 0 || !equal(this.snapshot.profile.media_ids, media.items.map(item => item.asset_id)))) return null;
+    return projectCandidate(this.snapshot.profile, media?.items.map(item => item.approved_delivery_ref!).filter(Boolean) ?? []);
+  }
+  bindMedia(source: () => MediaCollection, revoke: () => void): void {
+    this.mediaSource = source; this.mediaRevoker = revoke;
+  }
+  synchronizeMedia(collection: MediaCollection): void {
+    this.cancel(); this.pendingIntents.clear(); this.adapter.synchronizeMedia(collection);
+    this.adopt(this.adapter.inspect());
+    this.publish({ discoveryRevision: this.snapshot.discoveryRevision + 1 });
   }
 }
 

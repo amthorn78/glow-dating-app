@@ -62,3 +62,4 @@ export function validatePublicSupportRequest(value: unknown): boolean;
 export function validateAppIntent(value: unknown): boolean;
 export function validateAppResponse(value: unknown): boolean;
 export function validateMediaUploadGrant(value: unknown): boolean;
+export function validateMediaCollection(value: unknown): boolean;

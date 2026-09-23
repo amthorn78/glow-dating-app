@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createFixtureOnboardingStore, FIXTURE_PASSWORD } from './store.ts';
 import { canAccessRoute, sanitizeDestination } from './routes.ts';
 
-const routes = ['/profile', '/profile-edit', '/preferences', '/profile-preview'] as const;
+const routes = ['/profile', '/profile-edit', '/preferences', '/profile-preview', '/media'] as const;
 const create = () => createFixtureOnboardingStore({ isDevelopment: true, mode: 'fixture' });
 
 test('owner profile routes reject anonymous, unverified and expired sessions', async () => {

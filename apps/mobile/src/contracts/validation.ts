@@ -3,7 +3,8 @@ export function assertUniqueKeys(value: unknown): boolean {
   if (Array.isArray(value)) return value.every(assertUniqueKeys);
   if (value !== null && typeof value === 'object') {
     const object = value as Record<string, unknown>;
-    for (const [collection, key] of [['items', 'profile_id'], ['selections', 'dimension']] as const) {
+    const itemKey = object.kind === 'media_collection' ? 'asset_id' : 'profile_id';
+    for (const [collection, key] of [['items', itemKey], ['selections', 'dimension']] as const) {
       const entries = object[collection];
       if (Array.isArray(entries)) {
         const keys = entries.map(entry => (entry as Record<string, unknown>)[key]);

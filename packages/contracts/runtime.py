@@ -34,7 +34,8 @@ def valid(scope, definition, value):
 def unique_keys(value):
     """Schemas close shape; these collections additionally have unique keys."""
     if isinstance(value, dict):
-        for collection, key in (("items", "profile_id"), ("selections", "dimension")):
+        item_key = "asset_id" if value.get("kind") == "media_collection" else "profile_id"
+        for collection, key in (("items", item_key), ("selections", "dimension")):
             items = value.get(collection)
             if isinstance(items, list):
                 keys = [item[key] for item in items]

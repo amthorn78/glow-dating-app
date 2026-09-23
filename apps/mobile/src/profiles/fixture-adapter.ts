@@ -1,4 +1,4 @@
-import type { OwnPreferences, OwnProfile, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
+import type { MediaCollection, OwnPreferences, OwnProfile, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { parseAppIntent, parseAppResponse } from '../contracts/production.ts';
 import { activeOwner, canonicalSelections, EMPTY_EVIDENCE, FIXTURE_MEDIA_ID, FIXTURE_PREFERENCE_POLICY,
   PROFILE_IDS, PROFILE_REQUEST_ID, requirements, selectionsValid,
@@ -36,6 +36,7 @@ export interface ProfileAdapter {
   visibility(context: ProfileContext, intent: VisibilityIntent, outcome?: ProfileOutcome): Promise<OwnProfile>;
   acknowledge(context: ProfileContext, result: OwnProfile | OwnPreferences): void;
   cancelPending(): void;
+  synchronizeMedia(collection: MediaCollection): void;
   seedEligible(): void;
   developmentChange(change: DevelopmentChange): void;
 }
@@ -197,6 +198,17 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
       state = staged.state; receipts.set(staged.receiptKey, staged.receipt); staged = null;
     },
     cancelPending() { epoch += 1; staged = null; },
+    synchronizeMedia(collection) {
+      const ids = collection.items.filter(item => item.state === 'approved' && item.approved_delivery_ref !== null).map(item => item.asset_id);
+      adapter.cancelPending(); authorityRevision += 1;
+      state.evidence = { ...state.evidence, media: ids.length > 0 };
+      if (state.profile) {
+        const profile = { ...state.profile, version: state.profile.version + 1, media_ids: ids };
+        state = { ...state, profile };
+        // Media evidence changes effective disclosure, not a new F04/F06 actor
+        // transition. Explicit owner completion/resume still uses its own gate.
+      }
+    },
     seedEligible() {
       if (!activeOwner(authority) || !authority.adult || !authority.consentCurrent) throw new ProfileFailure('forbidden');
       adapter.cancelPending(); authorityRevision += 1; receipts.clear();

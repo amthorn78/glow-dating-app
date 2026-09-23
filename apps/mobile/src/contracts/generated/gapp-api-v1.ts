@@ -232,7 +232,8 @@ export interface AppResponse {
     | DeletionProjection
     | EntitlementProjection
     | PublicRequestReceipt
-    | MediaUploadGrant;
+    | MediaUploadGrant
+    | MediaCollection;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -417,6 +418,18 @@ export interface MediaUploadGrant {
   asset_id: Identifier;
   grant_ref: PolicyVersion;
   expires_at: Instant;
+}
+/**
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "MediaCollection".
+ */
+export interface MediaCollection {
+  kind: 'media_collection';
+  version: Version;
+  /**
+   * @maxItems 20
+   */
+  items: MediaLifecycle[];
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -678,5 +691,6 @@ export interface AppResponse1 {
     | DeletionProjection
     | EntitlementProjection
     | PublicRequestReceipt
-    | MediaUploadGrant;
+    | MediaUploadGrant
+    | MediaCollection;
 }
