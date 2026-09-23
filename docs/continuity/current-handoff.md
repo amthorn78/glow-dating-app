@@ -25,6 +25,18 @@ content relationship and main CI. A commit cannot contain its own final hash.
 Do not infer passing CI/merge from the existence of this handoff. Current remote
 main, all newer commits/open PRs and Notion state must be reconciled before writing.
 
+The accepted implementation on [PR 5](https://github.com/amthorn78/glow-dating-app/pull/5)
+is **5fa82a39f595a61d0a13060d06c1ea523e698ded**, tree
+**00b0eaae9251e7a7aee37c4c7e435f27d089ef51**. All four Foundation jobs passed in
+[PR CI](https://github.com/amthorn78/glow-dating-app/actions/runs/35897572548) and
+[branch CI](https://github.com/amthorn78/glow-dating-app/actions/runs/35897565557),
+including **39 mobile tests and all seven rendered Chromium cases**. The latter
+cover the full fixture journey, recovery, direct/history gates, private draft
+isolation and small-screen doubled-text layout. Both native JavaScript exports
+passed. The checkpoint records the sanitized artifact, historical failures/fixes
+and remaining limits. This final documentation update needs its own candidate
+checks; AB1-R005 owns the final hashes, checked merge and merged-main CI.
+
 Publication uses hash-verified source snapshots and GitHub blob/tree/commit
 operations. The local synthetic Git baseline is only a diff aid, never remote
 lineage. Acquire an authenticated checkout or hash-verify a fresh snapshot. Never

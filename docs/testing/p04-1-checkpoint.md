@@ -18,17 +18,28 @@ is not remote Git lineage.
 
 Branch: `app-builder-1/p04-1-native-onboarding`. The separate source review is
 complete and material findings are corrected. [PR 5](https://github.com/amthorn78/glow-dating-app/pull/5)
-published implementation `d66e7c40ca48eeec4aac87a17b6c992ea78b2241`, tree
+has an accepted implementation at **`5fa82a39f595a61d0a13060d06c1ea523e698ded`**,
+tree **`00b0eaae9251e7a7aee37c4c7e435f27d089ef51`**. All four Foundation jobs passed
+on its [PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35897572548)
+and [branch run](https://github.com/amthorn78/glow-dating-app/actions/runs/35897565557),
+including **all seven rendered Chromium cases**. This evidence update changes only
+documentation. Its containing candidate still requires exact-head CI before merge;
+the final candidate, merge/main relationship and main CI belong to **AB1-R005** in
+the [shared report record](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f).
+A commit cannot include its own hash. Do not infer merge from this checkpoint alone.
+
+### Corrected publication history
+
+The first implementation `d66e7c40ca48eeec4aac87a17b6c992ea78b2241`, tree
 `2944134e82655e82a0e7acf4ed4f6ad13a37ea31`. Its first
 [PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35892757779)
 passed API, HTTP smoke and container jobs but failed mobile TypeScript: ignored
 generated Expo web declarations had masked two unsupported Text `tabIndex` props
 locally. The correction sets DOM focusability only after a web HTMLElement check;
 native focus keeps the React Native API. TypeScript also passed with generated
-Expo declarations excluded. **Pending publication evidence:**
-corrected candidate, hosted rendered checks, exact-candidate CI, merge/main
-relationship, merged-main CI and AB1-R005/task closure. Every later candidate,
-including documentation changes, requires applicable Foundation jobs before merge.
+Expo declarations excluded. Every later candidate, including documentation changes,
+requires applicable Foundation jobs before merge. The failures below are historical;
+their corrections passed together in the accepted implementation identified above.
 
 Corrected candidate `65d245a78f11832e2ae63bd1e8afd55b82f580bd`
 [passed static/native checks but timed out before browser tests](https://github.com/amthorn78/glow-dating-app/actions/runs/35893465492).
@@ -48,7 +59,7 @@ tests now target the visible screen while keeping logout private-data absence
 assertions across the entire DOM. The remaining case found competing redirects
 for an unknown path. A generic link-unavailable screen now owns unmatched routes,
 with one explicit safe return; known-route query/hash cleanup has one replacement
-in flight. Hosted regression remains required.
+in flight. This correction is covered by the accepted hosted regression above.
 
 Candidate `27a29c7944c2b724459870090584e6b4ad071470`
 [passed three rendered cases](https://github.com/amthorn78/glow-dating-app/actions/runs/35895724641),
@@ -57,7 +68,7 @@ correction keeps navigation mounted while resetting only owner-bound private dra
 state, preserving recovery input across a failed request. Stale draft callbacks
 check live ownership. Logout/back tests now await the completed logout screen,
 and an explicit local sitemap route replaces the SDK index with the same safe
-unavailable-link screen. These corrections still need the full hosted regression.
+unavailable-link screen. These corrections passed the full hosted regression above.
 
 Candidate `ef8829a2a52088bf87b089e4cb7951d7c4c530a6`
 [passed four rendered cases](https://github.com/amthorn78/glow-dating-app/actions/runs/35896752733),
@@ -67,7 +78,8 @@ so the UI can safely navigate to sign-in. Explicit checked ARIA state supplement
 native accessibility state for browser rendering. The back regression verifies
 logout/private-field removal before Back and handles only the browser's initial
 blank tab by re-entering a formerly protected URL, which must still deny access.
-No other unexpected navigation result is accepted. Full hosted regression follows.
+No other unexpected navigation result is accepted. The full hosted regression above
+passed with these corrections.
 
 ## Unchanged API and contract baseline actually executed
 
@@ -112,10 +124,22 @@ verification errors/resend, neutral recovery/reset, private birth edits and fail
 interrupted drafts, account switching, blocked scenarios, direct routes and history.
 Its layout case uses a 320×568 viewport with computed text sizes doubled; ordinary
 journey cases use 390×844. Only the empty account form is captured, with traces and
-automatic screenshots disabled. **Hosted execution is still pending at this
-implementation publication.** Local browser installation returned unusable download
-archives; no local rendered pass is claimed. Native JavaScript exports succeeded
-for both iOS and Android. Hosted browser evidence does not prove device behavior.
+automatic screenshots disabled. **All seven cases passed in 29.8 seconds** in
+[mobile job 107305216499](https://github.com/amthorn78/glow-dating-app/actions/runs/35897572548/job/107305216499).
+They demonstrate registration/verification/focus, neutral recovery/reset/retry,
+direct/query/hash/unknown/sitemap denial, all birth-time modes and unavailable retry,
+interrupted draft/account-switch isolation across hidden and visible DOM fields,
+restricted/eligible scenarios and logout/back denial, and doubled-text layout.
+
+The [empty-form artifact](https://github.com/amthorn78/glow-dating-app/actions/runs/35897572548/artifacts/10767681328)
+is `p04-empty-form-layout`, 27,481 bytes, ZIP SHA-256
+`d6467fd0cfef0b8d407ebbcdb4739116dbcbbbf3f0bf5235a832692db4c5759c`,
+expiring **7 October 2026, 17:45:54 UTC**. Automated layout/focus/interaction
+assertions passed; no human visual inspection of the artifact is claimed.
+The committed suite and README walkthrough provide reproducible evidence after
+artifact expiry. Local browser downloads were unusable; no local rendered pass is
+claimed. Native JavaScript exports succeeded for both iOS and Android. Hosted
+browser evidence does not prove device behavior.
 
 The intended end of ordinary account/birth onboarding remains **profile
 incomplete**, with discovery blocked. Explicit eligible development scenarios are
@@ -124,20 +148,21 @@ an HDE mapping, profile readiness or production authorization.
 
 ## Final local validation and hosted checks
 
-The workflow and READMEs own the executable commands. Record actual final results
-for the completed candidate here, including any reruns after review corrections.
+The workflow and READMEs own the executable commands. Results below identify the
+accepted implementation; AB1-R005 records the containing documentation candidate
+and merged-main gates after they actually complete.
 
-| Directory | Required command or check | Current evidence in this draft |
+| Directory | Required command or check | Observed evidence |
 |---|---|---|
 | apps/mobile | `npm ci --ignore-scripts` and `npm run check` | Pass: locked install, TypeScript/ESLint and 39 mobile tests |
 | apps/mobile | `EXPO_OFFLINE=1 npm run check:expo` | Pass; offline dependency check only |
 | apps/mobile | `EXPO_OFFLINE=1 npm run export:development` | Pass: both development JavaScript exports |
-| apps/mobile | `npm run test:rendered` | Pending actual rendered interaction/layout evidence |
+| apps/mobile | `npm run test:rendered` | Pass: all seven hosted Chromium interaction/layout cases |
 | repo root | `GLOW_SMOKE_PYTHON="$PWD/services/api/.venv/bin/python" node scripts/smoke.mjs` | Pass: actual loopback API → mobile client; 200/503 and rejected writes |
 | repo root | `GLOW_SMOKE_PYTHON="$PWD/services/api/.venv/bin/python" node --test scripts/smoke.test.mjs` | Pass: one bounded startup regression |
 | repo root | Complete diff review and `git diff --check` | Pass: separate review corrections and clean diff |
-| GitHub candidate | **API checks**, **Mobile checks**, **API mobile smoke**, **API artifact checks** | Pending exact-candidate hosted results |
-| GitHub main | Merged content relationship and Foundation results | Pending merge and verification |
+| GitHub implementation | **API checks**, **Mobile checks**, **API mobile smoke**, **API artifact checks** | All four pass on both exact implementation runs linked above |
+| GitHub final documentation candidate / main | Exact-head CI, merged content relationship and Foundation results | Final closure ledger is AB1-R005; verify current PR and main before resuming |
 
 Do not claim local image execution unless a Docker build and container check
 actually run. The hosted artifact job is the existing image-validation route;
