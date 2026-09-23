@@ -10,7 +10,7 @@ P01.3 is complete: [PR 1](https://github.com/amthorn78/glow-dating-app/pull/1), 
 
 ## Active increment and resume
 
-P02.1 is In progress. Branch `app-builder-1/domain-seams` contains the next bounded increment: internal immutable identities, explicit fail-closed eligibility, fixture compatibility/provenance/cache identities, read protocols and an eligibility-before-provider service. It also updates the P01 acceptance evidence. At this handoff's writing the increment is prepared for its own PR/hosted validation; the exact publication/merge is recorded in Notion reports. Do not infer P02 completion from these primitives.
+P02.1 is In progress. [PR 2](https://github.com/amthorn78/glow-dating-app/pull/2), branch `app-builder-1/domain-seams`, records the bounded increment (initial implementation candidate `0e1d5de022cdad32cae21fe7d8300adf95948959`): internal immutable identities, explicit fail-closed eligibility, fixture compatibility/provenance/cache identities, read protocols and an eligibility-before-provider service. It also updates the P01 acceptance evidence. Use that PR and the shared Notion progress report for the exact accepted head, hosted run and merge; this document is part of the same increment and cannot name its own final commit in advance. Do not infer P02 completion from these primitives.
 
 Local combined checks: 41 API/domain tests, 6 contract tests, Ruff lint/format and mypy 14 modules passed. Independent domain/service review ran 25 tests and found no actionable scoped defect. Existing mobile tests total 11; HTTP smoke includes occupied-old-port/startup-failure regression. `../testing/domain-seams.md` records the boundary and unproven cases.
 
