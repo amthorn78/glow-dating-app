@@ -153,7 +153,12 @@ test('a retained untouched preference form refreshes when the authoritative sele
   await expect(page.getByTestId('pref-demo_connection-demo_a')).toHaveCount(1);
   await expect(active(page, 'pref-demo_connection-demo_a')).toHaveCount(0);
   await active(page, 'dev-preferences-change').click();
-  await page.goBack();
+  // Revoking discovery prunes its earlier protected history entry. Assert the
+  // original hidden form before using an explicit same-session return route.
+  await expect(page.getByTestId('pref-demo_connection-demo_a')).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('pref-demo_connection-demo_b')).toHaveAttribute('aria-checked', 'true');
+  await active(page, 'dev-profile-return').click();
+  await active(page, 'preferences-edit').click();
   await expect(active(page, 'screen-preferences')).toBeVisible();
   await expect(active(page, 'pref-demo_connection-demo_a')).toHaveAttribute('aria-checked', 'false');
   await expect(active(page, 'pref-demo_connection-demo_b')).toHaveAttribute('aria-checked', 'true');
@@ -176,12 +181,16 @@ test('fictional eligible profile pauses, edits while paused, resumes and recheck
   await active(page, 'profile-resume').click();
   await expect(active(page, 'profile-status')).toContainText('visible');
   await active(page, 'profile-pause').click();
+  // Source controls intentionally cancel pending work. Exercise loss of media
+  // after the pause has actually committed, rather than cancelling the pause.
+  await expect(active(page, 'profile-status')).toContainText('paused');
   await active(page, 'development-link').click();
   await active(page, 'dev-media-change').click();
   await page.goBack();
   await expect(active(page, 'screen-profile')).toBeVisible();
   await active(page, 'profile-resume').click();
-  await expect(active(page, 'profile-status')).not.toContainText('visible');
+  await expect(page.getByRole('alert').filter({ visible: true })).toBeVisible();
+  await expect(active(page, 'profile-status')).toContainText('paused');
   await expect(page.getByText(/Make room for/)).toHaveCount(0);
 });
 
@@ -192,9 +201,18 @@ for (const evidence of ['policy', 'reciprocal']) {
     await active(page, 'development-link').click();
     await active(page, `dev-${evidence}-change`).click();
     await expect(page.getByText(/Make room for/)).toHaveCount(0);
+    await expect(page.getByTestId('profile-status')).toContainText('Visibility: incomplete');
+    await active(page, 'dev-profile-return').click();
+    await expect(active(page, 'screen-profile')).toBeVisible();
+    await expect(active(page, 'profile-status')).toContainText('Visibility: incomplete');
+    // Establish a fresh in-app history entry after protected history pruning;
+    // Back must reach the current owner state and cannot revive discovery.
+    await active(page, 'profile-preview').click();
+    await expect(active(page, 'candidate-unavailable')).toBeVisible();
     await page.goBack();
     await expect(active(page, 'screen-profile')).toBeVisible();
-    await expect(active(page, 'profile-status')).not.toContainText('visible');
+    await expect(active(page, 'profile-status')).toContainText('Visibility: incomplete');
+    await expect(page.getByText(/Make room for/)).toHaveCount(0);
   });
 }
 
@@ -213,10 +231,19 @@ test('eligible candidate preview contains only public text and retracts from a r
   await expect(candidate).toHaveCount(0);
   await active(page, 'dev-media-change').click();
   await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
-  await page.goBack();
+  // Check the original retained owner preview before opening another route.
+  await expect(page.getByTestId('owner-preview')).toHaveCount(1);
+  await expect(page.getByTestId('owner-preview')).toContainText('Visibility: incomplete');
+  await expect(page.getByTestId('candidate-unavailable')).toHaveCount(1);
+  await active(page, 'dev-profile-return').click();
+  await active(page, 'profile-preview').click();
   await expect(active(page, 'screen-profile-preview')).toBeVisible();
   await expect(active(page, 'owner-preview')).toBeVisible();
   await expect(active(page, 'candidate-unavailable')).toBeVisible();
+  await page.goBack();
+  await expect(active(page, 'screen-profile')).toBeVisible();
+  await expect(active(page, 'profile-status')).toContainText('Visibility: incomplete');
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
 });
 
 test('an invalid profile response cannot reappear as saved data after refresh', async ({ page }) => {

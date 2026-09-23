@@ -127,7 +127,11 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
       context = copy(context);
       await delay(context, outcome);
       const result = records();
-      if (outcome === 'malformed' && result.profile) result.profile = resultFor(result.profile, outcome);
+      if (outcome === 'malformed') {
+        // Absence is a valid read, so return an invalid projection even before
+        // profile creation. This corrupts only the response, never saved state.
+        result.profile = result.profile ? resultFor(result.profile, outcome) : { kind: 'own_profile' } as OwnProfile;
+      }
       return result;
     },
     async saveProfile(context, intent, outcome = 'success') {

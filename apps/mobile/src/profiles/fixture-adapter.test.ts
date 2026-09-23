@@ -315,3 +315,51 @@ test('mutable read and write contexts cannot change the authority captured when 
   latch.release();
   assert.deepEqual((await pendingRead).profile, accepted);
 });
+
+test('suspension denies access without a profile transition and system removal increments the version only once', async () => {
+  for (const visibility of ['incomplete', 'visible', 'paused'] as const) {
+    const port = adapter();
+    if (visibility === 'incomplete') await commitProfile(port);
+    else {
+      port.seedEligible();
+      if (visibility === 'paused') await commitVisibility(port, 'pause');
+    }
+    const before = port.inspect().profile!;
+    assert.equal(before.visibility, visibility);
+    const context = port.context();
+    port.synchronize({ ...authority, accountVersion: 2, accountState: 'suspended' });
+    assert.throws(() => port.context(), failure('unauthenticated'));
+    await assert.rejects(port.read(context), failure('unauthenticated'));
+    assert.deepEqual(port.inspect().profile, before);
+    port.synchronize({ ...authority, accountVersion: 3, accountState: 'deletion_pending' });
+    const removed = port.inspect().profile!;
+    assert.deepEqual(removed, { ...before, version: before.version + 1, visibility: 'removed' });
+    assert.throws(() => port.context(), failure('unauthenticated'));
+    port.synchronize({ ...authority, accountVersion: 4, accountState: 'deleted' });
+    assert.deepEqual(port.inspect().profile, removed);
+    port.synchronize({ ...authority, accountVersion: 5, accountState: 'deleted' });
+    assert.deepEqual(port.inspect().profile, removed);
+    await assert.rejects(port.saveProfile(context, profileIntent(before.version, 'after-removal')), failure('unauthenticated'));
+  }
+});
+
+test('malformed reads fail projection validation for empty, preferences-only and saved-profile states without changing accepted records', async () => {
+  for (const scenario of ['empty', 'preferences-only', 'profile-only', 'profile-and-preferences'] as const) {
+    const port = adapter();
+    if (scenario === 'profile-only' || scenario === 'profile-and-preferences') await commitProfile(port);
+    if (scenario === 'preferences-only' || scenario === 'profile-and-preferences') {
+      const context = port.context();
+      const preferences = await port.savePreferences(context, preferencesIntent());
+      port.acknowledge(context, preferences);
+    }
+    const before = port.inspect();
+    const malformed = await port.read(port.context(), 'malformed');
+    assert.throws(() => {
+      for (const projection of [malformed.profile, malformed.preferences]) {
+        if (projection !== null) parseAppResponse({ contract_version: 'gapp-api-v1', request_id: PROFILE_REQUEST_ID, data: projection });
+      }
+    }, ProductionContractError, scenario);
+    assert.deepEqual(port.inspect(), before, scenario);
+    assert.deepEqual(await port.read(port.context()), { profile: before.profile, preferences: before.preferences }, scenario);
+  }
+});

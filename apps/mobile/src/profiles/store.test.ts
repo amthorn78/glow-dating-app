@@ -437,3 +437,36 @@ test('public UI snapshots never include adapter policy catalogs or fictional aut
     assert.equal(Object.hasOwn(value, 'fictionalViewer'), false);
   }
 });
+
+test('malformed reloads never report success before profile creation or with partial saved records, and keep both drafts for retry', async () => {
+  for (const scenario of ['empty', 'preferences-only', 'profile-only', 'profile-and-preferences'] as const) {
+    const port = createProfileAdapter(options);
+    const subject = store(port);
+    if (scenario === 'profile-only' || scenario === 'profile-and-preferences') {
+      edit(subject);
+      await save(subject);
+    }
+    if (scenario === 'preferences-only' || scenario === 'profile-and-preferences') {
+      subject.editPreferencesDraft(selected, subject.getSnapshot().preferencesDraftRevision);
+      await subject.savePreferences(subject.getSnapshot().preferencesDraftRevision);
+    }
+    edit(subject, 'Unsaved fictional name', 'Keep this draft after an invalid read.');
+    subject.editPreferencesDraft([{ dimension: 'demo_connection', accepted_option_ids: ['demo_b'] }], subject.getSnapshot().preferencesDraftRevision);
+    const before = subject.getSnapshot(), accepted = port.inspect();
+    await subject.reload('malformed');
+    const failed = subject.getSnapshot();
+    assert.ok(failed.error, scenario);
+    assert.equal(failed.message, null, scenario);
+    assert.equal(failed.busy, false, scenario);
+    assert.deepEqual(failed.profile, before.profile, scenario);
+    assert.deepEqual(failed.preferences, before.preferences, scenario);
+    assert.deepEqual(failed.profileDraft, before.profileDraft, scenario);
+    assert.deepEqual(failed.preferencesDraft, before.preferencesDraft, scenario);
+    assert.deepEqual(port.inspect(), accepted, scenario);
+    await subject.reload();
+    assert.equal(subject.getSnapshot().error, null, scenario);
+    assert.equal(subject.getSnapshot().message, 'Current saved values loaded. Review your draft before saving.', scenario);
+    assert.deepEqual(subject.getSnapshot().profileDraft, before.profileDraft, scenario);
+    assert.deepEqual(subject.getSnapshot().preferencesDraft, before.preferencesDraft, scenario);
+  }
+});
