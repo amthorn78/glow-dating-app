@@ -36,7 +36,8 @@ export class MediaStore {
   private selection: MediaSelection | null = null;
   private clockOffset = 0;
   private pending = new Map<string, { signature: string; intent: MediaIntent }>();
-  private revoked = new Set<string>();
+  private ownerRemovalRevocations = new Set<string>();
+  private moderationRevocations = new Set<string>();
   private evidenceSignature = '';
   private onEvidence: (collection: MediaCollection, policyVersion: string | null) => void;
   private snapshot: MediaSnapshot = freeze({ ownerKey: 'none:0', collection: emptyCollection(), transports: [],
@@ -71,15 +72,18 @@ export class MediaStore {
   approvedCollection(): MediaCollection {
     return { ...copy(this.snapshot.collection), items: this.snapshot.policyVersion === FIXTURE_MEDIA_POLICY.version &&
       activeOwner(this.authority) && this.authority.adult && this.authority.consentCurrent ?
-      this.snapshot.collection.items.filter(item => item.state === 'approved' && item.approved_delivery_ref && !this.revoked.has(item.asset_id)).map(copy) : [] };
+      this.snapshot.collection.items.filter(item => item.state === 'approved' && item.approved_delivery_ref &&
+        !this.ownerRemovalRevocations.has(item.asset_id) && !this.moderationRevocations.has(item.asset_id)).map(copy) : [] };
   }
   synchronize(authority: ProfileAuthority): void {
     if (equal(authority, this.authority)) return;
-    const boundary = authority.ownerId !== this.authority.ownerId || authority.generation !== this.authority.generation || !activeOwner(authority);
+    const replaced = authority.ownerId !== this.authority.ownerId || authority.generation !== this.authority.generation;
     this.adapter.cancelPending(); this.operation += 1;
     this.adapter.synchronize(authority); this.authority = copy(authority); this.pending.clear();
     this.selection = null;
-    if (boundary) this.revoked.clear();
+    // The adapter retains asset identity through same-owner/generation authority
+    // loss. Keep its outstanding revocations until that identity is replaced.
+    if (replaced) { this.ownerRemovalRevocations.clear(); this.moderationRevocations.clear(); }
     this.publish({ ownerKey: `${authority.ownerId ?? 'none'}:${authority.generation}`, selection: null,
       selectionRevision: this.snapshot.selectionRevision + 1, busy: false, error: null, message: null });
   }
@@ -164,7 +168,7 @@ export class MediaStore {
   async remove(assetId: string, outcome: MediaOutcome = 'success'): Promise<void> {
     const asset = this.snapshot.collection.items.find(item => item.asset_id === assetId);
     if (!asset || asset.state === 'removed' || asset.state === 'removal_pending') return;
-    this.operation += 1; this.adapter.cancelPending(); this.revoked.add(assetId); this.publish({ busy: false });
+    this.operation += 1; this.adapter.cancelPending(); this.ownerRemovalRevocations.add(assetId); this.publish({ busy: false });
     const intent = this.intent('remove', asset.version, assetId, []);
     await this.run(context => this.adapter.remove(context, intent, outcome), 'Photo removed from delivery. Provider purge is pending.');
   }
@@ -179,15 +183,16 @@ export class MediaStore {
   async developerEvent(assetId: string, event: 'review' | 'approve' | 'reject' | 'restrict_media' | 'purged', outcome: MediaOutcome = 'success'): Promise<void> {
     const asset = this.snapshot.collection.items.find(item => item.asset_id === assetId);
     if (!asset) return;
-    if (event === 'restrict_media') { this.operation += 1; this.adapter.cancelPending(); this.revoked.add(assetId); this.publish({ busy: false }); }
+    if (event === 'restrict_media') { this.operation += 1; this.adapter.cancelPending(); this.moderationRevocations.add(assetId); this.publish({ busy: false }); }
     const actor = event === 'review' ? 'system' : event === 'purged' ? 'provider' : 'moderator';
     const policyVersion = this.snapshot.policyVersion ?? 'unknown';
     await this.run(context => this.adapter.event(context, { event, actor, assetId, expectedVersion: asset.version,
       eventId: `media-event-${++this.sequence}`, policyVersion }, outcome), `Synthetic ${actor} event: ${event}.`, false,
-    () => { if (event === 'approve') this.revoked.delete(assetId); });
+    () => { if (event === 'approve') this.moderationRevocations.delete(assetId); });
   }
   async reload(outcome: MediaOutcome = 'success'): Promise<void> { await this.run(context => this.adapter.read(context, outcome), 'Current photo status loaded.', true); }
-  seedEligible(): void { this.operation += 1; this.adapter.seedEligible(); this.revoked.clear(); this.publish({ busy: false, error: null, message: null }); }
+  seedEligible(): void { this.operation += 1; this.adapter.seedEligible(); this.ownerRemovalRevocations.clear(); this.moderationRevocations.clear();
+    this.publish({ busy: false, error: null, message: null }); }
   invalidatePolicy(): void { this.operation += 1; this.adapter.invalidatePolicy(); this.selection = null; this.publish({ busy: false, selection: null,
     selectionRevision: this.snapshot.selectionRevision + 1, message: 'Synthetic media policy changed. Delivery and new uploads are unavailable.' }); }
   advanceClock(milliseconds: number): void {
@@ -196,7 +201,7 @@ export class MediaStore {
   }
   restrictApproved(): void {
     // This synchronous synthetic source revocation also defeats retained previews and pending resume.
-    this.snapshot.collection.items.filter(item => item.state === 'approved').forEach(item => this.revoked.add(item.asset_id));
+    this.snapshot.collection.items.filter(item => item.state === 'approved').forEach(item => this.moderationRevocations.add(item.asset_id));
     this.operation += 1; this.adapter.cancelPending(); this.publish({ busy: false });
   }
 }

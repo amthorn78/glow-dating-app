@@ -132,6 +132,68 @@ occur. Runtime/startup guards and disabled billing remain intact.
 
 ## Publication gate and carryforward
 
+### Initial publication and late review correction
+
+Implementation `867cee7a1014adc5805ccb9c5be56b7b68c8a830`, tree
+`41c02b166fe01e9e1edb98cbffa5ee8b37c3af08`, was published in
+[PR 8](https://github.com/amthorn78/glow-dating-app/pull/8). Both candidate
+[PR run 35930877276](https://github.com/amthorn78/glow-dating-app/actions/runs/35930877276)
+and [push run 35930873903](https://github.com/amthorn78/glow-dating-app/actions/runs/35930873903)
+passed all four jobs. The PR Mobile log confirms 171 mobile tests and 44 rendered
+cases (14 media plus all 30 inherited cases), without retries or skips. Local
+Chromium remained unavailable. Hosted DevTools emitted a nonfatal sandbox startup
+error; Metro and the test browser completed. No visual/native-device pass is claimed.
+
+PR 8 merged at **2026-09-23T23:00:42Z** as
+`b7fb0f87a79827ebb00f9a409b59e61019652f35`, with ordered parents starting main
+and implementation above and identical candidate/main trees. All 44 changed blobs
+matched reviewed local content; the Foundation workflow was unchanged. Automatic
+security review completed before merge at 22:59:42 UTC. Automatic code review was
+still running at merge and completed at 23:01:52 UTC with
+[a P1 finding](https://github.com/amthorn78/glow-dating-app/pull/8#discussion_r4088156684).
+No Verified/Done transition occurred on that initial merge.
+
+The initial merged-main [run 35931388280](https://github.com/amthorn78/glow-dating-app/actions/runs/35931388280)
+passed API checks, API mobile smoke and API artifact checks, but Mobile failed two
+inherited rendered cases with **42 passed**: unsaved birth-draft correction waited
+for `screen-remaining` after submit; ordinary underage correction waited for
+`screen-eligibility` after submit. All 14 media cases and all 171 mobile unit tests
+passed. These failures are separate from the review's removal defect. Both prior
+candidate runs used the same content tree and passed all 44 rendered cases; that
+does not erase the main failures or establish their cause.
+The failure hook recorded that both cases remained on `screen-birth`; the
+workflow did not retain their error-context files. Two source reviewers could
+not uniquely reproduce or attribute the failures. The original assertions,
+timeouts and zero-retry configuration remain unchanged. Failure-only diagnostics
+now record control presence, empty/nonempty booleans, disabled state and alert
+presence, never input values, to distinguish causes if this recurs.
+
+The finding was reproduced: failed/malformed owner removal immediately revoked
+app delivery, but subsequent moderation restriction and approval could clear that
+revocation while the accepted asset remained approved. Independent follow-up
+review also reproduced revocation loss across inactive then active authority for
+the same owner/generation, because that boundary retained the adapter asset.
+The correction separates owner-removal exclusions from temporary moderation
+restrictions. Reapproval cannot clear an owner's removal request; authority loss
+cannot clear it while the same owner/generation still owns the retained asset.
+Accepted F05 lifecycle remains distinct from the conservative delivery exclusion;
+valid removal retry and provider purge are still required and supported.
+
+The bounded follow-up branch is
+`app-builder-1/p04-3-removal-revocation-fix`, based on actual main
+`b7fb0f87a79827ebb00f9a409b59e61019652f35`. Its source, regressions, rendered case
+and documentation require distinct review and all four final-candidate/main gates.
+AB1-R008 records observed final repair checks, publication identities and review
+dispositions; neither the prior green suite nor a resolved-thread flag closes the
+finding without that source/regression evidence.
+
+After the removal correction, local `npm run check` passes TypeScript, ESLint and
+**175 mobile tests**. Independent review of the complete repair/test/docs delta
+and all **59 media cases** passes. Two new rendered cases cover error and malformed
+removal followed by restrict/reapprove/reload, retained preview revocation and
+successful cleanup. The resulting **46** rendered cases require hosted execution;
+discovery and source review alone are not a browser pass.
+
 All four Foundation jobs must pass on the exact final candidate including docs:
 **API checks**, **Mobile checks**, **API mobile smoke**, **API artifact checks**.
 Recheck head/base/main, full diff and review dispositions immediately before the

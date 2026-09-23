@@ -5,6 +5,29 @@ test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status === testInfo.expectedStatus) return;
   const screens = await page.locator('[data-testid^="screen-"]:visible').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-testid'))).catch(() => []);
   console.info('Visible screen identities after failure:', screens);
+  // Diagnose a failed retained-form transition without logging any entered data.
+  // Counts/booleans distinguish missing controls, disabled submission and blank
+  // drafts; alert presence does not expose provider text or private values.
+  const birthDiagnostics = await page.evaluate(() => {
+    const visible = (node: Element) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const controls = (testId: string) => Array.from(document.querySelectorAll(`[data-testid="${testId}"]`)).filter(visible);
+    const submissions = controls('birth-submit');
+    const fieldState = (testId: string) => controls(testId).map(node => ({
+      empty: node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement ? node.value.length === 0 : null,
+    }));
+    return {
+      submitCount: submissions.length,
+      submitDisabled: submissions.map(node => node.getAttribute('aria-disabled') === 'true' || node.hasAttribute('disabled')),
+      dateFields: fieldState('birth-date'),
+      placeFields: fieldState('birth-place'),
+      visibleAlertPresent: Array.from(document.querySelectorAll('[role="alert"]')).some(visible),
+    };
+  }).catch(() => null);
+  console.info('Private birth control diagnostics after failure:', birthDiagnostics);
 });
 async function reachBirth(page: Page) {
   await page.goto('/account');
