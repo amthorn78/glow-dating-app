@@ -3,19 +3,32 @@ import { getDevelopmentConfig } from '../config/development';
 import { parseDevelopmentRecommendations, type DevelopmentProfile } from '../contracts/recommendations';
 import { developmentRecommendations } from '../data/fixtures';
 import { fetchDevelopmentRecommendations } from '../data/recommendations';
+import { useOnboarding, useProfiles } from '../onboarding/context';
 
 type State =
+  | { status: 'blocked' }
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'ready'; items: readonly DevelopmentProfile[]; source: 'bundled' | 'api' };
 
 export function useRecommendations() {
+  const { store, state: onboarding } = useOnboarding();
+  const { profiles, state: profileState } = useProfiles();
   const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const allowed = onboarding.stage === 'eligible' && profileState.canDiscover;
+  const accessKey = `${onboarding.generation}:${onboarding.account?.account_id ?? ''}:${profileState.discoveryRevision}`;
+  const [loaded, setLoaded] = useState<{ key: string; state: State }>({ key: '', state: { status: 'loading' } });
   useEffect(() => {
+    if (!allowed) return;
     const controller = new AbortController();
     let mounted = true;
-    setState({ status: 'loading' });
+    setLoaded({ key: accessKey, state: { status: 'loading' } });
+    function current() {
+      const owner = store.getSnapshot();
+      const profile = profiles.getSnapshot();
+      return mounted && owner.stage === 'eligible' && profile.canDiscover &&
+        `${owner.generation}:${owner.account?.account_id ?? ''}:${profile.discoveryRevision}` === accessKey;
+    }
     async function load() {
       try {
         const config = getDevelopmentConfig({
@@ -25,14 +38,17 @@ export function useRecommendations() {
         const response = config.apiOrigin
           ? await fetchDevelopmentRecommendations(config, fetch, { signal: controller.signal })
           : parseDevelopmentRecommendations(developmentRecommendations);
-        if (mounted) setState({ status: 'ready', items: response.items, source: config.apiOrigin ? 'api' : 'bundled' });
+        if (current()) setLoaded({ key: accessKey, state: { status: 'ready', items: response.items, source: config.apiOrigin ? 'api' : 'bundled' } });
       } catch {
         // Never leak response bodies, configured URLs or personal information into UI/logs.
-        if (mounted) setState({ status: 'error' });
+        if (current()) setLoaded({ key: accessKey, state: { status: 'error' } });
       }
     }
     void load();
     return () => { mounted = false; controller.abort(); };
-  }, [attempt]);
+  }, [attempt, allowed, accessKey, profiles, store]);
+  // Mask retained results synchronously. Waiting for effect cleanup leaves one
+  // render where the old owner or revoked permission could disclose a card.
+  const state: State = !allowed ? { status: 'blocked' } : loaded.key === accessKey ? loaded.state : { status: 'loading' };
   return { state, reload: () => setAttempt((value) => value + 1) };
 }

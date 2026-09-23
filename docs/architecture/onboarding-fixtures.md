@@ -7,6 +7,9 @@ authoritative app contracts remain [the production contract baseline](production
 F02 consent/eligibility, and F03 private birth inputs. These app-local development
 substitutes do not create production routes, accounts, credentials or HDE charts.
 Observed execution results and limits belong to [the P04.1 checkpoint](../testing/p04-1-checkpoint.md).
+P04.2 extends the owner journey through [profiles, preferences and visibility](profiles-preferences-fixtures.md).
+The P04.1 corrections below remain required; P04.2 does not make ordinary onboarding
+media-complete or resolve private birth inputs into an HDE chart.
 
 ## Runtime and trust boundary
 
@@ -166,9 +169,11 @@ birth revision. Neither layer survives process restart or establishes cross-devi
 persistence. No SQLite, local password/token storage or shadow backend is added.
 
 Ordinary completion ends at **profile incomplete**. P04.2 owns profile/preferences
-work and P04.3 owns media. Account verification and birth-input completion cannot
+work, linked from the remaining screen, and P04.3 owns media. Account verification and birth-input completion cannot
 grant profile completeness or discovery. The existing recommendation examples
-can be exercised only as an explicitly selected eligible development scenario.
+can be exercised only as an explicitly selected eligible development scenario with
+current profile/preferences/visibility eligibility. P04.2's architecture records
+the additional owner routes and retained recommendation invalidation.
 
 ## Private civil birth facts — F03
 

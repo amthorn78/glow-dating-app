@@ -70,7 +70,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: p04-empty-form-layout
-          path: apps/mobile/.work/rendered-results/**/account-320-enlarged.png
+          path: |
+            apps/mobile/.work/rendered-results/**/account-320-enlarged.png
+            apps/mobile/.work/rendered-results/**/profile-empty-320-enlarged.png
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14

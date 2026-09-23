@@ -1,8 +1,10 @@
 import { Redirect } from 'expo-router';
-import { useOnboarding } from '../onboarding/context';
+import { useOnboarding, useProfiles } from '../onboarding/context';
 
 export default function EntryScreen() {
   const { state } = useOnboarding();
+  const { state: profileState } = useProfiles();
   const routes = { account: '/account', verification: '/verify', eligibility: '/eligibility', birth: '/birth', remaining: '/remaining', restricted: '/restricted', eligible: '/recommended' } as const;
-  return <Redirect href={routes[state.stage]} />;
+  const destination = (state.stage === 'remaining' || state.stage === 'birth') && profileState.profile ? '/profile' : routes[state.stage];
+  return <Redirect href={destination} />;
 }
