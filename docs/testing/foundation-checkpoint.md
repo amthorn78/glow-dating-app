@@ -29,3 +29,9 @@ No physical device, emulator, native signing/build, accessibility acceptance, Po
 ## First hosted run and correction
 
 Candidate `75ca2c9ba00d8ef22d25f75100660b7f67859885` was published in [PR 1](https://github.com/amthorn78/glow-dating-app/pull/1). All 70 remote Git blob hashes matched the local publication snapshot. [Push run 35856098855](https://github.com/amthorn78/glow-dating-app/actions/runs/35856098855) passed API checks and API mobile smoke; Mobile checks failed at install because the GitHub Node 24.19.0 distribution bundled npm 11.17.0 while the tested project explicitly requires npm 11.9.0. The workflow now installs the declared npm 11.9.0 before `npm ci`; project engine enforcement was retained. A subsequent full run must establish acceptance.
+
+## Accepted hosted foundation
+
+Corrected candidate `ca2abecceb1e8c532efdce8af949c110b03f7429` passed [pull-request run 35856228910](https://github.com/amthorn78/glow-dating-app/actions/runs/35856228910). API checks, Mobile checks and API mobile smoke all succeeded on clean GitHub-hosted Ubuntu 24.04 checkouts. Mobile now installed the declared npm before the lockfile, and checked/exported the final client-error correction for both iOS/Android development JS targets. This supplies the clean-checkout evidence required by P01.3; it is not native signing/device evidence.
+
+Exact head/base and successful run were checked before authorized merge. PR 1 merged at `2785bb59f692468acf058845396607be9ac5a058`; main was read back. P01.3 is Done in Notion; P02.1 is the active task. The procedural branch-policy limitation remains.

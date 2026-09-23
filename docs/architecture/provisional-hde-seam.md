@@ -25,7 +25,7 @@ The following logical port names come from the governing plan. They are not HDE 
 
 ## Proposed fixture/conformance backlog
 
-Only the current pending/fixture presentation envelope exists. The following cases remain to be implemented against the reviewed app port, then rerun against an authorized supported adapter where applicable.
+The development HTTP presentation remains pending/fixture only. Internal `glow_domain` primitives now provide typed synthetic pending, unavailable, unsupported and explicitly synthetic ready outcomes; distinct app/engine mappings; and versioned directional cache identities. An internal fixture service reads identity-bound snapshots afresh and applies eligibility before calling the fixture provider. See [domain seam verification](../testing/domain-seams.md). There is no live HDE adapter, authenticated request path or atomic persistence boundary. The scenarios below remain end-to-end conformance requirements; their complete behavior and live evidence are not established by these bounded tests.
 
 | Scenario | Required app behavior | Remaining live evidence |
 |---|---|---|

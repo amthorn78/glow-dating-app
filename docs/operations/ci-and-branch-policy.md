@@ -22,4 +22,4 @@ Until enforceable branch controls are available, App Builder 1 uses scoped branc
 
 ## Results
 
-The workflow definition is prepared; actual GitHub run IDs and results belong in `docs/testing/foundation-checkpoint.md` once executed. Writing a workflow file is not a passing CI result.
+The foundation passed hosted run 35856228910 for candidate `ca2abecceb1e8c532efdce8af949c110b03f7429` and merged through PR 1 at `2785bb59f692468acf058845396607be9ac5a058`. See `docs/testing/foundation-checkpoint.md` for the actual install/runtime correction, scope and limits. Later candidates require their own passing run.
