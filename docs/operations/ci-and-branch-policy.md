@@ -2,7 +2,7 @@
 
 P01.3 establishes repeatable checks; P03 production environment/deployment work remains open. Only the new private application repository is in scope.
 
-`.github/workflows/foundation.yml` runs API checks, Mobile checks, and API mobile smoke on pull requests and selected pushes. Jobs use read-only contents permissions, disable persisted checkout credentials, have bounded timeouts, and use exact official action commit pins resolved from their current releases on 23 September 2026:
+`.github/workflows/foundation.yml` runs API checks, Mobile checks, and API mobile smoke on pull requests and selected pushes. P02 extends Mobile checks with a locked contract-tool install and deterministic generation/runtime-corpus checks; the smoke job installs the mobile validator's locked dependencies. API checks include database-independent model/migration and Python contract tests. Jobs use read-only contents permissions, disable persisted checkout credentials, have bounded timeouts, and use exact official action commit pins resolved from their current releases on 23 September 2026:
 
 | Action | Release | Commit |
 |---|---|---|

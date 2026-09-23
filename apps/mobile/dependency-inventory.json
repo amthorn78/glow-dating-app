@@ -1404,10 +1404,17 @@
     },
     {
       "path": "node_modules/ajv",
-      "version": "6.15.0",
+      "version": "8.20.0",
       "license": "MIT",
-      "development": true,
-      "integrity": "sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw=="
+      "development": false,
+      "integrity": "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="
+    },
+    {
+      "path": "node_modules/ajv-formats",
+      "version": "3.0.1",
+      "license": "MIT",
+      "development": false,
+      "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ=="
     },
     {
       "path": "node_modules/anser",
@@ -2012,6 +2019,20 @@
       "integrity": "sha512-tD40eHxA35h0PEIZNeIjkHoDR4YjjJp34biM0mDvplBe//mB+IHCqHDGV7pxF+7MklTvighcCPPZC7ynWyjdTA=="
     },
     {
+      "path": "node_modules/eslint/node_modules/ajv",
+      "version": "6.15.0",
+      "license": "MIT",
+      "development": true,
+      "integrity": "sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw=="
+    },
+    {
+      "path": "node_modules/eslint/node_modules/json-schema-traverse",
+      "version": "0.4.1",
+      "license": "MIT",
+      "development": true,
+      "integrity": "sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg=="
+    },
+    {
       "path": "node_modules/espree",
       "version": "11.2.0",
       "license": "BSD-2-Clause",
@@ -2339,6 +2360,13 @@
       "license": "MIT",
       "development": true,
       "integrity": "sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw=="
+    },
+    {
+      "path": "node_modules/fast-uri",
+      "version": "3.1.8",
+      "license": "BSD-3-Clause",
+      "development": false,
+      "integrity": "sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg=="
     },
     {
       "path": "node_modules/fb-dotslash",
@@ -2804,10 +2832,10 @@
     },
     {
       "path": "node_modules/json-schema-traverse",
-      "version": "0.4.1",
+      "version": "1.0.0",
       "license": "MIT",
-      "development": true,
-      "integrity": "sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg=="
+      "development": false,
+      "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="
     },
     {
       "path": "node_modules/json-stable-stringify-without-jsonify",
@@ -3886,6 +3914,13 @@
       "license": "MIT",
       "development": false,
       "integrity": "sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q=="
+    },
+    {
+      "path": "node_modules/require-from-string",
+      "version": "2.0.2",
+      "license": "MIT",
+      "development": false,
+      "integrity": "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw=="
     },
     {
       "path": "node_modules/resolve",

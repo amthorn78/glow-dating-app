@@ -4,7 +4,7 @@ Private, isolated Expo/React Native and Django/DRF application foundation. App B
 
 Start with [the canon index](docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), [governing plan](docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), and [current handoff](docs/continuity/current-handoff.md).
 
-The current milestone is a database-independent development foundation. Synthetic preview data is never genuine Human Design compatibility. Live authentication, database persistence, providers, native signed builds and release acceptance require their planned evidence. The Glow HD Engine and shared legacy resources remain protected.
+The current milestone is a database-independent development foundation with P02 contract, static data and provisional provider definitions. Production routes remain unimplemented. Synthetic preview data is never genuine Human Design compatibility. Live authentication, database persistence, providers, native signed builds and release acceptance require their planned evidence. The Glow HD Engine and shared legacy resources remain protected.
 
 ## Evidence and decisions
 
@@ -12,6 +12,12 @@ The current milestone is a database-independent development foundation. Syntheti
 - [Resource ownership and protected boundary](docs/operations/resource-ownership.md)
 - [Notion work register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e)
 - [Progress reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f)
+- [Versioned contracts and generation](packages/contracts/README.md)
+- [Static data definitions](docs/architecture/data-model.md) and [migration plan](docs/operations/migration-plan.md)
+- [Trusted eligibility acquisition](docs/architecture/trusted-eligibility.md)
+- [Provisional provider conformance](docs/architecture/provider-conformance.md)
+- [Initial privacy and safety rules](docs/architecture/privacy-and-safety-rules.md)
+- [Deferred database/provider/native acceptance](docs/testing/p11-deferred-acceptance.md)
 
 ## Run the development foundation
 

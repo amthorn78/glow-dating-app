@@ -1,31 +1,28 @@
 # Application contracts
 
-This directory currently specifies **only the isolated development scaffold**. It is preparatory P02 work, not the public application API baseline or P02 completion. The architecture documents describe proposed future contracts explicitly.
+Two contracts remain distinct:
 
-## Implemented development surface
-
-| File | Scope |
+| Contract | Current scope |
 |---|---|
-| `development/gapp-dev-v1.schema.json` | Closed JSON Schema 2020-12 definitions for synthetic recommendations, liveness and deliberately unsuccessful readiness |
-| `development/openapi.json` | OpenAPI 3.1 description of the three implemented GET routes; external references resolve to the schema beside it |
-| `tests/test_development_contract.py` | Schema and implementation response checks, with negative examples for leakage and false compatibility claims |
+| `development/gapp-dev-v1.schema.json` and `development/openapi.json` | Three implemented, isolated development GET responses. Compatibility stays pending/fixture; readiness stays 503. |
+| `production/gapp-api-v1.schema.json`, `production/openapi.json` and `production/flows-v1.json` | P02 app-owned logical production contract/state baseline, with executable schema and transition-oracle checks. No production routes, auth wiring, persistence or providers are implemented by this package. |
 
-The version marker is `gapp-dev-v1`. The schema follows the mobile development decoder and API response shapes. It permits no unrecognized fields at any object boundary. Compatibility can only be `{ "status": "pending", "source": "fixture" }`. An empty list is valid; result order is fixture presentation order. Neither profile age nor inclusion in the fixture establishes a production eligibility decision.
+[Production contracts](../../docs/architecture/production-contracts.md) defines every F01–F20 owner, projection, actor, state/error/version and pending-policy boundary. The JSON Schema files own payloads; flow registry owns transition tuples and projection scopes. `transition_contract.py` is test-only design validation, not runtime API authorization. HDE wire fields and credential APIs are not invented. F01 references maintained allauth; final HDE ready output remains unavailable pending A01/A07.
 
-The current mobile types/decoder are hand-written under `apps/mobile/src/contracts/`, not generated. Schema/client equivalence is not yet exhaustively established: the client additionally checks distinct profile identifiers, JavaScript string length counts UTF-16 code units while JSON Schema counts Unicode code points, and regex/whitespace behavior can vary between implementations. The present fixture strings are ASCII. Resolve the text-length convention and share a generated corpus before promoting this design to a production contract.
+## Generate and check
 
-No public account/authentication endpoint, provider endpoint, HDE endpoint, authentication scheme or server URL is defined here. The framework may emit errors and support HEAD/OPTIONS in addition to the documented GET responses. That does not establish a production error convention.
-
-## Check
-
-After installing the API's locked development dependencies, run from the repository root:
+Use repository Node 24.19.0/npm 11.9.0. From the repository root:
 
 ```bash
+npm ci --ignore-scripts --prefix apps/mobile
+npm ci --ignore-scripts --prefix packages/contracts
+npm run generate --prefix packages/contracts
+npm run check --prefix packages/contracts
 PYTHONPATH=services/api services/api/.venv/bin/python -m unittest discover -s packages/contracts/tests -v
 ```
 
-The checks use the API's test configuration, dummy database backend and `SimpleTestCase`, which disallows database access. They validate actual route responses against the referenced schemas and import no HDE adapter. This proves only the stated development response shapes and sampled rejection behavior. It does not establish persistence, allauth, native SDK or live-provider behavior.
+Generation uses exact-pinned `json-schema-to-typescript` for types and Ajv 2020-12 standalone for validators. Committed artifacts live in `apps/mobile/src/contracts/generated/`. `--check` regenerates in memory and compares bytes; generated code is not hand edited. Standalone validators need the pinned Ajv/ajv-formats runtime helpers, but do not compile schema or evaluate new code on the phone. Python uses the existing locked jsonschema dependency and a narrow standard-library UTC calendar checker because optional RFC3339 checking is not installed. All date/time spelling is restricted by the schema. Dependencies and license metadata are inventoried; this is not a legal clearance.
 
-## Proposed production contract work
+`corpus/shared-v1.json` runs unchanged through Python and the actual generated JavaScript validators. It includes every named DTO, rejection of extra/private fields, Unicode scalar length, combining marks, explicit whitespace, unpaired surrogates, regex end-anchor/newline cases, dates, duplicate candidate IDs/dimension keys and state-dependent projection leakage. Duplicate keys are enforced after shape validation in a small shared semantic rule; standard JSON Schema alone does not enforce key-level array uniqueness. TypeScript types alone never validate network JSON. The current development parser now uses these generated validators, replacing its former hand-written length/trim checks.
 
-The proposed flow/ownership and state inventory is in [domain and data boundaries](../../docs/architecture/domain-and-data-boundaries.md). HDE assumptions are in [provisional HDE seam](../../docs/architecture/provisional-hde-seam.md). P02 still needs reviewed production schemas, authorization/error/version conventions, generated clients, repository/unit-of-work ports, provider fixture conformance, model/migration definitions and the remaining acceptance cases. Do not point a production client at the development route or rebrand fixture schemas as that API.
+[Contract evidence](../../docs/testing/contract-baseline.md) records commands/results and limits. Database-dependent authentication, constraints, concurrency, outbox durability, provider enforcement and native/device acceptance remain unproved here.

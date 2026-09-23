@@ -1,0 +1,2711 @@
+{
+  "corpus_version": "gapp-corpus-v1",
+  "cases": [
+    {
+      "name": "valid-DevelopmentRecommendations",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DevelopmentRecommendations",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-DevelopmentProfile",
+      "scope": "development",
+      "definition": "DevelopmentProfile",
+      "value": {
+        "profile_id": "test",
+        "display_name": "test",
+        "age": 18,
+        "summary": "test",
+        "compatibility": {
+          "status": "pending",
+          "source": "fixture"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DevelopmentProfile",
+      "scope": "development",
+      "definition": "DevelopmentProfile",
+      "value": {
+        "profile_id": "test",
+        "display_name": "test",
+        "age": 18,
+        "summary": "test",
+        "compatibility": {
+          "status": "pending",
+          "source": "fixture"
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-FixtureCompatibility",
+      "scope": "development",
+      "definition": "FixtureCompatibility",
+      "value": {
+        "status": "pending",
+        "source": "fixture"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-FixtureCompatibility",
+      "scope": "development",
+      "definition": "FixtureCompatibility",
+      "value": {
+        "status": "pending",
+        "source": "fixture",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-Liveness",
+      "scope": "development",
+      "definition": "Liveness",
+      "value": {
+        "status": "alive"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-Liveness",
+      "scope": "development",
+      "definition": "Liveness",
+      "value": {
+        "status": "alive",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-Readiness",
+      "scope": "development",
+      "definition": "Readiness",
+      "value": {
+        "status": "not_ready",
+        "mode": "fixture",
+        "reason": "live_integrations_not_configured"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-Readiness",
+      "scope": "development",
+      "definition": "Readiness",
+      "value": {
+        "status": "not_ready",
+        "mode": "fixture",
+        "reason": "live_integrations_not_configured",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-Identifier",
+      "scope": "production",
+      "definition": "Identifier",
+      "value": "11111111-1111-4111-8111-111111111111",
+      "valid": true
+    },
+    {
+      "name": "valid-Version",
+      "scope": "production",
+      "definition": "Version",
+      "value": 1,
+      "valid": true
+    },
+    {
+      "name": "valid-PolicyVersion",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "test",
+      "valid": true
+    },
+    {
+      "name": "valid-Instant",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-09-23T00:00:00Z",
+      "valid": true
+    },
+    {
+      "name": "valid-Text80",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "test",
+      "valid": true
+    },
+    {
+      "name": "valid-CommandMeta",
+      "scope": "production",
+      "definition": "CommandMeta",
+      "value": {
+        "idempotency_key": "test",
+        "expected_version": 0
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-CommandMeta",
+      "scope": "production",
+      "definition": "CommandMeta",
+      "value": {
+        "idempotency_key": "test",
+        "expected_version": 0,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "code": "invalid_request",
+        "retryable": true
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "code": "invalid_request",
+        "retryable": true,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AccountAccess",
+      "scope": "production",
+      "definition": "AccountAccess",
+      "value": {
+        "kind": "account_access",
+        "account_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "unverified",
+        "session_state": "valid"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-AccountAccess",
+      "scope": "production",
+      "definition": "AccountAccess",
+      "value": {
+        "kind": "account_access",
+        "account_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "unverified",
+        "session_state": "valid",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-OnboardingEligibility",
+      "scope": "production",
+      "definition": "OnboardingEligibility",
+      "value": {
+        "kind": "onboarding",
+        "version": 1,
+        "state": "required",
+        "requirements": [],
+        "policy_version": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-OnboardingEligibility",
+      "scope": "production",
+      "definition": "OnboardingEligibility",
+      "value": {
+        "kind": "onboarding",
+        "version": 1,
+        "state": "required",
+        "requirements": [],
+        "policy_version": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-BirthInput",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "12:34:56",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-BirthInput",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "12:34:56",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-OwnBirthInput",
+      "scope": "production",
+      "definition": "OwnBirthInput",
+      "value": {
+        "kind": "birth_input",
+        "input_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "input": {
+          "birth_date": "2000-01-02",
+          "local_time": "12:34:56",
+          "time_precision": "known",
+          "place_label": "test",
+          "timezone_name": "test",
+          "timezone_provenance": "test"
+        },
+        "resolution": "missing",
+        "mapping_version": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-OwnBirthInput",
+      "scope": "production",
+      "definition": "OwnBirthInput",
+      "value": {
+        "kind": "birth_input",
+        "input_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "input": {
+          "birth_date": "2000-01-02",
+          "local_time": "12:34:56",
+          "time_precision": "known",
+          "place_label": "test",
+          "timezone_name": "test",
+          "timezone_provenance": "test"
+        },
+        "resolution": "missing",
+        "mapping_version": 1,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-OwnProfile",
+      "scope": "production",
+      "definition": "OwnProfile",
+      "value": {
+        "kind": "own_profile",
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "display_name": "test",
+        "summary": "test",
+        "visibility": "incomplete",
+        "media_ids": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-OwnProfile",
+      "scope": "production",
+      "definition": "OwnProfile",
+      "value": {
+        "kind": "own_profile",
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "display_name": "test",
+        "summary": "test",
+        "visibility": "incomplete",
+        "media_ids": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PreferenceSelection",
+      "scope": "production",
+      "definition": "PreferenceSelection",
+      "value": {
+        "dimension": "test",
+        "accepted_option_ids": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PreferenceSelection",
+      "scope": "production",
+      "definition": "PreferenceSelection",
+      "value": {
+        "dimension": "test",
+        "accepted_option_ids": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-OwnPreferences",
+      "scope": "production",
+      "definition": "OwnPreferences",
+      "value": {
+        "kind": "own_preferences",
+        "version": 1,
+        "policy_version": "test",
+        "selections": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-OwnPreferences",
+      "scope": "production",
+      "definition": "OwnPreferences",
+      "value": {
+        "kind": "own_preferences",
+        "version": 1,
+        "policy_version": "test",
+        "selections": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MediaLifecycle",
+      "scope": "production",
+      "definition": "MediaLifecycle",
+      "value": {
+        "kind": "media",
+        "asset_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "upload_pending",
+        "approved_delivery_ref": null
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MediaLifecycle",
+      "scope": "production",
+      "definition": "MediaLifecycle",
+      "value": {
+        "kind": "media",
+        "asset_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "upload_pending",
+        "approved_delivery_ref": null,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-CompatibilityProjection",
+      "scope": "production",
+      "definition": "CompatibilityProjection",
+      "value": {
+        "status": "pending"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-CompatibilityProjection",
+      "scope": "production",
+      "definition": "CompatibilityProjection",
+      "value": {
+        "status": "pending",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-CandidateProfile",
+      "scope": "production",
+      "definition": "CandidateProfile",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "display_name": "test",
+        "age": 18,
+        "summary": "test",
+        "media_delivery_refs": [],
+        "compatibility": {
+          "status": "pending"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-CandidateProfile",
+      "scope": "production",
+      "definition": "CandidateProfile",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "display_name": "test",
+        "age": 18,
+        "summary": "test",
+        "media_delivery_refs": [],
+        "compatibility": {
+          "status": "pending"
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-CandidatePage",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-09-23T00:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-CandidatePage",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-09-23T00:00:00Z",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-InteractionOutcome",
+      "scope": "production",
+      "definition": "InteractionOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "liked",
+        "match_id": "11111111-1111-4111-8111-111111111111"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-InteractionOutcome",
+      "scope": "production",
+      "definition": "InteractionOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "liked",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MatchProjection",
+      "scope": "production",
+      "definition": "MatchProjection",
+      "value": {
+        "kind": "match",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "other_profile_id": "11111111-1111-4111-8111-111111111111",
+        "state": "active"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MatchProjection",
+      "scope": "production",
+      "definition": "MatchProjection",
+      "value": {
+        "kind": "match",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "other_profile_id": "11111111-1111-4111-8111-111111111111",
+        "state": "active",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "channel_ref": null
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "channel_ref": null,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-NotificationSettings",
+      "scope": "production",
+      "definition": "NotificationSettings",
+      "value": {
+        "kind": "notifications",
+        "version": 1,
+        "match_notifications": true,
+        "message_notifications": true,
+        "device_state": "active"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-NotificationSettings",
+      "scope": "production",
+      "definition": "NotificationSettings",
+      "value": {
+        "kind": "notifications",
+        "version": 1,
+        "match_notifications": true,
+        "message_notifications": true,
+        "device_state": "active",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-BlockOutcome",
+      "scope": "production",
+      "definition": "BlockOutcome",
+      "value": {
+        "kind": "block",
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-BlockOutcome",
+      "scope": "production",
+      "definition": "BlockOutcome",
+      "value": {
+        "kind": "block",
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ReportReceipt",
+      "scope": "production",
+      "definition": "ReportReceipt",
+      "value": {
+        "kind": "report",
+        "report_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ReportReceipt",
+      "scope": "production",
+      "definition": "ReportReceipt",
+      "value": {
+        "kind": "report",
+        "report_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-StaffCaseProjection",
+      "scope": "production",
+      "definition": "StaffCaseProjection",
+      "value": {
+        "kind": "staff_case",
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted",
+        "subject_account_id": "11111111-1111-4111-8111-111111111111",
+        "evidence_refs": [],
+        "reason_code": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-StaffCaseProjection",
+      "scope": "production",
+      "definition": "StaffCaseProjection",
+      "value": {
+        "kind": "staff_case",
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted",
+        "subject_account_id": "11111111-1111-4111-8111-111111111111",
+        "evidence_refs": [],
+        "reason_code": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppealProjection",
+      "scope": "production",
+      "definition": "AppealProjection",
+      "value": {
+        "kind": "appeal",
+        "appeal_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-AppealProjection",
+      "scope": "production",
+      "definition": "AppealProjection",
+      "value": {
+        "kind": "appeal",
+        "appeal_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "submitted",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-SupportProjection",
+      "scope": "production",
+      "definition": "SupportProjection",
+      "value": {
+        "kind": "support",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "open"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-SupportProjection",
+      "scope": "production",
+      "definition": "SupportProjection",
+      "value": {
+        "kind": "support",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "open",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ExportProjection",
+      "scope": "production",
+      "definition": "ExportProjection",
+      "value": {
+        "kind": "export",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "requested",
+        "download_grant_ref": null,
+        "expires_at": null
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ExportProjection",
+      "scope": "production",
+      "definition": "ExportProjection",
+      "value": {
+        "kind": "export",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "requested",
+        "download_grant_ref": null,
+        "expires_at": null,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-DeletionProjection",
+      "scope": "production",
+      "definition": "DeletionProjection",
+      "value": {
+        "kind": "deletion",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "requested",
+        "unresolved_obligations": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DeletionProjection",
+      "scope": "production",
+      "definition": "DeletionProjection",
+      "value": {
+        "kind": "deletion",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "requested",
+        "unresolved_obligations": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-EntitlementProjection",
+      "scope": "production",
+      "definition": "EntitlementProjection",
+      "value": {
+        "kind": "entitlement",
+        "state": "disabled"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-EntitlementProjection",
+      "scope": "production",
+      "definition": "EntitlementProjection",
+      "value": {
+        "kind": "entitlement",
+        "state": "disabled",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ConsentIntent",
+      "scope": "production",
+      "definition": "ConsentIntent",
+      "value": {
+        "operation": "consent",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "decision": "accepted"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ConsentIntent",
+      "scope": "production",
+      "definition": "ConsentIntent",
+      "value": {
+        "operation": "consent",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "decision": "accepted",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-BirthInputIntent",
+      "scope": "production",
+      "definition": "BirthInputIntent",
+      "value": {
+        "operation": "birth_input",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "input": {
+          "birth_date": "2000-01-02",
+          "local_time": "12:34:56",
+          "time_precision": "known",
+          "place_label": "test",
+          "timezone_name": "test",
+          "timezone_provenance": "test"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-BirthInputIntent",
+      "scope": "production",
+      "definition": "BirthInputIntent",
+      "value": {
+        "operation": "birth_input",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "input": {
+          "birth_date": "2000-01-02",
+          "local_time": "12:34:56",
+          "time_precision": "known",
+          "place_label": "test",
+          "timezone_name": "test",
+          "timezone_provenance": "test"
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ProfileIntent",
+      "scope": "production",
+      "definition": "ProfileIntent",
+      "value": {
+        "operation": "profile",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "display_name": "test",
+        "summary": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ProfileIntent",
+      "scope": "production",
+      "definition": "ProfileIntent",
+      "value": {
+        "operation": "profile",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "display_name": "test",
+        "summary": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PreferencesIntent",
+      "scope": "production",
+      "definition": "PreferencesIntent",
+      "value": {
+        "operation": "preferences",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "selections": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PreferencesIntent",
+      "scope": "production",
+      "definition": "PreferencesIntent",
+      "value": {
+        "operation": "preferences",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "selections": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MediaIntent",
+      "scope": "production",
+      "definition": "MediaIntent",
+      "value": {
+        "operation": "media",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "asset_id": null,
+        "action": "request_upload",
+        "ordered_asset_ids": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MediaIntent",
+      "scope": "production",
+      "definition": "MediaIntent",
+      "value": {
+        "operation": "media",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "asset_id": null,
+        "action": "request_upload",
+        "ordered_asset_ids": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-VisibilityIntent",
+      "scope": "production",
+      "definition": "VisibilityIntent",
+      "value": {
+        "operation": "visibility",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "action": "pause"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-VisibilityIntent",
+      "scope": "production",
+      "definition": "VisibilityIntent",
+      "value": {
+        "operation": "visibility",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "action": "pause",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-InteractionIntent",
+      "scope": "production",
+      "definition": "InteractionIntent",
+      "value": {
+        "operation": "interaction",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "batch_version": 1,
+        "action": "like"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-InteractionIntent",
+      "scope": "production",
+      "definition": "InteractionIntent",
+      "value": {
+        "operation": "interaction",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "batch_version": 1,
+        "action": "like",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-UnmatchIntent",
+      "scope": "production",
+      "definition": "UnmatchIntent",
+      "value": {
+        "operation": "unmatch",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-UnmatchIntent",
+      "scope": "production",
+      "definition": "UnmatchIntent",
+      "value": {
+        "operation": "unmatch",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ChannelIntent",
+      "scope": "production",
+      "definition": "ChannelIntent",
+      "value": {
+        "operation": "channel",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ChannelIntent",
+      "scope": "production",
+      "definition": "ChannelIntent",
+      "value": {
+        "operation": "channel",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MessageIntent",
+      "scope": "production",
+      "definition": "MessageIntent",
+      "value": {
+        "operation": "message",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "text": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MessageIntent",
+      "scope": "production",
+      "definition": "MessageIntent",
+      "value": {
+        "operation": "message",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "text": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-NotificationIntent",
+      "scope": "production",
+      "definition": "NotificationIntent",
+      "value": {
+        "operation": "notifications",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_notifications": true,
+        "message_notifications": true
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-NotificationIntent",
+      "scope": "production",
+      "definition": "NotificationIntent",
+      "value": {
+        "operation": "notifications",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "match_notifications": true,
+        "message_notifications": true,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-DeviceIntent",
+      "scope": "production",
+      "definition": "DeviceIntent",
+      "value": {
+        "operation": "device",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "device_id": "11111111-1111-4111-8111-111111111111",
+        "action": "register",
+        "provider_token": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DeviceIntent",
+      "scope": "production",
+      "definition": "DeviceIntent",
+      "value": {
+        "operation": "device",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "device_id": "11111111-1111-4111-8111-111111111111",
+        "action": "register",
+        "provider_token": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-BlockIntent",
+      "scope": "production",
+      "definition": "BlockIntent",
+      "value": {
+        "operation": "block",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "action": "block"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-BlockIntent",
+      "scope": "production",
+      "definition": "BlockIntent",
+      "value": {
+        "operation": "block",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "action": "block",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ReportSubmission",
+      "scope": "production",
+      "definition": "ReportSubmission",
+      "value": {
+        "operation": "report",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "reason_code": "test",
+        "description": "test",
+        "evidence_refs": []
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ReportSubmission",
+      "scope": "production",
+      "definition": "ReportSubmission",
+      "value": {
+        "operation": "report",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "11111111-1111-4111-8111-111111111111",
+        "reason_code": "test",
+        "description": "test",
+        "evidence_refs": [],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-StaffCaseAction",
+      "scope": "production",
+      "definition": "StaffCaseAction",
+      "value": {
+        "operation": "staff_case",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "action": "triage",
+        "reason_code": "test",
+        "policy_version": "test",
+        "target_asset_id": null
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-StaffCaseAction",
+      "scope": "production",
+      "definition": "StaffCaseAction",
+      "value": {
+        "operation": "staff_case",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "action": "triage",
+        "reason_code": "test",
+        "policy_version": "test",
+        "birth_secret": "must-not-leak",
+        "target_asset_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppealSubmission",
+      "scope": "production",
+      "definition": "AppealSubmission",
+      "value": {
+        "operation": "appeal",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "description": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-AppealSubmission",
+      "scope": "production",
+      "definition": "AppealSubmission",
+      "value": {
+        "operation": "appeal",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "description": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-SupportRequest",
+      "scope": "production",
+      "definition": "SupportRequest",
+      "value": {
+        "operation": "support",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "subject": "test",
+        "description": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-SupportRequest",
+      "scope": "production",
+      "definition": "SupportRequest",
+      "value": {
+        "operation": "support",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "subject": "test",
+        "description": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ExportRequest",
+      "scope": "production",
+      "definition": "ExportRequest",
+      "value": {
+        "operation": "export",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ExportRequest",
+      "scope": "production",
+      "definition": "ExportRequest",
+      "value": {
+        "operation": "export",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-DeletionRequest",
+      "scope": "production",
+      "definition": "DeletionRequest",
+      "value": {
+        "operation": "deletion",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DeletionRequest",
+      "scope": "production",
+      "definition": "DeletionRequest",
+      "value": {
+        "operation": "deletion",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PageRequest",
+      "scope": "production",
+      "definition": "PageRequest",
+      "value": {
+        "collection": "recommendations",
+        "cursor": "test",
+        "limit": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PageRequest",
+      "scope": "production",
+      "definition": "PageRequest",
+      "value": {
+        "collection": "recommendations",
+        "cursor": "test",
+        "limit": 1,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-OwnedObjectRequest",
+      "scope": "production",
+      "definition": "OwnedObjectRequest",
+      "value": {
+        "object_id": "11111111-1111-4111-8111-111111111111"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-OwnedObjectRequest",
+      "scope": "production",
+      "definition": "OwnedObjectRequest",
+      "value": {
+        "object_id": "11111111-1111-4111-8111-111111111111",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PublicDeletionRequest",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "test@example.invalid",
+        "request_key": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PublicDeletionRequest",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "test@example.invalid",
+        "request_key": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PublicRequestReceipt",
+      "scope": "production",
+      "definition": "PublicRequestReceipt",
+      "value": {
+        "kind": "public_request",
+        "state": "received"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PublicRequestReceipt",
+      "scope": "production",
+      "definition": "PublicRequestReceipt",
+      "value": {
+        "kind": "public_request",
+        "state": "received",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-PublicSupportRequest",
+      "scope": "production",
+      "definition": "PublicSupportRequest",
+      "value": {
+        "contact_email": "test@example.invalid",
+        "subject": "test",
+        "description": "test",
+        "request_key": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-PublicSupportRequest",
+      "scope": "production",
+      "definition": "PublicSupportRequest",
+      "value": {
+        "contact_email": "test@example.invalid",
+        "subject": "test",
+        "description": "test",
+        "request_key": "test",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppIntent",
+      "scope": "production",
+      "definition": "AppIntent",
+      "value": {
+        "operation": "consent",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "decision": "accepted"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-AppIntent",
+      "scope": "production",
+      "definition": "AppIntent",
+      "value": {
+        "operation": "consent",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "policy_version": "test",
+        "decision": "accepted",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppResponse",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "data": {
+          "kind": "account_access",
+          "account_id": "11111111-1111-4111-8111-111111111111",
+          "version": 1,
+          "state": "unverified",
+          "session_state": "valid"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-AppResponse",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "data": {
+          "kind": "account_access",
+          "account_id": "11111111-1111-4111-8111-111111111111",
+          "version": 1,
+          "state": "unverified",
+          "session_state": "valid"
+        },
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MediaUploadGrant",
+      "scope": "production",
+      "definition": "MediaUploadGrant",
+      "value": {
+        "kind": "media_upload_grant",
+        "asset_id": "11111111-1111-4111-8111-111111111111",
+        "grant_ref": "test",
+        "expires_at": "2026-09-23T00:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-MediaUploadGrant",
+      "scope": "production",
+      "definition": "MediaUploadGrant",
+      "value": {
+        "kind": "media_upload_grant",
+        "asset_id": "11111111-1111-4111-8111-111111111111",
+        "grant_ref": "test",
+        "expires_at": "2026-09-23T00:00:00Z",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "astral-limit",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-astral-limit",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "valid": true
+    },
+    {
+      "name": "astral-over",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-astral-over",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "valid": false
+    },
+    {
+      "name": "combining-limit",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-combining-limit",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301",
+      "valid": true
+    },
+    {
+      "name": "combining-over",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-combining-over",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301",
+      "valid": false
+    },
+    {
+      "name": "nbsp-only",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\u00a0",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-nbsp-only",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\u00a0",
+      "valid": false
+    },
+    {
+      "name": "bom-only",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\ufeff",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-bom-only",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\ufeff",
+      "valid": false
+    },
+    {
+      "name": "nel-only",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\u0085",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-nel-only",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\u0085",
+      "valid": false
+    },
+    {
+      "name": "line-separator",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\u2028",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-line-separator",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\u2028",
+      "valid": false
+    },
+    {
+      "name": "zero-width-visible-policy",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\u200b",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-zero-width-visible-policy",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\u200b",
+      "valid": true
+    },
+    {
+      "name": "mixed-whitespace",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\u00a0A\ufeff",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-mixed-whitespace",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\u00a0A\ufeff",
+      "valid": true
+    },
+    {
+      "name": "no-trim",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": " A ",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-no-trim",
+      "scope": "production",
+      "definition": "Text80",
+      "value": " A ",
+      "valid": true
+    },
+    {
+      "name": "newline-text",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "A\nB",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "production-newline-text",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "A\nB",
+      "valid": true
+    },
+    {
+      "name": "lone-high-surrogate",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\ud800",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-lone-high-surrogate",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\ud800",
+      "valid": false
+    },
+    {
+      "name": "lone-low-surrogate",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "\udfff",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-lone-low-surrogate",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "\udfff",
+      "valid": false
+    },
+    {
+      "name": "surrogate-with-text",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "A\ud800",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-surrogate-with-text",
+      "scope": "production",
+      "definition": "Text80",
+      "value": "A\ud800",
+      "valid": false
+    },
+    {
+      "name": "duplicate-profile-id-not-object",
+      "scope": "development",
+      "definition": "DevelopmentRecommendations",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "items": [
+          {
+            "profile_id": "demo-1",
+            "display_name": "Name",
+            "age": 30,
+            "summary": "Hello",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          },
+          {
+            "profile_id": "demo-1",
+            "display_name": "Name",
+            "age": 30,
+            "summary": "Different content",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "production-duplicate-id",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "display_name": "test",
+            "age": 18,
+            "summary": "test",
+            "media_delivery_refs": [],
+            "compatibility": {
+              "status": "pending"
+            }
+          },
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "display_name": "test",
+            "age": 18,
+            "summary": "Different",
+            "media_delivery_refs": [],
+            "compatibility": {
+              "status": "pending"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-09-23T00:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "production-distinct-id",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "display_name": "test",
+            "age": 18,
+            "summary": "test",
+            "media_delivery_refs": [],
+            "compatibility": {
+              "status": "pending"
+            }
+          },
+          {
+            "profile_id": "22222222-2222-4222-8222-222222222222",
+            "display_name": "test",
+            "age": 18,
+            "summary": "Different",
+            "media_delivery_refs": [],
+            "compatibility": {
+              "status": "pending"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-09-23T00:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-policy-'key\\n'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "key\n",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-'key\\r'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "key\r",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-'key\\u2028'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "key\u2028",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-'bad key'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "bad key",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-'\u00e9key'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "\u00e9key",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-'key/part'",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "key/part",
+      "valid": false
+    },
+    {
+      "name": "invalid-policy-''",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "",
+      "valid": false
+    },
+    {
+      "name": "valid-policy-ascii",
+      "scope": "production",
+      "definition": "PolicyVersion",
+      "value": "version-1.0:test",
+      "valid": true
+    },
+    {
+      "name": "invalid-version-float",
+      "scope": "production",
+      "definition": "Version",
+      "value": 1.5,
+      "valid": false
+    },
+    {
+      "name": "invalid-version-boolean",
+      "scope": "production",
+      "definition": "Version",
+      "value": true,
+      "valid": false
+    },
+    {
+      "name": "invalid-version-unsafe",
+      "scope": "production",
+      "definition": "Version",
+      "value": 9007199254740992,
+      "valid": false
+    },
+    {
+      "name": "invalid-version-negative",
+      "scope": "production",
+      "definition": "Version",
+      "value": -1,
+      "valid": false
+    },
+    {
+      "name": "invalid-instant-0000-01-01T00:00:00Z",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "0000-01-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "name": "invalid-instant-2026-02-30T00:00:00Z",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-02-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "name": "invalid-instant-2026-09-23T12:00:00+01:00",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-09-23T12:00:00+01:00",
+      "valid": false
+    },
+    {
+      "name": "invalid-instant-2026-09-23T00:00:00Z\n",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-09-23T00:00:00Z\n",
+      "valid": false
+    },
+    {
+      "name": "invalid-birth-birth_date",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "0000-01-01",
+        "local_time": "12:34:56",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-birth-birth_date",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2026-02-30",
+        "local_time": "12:34:56",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-birth-local_time",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "24:00:00",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-birth-time_precision",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "12:34:56",
+        "time_precision": "assumed",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-birth-preserved",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": null,
+        "time_precision": "unknown",
+        "place_label": "test",
+        "timezone_name": null,
+        "timezone_provenance": null
+      },
+      "valid": true
+    },
+    {
+      "name": "unknown-birth-no-guess",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "12:00:00",
+        "time_precision": "unknown",
+        "place_label": "test",
+        "timezone_name": null,
+        "timezone_provenance": null
+      },
+      "valid": false
+    },
+    {
+      "name": "timezone-missing-provenance",
+      "scope": "production",
+      "definition": "BirthInput",
+      "value": {
+        "birth_date": "2000-01-02",
+        "local_time": "12:34:56",
+        "time_precision": "known",
+        "place_label": "test",
+        "timezone_name": "test",
+        "timezone_provenance": null
+      },
+      "valid": false
+    },
+    {
+      "name": "duplicate-preference-dimension",
+      "scope": "production",
+      "definition": "OwnPreferences",
+      "value": {
+        "kind": "own_preferences",
+        "version": 1,
+        "policy_version": "test",
+        "selections": [
+          {
+            "dimension": "test",
+            "accepted_option_ids": []
+          },
+          {
+            "dimension": "test",
+            "accepted_option_ids": []
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-lifecycle-CandidateProfile",
+      "scope": "production",
+      "definition": "CandidateProfile",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "display_name": "test",
+        "age": 18,
+        "summary": "test",
+        "media_delivery_refs": [],
+        "compatibility": {
+          "status": "ready",
+          "score": 100
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-lifecycle-MediaLifecycle",
+      "scope": "production",
+      "definition": "MediaLifecycle",
+      "value": {
+        "kind": "media",
+        "asset_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "upload_pending",
+        "approved_delivery_ref": "private-original"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-lifecycle-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "pending",
+        "channel_ref": "unapproved-channel"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-lifecycle-ExportProjection",
+      "scope": "production",
+      "definition": "ExportProjection",
+      "value": {
+        "kind": "export",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "requested",
+        "download_grant_ref": "premature-grant",
+        "expires_at": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-lifecycle-DeletionProjection",
+      "scope": "production",
+      "definition": "DeletionProjection",
+      "value": {
+        "kind": "deletion",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "completed",
+        "unresolved_obligations": [
+          "HDE"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "email-'a@'",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "a@",
+        "request_key": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "email-'@example.test'",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "@example.test",
+        "request_key": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "email-'a@example.invalid'",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "a@example.invalid",
+        "request_key": "test"
+      },
+      "valid": true
+    },
+    {
+      "name": "email-'a@example.invalid\\n'",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "a@example.invalid\n",
+        "request_key": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "email-'\u00e9@example.invalid'",
+      "scope": "production",
+      "definition": "PublicDeletionRequest",
+      "value": {
+        "contact_email": "\u00e9@example.invalid",
+        "request_key": "test"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-UTC-2026-09-23T23:59:60Z",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-09-23T23:59:60Z",
+      "valid": false
+    },
+    {
+      "name": "invalid-UTC-2026-09-23T00:00:00.123Z",
+      "scope": "production",
+      "definition": "Instant",
+      "value": "2026-09-23T00:00:00.123Z",
+      "valid": false
+    },
+    {
+      "name": "invalid-nested-export-year-zero",
+      "scope": "production",
+      "definition": "ExportProjection",
+      "value": {
+        "kind": "export",
+        "job_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "ready",
+        "download_grant_ref": "grant.1",
+        "expires_at": "0000-01-01T00:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-nested-page-year-zero",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "empty",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "0000-01-01T00:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-empty-incomplete-bio",
+      "scope": "production",
+      "definition": "OwnProfile",
+      "value": {
+        "kind": "own_profile",
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "display_name": "test",
+        "summary": "",
+        "visibility": "incomplete",
+        "media_ids": []
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-empty-visible-bio",
+      "scope": "production",
+      "definition": "OwnProfile",
+      "value": {
+        "kind": "own_profile",
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "display_name": "test",
+        "summary": "",
+        "visibility": "visible",
+        "media_ids": []
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-draft-profile-intent",
+      "scope": "production",
+      "definition": "ProfileIntent",
+      "value": {
+        "operation": "profile",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "display_name": "test",
+        "summary": ""
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-unset-preferences",
+      "scope": "production",
+      "definition": "OwnPreferences",
+      "value": {
+        "kind": "own_preferences",
+        "version": 1,
+        "policy_version": null,
+        "selections": []
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-unversioned-preferences",
+      "scope": "production",
+      "definition": "OwnPreferences",
+      "value": {
+        "kind": "own_preferences",
+        "version": 1,
+        "policy_version": null,
+        "selections": [
+          {
+            "dimension": "test",
+            "accepted_option_ids": [
+              "x"
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-restriction-target",
+      "scope": "production",
+      "definition": "StaffCaseAction",
+      "value": {
+        "operation": "staff_case",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "action": "restrict_media",
+        "reason_code": "test",
+        "policy_version": "test",
+        "target_asset_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-restriction-target",
+      "scope": "production",
+      "definition": "StaffCaseAction",
+      "value": {
+        "operation": "staff_case",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "case_id": "11111111-1111-4111-8111-111111111111",
+        "action": "restrict_media",
+        "reason_code": "test",
+        "policy_version": "test",
+        "target_asset_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "valid": true
+    }
+  ]
+}

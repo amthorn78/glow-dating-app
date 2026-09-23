@@ -1,8 +1,9 @@
 # Glow API development foundation
 
-This is a new Django/DRF API scaffold for the Glow dating application. It serves
-synthetic presentation data only. There is no account authentication, persistent
-storage, eligibility filtering, mutual matching, or real HDE result in this baseline.
+This Django/DRF scaffold serves synthetic presentation data only. Pure internal
+eligibility/provider contracts and static data definitions support the P02 design.
+There is no account authentication, persistent storage, production eligibility
+route, mutual matching, or real HDE result in the served baseline.
 
 ## Reproduce locally
 
@@ -18,6 +19,7 @@ GLOW_ENV=test .venv/bin/python smoke.py
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy
+GLOW_ENV=test .venv/bin/python -m glow_persistence.static_check
 ```
 
 The hash-locked files contain all resolved runtime/development dependencies.
@@ -75,9 +77,13 @@ key, unused by any authentication/session feature.
 
 Presence of `DATABASE_URL`, `GLOW_DATABASE_URL`, `HDE_API_URL`, or `HDE_API_TOKEN`
 also fails startup. Do not copy inherited service configuration into this
-process. Django uses its dummy database backend; SQLite, PostgreSQL, auth,
-sessions, Celery and network HDE adapters are not installed or wired. Do not run
-`migrate` or connect a database before the governed P11 stage.
+process. The served API uses Django's dummy database backend; PostgreSQL drivers,
+auth/session routes, Celery and network HDE adapters are not installed or wired.
+The separate `glow_persistence.static_settings` registry loads maintained Django
+auth/contenttypes model definitions and app-owned models only for static checks.
+`static_check` compares migration state without a connection and rejects cursor,
+connection and schema-editor access. It never applies migrations. Do not run
+`migrate` or connect any database before the governed P11 stage.
 
 `/health/live` proves only that this process can respond. `/health/ready` never
 declares fixture behavior ready for real users. Real readiness, runtime/migration

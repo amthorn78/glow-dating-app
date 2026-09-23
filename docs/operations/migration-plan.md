@@ -1,0 +1,128 @@
+# Application migration design and P11 execution plan
+
+This P02.2 plan covers only isolated app-owned storage. **No database connection,
+SQL execution or migration application has occurred.** The app's development
+settings keep the dummy backend and do not install `glow_persistence`.
+`glow_persistence.static_settings` exists solely for model metadata inspection.
+It is not a staging or production settings module.
+
+## Committed schema order
+
+| File | Schema responsibility | Dependencies and limits |
+|---|---|---|
+| `0001_event_infrastructure.py` | `OutboxEvent` and `WebhookInbox`, deduplication, state/time checks and delivery indexes | No app-state table dependency. Durable event infrastructure is defined before any domain state table. No seed data or provider activation. |
+| `0002_app_domain.py` | Remaining 30 app models, app FKs, lifecycle/check/unique constraints and declared lookup indexes | Depends on 0001 and the swappable maintained auth model migration. Account/session/consent, policy, profile/birth/media, interaction/match, bounded discovery, chat/devices, safety/support, privacy/tombstones and disabled entitlements. |
+
+These are initial **unapplied** migrations. They were generated from in-memory
+`ProjectState` objects by the pinned Django autodetector and reviewed as source;
+the first target state contained only outbox/inbox, the second contained all app
+definitions. They contain no `RunSQL`, `RunPython`, data import or hidden provider
+call. Maintained Django auth/contenttypes migration files are dependencies, not
+copied into this application. allauth is not installed or added to this ledger.
+See [data model](../architecture/data-model.md) for the exact auth mapping and its
+unimplemented normalized-email/linking requirements.
+
+All domain access must remain disabled until the full reviewed ledger is applied
+and actual readiness checks succeed at P11. Creating outbox tables first alone
+does not enable any feature. Schema ordering is not an outbox durability proof.
+
+## Safe static review now
+
+From `services/api/`, after the hash-locked install:
+
+```bash
+GLOW_ENV=test .venv/bin/python -m glow_persistence.static_check
+.venv/bin/python -m unittest tests.test_model_definitions -v
+.venv/bin/ruff check glow_persistence tests/test_model_definitions.py
+.venv/bin/ruff format --check glow_persistence tests/test_model_definitions.py
+```
+
+The checker inspects field/model metadata with `databases=[]`, loads migration
+files using `MigrationLoader(connection=None)`, creates model states and compares
+them using `MigrationAutodetector`. Pinned Django source was inspected: the loader
+skips `MigrationRecorder` when its connection is `None`. Django model creation
+consults dummy-backend metadata (such as identifier length); that is not a
+database connection. Guards reject connection, cursor and schema-editor calls.
+
+Do not use `migrate`, `sqlmigrate`, a migration executor, a database test case,
+SQLite or PostgreSQL to make this P02 review easier. Ordinary `makemigrations`
+may inspect migration history through a backend; use the reviewed in-memory
+mechanism for P02 changes. The checker does not prove an arbitrary management
+command safe. Generation never runs SQL and cannot attest a target's real ledger.
+No migration command or live-target preflight executor is added in P02.
+
+## P11 target and role isolation
+
+P11 begins only after P10 prerequisites. P11A uses a newly verified disposable
+PostgreSQL target; P11B uses staging; P11C uses the isolated authorized app
+production target. Do not turn a shared/legacy target into a disposable fixture.
+A02 remains unresolved for protected HDE/legacy logical database/role ownership.
+
+Before any P11 connection/action, prepare and review a non-secret target manifest:
+application repository/candidate and migration files; actual Railway project,
+environment, service and volume identities; logical database/schema owner;
+runtime and migration role identities; credential references (not values);
+connection transport/TLS; migration ledger; backup/restore evidence; retention
+and processor obligations; staged rollback bounds. Verify it against current
+platform metadata. A familiar hostname or `DATABASE_URL` variable name is not
+ownership evidence. Missing/ambiguous identity fails the affected action closed.
+
+The existing `ample-illumination` project
+`ce01529f-679f-4f52-a979-23113299a59b`, its HDE service, colocated PostgreSQL
+`c4d54416-d1ab-4818-898b-9b9be03bc69a` and volume
+`aad776ab-27cc-4994-87f0-589af0de7aa1` are protected. Revalidate all identities in
+[resource ownership](resource-ownership.md) before related work. This is not an
+exhaustive allow/deny list: an unlisted resource still needs positive app ownership.
+No role credentials, network references, schema permissions or migrations may
+affect HDE. D08 does not authorize a protected mutation through a shared resource.
+
+Design separate app migration and runtime roles. Migration role owns only the
+isolated app schema and reviewed maintenance privileges; runtime role has only
+required app DML and no schema/role/database creation privileges. The HDE role is
+never supplied to either. Verify those grants with actual P11 evidence before
+applying schema, along with bounded connection pools and statement/transaction
+timeouts. WordPress and provider workers do not receive migration credentials.
+These are role design requirements; no role or fail-closed target preflight has
+been provisioned/implemented by this document.
+
+## Forward changes, backfills and rollback
+
+1. Inspect the real ledger and existing objects. A blank target is not presumed;
+   reject unexplained drift and prohibit fake-initial shortcuts or legacy imports.
+   Existing-user migration needs its own reviewed consent/retention/source mapping.
+2. Expand with compatible nullable/additive fields and indexes as appropriate.
+   Review PostgreSQL lock behavior at P11. Deploy readers/writers able to tolerate
+   the overlap; do not couple feature startup to an uncompleted backfill.
+3. Backfill in a separate reviewed migration/job using historical models, bounded
+   resumable batches and idempotent checkpoints. Verify counts, invariants and
+   quarantined exceptions; backfill secrets/private facts must not enter logs.
+4. Validate/enforce new constraints only after compatible writes and backfill
+   prove their preconditions. Contract/remove old storage in a later migration
+   after the old code's rollback window and data lifecycle requirements expire.
+5. Reverting code is not database rollback. Record forward-fix versus restore
+   options for each destructive step. Do not unapply 0001/0002 against data-bearing
+   storage as a casual rollback: it drops app tables and loses outbox, audit,
+   privacy and tombstone evidence. A restore includes deletion replay and processor
+   reconciliation; it is not permission to resurrect previously erased accounts.
+
+Maintained auth migration/configuration must be integrated into the same reviewed
+P11 ledger after pinning allauth. Verify normalization/case variants, simultaneous
+identity creation, verified-email uniqueness, wrong-account linking, token
+replay/expiry and real session revocation. `auth.User` metadata by itself proves
+none of those requirements. Expected integrity failures map to stable safe API
+errors; unexpected programming/schema failures remain visible and unmasked.
+
+## Required later evidence
+
+The central [deferred acceptance matrix](../testing/p11-deferred-acceptance.md)
+defines DB01–DB13, PV01–PV08 and PR01. In particular: apply-from-zero and supported
+upgrade, direct malformed writes for every check/unique/FK, current policy/pair
+locks, simultaneous reciprocal likes, outbox crash/lease recovery and inbox replay,
+send-versus-block ordering, actual authentication lifecycle, bounded query plans,
+wrong-target/role refusal, deletion provider completeness and backup restore with
+tombstone replay. No case is marked passed by a static migration diff.
+
+P11 evidence records exact candidate, target/role identities, actual migration
+ledger, commands/results, provider contracts, observed rollback/recovery outcome
+and remaining limits. P11C production smoke follows verified staging evidence
+and current isolated target checks. Production connection is not public release.

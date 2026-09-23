@@ -7,14 +7,24 @@
     "DevelopmentRecommendations": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "contract_version", "items"],
+      "required": [
+        "mode",
+        "contract_version",
+        "items"
+      ],
       "properties": {
-        "mode": {"const": "fixture"},
-        "contract_version": {"const": "gapp-dev-v1"},
+        "mode": {
+          "const": "fixture"
+        },
+        "contract_version": {
+          "const": "gapp-dev-v1"
+        },
         "items": {
           "type": "array",
           "maxItems": 50,
-          "items": {"$ref": "#/$defs/DevelopmentProfile"},
+          "items": {
+            "$ref": "#/$defs/DevelopmentProfile"
+          },
           "description": "Stable fixture order has no ranking meaning. Empty lists are valid. Consumers additionally reject duplicate profile_id values; JSON Schema does not express that key-level uniqueness invariant."
         }
       }
@@ -22,39 +32,99 @@
     "DevelopmentProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile_id", "display_name", "age", "summary", "compatibility"],
+      "required": [
+        "profile_id",
+        "display_name",
+        "age",
+        "summary",
+        "compatibility"
+      ],
       "properties": {
-        "profile_id": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "\\S"},
-        "display_name": {"type": "string", "minLength": 1, "maxLength": 80, "pattern": "\\S"},
-        "age": {"type": "integer", "minimum": 18, "maximum": 120},
-        "summary": {"type": "string", "minLength": 1, "maxLength": 500, "pattern": "\\S"},
-        "compatibility": {"$ref": "#/$defs/FixtureCompatibility"}
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 120
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "compatibility": {
+          "$ref": "#/$defs/FixtureCompatibility"
+        }
       }
     },
     "FixtureCompatibility": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "source"],
+      "required": [
+        "status",
+        "source"
+      ],
       "properties": {
-        "status": {"const": "pending"},
-        "source": {"const": "fixture"}
+        "status": {
+          "const": "pending"
+        },
+        "source": {
+          "const": "fixture"
+        }
       }
     },
     "Liveness": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status"],
-      "properties": {"status": {"const": "alive"}}
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "const": "alive"
+        }
+      }
     },
     "Readiness": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "mode", "reason"],
+      "required": [
+        "status",
+        "mode",
+        "reason"
+      ],
       "properties": {
-        "status": {"const": "not_ready"},
-        "mode": {"const": "fixture"},
-        "reason": {"const": "live_integrations_not_configured"}
+        "status": {
+          "const": "not_ready"
+        },
+        "mode": {
+          "const": "fixture"
+        },
+        "reason": {
+          "const": "live_integrations_not_configured"
+        }
       }
     }
-  }
+  },
+  "$id": "urn:glow:contracts:gapp-dev-v1"
 }
