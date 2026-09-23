@@ -61,6 +61,19 @@ jobs:
         working-directory: packages/contracts
       - run: npm run check && npm run check:expo
       - run: npm run export:development
+      - name: Install Chromium for rendered fixture checks
+        run: npx playwright install --with-deps chromium
+      - name: Render and exercise account onboarding
+        run: npm run test:rendered
+      - name: Save empty-form layout evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p04-empty-form-layout
+          path: apps/mobile/.work/rendered-results/**/account-320-enlarged.png
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
 
   smoke:
     name: API mobile smoke
