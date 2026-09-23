@@ -39,7 +39,7 @@ function EligibilityForm() {
       <Text style={styles.subtitle} accessibilityRole="header">Development consent material</Text>
       <Text style={styles.body}>For this synthetic journey only: allow the fixture to retain your fictional account and private birth input in memory while the preview is open. No chart is calculated or shared. Logging out clears the session.</Text>
       <Text style={styles.small}>This material demonstrates versioned consent. It is not the public Terms of Service or Privacy Policy.</Text>
-      <Pressable accessibilityRole="checkbox" accessibilityLabel="Accept development consent" accessibilityState={{ checked: accepted }} testID="consent-checkbox"
+      <Pressable accessibilityRole="checkbox" accessibilityLabel="Accept development consent" accessibilityState={{ checked: accepted }} aria-checked={accepted} testID="consent-checkbox"
         onPress={() => setAccepted(!accepted)} style={styles.choice}>
         <Text style={styles.choiceText}>{accepted ? '☑ ' : '☐ '}I accept this development consent for fictional information.</Text>
       </Pressable>

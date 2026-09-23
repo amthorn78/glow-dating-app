@@ -21,6 +21,14 @@ async function outcome(page: Page, value: string) {
   if (!await active(page, `outcome-${value}`).isVisible()) await active(page, 'fixture-outcomes').click();
   await active(page, `outcome-${value}`).click();
 }
+async function backAfterLogout(page: Page, deniedRoute: '/remaining' | '/explore') {
+  await expect(active(page, 'screen-account')).toBeVisible();
+  await page.goBack();
+  // Removing protected history may leave the one-page test's initial blank tab.
+  // Returning through a formerly protected URL must still start signed out.
+  if (page.url() === 'about:blank') await page.goto(deniedRoute);
+  await expect(active(page, 'screen-account')).toBeVisible();
+}
 async function reachBirth(page: Page) {
   await account(page);
   await active(page, 'verify-submit').click();
@@ -59,8 +67,9 @@ test('sign in and synthetic recovery remain separate; errors and neutral receipt
   await outcome(page, 'wrong_context');
   await active(page, 'reset-password').fill(password);
   await active(page, 'reset-submit').click();
-  await expect(active(page, 'screen-account')).toBeVisible();
-  await active(page, 'recover-access').click();
+  await expect(active(page, 'screen-recovery')).toBeVisible();
+  await expect(active(page, 'screen-reset-password')).toHaveCount(0);
+  await expect(active(page, 'open-reset')).toHaveCount(0);
   await active(page, 'recovery-email').fill('unrelated@example.invalid');
   await active(page, 'recovery-submit').click();
   await active(page, 'open-reset').click();
@@ -126,8 +135,8 @@ test('private birth journey validates input, preserves uncertainty and stops bef
   await expect(active(page, 'screen-remaining')).toBeVisible();
   await active(page, 'logout').click();
   await expect(active(page, 'screen-account')).toBeVisible();
-  await page.goBack();
-  await expect(active(page, 'screen-account')).toBeVisible();
+  expect(await page.locator('input,textarea').evaluateAll(nodes => nodes.some(node => (node as HTMLInputElement).value === 'Fictional Harbor'))).toBe(false);
+  await backAfterLogout(page, '/remaining');
   await expect(page.getByText('Fictional Harbor', { exact: true })).toHaveCount(0);
   expect(await page.locator('input,textarea').evaluateAll(nodes => nodes.some(node => (node as HTMLInputElement).value === 'Fictional Harbor'))).toBe(false);
 });
@@ -171,8 +180,8 @@ test('restricted and policy scenarios deny discovery; explicit eligible preview 
   await expect(page.getByText('More room to discover.').filter({ visible: true })).toBeVisible();
   await active(page, 'logout').click();
   await expect(active(page, 'screen-account')).toBeVisible();
-  await page.goBack();
-  await expect(active(page, 'screen-account')).toBeVisible();
+  await expect(page.getByText('More room to discover.')).toHaveCount(0);
+  await backAfterLogout(page, '/explore');
   await expect(page.getByText('More room to discover.')).toHaveCount(0);
 });
 

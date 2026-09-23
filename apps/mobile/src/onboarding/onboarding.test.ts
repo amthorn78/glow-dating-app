@@ -102,7 +102,7 @@ test('recovery receipts are neutral for configured and unrelated fictional addre
     await store.requestRecovery(email);
     assert.equal(store.getSnapshot().message, RECOVERY_MESSAGE);
     snapshots.push(store.getSnapshot());
-    await store.resetPassword(FIXTURE_PASSWORD);
+    assert.equal(await store.resetPassword(FIXTURE_PASSWORD), true);
     assert.equal(store.getSnapshot().account, null);
     assert.equal(store.getSnapshot().recoveryReady, false);
     assert.equal(store.getSnapshot().stage, 'account');
@@ -114,7 +114,7 @@ test('invalid or expired recovery closes challenge presentation; transport error
   for (const outcome of ['invalid', 'expired', 'wrong_context', 'replayed'] as FixtureOutcome[]) {
     const store = createFixtureOnboardingStore(options);
     await store.requestRecovery('alex@example.invalid');
-    await store.resetPassword(FIXTURE_PASSWORD, outcome);
+    assert.equal(await store.resetPassword(FIXTURE_PASSWORD, outcome), false);
     assert.equal(store.getSnapshot().recoveryReady, false);
     assert.equal(canAccessRoute('/reset-password', store.getSnapshot()), false);
     await store.requestRecovery('alex@example.invalid');
@@ -170,6 +170,11 @@ test('pending account and recovery results cannot resurrect logout or superseded
   gate.hold(); const recovery = store.requestRecovery('sam@example.invalid');
   store.logout(); gate.release(); await recovery;
   assert.equal(store.getSnapshot().recoveryReady, false);
+  await store.requestRecovery('sam@example.invalid');
+  gate.hold(); const reset = store.resetPassword(FIXTURE_PASSWORD);
+  store.logout(); gate.release();
+  assert.equal(await reset, false);
+  assert.equal(store.getSnapshot().account, null);
 });
 
 test('consent withdrawal cancels delayed private input without stale adapter mutations', async () => {

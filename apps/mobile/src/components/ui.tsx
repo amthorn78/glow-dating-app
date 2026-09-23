@@ -65,7 +65,7 @@ export function Field({ label, hint, ...props }: TextInputProps & { label: strin
 export function Choice({ label, selected, onPress, disabled = false, testID }: {
   label: string; selected: boolean; onPress: () => void; disabled?: boolean; testID?: string;
 }) {
-  return <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected, checked: selected, disabled }}
+  return <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected, checked: selected, disabled }} aria-checked={selected}
     testID={testID} disabled={disabled} onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}>
     <Text style={styles.choiceText}>{selected ? '● ' : '○ '}{label}</Text>
   </Pressable>;

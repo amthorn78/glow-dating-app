@@ -59,6 +59,16 @@ check live ownership. Logout/back tests now await the completed logout screen,
 and an explicit local sitemap route replaces the SDK index with the same safe
 unavailable-link screen. These corrections still need the full hosted regression.
 
+Candidate `ef8829a2a52088bf87b089e4cb7951d7c4c530a6`
+[passed four rendered cases](https://github.com/amthorn78/glow-dating-app/actions/runs/35896752733),
+including all direct/malformed link cases. Invalid reset correctly returns to
+recovery for a new challenge; successful reset now returns an accepted-result flag
+so the UI can safely navigate to sign-in. Explicit checked ARIA state supplements
+native accessibility state for browser rendering. The back regression verifies
+logout/private-field removal before Back and handles only the browser's initial
+blank tab by re-entering a formerly protected URL, which must still deny access.
+No other unexpected navigation result is accepted. Full hosted regression follows.
+
 ## Unchanged API and contract baseline actually executed
 
 Observed **23 September 2026, 16:44–16:45 UTC**, before new mobile implementation

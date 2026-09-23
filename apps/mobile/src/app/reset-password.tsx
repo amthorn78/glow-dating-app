@@ -11,9 +11,13 @@ export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
   const [outcome, setOutcome] = useState<FixtureOutcome>('success');
   async function submit() {
+    const generation = state.generation;
+    if (store.getSnapshot().generation !== generation) return;
     const submitted = password;
     setPassword('');
-    await store.resetPassword(submitted, outcome);
+    const accepted = await store.resetPassword(submitted, outcome);
+    const current = store.getSnapshot();
+    if (accepted && current.generation === generation + 1 && current.stage === 'account') router.replace('/account');
   }
   return <OnboardingScreen title="Reset the fixture password." testID="screen-reset-password">
     <Text style={styles.body}>This synthetic recovery step changes no real password. A successful result returns you to sign-in; it does not bypass verification or onboarding.</Text>

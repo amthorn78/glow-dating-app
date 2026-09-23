@@ -165,14 +165,17 @@ export class OnboardingStore {
     const generation = this.generation;
     await this.run(() => this.adapter.requestRecovery(email, generation, outcome), () => this.publish({ recoveryReady: true, message: RECOVERY_MESSAGE }));
   }
-  async resetPassword(password: string, outcome: FixtureOutcome = 'success'): Promise<void> {
-    if (!this.snapshot.recoveryReady) { this.fail('Request a synthetic recovery challenge first.'); return; }
+  async resetPassword(password: string, outcome: FixtureOutcome = 'success'): Promise<boolean> {
+    if (!this.snapshot.recoveryReady) { this.fail('Request a synthetic recovery challenge first.'); return false; }
     const generation = this.generation;
+    let accepted = false;
     await this.run(() => this.adapter.resetPassword(password, generation, outcome), () => {
       this.clear(); this.publish({ message: 'Synthetic password reset completed. Sign in again. No real password was changed.' });
+      accepted = true;
     }, error => {
       if (error instanceof FixtureFailure && ['expired', 'invalid'].includes(error.code)) this.publish({ recoveryReady: false });
     });
+    return accepted && this.generation === generation + 1 && this.snapshot.account === null && !this.snapshot.recoveryReady;
   }
   logout(): void { this.clear(); this.publish({ message: 'Signed out. Private fixture drafts and synthetic challenges were cleared.' }); }
   expire(): void {
