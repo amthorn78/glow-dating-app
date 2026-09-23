@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 from wsgiref.simple_server import make_server
 
+from glow_api.devserver import SafeRequestHandler, SafeWSGIServer
 from glow_api.wsgi import application
 
 
@@ -16,7 +17,13 @@ def main() -> None:
     # The OS selects an available loopback port; no fixed-port collision or
     # external proxy is part of this isolated fixture smoke check.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with make_server("127.0.0.1", 0, application) as server:
+    with make_server(
+        "127.0.0.1",
+        0,
+        application,
+        server_class=SafeWSGIServer,
+        handler_class=SafeRequestHandler,
+    ) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:

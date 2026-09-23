@@ -8,9 +8,13 @@ import { getDevelopmentConfig } from '../apps/mobile/src/config/development.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const python = process.env.GLOW_SMOKE_PYTHON ?? `${root}services/api/.venv/bin/python`;
+// Runner-only selection must not become application configuration. Preserve all
+// other inherited values so the API still refuses unsafe/unknown settings.
+const childEnvironment = { ...process.env, GLOW_ENV: 'development' };
+delete childEnvironment.GLOW_SMOKE_PYTHON;
 const child = spawn(python, ['-m', 'glow_api.devserver', '--port', '0', '--ready-json'], {
   cwd: `${root}services/api`,
-  env: { ...process.env, GLOW_ENV: 'development' },
+  env: childEnvironment,
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let childFailed = false;

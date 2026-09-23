@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.2 · **Date:** 23 September 2026  
+**Document identity:** GAPP-PF01 · **Revision:** 1.3 · **Date:** 23 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.  
 **State at publication:** planning complete and recorded; the owner has authorized App Builder 1 to implement under decision D08. Implementation has not started at this handoff checkpoint.  
 **Execution model:** App Builder 1 implements; App Planner 1 coordinates and manages the build. Use bounded work items and evidence at each checkpoint, without a Flowmaster system or automatic phase-approval cycle.
@@ -127,7 +127,7 @@ Suggested domain modules: identity/consent, profiles/media, preferences/eligibil
 
 PostgreSQL is the system of record for dating-domain state. Managed chat may own message bodies under an explicit data-processing/retention contract; the application owns match/channel entitlement and moderation-case references. Cloudflare owns media bytes; PostgreSQL owns media status and ownership. WordPress has its own CMS/staff storage and is not a second dating database.
 
-Deployment topology remains provisional until P01/P03 resource assessment. Prefer isolated app services and app database/roles. Reusing the Railway project is possible if service configuration, secrets, volume ownership, networking, budgets and blast radius are explicit. A separate app project/database is the safe planning default, not an instruction to duplicate the HDE database. A shared PostgreSQL instance is acceptable only after explicit database/role isolation and operational-risk review; sharing HDE tables or a privileged HDE connection string is not the default.
+On 23 September 2026, during AP1-P03-001 execution, Nathan directed: “the app should be in the same project as the HD Engine”. The application therefore belongs in existing Railway project `ample-illumination` (`ce01529f-679f-4f52-a979-23113299a59b`). This supersedes the earlier separate-project default and P01 disposition. Use separate app-owned services and service/environment-scoped configuration, secrets and future app storage; do not reuse the protected legacy backend, PostgreSQL or Redis. Project placement does not grant permission to alter HDE or shared settings. Services in the same environment share private networking; service ownership is not network isolation. Exact app environments, domains and resource IDs must be verified when provisioned. P03 may finish preparation without idle services. P11 still owns database activation and proof of app database/role isolation. See [same-project decision](../adr/0002-same-project-application-services.md) and [resource ownership](../operations/resource-ownership.md).
 
 ## 5. HDE integration contract: fixed responsibilities, provisional wire details
 
@@ -514,3 +514,5 @@ No calendar delivery promise is made from the earlier research's team-based esti
 
 
 1.2 — P01.2 publishes the plan into the established private application repository. The initial 1.1 baseline is preserved; the repository authority note distinguishes historical planning statements from current execution state.
+
+1.3 — records Nathan’s AP1-P03-001 execution correction requiring the app in the same Railway project as HDE. Supersedes the separate-project default only; D08 protected-resource effects, app ownership boundaries and P11 database sequencing remain unchanged.

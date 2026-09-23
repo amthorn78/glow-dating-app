@@ -1,0 +1,15 @@
+# Allowlist: source build has no git history, credentials, tests, DB definitions,
+# mobile files, dependency caches or operator working material in its context.
+**
+!Dockerfile
+!.dockerignore
+!services/
+!services/api/
+!services/api/requirements.lock
+!services/api/glow_api/
+!services/api/glow_api/**
+!services/api/glow_domain/
+!services/api/glow_domain/**
+**/__pycache__/**
+**/*.pyc
+**/.env*

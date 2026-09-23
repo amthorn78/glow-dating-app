@@ -1,3 +1,5 @@
 # Runtime pins verified against official release/support guidance on 2026-09-23.
 Django==5.2.17
 djangorestframework==3.18.1
+# P03 isolated artifact server; exact installable release verified through PyPI.
+gunicorn==26.2.0

@@ -67,8 +67,8 @@ and processor obligations; staged rollback bounds. Verify it against current
 platform metadata. A familiar hostname or `DATABASE_URL` variable name is not
 ownership evidence. Missing/ambiguous identity fails the affected action closed.
 
-The existing `ample-illumination` project
-`ce01529f-679f-4f52-a979-23113299a59b`, its HDE service, colocated PostgreSQL
+The selected shared `ample-illumination` project
+`ce01529f-679f-4f52-a979-23113299a59b` will also contain separate app-owned services per the owner’s P03 instruction. Its existing HDE service, colocated PostgreSQL
 `c4d54416-d1ab-4818-898b-9b9be03bc69a` and volume
 `aad776ab-27cc-4994-87f0-589af0de7aa1` are protected. Revalidate all identities in
 [resource ownership](resource-ownership.md) before related work. This is not an

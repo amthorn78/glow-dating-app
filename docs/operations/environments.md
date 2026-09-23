@@ -1,0 +1,73 @@
+# Application environments and service map
+
+Recorded for P03 on 23 September 2026. Nathan selected the existing HDE Railway project for the app: **“the app should be in the same project as the HD Engine”**. The selected project is `ample-illumination` (`ce01529f-679f-4f52-a979-23113299a59b`). [ADR 0002](../adr/0002-same-project-application-services.md) supersedes the separate-project choice. [Resource ownership](resource-ownership.md) contains verified existing IDs, protected resources and inspection evidence.
+
+This map defines preparation and activation boundaries. It does not claim that app staging/production, domains, databases, brokers, provider accounts or credentials exist. P03 created no Railway resource. Application persistence connection and integration remain P11: disposable PostgreSQL, then staging, then the verified app production target.
+
+## Environments
+
+| Mode | Current identity and storage | Entry/exposure | Source and configuration | Activation or remaining evidence |
+| --- | --- | --- | --- | --- |
+| Local development | Developer process; no Railway identity; Django dummy database and synthetic fixtures | API loopback only; mobile bundled fixtures or an explicitly configured development API origin | Current application checkout; `GLOW_ENV=development`; development mobile guards; no inherited connection values | Available for local development. No real users, production authentication or native-device claim |
+| Automated test | Ephemeral CI/local processes; no Railway identity, app database or broker | Temporary loopback HTTP smoke; no public domain | Exact checked-out candidate, committed locks, `GLOW_ENV=test`, synthetic provider/worker substitutes | Passing checks prove the named substitute behavior only; durable delivery, SQL, provider enforcement and restore remain deferred |
+| Future app staging | App-owned resources within `ample-illumination`; **proposed** empty environment name `app-staging`; no environment/service ID yet | Private by default; no public domain/origin chosen. Any later API exposure must be deliberately bounded to its test purpose | `amthorn78/glow-dating-app`; exact candidate commit selected and recorded before deployment; service-scoped configuration only | Offline profiles can be validated now. Runtime remains refused. Implement real capabilities first; P11A precedes P11B persistence/provider activation |
+| Future app production | App-owned resources within the same selected project; app environment target not yet selected or provisioned | No public API/domain/callback origin selected; private integration smoke precedes any separately authorized public traffic | Reviewed application `main` candidate and exact source commit; independently verified app target IDs and environment-specific secrets | P11B evidence before P11C. Production runtime, real adapters/auth/persistence, access/budget/operational dependencies and recovery proof must be satisfied |
+
+`app-staging` is a proposed label, not a reserved name, DNS record or provisioned environment. The existing `production` environment (`a06b149a-2876-40bf-84a0-7880feaf8b67`) contains HDE and protected legacy resources; its existence does not select it for app production. Record the eventual environment choice and service ownership before enabling any external action.
+
+Nathan remains product/resource decision owner; App Builder 1 owns implementation and preparation under D08; App Planner 1 coordinates. This role map does not appoint a production on-call, moderation or support operator. A05's operating-owner decisions remain unresolved.
+
+## Application service and data boundaries
+
+The names below are logical roles, not claimed Railway names or IDs. Each eventual service requires an independently recorded app-owned service ID and explicit environment ID. Do not reuse existing HDE/legacy resources or infer ownership from a label.
+
+| Logical role | Responsibility / data owner | Source and configuration scope | Network/exposure intent | Activation dependency |
+| --- | --- | --- | --- | --- |
+| API | Dating account, consent, profile, eligibility, interaction, safety and privacy policies; app-owned state | Application repository API build; per-service/per-environment variables; future runtime DB role only | Local loopback now. Future intended API surface only, with explicit hosts/origins and authentication; no automatic public domain | Actual implemented endpoints/auth/adapters; P11 persistence; reviewed deployment and supported provider/HDE access |
+| Worker | App-owned outbox/provider work; bounded retry and idempotent handlers | Same reviewed application source/artifact family; separate entrypoint and worker-scoped credentials | No public HTTP domain or inbound provider callback; only required outbound/provider and private broker/DB access later | Deterministic substitutes now; real Celery/broker, committed outbox, crash recovery and durable deduplication proven in P11 |
+| App broker | Future transport for app jobs, never dating-domain system of record | New app-owned broker resource and credentials; no use of protected shared Redis | Private to chosen app environment; no public TCP proxy requested | P11 queue/recovery integration and resource/credential ownership verification; not provisioned now |
+| App PostgreSQL | System of record for dating-domain state; distinct from HDE data | Future verified app target; separate runtime and migration privileges; reviewed app migrations | Private app access; no HDE tables or HDE connection string; no direct mobile/WordPress access | P11A disposable tests, P11B staging and P11C verified production sequence; not connected or provisioned now |
+| Migration operation | Apply the reviewed app migration set to the exact authorized app target | Explicit one-off P11 operation with migration role; not build, API/worker startup or predeploy hook | Only its verified app database target | Target/role preflight, migration ledger, backup/recovery and stage evidence; never automatic in P03 |
+| HDE adapter | Translate the supported HDE contract; preserve provenance and permitted output | App-owned adapter/configuration, existing protected engine remains separately owned | No live call now; same-project placement does not confer API permission or solve cross-environment reachability | A01/A07 supported contract, access/rights and measured behavior; no guessed endpoint/schema |
+| Provider adapters | Media, mail, chat, push, monitoring and conditional billing behind app ports | Provider-specific least-privilege secrets on the required API/worker service; no privileged mobile values | Required outbound access only; callback paths/origins selected when implemented, no callback activated now | Actual account/credential/domain access and provider proof; A06 billing disabled; A08 chat authorization proof |
+| WordPress operator integration | Staff UI/support content through scoped application APIs; owns its CMS storage separately | Later P07 plugin and staff identity; no dating DB credentials | Exact permitted API origin/roles, not a direct app/HDE database route | P07 implementation and staff permission proof; disposable CMS exception does not move app DB work before P11 |
+
+The future app broker and database are app-owned logical targets; colocating them in this project does not authorize sharing the protected Postgres/Redis service, volumes, logical databases or roles. The [migration plan](migration-plan.md) retains the target-verification and P11 boundaries.
+
+## Domains, origins and service-to-service access
+
+Local API reproduction uses `http://127.0.0.1:8000`. The mobile README documents `http://10.0.2.2:8000` as the Android emulator host-loopback alias. Those are development routes, not app domains or evidence of physical-device access. The configured host allowlist and development origin parser remain the executable authority; do not expand a bind address or host list simply to satisfy a platform probe.
+
+No staging or production API hostname, mobile API origin, staff origin, media hostname or provider callback URL is selected. Do not invent `railway.internal` names or reuse HDE's published domain. Future browser-origin allowlists must be exact; native API base URLs are public configuration and never contain privileged credentials. Current consumer web parity remains out of scope. See [configuration](configuration.md) for the variable definitions and offline profile boundary.
+
+Railway [private networking](https://docs.railway.com/networking/private-networking/how-it-works) is scoped to a project **and** environment. Services colocated in the existing production environment share that environment's private network. App-only service IDs and variable scope therefore do not establish network isolation. Different app environments remain separate networks even within the same project. Any later HDE connection must use its supported, authorized interface; changing HDE networking to make the app connect remains excluded by D08.
+
+An [empty environment](https://docs.railway.com/environments#create-an-environment) avoids inheriting services and secrets. Never create app staging by duplicating HDE production. The current connector has no dedicated environment-creation operation; verify a supported exact-target route when creating it is useful. Do not delegate an ambiguous project-wide operation to an autonomous platform agent.
+
+## Configuration ownership and operational controls
+
+The [configuration catalog](configuration.md) defines typed profile fields, requirements and secret classification. Offline future profiles identify project/environment/service and role; their target IDs must positively match an independently verified app-ownership record and must reject protected service IDs. A syntactically valid UUID or a profile success result is not ownership proof, provisioning evidence, startup permission or readiness.
+
+Use only service-scoped, environment-specific app variables. API and worker receive the smallest credential set each needs. Do not create environment-shared variables, copy legacy secrets, import a production environment, or expose provider keys through mobile `EXPO_PUBLIC_*` values. Runtime and migration credentials are distinct future privileges. No real secret belongs in a profile fixture, repository, Notion record, Drive document or chat.
+
+The [build/deploy document](build-and-deploy.md) owns concrete build context, entrypoint, health/restart/watch settings and exact validation commands. Its preparation must retain these constraints:
+
+- No build, startup or predeploy command connects persistence or applies migrations.
+- Current development/test execution stays loopback; staging/production remains refused even when an offline future profile is internally consistent.
+- Liveness 200 proves process responsiveness. Readiness 503 remains truthful while mandatory capabilities are absent. Railway's [deployment healthcheck](https://docs.railway.com/deployments/healthchecks) accepts 2xx and is not continuous monitoring; never substitute liveness to make a non-ready app deploy successfully.
+- The app configuration specifies bounded restart behavior. Railway's [restart policy](https://docs.railway.com/deployments/restart-policy) defaults and published plan limits are not evidence of this account's chosen settings.
+- Pin and record the reviewed source commit/artifact for any later deployment. Configure app source/branch and watch patterns explicitly; no HDE deployment wiring or shared automation is changed.
+
+Current Railway Config as Code is deprecated for new services; see [resource ownership](resource-ownership.md#platform-configuration-and-cost-facts). Native service-scoped configuration is the P03 route. No `railway config apply`, project synchronization, ownership transfer or automatic deploy workflow is activated by this map.
+
+## Exact pending external work
+
+P03's output is the reproducible app configuration/build foundation and current ownership map. There is no pending blanket permission request. Later activation requires concrete runtime prerequisites and these actual target facts:
+
+1. Re-read the project and proposed environment inventory; select an app environment and verify app-only ownership without copying protected configuration.
+2. Establish only the app services that have a valid bounded runtime purpose. Record their actual IDs, source commit and ownership; inspect service creation/deploy side effects before invoking them.
+3. Apply the reviewed configuration to exact app service/environment IDs. Record account-specific access, resource limits, consumption estimate/budget and secure provisioning state when known. Published prices alone do not fill those fields.
+4. Run P11's actual database/provider/queue/recovery cases in their required sequence. Keep [deferred acceptance](../testing/p11-deferred-acceptance.md) open until those cases are executed.
+5. Verify the resulting deployment and runtime behavior; record actual source/artifact, health, rollback and protected-impact evidence. Public domains/distribution require their own concrete need and existing release authority.
+
+No monthly app cost, spend cap, on-call commitment, provisioned environment or reachable HDE path is asserted by these preparation documents.

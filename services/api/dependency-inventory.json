@@ -65,6 +65,17 @@
       ]
     },
     {
+      "name": "gunicorn",
+      "version": "26.2.0",
+      "scope": "runtime",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "jsonschema",
       "version": "4.26.0",
       "scope": "development",

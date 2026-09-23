@@ -3,7 +3,27 @@
 import argparse
 import json
 import os
-from wsgiref.simple_server import make_server
+from typing import Any, TextIO
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
+
+from .telemetry import Event, SafeErrorStream, emit_event
+
+
+class SafeRequestHandler(WSGIRequestHandler):
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        # Middleware owns routine telemetry, without URL/query/client address.
+        pass
+
+    def log_message(self, format: str, *args: Any) -> None:
+        emit_event(Event.SERVER_ERROR, component="server", error_code="http_rejected")
+
+    def get_stderr(self) -> TextIO:
+        return SafeErrorStream()  # type: ignore[return-value]
+
+
+class SafeWSGIServer(WSGIServer):
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        emit_event(Event.SERVER_ERROR, component="server", error_code="unexpected_failure")
 
 
 def main() -> None:
@@ -16,7 +36,13 @@ def main() -> None:
 
     from .wsgi import application
 
-    with make_server("127.0.0.1", args.port, application) as server:
+    with make_server(
+        "127.0.0.1",
+        args.port,
+        application,
+        server_class=SafeWSGIServer,
+        handler_class=SafeRequestHandler,
+    ) as server:
         if args.ready_json:
             print(
                 json.dumps(

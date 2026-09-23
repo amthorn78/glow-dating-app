@@ -63,11 +63,16 @@ only for these local requests. It never calls HDE or a provider.
 
 ## Configuration and boundaries
 
+The [P03 configuration catalog](../../docs/operations/configuration.md) owns the
+complete typed variable matrix and future offline profile requirements. The
+core development/runtime selectors are summarized below.
+
 | Name | Meaning |
 |---|---|
 | `GLOW_ENV` | Required; this baseline only permits exactly `development` or `test` |
 | `GLOW_COMPATIBILITY_PROVIDER` | Optional in development/test; defaults to the sole supported value `fixture` |
-| `DJANGO_SETTINGS_MODULE` | Entry points select `glow_api.settings` if not otherwise provided |
+| `DJANGO_SETTINGS_MODULE` | Development entrypoints select `glow_api.settings`; the artifact entrypoint rejects any other module |
+| `PORT` | Artifact entrypoint only: loopback port, default 8000, valid range 1024–65535 |
 
 Missing or invalid environment fails startup. Staging/production always fail;
 fixture providers are specifically rejected there. No partial production mode
@@ -87,8 +92,20 @@ connection and schema-editor access. It never applies migrations. Do not run
 
 `/health/live` proves only that this process can respond. `/health/ready` never
 declares fixture behavior ready for real users. Real readiness, runtime/migration
-roles, allauth, provider permissions, signed builds, deployment image digest,
-and production connections remain unimplemented.
+roles, allauth, provider permissions, signed builds, deployed image identity,
+and production connections remain unimplemented. P03 adds the image-building
+and validation path below; a build is not a deployed service.
 
 See `../../docs/testing/api-foundation.md` for observed test evidence, version
 sources and limitations.
+
+## P03 artifact preparation
+
+The repository-root Dockerfile and `python -m glow_api.runtime` prepare a
+hash-locked Gunicorn artifact. This process is still development/test-only and
+loopback-only; production/staging refuse startup and readiness remains 503.
+It performs no migrations or startup database checks. See
+[`build-and-deploy.md`](../../docs/operations/build-and-deploy.md) for the exact
+build, container-isolation checks, port/shutdown controls, planned same-project
+Railway configuration and remaining activation work. The small standard-library
+development server above remains available for the established mobile smoke.

@@ -4,6 +4,10 @@ Date: 2026-09-23
 Status: Selected; repository publication pending when this decision was recorded  
 Work item: P01.1 — Assess legacy reuse and resource ownership
 
+## P03 placement supersession
+
+The Railway project placement portion of this P01 decision was superseded by Nathan during AP1-P03-001 on 23 September 2026. [ADR 0002](0002-same-project-application-services.md) places separate app-owned services in the same Railway project as HDE. The historical assessment below is preserved; source isolation, no legacy reuse, protected HDE resources and database-last sequencing still apply.
+
 ## Decision
 
 Establish a new private repository at the selected location `amthorn78/glow-dating-app`, using the governing plan's Expo/React Native/TypeScript mobile client and modular Django/DRF API baseline. No code is copied from the assessed legacy repositories. Preserve the legacy repositories, applications, services and data.
