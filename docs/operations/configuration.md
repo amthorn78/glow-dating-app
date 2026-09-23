@@ -118,12 +118,16 @@ No current template contains a deployment credential or real application target.
 | `PORT` | Integer 1024–65535, entrypoint validated | Fixture entrypoint default 8000 | Process | App Builder 1 | No | Loopback-only serving; no public route |
 | `DJANGO_SETTINGS_MODULE` | Exact supported settings module | Entry points choose `glow_api.settings` | Process | App Builder 1 | No | Alternate settings refused by deployment entrypoint |
 | `GLOW_APP_ENV` | Mobile development-only build selection | Mobile development | Mobile build only | App Builder 1 | No | Future native release work; not an API variable |
+| `GLOW_RENDERED_TESTS` | `1` enables the internal web rendering harness | Playwright child process only | Mobile development test only | App Builder 1 | No | Existing fixture/development/release guards still apply; not an API variable |
 | `EAS_BUILD_PROFILE` | Mobile build profile | Unset or development only | Mobile build only | App Builder 1 | No | Verified EAS account, signing and release authorization |
 | `EXPO_PUBLIC_GLOW_MODE` | Public fixture mode | Mobile fixture only | Public client bundle | App Builder 1 | Public | No production preview activation |
 | `EXPO_PUBLIC_GLOW_API_BASE_URL` | Public validated development origin | Mobile optional | Public client bundle | App Builder 1 | Public | Explicit local development reachability only |
+| `EXPO_PUBLIC_PROJECT_ROOT` | Expo-injected app-config directory, exact match only | Rendered harness only | Public development bundle | Expo SDK injection | Public | Requires `GLOW_RENDERED_TESTS=1`; arbitrary values rejected |
 
-The actual mobile `app.config.ts` rejects every other `EXPO_PUBLIC_*` variable.
-The API validator uses the same closed public-name allowlist. Provider keys,
+The mobile `app.config.ts` rejects every other `EXPO_PUBLIC_*` variable. Normal
+mobile builds and the API permit only the two `EXPO_PUBLIC_GLOW_*` names above;
+the exact SDK project-root exception belongs only to the browser test process.
+The API allowlist is unchanged. Provider keys,
 privileged credentials and misleadingly renamed secrets cannot be added as public
 variables. Known permitted fields are public by definition and must never contain
 secrets. The mobile origin parser separately rejects URL credentials/query/path.

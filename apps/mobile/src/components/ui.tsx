@@ -1,5 +1,6 @@
-import type { PropsWithChildren } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, type PropsWithChildren } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { DevelopmentProfile } from '../contracts/recommendations';
 
@@ -9,14 +10,71 @@ export const colors = {
   gold: '#F1DBA4',
 };
 
-export function Page({ children }: PropsWithChildren) {
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.page}>{children}</ScrollView></SafeAreaView>;
+export function Page({ children, testID }: PropsWithChildren<{ testID?: string }>) {
+  return <SafeAreaView style={styles.safe} testID={testID}><KeyboardAvoidingView style={styles.flex}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.page}>{children}</ScrollView>
+  </KeyboardAvoidingView></SafeAreaView>;
 }
 
-export function Button({ label, onPress, secondary = false, disabled = false, hint }: {
-  label: string; onPress?: () => void; secondary?: boolean; disabled?: boolean; hint?: string;
+function focusText(node: Text | null) {
+  if (!node) return;
+  if (Platform.OS === 'web') {
+    // React Native Web exposes its host element through the ref. Keep DOM-only
+    // focus behavior here; native TextProps has no tabIndex in a clean checkout.
+    if (typeof HTMLElement !== 'undefined' && node instanceof HTMLElement) {
+      node.tabIndex = -1;
+      node.focus();
+    }
+  } else AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+}
+
+export function ScreenTitle({ children }: { children: string }) {
+  const ref = useRef<Text>(null);
+  useFocusEffect(useCallback(() => {
+    const frame = requestAnimationFrame(() => focusText(ref.current));
+    return () => cancelAnimationFrame(frame);
+  }, []));
+  return <Text ref={ref} style={styles.title} accessibilityRole="header" accessible>{children}</Text>;
+}
+
+export function Feedback({ error, message, busy }: { error: string | null; message: string | null; busy: boolean }) {
+  const ref = useRef<Text>(null);
+  useEffect(() => {
+    if (!error) return;
+    const frame = requestAnimationFrame(() => focusText(ref.current));
+    return () => cancelAnimationFrame(frame);
+  }, [error]);
+  if (!error && !message && !busy) return null;
+  return <View style={styles.notice} accessibilityLiveRegion="polite" testID="feedback">
+    {busy && <Text style={styles.body} accessibilityRole="progressbar">Working on this fixture…</Text>}
+    {error && <Text ref={ref} accessible accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {!error && message && <Text style={styles.body}>{message}</Text>}
+  </View>;
+}
+
+export function Field({ label, hint, ...props }: TextInputProps & { label: string; hint?: string }) {
+  return <View style={styles.fieldGroup}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    {hint && <Text style={styles.small}>{hint}</Text>}
+    <TextInput accessibilityLabel={label} accessibilityHint={hint} autoCorrect={false} autoCapitalize="none"
+      placeholderTextColor={colors.muted} selectionColor={colors.accent} style={styles.input} {...props} />
+  </View>;
+}
+
+export function Choice({ label, selected, onPress, disabled = false, testID }: {
+  label: string; selected: boolean; onPress: () => void; disabled?: boolean; testID?: string;
 }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint}
+  return <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected, checked: selected, disabled }} aria-checked={selected}
+    testID={testID} disabled={disabled} onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}>
+    <Text style={styles.choiceText}>{selected ? '● ' : '○ '}{label}</Text>
+  </Pressable>;
+}
+
+export function Button({ label, onPress, secondary = false, disabled = false, hint, testID }: {
+  label: string; onPress?: () => void; secondary?: boolean; disabled?: boolean; hint?: string; testID?: string;
+}) {
+  return <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint}
     accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.button, secondary && styles.secondary, disabled && styles.disabled, pressed && styles.pressed]}>
     <Text style={[styles.buttonText, secondary && styles.secondaryText]}>{label}</Text>
@@ -49,6 +107,14 @@ export function ProfileCard({ profile }: { profile: DevelopmentProfile }) {
 }
 
 export const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  fieldGroup: { gap: 8 },
+  fieldLabel: { color: colors.text, fontSize: 17, fontWeight: '600' },
+  input: { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 18, minHeight: 54 },
+  error: { color: '#FFCECB', fontSize: 17, lineHeight: 25 },
+  choice: { minHeight: 48, borderWidth: 1, borderColor: colors.border, padding: 12, borderRadius: 12, justifyContent: 'center' },
+  choiceSelected: { borderColor: colors.accent, backgroundColor: colors.raised },
+  choiceText: { fontSize: 16, lineHeight: 24, color: colors.text },
   safe: { flex: 1, backgroundColor: colors.background },
   page: { padding: 24, paddingBottom: 40, gap: 22, width: '100%', maxWidth: 640, alignSelf: 'center' },
   brand: { fontSize: 38, fontWeight: '800', color: colors.text, letterSpacing: -1.5 },

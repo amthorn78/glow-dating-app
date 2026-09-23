@@ -941,6 +941,13 @@
       "integrity": "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="
     },
     {
+      "path": "node_modules/@playwright/test",
+      "version": "1.62.1",
+      "license": "Apache-2.0",
+      "development": true,
+      "integrity": "sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ=="
+    },
+    {
       "path": "node_modules/@radix-ui/primitive",
       "version": "1.1.7",
       "license": "MIT",
@@ -2495,6 +2502,13 @@
       "integrity": "sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q=="
     },
     {
+      "path": "node_modules/fsevents",
+      "version": "2.3.2",
+      "license": "MIT",
+      "development": true,
+      "integrity": "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="
+    },
+    {
       "path": "node_modules/function-bind",
       "version": "1.1.2",
       "license": "MIT",
@@ -3564,6 +3578,20 @@
       "license": "MIT",
       "development": false,
       "integrity": "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="
+    },
+    {
+      "path": "node_modules/playwright",
+      "version": "1.62.1",
+      "license": "Apache-2.0",
+      "development": true,
+      "integrity": "sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg=="
+    },
+    {
+      "path": "node_modules/playwright-core",
+      "version": "1.62.1",
+      "license": "Apache-2.0",
+      "development": true,
+      "integrity": "sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw=="
     },
     {
       "path": "node_modules/plist",

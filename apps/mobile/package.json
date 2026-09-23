@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
     "@types/node": "24.13.6",
     "@types/react": "19.2.2",
     "eslint": "10.11.0",
@@ -41,7 +42,8 @@
     "lint": "eslint .",
     "check": "npm run typecheck && npm run lint && npm test",
     "check:expo": "node scripts/development.mjs install --check",
-    "export:development": "node scripts/development.mjs export --dev --platform all --output-dir .work/native-export"
+    "export:development": "node scripts/development.mjs export --dev --platform all --output-dir .work/native-export",
+    "test:rendered": "playwright test"
   },
   "private": true,
   "packageManager": "npm@11.9.0",
