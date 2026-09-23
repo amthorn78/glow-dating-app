@@ -40,6 +40,16 @@ only in that harness and only at the exact app-config directory. Same-process
 probes verified status 200, HTML 200 and the actual entry JavaScript bundle 200;
 those probes do not substitute for the required Chromium interaction tests.
 
+Candidate `9c0832d6e793a1a59a536fb05a6132ca30770cb5`
+[ran all seven browser cases](https://github.com/amthorn78/glow-dating-app/actions/runs/35894916464):
+registration/expired verification/focus and enlarged-text layout passed. Four
+failures came from selectors matching hidden screens retained by the native stack;
+tests now target the visible screen while keeping logout private-data absence
+assertions across the entire DOM. The remaining case found competing redirects
+for an unknown path. A generic link-unavailable screen now owns unmatched routes,
+with one explicit safe return; known-route query/hash cleanup has one replacement
+in flight, and the internal sitemap is gated off. Hosted regression remains required.
+
 ## Unchanged API and contract baseline actually executed
 
 Observed **23 September 2026, 16:44–16:45 UTC**, before new mobile implementation

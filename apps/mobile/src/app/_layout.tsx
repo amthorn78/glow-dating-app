@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, router, useGlobalSearchParams, usePathname, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, Text } from 'react-native';
@@ -12,12 +12,25 @@ function Navigation() {
   const path = usePathname();
   const params = useGlobalSearchParams();
   const navigation = useRootNavigationState();
+  const redirecting = useRef(false);
   const hasParams = Object.keys(params).length > 0;
   const invalidWebLocation = Platform.OS === 'web' && typeof window !== 'undefined' &&
     (window.location.search !== '' || window.location.hash !== '');
+  // Unmatched paths belong to +not-found. Its dynamic path capture also appears
+  // in global params, so it must not compete with this query/hash rejection.
+  const knownPath = path === '/' || sanitizeDestination(path) !== '/';
+  const invalidKnownLocation = knownPath && (Platform.OS === 'web' ? invalidWebLocation : hasParams);
   useEffect(() => {
-    if (navigation?.key && (hasParams || invalidWebLocation || (path !== '/' && sanitizeDestination(path) === '/'))) router.replace('/');
-  }, [hasParams, invalidWebLocation, navigation?.key, path]);
+    if (!navigation?.key) return;
+    if (!invalidKnownLocation) {
+      redirecting.current = false;
+      return;
+    }
+    // Keep one replacement in flight until Router reports a clean location.
+    if (redirecting.current) return;
+    redirecting.current = true;
+    router.replace('/');
+  }, [invalidKnownLocation, navigation?.key]);
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
     <Stack.Screen name="index" />
     <Stack.Protected guard={canAccessRoute('/account', state)}><Stack.Screen name="account" /></Stack.Protected>
@@ -31,6 +44,7 @@ function Navigation() {
     <Stack.Protected guard={canAccessRoute('/recommended', state)}><Stack.Screen name="recommended" /><Stack.Screen name="explore" /></Stack.Protected>
     <Stack.Screen name="development" />
     <Stack.Screen name="+not-found" />
+    <Stack.Protected guard={false}><Stack.Screen name="_sitemap" /></Stack.Protected>
   </Stack>;
 }
 
