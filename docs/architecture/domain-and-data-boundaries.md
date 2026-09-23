@@ -1,8 +1,8 @@
 # Domain and data boundaries
 
-**Status:** P02 preparation. The state names, logical contracts and data definitions below are proposed implementation design, not implemented routes, ORM models, migrations, production policy or completed acceptance. The current implemented surface is the [development contract](../../packages/contracts/README.md). GAPP-PF01 remains governing direction; Notion owns work status.
+**Status:** P02 definition baseline. This document preserves the F01–F20 scope and ownership map. Exact versioned wire contracts and executable checks live in [application contracts](../../packages/contracts/README.md) and [production contract rules](production-contracts.md); [static data definitions](data-model.md) and the [migration plan](../operations/migration-plan.md) explain `services/api/glow_persistence`. These definitions do not implement production routes, authentication or persistence. The only served surface remains the isolated development GET contract. GAPP-PF01 remains governing direction; Notion owns work status.
 
-A bounded internal implementation now exists in `services/api/glow_domain`: explicit eligibility predicates, distinct account/chart identities, synthetic compatibility states, versioned directional cache keys, read ports and a fixture-only eligibility-before-compatibility service. [Domain verification](../testing/domain-seams.md) records its actual tests and limits. It does not implement the complete launch-flow contracts or state machines listed below.
+A bounded internal implementation exists in `services/api/glow_domain`: explicit eligibility predicates, distinct account/chart identities, synthetic compatibility states, versioned directional cache keys and narrow repository/provider interfaces. [Trusted eligibility](trusted-eligibility.md) defines server-owned pair/version acquisition and the future action transaction boundary. [Initial privacy and safety rules](privacy-and-safety-rules.md) constrain projections and lifecycle work. The original [domain verification](../testing/domain-seams.md) is historical PR 2 evidence; later checks do not retroactively change that checkpoint.
 
 ## Responsibility and trust
 
@@ -21,7 +21,7 @@ Application PostgreSQL is the planned dating-domain system of record. Current de
 
 ## Proposed state ownership
 
-State names are candidates for domain implementation. They do not settle the unresolved product policies listed later. Compound authorization must evaluate the current account, consent, profile, safety and relationship states together; a single `active` field cannot authorize all actions.
+The vocabulary below is the original conceptual design inventory. Exact wire and storage states are defined by the versioned schemas and static models, with mappings in the P02 contract/data documentation. The inventory does not settle unresolved product policies listed later. Compound authorization must evaluate the current account, consent, profile, safety and relationship states together; a single `active` field cannot authorize all actions.
 
 | Domain owner | Proposed state vocabulary | Governing transition or invariant |
 |---|---|---|
@@ -39,7 +39,7 @@ State names are candidates for domain implementation. They do not settle the unr
 
 ## Launch-flow contract and acceptance map
 
-Each contract name below is a **logical proposed contract**, not a published URL or executable DTO. Case IDs are new local design references for later acceptance work, not test-pass claims. The private owner column identifies the system responsible for persistence once integrated.
+The logical names below preserve the original flow inventory. They are not published URL claims. Versioned schemas and executable state/authorization examples implement the P02 contract baseline; they do not establish the deferred real acceptance described in this table. The private owner column identifies the system responsible for persistence once integrated.
 
 | Flow / logical contract | Domain owner and public/private projection | Data owner | Required acceptance case and deferred proof |
 |---|---|---|---|
@@ -66,7 +66,7 @@ Each contract name below is a **logical proposed contract**, not a published URL
 
 ## Proposed data design and migration preparation
 
-These are design targets. No model or migration files are created by this document, no schema has been applied, and no exact retention duration is implied.
+These are the original design targets, now represented by static model and migration definitions in `services/api/glow_persistence`. No schema has been applied, and no exact retention duration is implied. Model declarations, named constraints and the static migration plan are the exact implementation references.
 
 | Data group | Identifier/constraint/index intent | Private projection and lifecycle owner |
 |---|---|---|
@@ -81,9 +81,9 @@ These are design targets. No model or migration files are created by this docume
 | Export/deletion/provider step/tombstone | Job and per-provider step identities; idempotency, retries and verification; restore-replay identity retained under explicit policy | App orchestrates progress; retention exceptions must be documented before completion claim |
 | Webhook inbox/outbox/entitlement | Unique provider event/idempotency key; separate received/verified/applied outcomes; retry indexes; no client authority | Disabled paid seam until decision; event data minimized and provider lifecycle reconciled |
 
-App event timestamps should be timezone-aware instants serialized with an explicit offset. Birth date/local time are civil input facts and require separately resolved place/timezone provenance. Optional fields must distinguish absent, unknown and intentionally withheld where domain meaning differs; production DTO nullability is not settled by this preparatory table. Use opaque identifiers and leave concrete formats to the reviewed schema/auth/provider mapping.
+App event timestamps are timezone-aware instants under the wire contract's explicit format. Birth date/local time remain civil input facts and require separately resolved place/timezone provenance. Optional fields distinguish absent, unknown and intentionally withheld where domain meaning differs; exact nullability and identifier formats belong to the versioned schemas and auth/provider mapping, not this conceptual table.
 
-Proposed migration ordering: identity/consent → profiles/preferences/private birth mapping/media → interactions/blocks/matches → recommendation snapshots/channel bindings → safety/support → lifecycle jobs/tombstones → outbox/inbox and conditional entitlements, adjusting foreign-key dependencies during model review. This order is not a migration ledger. Outbox infrastructure must exist before any domain change relies on durable event publication. Review forward/backfill/expand-contract behavior before P11 execution; PostgreSQL uniqueness, isolation, indexing, ORM and rollback behavior require actual P11 proof.
+The static migration sequence creates event infrastructure first, then application domain models in dependency order. This corrects the preparation table's earlier outbox-last ordering: outbox infrastructure must exist before any domain change relies on durable event publication. Authored migration files are not an applied migration ledger. Forward/backfill/expand-contract behavior and PostgreSQL uniqueness, isolation, indexing, ORM and rollback require actual P11 proof.
 
 ## Decisions and validation still owed
 
@@ -95,4 +95,4 @@ Proposed migration ordering: identity/consent → profiles/preferences/private b
 | A05: launch geography/language/preferences; moderation/support owners; retention | Owning P05/P07/P08 work before final policy/launch | Age clock, display/location precision, resurfacing/rematch/history, media limits, escalation and deletion exceptions |
 | A06: paid launch choice | Purchase implementation/activation | Otherwise keep billing disabled and omit paid acceptance from mandatory launch scope |
 
-Next P02 work must turn this map into reviewed schemas, typed clients, repository/unit-of-work/provider interfaces, fixture catalog, domain invariants and static model/migration definitions. Coverage in a design table does not establish any F01–F20 case passed. Current development-schema tests establish only three synthetic GET response shapes and selected rejection cases.
+The P02 baseline turns this map into versioned schemas, generated clients/runtime validators, narrow interfaces, fixture conformance and static models/migrations. Completion evidence is in the current handoff and test records. Coverage in this table does not establish any real F01–F20 journey passed. [Deferred acceptance](../testing/p11-deferred-acceptance.md) keeps database, authentication, concurrency, live provider, restore and native proofs individually identified.

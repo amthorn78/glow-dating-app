@@ -1,0 +1,193 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Glow application production contract design",
+    "version": "gapp-api-v1",
+    "description": "P02 logical production baseline. No production route, server, authentication or provider integration is implemented. Components reference executable JSON Schema. See flow registry for operation/actor/state mapping."
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Identifier": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/Identifier"
+      },
+      "Version": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/Version"
+      },
+      "PolicyVersion": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PolicyVersion"
+      },
+      "Instant": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/Instant"
+      },
+      "Text80": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/Text80"
+      },
+      "CommandMeta": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CommandMeta"
+      },
+      "Error": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/Error"
+      },
+      "AccountAccess": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AccountAccess"
+      },
+      "OnboardingEligibility": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OnboardingEligibility"
+      },
+      "BirthInput": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/BirthInput"
+      },
+      "OwnBirthInput": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnBirthInput"
+      },
+      "OwnProfile": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnProfile"
+      },
+      "PreferenceSelection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PreferenceSelection"
+      },
+      "OwnPreferences": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnPreferences"
+      },
+      "MediaLifecycle": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MediaLifecycle"
+      },
+      "CompatibilityProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CompatibilityProjection"
+      },
+      "CandidateProfile": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CandidateProfile"
+      },
+      "CandidatePage": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CandidatePage"
+      },
+      "InteractionOutcome": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionOutcome"
+      },
+      "MatchProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MatchProjection"
+      },
+      "ChannelEntitlement": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ChannelEntitlement"
+      },
+      "MessageSubmission": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MessageSubmission"
+      },
+      "NotificationSettings": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/NotificationSettings"
+      },
+      "BlockOutcome": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/BlockOutcome"
+      },
+      "ReportReceipt": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ReportReceipt"
+      },
+      "StaffCaseProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/StaffCaseProjection"
+      },
+      "AppealProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AppealProjection"
+      },
+      "SupportProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/SupportProjection"
+      },
+      "ExportProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ExportProjection"
+      },
+      "DeletionProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/DeletionProjection"
+      },
+      "EntitlementProjection": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/EntitlementProjection"
+      },
+      "ConsentIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ConsentIntent"
+      },
+      "BirthInputIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/BirthInputIntent"
+      },
+      "ProfileIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ProfileIntent"
+      },
+      "PreferencesIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PreferencesIntent"
+      },
+      "MediaIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MediaIntent"
+      },
+      "VisibilityIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/VisibilityIntent"
+      },
+      "InteractionIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionIntent"
+      },
+      "UnmatchIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/UnmatchIntent"
+      },
+      "ChannelIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ChannelIntent"
+      },
+      "MessageIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MessageIntent"
+      },
+      "NotificationIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/NotificationIntent"
+      },
+      "DeviceIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/DeviceIntent"
+      },
+      "BlockIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/BlockIntent"
+      },
+      "ReportSubmission": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ReportSubmission"
+      },
+      "StaffCaseAction": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/StaffCaseAction"
+      },
+      "AppealSubmission": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AppealSubmission"
+      },
+      "SupportRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/SupportRequest"
+      },
+      "ExportRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ExportRequest"
+      },
+      "DeletionRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/DeletionRequest"
+      },
+      "PageRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PageRequest"
+      },
+      "OwnedObjectRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnedObjectRequest"
+      },
+      "PublicDeletionRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PublicDeletionRequest"
+      },
+      "PublicRequestReceipt": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PublicRequestReceipt"
+      },
+      "PublicSupportRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/PublicSupportRequest"
+      },
+      "AppIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AppIntent"
+      },
+      "AppResponse": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AppResponse"
+      },
+      "MediaUploadGrant": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MediaUploadGrant"
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Maintained allauth headless authentication contract, referenced not vendored or installed",
+    "url": "https://docs.allauth.org/en/latest/headless/openapi-specification/"
+  },
+  "x-implementation-status": "design-only",
+  "x-flow-registry": "./flows-v1.json"
+}

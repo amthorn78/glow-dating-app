@@ -1,0 +1,1650 @@
+{
+  "contract_version": "gapp-api-v1",
+  "status": "design_contract_not_http_enforcement",
+  "flows": [
+    {
+      "id": "F01",
+      "domain_owner": "identity",
+      "data_owner": "App account metadata; maintained allauth credentials/session",
+      "request_contracts": [
+        "allauth-headless"
+      ],
+      "response_contracts": [
+        "AccountAccess"
+      ],
+      "private_projection": "Own account/session status; auth payload kept within maintained adapter",
+      "public_projection": "None",
+      "staff_projection": "Restricted account status; no passwords/tokens",
+      "acceptance": "Expired/replayed credential rejected by maintained auth; fixture contract rejects ordinary user verification and revoked-session access",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "verified",
+          "from": "unverified",
+          "to": "active",
+          "role": "auth",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "suspend",
+          "from": "active",
+          "to": "suspended",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "logout",
+          "from": "valid",
+          "to": "revoked",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "expire",
+          "from": "valid",
+          "to": "expired",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "recover",
+          "from": "revoked",
+          "to": "valid",
+          "role": "auth",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "unverified",
+          "to": "deletion_pending",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "active",
+          "to": "deletion_pending",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "suspended",
+          "to": "deletion_pending",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "purge_completed",
+          "from": "deletion_pending",
+          "to": "deleted",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A01",
+            "A05",
+            "purge_verified"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "AccountAccess": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F02",
+      "domain_owner": "identity/consent",
+      "data_owner": "App",
+      "request_contracts": [
+        "ConsentIntent"
+      ],
+      "response_contracts": [
+        "OnboardingEligibility"
+      ],
+      "private_projection": "Own consent state/version",
+      "public_projection": "None",
+      "staff_projection": "Decision reference only, scoped",
+      "acceptance": "Unverified/underage/withdrawn/suspended cannot use discovery; old consent version rejected",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "accept",
+          "from": "required",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "withdraw",
+          "from": "accepted",
+          "to": "withdrawn",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "accept",
+          "from": "withdrawn",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "OnboardingEligibility": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F03",
+      "domain_owner": "birth/engine mapping",
+      "data_owner": "App private input/mapping; HDE charts",
+      "request_contracts": [
+        "BirthInputIntent"
+      ],
+      "response_contracts": [
+        "OwnBirthInput"
+      ],
+      "private_projection": "Own entered civil facts and resolution; opaque engine mapping stays server-private",
+      "public_projection": "None",
+      "staff_projection": "No default access",
+      "acceptance": "Unknown time remains unknown; changed input invalidates old mapping; engine identifiers never invented",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "submit",
+          "from": "missing",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "correct",
+          "from": "ambiguous",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "change",
+          "from": "resolved",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "ambiguous",
+          "from": "pending",
+          "to": "ambiguous",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "resolve",
+          "from": "pending",
+          "to": "resolved",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A01"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "unsupported",
+          "from": "pending",
+          "to": "unsupported",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "outage",
+          "from": "pending",
+          "to": "unavailable",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "retry",
+          "from": "unavailable",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "correct",
+          "from": "unsupported",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "correct",
+          "from": "pending",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "correct",
+          "from": "unavailable",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "OwnBirthInput": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F04",
+      "domain_owner": "profiles/preferences",
+      "data_owner": "App",
+      "request_contracts": [
+        "ProfileIntent",
+        "PreferencesIntent",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "OwnProfile",
+        "OwnPreferences"
+      ],
+      "private_projection": "Own fields/preferences; no other private preferences",
+      "public_projection": "CandidateProfile allowlist only",
+      "staff_projection": "Profile only for justified moderation scope",
+      "acceptance": "Wrong owner edit/read rejected; unknown dimension/option policy rejected; public birth leakage rejected",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "edit",
+          "from": "incomplete",
+          "to": "incomplete",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "complete",
+          "from": "incomplete",
+          "to": "visible",
+          "role": "owner",
+          "eligible": true,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "edit",
+          "from": "paused",
+          "to": "paused",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "edit",
+          "from": "visible",
+          "to": "visible",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "set_preferences",
+          "from": "unset",
+          "to": "configured",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "set_preferences",
+          "from": "configured",
+          "to": "configured",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "edit",
+          "from": "visible",
+          "to": "incomplete",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "incomplete",
+          "to": "removed",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "visible",
+          "to": "removed",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "paused",
+          "to": "removed",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "deletion_requested",
+          "from": "restricted",
+          "to": "removed",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "OwnProfile": [
+          "owner"
+        ],
+        "OwnPreferences": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F05",
+      "domain_owner": "profiles/media",
+      "data_owner": "App status; provider bytes",
+      "request_contracts": [
+        "MediaIntent",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "MediaLifecycle",
+        "MediaUploadGrant"
+      ],
+      "private_projection": "Own pending/rejected/review states; private originals",
+      "public_projection": "Approved delivery reference only",
+      "staff_projection": "Scoped evidence and reason",
+      "acceptance": "Upload cannot skip quarantine/review; wrong owner reorder/remove fails; provider purge completion separate",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "upload_grant",
+          "from": "none",
+          "to": "upload_pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "media_policy"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "uploaded",
+          "from": "upload_pending",
+          "to": "quarantined",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "review",
+          "from": "quarantined",
+          "to": "review_pending",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "approve",
+          "from": "review_pending",
+          "to": "approved",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "reject",
+          "from": "review_pending",
+          "to": "rejected",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "reorder",
+          "from": "approved",
+          "to": "approved",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "remove",
+          "from": "approved",
+          "to": "removal_pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "remove",
+          "from": "upload_pending",
+          "to": "removal_pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "remove",
+          "from": "rejected",
+          "to": "removal_pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "purged",
+          "from": "removal_pending",
+          "to": "removed",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "remove",
+          "from": "quarantined",
+          "to": "removal_pending",
+          "role": "owner",
+          "eligible": false,
+          "active_match": false,
+          "policies": []
+        },
+        {
+          "event": "remove",
+          "from": "review_pending",
+          "to": "removal_pending",
+          "role": "owner",
+          "eligible": false,
+          "active_match": false,
+          "policies": []
+        },
+        {
+          "event": "restrict_media",
+          "from": "approved",
+          "to": "review_pending",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "MediaLifecycle": [
+          "owner"
+        ],
+        "MediaUploadGrant": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F06",
+      "domain_owner": "profiles/eligibility",
+      "data_owner": "App",
+      "request_contracts": [
+        "VisibilityIntent"
+      ],
+      "response_contracts": [
+        "OwnProfile"
+      ],
+      "private_projection": "Own visibility",
+      "public_projection": "Paused profile absent from new discovery",
+      "staff_projection": "Scoped restriction state",
+      "acceptance": "Pause invalidates queues; resume rechecks current visibility eligibility; unknown pause/contact policy denies contact",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "pause",
+          "from": "visible",
+          "to": "paused",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "resume",
+          "from": "paused",
+          "to": "visible",
+          "role": "owner",
+          "eligible": true,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "OwnProfile": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F07",
+      "domain_owner": "eligibility/discovery",
+      "data_owner": "App bounded queue; HDE permitted output",
+      "request_contracts": [
+        "PageRequest"
+      ],
+      "response_contracts": [
+        "CandidatePage"
+      ],
+      "private_projection": "Version/cursor tied to authenticated viewer; exclusion reasons private",
+      "public_projection": "Eligible CandidateProfile only",
+      "staff_projection": "No broad discovery override",
+      "acceptance": "Wrong-viewer/stale cursor rejected; no eligible candidates returns empty and no provider call",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "request",
+          "from": "none",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "eligible_results",
+          "from": "pending",
+          "to": "ready",
+          "role": "system",
+          "eligible": true,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "no_results",
+          "from": "pending",
+          "to": "empty",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "outage",
+          "from": "pending",
+          "to": "unavailable",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "invalidate",
+          "from": "ready",
+          "to": "stale",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "refresh",
+          "from": "stale",
+          "to": "pending",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "CandidatePage": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F08",
+      "domain_owner": "interactions",
+      "data_owner": "App",
+      "request_contracts": [
+        "InteractionIntent"
+      ],
+      "response_contracts": [
+        "InteractionOutcome"
+      ],
+      "private_projection": "Actor outcome; unreciprocated other action hidden",
+      "public_projection": "None",
+      "staff_projection": "Only justified case evidence",
+      "acceptance": "Repeated key identical intent yields same result; changed payload conflicts; stale/ineligible target denied",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "like",
+          "from": "none",
+          "to": "liked",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "pass",
+          "from": "none",
+          "to": "passed",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "like",
+          "from": "liked",
+          "to": "liked",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "pass",
+          "from": "passed",
+          "to": "passed",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "like",
+          "from": "passed",
+          "to": "liked",
+          "role": "owner",
+          "eligible": true,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "InteractionOutcome": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F09",
+      "domain_owner": "matches",
+      "data_owner": "App",
+      "request_contracts": [
+        "InteractionIntent",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "MatchProjection"
+      ],
+      "private_projection": "Participants only",
+      "public_projection": "None",
+      "staff_projection": "Scoped case access",
+      "acceptance": "Reciprocal likes only; one unordered pair and logical event; unilateral client match creation denied",
+      "read_roles": [
+        "participant"
+      ],
+      "transitions": [
+        {
+          "event": "reciprocal",
+          "from": "none",
+          "to": "active",
+          "role": "system",
+          "eligible": true,
+          "policies": [
+            "reciprocal_likes"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "restrict",
+          "from": "active",
+          "to": "restricted",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "MatchProjection": [
+          "participant"
+        ]
+      }
+    },
+    {
+      "id": "F10",
+      "domain_owner": "matches/communication",
+      "data_owner": "App entitlement; provider revocation",
+      "request_contracts": [
+        "UnmatchIntent"
+      ],
+      "response_contracts": [
+        "MatchProjection"
+      ],
+      "private_projection": "Participants see revoked contact; history policy separately gated",
+      "public_projection": "None",
+      "staff_projection": "Scoped case access",
+      "acceptance": "Participant unmatch revokes contact without owner-policy prerequisite; unmatch never grants rematch",
+      "read_roles": [
+        "participant"
+      ],
+      "transitions": [
+        {
+          "event": "unmatch",
+          "from": "active",
+          "to": "unmatched",
+          "role": "participant",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "unmatch",
+          "from": "restricted",
+          "to": "unmatched",
+          "role": "participant",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "unmatch",
+          "from": "unmatched",
+          "to": "unmatched",
+          "role": "participant",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "MatchProjection": [
+          "participant"
+        ]
+      }
+    },
+    {
+      "id": "F11",
+      "domain_owner": "communication",
+      "data_owner": "App entitlement/submission; provider message bodies",
+      "request_contracts": [
+        "ChannelIntent",
+        "MessageIntent",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "ChannelEntitlement",
+        "MessageSubmission"
+      ],
+      "private_projection": "Two participants only; provider bodies via authorized history route",
+      "public_projection": "None",
+      "staff_projection": "Case-scoped evidence, no general message access",
+      "acceptance": "No send after block/unmatch commit; SDK token alone insufficient; pending submission is not delivery",
+      "read_roles": [
+        "participant"
+      ],
+      "transitions": [
+        {
+          "event": "bind",
+          "from": "pending",
+          "to": "active",
+          "role": "system",
+          "eligible": true,
+          "policies": [
+            "A08"
+          ],
+          "active_match": true
+        },
+        {
+          "event": "revoke",
+          "from": "active",
+          "to": "revoked",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "submit",
+          "from": "none",
+          "to": "pending",
+          "role": "participant",
+          "eligible": true,
+          "policies": [
+            "A08"
+          ],
+          "active_match": true
+        },
+        {
+          "event": "accepted",
+          "from": "pending",
+          "to": "accepted",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "failed",
+          "from": "pending",
+          "to": "failed",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "ChannelEntitlement": [
+          "participant"
+        ],
+        "MessageSubmission": [
+          "participant"
+        ]
+      }
+    },
+    {
+      "id": "F12",
+      "domain_owner": "communication",
+      "data_owner": "App settings/devices; push provider",
+      "request_contracts": [
+        "NotificationIntent",
+        "DeviceIntent"
+      ],
+      "response_contracts": [
+        "NotificationSettings"
+      ],
+      "private_projection": "Own settings; tokens secret and omitted from reads",
+      "public_projection": "Generic match/message event, no bodies/birth data",
+      "staff_projection": "No token access",
+      "acceptance": "Token rotation owner/session bound; logout revokes registration; no duplicate push; denied platform permission is normal",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "register",
+          "from": "none",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "rotate",
+          "from": "active",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "revoke",
+          "from": "active",
+          "to": "revoked",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "logout",
+          "from": "active",
+          "to": "revoked",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "settings",
+          "from": "active",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "register",
+          "from": "revoked",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "NotificationSettings": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F13",
+      "domain_owner": "safety",
+      "data_owner": "App block; provider revocation",
+      "request_contracts": [
+        "BlockIntent"
+      ],
+      "response_contracts": [
+        "BlockOutcome"
+      ],
+      "private_projection": "Actor receipt; block direction hidden from other user",
+      "public_projection": "None",
+      "staff_projection": "Scoped case evidence",
+      "acceptance": "Block works after unmatch and while paused; unblock cannot restore match/send entitlement",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "block",
+          "from": "none",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "block",
+          "from": "active",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "unblock",
+          "from": "active",
+          "to": "removed",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "block",
+          "from": "removed",
+          "to": "active",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "BlockOutcome": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F14",
+      "domain_owner": "safety",
+      "data_owner": "App report/case; restricted provider evidence",
+      "request_contracts": [
+        "ReportSubmission",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "ReportReceipt"
+      ],
+      "private_projection": "Reporter receipt, restricted evidence ledger",
+      "public_projection": "None",
+      "staff_projection": "Moderation scope only",
+      "acceptance": "After-unmatch reporting allowed; other account receipt/evidence denied; malicious description never rendered as HTML",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "submit",
+          "from": "none",
+          "to": "submitted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "triage",
+          "from": "submitted",
+          "to": "triaged",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "investigate",
+          "from": "triaged",
+          "to": "investigating",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "resolve",
+          "from": "investigating",
+          "to": "resolved",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "ReportReceipt": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F15",
+      "domain_owner": "safety/moderation",
+      "data_owner": "App case/action/appeal/audit; WordPress staff identity",
+      "request_contracts": [
+        "StaffCaseAction",
+        "AppealSubmission",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "StaffCaseProjection",
+        "AppealProjection"
+      ],
+      "private_projection": "Decision-recipient appeal; no general case view",
+      "public_projection": "None",
+      "staff_projection": "Case-scoped staff projection, reason/audit required",
+      "acceptance": "Support role cannot suspend; actor/scope and current policy required; unrelated user cannot appeal",
+      "read_roles": [
+        "owner",
+        "moderator"
+      ],
+      "transitions": [
+        {
+          "event": "triage",
+          "from": "submitted",
+          "to": "triaged",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "investigate",
+          "from": "triaged",
+          "to": "investigating",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "resolve",
+          "from": "investigating",
+          "to": "resolved",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "appeal",
+          "from": "none",
+          "to": "submitted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "review_appeal",
+          "from": "submitted",
+          "to": "reviewing",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "resolve_appeal",
+          "from": "reviewing",
+          "to": "resolved",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "restrict_media",
+          "from": "investigating",
+          "to": "investigating",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "StaffCaseProjection": [
+          "moderator"
+        ],
+        "AppealProjection": [
+          "owner",
+          "moderator"
+        ]
+      }
+    },
+    {
+      "id": "F16",
+      "domain_owner": "support/CMS",
+      "data_owner": "App support; WordPress public policy",
+      "request_contracts": [
+        "SupportRequest",
+        "PublicSupportRequest",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "SupportProjection",
+        "PublicRequestReceipt"
+      ],
+      "private_projection": "Own request status; public request receipt reveals no account existence",
+      "public_projection": "CMS published policies; anonymous generic receipt",
+      "staff_projection": "Support scope only, no moderation",
+      "acceptance": "Support staff cannot read birth/message evidence or invoke case action; wrong-owner status hidden",
+      "read_roles": [
+        "owner",
+        "support"
+      ],
+      "transitions": [
+        {
+          "event": "submit",
+          "from": "none",
+          "to": "open",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "public_submit",
+          "from": "none",
+          "to": "open",
+          "role": "public",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "work",
+          "from": "open",
+          "to": "in_progress",
+          "role": "support",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "resolve",
+          "from": "in_progress",
+          "to": "resolved",
+          "role": "support",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "SupportProjection": [
+          "owner",
+          "support"
+        ],
+        "PublicRequestReceipt": [
+          "public"
+        ]
+      }
+    },
+    {
+      "id": "F17",
+      "domain_owner": "privacy",
+      "data_owner": "App export; provider-owned data under contract",
+      "request_contracts": [
+        "ExportRequest",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "ExportProjection"
+      ],
+      "private_projection": "Authenticated owner only; short-lived delivery capability",
+      "public_projection": "None",
+      "staff_projection": "No default bundle access",
+      "acceptance": "Wrong owner/expired grant denied; partial provider failure is failed/preparing, never ready",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "request",
+          "from": "none",
+          "to": "requested",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "prepare",
+          "from": "requested",
+          "to": "preparing",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "complete",
+          "from": "preparing",
+          "to": "ready",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "export_complete"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "fail",
+          "from": "preparing",
+          "to": "failed",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "expire",
+          "from": "ready",
+          "to": "expired",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "retry",
+          "from": "failed",
+          "to": "preparing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "ExportProjection": [
+          "owner"
+        ]
+      }
+    },
+    {
+      "id": "F18",
+      "domain_owner": "privacy/all domains",
+      "data_owner": "App jobs/tombstones; providers own purge; HDE unresolved",
+      "request_contracts": [
+        "DeletionRequest",
+        "PublicDeletionRequest",
+        "OwnedObjectRequest"
+      ],
+      "response_contracts": [
+        "DeletionProjection",
+        "PublicRequestReceipt"
+      ],
+      "private_projection": "Owner progress; reauthentication/public verification before deletion",
+      "public_projection": "Public generic receipt only",
+      "staff_projection": "Restricted obligation ledger",
+      "acceptance": "Request immediately denies access/visibility; unresolved provider obligations prevent completed; restore replays tombstone",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [
+        {
+          "event": "request",
+          "from": "none",
+          "to": "requested",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "revoke",
+          "from": "requested",
+          "to": "access_revoked",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "purge",
+          "from": "access_revoked",
+          "to": "purging",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "block",
+          "from": "purging",
+          "to": "blocked",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "retry",
+          "from": "blocked",
+          "to": "purging",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "complete",
+          "from": "purging",
+          "to": "completed",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A01",
+            "A05",
+            "purge_verified"
+          ],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "DeletionProjection": [
+          "owner"
+        ],
+        "PublicRequestReceipt": [
+          "public"
+        ]
+      }
+    },
+    {
+      "id": "F19",
+      "domain_owner": "mobile presentation",
+      "data_owner": "API remains authorization owner",
+      "request_contracts": [
+        "AppIntent"
+      ],
+      "response_contracts": [
+        "AppResponse",
+        "Error"
+      ],
+      "private_projection": "Only authorized API responses; secure credential storage later",
+      "public_projection": "No independent projection",
+      "staff_projection": "No staff authority",
+      "acceptance": "Offline/stale response cannot authorize writes; accessible buttons submit same intents; native proofs deferred",
+      "read_roles": [
+        "presentation"
+      ],
+      "transitions": [
+        {
+          "event": "received",
+          "from": "loading",
+          "to": "ready",
+          "role": "presentation",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "disconnect",
+          "from": "loading",
+          "to": "offline",
+          "role": "presentation",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "expired",
+          "from": "ready",
+          "to": "stale",
+          "role": "presentation",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "retry",
+          "from": "offline",
+          "to": "loading",
+          "role": "presentation",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "reload",
+          "from": "stale",
+          "to": "loading",
+          "role": "presentation",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        }
+      ],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "AppResponse": [
+          "presentation"
+        ],
+        "Error": [
+          "presentation"
+        ]
+      }
+    },
+    {
+      "id": "F20",
+      "domain_owner": "entitlements",
+      "data_owner": "Verified provider lifecycle; app derived state",
+      "request_contracts": [],
+      "response_contracts": [
+        "EntitlementProjection"
+      ],
+      "private_projection": "Disabled",
+      "public_projection": "No purchase UI",
+      "staff_projection": "No paid override",
+      "acceptance": "Every attempted enable/purchase/restore is denied until new owner-selected versioned provider contract",
+      "read_roles": [
+        "owner"
+      ],
+      "transitions": [],
+      "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
+      "projection_roles": {
+        "EntitlementProjection": [
+          "owner"
+        ]
+      }
+    }
+  ]
+}

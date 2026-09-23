@@ -1,10 +1,10 @@
 # Provisional HDE seam
 
-**Status:** P02 design preparation. No HDE adapter, engine call, chart request, engine mutation or production credential configuration is introduced here. The source of the boundaries below is current GAPP-PF01 sections 5–7 and assumptions A01/A02/A07. That plan records earlier HDE source observations; this document does not claim a new inspection or certification of an HDE release.
+**Status:** P02 provisional app-owned definition baseline. `glow_domain/provider_contracts.py` and `provider_fixtures.py` implement internal ports and nonpersistent conformance substitutes. No live HDE adapter, engine call, chart request, engine mutation or production credential configuration is introduced. The source of the boundaries below is current GAPP-PF01 sections 5–7 and assumptions A01/A02/A07. That plan records earlier HDE source observations; this document does not claim a new inspection or certification of an HDE release.
 
-## App-owned interfaces to design
+## App-owned interfaces
 
-The following logical port names come from the governing plan. They are not HDE endpoint names, wire DTOs or promises that HDE supports an operation.
+The following port responsibilities come from the governing plan and are represented by provisional internal contracts. They are not HDE endpoint names, wire DTOs or promises that HDE supports an operation.
 
 | Logical port | Application responsibility | Agreement required before a real adapter |
 |---|---|---|
@@ -23,9 +23,9 @@ The following logical port names come from the governing plan. They are not HDE 
 - Current development responses contain only `pending`/`fixture`. They contain no real compatibility label, ranking or HDE evidence. The development process refuses staging/production and live HDE configuration.
 - An observed deployment success is not contract acceptance, throughput evidence or permission for writes. Database-dependent/live proofs remain P11; no protected engine change follows from this document.
 
-## Proposed fixture/conformance backlog
+## Fixture conformance and remaining live evidence
 
-The development HTTP presentation remains pending/fixture only. Internal `glow_domain` primitives now provide typed synthetic pending, unavailable, unsupported and explicitly synthetic ready outcomes; distinct app/engine mappings; and versioned directional cache identities. An internal fixture service reads identity-bound snapshots afresh and applies eligibility before calling the fixture provider. See [domain seam verification](../testing/domain-seams.md). There is no live HDE adapter, authenticated request path or atomic persistence boundary. The scenarios below remain end-to-end conformance requirements; their complete behavior and live evidence are not established by these bounded tests.
+The development HTTP presentation remains pending/fixture only. Internal `glow_domain` provides typed synthetic outcomes, civil birth-input and mapping contracts, directional cache identities, bounded retry/batch fixtures, app-only lifecycle obligations and a mapping/outbox unit-of-work substitute. Trusted eligibility is acquired before chart/provider work, rechecked after a provider call and before retry, and checked across retained results before returning a batch. See [trusted eligibility](trusted-eligibility.md), [provider contracts](provider-conformance.md) and the [provider test record](../testing/provider-conformance.md). There is no live HDE adapter, authenticated request path or atomic persistence proof. The scenarios below remain requirements for the later supported adapter; synthetic tests do not establish live behavior or data rights.
 
 | Scenario | Required app behavior | Remaining live evidence |
 |---|---|---|
