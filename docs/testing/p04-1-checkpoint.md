@@ -48,7 +48,16 @@ tests now target the visible screen while keeping logout private-data absence
 assertions across the entire DOM. The remaining case found competing redirects
 for an unknown path. A generic link-unavailable screen now owns unmatched routes,
 with one explicit safe return; known-route query/hash cleanup has one replacement
-in flight, and the internal sitemap is gated off. Hosted regression remains required.
+in flight. Hosted regression remains required.
+
+Candidate `27a29c7944c2b724459870090584e6b4ad071470`
+[passed three rendered cases](https://github.com/amthorn78/glow-dating-app/actions/runs/35895724641),
+including interrupted drafts and all-DOM account-switch isolation. The subsequent
+correction keeps navigation mounted while resetting only owner-bound private draft
+state, preserving recovery input across a failed request. Stale draft callbacks
+check live ownership. Logout/back tests now await the completed logout screen,
+and an explicit local sitemap route replaces the SDK index with the same safe
+unavailable-link screen. These corrections still need the full hosted regression.
 
 ## Unchanged API and contract baseline actually executed
 

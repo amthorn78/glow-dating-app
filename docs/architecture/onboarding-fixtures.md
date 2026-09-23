@@ -131,8 +131,11 @@ invalidate earlier operations and clear the issued checkpoint. State snapshots
 are frozen; public subscriptions receive a current read-only presentation view.
 
 Resumability has two bounded layers. The React context retains the unsaved private
-birth draft across navigation, keyed by account, session state and generation so
-account/session replacement creates a fresh draft. The explicit synthetic
+birth draft across navigation, bound to account, account/session state and generation.
+Account/session replacement supplies a fresh draft synchronously without remounting
+navigation or unrelated recovery forms; stale draft callbacks reject new owners.
+The eligibility form separately resets its private date and consent controls on
+owner replacement. The explicit synthetic
 checkpoint stores already accepted adult/consent/birth state in the same store
 instance. Restoration requires the exact checkpoint issued by that instance,
 matching generation/revision/account/account-version, valid closed contract

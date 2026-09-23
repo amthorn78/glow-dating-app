@@ -44,7 +44,7 @@ function Navigation() {
     <Stack.Protected guard={canAccessRoute('/recommended', state)}><Stack.Screen name="recommended" /><Stack.Screen name="explore" /></Stack.Protected>
     <Stack.Screen name="development" />
     <Stack.Screen name="+not-found" />
-    <Stack.Protected guard={false}><Stack.Screen name="_sitemap" /></Stack.Protected>
+    <Stack.Screen name="_sitemap" />
   </Stack>;
 }
 

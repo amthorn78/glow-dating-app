@@ -17,6 +17,8 @@ export default function BirthScreen() {
   }
   async function save() {
     const generation = state.generation;
+    const owner = store.getSnapshot();
+    if (owner.generation !== generation || owner.account?.account_id !== state.account?.account_id) return;
     await store.saveBirth(draft, outcome);
     const current = store.getSnapshot();
     if (current.generation === generation && !current.error && current.stage === 'remaining') router.replace('/remaining');

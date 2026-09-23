@@ -3,6 +3,12 @@ import { expect, test, type Page } from '@playwright/test';
 const password = 'fixture-passphrase';
 // Native stacks retain hidden prior screens; interact with the active screen only.
 const active = (page: Page, id: string) => page.getByTestId(id).filter({ visible: true });
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  // Only safe screen identities, never URLs, form values or private page snapshots.
+  const screens = await page.locator('[data-testid^="screen-"]:visible').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-testid'))).catch(() => []);
+  console.info('Visible screen identities after failure:', screens);
+});
 async function account(page: Page, mode: 'register' | 'sign-in' = 'register') {
   await page.goto('/account');
   await active(page, `mode-${mode}`).click();
@@ -65,7 +71,7 @@ test('sign in and synthetic recovery remain separate; errors and neutral receipt
 });
 
 test('direct private routes and malformed query destinations cannot bypass the account gate', async ({ page }) => {
-  for (const route of ['/recommended', '/explore', '/birth', '/remaining', '/reset-password', '/_sitemap', '/verify?email=private-value']) {
+  for (const route of ['/recommended', '/explore', '/birth', '/remaining', '/reset-password', '/verify?email=private-value']) {
     await test.step(`deny ${route}`, async () => {
       await page.goto(route);
       await expect(active(page, 'screen-account')).toBeVisible();
@@ -73,12 +79,16 @@ test('direct private routes and malformed query destinations cannot bypass the a
     });
     await expect(page.getByText('private-value', { exact: true })).toHaveCount(0);
   }
-  await page.goto('/unknown-destination?email=private-value#private-value');
-  await expect(active(page, 'screen-link-unavailable')).toBeVisible();
-  await expect(page.getByText('private-value', { exact: true })).toHaveCount(0);
-  await active(page, 'return-current-step').click();
-  await expect(active(page, 'screen-account')).toBeVisible();
-  await expect(page).toHaveURL(/\/account$/);
+  for (const route of ['/_sitemap', '/unknown-destination?email=private-value#private-value']) {
+    await test.step('unsupported link fallback', async () => {
+      await page.goto(route);
+      await expect(active(page, 'screen-link-unavailable')).toBeVisible();
+      await expect(page.getByText('private-value', { exact: true })).toHaveCount(0);
+      await active(page, 'return-current-step').click();
+      await expect(active(page, 'screen-account')).toBeVisible();
+      await expect(page).toHaveURL(/\/account$/);
+    });
+  }
 });
 
 test('private birth journey validates input, preserves uncertainty and stops before profile discovery', async ({ page }) => {
@@ -115,6 +125,7 @@ test('private birth journey validates input, preserves uncertainty and stops bef
   await active(page, 'checkpoint-restore').click();
   await expect(active(page, 'screen-remaining')).toBeVisible();
   await active(page, 'logout').click();
+  await expect(active(page, 'screen-account')).toBeVisible();
   await page.goBack();
   await expect(active(page, 'screen-account')).toBeVisible();
   await expect(page.getByText('Fictional Harbor', { exact: true })).toHaveCount(0);
@@ -145,6 +156,12 @@ test('restricted and policy scenarios deny discovery; explicit eligible preview 
     await active(page, `scenario-${scenario}`).click();
     const screen = ['suspended', 'deletion_pending'].includes(scenario) ? 'restricted' : 'eligibility';
     await expect(active(page, `screen-${screen}`)).toBeVisible();
+    expect(await page.locator('input,textarea').evaluateAll(nodes => nodes.some(node => (node as HTMLInputElement).value === '1988-02-03'))).toBe(false);
+    if (screen === 'eligibility') {
+      await expect(active(page, 'adult-date')).toHaveValue(scenario === 'underage' ? '2010-09-23' : '1990-06-15');
+      await expect(active(page, 'consent-checkbox')).toHaveAttribute('aria-checked', scenario === 'underage' ? 'true' : 'false');
+      await active(page, 'adult-date').fill('1988-02-03');
+    }
     await expect(page.getByText('Make room for', { exact: false })).toHaveCount(0);
     await active(page, 'development-link').click();
   }
@@ -153,6 +170,7 @@ test('restricted and policy scenarios deny discovery; explicit eligible preview 
   await page.getByRole('button', { name: 'Explore more', exact: true }).click();
   await expect(page.getByText('More room to discover.').filter({ visible: true })).toBeVisible();
   await active(page, 'logout').click();
+  await expect(active(page, 'screen-account')).toBeVisible();
   await page.goBack();
   await expect(active(page, 'screen-account')).toBeVisible();
   await expect(page.getByText('More room to discover.')).toHaveCount(0);

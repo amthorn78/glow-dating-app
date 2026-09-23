@@ -7,10 +7,24 @@ import { OnboardingScreen } from '../onboarding/shell';
 import { FIXTURE_POLICY } from '../onboarding/store';
 
 export default function EligibilityScreen() {
+  const { state } = useOnboarding();
+  const owner = `${state.account?.account_id ?? 'none'}:${state.account?.session_state ?? 'none'}:${state.generation}`;
+  // Reset only private form state when scenarios/accounts change. The navigator
+  // and signed-out recovery form retain their own independent lifetimes.
+  return <EligibilityForm key={owner} />;
+}
+
+function EligibilityForm() {
   const { state, store } = useOnboarding();
   const [date, setDate] = useState(state.adultBirthDate ?? '');
   const [accepted, setAccepted] = useState(state.consent.state === 'accepted' && state.consent.policy_version === FIXTURE_POLICY.version);
+  function isCurrentOwner() {
+    const current = store.getSnapshot();
+    return current.generation === state.generation && current.account?.account_id === state.account?.account_id &&
+      current.account?.state === 'active' && current.account.session_state === 'valid';
+  }
   function continueOnboarding() {
+    if (!isCurrentOwner()) return;
     store.setAdultDate(date);
     if (store.getSnapshot().error) return;
     store.setConsent(accepted);
@@ -32,7 +46,7 @@ export default function EligibilityScreen() {
     </View>
     <Text style={styles.small}>Current age check: {state.adult}. Consent: {state.consent.state}. Discovery stays unavailable until every requirement is met.</Text>
     <Button label="Save eligibility and continue" testID="eligibility-submit" onPress={continueOnboarding} />
-    <Button label="Withdraw development consent" testID="consent-withdraw" secondary onPress={() => { setAccepted(false); store.setConsent(false); }} />
+    <Button label="Withdraw development consent" testID="consent-withdraw" secondary onPress={() => { if (!isCurrentOwner()) return; setAccepted(false); store.setConsent(false); }} />
     <Button label="Save session checkpoint" testID="checkpoint-save" secondary onPress={() => store.saveCheckpoint()} />
   </OnboardingScreen>;
 }
