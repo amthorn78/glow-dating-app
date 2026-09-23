@@ -1,28 +1,22 @@
 import { createContext, useContext, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 import type { BirthInput } from '../contracts/generated/gapp-api-v1';
 import { createFixtureOnboardingStore, type BirthOutcome, type OnboardingStore } from './store';
-import { bindBirthDraftAction, birthDraftOwner, initialBirthDraft } from './birth-draft';
+import { BirthDraftStore } from './birth-draft';
 
 const StoreContext = createContext<OnboardingStore | null>(null);
 type Draft = BirthInput;
-const DraftContext = createContext<{ draft: Draft; setDraft: (draft: Draft) => void; saveDraft: (outcome: BirthOutcome) => Promise<void> | undefined } | null>(null);
+const DraftContext = createContext<{ draft: Draft; setDraft: (draft: Draft) => void; updateDraft: (patch: Partial<Draft>) => void;
+  saveDraft: (outcome: BirthOutcome) => Promise<void> | undefined } | null>(null);
 
 function DraftProvider({ children }: PropsWithChildren) {
-  const { state, store } = useOnboarding();
-  const owner = birthDraftOwner(state);
-  const initialDraft = initialBirthDraft(state);
-  const [saved, setSaved] = useState(() => ({ owner, draft: initialDraft }));
-  // Adjust only this provider's state before its children render. A React key
-  // here would also remount the navigator, clearing recovery forms and history.
-  const draft = saved.owner === owner ? saved.draft : initialDraft;
-  if (saved.owner !== owner) setSaved({ owner, draft: initialDraft });
-  function setDraft(next: Draft) {
-    bindBirthDraftAction(store, state, () => setSaved({ owner, draft: next }))();
-  }
-  function saveDraft(outcome: BirthOutcome) {
-    return bindBirthDraftAction(store, state, () => store.saveBirth(draft, outcome))();
-  }
-  return <DraftContext.Provider value={{ draft, setDraft, saveDraft }}>{children}</DraftContext.Provider>;
+  const { store } = useOnboarding();
+  const [drafts] = useState(() => new BirthDraftStore(store));
+  const { owner, draft } = useSyncExternalStore(drafts.subscribe, drafts.getSnapshot, drafts.getSnapshot);
+  // Only the authority token is captured. Edits and submit read the latest draft
+  // synchronously, even when several input events precede the next React render.
+  // Keeping this provider mounted preserves recovery forms and navigation history.
+  return <DraftContext.Provider value={{ draft, setDraft: next => drafts.replace(next, owner),
+    updateDraft: patch => drafts.update(patch, owner), saveDraft: outcome => drafts.save(outcome, owner) }}>{children}</DraftContext.Provider>;
 }
 
 export function OnboardingProvider({ children }: PropsWithChildren) {

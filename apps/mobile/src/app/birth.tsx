@@ -9,11 +9,11 @@ import type { BirthOutcome } from '../onboarding/store';
 
 export default function BirthScreen() {
   const { state, store } = useOnboarding();
-  const { draft, setDraft, saveDraft } = useBirthDraft();
+  const { draft, setDraft, updateDraft, saveDraft } = useBirthDraft();
   const [outcome, setOutcome] = useState<BirthOutcome>('pending');
   const [showOutcomes, setShowOutcomes] = useState(false);
   function update(input: Partial<BirthInput>) {
-    setDraft({ ...draft, ...input, timezone_name: null, timezone_provenance: null });
+    updateDraft(input);
   }
   async function save() {
     const generation = state.generation;
@@ -34,7 +34,7 @@ export default function BirthScreen() {
       {(['known', 'approximate', 'unknown'] as const).map((precision) => <Choice key={precision}
         label={precision === 'known' ? 'Known birth time' : precision === 'approximate' ? 'Approximate birth time' : 'Unknown birth time'}
         selected={draft.time_precision === precision} disabled={state.busy} testID={`time-${precision}`}
-        onPress={() => update({ time_precision: precision, local_time: precision === 'unknown' ? null : draft.local_time ?? '' })} />)}
+        onPress={() => update({ time_precision: precision })} />)}
     </View>
     {draft.time_precision !== 'unknown' && <Field label="Private local birth time" value={draft.local_time ?? ''} onChangeText={(local_time) => update({ local_time })}
       placeholder="HH:MM:SS" maxLength={8} keyboardType="numbers-and-punctuation" editable={!state.busy} testID="birth-time" hint="24-hour local civil time with seconds: HH:MM:SS. Approximate stays approximate." />}

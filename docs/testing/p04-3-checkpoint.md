@@ -194,6 +194,45 @@ removal followed by restrict/reapprove/reload, retained preview revocation and
 successful cleanup. The resulting **46** rendered cases require hosted execution;
 discovery and source review alone are not a browser pass.
 
+### Follow-up browser evidence and birth-draft correction
+
+The removal repair was published as `f58475ee02462eb87435200859a6ce2939fac7dd`
+in [PR 9](https://github.com/amthorn78/glow-dating-app/pull/9). Its
+[push run 35932119804](https://github.com/amthorn78/glow-dating-app/actions/runs/35932119804)
+passed all four jobs. Its
+[PR run 35932123481](https://github.com/amthorn78/glow-dating-app/actions/runs/35932123481)
+passed three jobs but Mobile failed one inherited retained underage birth case:
+**45/46 rendered passed**, all 16 media cases passed, and 175 mobile/212 contract
+cases passed. The prior two main failures passed in this run. Automatic code and
+security reviews on this repair completed without further findings at 23:12:43
+and 23:14:03 UTC respectively; PR 9 remained unmerged.
+
+Failure-only diagnostics showed `screen-birth`, one enabled Submit, an empty
+birth-date field, a nonempty place and a visible alert after both inputs had been
+filled. This establishes lost input presentation, not unique attribution of all
+earlier failures. Source inspection identified render-captured whole-draft merge
+and submit callbacks. The correction moves the draft into a narrow synchronous
+store: partial edits merge the latest snapshot and submit captures the latest
+copy, while the existing account/generation/source-revision guard rejects old
+callbacks. Authority replacement reconciles the draft without remounting the
+navigator; unrelated publications preserve deliberate edits.
+
+The new regression dispatches real controlled-input events for date and place in
+one browser task, verifies both values and submits through the ordinary retained
+underage flow. No sleep, store injection, timeout/retry change or weakened
+assertion is used. Its pre-fix browser behavior was not observed locally because
+Chromium remains unavailable. The new **47-case** rendered suite and final source/
+unit evidence must be checked on the eventual candidate and merged main; final
+identities/results remain in AB1-R008.
+
+The final birth-draft delta passes local TypeScript/ESLint, **181 mobile tests**
+(including ten birth-draft cases, six new) and both development JS exports.
+The new cases cover consecutive edits/immediate submission, stable drafts and
+subscription disposal, stale source/account callbacks, copied in-flight input
+and precision changes. Independent review also exercises source/account changes
+during an in-flight save. Browser proof still belongs to the hosted 47-case run;
+local source/unit passes alone do not close it.
+
 All four Foundation jobs must pass on the exact final candidate including docs:
 **API checks**, **Mobile checks**, **API mobile smoke**, **API artifact checks**.
 Recheck head/base/main, full diff and review dispositions immediately before the

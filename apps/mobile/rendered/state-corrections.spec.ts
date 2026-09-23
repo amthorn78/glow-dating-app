@@ -110,6 +110,41 @@ for (const retained of [false, true]) {
   });
 }
 
+test('same-task birth input events preserve both fields in a retained correction', async ({ page }) => {
+  await reachBirth(page);
+  await active(page, 'birth-back').click();
+  await active(page, 'development-link').click();
+  await active(page, 'return-current').click();
+  await expect(active(page, 'screen-birth')).toBeVisible();
+  await expect(page.getByTestId('adult-date')).toHaveCount(1);
+  await expect(active(page, 'adult-date')).toHaveCount(0);
+  // Exercise the real controlled inputs in one browser task. The native setter
+  // bypasses React's DOM value tracker so both bubbling input events reach the
+  // normal onChangeText callbacks; no fixture store or component state is edited.
+  await active(page, 'screen-birth').evaluate(screen => {
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    if (!setValue) throw new Error('Native input setter unavailable.');
+    for (const [id, value] of [
+      ['birth-date', '2010-09-23'],
+      ['birth-place', 'Same-task Fictional Harbor'],
+    ]) {
+      const field = screen.querySelector(`[data-testid="${id}"]`);
+      if (!(field instanceof HTMLInputElement)) throw new Error('Expected birth input missing.');
+      setValue.call(field, value);
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: value }));
+    }
+  });
+  await expect(active(page, 'birth-date')).toHaveValue('2010-09-23');
+  await expect(active(page, 'birth-place')).toHaveValue('Same-task Fictional Harbor');
+  await active(page, 'birth-submit').click();
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
+  await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+  await active(page, 'eligibility-submit').click();
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
+  await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+  await expect(page.getByText(/Current age check: fail/).filter({ visible: true })).toBeVisible();
+});
+
 test('retained eligibility consent cannot silently restore withdrawn consent', async ({ page }) => {
   await reachBirth(page);
   await active(page, 'birth-back').click();
