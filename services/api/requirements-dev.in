@@ -1,0 +1,5 @@
+-r requirements.in
+-c requirements.lock
+jsonschema==4.26.0
+ruff==0.16.8
+mypy==2.3.1

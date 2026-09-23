@@ -1,0 +1,49 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Glow isolated development API",
+    "version": "gapp-dev-v1",
+    "description": "Only the three implemented development scaffold GET routes. No accounts, authentication, persistence, real eligibility, live Human Design integration or production readiness. No server URL is asserted. Framework-generated error bodies and HEAD/OPTIONS behavior are outside this response-shape baseline."
+  },
+  "security": [],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "getDevelopmentLiveness",
+        "summary": "Check that the API process can answer",
+        "description": "An alive response does not prove downstream integrations or readiness.",
+        "responses": {
+          "200": {
+            "description": "Process answered. Cache-Control: no-store.",
+            "content": {"application/json": {"schema": {"$ref": "./gapp-dev-v1.schema.json#/$defs/Liveness"}}}
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getDevelopmentReadiness",
+        "summary": "Report that live integrations are not configured",
+        "responses": {
+          "503": {
+            "description": "Intentionally not ready. Cache-Control: no-store.",
+            "content": {"application/json": {"schema": {"$ref": "./gapp-dev-v1.schema.json#/$defs/Readiness"}}}
+          }
+        }
+      }
+    },
+    "/api/v1/development/recommendations": {
+      "get": {
+        "operationId": "getDevelopmentRecommendations",
+        "summary": "Read synthetic people for presentation development",
+        "description": "Registered only for development/test; production bootstrap rejects the scaffold. Read-only, anonymous and nonpersistent. The response contains neither eligibility decisions nor compatibility results. Cache-Control: no-store.",
+        "responses": {
+          "200": {
+            "description": "Development fixture envelope.",
+            "content": {"application/json": {"schema": {"$ref": "./gapp-dev-v1.schema.json#/$defs/DevelopmentRecommendations"}}}
+          }
+        }
+      }
+    }
+  }
+}
