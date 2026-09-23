@@ -99,3 +99,7 @@ Live database/role/Redis mappings, current deployment source settings, current c
 The new application can proceed independently of the legacy deployment and unfinished live HDE integration. It must supply its own reproducible setup, maintained authentication machinery, explicit interfaces, current dependency pins, tests and documentation rather than relying on inherited readiness claims.
 
 Complete P01.2 by creating and verifying the selected private application repository, recording its exact identity and initial commit, and transferring documentation authority according to GAPP-PF00/GAPP-PF01. Then establish the reproducible mobile/API base under P01.3. Preserve an isolated, versioned HDE adapter and visibly synthetic development fixtures; neither fixture tests nor temporary storage establish live HDE or PostgreSQL correctness.
+
+## Publication evidence
+
+Private `amthorn78/glow-dating-app` was created and verified through GitHub UI and connector. ID `1383293037`, default branch `main`, initial commit `8131cc7c68c0cfa790d9081e29e45d897f040230`. This assessment and the application canon were published at `ac38e58651e5578ee8503b6423e4884203b42278`. Earlier pending language records assessment-time state.
