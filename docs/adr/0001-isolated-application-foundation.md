@@ -6,7 +6,7 @@ Work item: P01.1 — Assess legacy reuse and resource ownership
 
 ## P03 placement supersession
 
-The Railway project placement portion of this P01 decision was superseded by Nathan during AP1-P03-001 on 23 September 2026. [ADR 0002](0002-same-project-application-services.md) places separate app-owned services in the same Railway project as HDE. The historical assessment below is preserved; source isolation, no legacy reuse, protected HDE resources and database-last sequencing still apply.
+The Railway placement and storage defaults of this P01 decision were superseded by Nathan during P03 on 23 September 2026. [ADR 0002](0002-same-project-application-services.md) places app services in the same project as HDE and records the preferred shared logical database with separate app schema/roles, pending ownership/dependency audit. Appropriate existing app structures may be reused after that audit; no legacy user data needs migration. This historical assessment records why no legacy code was copied into the foundation, not a permanent prohibition on reviewed reuse. HDE and actual dependencies remain protected. AP1-DBA-001 is a separate bounded catalog-audit exception; app runtime/migrations and database-dependent acceptance remain P11.
 
 ## Decision
 

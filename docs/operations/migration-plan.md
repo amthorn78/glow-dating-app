@@ -1,10 +1,36 @@
 # Application migration design and P11 execution plan
 
-This P02.2 plan covers only isolated app-owned storage. **No database connection,
+This plan covers only separately owned application objects. **No database connection,
 SQL execution or migration application has occurred.** The app's development
 settings keep the dummy backend and do not install `glow_persistence`.
 `glow_persistence.static_settings` exists solely for model metadata inspection.
 It is not a staging or production settings module.
+
+## P03 owner direction and audit dependency
+
+The current [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c)
+records Nathan's preference for clean app storage in the **same logical database
+as HDE**, with a separate app schema and restricted app runtime/migration roles,
+unless a concrete assessment establishes a strong reason against it. No legacy
+user information needs migration. This supersedes a separate-app-database default.
+The 32 P02 models and two migrations below are provisional domain definitions,
+not authorization to create 32 new production tables or apply the ledger unchanged.
+
+Before selecting physical objects, map existing tables/views to HDE-owned,
+reusable app-owned, obsolete app-owned or new-required, compare every provisional
+model and record permitted reads/writes, dependencies and one owning migration
+system per existing table. Reuse of structure does not require importing old
+users. Discarding app architecture is not permission to delete shared objects.
+The planner reports documentary HDE schema `hde` and the source-defined
+`public.hde_body_graphs_current` object; neither is a verified live catalog, and
+`public` is not an app-only deletion boundary.
+
+[AP1-DBA-001](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view)
+is issued for a dedicated bounded read-only catalog audit; it has not been
+executed in this P03 session. Only that audit has the early connection exception.
+It permits no DDL, deletion, role/grant changes, legacy startup execution or
+runtime wiring. Consume its verified findings before layout implementation.
+A02, shared-capacity effects and actual app-only grants remain unresolved.
 
 ## Committed schema order
 
@@ -54,8 +80,9 @@ No migration command or live-target preflight executor is added in P02.
 ## P11 target and role isolation
 
 P11 begins only after P10 prerequisites. P11A uses a newly verified disposable
-PostgreSQL target; P11B uses staging; P11C uses the isolated authorized app
-production target. Do not turn a shared/legacy target into a disposable fixture.
+PostgreSQL target; P11B uses staging; P11C uses the verified app schema and roles
+in the preferred shared logical database after effect review. An alternative
+needs a concrete documented reason. Do not turn shared storage into a fixture.
 A02 remains unresolved for protected HDE/legacy logical database/role ownership.
 
 Before any P11 connection/action, prepare and review a non-secret target manifest:
@@ -89,7 +116,7 @@ been provisioned/implemented by this document.
 
 1. Inspect the real ledger and existing objects. A blank target is not presumed;
    reject unexplained drift and prohibit fake-initial shortcuts or legacy imports.
-   Existing-user migration needs its own reviewed consent/retention/source mapping.
+   No legacy-user migration is required by Nathan's clean-app-data direction.
 2. Expand with compatible nullable/additive fields and indexes as appropriate.
    Review PostgreSQL lock behavior at P11. Deploy readers/writers able to tolerate
    the overlap; do not couple feature startup to an uncompleted backfill.

@@ -4,9 +4,19 @@
 
 Nathan's instruction during this execution is: **“the app should be in the same project as the HD Engine”**. This supersedes P01's separate-project disposition below and that part of [ADR 0001](../adr/0001-isolated-application-foundation.md). [ADR 0002](../adr/0002-same-project-application-services.md) records the replacement decision. Use the existing `ample-illumination` project, ID `ce01529f-679f-4f52-a979-23113299a59b`, for future app-owned resources. Do not create a second Railway project for this application.
 
-The owner selected the project, not reuse of the HDE service, legacy backend, database, Redis, credentials or shared settings. App resources must have their own verified identities and scoped configuration. D08's effect-based HDE protection and P11's database-last sequence still apply. No Railway resource was created, configured or deployed during this P03 assessment. Current app environment/service/domain/volume IDs therefore remain absent.
+The owner's later database direction also prefers the **same logical PostgreSQL database as HDE**, with separately owned app schema/tables and maximum appropriate reuse unless assessment establishes a strong concrete counterargument. This supersedes the separate-app-database default; it does not select existing privileged credentials, HDE table ownership, shared grants/settings or the legacy backend runtime for reuse. App identities, scoped configuration and persistence privileges remain explicit. D08's effect-based HDE protection and P11's integration sequence still apply. No Railway resource was created, configured or deployed during this P03 implementation, and this session opened no database connection. Current app environment/service/domain/volume identities and app schema/role mapping remain unestablished.
 
 The [environment and service map](environments.md) distinguishes local/test behavior from future staging/production roles. Complete P03 preparation without provisioning: current runtime deliberately refuses staging/production, development fixtures bind loopback, and readiness remains 503. Empty services are technically possible, but no operational P03 need warrants creating them merely to populate the map.
+
+### Current persistence direction and audit dependency
+
+The [Implementation Control record](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c), under “Owner database direction — 23 September 2026” and “Clean app data and terminal audit assignment — 23 September 2026”, records the latest direction. No legacy backend/frontend user information is relevant to the new app, so no legacy user-data migration is required. This does not authorize deleting shared objects or data whose ownership/dependencies remain unknown.
+
+Before committing the persistence layout, classify existing objects as **HDE-owned**, **reusable app-owned**, **obsolete app-owned** or **new-required**. Compare all 32 provisional P02 model definitions with that object map; they are not a requirement to create 32 new tables. Specify permitted reads/writes, separate restricted app runtime/migration roles, schema ownership and one owning migration system per reused table. Names, roles, grants, search-path settings, capacity, locking and shared operational effects remain A02 evidence requirements. Adding app objects consumes shared database resources even when no HDE table is altered.
+
+The supplied **PF07-Canon-Glow-Infrastructure-v2.3.2**, section **2.2 Environment facts**, documents a shared database instance, HDE schema `hde`, and backend schema **TBD**. That inventory is documentary context, not a current logical-database, object, role or grant audit. The control record also identifies historical/source evidence for HDE object `public.hde_body_graphs_current`; `public` must not be treated as an app-only schema or dropped/reset wholesale.
+
+[AP1-DBA-001 — Database Audit Plan and Fresh-Session Prompt](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view) is issued for a **separate dedicated terminal-capable audit session**. The current control record says it is issued, not executed; no result is claimed here. Its bounded read-only catalog inspection is a narrow exception assigned to that session, not an expansion of this P03 implementation's no-connection scope. This builder does not run legacy imports/startup, SQL, DDL, migrations or database connections. Audit findings must resolve the live ownership/dependency map before a reuse/retirement proposal or executable target configuration is finalized. Wiring, migrations and database-dependent acceptance remain P11.
 
 ### P03 identity recheck
 
@@ -19,7 +29,7 @@ Read-only `list_workspaces`, `list_projects`, `list_services` and `get_service_c
 | Only listed environment in this project | `production`, `a06b149a-2876-40bf-84a0-7880feaf8b67` | Contains protected resources; not an app activation selection |
 | HDE service | `glow-hdengine-v2`, `62e7b993-6d30-48b4-9059-c1884b16e90b`; source `amthorn78/glow-hdengine-v2`, `main` | Protected |
 | Legacy backend | `glow-backend-v4`, `bfedf816-d6d4-4155-b495-cd6416e91e49`; source `amthorn78/glow-backend-v4`, `main` | Preserve; no reuse, restart or retirement |
-| PostgreSQL / volume | `c4d54416-d1ab-4818-898b-9b9be03bc69a` / `aad776ab-27cc-4994-87f0-589af0de7aa1` | Protected; logical database/role ownership unresolved |
+| PostgreSQL / volume | `c4d54416-d1ab-4818-898b-9b9be03bc69a` / `aad776ab-27cc-4994-87f0-589af0de7aa1` | Protected; preferred shared logical database subject to A02 object/role/capacity review |
 | Redis / volume | `87b4810c-3e23-4d27-b7fc-0bca7131ed37` / `9ec5ad1f-eab1-4722-ae02-28684aa3b89f` | Protected; consumers unresolved |
 | Dating-app resources | No separately identified app service returned in this project | Planned only; no app deployment or consumption observed |
 
@@ -47,7 +57,7 @@ Official boundary references: [private networking](https://docs.railway.com/netw
 
 ## Historical P01 assessment — preserved, separate-project disposition superseded
 
-The following is the original P01.1 record. Its deployment revisions, volume sizes, capability observations and assessment-time statements are historical, not refreshed P03 assertions. Its selected new-project disposition no longer governs; use the current decision above. No other legacy reuse, HDE protection or P11 boundary is changed.
+The following is the original P01.1 record. Its deployment revisions, volume sizes, capability observations and assessment-time statements are historical, not refreshed P03 assertions. Its selected new-project disposition and any separate-app-database implication no longer govern; use the current owner directions above. Historical observations remain intact; current reuse planning must follow the object-level audit. HDE protection and P11 integration sequencing remain unchanged.
 
 Assessment date: 2026-09-23. Scope: read-only Railway inspection for P01.1. No Railway resource, deployment, variable, network, volume, or database was changed. No variable values were retrieved and no database connection was opened.
 

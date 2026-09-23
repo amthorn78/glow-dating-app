@@ -126,15 +126,20 @@ programming errors require correction, not unbounded retry or synthetic success.
 
 ## Backup and restore preparation
 
-No app database/volume exists at this checkpoint. No backup schedule, encryption
+No app schema/role or separate app database/volume has been provisioned by this
+execution. The owner prefers an app schema in HDE's logical database, pending
+the separately assigned ownership audit and shared-effect review. No backup schedule, encryption
 key, retention duration, PITR, recovery-time objective or recovery-point objective
 is configured or asserted. A05 supplies retention and accountable owners; actual
 platform capability and cost must be checked on the selected app target at P11.
 
 Prepare P11 DB13 alongside DB01–DB03 and the migration plan:
 
-1. Verify the app database/volume/runtime/migration roles and candidate. Exclude
-   HDE/legacy storage, even though the services share a Railway project.
+1. Verify database/volume identity, exact app schema/objects, restricted runtime
+   and migration roles, and candidate. With shared storage, a whole-volume
+   restore would affect HDE and is outside ordinary app rollback. Define a
+   supported app-scoped recovery method and its dependencies before activation;
+   never label the shared volume application-owned or reset `public` wholesale.
 2. Select and configure the supported app-only backup method with explicit
    retention, encryption/access and recovery objectives. Record an actual backup
    identifier and time only when observed. A platform success label is not a
