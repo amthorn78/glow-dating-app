@@ -30,6 +30,16 @@ corrected candidate, hosted rendered checks, exact-candidate CI, merge/main
 relationship, merged-main CI and AB1-R005/task closure. Every later candidate,
 including documentation changes, requires applicable Foundation jobs before merge.
 
+Corrected candidate `65d245a78f11832e2ae63bd1e8afd55b82f580bd`
+[passed static/native checks but timed out before browser tests](https://github.com/amthorn78/glow-dating-app/actions/runs/35893465492).
+The harness had probed IPv4 while Expo bound IPv6 localhost, and native-only
+platform configuration served a manifest rather than browser HTML. The correction
+uses matching localhost `/status` readiness, explicit test-only web enablement and
+visible server diagnostics. Expo's injected project-root variable is permitted
+only in that harness and only at the exact app-config directory. Same-process
+probes verified status 200, HTML 200 and the actual entry JavaScript bundle 200;
+those probes do not substitute for the required Chromium interaction tests.
+
 ## Unchanged API and contract baseline actually executed
 
 Observed **23 September 2026, 16:44–16:45 UTC**, before new mobile implementation

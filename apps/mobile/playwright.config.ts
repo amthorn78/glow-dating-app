@@ -12,17 +12,20 @@ export default defineConfig({
   reporter: 'list',
   use: {
     browserName: 'chromium',
-    baseURL: 'http://127.0.0.1:8081',
+    baseURL: 'http://localhost:8081',
     viewport: { width: 390, height: 844 },
     trace: 'off',
     screenshot: 'off',
   },
   webServer: {
     command: 'node scripts/development.mjs start --web --host localhost --port 8081',
-    url: 'http://127.0.0.1:8081',
+    // Match Expo's localhost binding (which may resolve to IPv6).
+    url: 'http://localhost:8081/status',
     timeout: 180_000,
     reuseExistingServer: false,
-    env: { CI: '1', EXPO_OFFLINE: '1', BROWSER: 'none' },
+    env: { CI: '1', EXPO_OFFLINE: '1', BROWSER: 'none', GLOW_RENDERED_TESTS: '1' },
+    stdout: 'pipe',
+    stderr: 'pipe',
     gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
   },
 });

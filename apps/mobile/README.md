@@ -23,7 +23,7 @@ EXPO_PUBLIC_GLOW_API_BASE_URL=http://127.0.0.1:8000 npm start
 
 Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. Set no origin to use bundled fixtures. A configured API failure shows an error and a retry action; it never silently falls back to bundled data.
 
-`EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. `app.config.ts` rejects every `EXPO_PUBLIC_*` name except `EXPO_PUBLIC_GLOW_MODE` and `EXPO_PUBLIC_GLOW_API_BASE_URL`, without echoing rejected names or values. This checks names, not the semantic contents of the allowed values; the API-origin validator still rejects credentials. Official [Expo environment guidance](https://docs.expo.dev/guides/environment-variables/) confirms these values are embedded in client code. Reopen/reload Metro after changing environment configuration.
+`EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. Normal builds allow only `EXPO_PUBLIC_GLOW_MODE` and `EXPO_PUBLIC_GLOW_API_BASE_URL`, without echoing rejected names or values. The rendered test harness additionally accepts Expo's injected `EXPO_PUBLIC_PROJECT_ROOT` only when it exactly equals this app-config directory; arbitrary values remain rejected. This checks names, not the semantic contents of the allowed app values; the API-origin validator still rejects credentials. Official [Expo environment guidance](https://docs.expo.dev/guides/environment-variables/) confirms these values are embedded in client code. Reopen/reload Metro after changing environment configuration.
 
 ## Implementation boundary
 
@@ -91,7 +91,9 @@ npm run test:rendered
 
 The rendered suite starts Expo on localhost and exercises the actual Router and
 React Native Web screens in Chromium. This is an internal development test surface;
-the product platforms remain iOS and Android. It tests interaction, guards and a
+Playwright sets `GLOW_RENDERED_TESTS=1` to enable web only for that process. Normal
+product platforms remain iOS and Android, and release guards still reject unsafe
+environments with the harness flag set. It tests interaction, guards and a
 320px enlarged-text layout, not device keyboard behavior, VoiceOver/TalkBack,
 secure storage, real links/email or signed builds. Failure traces and automatic
 screenshots are disabled; only an empty account-form layout is explicitly captured.
