@@ -2,6 +2,8 @@
 
 **Status:** P02 preparation. The state names, logical contracts and data definitions below are proposed implementation design, not implemented routes, ORM models, migrations, production policy or completed acceptance. The current implemented surface is the [development contract](../../packages/contracts/README.md). GAPP-PF01 remains governing direction; Notion owns work status.
 
+A bounded internal implementation now exists in `services/api/glow_domain`: explicit eligibility predicates, distinct account/chart identities, synthetic compatibility states, versioned directional cache keys, read ports and a fixture-only eligibility-before-compatibility service. [Domain verification](../testing/domain-seams.md) records its actual tests and limits. It does not implement the complete launch-flow contracts or state machines listed below.
+
 ## Responsibility and trust
 
 The native mobile client renders application projections and submits intents. The application API must authenticate, authorize, recheck current state and own dating-domain transitions. A WordPress operator plugin will submit narrowly scoped staff requests to that same API; it will not become a second dating backend. HDE remains the protected owner of chart calculation and compatibility intelligence. App-owned birth-input and opaque chart-reference mapping must not become an HDE implementation.
