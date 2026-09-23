@@ -7,7 +7,7 @@ An iOS/Android Expo Router application with the P04.1 fixture account/onboarding
 Use Node **24.19.0** and npm **11.9.0** (both declared in `package.json`), then from this directory:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 npm run check
 npm run check:expo
 npm start

@@ -28,6 +28,7 @@ test('register, reject an expired verification, resend, and accept adapter verif
   await outcome(page, 'expired');
   await page.getByTestId('verify-submit').click();
   await expect(page.getByText(/synthetic challenge expired/i)).toBeVisible();
+  await expect(page.getByRole('alert')).toBeFocused();
   await expect(page.getByTestId('screen-verify')).toBeVisible();
   await outcome(page, 'success');
   await page.getByTestId('verify-resend').click();
@@ -147,6 +148,7 @@ test('restricted and policy scenarios deny discovery; explicit eligible preview 
 test('small-screen and enlarged-text account interaction remains labeled and reachable', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/account');
+  await expect(page.getByRole('heading')).toBeFocused();
   await expect(page.getByRole('textbox', { name: 'Fixture email address', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create fixture account', exact: true })).toBeVisible();
   await page.evaluate(() => {

@@ -17,8 +17,16 @@ The assignment's starting checkpoint is main
 is not remote Git lineage.
 
 Branch: `app-builder-1/p04-1-native-onboarding`. The separate source review is
-complete and material findings are corrected. **Pending publication evidence:**
-PR/candidate/tree, hosted rendered checks, exact-candidate CI, merge/main
+complete and material findings are corrected. [PR 5](https://github.com/amthorn78/glow-dating-app/pull/5)
+published implementation `d66e7c40ca48eeec4aac87a17b6c992ea78b2241`, tree
+`2944134e82655e82a0e7acf4ed4f6ad13a37ea31`. Its first
+[PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35892757779)
+passed API, HTTP smoke and container jobs but failed mobile TypeScript: ignored
+generated Expo web declarations had masked two unsupported Text `tabIndex` props
+locally. The correction sets DOM focusability only after a web HTMLElement check;
+native focus keeps the React Native API. TypeScript also passed with generated
+Expo declarations excluded. **Pending publication evidence:**
+corrected candidate, hosted rendered checks, exact-candidate CI, merge/main
 relationship, merged-main CI and AB1-R005/task closure. Every later candidate,
 including documentation changes, requires applicable Foundation jobs before merge.
 
@@ -96,6 +104,15 @@ Do not claim local image execution unless a Docker build and container check
 actually run. The hosted artifact job is the existing image-validation route;
 its runner-local image is not a published registry image or a Railway deployment.
 
+Read-only npm audit reported **14 moderate package findings (0 high/critical)**,
+representing two advisories in unchanged baseline dependency chains:
+[Router URL decoding](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr) and
+[Expo build-chain UUID](https://github.com/advisories/GHSA-w5hq-g745-h8pq).
+P04.1 adds Playwright packages and optional fsevents; none is flagged. These findings
+need scoped compatibility/reachability remediation before release; route guards
+are not claimed to neutralize the Router parsing issue. No forced audit fix,
+downgrade or unrelated dependency upgrade was applied.
+
 ## Separate database audit consumed as source
 
 The separately executed
@@ -104,9 +121,11 @@ was fetched for this work. It records a read-only audit executed on 23 September
 2026 and recommends the owner-preferred same logical database only after reviewed
 app schema/role isolation. It preserves the complete `hde` schema and
 `public.hde_body_graphs_current`, and rejects the legacy public tables as the new
-app's live store. Exact reconciliation of the 32 provisional app models remains
-open in that report. The legacy writer, backup/restore and separately authorized
-retirement prerequisites also remain unresolved there.
+app's live store. A fresh read also consumed the audit's subsequent 32-model
+reconciliation: all 32 map to new app-owned relations if retained, with no physical
+reuse of legacy or HDE tables. Final schema/search-path design, maintained-auth
+migration dependencies, roles, backup/restore and legacy-writer retirement still
+need their reviewed P11 work. No early DDL is authorized by that mapping.
 
 Consuming that saved report does not repeat its database connection or inherit
 its audit exception. P04.1 adds no database connection, migration, role/grant
@@ -124,7 +143,7 @@ N01 and R01 retain signed device, accessibility, secure storage, delivery and
 release acceptance. Browser rendering and iOS/Android JavaScript exports are
 distinct evidence and establish none of those native or live-provider results.
 
-A01/A07 supported HDE contracts/rights, A02 model/schema/role reconciliation,
+A01/A07 supported HDE contracts/rights, A02 final schema/role design and preflight,
 A04 provider/signing access, A05 launch policy and operating decisions, A06 disabled
 paid scope, and A08 chat authorization proof remain scoped dependencies. Profile
 and media implementation retain P04.2/P04.3. Do not start the next item until this

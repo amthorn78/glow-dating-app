@@ -19,8 +19,14 @@ export function Page({ children, testID }: PropsWithChildren<{ testID?: string }
 
 function focusText(node: Text | null) {
   if (!node) return;
-  if (Platform.OS === 'web') (node as unknown as { focus?: () => void }).focus?.();
-  else AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+  if (Platform.OS === 'web') {
+    // React Native Web exposes its host element through the ref. Keep DOM-only
+    // focus behavior here; native TextProps has no tabIndex in a clean checkout.
+    if (typeof HTMLElement !== 'undefined' && node instanceof HTMLElement) {
+      node.tabIndex = -1;
+      node.focus();
+    }
+  } else AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
 }
 
 export function ScreenTitle({ children }: { children: string }) {
@@ -29,7 +35,7 @@ export function ScreenTitle({ children }: { children: string }) {
     const frame = requestAnimationFrame(() => focusText(ref.current));
     return () => cancelAnimationFrame(frame);
   }, []));
-  return <Text ref={ref} style={styles.title} accessibilityRole="header" accessible tabIndex={-1}>{children}</Text>;
+  return <Text ref={ref} style={styles.title} accessibilityRole="header" accessible>{children}</Text>;
 }
 
 export function Feedback({ error, message, busy }: { error: string | null; message: string | null; busy: boolean }) {
@@ -42,7 +48,7 @@ export function Feedback({ error, message, busy }: { error: string | null; messa
   if (!error && !message && !busy) return null;
   return <View style={styles.notice} accessibilityLiveRegion="polite" testID="feedback">
     {busy && <Text style={styles.body} accessibilityRole="progressbar">Working on this fixture…</Text>}
-    {error && <Text ref={ref} accessible tabIndex={-1} accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {error && <Text ref={ref} accessible accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {!error && message && <Text style={styles.body}>{message}</Text>}
   </View>;
 }

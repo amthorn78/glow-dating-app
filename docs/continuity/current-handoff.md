@@ -138,8 +138,14 @@ Do not adopt the twelve legacy public tables as app storage. Retirement needs a
 separate authorized action after retiring the legacy startup writer, backup/restore
 proof and final dependency checks. Never reset the shared database or drop `public`.
 
-**Remaining audit follow-up:** exact 32-model-to-object reconciliation, app ownership,
-role/schema design, capacity and integration preflight before P11. This P04.1
+The audit's later GitHub read closed its original source-access gap: all **32
+provisional models map to new app-owned relations if retained**, with no physical
+reuse of legacy or HDE tables. EngineIdentity and CompatibilitySnapshot remain
+app-owned seams using opaque references/provenance. This is not final approval of
+32 physical tables; reviewed P11 design may consolidate or remove models.
+
+**Remaining audit follow-up:** final schema/search-path mechanism, maintained-auth
+migration dependencies, role design, capacity and integration preflight before P11. This P04.1
 execution consumed the report without executing SQL or inheriting its early
 catalog-connection exception. The current protected-Postgres-service guard remains;
 a future audited schema/role-aware guard is required, never a bypass declaring the
@@ -170,8 +176,8 @@ Next existing task after verified P04.1 closure is
 observed Planned, dependency P04.1. P04.3 private media remains Planned. Start the
 next task only through its next assignment, with current sources and task state.
 
-A01/A07 need supported HDE contracts/rights/throughput; A02 the remaining audited
-model/schema/role mapping; A04 provider/domain/signing access; A05 approved policies
+A01/A07 need supported HDE contracts/rights/throughput; A02 final reviewed
+schema/role design and preflight using the completed mapping; A04 provider/domain/signing access; A05 approved policies
 and operational owners; A06 paid scope (disabled); A08 provider chat authorization.
 P11 remains disposable PostgreSQL → staging → verified authorized app production
 integration. **DB01–DB13, PV01–PV08, PR01, N01 and R01** remain deferred. Fixture tests
