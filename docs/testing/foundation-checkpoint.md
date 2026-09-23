@@ -25,3 +25,7 @@ Commands for repeatable checks are in the root, API and mobile READMEs. API mypy
 The authenticated GitHub branch-protection form reports that rules are not enforced for this private repository under the current account arrangement. No ineffective rule, account upgrade or public visibility change was made. Follow the procedural scoped-PR and exact-candidate CI policy in `../operations/ci-and-branch-policy.md`.
 
 No physical device, emulator, native signing/build, accessibility acceptance, PostgreSQL behavior, real authentication, provider enforcement or live HDE result has been demonstrated. P02 production contracts and all later feature/integration requirements remain open. P11 owns final database integration. A01/A07 final HDE contract/throughput and A02 logical database ownership remain unresolved; no protected HDE or shared Railway resource was changed.
+
+## First hosted run and correction
+
+Candidate `75ca2c9ba00d8ef22d25f75100660b7f67859885` was published in [PR 1](https://github.com/amthorn78/glow-dating-app/pull/1). All 70 remote Git blob hashes matched the local publication snapshot. [Push run 35856098855](https://github.com/amthorn78/glow-dating-app/actions/runs/35856098855) passed API checks and API mobile smoke; Mobile checks failed at install because the GitHub Node 24.19.0 distribution bundled npm 11.17.0 while the tested project explicitly requires npm 11.9.0. The workflow now installs the declared npm 11.9.0 before `npm ci`; project engine enforcement was retained. A subsequent full run must establish acceptance.

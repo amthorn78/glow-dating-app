@@ -52,6 +52,8 @@ jobs:
         with:
           node-version: '24.19.0'
           package-manager-cache: false
+      - run: npm install --global npm@11.9.0
+        working-directory: ${{ github.workspace }}
       - run: npm ci --ignore-scripts
       - run: npm run check && npm run check:expo
       - run: npm run export:development
