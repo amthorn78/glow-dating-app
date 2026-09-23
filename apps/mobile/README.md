@@ -23,7 +23,7 @@ EXPO_PUBLIC_GLOW_API_BASE_URL=http://127.0.0.1:8000 npm start
 
 Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. Set no origin to use bundled fixtures. A configured API failure shows an error and a retry action; it never silently falls back to bundled data.
 
-`EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. Reopen/reload Metro after changing environment configuration.
+`EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. `app.config.ts` rejects every `EXPO_PUBLIC_*` name except `EXPO_PUBLIC_GLOW_MODE` and `EXPO_PUBLIC_GLOW_API_BASE_URL`, without echoing rejected names or values. This checks names, not the semantic contents of the allowed values; the API-origin validator still rejects credentials. Official [Expo environment guidance](https://docs.expo.dev/guides/environment-variables/) confirms these values are embedded in client code. Reopen/reload Metro after changing environment configuration.
 
 ## Implementation boundary
 

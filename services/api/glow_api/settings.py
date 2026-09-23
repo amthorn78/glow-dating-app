@@ -5,11 +5,15 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .configuration import ConfigurationError, load_configuration
+from .telemetry import LOGGING as LOGGING
+from .telemetry import Event, configure_logging, emit_event
 
+configure_logging()
 try:
     GLOW_CONFIGURATION = load_configuration(os.environ)
 except ConfigurationError as exc:
-    raise ImproperlyConfigured(str(exc)) from exc
+    emit_event(Event.CONFIGURATION_REJECTED, outcome="rejected", error_code="configuration_invalid")
+    raise ImproperlyConfigured(str(exc)) from None
 
 GLOW_ENV = GLOW_CONFIGURATION.environment
 # Public, development-only placeholder. There is no auth, session or signing
@@ -18,14 +22,13 @@ SECRET_KEY = "glow-isolated-fixture-only-not-a-production-secret"
 DEBUG = False
 # Android's emulator reaches the host loopback through this explicit alias.
 # This is a Host-header allowlist, not permission to bind to a public interface.
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "10.0.2.2"]
-if GLOW_ENV == "test":
-    ALLOWED_HOSTS.append("testserver")
+ALLOWED_HOSTS = list(GLOW_CONFIGURATION.allowed_hosts)
 
 ROOT_URLCONF = "glow_api.urls"
 WSGI_APPLICATION = "glow_api.wsgi.application"
 INSTALLED_APPS = ["rest_framework"]
 MIDDLEWARE = [
+    "glow_api.telemetry.CorrelationMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

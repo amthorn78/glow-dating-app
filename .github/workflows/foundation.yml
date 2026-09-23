@@ -84,3 +84,18 @@ jobs:
       - run: node scripts/smoke.mjs && node --test scripts/smoke.test.mjs
         env:
           GLOW_SMOKE_PYTHON: python
+
+  artifact:
+    name: API artifact checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build pinned API image
+        run: |
+          mkdir -p .work
+          docker build --platform linux/amd64 --tag glow-api:ci --iidfile .work/api-image-id .
+      - name: Inspect image, refuse unsafe modes, smoke loopback and terminate
+        run: python3 scripts/container_smoke.py glow-api:ci

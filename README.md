@@ -4,12 +4,15 @@ Private, isolated Expo/React Native and Django/DRF application foundation. App B
 
 Start with [the canon index](docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), [governing plan](docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), and [current handoff](docs/continuity/current-handoff.md).
 
-The current milestone is a database-independent development foundation with P02 contract, static data and provisional provider definitions. Production routes remain unimplemented. Synthetic preview data is never genuine Human Design compatibility. Live authentication, database persistence, providers, native signed builds and release acceptance require their planned evidence. The Glow HD Engine and shared legacy resources remain protected.
+The current milestone adds P03 operational preparation to the database-independent P02 contract, static data and provisional provider foundation. Production routes remain unimplemented. Synthetic preview data is never genuine Human Design compatibility. Live authentication, database persistence, providers, native signed builds and release acceptance require their planned evidence. The Glow HD Engine and shared legacy resources remain protected.
 
 ## Evidence and decisions
 
 - [Fresh foundation decision](docs/adr/0001-isolated-application-foundation.md)
 - [Resource ownership and protected boundary](docs/operations/resource-ownership.md)
+- [Same-project Railway placement](docs/adr/0002-same-project-application-services.md) and [environment/service map](docs/operations/environments.md)
+- [Build/deploy preparation](docs/operations/build-and-deploy.md), [configuration catalog](docs/operations/configuration.md), [telemetry/workers](docs/operations/observability-and-workers.md) and [provider boundaries](docs/operations/providers-and-webhooks.md)
+- [Secret, incident and recovery runbooks](docs/operations/operational-runbooks.md)
 - [Notion work register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e)
 - [Progress reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f)
 - [Versioned contracts and generation](packages/contracts/README.md)

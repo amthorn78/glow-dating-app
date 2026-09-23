@@ -1,5 +1,12 @@
 import type { ExpoConfig } from 'expo/config';
 
+// Expo embeds EXPO_PUBLIC_* values into client bundles. Only these reviewed
+// public configuration names are permitted; do not echo rejected names/values.
+const publicNames = new Set(['EXPO_PUBLIC_GLOW_MODE', 'EXPO_PUBLIC_GLOW_API_BASE_URL']);
+if (Object.keys(process.env).some((name) => name.startsWith('EXPO_PUBLIC_') && !publicNames.has(name))) {
+  throw new Error('Unreviewed public environment configuration is forbidden.');
+}
+
 if (
   process.env.GLOW_APP_ENV !== 'development' ||
   process.env.EXPO_PUBLIC_GLOW_MODE !== 'fixture' ||
