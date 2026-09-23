@@ -41,6 +41,15 @@ It now waits for the verification screen. The unit D reproduction is valid; no
 rendered D baseline defect is inferred from that timeout. The original assertions
 in `rendered/onboarding.spec.ts` and `onboarding.test.ts` remain unchanged.
 
+The first correction candidate **85e9e41849a00e3e7869278085e7e5c49c8f864d**
+[rendered run 35903343534](https://github.com/amthorn78/glow-dating-app/actions/runs/35903343534)
+passed 15/16 cases. The retained eligibility case passed the changed-date and
+no-edit Save assertions, then failed its final browser-Back destination assumption.
+The final test handles only the browser's initial `about:blank` by proving fresh
+private-route denial, or a retained app route by requiring the corrected date.
+An empty screen at an app URL is still a failure. Safe diagnostic messages record
+which branch executed; no populated private screenshot is captured.
+
 C's full-page direct URLs prove fresh signed-out route denial because reload
 clears this intentionally in-memory runtime. Expired-snapshot route denial is
 separately exercised by store tests; rendered expiry, subsequent sign-in and Back

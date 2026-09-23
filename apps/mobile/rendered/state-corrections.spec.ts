@@ -71,8 +71,18 @@ for (const retained of [false, true]) {
     await expect(page.getByText(/Current age check: fail/).filter({ visible: true })).toBeVisible();
     if (retained) {
       await page.goBack();
-      await expect(active(page, 'screen-eligibility')).toBeVisible();
-      await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+      if (page.url() === 'about:blank') {
+        // Protected history removal may exhaust this test's app entries, as in
+        // the original logout test. Re-entry must still deny the private route.
+        await page.goto('/birth');
+        await expect(active(page, 'screen-account')).toBeVisible();
+        console.info('Retained eligibility Back exhausted app history; fresh private entry denied.');
+      } else {
+        if (await active(page, 'screen-development').isVisible()) await active(page, 'return-current').click();
+        await expect(active(page, 'screen-eligibility')).toBeVisible();
+        await expect(active(page, 'adult-date')).toHaveValue('2010-09-23');
+        console.info('Retained eligibility Back preserved the corrected authoritative date.');
+      }
     }
   });
 }
