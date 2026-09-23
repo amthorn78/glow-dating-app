@@ -1,0 +1,50 @@
+{
+  "name": "@glow/mobile",
+  "main": "expo-router/entry",
+  "version": "0.1.0",
+  "dependencies": {
+    "expo": "57.0.24",
+    "expo-constants": "57.0.19",
+    "expo-font": "57.0.4",
+    "expo-linking": "57.0.10",
+    "expo-router": "57.0.22",
+    "expo-splash-screen": "57.0.9",
+    "expo-status-bar": "57.0.1",
+    "expo-system-ui": "57.0.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-gesture-handler": "2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.0",
+    "react-native-web": "0.21.0",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.6",
+    "@types/react": "19.2.2",
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1"
+  },
+  "scripts": {
+    "start": "node scripts/development.mjs start",
+    "android": "node scripts/development.mjs start --android",
+    "ios": "node scripts/development.mjs start --ios",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/**/*.test.ts scripts/*.test.mjs",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "check:expo": "node scripts/development.mjs install --check",
+    "export:development": "node scripts/development.mjs export --dev --platform all --output-dir .work/native-export"
+  },
+  "private": true,
+  "packageManager": "npm@11.9.0",
+  "engines": {
+    "node": "24.19.0",
+    "npm": "11.9.0"
+  }
+}
