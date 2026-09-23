@@ -9,7 +9,7 @@ import type { BirthOutcome } from '../onboarding/store';
 
 export default function BirthScreen() {
   const { state, store } = useOnboarding();
-  const { draft, setDraft } = useBirthDraft();
+  const { draft, setDraft, saveDraft } = useBirthDraft();
   const [outcome, setOutcome] = useState<BirthOutcome>('pending');
   const [showOutcomes, setShowOutcomes] = useState(false);
   function update(input: Partial<BirthInput>) {
@@ -19,7 +19,9 @@ export default function BirthScreen() {
     const generation = state.generation;
     const owner = store.getSnapshot();
     if (owner.generation !== generation || owner.account?.account_id !== state.account?.account_id) return;
-    await store.saveBirth(draft, outcome);
+    const request = saveDraft(outcome);
+    if (!request) return;
+    await request;
     const current = store.getSnapshot();
     if (current.generation === generation && !current.error && current.stage === 'remaining') router.replace('/remaining');
   }

@@ -40,7 +40,7 @@ export interface OnboardingAdapter {
   cancelPending(): void;
   discardBirth(context: AccountContext): void;
   invalidate(): void;
-  seed(account: AccountAccess, generation: number): void;
+  seed(account: AccountAccess | null, generation: number): void;
 }
 
 type Challenge = { generation: number; accountId: string | null; expires: number; used: boolean };
@@ -55,6 +55,8 @@ export function createFixtureAdapter(options: {
   const pause = options.pause ?? (() => Promise.resolve());
   let epoch = 0;
   let session: Session | null = null;
+  // Scenario restrictions outlive session invalidation, but only in this fixture instance.
+  let restrictedFixture: AccountAccess | null = null;
   let verification: Challenge | null = null;
   let recovery: Challenge | null = null;
   const birthReceipts = new Map<string, { intent: string; result: OwnBirthInput }>();
@@ -92,9 +94,12 @@ export function createFixtureAdapter(options: {
     return session;
   };
   const consume = (value: Challenge | null, generation: number, accountId: string | null, outcome: FixtureOutcome) => {
-    outcomeCheck(outcome);
     if (!value || value.used || value.generation !== generation || value.accountId !== accountId) throw new FixtureFailure('invalid');
-    if (!Number.isFinite(now()) || now() >= value.expires) throw new FixtureFailure('expired');
+    if (outcome === 'expired' || !Number.isFinite(now()) || now() >= value.expires) {
+      value.expires = -Infinity;
+      throw new FixtureFailure('expired');
+    }
+    outcomeCheck(outcome);
     value.used = true;
   };
   const adapter: OnboardingAdapter = {
@@ -103,18 +108,22 @@ export function createFixtureAdapter(options: {
       await delay();
       outcomeCheck(outcome);
       if (password !== FIXTURE_PASSWORD || !/^(alex|sam)@example\.invalid$/.test(email)) throw new FixtureFailure('invalid');
-      const account: AccountAccess = { kind: 'account_access', account_id: email.startsWith('alex@') ? FIXTURE_ACCOUNT_IDS.alex : FIXTURE_ACCOUNT_IDS.sam,
-        version: 1, state: 'unverified', session_state: 'valid' };
+      const accountId = email.startsWith('alex@') ? FIXTURE_ACCOUNT_IDS.alex : FIXTURE_ACCOUNT_IDS.sam;
+      const restriction = restrictedFixture?.account_id === accountId ? restrictedFixture : null;
+      const account: AccountAccess = { kind: 'account_access', account_id: accountId,
+        version: restriction ? restriction.version + 1 : 1, state: restriction?.state ?? 'unverified', session_state: 'valid' };
       unacceptedBirth = null; birthReceipts.clear();
       session = { account, generation, birth: null };
-      verification = challenge(generation, account.account_id);
+      verification = account.state === 'unverified' ? challenge(generation, account.account_id) : null;
       recovery = null;
       return clone(account);
     },
     async verify(context, outcome) {
+      const pendingChallenge = verification;
       await delay();
       const current = requireSession(context);
-      consume(verification, context.generation, context.accountId, outcome);
+      if (pendingChallenge !== verification) throw new FixtureFailure('stale');
+      consume(pendingChallenge, context.generation, context.accountId, outcome);
       if (current.account.state !== 'unverified') throw new FixtureFailure('invalid');
       current.account = { ...current.account, version: current.account.version + 1, state: 'active' };
       return clone(current.account);
@@ -132,9 +141,11 @@ export function createFixtureAdapter(options: {
       recovery = challenge(generation, null);
     },
     async resetPassword(password, generation, outcome) {
+      const pendingChallenge = recovery;
       await delay();
       if (password !== FIXTURE_PASSWORD) throw new FixtureFailure('invalid');
-      consume(recovery, generation, null, outcome);
+      if (pendingChallenge !== recovery) throw new FixtureFailure('stale');
+      consume(pendingChallenge, generation, null, outcome);
       unacceptedBirth = null; birthReceipts.clear();
       session = null; verification = null;
       // Recovery never creates an authenticated session. A fresh sign-in is required.
@@ -184,6 +195,8 @@ export function createFixtureAdapter(options: {
     invalidate() { epoch += 1; unacceptedBirth = null; session = null; verification = null; recovery = null; birthReceipts.clear(); },
     seed(account, generation) {
       adapter.invalidate();
+      restrictedFixture = account && ['suspended', 'deletion_pending', 'deleted'].includes(account.state) ? clone(account) : null;
+      if (!account) return;
       session = { account: clone(account), generation, birth: null };
       verification = account.state === 'unverified' ? challenge(generation, account.account_id) : null;
     },

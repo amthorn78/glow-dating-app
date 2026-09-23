@@ -7,7 +7,88 @@ behavior, and candidate/publication evidence. P04.2/P04.3 and P11 are not comple
 by this work. See [fixture architecture](../architecture/onboarding-fixtures.md)
 and [deferred acceptance](p11-deferred-acceptance.md).
 
-## Publication and evidence identity
+## Correction and revalidation — AP1-P04.1-002
+
+Starting main **c544b654e0af3e75f31b579f72e5a02e5e577e84**, tree
+**4636d88599474309cf9b2533e1fd48415c427df0**. All 168 source blobs/modes matched
+that pinned remote tree; no open PR or later main commit existed at startup.
+[PR 6](https://github.com/amthorn78/glow-dating-app/pull/6), branch
+`app-builder-1/p04-1-state-corrections`, carries the focused repair. Its real
+remote ancestry starts at that main, never at the synthetic local diff baseline.
+
+### Reproduction and review dispositions
+
+The tests-only commit **06ceef6f04e517ce2d5c2e8cb49c8b8c0704a29c** preserves all
+starting implementation bytes. Hosted [PR run 35902177478](https://github.com/amthorn78/glow-dating-app/actions/runs/35902177478)
+[mobile job 107320869687](https://github.com/amthorn78/glow-dating-app/actions/runs/35902177478/job/107320869687)
+executed 15 rendered cases: eight passed, seven failed. All seven original cases
+passed, as did ordinary underage return. The new failures are distinguished below.
+
+| Finding / PR 5 thread | Actual starting evidence | Correction / regression |
+|---|---|---|
+| A — 4085129530, stale birth draft | Both accepted and unsaved rendered drafts still showed the discarded 1990 date after eligibility changed to 1992 | Monotonic birth-draft revision resets obsolete facts and rejects captured edit/submit callbacks. Tests cover both paths, ABA date changes, accepted replacements and deliberately retained unsaved edits |
+| B — 4085471560, retained eligibility | Ordinary return passed. The retained variant proved one hidden eligibility field existed before submitting an underage date; return showed the old adult date | Each form field reconciles its own authoritative source before children render. Live revision checks guard callbacks. Ordinary/retained/no-edit Save, consent and independent local edits remain rendered cases |
+| C — 4085210603, expired restriction | Both suspended and deletion-pending rendered cases failed to reach account entry; unit regressions also failed | Session validity takes precedence. Private state/checkpoints clear; seeded account restriction survives sign-in/recovery without scenario reselection. Explicit scenario replacement is separate |
+| D — 4085535817, simulated challenge expiry | Baseline unit test changed Expired → Success and incorrectly reached eligibility; elapsed-clock tests are separate | The matching challenge is terminally expired, and resend creates another. Wrong contexts, retryable errors and delayed replacement-challenge races have focused tests |
+| Recovery — 4085383812 | Original rendered rate-limit → Success case passed without re-entering email | Already corrected before this repair. Original test/provider navigation structure preserved |
+
+All five PR 5 threads were read despite their outdated/unresolved flags. The first
+consent test assumed browser Back selected eligibility; that assertion did not
+establish a consent defect. It now exercises all retained controls and the explicit
+current-step return. The first new D rendered test opened the account outcome
+panel before verification navigation completed; that timeout was a harness issue.
+It now waits for the verification screen. The unit D reproduction is valid; no
+rendered D baseline defect is inferred from that timeout. The original assertions
+in `rendered/onboarding.spec.ts` and `onboarding.test.ts` remain unchanged.
+
+The first correction candidate **85e9e41849a00e3e7869278085e7e5c49c8f864d**
+[rendered run 35903343534](https://github.com/amthorn78/glow-dating-app/actions/runs/35903343534)
+passed 15/16 cases. The retained eligibility case passed the changed-date and
+no-edit Save assertions, then failed its final browser-Back destination assumption.
+The final test handles only the browser's initial `about:blank` by proving fresh
+private-route denial, or a retained app route by requiring the corrected date.
+An empty screen at an app URL is still a failure. Safe diagnostic messages record
+which branch executed; no populated private screenshot is captured.
+
+C's full-page direct URLs prove fresh signed-out route denial because reload
+clears this intentionally in-memory runtime. Expired-snapshot route denial is
+separately exercised by store tests; rendered expiry, subsequent sign-in and Back
+are checked before any optional reload. No persisted-state claim is made.
+
+### Candidate checks and remaining publication gate
+
+Linux x86_64/glibc 2.39, Python 3.12.14, Node 24.19.0, npm 11.9.0; package pins and
+locks unchanged. Required local checks: locked mobile/API/contracts installs,
+mobile TypeScript/ESLint and **58 tests** (39 baseline + 19 new), offline Expo
+check, iOS/Android development JS exports; **147 API tests**, Ruff/format/mypy,
+**36 Python contract methods**, deterministic generation and **199 JS cases**;
+static **32-model/two-migration agreement** without SQL; actual loopback HTTP
+200/503/200, rejected writes 405 and the bounded-startup regression. Counts overlap.
+The unchanged API/contracts/static/HTTP batch passed at 18:27:22–18:27:32 UTC.
+
+C/D's first local baseline run had 4/13 passing; nine failures demonstrated the
+state/challenge defects. Two additional delayed replacement-challenge tests failed
+on the intermediate correction before exact challenge identity was captured.
+The final C/D suite passes 15/15; birth-draft callback regressions pass 4/4.
+Independent A/C/D review ran 46/46 onboarding-subset tests and inspected B's
+per-field/stale-callback reconciliation. No broader production audit is claimed.
+
+Local Chromium is absent and standard download returned HTML instead of a browser
+archive. Actual rendering uses the existing hosted Foundation Mobile job; JS
+exports do not substitute. Docker is unavailable locally; existing hosted API
+artifact checks own container proof. Only the original empty-account-form image
+is uploaded, with no populated private inputs, traces or credential screenshots.
+The final candidate, corrected rendered outcomes, complete diff/review disposition,
+checked merge, matching tree and merged-main CI are recorded in **AB1-R006** in the
+[shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f). Every
+candidate, including documentation, must pass the four existing Foundation jobs.
+
+No API, contracts, dependency/lock, workflow, DB/migration, HDE/provider or Railway
+change is included. Both inherited moderate advisory chains remain release
+follow-up. Real authentication/persistence, native/device/signing, live providers,
+P11 and public release remain unproved. P04.2/P04.3 remain unstarted.
+
+## Prior publication and evidence identity
 
 The assignment's starting checkpoint is main
 `bd701ebfede1630ba162862e053a0a55daea9c9b`, tree
@@ -16,8 +97,8 @@ The assignment's starting checkpoint is main
 144 source blobs matched the remote tree. The acquired snapshot's local Git history
 is not remote Git lineage.
 
-Branch: `app-builder-1/p04-1-native-onboarding`. The separate source review is
-complete and material findings are corrected. [PR 5](https://github.com/amthorn78/glow-dating-app/pull/5)
+Branch: `app-builder-1/p04-1-native-onboarding`. The historical implementation review corrected the findings then exercised.
+AP1-ACK005 subsequently reopened four paths; their current dispositions are below. [PR 5](https://github.com/amthorn78/glow-dating-app/pull/5)
 has an accepted implementation at **`5fa82a39f595a61d0a13060d06c1ea523e698ded`**,
 tree **`00b0eaae9251e7a7aee37c4c7e435f27d089ef51`**. All four Foundation jobs passed
 on its [PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35897572548)
