@@ -53,15 +53,17 @@ this slice. Hosted Foundation checks are required again on the final candidate.
 
 ## Implemented behavior and local checks
 
-`npm run check` passes TypeScript, ESLint and **113 mobile tests**: the original
-58 remain unchanged, with 53 profile policy/adapter/store cases and two new route
+`npm run check` passes TypeScript, ESLint and **116 mobile tests**: the original
+58 remain unchanged, with 56 profile policy/adapter/store cases and two new route
 cases. The complete local result includes the final explicit UI-snapshot allowlist
-regression. Both iOS and Android development JavaScript bundles were produced by
+regression and the later malformed-read/removal regressions. Both iOS and Android
+development JavaScript bundles were produced locally for the initial implementation by
 `EXPO_OFFLINE=1 npm run export:development`; their metadata and nonempty files
 were inspected. Hosted checks must validate the published candidate independently.
 
 The new rendered file contains **14 cases**, alongside all **16 unchanged prior
-cases**. Test discovery and lint pass; no local browser pass is claimed. The
+cases**. All **30 pass in hosted Chromium** on the reviewed test correction below;
+no local browser pass is claimed. The
 rendered cases exercise ordinary incomplete editing, blank biography, cancel,
 navigation/resume, retries and conflict refresh, malformed-response rollback,
 retained profile/preferences sources, pause/resume and current evidence denial,
@@ -71,7 +73,7 @@ links and the 320 px doubled-text empty form.
 | Risk | Executable evidence |
 |---|---|
 | Unicode, closed edits and preference policy | `profiles/policy.test.ts`: scalar limits, combining marks, lone surrogates, empty versus whitespace-only biography, duplicate dimensions/options, unknown vocabulary and transport ceilings |
-| Owner/object/version/idempotency and delayed work | `profiles/fixture-adapter.test.ts`: creation versus update, stale/foreign context, changed-payload conflict, repeated receipts, concurrent staging, malformed response rollback and immutable request/context binding |
+| Owner/object/version/idempotency and delayed work | `profiles/fixture-adapter.test.ts`: creation versus update, stale/foreign context, changed-payload conflict, repeated receipts, concurrent staging, malformed response rollback, immutable request/context binding, suspension denial and one-time system removal |
 | Drafts, revocation and safe adoption | `profiles/store.test.ts`: independent saved/draft values, retained source revisions, cancel/retry, immediate pause, delayed resume, exact consent revision, account-switch observers, checkpoints and candidate allowlists |
 | Navigation and actual screens | `onboarding/profile-routes.test.ts` and `rendered/profile-preferences.spec.ts`; the original P04.1 test files retain their behavior assertions |
 
@@ -97,6 +99,80 @@ corrections, not inherited P04.1 product defects. No original regression asserti
 was weakened. Final publication, any hosted findings, final delta review and merged
 main evidence are recorded separately when they occur.
 
+## Published review and rendered corrections
+
+[PR 7](https://github.com/amthorn78/glow-dating-app/pull/7) initially published
+implementation **0c908cb5abb286e69e8f5acbacb522dd68b373ff**, tree
+**001ff68fbf02b68b44376ba3659fec367af91396**, directly on starting main.
+The first [PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35919615903)
+passed the three API jobs but failed Mobile checks with **24/30** rendered cases
+passing. The first [push run](https://github.com/amthorn78/glow-dating-app/actions/runs/35919615536)
+passed the three API jobs and **25/30** rendered cases. These failures remain
+historical evidence; they are not accepted final-candidate checks.
+
+Corrective commit **25e274f4384b88508baeadb9e00d8667a8a7b538**, tree
+**ae6fa4f4251abfe9ba3af09a11754f7c752680c5**, addresses:
+
+- Four new rendered cases assumed a fixed Back destination after protected
+  discovery history was pruned. They now assert changed data in the original
+  hidden form/preview before explicit in-app return. Fresh same-session history
+  entries then prove Back reaches the current owner profile with disclosure blocked
+  without reviving discovery. No full reload or absent-page assertion substitutes
+  for retained-state proof.
+- The second pause in the media-loss case was not awaited before a development
+  authority change cancelled pending work. The test waits for accepted pause,
+  removes media evidence, and requires a failed-resume alert with paused state.
+- The inherited unsaved-birth case failed only in the first PR run. Entry routing
+  now uses one coordinated onboarding subscription instead of independently
+  subscribing to profile emissions during onboarding synchronization. This
+  removes a mixed-snapshot redirect risk; the exact isolated browser failure was
+  not independently reproduced or uniquely attributed to it. All original
+  rendered assertions remain unchanged.
+- Automated PR review [comment 4087307825](https://github.com/amthorn78/glow-dating-app/pull/7#discussion_r4087307825)
+  identified that malformed reloads could succeed before profile creation.
+  Invalid-response injection now fails validation with empty, preferences-only,
+  profile-only and both-record states. Two regressions failed before correction,
+  then passed: accepted state and both deliberate drafts survive, and valid retry
+  succeeds.
+
+The corrective [PR run](https://github.com/amthorn78/glow-dating-app/actions/runs/35920747363)
+and [push run](https://github.com/amthorn78/glow-dating-app/actions/runs/35920741509)
+each passed the three API jobs and **26/30** rendered cases, including all **16
+original cases**. Four new assertions still failed. Three incorrectly expected
+`incomplete` after an authority-only policy/media/reciprocal change; the current
+state machine retains saved visibility while effective disclosure is `blocked`.
+The pause wait matched the word "paused" inside the edited biography, so did not
+actually wait for accepted pause. Subsequent assertions use exact
+`Visibility: paused` / `Visibility: blocked` labels and preserve the hidden-state,
+failed-resume and Back checks. No product behavior is relaxed for these cases.
+This test-only correction is **0da919e6a704ab14190def24da9cfe3a05d40356**, tree
+**d219a2dd27609f8169c42b2dbc2245906bf16dea**, parented on the first corrective
+commit. The dedicated visibility control prevents biography text from satisfying
+state assertions; an independent review checked it against the current adapter
+and presentation rules. Lint and discovery still pass with **14 new cases**.
+Automated review of the first corrective commit also reported the blocked-label
+mismatch in [comment 4087393220](https://github.com/amthorn78/glow-dating-app/pull/7#discussion_r4087393220).
+The same test-only correction disposes that finding; it does not change F04/F06.
+
+An independent peer-agent reviewed the repair delta, reran the two malformed-read
+regressions and found no material issue. The added terminal-removal regression
+was also reviewed. Full local mobile checks pass **116 tests**, TypeScript and
+ESLint.
+
+On **0da919e6a704ab14190def24da9cfe3a05d40356**, all four Foundation jobs pass in
+[PR run 35921543566](https://github.com/amthorn78/glow-dating-app/actions/runs/35921543566)
+and [push run 35921536996](https://github.com/amthorn78/glow-dating-app/actions/runs/35921536996).
+The Mobile logs confirm **116 unit tests**, both iOS/Android development JS exports
+and **30/30 rendered cases**, including all prior corrections and all new retained
+projection/pause cases. Container evidence is supplied by each successful hosted
+API artifact job. Both material inline review findings are resolved after the
+source/regression correction; the outdated flags alone are not their disposition.
+
+The final documentation delta is reviewed separately. Its containing candidate
+must pass the same four jobs before merge, followed by merged-main verification.
+The external closure report owns those final candidate/main hashes and run links;
+the successful runs above cover the code/test correction, not this later document.
+
 ## Rendering and artifact environment
 
 Local Chromium was absent. The standard `npx playwright install chromium`
@@ -110,6 +186,12 @@ Railway, migration or production connection step. The evidence-upload allowlist
 adds only the empty profile form to the existing empty account form. Automatic
 failure screenshots and traces stay disabled; populated private input is not
 captured. Any visual-inspection claim requires the actual artifact to be opened.
+
+Both allowlisted images from first PR artifact **10776712899** were downloaded
+and opened. Their sampled **320 × 568** scroll viewports show legible doubled text,
+wrapped labels and controls without horizontal clipping. They are partial
+scrollports, not images of the complete forms; rendered geometry/reachability
+assertions cover the other controls. Only empty fictional forms were captured.
 
 ## Remaining proof boundary
 

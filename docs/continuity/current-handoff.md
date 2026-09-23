@@ -18,8 +18,20 @@ verified main **4f2708d476d2096cdf7ef8e6062803905aca5915**, tree
 main, open PRs, branch and worktree before continuing; this starting identity is
 not permission to replace later work.
 
-The current working document records P04.2 implementation scope, not successful
-publication. Read [P04.2 evidence](../testing/p04-2-checkpoint.md), the actual
+Implementation was published as **0c908cb5abb286e69e8f5acbacb522dd68b373ff** in
+[PR 7](https://github.com/amthorn78/glow-dating-app/pull/7). Corrective commit
+**25e274f4384b88508baeadb9e00d8667a8a7b538** addresses hosted navigation-test
+findings, a coordinated entry-routing subscription and the automated review's
+malformed-reload finding. Test-only correction
+**0da919e6a704ab14190def24da9cfe3a05d40356**, tree
+**d219a2dd27609f8169c42b2dbc2245906bf16dea**, makes rendered assertions use exact
+effective-visibility labels. All four jobs pass in
+[PR run 35921543566](https://github.com/amthorn78/glow-dating-app/actions/runs/35921543566)
+and [push run 35921536996](https://github.com/amthorn78/glow-dating-app/actions/runs/35921536996),
+including **116 mobile tests and 30 rendered Chromium cases**. Earlier failed
+attempts and their corrections remain documented. These results cover the code/test
+correction; the later containing documentation candidate requires its own checks.
+Read [P04.2 evidence](../testing/p04-2-checkpoint.md), the actual
 branch/PR checks and the latest Notion records before claiming completion. The
 containing candidate, including final documentation, must pass all four Foundation
 jobs. The external closure report **AB1-R007 if unused** owns final implementation,
