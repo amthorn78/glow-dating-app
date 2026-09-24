@@ -217,14 +217,15 @@ test('late or failed approval cannot clear a newer delivery revocation with a re
   assert.equal(subject.approvedCollection().items.length, 0);
 });
 
-test('photo approval cannot supply chart, moderation or reciprocal preference evidence', async () => {
+test('photo approval cannot supply chart, moderation or pair eligibility', async () => {
   const subject = createFixtureOnboardingStore(options);
   await subject.account('register', 'alex@example.invalid', FIXTURE_PASSWORD); await subject.verify();
   subject.setAdultDate('1990-06-15'); subject.setConsent(true);
   subject.profiles.editProfileDraft({ display_name: 'Fiction', summary: 'Synthetic biography' }, subject.profiles.getSnapshot().profileDraftRevision);
   await subject.profiles.saveProfile(subject.profiles.getSnapshot().profileDraftRevision);
   await approve(subject.media);
-  for (const missing of ['A resolved chart', 'Profile review', 'Current reciprocal preference evidence']) assert.ok(subject.profiles.getSnapshot().requirements.includes(missing));
+  for (const missing of ['A resolved chart', 'Profile review']) assert.ok(subject.profiles.getSnapshot().requirements.includes(missing));
+  assert.equal(subject.profiles.candidatePreview(), null);
   assert.equal(subject.profiles.getSnapshot().canDiscover, false);
 });
 

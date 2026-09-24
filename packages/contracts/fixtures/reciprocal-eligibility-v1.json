@@ -1,0 +1,1903 @@
+{
+  "version": "reciprocal-eligibility-v1",
+  "description": "Canonical development conformance cases. Apply each shallow source patch to base; expected unspecified predicates and directions are pass/clear. No client or production input contract.",
+  "base": {
+    "clock": "2026-09-23",
+    "policy": {
+      "version": "development-eligibility-1",
+      "consent_version": "development-consent-1",
+      "preference_version": "development-preferences-1",
+      "media_version": "development-media-1",
+      "minimum_age": 18,
+      "leap_birthday": "march_1",
+      "effective_from": "2026-01-01",
+      "effective_until": null,
+      "readiness": "resolved"
+    },
+    "viewer": {
+      "account_id": "viewer",
+      "generation": 1,
+      "source_id": "source-viewer-1",
+      "profile_id": "profile-viewer",
+      "birth_date": "1990-06-15",
+      "account_state": "active",
+      "session_state": "valid",
+      "verified": true,
+      "consent_state": "accepted",
+      "consent_version": "development-consent-1",
+      "display_name": "Fictional viewer",
+      "summary": "Fictional participant.",
+      "visibility": "visible",
+      "moderation": "approved",
+      "chart_state": "resolved",
+      "attribute": "demo_a",
+      "preference_dimension": "demo_connection",
+      "preference_version": "development-preferences-1",
+      "accepted_options": [
+        "demo_b"
+      ],
+      "approved_media": [
+        {
+          "asset_id": "asset-viewer",
+          "owner_id": "viewer",
+          "profile_id": "profile-viewer",
+          "generation": 1,
+          "state": "approved",
+          "policy_version": "development-media-1",
+          "delivery_ref": "fixture-approved-viewer"
+        }
+      ]
+    },
+    "candidate": {
+      "account_id": "candidate",
+      "generation": 1,
+      "source_id": "source-candidate-1",
+      "profile_id": "profile-candidate",
+      "birth_date": "1990-06-15",
+      "account_state": "active",
+      "session_state": "valid",
+      "verified": true,
+      "consent_state": "accepted",
+      "consent_version": "development-consent-1",
+      "display_name": "Fictional candidate",
+      "summary": "Fictional participant.",
+      "visibility": "visible",
+      "moderation": "approved",
+      "chart_state": "resolved",
+      "attribute": "demo_b",
+      "preference_dimension": "demo_connection",
+      "preference_version": "development-preferences-1",
+      "accepted_options": [
+        "demo_a"
+      ],
+      "approved_media": [
+        {
+          "asset_id": "asset-candidate",
+          "owner_id": "candidate",
+          "profile_id": "profile-candidate",
+          "generation": 1,
+          "state": "approved",
+          "policy_version": "development-media-1",
+          "delivery_ref": "fixture-approved-candidate"
+        }
+      ]
+    },
+    "blocks": {
+      "viewer": "clear",
+      "candidate": "clear"
+    }
+  },
+  "cases": [
+    {
+      "id": "ready-opposite-attributes-reciprocal",
+      "expected": {
+        "state": "ready"
+      }
+    },
+    {
+      "id": "viewer-adult-fail",
+      "viewer": {
+        "birth_date": "2010-06-15"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-adult-unknown",
+      "viewer": {
+        "birth_date": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-consent-fail",
+      "viewer": {
+        "consent_state": "withdrawn"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "consent": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-consent-unknown",
+      "viewer": {
+        "consent_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "consent": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-verified-fail",
+      "viewer": {
+        "verified": false
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "verified": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-verified-unknown",
+      "viewer": {
+        "verified": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "verified": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-active-fail",
+      "viewer": {
+        "account_state": "inactive"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-active-unknown",
+      "viewer": {
+        "account_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-complete-fail",
+      "viewer": {
+        "summary": ""
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-complete-unknown",
+      "viewer": {
+        "summary": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-visible-fail",
+      "viewer": {
+        "visibility": "paused"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "visible": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-visible-unknown",
+      "viewer": {
+        "visibility": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "visible": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-moderation-fail",
+      "viewer": {
+        "moderation": "restricted"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "moderation": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-moderation-unknown",
+      "viewer": {
+        "moderation": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "moderation": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-account-suspended",
+      "viewer": {
+        "account_state": "suspended"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-account-deletion_pending",
+      "viewer": {
+        "account_state": "deletion_pending"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-account-deleted",
+      "viewer": {
+        "account_state": "deleted"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-account-unverified",
+      "viewer": {
+        "account_state": "unverified"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-session-expired",
+      "viewer": {
+        "session_state": "expired"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-session-revoked",
+      "viewer": {
+        "session_state": "revoked"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-session-restricted",
+      "viewer": {
+        "session_state": "restricted"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-session-none",
+      "viewer": {
+        "session_state": "none"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-session-missing",
+      "viewer": {
+        "session_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "active": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-stale-consent",
+      "viewer": {
+        "consent_version": "development-consent-old"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "consent": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-missing-consent-version",
+      "viewer": {
+        "consent_version": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "consent": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-last-photo-loss",
+      "viewer": {
+        "approved_media": []
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-unavailable",
+      "viewer": {
+        "approved_media": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-chart-pending",
+      "viewer": {
+        "chart_state": "pending"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-missing-profile",
+      "viewer": {
+        "profile_id": null,
+        "approved_media": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-missing-participant",
+      "missing_participant": "viewer",
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "viewer-media-wrong-owner_id",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "stranger",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-wrong-profile_id",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "other-profile",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-wrong-generation",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 2,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-wrong-asset_id",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-state-removed",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "removed",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-state-restricted",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "restricted",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-policy_version-old",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "old",
+            "delivery_ref": "fixture-approved-viewer"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "viewer-media-delivery_ref-None",
+      "viewer": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "viewer",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": null
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-adult-fail",
+      "candidate": {
+        "birth_date": "2010-06-15"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "adult": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-adult-unknown",
+      "candidate": {
+        "birth_date": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-consent-fail",
+      "candidate": {
+        "consent_state": "withdrawn"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "consent": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-consent-unknown",
+      "candidate": {
+        "consent_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "consent": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-verified-fail",
+      "candidate": {
+        "verified": false
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "verified": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-verified-unknown",
+      "candidate": {
+        "verified": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "verified": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-active-fail",
+      "candidate": {
+        "account_state": "inactive"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-active-unknown",
+      "candidate": {
+        "account_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-complete-fail",
+      "candidate": {
+        "summary": ""
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-complete-unknown",
+      "candidate": {
+        "summary": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-visible-fail",
+      "candidate": {
+        "visibility": "paused"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "visible": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-visible-unknown",
+      "candidate": {
+        "visibility": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "visible": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-moderation-fail",
+      "candidate": {
+        "moderation": "restricted"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "moderation": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-moderation-unknown",
+      "candidate": {
+        "moderation": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "moderation": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-account-suspended",
+      "candidate": {
+        "account_state": "suspended"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-account-deletion_pending",
+      "candidate": {
+        "account_state": "deletion_pending"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-account-deleted",
+      "candidate": {
+        "account_state": "deleted"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-account-unverified",
+      "candidate": {
+        "account_state": "unverified"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-session-expired",
+      "candidate": {
+        "session_state": "expired"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-session-revoked",
+      "candidate": {
+        "session_state": "revoked"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-session-restricted",
+      "candidate": {
+        "session_state": "restricted"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-session-none",
+      "candidate": {
+        "session_state": "none"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-session-missing",
+      "candidate": {
+        "session_state": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "active": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-stale-consent",
+      "candidate": {
+        "consent_version": "development-consent-old"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "consent": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-missing-consent-version",
+      "candidate": {
+        "consent_version": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "consent": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-last-photo-loss",
+      "candidate": {
+        "approved_media": []
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-unavailable",
+      "candidate": {
+        "approved_media": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-chart-pending",
+      "candidate": {
+        "chart_state": "pending"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-missing-profile",
+      "candidate": {
+        "profile_id": null,
+        "approved_media": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-missing-participant",
+      "missing_participant": "candidate",
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "candidate-media-wrong-owner_id",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "stranger",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-wrong-profile_id",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "other-profile",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-wrong-generation",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 2,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-wrong-asset_id",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-state-removed",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "removed",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-state-restricted",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "restricted",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-policy_version-old",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "old",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "candidate-media-delivery_ref-None",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": null
+          }
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate": {
+          "complete": "unknown"
+        }
+      }
+    },
+    {
+      "id": "preferences-true-true",
+      "viewer": {
+        "accepted_options": [
+          "demo_b"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "expected": {
+        "state": "ready",
+        "viewer_accepts_candidate": "pass",
+        "candidate_accepts_viewer": "pass"
+      }
+    },
+    {
+      "id": "preferences-true-false",
+      "viewer": {
+        "accepted_options": [
+          "demo_b"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_b"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "pass",
+        "candidate_accepts_viewer": "fail"
+      }
+    },
+    {
+      "id": "preferences-false-true",
+      "viewer": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "fail",
+        "candidate_accepts_viewer": "pass"
+      }
+    },
+    {
+      "id": "preferences-false-false",
+      "viewer": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_b"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "fail",
+        "candidate_accepts_viewer": "fail"
+      }
+    },
+    {
+      "id": "viewer-preference-no-dimension",
+      "viewer": {
+        "preference_dimension": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-wrong-dimension",
+      "viewer": {
+        "preference_dimension": "other"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-no-set",
+      "viewer": {
+        "accepted_options": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-empty-set",
+      "viewer": {
+        "accepted_options": []
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "fail"
+      }
+    },
+    {
+      "id": "viewer-preference-unknown-option",
+      "viewer": {
+        "accepted_options": [
+          "demo_c"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-wildcard-unsupported",
+      "viewer": {
+        "accepted_options": [
+          "*"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-duplicate-option",
+      "viewer": {
+        "accepted_options": [
+          "demo_a",
+          "demo_a"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-preference-unsupported-version",
+      "viewer": {
+        "preference_version": "future"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-target-attribute-unavailable",
+      "candidate": {
+        "attribute": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-target-attribute-unsupported",
+      "candidate": {
+        "attribute": "demo_c"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-block-blocked",
+      "blocks": {
+        "viewer": "blocked"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_blocks_candidate": "blocked"
+      }
+    },
+    {
+      "id": "viewer-block-unknown",
+      "blocks": {
+        "viewer": "unknown"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_blocks_candidate": "unknown"
+      }
+    },
+    {
+      "id": "viewer-block-None",
+      "blocks": {
+        "viewer": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_blocks_candidate": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-no-dimension",
+      "candidate": {
+        "preference_dimension": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-wrong-dimension",
+      "candidate": {
+        "preference_dimension": "other"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-no-set",
+      "candidate": {
+        "accepted_options": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-empty-set",
+      "candidate": {
+        "accepted_options": []
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "fail"
+      }
+    },
+    {
+      "id": "candidate-preference-unknown-option",
+      "candidate": {
+        "accepted_options": [
+          "demo_c"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-wildcard-unsupported",
+      "candidate": {
+        "accepted_options": [
+          "*"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-duplicate-option",
+      "candidate": {
+        "accepted_options": [
+          "demo_a",
+          "demo_a"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-preference-unsupported-version",
+      "candidate": {
+        "preference_version": "future"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-target-attribute-unavailable",
+      "viewer": {
+        "attribute": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-target-attribute-unsupported",
+      "viewer": {
+        "attribute": "demo_c"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-block-blocked",
+      "blocks": {
+        "candidate": "blocked"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_blocks_viewer": "blocked"
+      }
+    },
+    {
+      "id": "candidate-block-unknown",
+      "blocks": {
+        "candidate": "unknown"
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_blocks_viewer": "unknown"
+      }
+    },
+    {
+      "id": "candidate-block-None",
+      "blocks": {
+        "candidate": null
+      },
+      "expected": {
+        "state": "excluded",
+        "candidate_blocks_viewer": "unknown"
+      }
+    },
+    {
+      "id": "same-accepted-sets-do-not-prove-reciprocity",
+      "viewer": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "fail",
+        "candidate_accepts_viewer": "pass"
+      }
+    },
+    {
+      "id": "intersecting-sets-do-not-prove-reciprocity",
+      "viewer": {
+        "accepted_options": [
+          "demo_a"
+        ]
+      },
+      "candidate": {
+        "accepted_options": [
+          "demo_a",
+          "demo_b"
+        ]
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer_accepts_candidate": "fail",
+        "candidate_accepts_viewer": "pass"
+      }
+    },
+    {
+      "id": "self-pair",
+      "self_pair": true,
+      "expected": {
+        "state": "excluded"
+      }
+    },
+    {
+      "id": "date-exact-adult",
+      "viewer": {
+        "birth_date": "2008-09-23"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "ready",
+        "viewer": {
+          "adult": "pass"
+        }
+      }
+    },
+    {
+      "id": "date-day-before-adult",
+      "viewer": {
+        "birth_date": "2008-09-24"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "fail"
+        }
+      }
+    },
+    {
+      "id": "date-leap-february-28",
+      "viewer": {
+        "birth_date": "2008-02-29"
+      },
+      "clock": "2026-02-28",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "fail"
+        }
+      }
+    },
+    {
+      "id": "date-leap-march-1",
+      "viewer": {
+        "birth_date": "2008-02-29"
+      },
+      "clock": "2026-03-01",
+      "expected": {
+        "state": "ready",
+        "viewer": {
+          "adult": "pass"
+        }
+      }
+    },
+    {
+      "id": "date-malformed",
+      "viewer": {
+        "birth_date": "2000-02-30"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "date-future",
+      "viewer": {
+        "birth_date": "2027-01-01"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "date-zero-year",
+      "viewer": {
+        "birth_date": "0000-01-01"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "date-trailing-newline",
+      "viewer": {
+        "birth_date": "1990-01-01\n"
+      },
+      "clock": "2026-09-23",
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "adult": "unknown"
+        }
+      }
+    },
+    {
+      "id": "missing-clock",
+      "clock": null,
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-missing",
+      "policy": null,
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-unsupported",
+      "policy": {
+        "version": "launch-unknown"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-pending",
+      "policy": {
+        "readiness": "pending"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-age-unsupported",
+      "policy": {
+        "minimum_age": 21
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-leap-unsupported",
+      "policy": {
+        "leap_birthday": "february_28"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-preference-unsupported",
+      "policy": {
+        "preference_version": "future"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-consent-unsupported",
+      "policy": {
+        "consent_version": "future"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-media-unsupported",
+      "policy": {
+        "media_version": "future"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-future",
+      "policy": {
+        "effective_from": "2027-01-01"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-expired",
+      "policy": {
+        "effective_until": "2026-09-23"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-malformed-date",
+      "policy": {
+        "effective_until": "not-date"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-reversed-interval",
+      "policy": {
+        "effective_until": "2025-12-31"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "policy-start-inclusive",
+      "policy": {
+        "effective_from": "2026-09-23"
+      },
+      "expected": {
+        "state": "ready"
+      }
+    },
+    {
+      "id": "policy-before-expiry",
+      "policy": {
+        "effective_until": "2026-09-24"
+      },
+      "expected": {
+        "state": "ready"
+      }
+    },
+    {
+      "id": "normal-honestly-incomplete-account",
+      "viewer": {
+        "profile_id": null,
+        "summary": null,
+        "approved_media": null,
+        "chart_state": "pending",
+        "moderation": null,
+        "visibility": "incomplete",
+        "attribute": null,
+        "accepted_options": null
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail",
+          "moderation": "unknown",
+          "visible": "fail"
+        },
+        "viewer_accepts_candidate": "unknown",
+        "candidate_accepts_viewer": "unknown"
+      }
+    },
+    {
+      "id": "summary-whitespace-bom",
+      "viewer": {
+        "summary": "\ufeff"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "summary-whitespace-nel",
+      "viewer": {
+        "summary": "\u0085"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "summary-whitespace-nbsp",
+      "viewer": {
+        "summary": "\u00a0"
+      },
+      "expected": {
+        "state": "excluded",
+        "viewer": {
+          "complete": "fail"
+        }
+      }
+    },
+    {
+      "id": "summary-zero-width-space-contract-nonblank",
+      "viewer": {
+        "summary": "\u200b"
+      },
+      "expected": {
+        "state": "ready"
+      }
+    },
+    {
+      "id": "inconsistent-shared-profile",
+      "candidate": {
+        "profile_id": "profile-viewer",
+        "approved_media": [
+          {
+            "asset_id": "asset-candidate",
+            "owner_id": "candidate",
+            "profile_id": "profile-viewer",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "inconsistent-shared-asset",
+      "candidate": {
+        "approved_media": [
+          {
+            "asset_id": "asset-viewer",
+            "owner_id": "candidate",
+            "profile_id": "profile-candidate",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-candidate"
+          }
+        ]
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    },
+    {
+      "id": "inconsistent-shared-source",
+      "candidate": {
+        "source_id": "source-viewer-1"
+      },
+      "expected": {
+        "state": "rejected"
+      }
+    }
+  ]
+}

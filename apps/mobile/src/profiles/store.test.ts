@@ -9,6 +9,7 @@ import { createFixtureOnboardingStore, FIXTURE_PASSWORD } from '../onboarding/st
 const options = { isDevelopment: true, mode: 'fixture' };
 const authority: ProfileAuthority = { ownerId: '11111111-1111-4111-8111-111111111111',
   generation: 1, accountVersion: 1, accountState: 'active', sessionState: 'valid', adult: true,
+  birthDate: '1990-06-15', consentState: 'accepted', consentVersion: 'development-consent-1',
   consentCurrent: true, consentRevision: '1:development-consent-1', sourceRevision: 0 };
 const selected = [{ dimension: 'demo_connection', accepted_option_ids: ['demo_a'] }];
 function store(port?: ProfileAdapter) {
@@ -44,7 +45,7 @@ test('ordinary profile and preference saves remain incomplete without fictional 
   assert.equal(subject.getSnapshot().profile?.visibility, 'incomplete');
   assert.equal(subject.getSnapshot().canDiscover, false);
   assert.equal(subject.candidatePreview(), null);
-  for (const missing of ['Approved photos', 'A resolved chart', 'Profile review', 'Current reciprocal preference evidence']) {
+  for (const missing of ['Approved photos', 'A resolved chart', 'Profile review']) {
     assert.ok(subject.getSnapshot().requirements.includes(missing));
   }
 });
@@ -305,8 +306,9 @@ test('source policy, preferences, media and reciprocal evidence changes invalida
     const context = subject.candidateContext();
     assert.ok(subject.candidatePreview(context));
     subject.developmentChange(change);
-    assert.equal(subject.getSnapshot().profile?.visibility, change === 'preferences' ? 'incomplete' : 'visible');
-    assert.equal(subject.getSnapshot().canDiscover, false);
+    assert.equal(subject.getSnapshot().profile?.visibility, 'visible');
+    assert.equal(subject.getSnapshot().canDiscover, change === 'preferences' || change === 'reciprocal',
+      'Own readiness is independent from current pair compatibility.');
     assert.equal(subject.candidatePreview(context), null);
     assert.equal(subject.candidatePreview(), null);
   }

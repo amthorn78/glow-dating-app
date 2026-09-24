@@ -7,9 +7,10 @@ logical operations. This slice adds no HTTP route, production DTO, authenticatio
 provider, database, media service or HDE calculation. Actual checks, review
 dispositions and limitations belong to [P04.2 evidence](../testing/p04-2-checkpoint.md).
 
-The P04.3 integration section below records the combined runtime's later media
-source. Earlier P04.2 descriptions remain the historical implementation boundary;
-they do not imply that its boolean media seed still governs the combined runtime.
+The P04.3 integration below records the combined runtime's later media source.
+P05.1 separates owner readiness from current ordered-pair disclosure, as described
+here and in [reciprocal eligibility fixtures](reciprocal-eligibility-fixtures.md).
+Earlier boolean media/reciprocal seeds are not production evidence.
 
 ## Runtime, ownership and contract boundary
 
@@ -95,7 +96,7 @@ and flexible-height text do not substitute for native accessibility testing.
 | Options | `demo_a` / Demo option A; `demo_b` / Demo option B |
 
 These labels are test vocabulary only. They select no launch geography,
-gender/orientation taxonomy, reciprocal matching rule or other A05 commitment.
+gender/orientation taxonomy, production reciprocal rule or other A05 commitment.
 The screen labels them **PROVISIONAL PREVIEW CHOICES** and explains that launch
 preferences and matching rules remain unselected.
 
@@ -107,17 +108,20 @@ dimension. Shape validation alone cannot establish policy acceptance. Changed or
 unavailable policy disables saving from an obsolete form and denies discovery.
 Preferences are always private owner data.
 
-Saving preferences invalidates the fictional reciprocal-preference evidence;
-matching policy evidence must refer to the accepted preferences version and current
-catalog version. Editing preferences cannot manufacture reciprocity, a match,
-contact permission or independent discovery eligibility.
+Saving preferences invalidates current pair evidence through the accepted
+preference and aggregate source versions. P05.1 independently compares each
+person's supplied attribute with the other's current accepted set. It does not
+require a fictional reciprocal-approval flag for owner profile readiness. Editing
+preferences cannot manufacture a match or contact permission.
 
 ## Completeness and F04/F06 transitions
 
 The fixture checks current account/session, adult status, consent, saved profile,
 nonempty biography, known/current preference policy, configured preferences,
-synthetic approved-media evidence, chart evidence, moderation evidence and current
-reciprocal-preference evidence. Missing requirements remain visible to the owner.
+current approved-media evidence, chart evidence and moderation evidence. P05.1
+removes the circular reciprocal-preference requirement from owner readiness:
+a complete profile need not have a currently compatible candidate. Missing
+requirements remain visible to the owner.
 Ordinary profile/preferences editing cannot satisfy the unresolved provider/media
 parts of that list.
 
@@ -127,7 +131,7 @@ parts of that list.
 | F04 completion | Incomplete → visible only with current eligibility and the explicit development policy |
 | F04 paused edit | Remains paused |
 | F04 visible edit | Remains visible only while eligible; otherwise becomes incomplete |
-| F04 preference save | Configures private preferences under the current policy; retracts obsolete reciprocal/visibility evidence |
+| F04 preference save | Configures private preferences under the current policy; invalidates prior ordered-pair evidence without requiring a compatible candidate for owner readiness |
 | F06 pause | Visible → paused; discovery and candidate preview become unavailable |
 | F06 resume | Paused → visible only after a fresh complete eligibility/policy check |
 | F04 system removal | Deletion-pending/deleted account authority removes the profile; no owner removal grant is added |
@@ -144,8 +148,8 @@ no permission under the unresolved pause/contact policy.
 
 ## Fictional eligible scenario and projection
 
-The explicit eligible development scenario seeds a fictional profile, preferences
-and synthetic media/chart/moderation/reciprocal evidence. This is the bounded way
+The explicit eligible development scenario seeds a fictional profile, preferences,
+synthetic media/chart/moderation and independent viewer/pair facts. This is the bounded way
 to exercise visible → paused → visible without representing ordinary onboarding
 as having completed media or HDE work. The fixture profile is named **Alex**, with
 summary **A fictional profile for the visibility demonstration.** It starts at
@@ -155,10 +159,12 @@ The private birth input retains its original uncertainty and unresolved provenan
 
 Candidate projection uses the `CandidateProfile` allowlist: profile ID, display
 name, age, summary, media-delivery references and compatibility projection. The
-demonstration projection uses fictional age **36**, from the eligible scenario's
-1990-06-15 date at the fixed 2026-09-23 clock, an empty delivery-reference
-array and compatibility **unavailable**. It has no provider URL or live media grant.
-This fixed age is scenario data; the candidate payload contains no birth date.
+demonstration projection derives age from current fictional private birth date
+and injected clock: **36** for 1990-06-15 on 2026-09-23. P05.1 computes a different
+age when those inputs differ; there is no general fixed-age fallback. Current
+approved synthetic references come from P04.3 media integration; compatibility
+remains **unavailable**. These references are not provider URLs or live grants.
+The candidate payload contains no birth date.
 
 Email, birth date/time/place, precise location, preferences, engine identifiers,
 internal policy/moderation reasons and owner object versions are excluded.
@@ -168,13 +174,16 @@ candidate-preview gate requires current eligible viewer/object state. The UI lab
 the resulting view **FICTIONAL ELIGIBLE VIEWER PREVIEW**. Owner preview alone proves
 neither candidate authorization nor public visibility.
 
-The eligible scenario also supplies an independent fictional viewer. Its context
-binds viewer ID, candidate profile ID, generation and discovery revision. A current
-viewer must have explicit active/adult/consent/completeness/visibility/moderation
-and both-block-directions-clear evidence under the current fixture policy. A stale
-or different viewer/object context is denied even if the candidate object is
-structurally valid. These are declared scenario inputs, not a P05 reciprocal
-matching algorithm or evidence about any real person.
+The eligible scenario supplies an independent fictional viewer record. P05.1
+binds viewer ID, candidate profile ID, generation, discovery revision and complete
+ordered pair vector. Both people need current account/access, adult, consent,
+completeness, visibility and moderation facts; each preference direction is
+calculated and each block direction explicitly observed. The owner record uses
+accepted profile/preferences/media and private birth/consent authority. The
+[pair mapping](reciprocal-eligibility-fixtures.md) owns exact predicates/policy.
+Neither an old reciprocal marker nor `bothBlocksClear` authorizes this path.
+A stale/different context denies disclosure even when the candidate DTO is valid.
+These remain fictional facts, not real-person evidence.
 
 ## Revocation, retained UI and development controls
 
@@ -201,13 +210,21 @@ No profile or preferences are passed as route parameters or logged as routine
 diagnostics. No browser storage, SQLite, shadow backend or process-restart recovery
 is introduced.
 
-`use-recommendations.ts` binds loaded results to owner/generation and the current
-profile discovery revision. It masks obsolete results synchronously during render,
+`use-recommendations.ts` binds loaded results to owner/generation, the current
+profile discovery revision and P05.1's captured ordered pair version. It masks
+obsolete results synchronously during render,
 then aborts obsolete requests and rejects delayed completions against the live
 state. This also applies to retained hidden screens; waiting only for effect cleanup
 would allow a render of an earlier owner's or revoked candidate list. The hook
 retains its existing configured-API error/retry behavior without falling back to
 bundled fixtures after an API failure.
+
+The hook's existing `gapp-dev-v1` Alex/Jordan/Riley items remain static smoke/layout
+samples. They are gated as retained presentation by the fictional viewer → owner
+pair, not evaluated as three independently eligible pairs. `candidatePreview()`
+is the fact-derived P05.1 projection; P05.2 owns bounded discovery composition.
+Pair-only revocation can redact retained data while owner readiness and editing
+stay available. No new navigation, queue or ranking feature is implied.
 
 ## P04.3 integration with the media collection
 
@@ -243,9 +260,10 @@ placeholders, not private originals or URLs. The earlier P04.2 empty-reference
 projection is therefore superseded in the combined runtime, while compatibility
 remains unavailable and all private-field exclusions above remain in force.
 
-The explicit eligible scenario now seeds an approved synthetic asset alongside
-the existing fictional profile, preferences, chart/moderation/reciprocal and
-viewer evidence. Ordinary upload/review cannot create those unrelated prerequisites.
+The explicit eligible scenario seeds an approved synthetic asset alongside
+fictional profile/preferences/chart/moderation and independent viewer facts.
+Ordinary upload/review cannot create those unrelated prerequisites. P05.1 derives
+pair preferences and block observations separately from owner completeness.
 Local PNG checks establish container structure and bounds only; safe decoding,
 metadata removal, actual moderation/delivery/purge and native byte reading remain
 unverified. See [media semantics](private-media-fixtures.md),
@@ -261,8 +279,9 @@ review dispositions and which evidence ran locally or in hosted CI. This documen
 describes implementation and does not claim that a suite passed merely because
 its cases exist.
 
-P04.3 owns media upload/quarantine/retry/order/delete. P05 owns broader reciprocal
-discovery/matching. A05 owns launch/product policy. P11 owns real authentication,
+P04.3 owns media upload/quarantine/retry/order/delete. P05.1 owns reciprocal
+fixture eligibility; P05.2/P05.3 retain discovery/matching. A05 owns launch/product
+policy. P11 owns real authentication,
 persistence, transactions/concurrency, server authorization, provider enforcement,
 backup/restore and final integration. Browser tests and iOS/Android development
 JavaScript exports do not prove signed native builds, device layout, keyboard,

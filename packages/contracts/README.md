@@ -26,3 +26,15 @@ Generation uses exact-pinned `json-schema-to-typescript` for types and Ajv 2020-
 `corpus/shared-v1.json` runs unchanged through Python and the actual generated JavaScript validators. It includes every named DTO, rejection of extra/private fields, Unicode scalar length, combining marks, explicit whitespace, unpaired surrogates, regex end-anchor/newline cases, dates, duplicate candidate IDs/dimension keys and state-dependent projection leakage. Duplicate keys are enforced after shape validation in a small shared semantic rule; standard JSON Schema alone does not enforce key-level array uniqueness. TypeScript types alone never validate network JSON. The current development parser now uses these generated validators, replacing its former hand-written length/trim checks.
 
 [Contract evidence](../../docs/testing/contract-baseline.md) records commands/results and limits. Database-dependent authentication, constraints, concurrency, outbox durability, provider enforcement and native/device acceptance remain unproved here.
+
+## P05.1 raw-fact conformance
+
+`fixtures/reciprocal-eligibility-v1.json` is a separate canonical development
+truth table, consumed unchanged by API `tests/test_eligibility_facts.py` and mobile
+`src/eligibility/facts.test.ts`. It specifies raw participant/policy/block/clock
+inputs and independent expected predicates/directions/pair states; it is not a
+client DTO or production authorization request. It also drives the bounded
+provider batch's zero-call exclusions and ready positive controls. The existing
+JSON Schema/generated candidate contract is unchanged. See
+[source/policy mapping](../../docs/architecture/reciprocal-eligibility-fixtures.md)
+and [actual P05.1 evidence](../../docs/testing/p05-1-checkpoint.md).

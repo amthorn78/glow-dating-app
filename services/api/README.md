@@ -5,6 +5,15 @@ eligibility/provider contracts and static data definitions support the P02 desig
 There is no account authentication, persistent storage, production eligibility
 route, mutual matching, or real HDE result in the served baseline.
 
+P05.1 adds a development/test-only raw-fact `FixtureEligibilityRepository` behind
+the existing trusted ordered-pair service. Its shared Python/mobile corpus is
+`packages/contracts/fixtures/reciprocal-eligibility-v1.json` at repository root.
+See [reciprocal eligibility](../../docs/architecture/reciprocal-eligibility-fixtures.md)
+for policy, source/revision mapping and provider ordering, and
+[P05.1 evidence](../../docs/testing/p05-1-checkpoint.md) for actual checks. This is
+an internal fixture seam, not served authentication or a production eligibility
+endpoint. GET smoke data and the guarded dummy-database runtime remain unchanged.
+
 ## Reproduce locally
 
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:

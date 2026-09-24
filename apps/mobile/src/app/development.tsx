@@ -22,6 +22,8 @@ export default function DevelopmentScreen() {
       <Text style={styles.small}>These test controls change current authority while retaining navigation and deliberate edits. They are not product controls.</Text>
       {(['profile', 'preferences', 'policy', 'media', 'reciprocal'] as const).map(change => <Button key={change}
         label={`Change synthetic ${change} source`} testID={`dev-${change}-change`} secondary onPress={() => profiles.developmentChange(change)} />)}
+      {(['block_viewer', 'block_candidate', 'clear_blocks', 'viewer_preferences', 'restore_viewer_preferences', 'viewer_pause', 'viewer_resume', 'candidate_attribute'] as const).map(change => <Button key={change}
+        label={`Change synthetic pair: ${change.replaceAll('_', ' ')}`} testID={`dev-pair-${change}`} secondary onPress={() => profiles.developmentPairChange(change)} />)}
       <Button label="Return to your profile" testID="dev-profile-return" secondary onPress={() => router.push('/profile')} />
     </View>}
     <Button label="Save session checkpoint" testID="checkpoint-save" secondary disabled={!state.account || state.account.session_state !== 'valid'} onPress={() => store.saveCheckpoint()} />

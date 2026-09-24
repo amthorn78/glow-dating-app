@@ -52,6 +52,17 @@ Official scaffold: `create-expo-app@5.0.0` with `expo-template-default@57.0.26`,
 
 ## P02 contract artifacts
 
+P05.1's `src/eligibility/facts.ts` derives reciprocal fixture decisions from
+explicit raw facts and shared
+`packages/contracts/fixtures/reciprocal-eligibility-v1.json` corpus. Owner readiness
+is separate from fictional viewer → owner candidate-preview permission; retained
+results bind the current pair version and candidate age comes from private fixture
+birth date/clock. Existing Alex/Jordan/Riley recommendation items remain static
+smoke/layout samples, not independently evaluated candidate pairs. See
+[reciprocal policy/integration](../../docs/architecture/reciprocal-eligibility-fixtures.md)
+and [P05.1 evidence](../../docs/testing/p05-1-checkpoint.md). P05.2/P05.3 discovery
+queues and interactions remain separate; no production endpoint is added.
+
 `src/contracts/generated/` is generated from `packages/contracts` schemas. Do not edit it directly. The development parser consumes generated validation and a key-uniqueness check; `production.ts` adds parsers for the P02 logical design without an HTTP client or activated production route. Use the repository contract generation/check commands in `../../packages/contracts/README.md`. All current screen data remains synthetic and pending. No native dependency/API was changed for contract validation.
 
 ## P04.1 fixture walkthrough
@@ -152,13 +163,15 @@ lists current missing requirements instead of silently granting discovery.
 An empty or saved profile is different from a complete/visible profile.
 
 To exercise visibility, use the explicit eligible development scenario. It seeds
-fictional chart/moderation/reciprocal evidence and, in the combined P04.3 runtime,
-an approved synthetic media asset, not actual provider work.
+fictional chart/moderation and independent viewer/pair facts plus an approved
+synthetic media asset, not actual provider work.
 From the owner dashboard choose **Pause profile**. New recommendations and the
 eligible-viewer preview become unavailable. Edit while paused; the saved profile
 stays paused. **Resume profile** rechecks current eligibility and cannot restore
-past contact permissions. Saving changed preferences invalidates the reciprocal
-fixture evidence and does not automatically make the profile visible again.
+past contact permissions. P05.1 separates owner readiness from reciprocal pair
+permission: saving current configured preferences can leave the complete owner
+profile visible while excluding the fictional viewer's candidate preview. The
+saved preference/source revision invalidates old pair contexts in either case.
 
 The development screen can change synthetic profile, preferences, policy, media
 or reciprocal source evidence while forms are retained. Revisit the forms to
@@ -238,8 +251,9 @@ and candidate photos remain labeled placeholders. Removing or restricting the
 last approved photo blocks current discovery/eligible-viewer preview. A saved
 `visible` profile can therefore show blocked effective visibility. Explicit pause
 survives media changes; resume rechecks all current requirements. Photo approval
-alone cannot satisfy missing chart, consent, adult, moderation, reciprocal or
-launch-policy evidence.
+alone cannot satisfy missing chart, consent, adult, moderation or launch-policy
+evidence. Reciprocal preferences and both block directions are separate pair
+requirements, not circular prerequisites for owner profile completeness.
 
 Run the existing check/export/rendered commands above. Their actual results are
 recorded in [P04.3 evidence](../../docs/testing/p04-3-checkpoint.md), not implied
