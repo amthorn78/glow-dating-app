@@ -193,3 +193,58 @@ test('a repeated submitting like with a stale source cannot match a fresh opposi
   assert.equal(fixture.adapter.inspect().actions.length, 2); assert.equal(fixture.adapter.inspect().matches.length, 0);
   assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'match_created').length, 0);
 });
+test('reverse block before any likes invalidates retained discovery in both modes', async () => {
+  const fixture = setup(), pages = await Promise.all((['recommended', 'broader'] as const).map(mode => fixture.discovery.request(mode, `before-${mode}`, null)));
+  const session = fixture.adapter.developmentSession('profile-jules'), target = fixture.owner.profiles.getSnapshot().profile!.profile_id;
+  fixture.adapter.execute(session, { operation: 'block', target_profile_id: target, action: 'block', meta: { expected_version: 0, idempotency_key: 'reverse:block' } });
+  assert.equal(fixture.adapter.inspect().actions.length, 0); assert.equal(fixture.adapter.inspect().matches.length, 0);
+  for (const page of pages) assert.equal(fixture.discovery.isCurrent(page), false);
+  for (const mode of ['recommended', 'broader'] as const) {
+    const fresh = await fixture.discovery.request(mode, `after-${mode}`, null, true);
+    assert.equal(fresh.items.some(item => item.profile_id === 'profile-jules'), false);
+  }
+});
+test('reverse unilateral like remains private and does not invalidate retained discovery', async () => {
+  const fixture = setup(), page = await fixture.discovery.request('recommended', 'before-other-like', null);
+  fixture.adapter.reciprocal('profile-jules', 'reverse:like');
+  assert.equal(fixture.discovery.isCurrent(page), true); assert.equal(fixture.adapter.matches().length, 0);
+  assert.equal(fixture.adapter.consumed(page.viewer_id, 'profile-jules'), false);
+});
+for (const action of ['block', 'unblock'] as const) test(`${action} rejects a deleted target without committing another receipt or event`, () => {
+  const fixture = setup();
+  if (action === 'unblock') fixture.adapter.block('profile-jules', true, 'initial:block');
+  const before = fixture.adapter.inspect(), row = fixture.discovery.inspect('discovery-jules')!;
+  fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: 'deleted' } });
+  assert.throws(() => fixture.adapter.block('profile-jules', action === 'block', 'deleted:command'), InteractionFailure);
+  assert.deepEqual(fixture.adapter.inspect(), before);
+});
+test('replay of a committed block denies a deleted target instead of projecting its current block row', () => {
+  const fixture = setup(), session = fixture.adapter.session(), target = fixture.adapter.productionProfile('profile-jules');
+  const intent = { operation: 'block' as const, target_profile_id: target, action: 'block' as const,
+    meta: { expected_version: 0, idempotency_key: 'replay:deleted' } };
+  fixture.adapter.execute(session, intent); const before = fixture.adapter.inspect(), row = fixture.discovery.inspect('discovery-jules')!;
+  fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: 'deleted' } });
+  assert.throws(() => fixture.adapter.execute(session, intent), InteractionFailure);
+  assert.deepEqual(fixture.adapter.inspect(), before);
+});
+test('target deletion during block final callback aborts the command atomically', () => {
+  const fixture = setup(), row = fixture.discovery.inspect('discovery-jules')!;
+  fixture.adapter.setBeforeCommit(() => fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: 'deleted' } }));
+  assert.throws(() => fixture.adapter.block('profile-jules', true, 'precommit:deleted'), InteractionFailure);
+  assert.equal(fixture.adapter.inspect().receipts.length, 0); assert.equal(fixture.adapter.inspect().events.length, 0);
+});
+test('target deletion in the final replay projection read suppresses the block projection', () => {
+  const fixture = setup(), session = fixture.adapter.session(), target = fixture.adapter.productionProfile('profile-jules');
+  const intent = { operation: 'block' as const, target_profile_id: target, action: 'block' as const,
+    meta: { expected_version: 0, idempotency_key: 'replay:final-target' } };
+  const committed = fixture.adapter.execute(session, intent), before = fixture.adapter.inspect();
+  const inspect = fixture.discovery.inspect.bind(fixture.discovery); let reads = 0;
+  fixture.discovery.inspect = account => {
+    const row = inspect(account);
+    if (account === 'discovery-jules' && ++reads === 2) fixture.discovery.replace({ ...row!, facts: { ...row!.facts!, account_state: 'deleted' } });
+    return row;
+  };
+  const replay = fixture.adapter.execute(session, intent);
+  assert.equal(replay.replayed, true); assert.deepEqual(replay.receipt, committed.receipt);
+  assert.equal(replay.current_projection, null); assert.deepEqual(fixture.adapter.inspect(), before);
+});

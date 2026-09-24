@@ -146,6 +146,12 @@ export class FixtureDiscoveryAdapter {
     return fresh !== null && fresh.facts.account_id === queue.viewer.viewerId && fresh.sessionId === queue.viewer.sessionId && this.authorityCurrent(queue, time.now) && guards.every(currentGuard) &&
       revision === this.revision;
   }
+  /** Retained source guard for target existence; safety commands do not require target eligibility. */
+  captureAccountRecord(accountId: string): object | null {
+    const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
+    if (!cell || row?.facts?.account_id !== accountId) return null;
+    const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
+  }
   captureAccountSession(accountId: string): object | null {
     const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
     if (!cell || row?.facts?.account_id !== accountId || row.facts.account_state !== 'active' || row.facts.session_state !== 'valid') return null;

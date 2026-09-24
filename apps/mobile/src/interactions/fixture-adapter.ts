@@ -68,7 +68,7 @@ export class FixtureInteractionAdapter {
     const identity = rows[0]!;
     const record = this.discovery.inspect(identity.account_id);
     // Current registry source must still have exactly that ownership; missing or substituted rows fail closed.
-    if (!record?.facts || record.account_id !== identity.account_id || record.facts.account_id !== identity.account_id || record.facts.profile_id !== identity.profile_id) throw new InteractionFailure('unavailable');
+    if (!record?.facts || record.account_id !== identity.account_id || record.facts.account_id !== identity.account_id || record.facts.profile_id !== identity.profile_id || record.facts.account_state === 'deleted') throw new InteractionFailure('unavailable');
     return identity;
   }
   session(): Session {
@@ -140,6 +140,7 @@ export class FixtureInteractionAdapter {
     if (record.operation === 'block') {
       const block = this.state.blocks.get(direction(session.actor, record.target));
       const identity = this.identities.find(value => value.account_uuid === record.target);
+      if (identity) { try { this.target(identity.profile_uuid); } catch { return null; } }
       return block && identity ? { kind: 'block', target_profile_id: identity.profile_uuid, version: block.version, state: block.state } : null;
     }
     const identity = this.identities.find(value => value.account_uuid === record.target);
@@ -150,11 +151,11 @@ export class FixtureInteractionAdapter {
     return { kind: 'interaction', target_profile_id: identity.profile_uuid, version: action.version, state: action.state,
       match_id: match?.state === 'active' && interactionPairIsCurrent(match.source) ? match.id : null };
   }
-  private result(session: Session, record: ReceiptRecord, replayed: boolean): InteractionCommandResult {
+  private result(session: Session, record: ReceiptRecord, replayed: boolean, targetGuard: object | null): InteractionCommandResult {
     this.sourceChanged(false);
     const authority = this.validateSession(session), current = this.state;
     const projection = this.projection(session, record);
-    const permitted = this.state === current && discoveryViewerIsCurrent(authority.owner) && (!authority.reverse || interactionAccountIsCurrent(authority.reverse));
+    const permitted = (!targetGuard || interactionAccountIsCurrent(targetGuard)) && this.state === current && discoveryViewerIsCurrent(authority.owner) && (!authority.reverse || interactionAccountIsCurrent(authority.reverse));
     const result: InteractionCommandResult = { kind: 'interaction_command_result', receipt: record.receipt, replayed, current_projection: permitted ? projection : null };
     if (!validateInteractionCommandResult(result)) throw new InteractionFailure('invalid_request'); return freeze(result);
   }
@@ -173,9 +174,12 @@ export class FixtureInteractionAdapter {
   execute(session: Session, submitted: Intent): InteractionCommandResult {
     const intent = this.captureIntent(submitted);
     const commandAuthority = this.validateSession(session);
+    const submittedTarget = intent.operation !== 'unmatch' && !sessions.get(session)!.reverse ? this.target(intent.target_profile_id) : null;
+    const targetGuard = submittedTarget ? this.discovery.captureAccountRecord(submittedTarget.account_id) : null;
+    if (submittedTarget && !targetGuard) throw new InteractionFailure('unavailable');
     const key = `${session.actor}:${intent.operation}:${intent.meta.idempotency_key}`, digest = canonical({ ...intent, meta: { expected_version: intent.meta.expected_version } });
     const receipt = this.state.receipts.get(key);
-    if (receipt) { if (receipt.digest !== digest) throw new InteractionFailure('conflict'); return this.result(session, receipt, true); }
+    if (receipt) { if (receipt.digest !== digest) throw new InteractionFailure('conflict'); return this.result(session, receipt, true, targetGuard); }
     if (this.pending.has(key)) throw new InteractionFailure(this.pending.get(key) === digest ? 'pending' : 'conflict');
     if (this.pending.size >= 20 || this.state.receipts.size + this.pending.size >= corpus.limits.max_receipts) throw new InteractionFailure('capacity');
     this.pending.set(key, digest);
@@ -251,11 +255,11 @@ export class FixtureInteractionAdapter {
       this.beforeCommit?.();
       // Finish every callback-capable authority read, then compare captured concrete cells and owned state.
       this.validateSession(session);
-      if (!discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || this.state !== initial) throw new InteractionFailure('stale');
+      if (targetGuard && !interactionAccountIsCurrent(targetGuard) || !discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || this.state !== initial) throw new InteractionFailure('stale');
       this.state = { discretionaryEvents: initial.discretionaryEvents + events.length - initial.events.length, revision: initial.revision + 1, actions, matches, blocks, receipts, events: freeze(events) };
       // Notifications follow the indivisible owned-state publication. Consumption invalidates both modes.
-      if (!registered.reverse || matches.size !== initial.matches.size) this.discovery.interactionsChanged(); this.emit();
-      return this.result(session, record, false);
+      if (!registered.reverse || intent.operation !== 'interaction' || matches.size !== initial.matches.size) this.discovery.interactionsChanged(); this.emit();
+      return this.result(session, record, false, targetGuard);
     } finally { this.pending.delete(key); }
   }
   private projectMatch(session: Session, match: Match): MatchProjection | null {

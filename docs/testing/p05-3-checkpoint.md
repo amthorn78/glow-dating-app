@@ -142,11 +142,55 @@ no page and zero actions before Refresh; after Refresh and late release the Like
 control is available with zero actions/matches. Final hosted results are recorded
 externally.
 
+## Second code-review correction
+
+The first corrected candidate `2b69e0805fe569745729f8028ab83b7e705df2bf`, tree
+`9d775a72e885eec0eed97862fc6f656d7feb9408`, is the verified five-file child of
+c4209d4a. All 251 blobs/modes match. Both
+[PR run 35980997214](https://github.com/amthorn78/glow-dating-app/actions/runs/35980997214)
+and [push run 35980992240](https://github.com/amthorn78/glow-dating-app/actions/runs/35980992240)
+passed all four jobs, including **81/81 rendered cases**, 456 mobile tests, both
+exports and actual container validation. These passes do not certify a later head.
+Security review completed without findings at `2026-09-24T09:28:43.390118Z`;
+code review completed at `2026-09-24T09:30:17.326842Z` and raised three additional
+P2 findings. No merge was performed on that head.
+
+- [Reverse block invalidation](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092040712):
+  a fictional candidate blocking the owner before any match left its retained card
+  current. Reverse safety commands must invalidate discovery while reverse likes
+  remain private.
+- [Deleted targets](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092040731):
+  a mapped deleted target still accepted mobile block/unblock and target projection.
+  Current target resolution must deny deleted access, including replay disclosure.
+- [Repeated unblock](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092040718):
+  Python accepted a new key for removed-to-removed despite F13 forbidding it. New
+  unblock requires an active block; exact-key replay retains the original receipt.
+  The regression verifies no receipt/event/state change on refusal and valid reblock.
+
+These concrete failures were reproduced before correction. The mobile correction
+notifies reverse safety commands, refuses deleted targets before new commands and
+replays, and retains a target-record revision through the final callback-free
+commit guard. This record guard requires current identity, not discovery eligibility;
+participant unmatch remains independent of current target discovery eligibility.
+The regression set includes target deletion during precommit, replay refusal and
+reverse-like privacy. Narrow review also reproduced target deletion during the
+final block-replay projection read after the earlier current-target check; the
+corrected projection retains and compares that original target revision through
+its final return, preserving the receipt and suppressing a stale projection. Python's full **232-test** API suite, Ruff, formatting and
+mypy pass after its independently reviewed F13 correction. Mobile's scoped **52
+interaction tests plus 27 discovery tests** pass with lint and types. The complete
+corrected `npm run check` passes **463 mobile tests**, TypeScript and ESLint. Exact
+correction review/head and subsequent hosted results belong in the external report.
+
+The next narrow publication preserves all prior checks/review history and requires
+fresh hosted checks and final-head review before merge. No production contract or
+policy is relaxed.
+
 ## Publication boundary
 
-The corrected source/checkpoint is prepared for publication as a child of the
-actual initial PR14 candidate. The branch and initial PR are published; these
-correction files remain local at this checkpoint. Exact corrected head, reviewed
+The second corrected source/checkpoint is prepared for publication as a child of
+actual PR14 head `2b69e0805fe569745729f8028ab83b7e705df2bf`. The branch and PR are
+published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.
 

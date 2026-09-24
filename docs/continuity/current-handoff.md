@@ -42,7 +42,11 @@ actual remote parent. [PR14](https://github.com/amthorn78/glow-dating-app/pull/1
 initial head is `c4209d4ab90320dded692f0b4da584bba31f8207`, verified tree
 `5abeba974d8b82fb6e9b4afae612469d78cd556a`. Its initial runs failed one new browser
 case (80/81; all 69 inherited passed), and code review found unrelated-pair safety
-invalidation. Narrow corrections are prepared locally; see the checkpoint. Read
+invalidation. The first correction is published at
+`2b69e0805fe569745729f8028ab83b7e705df2bf`, tree
+`9d775a72e885eec0eed97862fc6f656d7feb9408`; both runs passed all four jobs and
+81/81 browser cases. Its code review found three further P2 edge cases, so it was
+not merged. The next narrow correction is prepared locally; see the checkpoint. Read
 actual current head, PR and newer external reports before recovery.
 
 Terminal Git authentication was unavailable. All **231** baseline blobs/modes and
@@ -98,7 +102,7 @@ candidate/main tree relationship and all four jobs on actual merged main.
 An earlier candidate pass does not certify later source or merged main.
 
 **Next action at this source checkpoint:** publish the narrow PR14 corrections as
-an actual child of its initial candidate, then satisfy new final-candidate checks
+an actual child of `2b69e0805fe569745729f8028ab83b7e705df2bf`, then satisfy new final-candidate checks
 and review before checked merge and actual-main gates. Independent Python/mobile
 and contract/static/documentation review covers the initial source; the narrow
 correction has its own focused review. The checkpoint preserves the P2 and first

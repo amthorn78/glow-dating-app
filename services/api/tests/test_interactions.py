@@ -684,3 +684,27 @@ class InteractionTests(TestCase):
         self.assertEqual(self.a.command(intent).code, "stale_batch")
         self.assert_empty()
         self.committed(self.a, self.intent(key="current-adapter"))
+
+    def test_fresh_unblock_after_removal_conflicts_but_original_receipt_replays(self):
+        self.committed(self.a, self.block())
+        original_intent = self.block(action="unblock", key="original-unblock", version=1)
+        original = self.committed(self.a, original_intent)
+        self.assertEqual(original["receipt"]["committed_version"], 2)
+        self.assertEqual(original["current_projection"]["state"], "removed")
+        before_state, before_counts = self.repo._state, self.repo.counts
+
+        fresh_intent = self.block(action="unblock", key="fresh-unblock", version=2)
+        self.assertEqual(self.a.command(fresh_intent).code, "state_conflict")
+        self.assertIs(self.repo._state, before_state)
+        self.assertEqual(self.repo.counts, before_counts)
+
+        replay = self.committed(self.a, original_intent)
+        self.assertTrue(replay["replayed"])
+        self.assertEqual(replay["receipt"], original["receipt"])
+        self.assertEqual(replay["current_projection"], original["current_projection"])
+        self.assertIs(self.repo._state, before_state)
+        self.assertEqual(self.repo.counts, before_counts)
+
+        reblocked = self.committed(self.a, self.block(key="reblock", version=2))
+        self.assertEqual(reblocked["current_projection"]["state"], "active")
+        self.assertEqual(reblocked["receipt"]["committed_version"], 3)

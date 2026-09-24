@@ -628,7 +628,7 @@ class FixtureInteractionService:
                 if expected != (block.version if block else 0):
                     return CommandResult("stale_version")
                 action_state = "active" if intent["action"] == "block" else "removed"
-                if block is None and action_state == "removed":
+                if action_state == "removed" and (block is None or block.state == "removed"):
                     return CommandResult("state_conflict")
                 changed = block is None or block.state != action_state
                 version = (block.version if block else 0) + changed
