@@ -89,8 +89,15 @@ Provider purge alone enters removed. Failed, interrupted or exhausted purge stay
 pending; duplicate/out-of-order events cannot complete another removal.
 
 Profile integration consumes current approved owned assets. Photo approval alone
-does not resolve chart, consent, adult, moderation, reciprocal preference or launch
-policy requirements. Current authority is rechecked before candidate delivery.
+does not resolve chart, consent, adult, moderation or launch-policy requirements.
+P05.1 derives pair preferences/blocks separately from owner readiness, using the
+current approved collection as media source. It does not trust an earlier
+approved row through an outstanding owner removal. The
+[reciprocal mapping](reciprocal-eligibility-fixtures.md) requires matching
+account/profile/asset identity and generation, current policy and reference.
+Last-photo loss invalidates aggregate pair evidence and retained projection.
+Current authority/pair evidence is rechecked before candidate delivery; media
+approval alone is not pair permission.
 Unknown/obsolete policy grants no upload or approved delivery permission. Same
 session memory is the only recovery scope; private presentation clears on logout,
 expiry or replacement. No real photos, database, provider, HDE or Railway object is

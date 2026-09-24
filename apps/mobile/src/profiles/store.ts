@@ -4,10 +4,12 @@ import { createProfileAdapter, ProfileFailure, type DevelopmentChange, type Prof
   type ProfileContext, type ProfileOutcome, type ProfileRecords } from './fixture-adapter.ts';
 import { activeOwner, canonicalSelections, PROFILE_REQUEST_ID, projectCandidate, requirements,
   type ProfileAuthority } from './policy.ts';
+import { FIXTURE_PAIR_POLICY, FixturePairRepository, type ParticipantFacts, type PairVersion } from '../eligibility/facts.ts';
+import { FIXTURE_CLOCK, type FixtureClock } from '../onboarding/policy.ts';
 
 export type { ProfileOutcome } from './fixture-adapter.ts';
 export type ProfileDraft = Pick<ProfileIntent, 'display_name' | 'summary'>;
-export type CandidateViewContext = Readonly<{ viewerId: string; candidateProfileId: string; generation: number; discoveryRevision: number }>;
+export type CandidateViewContext = Readonly<{ viewerId: string; candidateProfileId: string; generation: number; discoveryRevision: number; version: PairVersion }>;
 export interface ProfileSnapshot {
   readonly ownerKey: string;
   readonly profile: OwnProfile | null;
@@ -45,15 +47,20 @@ export class ProfileStore {
   private mediaRevoker: (() => void) | null = null;
   private pauseRequested = false;
   private pendingIntents = new Map<string, { signature: string; intent: ProfileIntent | PreferencesIntent | VisibilityIntent }>();
-  private fictionalViewer: { generation: number; policyVersion: string; active: true; adult: true;
-    consent: true; complete: true; visible: true; moderation: true; bothBlocksClear: true } | null = null;
+  private fictionalViewer: ParticipantFacts | null = null;
+  private readonly pairs: FixturePairRepository;
+  private readonly clock: FixtureClock;
+  private pairSource = '';
+  private pairPolicy = '';
+  private candidateAttribute: string = 'demo_a';
   private snapshot: ProfileSnapshot = freeze({ ownerKey: 'none:0', profile: null, preferences: null,
     profileDraft: blankDraft(), preferencesDraft: [], profileDraftRevision: 0, preferencesDraftRevision: 0,
     discoveryRevision: 0, policyVersion: null, busy: false, error: null, message: null, requirements: [], canDiscover: false });
 
-  constructor(adapter: ProfileAdapter, options: { isDevelopment: boolean; mode: string | undefined }) {
+  constructor(adapter: ProfileAdapter, options: { isDevelopment: boolean; mode: string | undefined; clock?: FixtureClock }) {
     if (!options.isDevelopment || options.mode !== 'fixture' || adapter.kind !== 'fixture') throw new Error('Profiles require the explicit development fixture runtime.');
     this.adapter = adapter;
+    this.clock = options.clock ?? FIXTURE_CLOCK; this.pairs = new FixturePairRepository(this.clock);
   }
   readonly getSnapshot = () => this.snapshot;
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -226,16 +233,22 @@ export class ProfileStore {
   }
   seedEligible(): void {
     this.cancel(); this.adapter.seedEligible(); this.pauseRequested = false;
-    this.fictionalViewer = { generation: this.authority.generation, policyVersion: this.adapter.inspect().policy!.version,
-      active: true, adult: true, consent: true, complete: true, visible: true, moderation: true, bothBlocksClear: true };
+    this.fictionalViewer = this.fixtureViewer(); this.candidateAttribute = 'demo_a';
+    this.pairs.put(this.fictionalViewer);
+    this.pairs.observeBlock(FIXTURE_VIEWER_ID, this.authority.ownerId!, 'clear');
+    this.pairs.observeBlock(this.authority.ownerId!, FIXTURE_VIEWER_ID, 'clear');
     this.adopt(this.adapter.inspect(), true);
     if (this.mediaSource) this.synchronizeMedia(this.mediaSource());
-    this.publish({ message: 'Fictional profile, media, chart and reciprocal eligibility evidence loaded. No real service was used.' });
+    this.publish({ message: 'Fictional profile, media, chart and independent pair facts loaded. No real service was used.' });
   }
   developmentChange(change: DevelopmentChange): void {
     if (change === 'media' && this.mediaRevoker) { this.mediaRevoker(); return; }
     try {
       this.cancel(); this.adapter.developmentChange(change); this.pendingIntents.clear();
+      if (change === 'reciprocal' && this.fictionalViewer) {
+        this.fictionalViewer = freeze({ ...this.fictionalViewer, accepted_options: ['demo_b'] });
+        this.pairs.put(this.fictionalViewer);
+      }
       this.adopt(this.adapter.inspect());
       this.publish({ discoveryRevision: this.snapshot.discoveryRevision + 1,
         ...(change === 'policy' ? { profileDraftRevision: this.snapshot.profileDraftRevision + 1,
@@ -243,19 +256,99 @@ export class ProfileStore {
         message: 'Saved source changed. Untouched fields refreshed; your deliberate edits remain. Review your draft before saving.' });
     } catch (error) { this.failure(error); }
   }
+  private fixtureViewer(): ParticipantFacts {
+    const profile = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    return freeze({ account_id: FIXTURE_VIEWER_ID, source_id: 'development-viewer-record', generation: this.authority.generation,
+      profile_id: profile, birth_date: '1988-02-29', account_state: 'active', session_state: 'valid', verified: true,
+      consent_state: 'accepted', consent_version: 'development-consent-1', display_name: 'Fictional viewer', summary: 'Independent fictional viewer.',
+      visibility: 'visible', moderation: 'approved', chart_state: 'resolved', attribute: 'demo_a',
+      preference_dimension: 'demo_connection', preference_version: 'development-preferences-1', accepted_options: ['demo_a'],
+      approved_media: [{ asset_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', owner_id: FIXTURE_VIEWER_ID, profile_id: profile,
+        generation: this.authority.generation, state: 'approved', policy_version: 'development-media-1', delivery_ref: 'fixture:viewer-approved' }] });
+  }
+  /** Map app-owned fixture sources afresh. Public profile/preferences DTOs cannot supply independent viewer facts. */
+  private currentPair(): ReturnType<FixturePairRepository['evaluate']> | null {
+    const profile = this.snapshot.profile, owner = this.authority.ownerId;
+    if (!profile || !owner || !this.fictionalViewer) return null;
+    const sourceSnapshot = this.snapshot, sourceAuthority = this.authority;
+    const records = this.adapter.inspect(), preferences = records.preferences;
+    const media = this.mediaSource?.();
+    if (sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
+    const ids = media?.items.map(item => item.asset_id) ?? profile.media_ids;
+    const validMedia = equal(ids, profile.media_ids) && records.evidence.media;
+    const selection = preferences?.selections.length === 1 ? preferences.selections[0] : undefined;
+    const candidate: ParticipantFacts = {
+      account_id: owner, source_id: `development-owner-record:${owner}`, generation: this.authority.generation,
+      profile_id: profile.profile_id, birth_date: this.authority.birthDate ?? null,
+      account_state: this.authority.accountState, session_state: this.authority.sessionState,
+      verified: this.authority.accountState === 'unverified' ? false : this.authority.accountState === 'none' ? null : true,
+      consent_state: this.authority.consentState ?? null, consent_version: this.authority.consentVersion ?? null,
+      display_name: profile.display_name, summary: profile.summary, visibility: this.pauseRequested ? 'paused' : profile.visibility,
+      moderation: records.evidence.moderation ? 'approved' : 'pending', chart_state: records.evidence.chart ? 'resolved' : 'pending',
+      attribute: this.candidateAttribute, preference_dimension: selection?.dimension ?? null,
+      preference_version: preferences?.policy_version ?? null, accepted_options: selection?.accepted_option_ids ?? null,
+      approved_media: validMedia ? ids.map(asset_id => ({ asset_id, owner_id: owner, profile_id: profile.profile_id,
+        generation: this.authority.generation, state: media ? media.items.find(item => item.asset_id === asset_id)?.state ?? null : 'approved', policy_version: 'development-media-1',
+        delivery_ref: media ? media.items.find(item => item.asset_id === asset_id)?.approved_delivery_ref ?? null : 'fixture:standalone-approved' })) : [],
+    };
+    // Aggregate signature includes every source revision, even a same-value write or A→B→A restoration.
+    const signature = JSON.stringify([candidate, this.authority, profile.version, preferences?.version, this.snapshot.discoveryRevision, media?.version]);
+    if (signature !== this.pairSource) { this.pairSource = signature; this.pairs.put(candidate); }
+    const policySignature = JSON.stringify([records.policy, this.authority.consentVersion]);
+    if (policySignature !== this.pairPolicy) {
+      this.pairPolicy = policySignature;
+      this.pairs.setPolicy(records.policy?.version === 'development-preferences-1' ? FIXTURE_PAIR_POLICY : null);
+    }
+    const result = this.pairs.evaluate(FIXTURE_VIEWER_ID, owner);
+    return sourceSnapshot === this.snapshot && sourceAuthority === this.authority ? result : null;
+  }
   candidateContext(): CandidateViewContext | null {
-    if (!this.snapshot.profile || !this.fictionalViewer) return null;
-    return { viewerId: FIXTURE_VIEWER_ID, candidateProfileId: this.snapshot.profile.profile_id,
-      generation: this.authority.generation, discoveryRevision: this.snapshot.discoveryRevision };
+    const pair = this.currentPair();
+    if (!this.snapshot.profile || !pair?.version) return null;
+    return freeze({ viewerId: FIXTURE_VIEWER_ID, candidateProfileId: this.snapshot.profile.profile_id,
+      generation: this.authority.generation, discoveryRevision: this.snapshot.discoveryRevision, version: pair.version });
   }
   candidatePreview(context: CandidateViewContext | null = this.candidateContext()): CandidateProfile | null {
-    const current = this.candidateContext(), viewer = this.fictionalViewer;
-    if (!context || !current || !equal(context, current) || !this.snapshot.canDiscover || !this.snapshot.profile || !viewer ||
-        viewer.generation !== this.authority.generation || viewer.policyVersion !== this.snapshot.policyVersion ||
-        !viewer.active || !viewer.adult || !viewer.consent || !viewer.complete || !viewer.visible || !viewer.moderation || !viewer.bothBlocksClear) return null;
-    const media = this.mediaSource?.();
-    if (media && (media.items.length === 0 || !equal(this.snapshot.profile.media_ids, media.items.map(item => item.asset_id)))) return null;
-    return projectCandidate(this.snapshot.profile, media?.items.map(item => item.approved_delivery_ref!).filter(Boolean) ?? []);
+    context = context === null ? null : freeze(clone(context));
+    const current = this.candidateContext();
+    if (!context || !current || !equal(context, current) || !this.snapshot.canDiscover || !this.snapshot.profile) return null;
+    const sourceSnapshot = this.snapshot, sourceAuthority = this.authority;
+    const decision = this.pairs.evaluate(FIXTURE_VIEWER_ID, this.authority.ownerId!, context.version);
+    if (decision.state !== 'ready' || sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
+    const profile = clone(this.snapshot.profile), facts = this.pairs.inspect(this.authority.ownerId!);
+    // Age and media come from the evaluation's immutable inputs, never separate unbound dependency reads.
+    const age = decision.candidateAge;
+    if (age === null || age === undefined) return null;
+    const references = this.mediaSource ? facts?.approved_media?.filter(item => item.state === 'approved' &&
+      item.policy_version === 'development-media-1' && item.delivery_ref !== null).map(item => item.delivery_ref!) ?? [] : [];
+    let projection: CandidateProfile;
+    try { projection = projectCandidate(profile, age, references); } catch { return null; }
+    // Source/clock callbacks are external reads too: finish by checking their exact captured version.
+    const finalContext = this.candidateContext();
+    if (!equal(context, finalContext)) return null;
+    const finalResult = this.pairs.evaluate(FIXTURE_VIEWER_ID, this.authority.ownerId!, context.version);
+    if (finalResult.state !== 'ready' || sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
+    return projection;
+  }
+  /** Existing synthetic source controls; never a client/server evidence endpoint or contact operation. */
+  developmentPairChange(change: 'block_viewer' | 'block_candidate' | 'clear_blocks' | 'viewer_preferences' | 'restore_viewer_preferences' |
+    'viewer_pause' | 'viewer_resume' | 'candidate_attribute'): void {
+    if (!activeOwner(this.authority) || !this.fictionalViewer) return;
+    if (change === 'block_viewer') this.pairs.observeBlock(FIXTURE_VIEWER_ID, this.authority.ownerId!, 'blocked');
+    if (change === 'block_candidate') this.pairs.observeBlock(this.authority.ownerId!, FIXTURE_VIEWER_ID, 'blocked');
+    if (change === 'clear_blocks') {
+      this.pairs.observeBlock(FIXTURE_VIEWER_ID, this.authority.ownerId!, 'clear');
+      this.pairs.observeBlock(this.authority.ownerId!, FIXTURE_VIEWER_ID, 'clear');
+    }
+    if (change === 'candidate_attribute') this.candidateAttribute = this.candidateAttribute === 'demo_a' ? 'demo_b' : 'demo_a';
+    if (['viewer_preferences', 'restore_viewer_preferences', 'viewer_pause', 'viewer_resume'].includes(change)) {
+      this.fictionalViewer = freeze({ ...this.fictionalViewer,
+        ...(change === 'viewer_preferences' ? { accepted_options: ['demo_b'] } : {}),
+        ...(change === 'restore_viewer_preferences' ? { accepted_options: ['demo_a'] } : {}),
+        ...(change === 'viewer_pause' ? { visibility: 'paused' } : {}), ...(change === 'viewer_resume' ? { visibility: 'visible' } : {}) });
+      this.pairs.put(this.fictionalViewer);
+    }
+    this.publish({ discoveryRevision: this.snapshot.discoveryRevision + 1 });
   }
   bindMedia(source: () => MediaCollection, revoke: () => void): void {
     this.mediaSource = source; this.mediaRevoker = revoke;
@@ -267,6 +360,6 @@ export class ProfileStore {
   }
 }
 
-export function createFixtureProfileStore(options: { isDevelopment: boolean; mode: string | undefined; pause?: () => Promise<void> }): ProfileStore {
+export function createFixtureProfileStore(options: { isDevelopment: boolean; mode: string | undefined; pause?: () => Promise<void>; clock?: FixtureClock }): ProfileStore {
   return new ProfileStore(createProfileAdapter(options), options);
 }

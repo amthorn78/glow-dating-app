@@ -202,21 +202,23 @@ for (const evidence of ['policy', 'reciprocal']) {
     await expect(page.getByText(/Make room for/)).toHaveCount(1);
     await active(page, 'development-link').click();
     await active(page, `dev-${evidence}-change`).click();
-    await expect(page.getByText(/Make room for/)).toHaveCount(0);
-    // Changed authority blocks disclosure without inventing an F04 transition.
+    await expect(page.getByText(/Make room for/)).toHaveCount(evidence === 'policy' ? 0 : 1);
+    await expect(page.getByText('A long walk, a new recipe, and a conversation that goes somewhere unexpected.', { exact: true })).toHaveCount(0);
+    // Pair exclusion revokes candidate data while complete own readiness stays visible.
     await expect(page.getByTestId('profile-status').getByTestId('profile-effective-visibility')
-      .getByText('Visibility: blocked', { exact: true })).toHaveCount(1);
+      .getByText(`Visibility: ${evidence === 'policy' ? 'blocked' : 'visible'}`, { exact: true })).toHaveCount(1);
     await active(page, 'dev-profile-return').click();
     await expect(active(page, 'screen-profile')).toBeVisible();
-    await expect(visibility(page, 'blocked')).toBeVisible();
-    // Establish a fresh in-app history entry after protected history pruning;
+    await expect(visibility(page, evidence === 'policy' ? 'blocked' : 'visible')).toBeVisible();
+    // Establish a fresh in-app history entry after the source change;
     // Back must reach the current owner state and cannot revive discovery.
     await active(page, 'profile-preview').click();
     await expect(active(page, 'candidate-unavailable')).toBeVisible();
     await page.goBack();
     await expect(active(page, 'screen-profile')).toBeVisible();
-    await expect(visibility(page, 'blocked')).toBeVisible();
-    await expect(page.getByText(/Make room for/)).toHaveCount(0);
+    await expect(visibility(page, evidence === 'policy' ? 'blocked' : 'visible')).toBeVisible();
+    await expect(page.getByText(/Make room for/)).toHaveCount(evidence === 'policy' ? 0 : 1);
+    await expect(page.getByText('A long walk, a new recipe, and a conversation that goes somewhere unexpected.', { exact: true })).toHaveCount(0);
   });
 }
 
@@ -359,4 +361,64 @@ test('empty profile form remains labeled and usable at 320px with doubled text',
   // Only the unpopulated active owner form is pictured. No birth/account values,
   // credentials, populated preferences or traces are captured.
   await page.screenshot({ path: testInfo.outputPath('profile-empty-320-enlarged.png'), fullPage: true });
+});
+
+for (const direction of ['block_viewer', 'block_candidate'] as const) {
+  test(`current ${direction} facts redact retained candidate and layout data before navigation`, async ({ page }) => {
+    await eligibleProfile(page);
+    await active(page, 'profile-preview').click();
+    await expect(active(page, 'candidate-preview')).toContainText('Alex, 36');
+    await active(page, 'development-link').click();
+    await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+    await expect(page.getByTestId('candidate-preview').filter({ visible: true })).toHaveCount(0);
+    await active(page, `dev-pair-${direction}`).click();
+    await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+    await expect(page.getByTestId('candidate-unavailable')).toHaveCount(1);
+    await expect(page.getByText('A long walk, a new recipe, and a conversation that goes somewhere unexpected.', { exact: true })).toHaveCount(0);
+    await expect(page.getByTestId('owner-preview')).toHaveCount(1);
+    await expect(page.getByTestId('profile-status').getByTestId('profile-effective-visibility').getByText('Visibility: visible', { exact: true })).toHaveCount(1);
+    await active(page, 'dev-pair-clear_blocks').click();
+    await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+    await active(page, `dev-pair-${direction}`).click();
+    await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+    await page.goBack();
+    await expect(active(page, 'screen-profile-preview')).toBeVisible();
+    await expect(active(page, 'candidate-unavailable')).toHaveText('An eligible viewer preview is unavailable in your current state.');
+  });
+}
+
+test('independent viewer preferences compare the other attribute while owner readiness stays complete', async ({ page }) => {
+  await eligibleProfile(page);
+  await active(page, 'profile-preview').click();
+  await expect(active(page, 'candidate-preview')).toBeVisible();
+  await active(page, 'development-link').click();
+  await active(page, 'dev-pair-viewer_preferences').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await expect(page.getByTestId('owner-preview')).toHaveCount(1);
+  // Viewer accepts B, owner still has A: intersection or the owner's selection is not reciprocity.
+  await active(page, 'dev-pair-candidate_attribute').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+  // Viewer A accepts owner B and owner B independently accepts viewer A.
+  await active(page, 'dev-pair-candidate_attribute').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await active(page, 'dev-pair-restore_viewer_preferences').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+  await page.goBack();
+  await expect(active(page, 'candidate-preview')).toContainText('Alex, 36');
+});
+
+test('pausing and resuming the separate viewer invalidates the retained pair without pausing the owner', async ({ page }) => {
+  await eligibleProfile(page);
+  await active(page, 'profile-preview').click();
+  await expect(active(page, 'candidate-preview')).toBeVisible();
+  await active(page, 'development-link').click();
+  await active(page, 'dev-pair-viewer_pause').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await expect(page.getByTestId('profile-status').getByTestId('profile-effective-visibility').getByText('Visibility: visible', { exact: true })).toHaveCount(1);
+  await active(page, 'dev-pair-viewer_resume').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(1);
+  await active(page, 'dev-pair-viewer_pause').click();
+  await expect(page.getByTestId('candidate-preview')).toHaveCount(0);
+  await page.goBack();
+  await expect(active(page, 'candidate-unavailable')).toBeVisible();
 });

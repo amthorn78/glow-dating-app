@@ -3,6 +3,7 @@
 No database, socket, HDE, real birth detail or provider credential is used.
 """
 
+import json
 from dataclasses import asdict, replace
 from datetime import UTC, date, datetime, time
 from unittest import TestCase
@@ -14,7 +15,8 @@ from glow_domain.compatibility import (
     FixtureCompatibilityProvider,
     fixture_cache_key,
 )
-from glow_domain.eligibility import PredicateOutcome
+from glow_domain.eligibility import BlockState, PredicateOutcome
+from glow_domain.eligibility_facts import DEVELOPMENT_POLICY, FixtureEligibilityRepository
 from glow_domain.identity import AccountId, ChartMappingState
 from glow_domain.provider_contracts import (
     BirthInput,
@@ -42,12 +44,14 @@ from glow_domain.provider_fixtures import (
 )
 from glow_domain.trusted_eligibility import (
     BoundPairPolicy,
+    EvidenceUnavailable,
     PairEligibilityEvidence,
     PairEvidenceVersion,
     PolicyReadiness,
     TrustedEligibilityService,
 )
 from tests.test_domain import mapping, policy, provenance, snapshot
+from tests.test_eligibility_facts import CORPUS, person, repository_from_case
 
 
 def birth_input():
@@ -66,7 +70,9 @@ def birth_input():
 
 
 def request():
-    return CompatibilityRequest(mapping("viewer", "fixture-chart-a"), mapping("candidate", "b"))
+    return CompatibilityRequest(
+        mapping("viewer", "fixture-chart-a"), mapping("candidate", "b"), policy().policy_version
+    )
 
 
 class NoNetworkCase(TestCase):
@@ -202,8 +208,11 @@ class CompatibilityConformanceCases:
         provider = self.provider((FixtureCase.READY_SYNTHETIC,))
         evaluate_with_retry(provider, request(), provenance(), "pair-1", RetryPolicy(1))
         for changed in (
-            CompatibilityRequest(request().candidate, request().viewer),
+            CompatibilityRequest(
+                request().candidate, request().viewer, request().eligibility_policy_version
+            ),
             replace(request(), candidate=replace(request().candidate, birth_input_version="v2")),
+            replace(request(), eligibility_policy_version="different-policy-revision"),
         ):
             result = evaluate_with_retry(provider, changed, provenance(), "pair-1", RetryPolicy(1))
             self.assertEqual(result.failure, FailureCode.IDEMPOTENCY_CONFLICT)
@@ -249,7 +258,9 @@ class FixtureCompatibilityConformanceTests(CompatibilityConformanceCases, NoNetw
     def test_output_binding_rejects_wrong_pair_version_and_provenance(self):
         variations = (
             (
-                CompatibilityRequest(request().candidate, request().viewer),
+                CompatibilityRequest(
+                    request().candidate, request().viewer, request().eligibility_policy_version
+                ),
                 provenance(),
                 FailureCode.IDENTITY_MISMATCH,
             ),
@@ -262,6 +273,11 @@ class FixtureCompatibilityConformanceTests(CompatibilityConformanceCases, NoNetw
                 request(),
                 replace(provenance(), simulated_engine_contract_version="new"),
                 FailureCode.UNSUPPORTED,
+            ),
+            (
+                replace(request(), eligibility_policy_version="obsolete-policy-revision"),
+                provenance(),
+                FailureCode.STALE,
             ),
         )
         for wrong_request, wrong_provenance, code in variations:
@@ -303,7 +319,10 @@ class FixtureCompatibilityConformanceTests(CompatibilityConformanceCases, NoNetw
         for changed in (
             replace(request(), viewer=replace(request().viewer, birth_input_version="v2")),
             replace(request(), candidate=replace(request().candidate, mapping_version="v2")),
-            CompatibilityRequest(request().candidate, request().viewer),
+            CompatibilityRequest(
+                request().candidate, request().viewer, request().eligibility_policy_version
+            ),
+            replace(request(), eligibility_policy_version="different-policy-revision"),
         ):
             self.assertEqual(
                 project_fixture_compatibility(
@@ -497,6 +516,120 @@ class BatchConformanceTests(NoNetworkCase):
             self.assertIsNone(result.entries[0].compatibility)
             self.assertEqual(result.entries[1].state, "evaluated")
 
+    def test_mapping_read_revocation_cannot_dispatch_or_publish_provider_output(self):
+        for revoke_on_read, expected_provider_calls in ((2, 0), (4, 1), (6, 1)):
+            with self.subTest(revoke_on_read=revoke_on_read):
+                self.evidence = EvidenceRepository()
+                self.mappings = MappingRepository()
+                self.provider = ScriptedCompatibilityProvider(
+                    "test", provenance(), (FixtureCase.PENDING,)
+                )
+                original_get = self.mappings.get
+
+                def revoking_get(
+                    account_id, original_get=original_get, revoke_on_read=revoke_on_read
+                ):
+                    result = original_get(account_id)
+                    if len(self.mappings.calls) == revoke_on_read:
+                        self.evidence.excluded.add("candidate")
+                    return result
+
+                self.mappings.get = revoking_get
+                result = self.service().evaluate(
+                    AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+                )
+                self.assertEqual(result.entries[0].state, "excluded")
+                self.assertIsNone(result.entries[0].compatibility)
+                self.assertEqual(self.provider.calls, expected_provider_calls)
+
+    def test_later_revocation_supersedes_earlier_unresolved_mapping_outcome(self):
+        self.mappings.items["candidate"] = None
+        provider, evidence = self.provider, self.evidence
+
+        class RevokesEarlierCandidate:
+            def evaluate(self, request, idempotency_key):
+                output = provider.evaluate(request, idempotency_key)
+                evidence.excluded.add("candidate")
+                return output
+
+        result = self.service(RevokesEarlierCandidate()).evaluate(
+            AccountId("viewer"),
+            (
+                CandidateWork(AccountId("candidate"), "pair-1"),
+                CandidateWork(AccountId("another"), "pair-2"),
+            ),
+        )
+        self.assertEqual([item.state for item in result.entries], ["excluded", "evaluated"])
+        self.assertIsNone(result.entries[0].compatibility)
+        self.assertEqual(provider.calls, 1)
+
+    def test_later_final_mapping_read_revokes_already_revalidated_candidate(self):
+        original_get = self.mappings.get
+
+        def revoking_get(account_id):
+            result = original_get(account_id)
+            # Two candidates each read initial/post-provider mappings (8 reads),
+            # then the final pair rechecks read four more. Revoke candidate A in
+            # candidate B's last read, after A's mapping recheck has completed.
+            if len(self.mappings.calls) == 12:
+                self.evidence.excluded.add("candidate")
+            return result
+
+        self.mappings.get = revoking_get
+        result = self.service().evaluate(
+            AccountId("viewer"),
+            (
+                CandidateWork(AccountId("candidate"), "pair-1"),
+                CandidateWork(AccountId("another"), "pair-2"),
+            ),
+        )
+        self.assertEqual([item.state for item in result.entries], ["excluded", "evaluated"])
+        self.assertIsNone(result.entries[0].compatibility)
+        self.assertEqual(self.provider.calls, 2)
+
+    def test_mapping_or_evidence_programming_errors_never_become_permission(self):
+        for dependency in (self.evidence, self.mappings):
+            method = "acquire" if dependency is self.evidence else "get"
+            with patch.object(dependency, method, side_effect=RuntimeError("fixture defect")):
+                with self.assertRaisesRegex(RuntimeError, "fixture defect"):
+                    self.service().evaluate(
+                        AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+                    )
+            self.assertEqual(self.provider.calls, 0)
+
+    def test_unavailable_evidence_before_dispatch_or_after_callback_is_safe(self):
+        with patch.object(self.evidence, "acquire", side_effect=EvidenceUnavailable()):
+            result = self.service().evaluate(
+                AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+            )
+        self.assertEqual(result.entries[0].state, "rejected")
+        self.assertIsNone(result.entries[0].compatibility)
+        self.assertEqual(self.mappings.calls, [])
+        self.assertEqual(self.provider.calls, 0)
+
+        provider, evidence = self.provider, self.evidence
+
+        class LosesEvidence:
+            def evaluate(self, request, idempotency_key):
+                result = provider.evaluate(request, idempotency_key)
+
+                def unavailable(*args):
+                    raise EvidenceUnavailable()
+
+                evidence.acquire = unavailable
+                return result
+
+        result = self.service(LosesEvidence()).evaluate(
+            AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+        )
+        self.assertEqual(result.entries[0].state, "rejected")
+        self.assertIsNone(result.entries[0].compatibility)
+        self.assertEqual(self.provider.calls, 1)
+        self.assertEqual(
+            asdict(result.entries[0]),
+            {"account_id": {"value": "candidate"}, "state": "rejected", "compatibility": None},
+        )
+
     def test_batch_budget_duplicate_ids_and_duplicate_keys_rejected(self):
         for candidates in (
             tuple(CandidateWork(AccountId(str(i)), str(i)) for i in range(21)),
@@ -510,6 +643,234 @@ class BatchConformanceTests(NoNetworkCase):
                 self.service().evaluate(AccountId("viewer"), candidates)
         self.assertEqual(self.provider.calls, 0)
         self.assertEqual(self.evidence.calls, [])
+
+
+class FactDerivedBatchConformanceTests(NoNetworkCase):
+    """Exercise the trusted batch with actual app facts, not supplied PASS flags."""
+
+    service = BatchConformanceTests.service
+
+    def setUp(self):
+        super().setUp()
+        self.reset_sources()
+
+    def reset_sources(self):
+        self.today = date(2026, 9, 23)
+        self.evidence = FixtureEligibilityRepository(lambda: self.today, environment="test")
+        self.mappings = MappingRepository()
+        self.provider = ScriptedCompatibilityProvider("test", provenance(), (FixtureCase.PENDING,))
+        self.viewer_facts = person("viewer")
+        self.candidate_facts = person("candidate", "demo_b", ("demo_a",))
+        self.another_facts = person("another", "demo_b", ("demo_a",))
+        for facts in (self.viewer_facts, self.candidate_facts, self.another_facts):
+            self.evidence.put_participant(facts)
+        for target in ("candidate", "another"):
+            self.evidence.observe_block(AccountId("viewer"), AccountId(target), BlockState.CLEAR)
+            self.evidence.observe_block(AccountId(target), AccountId("viewer"), BlockState.CLEAR)
+
+    def test_source_derived_positive_is_exactly_policy_bound_and_projection_is_closed(self):
+        evidence = self.evidence.acquire(AccountId("viewer"), AccountId("candidate"))
+        result = self.service().evaluate(
+            AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+        )
+        self.assertEqual(result.state, "evaluated")
+        outcome = result.entries[0].compatibility
+        self.assertEqual(
+            outcome.output.key.eligibility_policy_version, evidence.current_version.policy_version
+        )
+        self.assertEqual(
+            asdict(project_fixture_compatibility(outcome, outcome.output.key)),
+            {"status": "pending", "source": "fixture"},
+        )
+        self.assertEqual(self.provider.calls, 1)
+
+    def test_entire_raw_fact_corpus_gates_chart_mapping_and_provider_calls(self):
+        corpus = json.loads(CORPUS.read_text())
+        for case in corpus["cases"]:
+            with self.subTest(case=case["id"]):
+                self.evidence = repository_from_case(corpus["base"], case)
+                self.mappings = MappingRepository()
+                self.provider = ScriptedCompatibilityProvider(
+                    "test", provenance(), (FixtureCase.PENDING,)
+                )
+                target = AccountId("viewer" if case.get("self_pair") else "candidate")
+                result = self.service().evaluate(
+                    AccountId("viewer"), (CandidateWork(target, "pair-1"),)
+                )
+                eligible = case["expected"]["state"] == "ready"
+                expected = "evaluated" if eligible else case["expected"]["state"]
+                self.assertEqual(result.entries[0].state, expected)
+                self.assertEqual(self.provider.calls, 1 if eligible else 0)
+                if eligible:
+                    self.assertIsNotNone(result.entries[0].compatibility.output)
+                else:
+                    self.assertEqual(self.mappings.calls, [])
+                    self.assertIsNone(result.entries[0].compatibility)
+
+    def test_absent_block_insertion_restoration_and_pause_restoration_defeat_delayed_work(self):
+        for restoration in ("block", "pause", "same_value", "source", "generation", "policy"):
+            for timeout in (False, True):
+                with self.subTest(restoration=restoration, timeout=timeout):
+                    self.reset_sources()
+                    provider, evidence, candidate = (
+                        self.provider,
+                        self.evidence,
+                        self.candidate_facts,
+                    )
+
+                    class RestoresDuringCall:
+                        calls = 0
+
+                        def evaluate(
+                            self,
+                            request,
+                            idempotency_key,
+                            restoration=restoration,
+                            timeout=timeout,
+                            provider=provider,
+                            evidence=evidence,
+                            candidate=candidate,
+                        ):
+                            self.calls += 1
+                            output = provider.evaluate(request, idempotency_key)
+                            if restoration == "block":
+                                evidence.observe_block(
+                                    candidate.account_id, AccountId("viewer"), BlockState.BLOCKED
+                                )
+                                evidence.observe_block(
+                                    candidate.account_id, AccountId("viewer"), BlockState.CLEAR
+                                )
+                            elif restoration == "policy":
+                                evidence.set_policy(None)
+                                evidence.set_policy(DEVELOPMENT_POLICY)
+                            elif restoration == "generation":
+                                evidence.put_participant(
+                                    replace(
+                                        candidate,
+                                        generation=2,
+                                        approved_media=tuple(
+                                            replace(asset, generation=2)
+                                            for asset in candidate.approved_media
+                                        ),
+                                    )
+                                )
+                                evidence.put_participant(candidate)
+                            else:
+                                changes = (
+                                    {"visibility": "paused"}
+                                    if restoration == "pause"
+                                    else {"source_id": "replacement-source"}
+                                    if restoration == "source"
+                                    else {}
+                                )
+                                evidence.put_participant(replace(candidate, **changes))
+                                evidence.put_participant(candidate)
+                            if timeout:
+                                raise ExpectedProviderFailure(FailureCode.TIMEOUT)
+                            return output
+
+                    changing = RestoresDuringCall()
+                    result = self.service(changing).evaluate(
+                        AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+                    )
+                    self.assertEqual(result.entries[0].state, "reload_required")
+                    self.assertIsNone(result.entries[0].compatibility)
+                    self.assertEqual(changing.calls, 1)
+
+    def test_policy_restoration_cannot_replay_finalized_provider_key(self):
+        work = (CandidateWork(AccountId("candidate"), "pair-1"),)
+        first = self.service().evaluate(AccountId("viewer"), work)
+        self.assertEqual(first.state, "evaluated")
+        self.evidence.set_policy(None)
+        self.evidence.set_policy(DEVELOPMENT_POLICY)
+        replay = self.service().evaluate(AccountId("viewer"), work)
+        self.assertEqual(replay.entries[0].state, "failed")
+        self.assertEqual(replay.entries[0].compatibility.failure, FailureCode.IDEMPOTENCY_CONFLICT)
+        self.assertIsNone(replay.entries[0].compatibility.output)
+        fresh = self.service().evaluate(
+            AccountId("viewer"), (CandidateWork(AccountId("candidate"), "fresh-pair-1"),)
+        )
+        self.assertEqual(fresh.state, "evaluated")
+
+    def test_later_candidate_revokes_earlier_actual_consent_media_and_preference_facts(self):
+        for changes in (
+            {"consent_state": "withdrawn"},
+            {"approved_media": ()},
+            {"accepted_options": ()},
+        ):
+            with self.subTest(changes=changes):
+                self.reset_sources()
+                provider, evidence, candidate = self.provider, self.evidence, self.candidate_facts
+
+                class RevokesEarlierFacts:
+                    def evaluate(
+                        self,
+                        request,
+                        idempotency_key,
+                        provider=provider,
+                        evidence=evidence,
+                        candidate=candidate,
+                        changes=changes,
+                    ):
+                        output = provider.evaluate(request, idempotency_key)
+                        if request.candidate.account_id == AccountId("another"):
+                            evidence.put_participant(replace(candidate, **changes))
+                        return output
+
+                result = self.service(RevokesEarlierFacts()).evaluate(
+                    AccountId("viewer"),
+                    (
+                        CandidateWork(AccountId("candidate"), "pair-1"),
+                        CandidateWork(AccountId("another"), "pair-2"),
+                    ),
+                )
+                self.assertEqual(
+                    [entry.state for entry in result.entries], ["excluded", "evaluated"]
+                )
+                self.assertIsNone(result.entries[0].compatibility)
+                self.assertEqual(self.provider.calls, 2)
+
+    def test_clock_expiry_during_later_candidate_discards_every_earlier_output(self):
+        self.evidence.set_policy(replace(DEVELOPMENT_POLICY, effective_until="2026-09-24"))
+        provider, owner = self.provider, self
+
+        class ExpiresOnLaterCandidate:
+            def evaluate(self, request, idempotency_key):
+                output = provider.evaluate(request, idempotency_key)
+                if request.candidate.account_id == AccountId("another"):
+                    owner.today = date(2026, 9, 24)
+                return output
+
+        result = self.service(ExpiresOnLaterCandidate()).evaluate(
+            AccountId("viewer"),
+            (
+                CandidateWork(AccountId("candidate"), "pair-1"),
+                CandidateWork(AccountId("another"), "pair-2"),
+            ),
+        )
+        self.assertEqual([entry.state for entry in result.entries], ["rejected", "rejected"])
+        self.assertTrue(all(entry.compatibility is None for entry in result.entries))
+        self.assertEqual(self.provider.calls, 2)
+
+    def test_clock_boundary_change_before_retry_does_not_reuse_prior_adult_permission(self):
+        self.evidence.put_participant(replace(self.candidate_facts, birth_date="2008-09-23"))
+        owner = self
+
+        class CorrectsClockDuringTimeout:
+            calls = 0
+
+            def evaluate(self, request, idempotency_key):
+                self.calls += 1
+                owner.today = date(2026, 9, 22)
+                raise ExpectedProviderFailure(FailureCode.TIMEOUT)
+
+        provider = CorrectsClockDuringTimeout()
+        result = self.service(provider).evaluate(
+            AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
+        )
+        self.assertEqual(result.entries[0].state, "excluded")
+        self.assertIsNone(result.entries[0].compatibility)
+        self.assertEqual(provider.calls, 1)
 
 
 class LifecycleAndUnitOfWorkConformanceTests(NoNetworkCase):

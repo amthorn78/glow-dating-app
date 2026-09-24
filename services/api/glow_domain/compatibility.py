@@ -49,6 +49,14 @@ class FixtureProvenance:
 class CompatibilityRequest:
     viewer: ChartMapping
     candidate: ChartMapping
+    eligibility_policy_version: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.viewer, ChartMapping) or not isinstance(
+            self.candidate, ChartMapping
+        ):
+            raise TypeError("Compatibility requires typed ordered chart mappings.")
+        require_nonblank(self.eligibility_policy_version, "eligibility_policy_version")
 
 
 @dataclass(frozen=True)
@@ -104,6 +112,7 @@ class FixtureCacheKey:
     provenance: FixtureProvenance
     pair: tuple[ChartCacheIdentity, ChartCacheIdentity]
     symmetry: SymmetryGuarantee | None
+    eligibility_policy_version: str
 
 
 def fixture_cache_key(
@@ -133,7 +142,9 @@ def fixture_cache_key(
                 "Symmetry guarantee must match the exact engine and contract versions."
             )
         identities.sort()
-    return FixtureCacheKey(provenance, (identities[0], identities[1]), symmetry)
+    return FixtureCacheKey(
+        provenance, (identities[0], identities[1]), symmetry, request.eligibility_policy_version
+    )
 
 
 @dataclass(frozen=True)

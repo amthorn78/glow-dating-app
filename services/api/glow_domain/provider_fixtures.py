@@ -344,6 +344,13 @@ class FixtureCompatibilityBatchService:
         # Later candidates may take time or change shared state. Revalidate
         # earlier outputs after all provider work before returning the batch.
         entries = tuple(self._revalidate(viewer, item) for item in prepared)
+        # A later mapping read can revoke a previously revalidated participant.
+        # Finish with eligibility-only reads after all mapping callbacks. This
+        # remains sequential fixture evidence, not a persistent transaction.
+        entries = tuple(
+            self._revalidate_eligibility(viewer, entry, item.version)
+            for entry, item in zip(entries, prepared, strict=True)
+        )
         if not entries or all(entry.state == "excluded" for entry in entries):
             state = "empty"
         elif all(entry.state == "evaluated" for entry in entries):
@@ -352,20 +359,36 @@ class FixtureCompatibilityBatchService:
             state = "partial"
         return FixtureBatch(state, entries)
 
+    def _revalidate_eligibility(
+        self, viewer: AccountId, outcome: CandidateOutcome, version: PairEvidenceVersion | None
+    ) -> CandidateOutcome:
+        decision = self.eligibility.evaluate(viewer, outcome.account_id, version)
+        if decision.state is not EligibilityDecisionState.READY:
+            return CandidateOutcome(outcome.account_id, decision.state.value)
+        return outcome
+
     def _revalidate(self, viewer: AccountId, prepared: _PreparedCandidate) -> CandidateOutcome:
         outcome = prepared.outcome
+        decision = self.eligibility.evaluate(viewer, outcome.account_id, prepared.version)
+        if decision.state is not EligibilityDecisionState.READY:
+            return CandidateOutcome(outcome.account_id, decision.state.value)
+        # A denied or unresolved earlier attempt is never promoted by a later
+        # restoration. It has no provider result to publish. Still reacquire it
+        # so current exclusions supersede stale mapping/provider diagnostics.
         if outcome.compatibility is None:
             return outcome
         if prepared.version is None or prepared.request is None:
             raise AssertionError("Prepared provider output must retain its acquisition evidence.")
-        decision = self.eligibility.evaluate(viewer, outcome.account_id, prepared.version)
-        if decision.state is not EligibilityDecisionState.READY:
-            return CandidateOutcome(outcome.account_id, decision.state.value)
         if (self.mappings.get(viewer), self.mappings.get(outcome.account_id)) != (
             prepared.request.viewer,
             prepared.request.candidate,
         ):
             return CandidateOutcome(outcome.account_id, "stale")
+        # Mapping repositories may themselves take time. Their completion must
+        # not publish a result after an eligibility or clock revocation.
+        after = self.eligibility.evaluate(viewer, outcome.account_id, prepared.version)
+        if after.state is not EligibilityDecisionState.READY:
+            return CandidateOutcome(outcome.account_id, after.state.value)
         return outcome
 
     def _evaluate_one(self, viewer: AccountId, item: CandidateWork) -> _PreparedCandidate:
@@ -376,12 +399,19 @@ class FixtureCompatibilityBatchService:
         for attempt in range(1, self.retry_policy.max_attempts + 1):
             decision = self.eligibility.evaluate(viewer, item.account_id, expected_version)
             if decision.state is not EligibilityDecisionState.READY:
-                return _PreparedCandidate(CandidateOutcome(item.account_id, decision.state.value))
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, decision.state.value),
+                    decision.evidence_version,
+                )
             expected_version = decision.evidence_version
+            if expected_version is None:
+                raise AssertionError("Ready eligibility must include captured source revisions.")
             viewer_mapping = self.mappings.get(viewer)
             candidate_mapping = self.mappings.get(item.account_id)
             if viewer_mapping is None or candidate_mapping is None:
-                return _PreparedCandidate(CandidateOutcome(item.account_id, "missing_identity"))
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "missing_identity"), expected_version
+                )
             if not isinstance(viewer_mapping, ChartMapping) or not isinstance(
                 candidate_mapping, ChartMapping
             ):
@@ -390,16 +420,32 @@ class FixtureCompatibilityBatchService:
                 viewer,
                 item.account_id,
             ):
-                return _PreparedCandidate(CandidateOutcome(item.account_id, "identity_mismatch"))
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "identity_mismatch"), expected_version
+                )
             if any(
                 mapping.state is not ChartMappingState.RESOLVED
                 for mapping in (viewer_mapping, candidate_mapping)
             ):
-                return _PreparedCandidate(CandidateOutcome(item.account_id, "pending_identity"))
-            request = CompatibilityRequest(viewer_mapping, candidate_mapping)
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "pending_identity"), expected_version
+                )
+            request = CompatibilityRequest(
+                viewer_mapping, candidate_mapping, expected_version.policy_version
+            )
             if expected_request is not None and expected_request != request:
-                return _PreparedCandidate(CandidateOutcome(item.account_id, "stale"))
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "stale"), expected_version
+                )
             expected_request = request
+            # Capture immutable mappings and the ordered revision vector before
+            # provider work. An intervening mapping read can revoke eligibility;
+            # that must produce zero provider calls, including on a retry.
+            before = self.eligibility.evaluate(viewer, item.account_id, expected_version)
+            if before.state is not EligibilityDecisionState.READY:
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, before.state.value), expected_version
+                )
             outcome = evaluate_with_retry(
                 self.provider, request, self.provenance, item.idempotency_key, RetryPolicy(1)
             )
@@ -409,20 +455,13 @@ class FixtureCompatibilityBatchService:
                 continue
             # A provider can take time; discard results if either participant's
             # state or either mapping changed during that call.
-            after = self.eligibility.evaluate(viewer, item.account_id, expected_version)
-            if after.state is not EligibilityDecisionState.READY:
-                return _PreparedCandidate(CandidateOutcome(item.account_id, after.state.value))
-            if (self.mappings.get(viewer), self.mappings.get(item.account_id)) != (
-                viewer_mapping,
-                candidate_mapping,
-            ):
-                return _PreparedCandidate(CandidateOutcome(item.account_id, "stale"))
             final = CompatibilityOutcome(outcome.output, outcome.failure, attempt)
-            return _PreparedCandidate(
+            prepared = _PreparedCandidate(
                 CandidateOutcome(
                     item.account_id, "evaluated" if outcome.output is not None else "failed", final
                 ),
                 expected_version,
                 request,
             )
+            return _PreparedCandidate(self._revalidate(viewer, prepared), expected_version, request)
         raise AssertionError("A validated retry policy must attempt at least once.")

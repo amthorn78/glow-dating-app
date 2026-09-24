@@ -13,6 +13,12 @@ and invocation. They are not registered as HTTP routes. Existing HTTP/UI data
 stays pending/fixture, and readiness stays 503. A supported live adapter requires
 a separate reviewed mapping, actual rights and P11 evidence.
 
+P05.1 extends this same internal seam with raw-fact eligibility acquisition,
+explicit eligibility-policy binding and additional delayed-revocation checks.
+The [reciprocal fixture mapping](reciprocal-eligibility-fixtures.md) owns its
+provisional policy and shared truth table. Served development responses, closed
+production DTOs and the absence of active production routes are unchanged.
+
 | Contract | Responsibility and implemented substitute | Trust and unresolved boundary |
 |---|---|---|
 | `BirthInput` | Immutable private civil birth date/time, known/approximate/unknown precision, entered place, optional timezone with provenance, input/consent versions and app account identity. Private facts are excluded from its repr. | Authenticated ownership, current consent and input version must be acquired by the application; a client cannot assert their truth. No timezone calculation or accepted live HDE birth schema is claimed. |
@@ -71,19 +77,25 @@ authentication and cannot turn untrusted JSON into authorization.
    access. Empty/all-excluded input yields `empty` without provider work.
 3. Read both mappings; reject absent/wrong identities and return pending for an
    unresolved chart. Preserve direction. Compare full versions across retries.
+   Recheck eligibility after mapping callbacks and before provider dispatch;
+   a mapping read may itself cross a source or clock change.
 4. Invoke one pair. On declared timeout/outage, retry at most the explicitly
    configured one to three total attempts, preserving the idempotency key and
    re-acquiring eligibility/mappings before every attempt. Other expected
    failures stop immediately. No sleeps or production retry scheduler is built.
-5. Match returned identity, input/mapping versions and simulated contract/engine
-   provenance. Unsupported version, wrong pair and stale mapping remain distinct
+5. Match returned identity, input/mapping/eligibility-policy versions and simulated
+   contract/engine provenance. Unsupported version, wrong pair and stale mapping remain distinct
    failures. Re-acquire both people's current eligibility and mappings after
    each final call; discard output on changes, including block, consent,
-   suspension, pause or deletion. The evidence service owns those predicates.
-6. After all provider calls, revalidate every retained outcome against its captured
-   eligibility revision and both mappings. A later candidate's call may have
-   changed an earlier candidate's state; that earlier outcome must also be
-   discarded before the batch returns.
+   suspension, pause or deletion. Recheck eligibility again after mapping reads;
+   the evidence service owns those predicates.
+6. After all provider calls, reacquire eligibility for every retained outcome,
+   including missing/pending-mapping outcomes. A denied earlier attempt is never
+   promoted by later restoration. Retained provider outputs also recheck both
+   mappings and eligibility after those callbacks. Finally perform an eligibility-
+   only sweep after all mapping callbacks: a later candidate's mapping read may
+   have revoked an already revalidated earlier outcome. Discard obsolete output
+   before returning; these sequential checks are not an atomic database snapshot.
 7. Preserve an outcome for every submitted candidate. One failed candidate does
    not fabricate output for it or discard another candidate's result. `partial`
    describes mixed completion; `evaluated` describes completed fixture calls,
@@ -102,11 +114,15 @@ batch service uses it for one attempt at a time and performs the fresh checks
 around it. Neither helper is an authenticated route.
 
 All cache/result identities remain ordered. They include both app IDs, both
-engine references, both birth-input and mapping versions, fixture-set version,
+engine references, both birth-input and mapping versions, explicit captured
+`eligibility_policy_version`, fixture-set version,
 adapter version, simulated engine and engine-contract versions and internal port
 version. Existing explicit synthetic symmetry tests establish no real engine
 symmetry. No cache store, TTL, permitted reuse or actual invalidation delivery is
-implemented. The post-call and final batch rechecks narrow stale windows; only the
+implemented. `CompatibilityRequest` requires that policy revision explicitly;
+the trusted batch takes it from `PairEvidenceVersion`, and finalized fixture
+idempotency keys cannot replay prior-policy output. A client-supplied current
+policy assertion grants no eligibility. Post-call/final rechecks narrow stale windows; only the
 future P11 transaction/recheck boundary can establish race behavior for privileged
 actions. Compatibility still cannot authorize a like, match or message.
 

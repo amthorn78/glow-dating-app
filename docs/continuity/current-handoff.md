@@ -1,481 +1,225 @@
 # App Builder 1 current handoff
 
-## Current assignment: AP1-P04.3-001 revision 1.0
+## Current assignment and execution state
 
-This section supersedes the historical P04.2 handoff below. Nathan Amthor owns
-product/resource decisions; **App Planner 1** coordinates; **App Builder 1**
-implements and reports. The current assignment is **P04.3 — Build private media
-lifecycle**, issued 23 September 2026. Complete its checked publication and
-reporting, then hand off without automatically starting P05. Assume no previous
-checkout, credentials, tools or process survives.
-
-Private repository **amthorn78/glow-dating-app**, ID **1383293037**, default branch
-**main**. Verified starting main **1c991948f819a5888256757babff31f1223622e7**, tree
-**49a13dae12d27bc46ad429298da43588cdaedda4**; all **187** blobs and modes matched
-the complete remote tree and no PR was open. Current scoped branch:
-**app-builder-1/p04-3-private-media-lifecycle**. Local Git is only a verified
-snapshot/diff aid; publish using real remote parent commits, never push synthetic
-local history. No force-push or unrelated reset is authorized.
-
-P04.2 is **Done at fixture scope**, accepted by **AB1-R007/AP1-ACK007** after
-[PR 7](https://github.com/amthorn78/glow-dating-app/pull/7). Its final candidate
-**bba02e35fde915775ce48b40782ab59657b4b470** and the starting main above share
-tree **49a13dae12d27bc46ad429298da43588cdaedda4**. Ordered merge parents are
-**4f2708d476d2096cdf7ef8e6062803905aca5915** and that final candidate.
-All four jobs passed in runs **35922143367**, **35922138457**, **35922715763**,
-including **116 mobile tests and 30 rendered cases**. These are accepted historical
-results, not a P04.3 claim. Preserve P04.1's corrections and P04.2's documented
-unattributed earlier rendered failure, final review timing and source/evidence limits.
-
-At startup P04.3 was Planned; it was set **In progress**. P03.3 and P04.2
-prerequisites are Done. **AB1-R008 was unused at startup**; recheck before saving.
-The [P04.3 checkpoint](../testing/p04-3-checkpoint.md), actual remote checks and
-[shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f) own
-current evidence. Final implementation/candidate/merge/tree identities and CI
-links belong to the external closure report because a commit cannot contain its
-own hash. Do not infer final publication or Done from this containing document.
-
-P04.3's initial [PR 8](https://github.com/amthorn78/glow-dating-app/pull/8) merged
-as `b7fb0f87a79827ebb00f9a409b59e61019652f35` after all four candidate jobs passed
-(171 mobile, 44 rendered cases). Automatic code review completed after merge and
-identified a failed-removal/reapproval resurrection bug. P04.3 stayed In progress.
-The repair branch `app-builder-1/p04-3-removal-revocation-fix` starts from that
-actual main and preserves owner-removal revocation separately from moderation
-restriction, including same-owner/generation authority loss/restoration. The
-[checkpoint](../testing/p04-3-checkpoint.md) preserves the original checked merge
-and review timing. Reconcile the follow-up PR, its final candidate and merged-main
-checks plus AB1-R008 before deciding current status; do not treat the initial
-merge or its passing tests as final acceptance.
-
-The first PR 9 candidate `f58475ee02462eb87435200859a6ce2939fac7dd` passed its
-push run but failed one inherited retained birth test in its PR run (45/46,
-all 16 media cases passed). Safe diagnostics found an empty date after date/place
-input. PR 9's follow-up therefore also replaces render-captured birth draft
-merge/submit state with synchronous guarded snapshots and adds a same-task input
-regression; the resulting 47 rendered cases include all original assertions.
-Consult the checkpoint and final external report for actual later results. The
-earlier failures and evidence limits are preserved rather than erased by reruns.
-
-### Read and reconcile before continuing
-
-Read repository/mobile AGENTS, GAPP-PF00/PF01 (especially D08/P04/P11),
-[Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c),
-[P04.3](https://app.notion.com/p/3e44590a05eb814aaa84d69bb804768b), current reports,
-Work Register schema and actual remote branch/head/base/open PRs. Read
-[media semantics](../architecture/private-media-fixtures.md),
-[provider mapping](../architecture/media-provider-mapping.md), profiles/onboarding
-architecture, closed schemas/generated validators, F04/F05/F06, mobile/API READMEs,
-locks and Foundation workflow. Historical Drive plans are not parallel canon.
-HDE PF attachments remain protected reference; do not launch an HDE change flow.
-
-D08 already authorizes app-owned edits, publication and checked merges. It excludes
-every direct or indirect HDE/shared-resource effect. This assignment includes no
-DB connection/SQL/migration, provider/HDE call, Railway provisioning/deployment,
-Cloudflare account/bucket change, production activation, outside purchase, public
-release, destructive retirement or person-directed message. Actual access controls
-remain boundaries; finish independent authorized work around a concrete blocker.
-The audit's early catalog exception and browser-terminal restrictions do not transfer.
-
-### Implemented media scope and truth limits
-
-The `/media` owner journey supports selection, progress, cancellation/interruption,
-bounded retry, quarantine/review feedback, accessible approved ordering and removal
-with independently evidenced purge. Owner controls cannot approve media or confirm
-purge. Separate **synthetic** provider/system/moderator controls exercise F05.
-
-The sole contract extension is closed `MediaCollection`, aggregate `version` plus
-at most twenty unique `MediaLifecycle` items. `request_upload`/`reorder` compare
-collection version; `remove` compares asset version. Existing intent/grant/lifecycle
-fields are unchanged. This extends the unpublished logical catalog; no active HTTP
-route or production transport is added. Durable aggregate versions remain P11.
-
-`development-media-1` uses PNG, 1 MiB encoded, 2048 per dimension, 4,194,304
-**declared** pixels, four live photos, sixty-second app grants and three upload/
-purge attempts. These are provisional test inputs, not approved launch policy or
-Cloudflare guarantees. Actual bytes receive PNG signature/chunk/CRC/header checks.
-**Pixels are not decoded and metadata is not stripped.** Safe processing and
-moderation are simulated, originals remain private placeholders, and approved
-references are non-delivering synthetic variants. PV04/PV07 actual proof stays open.
-
-The maintained native picker is `expo-image-picker` **57.0.19**, with MIT
-`expo-image-loader` **57.0.1**. Native selected URI bytes lack a verified bounded
-reader and are refused for upload. The browser fixture adapter bounds a synthetic
-File before reading, without image decoding/object URLs. Native permission/device
-behavior is unobserved. Simulated permission controls cannot close N01.
-
-Grant/attempt/asset/selection bytes bind immutable owner/generation/authority/policy
-context before awaiting. Expired grants remain terminal; replacement removes the
-old pending asset then creates a new asset/grant identity. Rejected responses never
-become hidden accepted lifecycle mutations on reload. Pending removal immediately
-revokes app projection while purge remains pending. Same-session navigation can
-retain eligible work; logout/expiry/account change clears private presentation.
-No durable/cross-process/cross-device storage or provider atomicity is claimed.
-
-Current owned approved assets supply profile evidence and candidate references.
-Last-photo loss/policy/restriction revokes completeness/disclosure, retained previews
-and pending resume. Saved visible may correctly display blocked. Explicit pause
-survives media edits. Ordinary approval never resolves chart, profile review, consent,
-adult, reciprocal/preference or launch-policy requirements. The explicit fictional
-eligible scenario seeds owned approved media plus separate synthetic prerequisites.
-No HDE identifier or calculation is created.
-
-### Validation, review, publication and closure
-
-Use committed pins and locks: Python **3.12.14**, Node **24.19.0**, npm **11.9.0**,
-Expo **57.0.24**, Router **57.0.22**, RN **0.86.3**, React **19.2.3**, Playwright
-**1.62.1**. Run hash-locked pip/pip check, database-free Django tests/checks,
-Ruff/format/mypy/static model agreement, Python/JS contracts and deterministic
-generation, mobile TypeScript/ESLint/tests, SDK check, both development JS exports,
-rendered Chromium, root smoke and hosted container proof. Never apply migrations.
-Local Chromium downloads failed before any browser case executed; hosted Mobile
-checks must supply actual rendered evidence. A JS export is not a signed native build.
-
-Current npm audit reports **14 moderate, zero high/critical**, involving
-**GHSA-vcc3-ghjq-m6fr** and **GHSA-w5hq-g745-h8pq**. Only picker/loader were added;
-existing versions were preserved. Router reaches query-string; UI guards do not
-neutralize the advisory. Inspected xcode uses uuid.v4, not complete unreachability
-proof. Incompatible forced downgrades were not applied. Remediation remains before
-release. See current checkpoint for review findings, fixes and executed test counts.
-
-All four Foundation jobs must pass on the actual final candidate including docs:
-**API checks**, **Mobile checks**, **API mobile smoke**, **API artifact checks**.
-Immediately before merge check current head/base/main, complete diff, review
-findings and required checks; confirm no deployment or production side effect.
-If main moved, reconcile/revalidate. Then verify merge SHA, ordered parents,
-candidate/main tree relationship and merged-main checks. Only afterward move the
-existing P04.3 **Verified → Done at fixture scope**, update Control and read back.
-Save **To App Planner 1** report AB1-R008 if still unused. Saved is not verified
-receipt by another chat; Nathan may relay the final report.
-
-Before interruption publish recoverable source and checkpoint remote branch/head/PR,
-remaining local work, checked results and exact next action. Inspect remote objects
-before retrying uncertain writes; never report scratch-only source as delivered.
-
-### Next existing task and protected/P11 carryforward
-
-The next existing task is **P05.1 — Implement reciprocal eligibility rules**,
-[page](https://app.notion.com/p/3e44590a05eb8115ba8ef6f2fd2e049b), observed Planned,
-dependencies `P02.1,P04.2`. Its scope covers consent, age, completeness, preferences,
-visibility and blocks. Leave it unstarted. No P04 parent register row exists;
-reconcile combined P04 fixture completion in Control/report against P04.1–P04.3.
-This never means production readiness or native/provider acceptance.
-
-All protected resource IDs and completed-audit details below remain in force.
-Preserve **hde.test_bridge** and **public.hde_body_graphs_current**, every other
-HDE object, shared Postgres/Redis and project/environment effects. No app Railway
-service is provisioned by P04.3. Same logical DB `railway` with dedicated app schema/
-least-privilege roles remains the conditional direction; 32 provisional models
-are not a mandate for 32 tables. Twelve legacy public tables/five sequences need
-separate authorized retirement after writer retirement, restore proof and dependency
-recheck. Never reset the DB/drop `public`/reuse shared superuser credentials or
-bypass the protected-service guard.
-
-**DB01–DB13, PV01–PV08, PR01, N01, R01** remain deferred. P04.3 explicitly carries
-PV04 actual private storage/processing/moderation/delivery/purge, PV07 processor
-export/deletion, DB07/DB08 durable event/replay behavior and N01 native bounded
-reader/permissions/device/accessibility. A01/A07 HDE rights/contracts/throughput,
-A02 schema/roles, A04 access, A05 policies/operators, A06 paid scope (disabled) and
-A08 chat authorization remain. P11 sequence stays disposable PostgreSQL → staging
-→ authorized final app production integration. No background work is implied.
-
----
-
-## Historical P04.2 handoff, preserved for evidence
-
-The following is the complete preceding assignment's handoff. Its instructions
-and next-task/status wording describe P04.2, not the current P04.3 assignment.
-The current section above and current Notion/remote evidence control execution.
-
-# App Builder 1 historical P04.2 handoff
-
-Recorded 23 September 2026 for a **fresh execution session**. Nathan Amthor owns
-product/resource decisions. **App Planner 1** coordinates and manages the build;
-**App Builder 1** implements and reports to App Planner 1. The current bounded
-assignment is **AP1-P04.2-001 revision 1.0**: profiles, preferences, public-field
-projection and pause/completeness eligibility at fixture scope. Assume no earlier
-chat, checkout, credentials, processes or dependencies survive. Do not start P04.3
-automatically from this assignment.
-
-## Current P04.2 publication checkpoint
+**AP1-P05.1-001 revision 1.0: P05.1 — Implement reciprocal eligibility rules.**
+Nathan Amthor owns product/resource decisions. **App Planner 1** coordinates and
+reviews progress; **App Builder 1** implements and reports. This fresh-session,
+fixture-only assignment runs through reviewed publication, checked merge,
+merged-main verification and reporting. Assume no earlier chat, checkout,
+credentials, dependencies or process survives.
 
 Private [amthorn78/glow-dating-app](https://github.com/amthorn78/glow-dating-app),
-repository ID **1383293037**, default branch **main**. This assignment starts from
-verified main **4f2708d476d2096cdf7ef8e6062803905aca5915**, tree
-**5c8c4baf21afa3cf43d6fda7fdc90ed6c05d32e5**. The scoped branch is
-**app-builder-1/p04-2-profiles-preferences-visibility**. Reconcile current remote
-main, open PRs, branch and worktree before continuing; this starting identity is
-not permission to replace later work.
+ID **1383293037**, default branch **main**. Reconciled starting main:
+**8f9dfbc30e3d0b4568d71482ca7334bf172afafa**, tree
+**ef115f846ad325f8c1c3a60ecf44d87cadff7ced**. Scoped branch:
+**app-builder-1/p05-1-reciprocal-eligibility**. Verify actual remote main, branch,
+open PRs and worktree before continuing. A newer legitimate head supersedes
+this starting identity; preserve unrelated work and reconcile it.
 
-Implementation was published as **0c908cb5abb286e69e8f5acbacb522dd68b373ff** in
-[PR 7](https://github.com/amthorn78/glow-dating-app/pull/7). Corrective commit
-**25e274f4384b88508baeadb9e00d8667a8a7b538** addresses hosted navigation-test
-findings, a coordinated entry-routing subscription and the automated review's
-malformed-reload finding. Test-only correction
-**0da919e6a704ab14190def24da9cfe3a05d40356**, tree
-**d219a2dd27609f8169c42b2dbc2245906bf16dea**, makes rendered assertions use exact
-effective-visibility labels. All four jobs pass in
-[PR run 35921543566](https://github.com/amthorn78/glow-dating-app/actions/runs/35921543566)
-and [push run 35921536996](https://github.com/amthorn78/glow-dating-app/actions/runs/35921536996),
-including **116 mobile tests and 30 rendered Chromium cases**. Earlier failed
-attempts and their corrections remain documented. These results cover the code/test
-correction; the later containing documentation candidate requires its own checks.
-Read [P04.2 evidence](../testing/p04-2-checkpoint.md), the actual
-branch/PR checks and the latest Notion records before claiming completion. The
-containing candidate, including final documentation, must pass all four Foundation
-jobs. The external closure report **AB1-R007 if unused** owns final implementation,
-final-candidate and merge hashes, exact tree/parent relationship and merged-main
-CI. A commit cannot contain its own final hash. Notion owns the task's actual
-In progress → Verified → Done transitions at fixture scope; no pending result may
-be reported as Done.
+The existing [P05.1 task](https://app.notion.com/p/3e44590a05eb8115ba8ef6f2fd2e049b)
+was **Planned / Autonomous** and set **In progress** when execution began. Its
+dependencies `P02.1,P04.2` are Done. The [complete assignment](https://drive.google.com/file/d/1Sy62foHcwxJGgdOPY1U3-i7Bc25bVXWj/view)
+is the execution packet. **AB1-R009 was unused at startup**; recheck before saving.
+This document does not attest its own future checks, merge or acceptance.
 
-[The complete current assignment](https://drive.google.com/file/d/1xx4gKWhuYAMIeg42nKx2ZG4L0o3MRMXk/view)
-and [P04.2 task](https://app.notion.com/p/3e44590a05eb81c0aef5fb3a705ee88a)
-are the execution inputs. Live startup reconciliation found AB1-R006 followed by
-AP1-ACK006, and no AB1-R007. P04.2 was then set to In progress; P04.3 remains
-separate. Recheck the report identifier and task state before saving later updates.
+The [P05.1 checkpoint](../testing/p05-1-checkpoint.md), actual remote checks and
+[shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f) own
+execution evidence. Notion owns current status. Exact containing-commit,
+final-candidate, merge, ordered-parent and final-tree identities belong in the
+external closure report because a commit cannot certify its own hash.
 
-Prefer an authenticated checkout. If publication uses a connector snapshot,
-verify blobs/modes against the actual remote tree and create commits with real
-remote parentage. Local synthetic history is a diff aid only; never push it,
-force-push or reset unrelated work. Branch protection was disabled at the accepted
-checkpoint, so inspect current head/base, the complete diff, reviews and required
-checks procedurally immediately before merge. Confirm no deployment side effect
-has been introduced. Verify merged-main identity and checks after merge.
+## Authority and current sources
 
-## Accepted P04.1 baseline and preserved history
+Read root [AGENTS](../../AGENTS.md), applicable [mobile AGENTS](../../apps/mobile/AGENTS.md),
+[GAPP-PF00](../pf-canon/GAPP-PF00-Canon-Index-and-Authority.md) and
+[GAPP-PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), especially D08,
+P05 and P11. Repository technical authority transferred at
+**ac38e58651e5578ee8503b6423e4884203b42278**. Drive holds historical sources and
+session prompts, not parallel technical canon. HDE canon/change workflows remain
+separate from this app assignment.
 
-P04.1 is **Done at fixture scope** after its initial PR 5 publication was reopened
-and corrected by **AP1-P04.1-002**. **AB1-R006** records the correction; **AP1-ACK006**
-accepts it. [PR 6](https://github.com/amthorn78/glow-dating-app/pull/6) merged on
-23 September 2026 at **18:44:34 UTC**, with final candidate
-**0b0a589f114354a4e540e0fc1b7bebdb19dbb750** and merged main
-**4f2708d476d2096cdf7ef8e6062803905aca5915** sharing tree
-**5c8c4baf21afa3cf43d6fda7fdc90ed6c05d32e5**. Its parents are starting main
-**c544b654e0af3e75f31b579f72e5a02e5e577e84** and that final candidate.
-
-All four jobs passed in [final PR CI](https://github.com/amthorn78/glow-dating-app/actions/runs/35904007513),
-[candidate push CI](https://github.com/amthorn78/glow-dating-app/actions/runs/35903999794)
-and [merged-main CI](https://github.com/amthorn78/glow-dating-app/actions/runs/35904569474).
-The accepted historical evidence includes **58 mobile tests and 16 rendered
-Chromium cases**. These are baseline results, not a P04.2 test claim.
-
-Preserve all four corrections and recovery behavior:
-
-- Birth drafts reconcile accepted and unsaved facts against monotonic authoritative
-  revisions. Stale callbacks cannot restore an older value, including an A→B→A
-  date sequence. Ordinary navigation/retry preserves deliberate edits.
-- Retained eligibility date and consent reconcile independently. A no-edit Save
-  cannot restore an adult date after an underage correction or reaccept withdrawn
-  consent. The navigator remains mounted.
-- Restricted-session expiry returns to account entry and clears private state;
-  the seeded account restriction survives later sign-in/recovery until an explicit
-  development scenario replacement.
-- Expired challenges remain expired until resend. Wrong-context or delayed work
-  cannot consume or expire a replacement. Retryable failures remain retryable.
-- Rate-limit → retry preserves the entered recovery email.
-
-The retained eligibility regression proved synchronization/no-edit Save before
-Back. Its Back reached exact `about:blank`; a subsequent fresh private entry was
-denied. This is not persisted-session or native-history proof. Earlier PR 5 thread
-flags remain unresolved; the checkpoint and reports contain evidence-backed
-source/regression dispositions rather than treating those flags as correctness.
-
-[P04.1 evidence](../testing/p04-1-checkpoint.md), [onboarding architecture](../architecture/onboarding-fixtures.md)
-and AB1-R005/AB1-R006 preserve initial PR 5, correction reproduction, harness
-failures, fixes, source identities and acceptance limits. P01/P02 remain complete
-at foundation/contract/static-definition scope; P03 remains complete at preparation
-scope through [PR 4](https://github.com/amthorn78/glow-dating-app/pull/4), AB1-R004
-and AP1-ACK004. See [P03 evidence](../testing/p03-checkpoint.md). Do not restart
-completed work from historical unstarted/planning paragraphs.
-
-## Authority and startup sources
-
-- Read [AGENTS](../../AGENTS.md), [mobile instructions](../../apps/mobile/AGENTS.md),
-  [GAPP-PF00](../pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), current
-  [GAPP-PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), especially D08,
-  the requested phase and P11.
 - [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c),
-  [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e), data
-  source `collection://5ea4c24d-ec63-4afb-a434-8969c26b8fbe`; fetch its current schema
-  before property writes. [D08](https://app.notion.com/p/3e44590a05eb8106b26aea3147dc84bf)
-  owns the grant; Notion owns live task state.
-- [Shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f): read
-  AB1-R006, AP1-ACK006 and all newer reports/acknowledgments. Saved is not delivered.
-- [P04.1 task](https://app.notion.com/p/3e44590a05eb812db856f1a7221aa464),
-  [P04.2 task](https://app.notion.com/p/3e44590a05eb81c0aef5fb3a705ee88a) and
-  [AP1-P04.2-001 assignment](https://drive.google.com/file/d/1xx4gKWhuYAMIeg42nKx2ZG4L0o3MRMXk/view).
-- [Mobile README](../../apps/mobile/README.md), [API README](../../services/api/README.md),
-  manifests/locks and [Foundation workflow](../../.github/workflows/foundation.yml).
-- [Production contracts](../architecture/production-contracts.md),
-  [privacy/safety](../architecture/privacy-and-safety-rules.md), F01–F04/F06 in
-  `packages/contracts/production/flows-v1.json`, closed schemas/generated validators,
-  [onboarding architecture](../architecture/onboarding-fixtures.md),
-  [profiles/preferences architecture](../architecture/profiles-preferences-fixtures.md), and
+  [D08](https://app.notion.com/p/3e44590a05eb8106b26aea3147dc84bf),
+  [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) and
+  [reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f), including
+  AB1-R008/AP1-ACK008 and newer entries. Fetch the register schema before edits;
+  data source `collection://5ea4c24d-ec63-4afb-a434-8969c26b8fbe`.
+- [Trusted eligibility](../architecture/trusted-eligibility.md),
+  [reciprocal fixtures](../architecture/reciprocal-eligibility-fixtures.md),
+  [privacy/safety](../architecture/privacy-and-safety-rules.md),
+  [production contracts](../architecture/production-contracts.md),
+  [profiles/preferences](../architecture/profiles-preferences-fixtures.md),
+  [private media](../architecture/private-media-fixtures.md),
+  [provider conformance](../architecture/provider-conformance.md), closed
+  schemas/generated validators and F04–F06.
+- [API README](../../services/api/README.md), [mobile README](../../apps/mobile/README.md),
+  manifests/locks, [Foundation workflow](../../.github/workflows/foundation.yml),
+  [P04.3 checkpoint](../testing/p04-3-checkpoint.md) and
   [deferred acceptance](../testing/p11-deferred-acceptance.md).
 
-D08 authorizes app-owned GitHub, Railway, Drive and Notion creation/modification,
-scoped PRs and checked merges. No routine phase reapproval is needed. It excludes
-**every direct or indirect HDE effect**, including shared-resource changes.
-Public distribution, outside purchases/contracts, destructive legacy retirement
-and person-directed messages remain separate actions. Missing actual access is a
-capability boundary; never request secret values in chat.
+D08 already authorizes app-only edits, branches, PRs, checked merges and Notion
+updates; no repeated permission request is needed. Its exception covers **every
+direct or indirect HDE effect**, including shared dependencies. This assignment
+performs no database connection, SQL, applied migration, live HDE/provider call,
+Railway/Cloudflare mutation, deployment, production activation, public release,
+outside purchase, legacy retirement or person-directed message. The earlier
+audit's connection exception and browser-terminal restrictions do not transfer.
+Actual access controls remain boundaries; continue independent work around a
+concrete unavailable capability without bypassing it.
 
-Repository authority transferred at **ac38e58651e5578ee8503b6423e4884203b42278**.
-[Drive project](https://drive.google.com/drive/folders/1MXxJc_6tk-1Kf4QQhoEJPe-3uphKmrC1)
-retains historical planning and external sources, not an editable parallel canon.
-The HDE canon/change system remains separate and unchanged.
+## Accepted baseline and historical evidence
 
-## Implemented fixture scope and retained limits
+**AP1-ACK008 accepted P04.3 and combined P04 at fixture scope.** PR8's media
+implementation merged as **b7fb0f87a79827ebb00f9a409b59e61019652f35**; PR9 corrected
+owner-removal resurrection and synchronous birth-draft input loss. PR9 merged
+at **2026-09-23T23:32:01Z** to the starting main above. Final candidate
+**f76821ba845cc9b4c3a4a148745a1f115f1ad441** and main share the starting tree;
+ordered parents are PR8's merge and that final candidate.
 
-The mobile shell now includes registration/sign-in, verification/resend,
-neutral recovery/reset, adult/consent, private birth input, owner profile/preferences
-editing and preview, pause/resume, restricted states and explicitly labeled
-development scenarios. Account/session and current eligibility control Router
-access and history. Private drafts clear on account/session changes; stale
-asynchronous completion cannot grant access.
+All four jobs passed on candidate runs
+[35933225850](https://github.com/amthorn78/glow-dating-app/actions/runs/35933225850),
+[35933221941](https://github.com/amthorn78/glow-dating-app/actions/runs/35933221941)
+and [merged-main 35934070127](https://github.com/amthorn78/glow-dating-app/actions/runs/35934070127).
+Accepted historical counts overlap: **181 mobile tests, 212 JS contract cases,
+47 rendered Chromium cases, 147 API tests and 37 Python contract methods**, plus
+both development JS exports. These are not P05.1 results.
 
-P04.2 uses the existing generated ProfileIntent/OwnProfile,
-PreferencesIntent/OwnPreferences and VisibilityIntent contracts. Its fixture port
-stages mutations until current response validation/acknowledgment. Draft revisions,
-owner/generation context, authoritative object versions and idempotency identities
-prevent obsolete work from becoming accepted state. Retained source changes
-reconcile fields while preserving unrelated deliberate edits. See the dedicated
-[profiles/preferences architecture](../architecture/profiles-preferences-fixtures.md)
-for exact policy, ownership, visibility and projection behavior.
+PR8's first main run failed two inherited birth cases. PR9's first candidate
+also failed one retained birth case; safe diagnostics showed lost input. Final
+source retains every earlier assertion and the synchronous immutable draft fix.
+Not every historical timing failure is uniquely attributed. Final-head automatic
+code review completed before PR9 merge; automatic security last completed on an
+earlier repair and final-head requests errored. Do not call that a final-head
+security pass. [Historical P04.3 handoff](history/p04-3-handoff.md) preserves the
+preceding source and its P04.2 history; its old imperatives are not current work.
 
-Preference policy **development-preferences-1**, dimension **demo_connection**,
-and options **demo_a/demo_b** are explicitly provisional editing examples. They do
-not select launch geography, gender/orientation taxonomy or production reciprocal
-policy. Changed preferences invalidate fictional reciprocal evidence. Ordinary
-editing can save an empty biography as an incomplete draft; it does not approve
-photos, resolve a chart or grant discovery. Only the explicit fictional eligible
-scenario supplies demonstration media/chart/moderation/reciprocal and independent
-viewer evidence for visibility tests. Candidate projection is an allowlist with
-compatibility unavailable and no live delivery grant; owner preview is not public
-visibility. Pause and permission changes invalidate retained recommendations and
-pending grant work. Resume rechecks current state and grants no historical contact.
+Preserve P04.1 revision/recovery/terminal-challenge fixes, P04.2 draft/pause/
+malformed-adoption behavior, and PR9 owner-removal exclusions and birth edits.
+Moderator reapproval cannot clear owner removal, including same-owner/generation
+authority loss/restoration. Actual PNG checks cover framing, CRC and declared
+bounds; pixel decoding, metadata stripping, moderation, delivery and purge remain
+simulated. Native selected bytes lack a verified bounded reader and are refused.
 
-F01 is a synthetic adapter boundary, not an allauth installation or Glow credential
-API. Maintained **django-allauth headless JWT with stateful validation and refresh
-rotation** remains the planned production mapping. Only fictional `example.invalid`
-accounts and the displayed non-secret fixture password are used. No real email,
-credential, token, secure-storage or provider claim is made.
+## Bounded P05.1 outcome
 
-F02 uses explicit fixture clock **2026-09-23T12:00:00Z**, age **18**, leap-birthday
-March 1 convention and **development-consent-1**. They are development inputs,
-not approved law/terms/policy. A05 still requires actual launch geography and
-approved adult/terms/privacy/consent content. Unknown policy, unverified/underage,
-stale/withdrawn consent, suspended/deletion state and unfinished profile block
-ordinary discovery. The eligible recommendation scenario is a distinct fixture.
+Derive both participants' eligibility through the existing Python evaluator and
+trusted acquisition seam from app-owned account, consent, profile, approved-media,
+preference, visibility, moderation and directional block facts. Composition
+selects the repository; fixture memory is not production authentication. Client
+flags, expected versions and earlier fictional reciprocal markers are not trusted
+server evidence.
 
-F03 uses the existing BirthInput/BirthInputIntent/OwnBirthInput closed contracts.
-Known/approximate civil time is preserved; unknown stays null. Timezone and
-provenance stay unresolved. Input edits invalidate earlier mapping assumptions.
-Pending/ambiguous/unavailable/unsupported outcomes are synthetic. No resolved chart,
-engine identifier, geocoding or HDE request is fabricated. Ordinary onboarding ends
-at **profile incomplete**. P04.2 adds owner editing without treating text/preferences
-as proof of media approval or HDE resolution; P04.3 media remains separate.
+Separate account/profile readiness from ordered-pair permission. Compute
+A-accepts-B and B-accepts-A independently using each fictional person's attribute
+and the other's accepted set. Preserve the ordered revision vector and source
+generations, including an absent block's revision. Recheck time validity without
+requiring a record edit. Revoke retained/delayed results and bind provider outcomes
+to exact pair/input/mapping/policy versions. Excluded or unresolved pairs must
+produce zero chart-mapping/provider calls.
 
-Restoration is validated same-account/same-session/same-revision synthetic memory
-only. No SQLite, browser storage, shadow database, durable process-restart or
-cross-device restoration is added. UI gates supplement future server enforcement.
-Production OpenAPI still has no active paths. P03 guards, disabled billing,
-redacted diagnostics and no-real-provider-fallback behavior remain intact.
+The [reciprocal fixture record](../architecture/reciprocal-eligibility-fixtures.md)
+owns exact policy, source mapping, truth-table corpus and narrow presentation
+integration. Adult/consent and synthetic preference policy remain provisional
+inputs. A05 owns launch geography, gender/orientation taxonomy, distance/age-range
+product rules, operating policy and resurfacing/rematch decisions. Missing policy
+denies dependent behavior while independent fixture work continues.
 
-The API remains loopback-only development/test GET fixtures with dummy DB backend,
-liveness 200 and readiness 503. Staging/production, DB/HDE variables and unsafe
-release configurations refuse startup. No deploy job or registry publication is
-introduced. Browser rendering and iOS/Android JS exports are distinct evidence;
-neither proves signed builds, native device layout, screen readers, secure storage,
-actual delivery or production authentication.
+Eligibility authorizes only the next specifically checked workflow. It is not a
+like, match, channel entitlement, send permission or history grant. Block/report/
+export/deletion retain separate authorization paths. P05.2 queues/pagination/
+ranking UI and P05.3 likes/matches/unmatch are outside this assignment. Ordinary
+onboarding retains unresolved chart/review/policy gates.
 
-## Same-project/database direction and protected boundary
+Runtime stays development/test memory: dummy API database, isolated GET fixtures,
+liveness 200, readiness 503, denied writes 405 and empty production OpenAPI paths.
+Unsafe/staging/production configuration is refused. No SQLite, browser storage,
+shadow backend, production auth/endpoint or live provider wiring is added.
+Billing stays disabled. Browser checks and development JS exports do not prove
+signed native builds, device permissions, screen-reader behavior or persistence.
 
-The app belongs in **ample-illumination**, project
-**ce01529f-679f-4f52-a979-23113299a59b**. Nathan prefers HDE's same logical PostgreSQL
-database with separately owned app schema/roles. No legacy user migration is needed.
-The 32 provisional model definitions are not a decision to create 32 tables.
+## Protected database direction and remaining proof
 
-| Resource | Protected identity |
+The completed [recommendation](https://app.notion.com/p/3e44590a05eb81908661fc44eca0ce20)
+and [catalog/model mapping](https://app.notion.com/p/3e44590a05eb8182afdaedeebc6796c6),
+accepted in AP1-ACK-DBA001, support clean app storage in HDE's same logical DB
+**railway**, project **ample-illumination**
+(`ce01529f-679f-4f52-a979-23113299a59b`), with dedicated app schema and separate
+least-privilege owner/migrator/runtime roles. All 32 provisional models map to new
+app-owned relations if retained; they do not mandate 32 tables or physical reuse.
+No legacy-user migration is needed.
+
+| Protected resource | Starting identity |
 |---|---|
-| Workspace | ae7d1e62-8a2d-4055-b637-ec56536a7239 |
-| Production environment | a06b149a-2876-40bf-84a0-7880feaf8b67 |
-| HDE repository/service | amthorn78/glow-hdengine-v2 / 62e7b993-6d30-48b4-9059-c1884b16e90b |
-| Legacy backend | bfedf816-d6d4-4155-b495-cd6416e91e49 |
-| Postgres service/volume | c4d54416-d1ab-4818-898b-9b9be03bc69a / aad776ab-27cc-4994-87f0-589af0de7aa1 |
-| Redis service/volume | 87b4810c-3e23-4d27-b7fc-0bca7131ed37 / 9ec5ad1f-eab1-4722-ae02-28684aa3b89f |
+| Production environment | `a06b149a-2876-40bf-84a0-7880feaf8b67` |
+| HDE repository/service | `amthorn78/glow-hdengine-v2` / `62e7b993-6d30-48b4-9059-c1884b16e90b` |
+| PostgreSQL service/volume | `c4d54416-d1ab-4818-898b-9b9be03bc69a` / `aad776ab-27cc-4994-87f0-589af0de7aa1` |
+| Legacy backend | `bfedf816-d6d4-4155-b495-cd6416e91e49` |
+| Redis service/volume | `87b4810c-3e23-4d27-b7fc-0bca7131ed37` / `9ec5ad1f-eab1-4722-ae02-28684aa3b89f` |
 
-Protection follows effects and actual dependencies, not this list alone. Do not
-change shared/project/environment settings, secrets, networking or existing
-services. Future app service/environment/domain/schema/role IDs are unprovisioned.
-Same-environment services share private networking; a service ID is not isolation.
+Preserve the entire `hde` schema, including **hde.test_bridge**, and
+**public.hde_body_graphs_current**. Twelve legacy public tables/five sequences
+are retirement candidates only after writer retirement, restore proof, dependency
+recheck and a separate authorized destructive change. Never reset the shared DB,
+drop `public`, copy shared superuser credentials or bypass the protected-service
+guard. Protection follows effects, not this list alone. P04 provisioned no app
+Railway service.
 
-The **separate AP1-DBA-001 audit is now complete**, superseding P03's pending note.
-Read its [recommendation](https://app.notion.com/p/3e44590a05eb81908661fc44eca0ce20)
-and [catalog record](https://app.notion.com/p/3e44590a05eb8182afdaedeebc6796c6).
-That report supports database `railway` with reviewed dedicated app schema and
-least-privilege roles. Preserve all `hde` objects and `public.hde_body_graphs_current`.
-Do not adopt the twelve legacy public tables as app storage. Retirement needs a
-separate authorized action after retiring the legacy startup writer, backup/restore
-proof and final dependency checks. Never reset the shared database or drop `public`.
+**DB01–DB13, PV01–PV08, PR01, N01 and R01** remain open as applicable. P05.1
+carries real auth/revocation to DB09; consistent pair acquisition, time/policy
+changes, absent-block races and all writers' revisions to DB10; bounded queues/
+query plans to DB11; interaction/contact races to DB05/DB06; durable events to
+DB07/DB08. See the P05.1 deferred-matrix carryforward. A01/A07 HDE contracts/
+rights/throughput, A02 schema/roles, A04 access/signing, A05 policy/operators and
+A08 chat enforcement remain dependencies. A06 stays disabled. P11 sequence is
+disposable PostgreSQL → staging → authorized final app production integration.
+Fixtures close none of these real proofs.
 
-The audit's later GitHub read closed its original source-access gap: all **32
-provisional models map to new app-owned relations if retained**, with no physical
-reuse of legacy or HDE tables. EngineIdentity and CompatibilitySnapshot remain
-app-owned seams using opaque references/provenance. This is not final approval of
-32 physical tables; reviewed P11 design may consolidate or remove models.
+## Validation, publication and exact next action
 
-**Remaining audit follow-up:** final schema/search-path mechanism, maintained-auth
-migration dependencies, role design, capacity and integration preflight before P11. This P04.2
-execution consumes the report without executing SQL or inheriting its early
-catalog-connection exception. The current protected-Postgres-service guard remains;
-a future audited schema/role-aware guard is required, never a bypass declaring the
-protected container app-owned. Do not reuse shared superuser credentials.
+Use committed pins/locks: Python **3.12.14**, Node **24.19.0**, npm **11.9.0**,
+Expo **57.0.24**, Router **57.0.22**, RN **0.86.3**, React **19.2.3**, Playwright
+**1.62.1**, picker **57.0.19** and loader **57.0.1**. Read installed-major official
+Expo/RN docs before relevant APIs change; avoid incidental dependency upgrades.
+The fresh P05.1 npm audit found **14 moderate and zero high/critical** for
+GHSA-vcc3-ghjq-m6fr and GHSA-w5hq-g745-h8pq. Release remediation remains required;
+guards do not neutralize advisories.
 
-## Reproduce and recover
+The [checkpoint](../testing/p05-1-checkpoint.md) distinguishes local and hosted
+evidence. Required Foundation jobs are **API checks, Mobile checks, API mobile
+smoke, API artifact checks**, on the actual final candidate including docs and
+on merged main. Keep all 47 inherited rendered cases meaningful without weakening
+assertions, timeouts or retry policy. Local Chromium installation failed before
+any case; Docker is unavailable locally, so hosted checks must supply those
+proofs. Tests may not open a database.
 
-Pins: Python **3.12.14**, Node **24.19.0**, npm **11.9.0**, Expo **57.0.24** / SDK
-**57**, Expo Router **57.0.22**, React Native **0.86.3**, React **19.2.3**, and
-development-only Playwright **1.62.1**. Read current locks and SDK-specific docs first.
-Exact install/check commands and observed evidence are in the current P04.2
-checkpoint; the P04.1 checkpoint preserves baseline evidence.
-Use locked pip with hashes; `npm ci --ignore-scripts` in contracts and mobile;
-Django checks/tests, Ruff/format/mypy, Python/JS contracts, static model agreement,
-mobile check/Expo check/export, root HTTP smoke, rendered Chromium suite and hosted
-image smoke. **Never run migrations for this phase.** The existing Playwright dependency
-is development-only and locked; the license inventory records it.
+**Next action:** read current AB1-R009 and Notion P05.1/Control first. If they
+record accepted P05.1 fixture closure with final merge/main evidence, the next
+proposed assignment is P05.2; preserve P05.2/P05.3 Planned until separately
+assigned. Otherwise resume P05.1 from actual remote state: publish the prepared
+candidate/open its scoped PR if absent, then inspect current Foundation checks
+and reviews. Complete concrete corrections with new candidate checks. Wait for an already
+running review. Record service errors/unavailable coverage; earlier-head review
+is not a final-head pass. Immediately before merge verify head/base/main, complete
+diff, mergeability, review dispositions, checks and absence of deployment effects.
+If main moved, reconcile/revalidate. Merge with real remote ancestry; verify
+ordered parents, candidate/main tree relationship and all merged-main jobs.
 
-The inherited audit checkpoint recorded **14 moderate findings and zero
-high/critical**, across **GHSA-vcc3-ghjq-m6fr** and **GHSA-w5hq-g745-h8pq**. Those are
-historical counts, not a new P04.2 audit. Assess compatibility/reachability and
-remediate before release; route guards do not neutralize package advisories. Do not
-perform a forced broad dependency update as incidental fixture work.
+Only after acceptance, update existing P05.1 **Verified → Done at fixture scope**,
+Control and their exact next-action pointers; read back. Append **To App Planner 1** report
+**AB1-R009 if unused** with actual UTC time, assignment, publication/run identities,
+commands/results, reviews, effects, limits and recovery instructions. Saving is
+not delivery or planner acknowledgment. Give Nathan the concise report for relay;
+do not contact another session or promise background monitoring.
 
-All four Foundation jobs must pass on the exact final candidate and merged main:
-**API checks**, **Mobile checks** (including rendered journey), **API mobile smoke**,
-and **API artifact checks**. Final P04.2 evidence belongs in its checkpoint and AB1-R007 if unused.
-If interrupted, inspect remote branch/PR first, compare current main and published
-head, rerun only concrete remaining checks, then finish eligible publication and
-Notion updates. Preserve dirty/unrelated work and never recreate uncertain writes.
+That external closure record and live Notion state resolve the branch above;
+this containing document is not required to embed its own later merge/check
+identity or be republished solely to repeat final closure evidence.
 
-## Next work and unresolved evidence
-
-After verified P04.2 completion, the expected next existing task is
-[P04.3 — Build private media lifecycle](https://app.notion.com/p/3e44590a05eb814aaa84d69bb804768b),
-observed Planned at startup with dependencies P04.2 and P03.3. Its exact scope is
-upload/quarantine/retry/order/delete flows and authorization cases, with deferred
-live proof named. Hand off the current assignment without automatically starting
-P04.3; re-read its live register state and next assignment first.
-
-A01/A07 need supported HDE contracts/rights/throughput; A02 final reviewed
-schema/role design and preflight using the completed mapping; A04 provider/domain/signing access; A05 approved policies
-and operational owners; A06 paid scope (disabled); A08 provider chat authorization.
-P11 remains disposable PostgreSQL → staging → verified authorized app production
-integration. **DB01–DB13, PV01–PV08, PR01, N01 and R01** remain deferred. Fixture tests
-do not prove SQL/concurrency, maintained auth, durable delivery, restore, native
-signing/device acceptance or release readiness.
-
-Save progress to the existing reports/control/task, address App Planner 1, and
-record actual effects and limitations. No direct planner session transport is
-verified. Nathan can relay the report; saving does not prove receipt, review or
-acknowledgment. No background work is promised.
+Before interruption publish recoverable source and checkpoint remote branch/head/
+PR, unpublished files, completed checks, blockers and one exact next action.
+Inspect uncertain remote writes before retrying. After verified P05.1 completion,
+stop with [P05.2](https://app.notion.com/p/3e44590a05eb813cb49ac1612e0f8710) as the
+next proposed assignment. P05.2 and
+[P05.3](https://app.notion.com/p/3e44590a05eb81b4807fcb4f07692b7a) remain Planned;
+the full P05 phase is not complete.

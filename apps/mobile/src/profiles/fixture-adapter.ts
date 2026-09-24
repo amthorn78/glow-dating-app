@@ -165,7 +165,7 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
       const preferences: OwnPreferences = { kind: 'own_preferences', version: (state.preferences?.version ?? 0) + 1,
         policy_version: intent.policy_version, selections: copy(intent.selections) };
       const next = { ...state, preferences, evidence: { ...state.evidence, reciprocalPreferencesVersion: null, reciprocalPolicyVersion: null } };
-      if (next.profile?.visibility === 'visible') next.profile = { ...next.profile, version: next.profile.version + 1, visibility: 'incomplete' };
+      if (next.profile?.visibility === 'visible' && !eligibility(next)) next.profile = { ...next.profile, version: next.profile.version + 1, visibility: 'incomplete' };
       return prepare(context, intent, canonical, next, preferences, outcome);
     },
     async visibility(context, intent, outcome = 'success') {

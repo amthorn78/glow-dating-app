@@ -105,6 +105,13 @@ class EligibilityEvidenceRepository(Protocol):
         ...
 
 
+class EvidenceUnavailable(Exception):
+    """Expected dependency unavailability; never carry private source diagnostics."""
+
+    def __init__(self) -> None:
+        super().__init__("Eligibility evidence is unavailable.")
+
+
 class EligibilityDecisionState(Enum):
     READY = "ready"
     EXCLUDED = "excluded"
@@ -155,7 +162,10 @@ class TrustedEligibilityService:
                     EligibilityDecisionState.REJECTED, problem=EvidenceProblem.WRONG_PAIR
                 )
 
-        evidence = self.repository.acquire(viewer_id, candidate_id)
+        try:
+            evidence = self.repository.acquire(viewer_id, candidate_id)
+        except EvidenceUnavailable:
+            evidence = None
         if evidence is None:
             return EligibilityDecision(
                 EligibilityDecisionState.REJECTED, problem=EvidenceProblem.MISSING_EVIDENCE

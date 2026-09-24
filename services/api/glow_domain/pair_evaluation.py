@@ -148,7 +148,7 @@ class FixturePairEvaluationService:
         # The existing port defines unavailable as a typed result. It declares
         # no catchable exception family: programming/adapter errors propagate.
         result = self.provider.evaluate_pair(
-            CompatibilityRequest(viewer_mapping, candidate_mapping)
+            CompatibilityRequest(viewer_mapping, candidate_mapping, policy.policy_version)
         )
         if not isinstance(result, FixtureCompatibilityResult):
             raise TypeError("Compatibility provider must return an explicit fixture result.")

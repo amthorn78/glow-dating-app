@@ -59,3 +59,32 @@ required. See [media semantics](../architecture/private-media-fixtures.md) and
 The `development-media-1` limits and review requirements are provisional test
 inputs. They do not approve launch policy, provider quotas, retention, operating
 ownership or budget. Existing non-media deferred cases remain unchanged.
+
+## P05.1 carryforward
+
+P05.1 derives ordered-pair eligibility from immutable application fixture facts,
+an injected clock and explicitly provisional policy. Its in-process revision
+counters, source generations, absent-block observations and delayed-result checks
+are conformance inputs for future adapters, not authentication, PostgreSQL
+snapshot/locking guarantees or durable invalidation. The
+[reciprocal fixture mapping](../architecture/reciprocal-eligibility-fixtures.md)
+describes those source rules. Every existing row above remains open.
+
+| Existing case | Specific remaining reciprocal-eligibility proof |
+|---|---|
+| DB09 | Derive the actor and current session from maintained authenticated persistence. Verify account/profile/asset identity separation, current verification, consent, session expiry and cross-device revocation. A fixture repository or current client precondition must never confer actor authority. |
+| DB10 | Acquire both accounts, profiles, media, consent, moderation, preferences, both directional blocks and selected policy from one consistent transaction view or reject/reload. Every relevant writer advances the correct aggregate/preference/block/policy revision in the same transaction. Prove first block insertion against a previously absent row, removal/reinsertion, same-value restoration and repeated A→B→A changes across connections and process restarts; an old token/result must stay obsolete. |
+| DB10 | Test exact adult boundaries and the eventually approved leap-day/date convention, policy effective intervals, consent/policy expiry and clock progression with no record edit. Recheck current time before the action commits or the projection is released; stale persisted counters alone cannot extend permission. Define production clock authority and time-dependent invalidation instead of copying the fixture epoch as a persistence mechanism. |
+| DB10 | Serialize policy publication/withdrawal with pair actions and all relevant writes. Inject concurrent preference, block, media, consent, pause, suspension and deletion changes before/after reads, during delayed provider work, during retries and while later candidates run. Revalidate each retained outcome before return and prove the production transaction/revocation boundary; sequential fixture rechecks cannot certify an atomic multi-candidate snapshot. |
+| DB11 | P05.2/P11 must supply stable bounded database queries/cursors, index/query-plan evidence and current disclosure filtering under change. P05.1's bounded conformance batch is not a production queue, pagination/ranking implementation or measured capacity. |
+| DB05 / DB06 | Independently authorize likes, mutual matches, unmatch, channel entitlement, sending and history according to current relationship and approved policy. Pair eligibility alone grants none of them. Prove races against revocation; unblock/resume must not resurrect a historical match. Keep report/block/export/deletion on their own safety/privacy authorization paths. |
+| DB07 / DB08 | Persist revision changes and required invalidation/outbox events atomically, then authenticate and bind delayed results to exact account/source generation, pair, input/mapping/policy versions and event identity. Prove crash/restart, replay and same-value restoration cannot revive obsolete permission. |
+| PV01 / PV02 | Reuse the eligibility-before-mapping/provider and post-call/final-batch conformance rules against the supported HDE contract. Verify exact input/mapping/policy binding, cache rights and revision invalidation with approved access. Excluded/unresolved pairs must make no chart-mapping/provider call; fixtures cannot establish live throughput, policy enforcement or ready HD output. |
+
+The synthetic `demo_connection` / `demo_a` / `demo_b` vocabulary is not an approved
+gender/orientation taxonomy. A05 still owns launch geography, preference/age-range
+requirements, moderation/operators, resurfacing/rematch and history policy.
+Unknown required policy denies its dependent operation. The separate same-database
+audit does not authorize this fixture assignment to connect or mutate a database.
+P11 keeps disposable PostgreSQL → staging → authorized final app production
+integration, with all HDE/shared-object protection and target/role preflight.

@@ -168,7 +168,9 @@ class IdentityAndCacheTests(TestCase):
         pending = ChartMapping(
             AccountId("viewer"), ChartMappingState.PENDING, None, "input-v2", "map-v2"
         )
-        request = CompatibilityRequest(pending, mapping("candidate", "chart-candidate"))
+        request = CompatibilityRequest(
+            pending, mapping("candidate", "chart-candidate"), policy().policy_version
+        )
         with self.assertRaises(ValueError):
             fixture_cache_key(request, provenance())
         with self.assertRaises(ValueError):
@@ -177,8 +179,12 @@ class IdentityAndCacheTests(TestCase):
     def test_cache_preserves_direction_without_a_specific_guarantee(self):
         viewer, candidate = mapping("viewer", "chart-v"), mapping("candidate", "chart-c")
         self.assertNotEqual(
-            fixture_cache_key(CompatibilityRequest(viewer, candidate), provenance()),
-            fixture_cache_key(CompatibilityRequest(candidate, viewer), provenance()),
+            fixture_cache_key(
+                CompatibilityRequest(viewer, candidate, policy().policy_version), provenance()
+            ),
+            fixture_cache_key(
+                CompatibilityRequest(candidate, viewer, policy().policy_version), provenance()
+            ),
         )
 
     def test_declared_symmetry_is_bound_to_engine_and_contract_versions(self):
@@ -187,31 +193,46 @@ class IdentityAndCacheTests(TestCase):
             "synthetic-engine-v1", "synthetic-engine-contract-v1", "synthetic-test-case-only"
         )
         self.assertEqual(
-            fixture_cache_key(CompatibilityRequest(viewer, candidate), provenance(), guarantee),
-            fixture_cache_key(CompatibilityRequest(candidate, viewer), provenance(), guarantee),
+            fixture_cache_key(
+                CompatibilityRequest(viewer, candidate, policy().policy_version),
+                provenance(),
+                guarantee,
+            ),
+            fixture_cache_key(
+                CompatibilityRequest(candidate, viewer, policy().policy_version),
+                provenance(),
+                guarantee,
+            ),
         )
         for field in ("simulated_engine_version", "simulated_engine_contract_version"):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 fixture_cache_key(
-                    CompatibilityRequest(viewer, candidate),
+                    CompatibilityRequest(viewer, candidate, policy().policy_version),
                     provenance(),
                     replace(guarantee, **{field: "different-version"}),
                 )
 
     def test_cache_changes_with_every_identity_and_provenance_revision(self):
         request = CompatibilityRequest(
-            mapping("viewer", "chart-v"), mapping("candidate", "chart-c")
+            mapping("viewer", "chart-v"), mapping("candidate", "chart-c"), policy().policy_version
         )
         baseline = fixture_cache_key(request, provenance())
+        self.assertNotEqual(
+            baseline,
+            fixture_cache_key(replace(request, eligibility_policy_version="changed"), provenance()),
+        )
         for field, value in (
             ("account_id", AccountId("changed-account")),
             ("engine_reference", EngineChartReference("changed-chart")),
             ("birth_input_version", "changed-input"),
             ("mapping_version", "changed-map"),
         ):
-            with self.subTest(field=field):
-                changed = replace(request, viewer=replace(request.viewer, **{field: value}))
-                self.assertNotEqual(baseline, fixture_cache_key(changed, provenance()))
+            for side in ("viewer", "candidate"):
+                with self.subTest(side=side, field=field):
+                    changed = replace(
+                        request, **{side: replace(getattr(request, side), **{field: value})}
+                    )
+                    self.assertNotEqual(baseline, fixture_cache_key(changed, provenance()))
         for field in (
             "fixture_set_version",
             "adapter_version",
@@ -226,12 +247,34 @@ class IdentityAndCacheTests(TestCase):
         self.assertEqual(asdict(baseline)["provenance"]["source"], "fixture")
         self.assertEqual(asdict(baseline)["provenance"]["port_version"], PORT_VERSION)
 
+    def test_compatibility_requires_explicit_policy_and_immutable_mappings(self):
+        request = CompatibilityRequest(
+            mapping("viewer", "chart-v"), mapping("candidate", "chart-c"), policy().policy_version
+        )
+        for changes in (
+            {"viewer": "viewer"},
+            {"candidate": {"account_id": "candidate"}},
+            {"eligibility_policy_version": None},
+            {"eligibility_policy_version": " "},
+        ):
+            with self.subTest(changes=changes), self.assertRaises((TypeError, ValueError)):
+                replace(request, **changes)
+
     def test_domain_dtos_are_immutable(self):
         for dto, field, value in (
             (AccountId("viewer"), "value", "changed"),
             (snapshot("viewer"), "adult", PredicateOutcome.PASS),
             (mapping("viewer", "chart-v"), "mapping_version", "changed"),
             (provenance(), "source", "engine"),
+            (
+                CompatibilityRequest(
+                    mapping("viewer", "chart-v"),
+                    mapping("candidate", "chart-c"),
+                    policy().policy_version,
+                ),
+                "eligibility_policy_version",
+                "changed",
+            ),
         ):
             with self.subTest(dto=type(dto).__name__), self.assertRaises(FrozenInstanceError):
                 setattr(dto, field, value)
@@ -240,7 +283,7 @@ class IdentityAndCacheTests(TestCase):
 class FixtureProviderTests(TestCase):
     def test_all_declared_states_are_deterministic_synthetic_and_have_no_scores(self):
         request = CompatibilityRequest(
-            mapping("viewer", "chart-v"), mapping("candidate", "chart-c")
+            mapping("viewer", "chart-v"), mapping("candidate", "chart-c"), policy().policy_version
         )
         for case, expected in (
             (FixtureCase.PENDING, CompatibilityStatus.PENDING),
@@ -271,6 +314,7 @@ class FixtureProviderTests(TestCase):
                 AccountId("viewer"), ChartMappingState.PENDING, None, "input-v1", "map-v1"
             ),
             mapping("candidate", "chart-c"),
+            policy().policy_version,
         )
         provider = FixtureCompatibilityProvider("test", FixtureCase.READY_SYNTHETIC, provenance())
         self.assertEqual(provider.evaluate_pair(request).status, CompatibilityStatus.PENDING)

@@ -8,6 +8,7 @@ import { FIXTURE_PREFERENCE_POLICY, PROFILE_IDS, PROFILE_REQUEST_ID, type Profil
 const options = { isDevelopment: true, mode: 'fixture' };
 const authority: ProfileAuthority = { ownerId: '11111111-1111-4111-8111-111111111111',
   generation: 1, accountVersion: 1, accountState: 'active', sessionState: 'valid', adult: true,
+  birthDate: '1990-06-15', consentState: 'accepted', consentVersion: 'development-consent-1',
   consentCurrent: true, consentRevision: '1:development-consent-1', sourceRevision: 0 };
 const failure = (code: ProfileFailure['code']) => (error: unknown) => error instanceof ProfileFailure && error.code === code;
 const profileIntent = (expected_version = 0, key = 'profile-request'): ProfileIntent => ({
@@ -189,16 +190,16 @@ test('visible pause is explicit, paused edits stay paused, and resume rechecks c
   assert.equal(port.inspect().profile?.visibility, 'paused');
 });
 
-test('preference changes retract visible eligibility and never manufacture reciprocal evidence', async () => {
+test('preference changes preserve complete own profiles without manufacturing reciprocal evidence', async () => {
   const port = adapter();
   port.seedEligible();
   const context = port.context();
   const result = await port.savePreferences(context, preferencesIntent(1));
   port.acknowledge(context, result);
-  assert.equal(port.inspect().profile?.visibility, 'incomplete');
+  assert.equal(port.inspect().profile?.visibility, 'visible');
   assert.equal(port.inspect().evidence.reciprocalPreferencesVersion, null);
   const edited = await commitProfile(port, profileIntent(port.inspect().profile!.version, 'text-only'));
-  assert.equal(edited.visibility, 'incomplete');
+  assert.equal(edited.visibility, 'visible');
 });
 
 test('new preference policy refuses stale catalog writes and cannot resume a paused profile', async () => {

@@ -17,6 +17,7 @@ export type ProfileAuthority = Readonly<{
   ownerId: string | null; generation: number; accountVersion: number;
   accountState: string; sessionState: string; adult: boolean; consentCurrent: boolean;
   sourceRevision: number; consentRevision: string;
+  birthDate?: string | null; consentState?: string | null; consentVersion?: string | null;
 }>;
 export type FictionalEvidence = Readonly<{ media: boolean; chart: boolean; moderation: boolean;
   reciprocalPreferencesVersion: number | null; reciprocalPolicyVersion: string | null }>;
@@ -64,15 +65,13 @@ export function requirements(profile: OwnProfile | null, preferences: OwnPrefere
   if (!evidence.media || !profile?.media_ids.length) missing.push('Approved photos');
   if (!evidence.chart) missing.push('A resolved chart');
   if (!evidence.moderation) missing.push('Profile review');
-  if (!preferences || evidence.reciprocalPreferencesVersion !== preferences.version ||
-      evidence.reciprocalPolicyVersion !== policy?.version) missing.push('Current reciprocal preference evidence');
   return missing;
 }
 
 /** Explicit allowlist. This function does not independently authorize disclosure. */
-export function projectCandidate(profile: OwnProfile, deliveryRefs: string[] = []): CandidateProfile {
+export function projectCandidate(profile: OwnProfile, age: number, deliveryRefs: string[] = []): CandidateProfile {
   const candidate: CandidateProfile = { profile_id: profile.profile_id, display_name: profile.display_name,
-    age: 36, summary: profile.summary, media_delivery_refs: [...deliveryRefs], compatibility: { status: 'unavailable' } };
+    age, summary: profile.summary, media_delivery_refs: [...deliveryRefs], compatibility: { status: 'unavailable' } };
   // The fictional media reference is never a live grant or provider URL.
   const value = parseAppResponse({ contract_version: 'gapp-api-v1', request_id: PROFILE_REQUEST_ID,
     data: { kind: 'recommendations', batch_id: PROFILE_REQUEST_ID, version: 1,

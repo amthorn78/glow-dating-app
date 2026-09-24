@@ -67,7 +67,7 @@ export class OnboardingStore {
     this.adapter = adapter;
     this.clock = options.clock ?? FIXTURE_CLOCK;
     this.snapshot = this.empty();
-    this.profiles = createFixtureProfileStore(options);
+    this.profiles = createFixtureProfileStore({ ...options, clock: this.clock });
     this.media = new MediaStore({ ...options, now: () => this.clock().getTime() }, collection => this.profiles.synchronizeMedia(collection));
     this.profiles.bindMedia(() => this.media.approvedCollection(), () => this.media.restrictApproved());
     this.profiles.subscribe(() => {
@@ -125,6 +125,7 @@ export class OnboardingStore {
         accountVersion: value.account?.version ?? 0, accountState: value.account?.state ?? 'none',
         sessionState: value.account?.session_state ?? 'none', adult: adultOutcome(value.adultBirthDate, this.policy, this.clock) === 'pass',
         consentCurrent: this.policy !== null && value.consent.state === 'accepted' && value.consent.policy_version === this.policy.version,
+        birthDate: value.adultBirthDate, consentState: value.consent.state, consentVersion: value.consent.policy_version,
         sourceRevision: this.birthDraftRevision, consentRevision: `${value.consent.version}:${value.consent.policy_version ?? 'none'}` };
       this.profiles.synchronize(authority);
       this.media.synchronize(authority);

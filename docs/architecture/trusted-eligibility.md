@@ -6,6 +6,14 @@ the future transaction port without implementing persistence, authentication,
 an HTTP route, an action mutation or a production trust adapter. P11 owns proof
 that source reads, revision changes, locks and commits satisfy this contract.
 
+P05.1 adds `glow_domain/eligibility_facts.py`, a composition-selected,
+development/test-only repository deriving predicates from immutable raw account,
+profile/media/consent/preferences/moderation/visibility and block records. Its
+[source and policy mapping](reciprocal-eligibility-fixtures.md) records the clock,
+provisional policy, ordered revision/source bindings and shared Python/mobile
+truth table. It does not replace this service with client flags or production
+authentication.
+
 ## Trust starts at acquisition
 
 Only application composition chooses `EligibilityEvidenceRepository`. An API
@@ -42,6 +50,12 @@ A malicious or incorrectly wired repository could fabricate internally
 consistent evidence. A real adapter must be reviewed and tested against
 authoritative authenticated persistence at P11; no such adapter exists now.
 Fixture repositories used in tests are explicitly non-atomic substitutes.
+
+The expected `EvidenceUnavailable()` exception has a fixed generic message and
+maps to `rejected / missing_evidence`; it carries no source/provider error body.
+Wrong result types and other programming errors still propagate for correction.
+Both missing evidence and invalid programming input prevent permission, without
+misrepresenting a programming defect as an ordinary exclusion.
 
 ## Pair and revision binding
 

@@ -15,19 +15,23 @@ export function useRecommendations() {
   const { store, state: onboarding } = useOnboarding();
   const { profiles, state: profileState } = useProfiles();
   const [attempt, setAttempt] = useState(0);
-  const allowed = onboarding.stage === 'eligible' && profileState.canDiscover;
-  const accessKey = `${onboarding.generation}:${onboarding.account?.account_id ?? ''}:${profileState.discoveryRevision}`;
+  const pairContext = profiles.candidateContext();
+  const pairAllowed = profiles.candidatePreview(pairContext) !== null;
+  const allowed = onboarding.stage === 'eligible' && profileState.canDiscover && pairAllowed;
+  const accessKey = `${onboarding.generation}:${onboarding.account?.account_id ?? ''}:${profileState.discoveryRevision}:${JSON.stringify(pairContext?.version ?? null)}`;
   const [loaded, setLoaded] = useState<{ key: string; state: State }>({ key: '', state: { status: 'loading' } });
   useEffect(() => {
     if (!allowed) return;
+    const capturedPair = profiles.candidateContext();
     const controller = new AbortController();
     let mounted = true;
     setLoaded({ key: accessKey, state: { status: 'loading' } });
     function current() {
       const owner = store.getSnapshot();
       const profile = profiles.getSnapshot();
-      return mounted && owner.stage === 'eligible' && profile.canDiscover &&
-        `${owner.generation}:${owner.account?.account_id ?? ''}:${profile.discoveryRevision}` === accessKey;
+      const currentPair = profiles.candidateContext();
+      return mounted && owner.stage === 'eligible' && profile.canDiscover && profiles.candidatePreview(capturedPair) !== null &&
+        `${owner.generation}:${owner.account?.account_id ?? ''}:${profile.discoveryRevision}:${JSON.stringify(currentPair?.version ?? null)}` === accessKey;
     }
     async function load() {
       try {
