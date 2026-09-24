@@ -105,7 +105,9 @@ receipt or half-applied action.
 The immutable `CommandReceipt` contains only outcome code, object UUID and the
 version committed by that command. `InteractionCommandResult` separates it from
 `current_projection`, which is rebuilt under present access and may be null.
-A receipt describing a past `liked` action does not promise a current active
+A directional projection also requires its original stored source guards, binding
+identities and matchability; fresh eligibility cannot revive revoked original
+authority. A receipt describing a past `liked` action does not promise a current active
 match; later unmatch/restriction never rewrites the receipt into a new outcome
 or returns a cached grant. Revoked/deleted access receives generic unavailable
 behavior. Neither receipt nor event caches private profile/birth/chart data.

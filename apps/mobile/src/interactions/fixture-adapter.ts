@@ -147,8 +147,9 @@ export class FixtureInteractionAdapter {
     const identity = this.identities.find(value => value.account_uuid === record.target);
     const pair = identity ? this.pair(identity) : null;
     const action = this.state.actions.get(direction(session.actor, record.target));
-    if (!identity || !pair || !interactionPairIsCurrent(pair) || !action) return null;
+    if (!identity || !pair || !interactionPairIsCurrent(pair) || !action || !action.matchable || !interactionPairIsCurrent(action.source)) return null;
     const match = this.state.matches.get(pairKey(session.actor, record.target));
+    if (match && match.state !== 'active') return null;
     return { kind: 'interaction', target_profile_id: identity.profile_uuid, version: action.version, state: action.state,
       match_id: match?.state === 'active' && interactionPairIsCurrent(match.source) ? match.id : null };
   }
@@ -186,7 +187,7 @@ export class FixtureInteractionAdapter {
     this.pending.set(key, digest);
     try {
       const initial = this.state, actions = new Map(initial.actions), matches = new Map(initial.matches), blocks = new Map(initial.blocks), events = [...initial.events];
-      let object: Action | Match | Block, targetId: string, outcome: CommandReceipt['outcome_code'], pair: InteractionPairCapture | null = null, durablePair: InteractionPairCapture | null = null;
+      let object: Action | Match | Block, targetId: string, outcome: CommandReceipt['outcome_code'], pair: InteractionPairCapture | null = null, durablePair: InteractionPairCapture | null = null, batchPair: InteractionPairCapture | null = null;
       const registered = sessions.get(session)!;
       if (intent.operation === 'unmatch') {
         const found = [...matches.entries()].find(([, value]) => value.id === intent.match_id);
@@ -228,6 +229,7 @@ export class FixtureInteractionAdapter {
           const batch = this.batches.get(intent.batch_id);
           if (!this.policy) throw new InteractionFailure('policy_unresolved');
           if (!batch || batch.actor !== session.actor || batch.sessionId !== session.sessionId || batch.profileId !== intent.target_profile_id || intent.batch_version !== 1 || !interactionPairIsCurrent(batch.pair)) throw new InteractionFailure('stale');
+          batchPair = batch.pair;
           pair = registered.reverse ? this.discovery.captureInteractionPair(registered.pair!.profileHandle) : this.discovery.authorizeInteraction(batch.page, target.profile_id);
           if (!pair || !interactionPairIsCurrent(pair) || blocks.get(directional)?.state === 'active' || blocks.get(direction(targetId, session.actor))?.state === 'active') throw new InteractionFailure('unavailable');
           durablePair = this.discovery.captureInteractionPair(pair.profileHandle);
@@ -256,7 +258,7 @@ export class FixtureInteractionAdapter {
       this.beforeCommit?.();
       // Finish every callback-capable authority read, then compare captured concrete cells and owned state.
       this.validateSession(session);
-      if (targetGuard && !interactionAccountIsCurrent(targetGuard) || !discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || this.state !== initial) throw new InteractionFailure('stale');
+      if (targetGuard && !interactionAccountIsCurrent(targetGuard) || !discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || batchPair && !interactionPairIsCurrent(batchPair) || this.state !== initial) throw new InteractionFailure('stale');
       this.state = { discretionaryEvents: initial.discretionaryEvents + events.length - initial.events.length, revision: initial.revision + 1, actions, matches, blocks, receipts, events: freeze(events) };
       // Notifications follow the indivisible owned-state publication. Consumption invalidates both modes.
       if (!registered.reverse || intent.operation !== 'interaction' || matches.size !== initial.matches.size) this.discovery.interactionsChanged(); this.emit();

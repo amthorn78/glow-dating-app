@@ -246,10 +246,53 @@ methods**, scoped Ruff/format and mypy pass. The complete API suite passes **234
 tests**, with no database setup; Ruff checks all 57 formatted files and mypy checks
 29 source files. Exact final publication gates are recorded externally.
 
+## Source-scope and original-action projection correction
+
+Candidate `8ccf35e23b5276d318fa9577d91b6e2385996d18`, tree
+`07ee1dae4a1720e66983c08e60ed714feae0b1f9`, is the verified five-file child of
+e3760963. Both [PR run 35984649976](https://github.com/amthorn78/glow-dating-app/actions/runs/35984649976)
+and [push run 35984640320](https://github.com/amthorn78/glow-dating-app/actions/runs/35984640320)
+passed all four jobs/81 browser cases, completing at `2026-09-24T10:06:07Z` and
+`2026-09-24T10:05:03Z`. Security completed without findings at
+`2026-09-24T10:05:48.778337Z`. Code review completed at
+`2026-09-24T10:06:11.188886Z` with two further P2 findings; that head was not merged.
+
+- [Targeted source scope](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092349848):
+  replacing an unrelated mobile candidate advanced a global interaction source
+  guard and revoked an otherwise current match. Targeted record changes must
+  revoke only participating pair/action authority. Discovery queue freshness is
+  separate; genuinely shared viewer/policy changes still invalidate globally.
+- [Original action authority](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092349860):
+  Python and mobile replay rebuilt a unilateral action projection from fresh pair
+  eligibility while ignoring the directional row's original retained authority.
+  A same-value source restoration or block removal must not turn a historical
+  receipt into current action authority. The receipt stays immutable; the current
+  projection also requires the stored action's original guards/bindings and
+  matchable status to remain valid.
+
+The bounded correction checks the related/unrelated/shared writer matrix and
+original-versus-fresh projection authority in both languages. Python independent
+before/after evidence covers 18 like/pass controls: 16 revoked originals now return
+null projection and two unchanged originals still project; receipts and counts stay
+unchanged. The full API suite passes **236 tests**, Ruff/format and mypy. Exact
+final publication gates are recorded externally.
+
+Mobile separates durable pair authority from command publication freshness:
+target record and affected profile ownership changes retire participating grants,
+while shared viewer/policy/time changes remain global. Pending commands still
+retain the original page/population and queue publication revisions. Independent
+review also reproduced a queue refresh during source acquisition; retaining the
+queue's original published revision and checking the original batch at final commit
+rejects both callback variants. Same-value unrelated writes preserve a valid match,
+but duplicate profile ownership and restoration cannot revive old authority.
+Action replay additionally excludes inactive matches. Seventeen added regressions
+cover these related boundaries. All **74 interaction tests plus 27 discovery tests**
+pass; full mobile `npm run check` passes **485 tests**, TypeScript and ESLint.
+
 ## Publication boundary
 
-The stored canonical-match correction source/checkpoint is prepared for publication
-as a child of actual PR14 head `e3760963ed683db9b54ec6774715d79dfebe80dd`. The branch and PR are
+The source-scope/action-projection correction is prepared for publication as a
+child of actual PR14 head `8ccf35e23b5276d318fa9577d91b6e2385996d18`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.

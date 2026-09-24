@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createFixtureOnboardingStore } from '../onboarding/store.ts';
 import { FixtureDiscoveryAdapter, FixtureDiscoveryTime } from '../discovery/fixture-adapter.ts';
+import { FIXTURE_PAIR_POLICY } from '../eligibility/facts.ts';
 import { FixtureInteractionAdapter, InteractionFailure } from './fixture-adapter.ts';
 const options = { isDevelopment: true, mode: 'fixture' };
 function setup() {
@@ -296,4 +297,77 @@ for (const state of ['restricted', 'unmatched'] as const) test(`a later ${state}
   };
   const views = fixture.adapter.matches(); assert.equal(changed, true);
   assert.equal(views.some(view => view.match_id === jules.id), false);
+});
+test('candidate source writes invalidate only matches involving that candidate', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like'); execute(fixture, await command(fixture));
+  const iris = fixture.discovery.inspect('discovery-iris')!;
+  fixture.discovery.replace({ ...iris, facts: { ...iris.facts!, visibility: 'paused' } });
+  assert.equal(fixture.adapter.matches()[0]?.state, 'active');
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'contact_revoked').length, 0);
+  fixture.discovery.replace(fixture.discovery.inspect('discovery-jules')!);
+  assert.equal(fixture.adapter.matches()[0]?.state, 'restricted');
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'contact_revoked').length, 1);
+});
+for (const source of ['policy', 'viewer_mapping'] as const) test(`shared ${source} replacement still revokes a retained match`, async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like'); execute(fixture, await command(fixture));
+  if (source === 'policy') fixture.discovery.setPolicy(FIXTURE_PAIR_POLICY);
+  else fixture.discovery.replaceViewerMapping(fixture.discovery.inspectViewerMapping());
+  assert.equal(fixture.adapter.matches()[0]?.state, 'restricted');
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'contact_revoked').length, 1);
+});
+for (const action of ['like', 'pass'] as const) for (const revoked of ['target_source', 'owner_source', 'block_unblock'] as const)
+  test(`${action} replay preserves the receipt but suppresses original authority revoked by ${revoked}`, async () => {
+    const fixture = setup(), prepared = await command(fixture, action), committed = execute(fixture, prepared);
+    if (revoked === 'target_source') fixture.discovery.replace(fixture.discovery.inspect('discovery-jules')!);
+    else if (revoked === 'owner_source') fixture.owner.media.seedEligible();
+    else { fixture.adapter.block('profile-jules', true, 'jules:block'); fixture.adapter.block('profile-jules', false, 'jules:unblock'); }
+    const replay = execute(fixture, prepared);
+    assert.equal(replay.replayed, true); assert.deepEqual(replay.receipt, committed.receipt);
+    assert.equal(replay.current_projection, null); assert.equal(fixture.adapter.inspect().actions.length, 1);
+  });
+test('profile ownership duplication and restoration cannot revive original action authority', async () => {
+  const fixture = setup(), prepared = await command(fixture), committed = execute(fixture, prepared);
+  const iris = fixture.discovery.inspect('discovery-iris')!;
+  fixture.discovery.replace({ ...iris, facts: { ...iris.facts!, profile_id: 'profile-jules' } });
+  fixture.discovery.replace(iris);
+  const replay = execute(fixture, prepared); assert.deepEqual(replay.receipt, committed.receipt); assert.equal(replay.current_projection, null);
+  fixture.adapter.reciprocal('profile-jules', 'jules:like'); assert.equal(fixture.adapter.inspect().matches.length, 0);
+});
+for (const changed of ['unrelated_record', 'duplicate_profile', 'queue_refresh'] as const)
+  test(`pending command still rejects a discovery batch invalidated by ${changed}`, async () => {
+    const fixture = setup(), prepared = await command(fixture); let refresh: Promise<unknown> | null = null;
+    fixture.adapter.setBeforeCommit(() => {
+      const iris = fixture.discovery.inspect('discovery-iris')!;
+      if (changed === 'queue_refresh') refresh = fixture.discovery.request('recommended', 'replacement-page', null, true);
+      else fixture.discovery.replace(changed === 'duplicate_profile' ? { ...iris, facts: { ...iris.facts!, profile_id: 'profile-jules' } } : iris);
+    });
+    assert.throws(() => execute(fixture, prepared), InteractionFailure); if (refresh) await refresh;
+    assert.equal(fixture.adapter.inspect().actions.length, 0); assert.equal(fixture.adapter.inspect().receipts.length, 0);
+  });
+test('unrelated candidate source changes preserve the original action projection on replay', async () => {
+  const fixture = setup(), prepared = await command(fixture), committed = execute(fixture, prepared);
+  fixture.discovery.replace(fixture.discovery.inspect('discovery-iris')!);
+  const replay = execute(fixture, prepared); assert.equal(replay.replayed, true);
+  assert.deepEqual(replay.receipt, committed.receipt); assert.deepEqual(replay.current_projection, committed.current_projection);
+});
+test('an unmatched relationship permits original receipt replay without an active interaction projection', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like'); const prepared = await command(fixture), committed = execute(fixture, prepared);
+  const match = fixture.adapter.inspect().matches[0]!, unmatch = fixture.adapter.unmatchIntent(match.id, 'jules:unmatch');
+  fixture.adapter.execute(unmatch.session, unmatch.intent);
+  const replay = execute(fixture, prepared); assert.deepEqual(replay.receipt, committed.receipt); assert.equal(replay.current_projection, null);
+});
+for (const at of [3, 4]) test(`queue replacement during command acquisition callback ${at} cannot rebind a retired batch`, async () => {
+  let armed = false, reads = 0, replacement: Promise<unknown> | null = null;
+  const clock = () => {
+    if (armed && ++reads === at) { armed = false; replacement = discovery.request('recommended', 'replace-page', null, true); }
+    return new Date('2026-09-23T12:00:00Z');
+  };
+  const owner = createFixtureOnboardingStore({ ...options, clock }); owner.scenario('eligible');
+  const discovery = new FixtureDiscoveryAdapter(owner.profiles, { ...options, clock }), adapter = new FixtureInteractionAdapter(owner.profiles, discovery);
+  const page = await discovery.request('recommended', 'original-page', null), prepared = adapter.prepare(page, 'profile-jules', 'like', 'original:command');
+  armed = true;
+  assert.throws(() => adapter.execute(prepared.session, prepared.intent), InteractionFailure);
+  if (replacement) await replacement;
+  assert.equal(armed, false); assert.equal(discovery.isCurrent(page), false);
+  assert.equal(adapter.inspect().actions.length, 0); assert.equal(adapter.inspect().receipts.length, 0);
 });

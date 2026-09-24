@@ -815,6 +815,9 @@ class FixtureInteractionService:
             eligible = self.discovery.batch.eligibility.evaluate(actor, target.account_id)
             if (
                 current
+                and current.matchable
+                and self._authority_current(current.bindings)
+                and all(guard_is_current(item) for item in current.guards)
                 and eligible.state is EligibilityDecisionState.READY
                 and (match is None or match.state == "active")
                 and guards

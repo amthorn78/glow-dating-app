@@ -783,3 +783,82 @@ class InteractionTests(TestCase):
                     Counter(event.kind for event in self.repo.events),
                     {"match_created": 1, "block_changed": 1, "contact_revoked": 1},
                 )
+
+    def test_replay_keeps_receipt_but_suppresses_revoked_original_direction_authority(self):
+        for action in ("like", "pass"):
+            for change in (
+                "same_value_actor",
+                "same_value_target",
+                "remove_restore_target",
+                "same_value_mapping",
+                "same_value_registry",
+                "registry_adapter",
+                "source_adapter",
+                "mapping_adapter",
+                "block_unblock",
+            ):
+                with self.subTest(action=action, change=change):
+                    self.reset()
+                    intent = self.intent(action=action)
+                    original = self.committed(self.a, intent)
+                    self.assertIsNotNone(original["current_projection"])
+                    actor = self.fixture.discovery.viewer
+                    target = AccountId("discovery-jules")
+                    if change in {"same_value_actor", "same_value_target"}:
+                        affected = actor if change == "same_value_actor" else target
+                        self.source.put_participant(self.source._participants[affected])
+                    elif change == "remove_restore_target":
+                        facts = self.source._participants[target]
+                        self.source.remove_participant(target)
+                        self.source.put_participant(facts)
+                    elif change == "same_value_mapping":
+                        mappings = self.fixture.discovery.mappings
+                        mappings.put(target, mappings.get(target))
+                    elif change == "same_value_registry":
+                        self.fixture.registry.replace(self.fixture.registry.identities)
+                    elif change == "registry_adapter":
+                        self.a.registry = FixtureIdentityRegistry(self.fixture.registry.identities)
+                    elif change == "source_adapter":
+                        replacement = build_discovery_fixture()
+                        replacement.source.acquire(actor, target)
+                        self.a.discovery.source = replacement.source
+                        self.a.discovery.batch = replace(
+                            self.a.discovery.batch,
+                            eligibility=replace(
+                                self.a.discovery.batch.eligibility, repository=replacement.source
+                            ),
+                        )
+                    elif change == "mapping_adapter":
+                        replacement = build_discovery_fixture()
+                        self.a.discovery.batch = replace(
+                            self.a.discovery.batch, mappings=replacement.mappings
+                        )
+                    else:
+                        self.committed(self.a, self.block())
+                        self.committed(
+                            self.a, self.block(action="unblock", key="unblock", version=1)
+                        )
+                        self.assertFalse(self.repo._state.directions[(actor, target)].matchable)
+                    self.assertEqual(
+                        self.a.discovery.batch.eligibility.evaluate(actor, target).state.value,
+                        "ready",
+                    )
+                    state_before_replay, counts_before_replay = self.repo._state, self.repo.counts
+                    replay = self.committed(self.a, intent)
+                    self.assertTrue(replay["replayed"])
+                    self.assertEqual(replay["receipt"], original["receipt"])
+                    self.assertIsNone(replay["current_projection"])
+                    self.assertIs(self.repo._state, state_before_replay)
+                    self.assertEqual(self.repo.counts, counts_before_replay)
+
+    def test_unrelated_candidate_change_preserves_original_direction_projection(self):
+        for action in ("like", "pass"):
+            with self.subTest(action=action):
+                self.reset()
+                intent = self.intent(action=action)
+                original = self.committed(self.a, intent)
+                unrelated = AccountId("discovery-morgan")
+                self.source.put_participant(self.source._participants[unrelated])
+                replay = self.committed(self.a, intent)
+                self.assertEqual(replay["receipt"], original["receipt"])
+                self.assertEqual(replay["current_projection"], original["current_projection"])
