@@ -55,10 +55,18 @@ class ChangeScopeTests(unittest.TestCase):
         Path("app.py").rename("docs/testing/evidence/app.md")
         self.assertTrue(classify(self.base, self.commit())["full"])
 
-    def test_behavior_markdown_and_configuration(self):
-        for path in ["README.md", "services/api/README.md", "docs/operations/build-and-deploy.md", "docs/operations/operational-runbooks.md", "docs/architecture/privacy-and-safety-rules.md", "docs/adr/new-policy.md", "docs/testing/p11-deferred-acceptance.md", "AGENTS.md", "docs/continuity/history/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", "docs/planning/new-implementation-brief.md", "docs/planning/nested/assignment.md", ".env.example", ".github/workflows/ci.yml", "docs/code.py", "unknown.md"]:
+    def test_all_markdown_is_ordinary_documentation(self):
+        for path in ["README.md", "services/api/README.md", "docs/operations/build-and-deploy.md", "docs/operations/operational-runbooks.md", "docs/architecture/privacy-and-safety-rules.md", "docs/adr/new-policy.md", "docs/testing/p11-deferred-acceptance.md", "AGENTS.md", "docs/continuity/history/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", "docs/planning/new-implementation-brief.md", "docs/planning/nested/assignment.md", "unknown.md"]:
             with self.subTest(path=path):
                 self.write(path, "changed\n")
+                self.assertFalse(classify(self.base, self.commit())["full"])
+                self.git("reset", "--hard", self.base)
+
+    def test_scripts_configuration_and_mixed_changes_are_full(self):
+        for paths in [[".env.example"], [".github/workflows/ci.yml"], ["docs/code.py"], ["docs/run.sh"], ["docs/notes.txt"], ["docs/README.MD"], ["docs/planning/brief.md", "app.py"]]:
+            with self.subTest(paths=paths):
+                for path in paths:
+                    self.write(path, "changed\n")
                 self.assertTrue(classify(self.base, self.commit())["full"])
                 self.git("reset", "--hard", self.base)
 

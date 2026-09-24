@@ -7,31 +7,14 @@ import re
 import subprocess
 
 
-# Exempt only inert evidence/provenance, never operational instructions by default.
-ORDINARY_PATHS = frozenset({
-    "docs/continuity/migration-publication.md",
-    "apps/mobile/EXPO-TEMPLATE-LICENSE.md",
-    "docs/testing/foundation-checkpoint.md",
-    "docs/testing/p02-checkpoint.md",
-    "docs/testing/p03-checkpoint.md",
-    "docs/testing/p04-1-checkpoint.md",
-    "docs/testing/p04-2-checkpoint.md",
-    "docs/testing/p04-3-checkpoint.md",
-    "docs/testing/p05-1-checkpoint.md",
-    "docs/testing/p05-2-checkpoint.md",
-    "docs/testing/p05-3-checkpoint.md",
-})
-ORDINARY_PREFIXES = ("docs/continuity/history/", "docs/testing/evidence/")
-BEHAVIOR_NAMES = frozenset({"agents.md", "claude.md", "claude.local.md", "skill.md", "copilot-instructions.md"})
-
-
+# Nathan, 24 September 2026: documentation never runs application CI or code/security
+# review. A change made only of regular Markdown files is ordinary documentation; any
+# script or other non-Markdown file, symlink or executable file makes it full scope.
 def ordinary_document(path: str) -> bool:
     p = PurePosixPath(path)
     if path != str(p) or p.is_absolute() or ".." in p.parts:
         return False
-    if p.name.lower() in BEHAVIOR_NAMES or p.name.lower().endswith(".instructions.md"):
-        return False
-    return path in ORDINARY_PATHS or (path.startswith(ORDINARY_PREFIXES) and p.suffix == ".md")
+    return p.suffix == ".md"
 
 
 def git(*args: str) -> bytes:

@@ -109,6 +109,12 @@ Direct HTTPS to nodejs.org without `HTTPS_PROXY` returned 200 in this environmen
 
 **Superseded subagent attempt.** App Manager 1 first commissioned M02-I1 as an Agent-tool subagent with worktree isolation. The harness created its worktree from `main` (`07b3b10`), not from the manager branch head (`6b47694`). The subagent stopped at its start gate. It made no edits or commits, and the worktree was removed. Nathan then fixed the manual relay, recorded verbatim in `docs/planning/manager-workflow.md`: the manager never starts implementation or review work itself, and implementation sessions may use any tools they need.
 
+**Documentation exemption change.** At Nathan's direction, `scripts/change_scope.py` treats any change made only of regular Markdown files as ordinary documentation. Before the change, only the inert evidence allowlist was exempt; proposal head `6b47694`, which touched only `docs/`, ran all six jobs.
+
+- `env -i ... python3.12 -I -m unittest discover -s scripts -p 'test_change_scope.py' -v` on Python 3.12.14 ran 9 tests OK. The two new tests are Markdown anywhere → ordinary, and scripts/configuration/non-Markdown/uppercase `.MD`/mixed → full. The existing symlink/executable, renamed-code, hidden-code, trusted-policy substitution, fail-closed and merge-base cases are kept.
+- `ruff check` on both files reported 9 findings, the same count as `main`'s versions: pre-existing line-length/import style. `scripts/` is not in CI's lint scope.
+- A search of tests, application source, scripts, the workflow and the Dockerfile found nothing that reads Markdown. The only match is a code comment in `glow_persistence/models.py`.
+
 ## Implementation session
 
 *Reserved for M02-I1 results.*

@@ -52,6 +52,8 @@ Not proposed:
 - The manual relay: root `CLAUDE.md`, root `AGENTS.md`, `docs/planning/manager-workflow.md`, PF00 revision 1.4 (current session authority) and PF01 revision 1.5 (D09).
 - The current handoff, this brief, the prompts and PR17.
 
+- **Documentation exemption** (Nathan: "I do not want any docs paths checked for CI unless they contain scripts, which they should not", extended to the code review settings in `AGENTS.md`). `scripts/change_scope.py` now classifies any change made only of regular Markdown files as `ordinary-docs-only`: no application CI jobs, and no code/security review. Scripts, other non-Markdown files, symlinks, executable files and mixed changes stay full scope. The classifier tests, `AGENTS.md` Code Review Rules, CI policy, documentation guide, manager workflow and Claude handoff were updated to match. CI always loads the classifier from `main`, so later PRs gain the exemption only after M02 merges.
+
 These edits are part of the M02 change and receive the same checks and exact-head review.
 
 **Superseded attempt.** App Manager 1 first commissioned M02-I1 as a subagent in its own session. That session stopped at its start gate, because the harness based its worktree on `main`, and made no changes. Nathan then set the manual relay. No subagent implementation is part of M02.

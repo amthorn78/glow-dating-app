@@ -65,7 +65,7 @@ git show "$base:scripts/change_scope.py" > "$policy_dir/change_scope.py"
 python3 -I "$policy_dir/change_scope.py" --base "$base" --head "$head" --merge-base
 ```
 
-Use the PR's base SHA when it differs from `origin/main`. `ordinary-docs-only` means no application checks and no code or security review. Anything else is full scope. For workflow, policy or instruction changes, also inspect the entire workflow diff and the actual job steps and results; candidate-controlled YAML can bypass its own checks.
+Use the PR's base SHA when it differs from `origin/main`. A change made only of Markdown files classifies as `ordinary-docs-only`: no application checks and no code or security review. The manager still reads the diff when integrating. Anything else is full scope. For workflow or classification-policy changes, also inspect the entire workflow diff and the actual job steps and results; candidate-controlled YAML can bypass its own checks. The classifier always comes from `main`, so a policy change affects later PRs only after it merges.
 
 ## Brief template (persistent, `docs/planning/`)
 
