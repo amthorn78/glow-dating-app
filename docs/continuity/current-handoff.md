@@ -286,6 +286,19 @@ installation failed with an invalid ZIP before any case; no local Docker
 executable is available, so hosted checks must supply those
 proofs. Tests may not open a database.
 
+Post-merge verification exposed an intermittent failure in the inherited
+birth-time editing case. The focused follow-up corrects the shared Page's web
+ScrollView keyboard-dismissal behavior: focus or programmatic scrolling must not
+blur the active birth field. Web now uses `keyboardDismissMode="none"`; native
+retains `on-drag`. One additional rendered regression exercises the actual scroll
+handler, retained focus, subsequent keyboard input, save and edit-back. The
+original 51 cases, validation and synchronous draft handling remain unchanged.
+Local types/lint, 362 mobile tests and both development JS exports passed after
+this change. The external report owns observed before/after hosted regression
+results and final candidate/main evidence; no browser pass is asserted here.
+This remains a fixture web correction. Chromium does not establish native
+keyboard or device behavior.
+
 **Next action:** read current AP1-ACK009, AB1-R010 if published and Notion
 P05.1/Control first. Only an accepted AP1-P05.1-002 correction with final merge/main
 evidence permits proposing P05.2. AB1-R009/PR10 closure alone does not. Preserve

@@ -311,8 +311,9 @@ capture. Private factory-adapter revisions, media-binding revisions, strict
 descriptor-only context capture and one numeric timestamp capture before source
 facts address these paths. The last preview acceptance check uses only local
 revision/identity comparisons and returns `null` on invalidation. Real MediaStore
-writer participation and restoration have focused regressions. There is no
-presentation change requiring new rendered cases; all 51 existing cases remain.
+writer participation and restoration have focused regressions. At that stage
+there was no presentation change requiring new rendered cases; all 51 existing
+cases remained. The later web-focus follow-up below adds a targeted regression.
 
 Independent review then reproduced a same-value `MediaStore.seedEligible()`
 reset that suppressed its evidence notification. The reset now invalidates that
@@ -387,3 +388,23 @@ Planned and unstarted. P07 WordPress and P11 database/live/native proofs remain
 separate. Saving a report is not delivery to another ChatGPT session; Nathan can
 relay it. Before interruption publish recoverable source and record actual remote
 head/PR, unpublished files, completed checks, blocker and one next action.
+
+### Post-merge web birth-field focus correction
+
+Post-merge Mobile checks required a bounded follow-up for intermittent birth-field
+focus loss. Inspection of the installed React Native Web ScrollView connected its
+`on-drag` handler to keyboard dismissal on scroll events, including focus or
+programmatic scrolling. The shared Page now selects `none` on web and preserves
+`on-drag` on native. A new rendered regression exercises the real scroll handler,
+retained input focus, keyboard entry without refocusing, save and edit-back. The
+original 51 cases are byte-identical; the additional case brings the suite to 52.
+Existing validation, draft handling, timeouts and retry policy are unchanged.
+Diagnostic instrumentation and workflow changes are not part of this follow-up.
+
+After the correction, local TypeScript/ESLint and 362 mobile tests passed, and both
+iOS/Android development JS exports completed. The external report owns observed
+before/after hosted regression results and exact publication identities; no
+hosted browser result or future merged-main pass is asserted here. The actual
+final candidate, including these documentation changes, still requires all four
+Foundation jobs and subsequent merged-main verification. This is a fixture web
+focus correction, not native keyboard/device acceptance or production readiness.

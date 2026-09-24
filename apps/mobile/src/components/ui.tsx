@@ -13,7 +13,8 @@ export const colors = {
 export function Page({ children, testID }: PropsWithChildren<{ testID?: string }>) {
   return <SafeAreaView style={styles.safe} testID={testID}><KeyboardAvoidingView style={styles.flex}
     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.page}>{children}</ScrollView>
+    {/* RNWeb dismisses on programmatic scroll too; preserve browser input focus. */}
+    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'on-drag'} contentContainerStyle={styles.page}>{children}</ScrollView>
   </KeyboardAvoidingView></SafeAreaView>;
 }
 
