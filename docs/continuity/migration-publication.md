@@ -32,9 +32,9 @@ The full Claude handoff contains the codebase/data-flow map, exact environment i
 |---|---|---|
 | [Final PR 36010848051](https://github.com/amthorn78/glow-dating-app/actions/runs/36010848051) | `f0f5498ddf4ff614d11f03b627946196114d2d2f` | All six jobs succeeded |
 | [Final push 36010840274](https://github.com/amthorn78/glow-dating-app/actions/runs/36010840274) | Same final candidate | All six jobs succeeded |
-| [Merged main 36011687756](https://github.com/amthorn78/glow-dating-app/actions/runs/36011687756) | `dda09b3a05d725d93b5fe37d5364dfcd4ac212b1` | **Pending; do not treat main verification as complete** |
+| [Merged main 36011687756](https://github.com/amthorn78/glow-dating-app/actions/runs/36011687756) | `dda09b3a05d725d93b5fe37d5364dfcd4ac212b1` | All six jobs succeeded; completed 2026-09-24T14:23:42Z |
 
-Candidate logs verified 83/83 browser cases, 516 mobile tests, 373 JavaScript contract cases, 250 API tests, 38 Python contract methods and eight scope-policy tests, plus development exports, lint/types, HTTP smoke and container checks. Merged-main completion will be recorded before this receipt is merged.
+Candidate logs verified 83/83 browser cases, 516 mobile tests, 373 JavaScript contract cases, 250 API tests, 38 Python contract methods and eight scope-policy tests, plus development exports, lint/types, HTTP smoke and container checks. Merged-main logs also verified the same 83/83 browser, 516 mobile, 373 JavaScript, 250 API, 38 Python contract and eight scope-policy test counts, plus development exports. All six merged-main jobs passed.
 
 The four application jobs retain their names. `Change scope` and `Foundation gate` add classification and explicit final reporting. This migration changes behavior/workflows, so all six jobs ran. Skipped jobs in a later documentation-only change must not be described as test passes.
 
@@ -64,4 +64,4 @@ No database connection, SQL/migration application, live Stream/HDE/provider call
 
 ## Receipt publication
 
-This receipt is an ordinary-documentation-only follow-up to the accepted migration. Its PR and merged-main workflow results provide the independent evidence for its own publication; a file cannot embed its own future commit identity. The expected path is two lightweight jobs succeeding and four application jobs explicitly skipped. Do not claim that expected result until observed in GitHub. The manager's completion comment and Notion coordination update link the actual follow-up checks without requiring another self-referential source update.
+This receipt is an ordinary-documentation-only follow-up to the accepted migration. Its PR and merged-main workflow results provide the independent evidence for its own publication; a file cannot embed its own future commit identity. The initial receipt candidate `43b5aa700ec7f48a35ad32c84093283f5584811c` passed [PR16 run 36012135671](https://github.com/amthorn78/glow-dating-app/actions/runs/36012135671): `Change scope` returned `full=false`, `ordinary-docs-only`, with only this file listed; `Foundation gate` succeeded; all four application jobs were skipped with zero steps. Both externally launched reviewers completed without findings; that does not establish zero invocations or independently expose their internal work. This later update records main completion and requires its own lightweight checks before merge. The manager's completion comment and Notion coordination update link the actual follow-up checks without requiring another self-referential source update.
