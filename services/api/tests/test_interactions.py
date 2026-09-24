@@ -862,3 +862,111 @@ class InteractionTests(TestCase):
                 replay = self.committed(self.a, intent)
                 self.assertEqual(replay["receipt"], original["receipt"])
                 self.assertEqual(replay["current_projection"], original["current_projection"])
+
+    def test_original_direction_retains_clock_and_policy_authority_for_reciprocity(self):
+        for change in ("clock_advance", "policy_missing", "policy_restore"):
+            with self.subTest(change=change):
+                self.reset()
+                first = self.intent()
+                original = self.committed(self.a, first)
+                if change == "clock_advance":
+                    clock = self.fixture.discovery.clock
+                    clock.set(clock.read() + 1)
+                else:
+                    self.a.policy_version = None
+                    if change == "policy_restore":
+                        self.a.policy_version = "development-interactions-1"
+                replay = self.committed(self.a, first)
+                self.assertEqual(replay["receipt"], original["receipt"])
+                self.assertIsNone(replay["current_projection"])
+                second = self.intent(self.b, "discovery-viewer", key="reciprocal")
+                self.committed(self.b, second)
+                self.assertEqual(self.repo.counts["directions"], 2)
+                self.assertEqual(self.repo.counts["matches"], 0)
+                self.assertEqual(self.repo.events, ())
+
+    def test_match_retains_both_original_policies_and_clock_authority(self):
+        for change in (
+            "clock_advance",
+            "clock_adapter",
+            "a_missing",
+            "b_missing",
+            "a_restore",
+            "b_restore",
+        ):
+            with self.subTest(change=change):
+                self.reset()
+                match, _, _ = self.match()
+                clock = self.fixture.discovery.clock
+                if change == "clock_advance":
+                    clock.set(clock.read() + 1)
+                elif change == "clock_adapter":
+                    self.a.discovery.clock = type(clock)(clock.read())
+                else:
+                    service = self.a if change.startswith("a_") else self.b
+                    service.policy_version = None
+                    if change.endswith("restore"):
+                        service.policy_version = "development-interactions-1"
+                self.assertEqual(self.a.match_projection(match["match_id"])["state"], "restricted")
+                self.assertFalse(self.b.contact_decision(match["match_id"])["match_current"])
+                self.assertEqual(self.repo.counts["matches"], 1)
+                self.assertEqual(
+                    Counter(event.kind for event in self.repo.events),
+                    {"match_created": 1, "contact_revoked": 1},
+                )
+                self.a.policy_version = self.b.policy_version = "development-interactions-1"
+                self.assertEqual(self.b.match_projection(match["match_id"])["state"], "restricted")
+
+    def test_incoming_private_action_preserves_held_discovery_page_and_batch(self):
+        for mode in ("recommended", "broader"):
+            for action in ("like", "pass"):
+                with self.subTest(mode=mode, action=action):
+                    self.reset()
+                    incoming = self.intent(self.b, "discovery-viewer", action=action)
+                    held = self.intent(mode=mode)
+                    before, _ = self.a.page(mode=mode, request_id="retained")
+                    self.committed(self.b, incoming)
+                    after, _ = self.a.page(mode=mode, request_id="retained")
+                    self.assertEqual(after, before)
+                    self.committed(self.a, held, mode=mode)
+                    self.assertEqual(self.repo.counts["matches"], int(action == "like"))
+
+    def test_unrelated_actions_preserve_viewer_queue_but_reverse_block_invalidates(self):
+        for change in ("other_like", "other_block", "reverse_block"):
+            with self.subTest(change=change):
+                self.reset()
+                held = self.intent()
+                before, _ = self.a.page(mode="recommended", request_id="retained")
+                if change == "other_like":
+                    other = self.intent(self.c, "discovery-viewer", key="other")
+                    self.committed(self.c, other)
+                elif change == "other_block":
+                    self.committed(self.c, self.block("discovery-jules"))
+                else:
+                    self.committed(self.b, self.block("discovery-viewer"))
+                after, _ = self.a.page(mode="recommended", request_id="retained")
+                if change == "reverse_block":
+                    self.assertEqual(after["state"], "reload_required")
+                    self.assertEqual(self.a.command(held).code, "stale_batch")
+                    self.committed(
+                        self.b,
+                        self.block("discovery-viewer", action="unblock", key="unblock", version=1),
+                    )
+                    self.assertEqual(self.a.command(held).code, "stale_batch")
+                else:
+                    self.assertEqual(after, before)
+                    self.committed(self.a, held)
+                    self.assertEqual(self.repo.counts["matches"], 0)
+
+    def test_block_invalidates_viewer_registered_during_final_callback(self):
+        self.source.acquire(self.fixture.discovery.viewer, AccountId("discovery-jules"))
+        observed = []
+        self.a.before_commit = lambda: observed.append(
+            self.b.page(mode="recommended", request_id="during-commit")
+        )
+        self.committed(self.a, self.block())
+        self.assertEqual(observed[0][0]["state"], "ready")
+        self.assertIsNotNone(observed[0][1])
+        after, batch = self.b.page(mode="recommended", request_id="after-commit")
+        self.assertEqual(after["state"], "reload_required")
+        self.assertIsNone(batch)

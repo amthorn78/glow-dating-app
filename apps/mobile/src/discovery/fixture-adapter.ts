@@ -107,6 +107,10 @@ export class FixtureDiscoveryAdapter {
     else { this.sharedRevision += 1; this.interactionCell.revision += 1; }
     for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); }
     this.listeners.forEach(listener => listener()); }
+  /** Presentation/filter changes retire discovery work without revoking durable pair authority. */
+  private queuesChanged() { this.revision += 1; this.publicationCell.revision += 1; this.sharedRevision += 1;
+    for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); }
+    this.listeners.forEach(listener => listener()); }
   private retireQueues() { for (const queue of this.queues.values()) queue.cell.revision += 1; this.queues.clear(); }
   /** Synthetic source writers advance even on replacement/restoration with identical values. */
   replace(record: DiscoveryRecord): void {
@@ -128,10 +132,11 @@ export class FixtureDiscoveryAdapter {
   replaceViewerMapping(mapping: Mapping | null) { this.viewerLink = freeze(clone(mapping)); this.changed(); }
   inspectViewerMapping(): Mapping | null { return this.viewerLink; }
   setPolicy(policy: PairPolicy | null) { this.policy = freeze(clone(policy)); this.changed(); }
-  setScenario(value: DiscoveryScenario) { this.scenario = value; this.changed(); }
-  invalidate() { this.changed(); }
-  interactionsChanged() { this.revision += 1; this.publicationCell.revision += 1; for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); } this.listeners.forEach(listener => listener()); }
-  clear() { this.retireQueues(); this.changed(); }
+  setScenario(value: DiscoveryScenario) { this.scenario = value; this.queuesChanged(); }
+  invalidate() { this.queuesChanged(); }
+  interactionsChanged() { this.queuesChanged(); }
+  interactionPolicyChanged() { this.changed(); }
+  clear() { this.retireQueues(); this.queuesChanged(); }
   private time() {
     const timestamp = this.clock().getTime(), now = timeValue(this.timeSource);
     const day = Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : 'invalid';
@@ -175,7 +180,7 @@ export class FixtureDiscoveryAdapter {
     if (!cell || row?.facts?.account_id !== accountId || row.facts.account_state !== 'active' || row.facts.session_state !== 'valid') return null;
     const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
   }
-  bindConsumption(source: (viewerId: string, profileId: string) => boolean) { this.consumed = source; this.changed(); }
+  bindConsumption(source: (viewerId: string, profileId: string) => boolean) { this.consumed = source; this.queuesChanged(); }
   /** App-owned mapping acquisition and eligibility, without chart/provider evaluation. */
   captureInteractionPair(profileHandle: string): InteractionPairCapture | null {
     const current = this.time();

@@ -355,6 +355,6 @@ export class FixtureInteractionAdapter {
     return freeze({ matchVersion: current?.version ?? match.version, contactVersion: current?.contactVersion ?? match.contactVersion, eligible: current === match && match.state === 'active' && interactionPairIsCurrent(match.source), providerReady: false, canSend: false });
   }
   inspect() { return freeze({ actions: [...this.state.actions.values()].map(action => ({ id: action.id, actor: action.actor, target: action.target, state: action.state, version: action.version })), matches: [...this.state.matches.values()].map(match => ({ id: match.id, first: match.first, second: match.second, state: match.state, version: match.version, contactVersion: match.contactVersion })), receipts: [...this.state.receipts.values()].map(value => value.receipt), events: [...this.state.events] }); }
-  setPolicy(resolved: boolean) { this.policy = resolved; this.discovery.invalidate(); }
+  setPolicy(resolved: boolean) { this.policy = resolved; this.discovery.interactionPolicyChanged(); }
   setBeforeCommit(callback: (() => void) | null) { this.beforeCommit = callback; }
 }

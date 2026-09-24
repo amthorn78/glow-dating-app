@@ -64,10 +64,13 @@ Consumption belongs to authoritative interaction state. Once an actor commits
 like/pass, that direction cannot reappear as untouched merely by switching mode,
 refreshing or accepting a delayed page. A historical match also cannot return
 as a new opportunity while rematch policy is unresolved. Queue invalidation is
-conservative: a committed action may require an explicit fresh bounded read;
+conservative within an affected viewer's exclusions: a committed action may require an explicit fresh bounded read;
 it never starts an unbounded refill. Reads, pagination and refresh themselves
 record no action. Another person's unilateral action remains private, including
-through normal candidate selection, labels and errors.
+through normal candidate selection, labels, errors and retained-page freshness.
+The repository's global commit revision protects atomic writes; it is not a global
+discovery-consumption revision. A private reverse action or an unrelated pair's
+action must not invalidate a viewer whose exclusions remain unchanged.
 
 The fixture policy selects no launch retention, resurfacing, rematch or history
 rights. A05 remains the owner of those choices. Explicit developer scenarios are
@@ -106,7 +109,7 @@ The immutable `CommandReceipt` contains only outcome code, object UUID and the
 version committed by that command. `InteractionCommandResult` separates it from
 `current_projection`, which is rebuilt under present access and may be null.
 A directional projection also requires its original stored source guards, binding
-identities and matchability; fresh eligibility cannot revive revoked original
+identities, policy/clock revisions and matchability; fresh eligibility cannot revive revoked original
 authority. A receipt describing a past `liked` action does not promise a current active
 match; later unmatch/restriction never rewrites the receipt into a new outcome
 or returns a cached grant. Revoked/deleted access receives generic unavailable
@@ -165,6 +168,9 @@ unavailable copy; prior profile details are not a cached permission.
 
 Unmatch, either-direction block and applicable account/consent/visibility/source
 changes invalidate new contact decisions and retained projections. Participant
+authority is separate from discovery presentation: offline/pending scenarios,
+queue clearing and refresh do not revoke an otherwise valid action or match.
+They still retire affected discovery pages and pending batch commands. Participant
 unmatch remains reachable while paused/ineligible. Unblock/resume, a repeated
 like or an old completion cannot resurrect the match. No assertion is made that
 past messages, safety evidence or provider bytes were erased.

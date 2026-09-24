@@ -313,7 +313,7 @@ class _Queue:
 class DiscoveryConsumption(Protocol):
     """App interaction state; its retained revision participates in queue freshness."""
 
-    def publication_guard(self) -> FixtureReadGuard: ...
+    def publication_guard(self, viewer: AccountId) -> FixtureReadGuard: ...
 
     def excludes(self, viewer: AccountId, candidate: AccountId) -> bool: ...
 
@@ -544,7 +544,7 @@ class FixtureDiscoveryService:
             return None
         if type(population_guard) is not FixtureReadGuard:
             return None
-        consumption_guard = acquire_guard(self.consumption) if self.consumption else None
+        consumption_guard = acquire_guard(self.consumption, viewer) if self.consumption else None
         if self.consumption is not None and consumption_guard is None:
             return None
         members = self.source.select(mode)

@@ -175,10 +175,40 @@ class FixtureInteractionRepository:
         require_fixture_environment(environment)
         self._revision = FixtureRevision()
         self._state = _State()
+        self._consumption_revisions: dict[AccountId, FixtureRevision] = {}
         self._pending: dict[tuple[AccountId, str, str], str] = {}
 
-    def publication_guard(self) -> FixtureReadGuard:
-        return capture_revisions(self._revision)
+    def publication_guard(self, viewer: AccountId | None = None) -> FixtureReadGuard:
+        if viewer is None:
+            # Commands retain the global unit-of-work revision to avoid lost writes.
+            return capture_revisions(self._revision)
+        if viewer not in self._consumption_revisions:
+            self._consumption_revisions[viewer] = FixtureRevision()
+        return capture_revisions(self._consumption_revisions[viewer])
+
+    @staticmethod
+    def _exclusions(state: _State) -> dict[AccountId, set[AccountId]]:
+        excluded: dict[AccountId, set[AccountId]] = {}
+        for actor, target in state.directions:
+            excluded.setdefault(actor, set()).add(target)
+        for match in state.matches.values():
+            actor, target = match.participants
+            excluded.setdefault(actor, set()).add(target)
+            excluded.setdefault(target, set()).add(actor)
+        for block in state.blocks.values():
+            if block.state == "active":
+                excluded.setdefault(block.actor, set()).add(block.target)
+                excluded.setdefault(block.target, set()).add(block.actor)
+        return excluded
+
+    def _consumption_changes(self, staged: _State) -> tuple[AccountId, ...]:
+        """Stage only observers whose discovery exclusions will actually change."""
+        before, after = self._exclusions(self._state), self._exclusions(staged)
+        return tuple(
+            viewer
+            for viewer in before.keys() | after.keys()
+            if before.get(viewer, set()) != after.get(viewer, set())
+        )
 
     def blocked(self, actor: AccountId, target: AccountId) -> bool:
         return any(
@@ -322,6 +352,7 @@ class FixtureInteractionService:
             self.discovery.batch.mappings,
             self.discovery.batch.eligibility.repository,
             self.repository,
+            self.discovery.clock,
         )
 
     def _authority_current(self, bindings: tuple[object, ...]) -> bool:
@@ -587,7 +618,7 @@ class FixtureInteractionService:
                 if decision.state is not EligibilityDecisionState.READY:
                     return CommandResult("unavailable")
                 # Source/registry/mapping cells survive after session/queue consumption.
-                durable_guards = (guards[3], guards[5], guards[6])
+                durable_guards = (guards[2], guards[3], guards[5], guards[6], guards[7])
                 row = current or Direction(
                     str(uuid4()),
                     actor,
@@ -614,7 +645,7 @@ class FixtureInteractionService:
                         (actor, target.account_id),
                         "active",
                         1,
-                        durable_guards,
+                        (*row.guards, *reciprocal.guards, *durable_guards),
                         self._authority_bindings(),
                     )
                     matches[pair] = match
@@ -685,6 +716,7 @@ class FixtureInteractionService:
                 return CommandResult("capacity_exceeded")
             receipts = {**state.receipts, key: receipt}
             staged = _State(directions, matches, blocks, receipts, tuple(events), event_count)
+            consumption_changes = self.repository._consumption_changes(staged)
             self.before_commit()
             # Last callback above; final comparison invokes no source or clock.
             if any(
@@ -693,6 +725,11 @@ class FixtureInteractionService:
                 return CommandResult("stale_version")
             self.repository._state = staged
             self.repository._revision.advance()
+            for viewer in consumption_changes:
+                # An observer may have registered during the last callback.
+                revision = self.repository._consumption_revisions.get(viewer)
+                if revision is not None:
+                    revision.advance()
         finally:
             pending_repository._pending.pop(key, None)
         return self._result(actor, target, operation, receipt, replayed=False)
@@ -707,7 +744,8 @@ class FixtureInteractionService:
         source_guard = acquire_guard(self.discovery.source, actor, target)
         decision = self.discovery.batch.eligibility.evaluate(actor, target)
         valid = (
-            decision.state is EligibilityDecisionState.READY
+            self.policy_version == "development-interactions-1"
+            and decision.state is EligibilityDecisionState.READY
             and not self.repository.blocked(actor, target)
             and all(guard_is_current(item) for item in match.guards)
             and self._authority_current(match.bindings)
@@ -816,6 +854,7 @@ class FixtureInteractionService:
             if (
                 current
                 and current.matchable
+                and self.policy_version == "development-interactions-1"
                 and self._authority_current(current.bindings)
                 and all(guard_is_current(item) for item in current.guards)
                 and eligible.state is EligibilityDecisionState.READY

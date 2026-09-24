@@ -371,3 +371,32 @@ for (const at of [3, 4]) test(`queue replacement during command acquisition call
   assert.equal(armed, false); assert.equal(discovery.isCurrent(page), false);
   assert.equal(adapter.inspect().actions.length, 0); assert.equal(adapter.inspect().receipts.length, 0);
 });
+for (const writer of ['offline', 'pending', 'invalidate', 'clear', 'bind_consumption'] as const)
+  test(`discovery ${writer} preserves committed pair authority while retiring pending batch authority`, async () => {
+    const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like');
+    const original = await command(fixture), committed = execute(fixture, original);
+    const change = () => {
+      if (writer === 'offline' || writer === 'pending') fixture.discovery.setScenario(writer);
+      else if (writer === 'invalidate') fixture.discovery.invalidate();
+      else if (writer === 'clear') fixture.discovery.clear();
+      else fixture.discovery.bindConsumption((actor, profile) => fixture.adapter.consumed(actor, profile));
+    };
+    const page = await fixture.discovery.request('recommended', 'before-presentation', null, true);
+    change(); assert.equal(fixture.discovery.isCurrent(page), false);
+    assert.equal(fixture.adapter.matches()[0]?.state, 'active');
+    assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'contact_revoked').length, 0);
+    const replay = execute(fixture, original); assert.deepEqual(replay.receipt, committed.receipt); assert.deepEqual(replay.current_projection, committed.current_projection);
+    fixture.discovery.setScenario('normal');
+    const fresh = await fixture.discovery.request('recommended', 'pending-presentation', null, true);
+    const next = fixture.adapter.prepare(fresh, 'profile-morgan', 'like', 'morgan:pending');
+    fixture.adapter.setBeforeCommit(change);
+    assert.throws(() => execute(fixture, next), InteractionFailure);
+    assert.equal(fixture.adapter.inspect().actions.length, 2); assert.equal(fixture.adapter.matches()[0]?.state, 'active');
+  });
+test('interaction policy replacement remains an authority write independent of queue invalidation', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like');
+  const original = await command(fixture), committed = execute(fixture, original);
+  fixture.adapter.setPolicy(false); fixture.adapter.setPolicy(true);
+  assert.equal(fixture.adapter.matches()[0]?.state, 'restricted');
+  const replay = execute(fixture, original); assert.deepEqual(replay.receipt, committed.receipt); assert.equal(replay.current_projection, null);
+});

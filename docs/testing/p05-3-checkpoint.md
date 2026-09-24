@@ -289,10 +289,43 @@ Action replay additionally excludes inactive matches. Seventeen added regression
 cover these related boundaries. All **74 interaction tests plus 27 discovery tests**
 pass; full mobile `npm run check` passes **485 tests**, TypeScript and ESLint.
 
+## Shared authority and private consumption correction
+
+Candidate `554fbd81cafb966cdc1564c3f9889baf2e486dcf`, tree
+`72df178bea03722a195a91e8f0e63cf74da505d2`, is the verified eight-file child of
+8ccf35e2. Both [PR run 35986344755](https://github.com/amthorn78/glow-dating-app/actions/runs/35986344755)
+and [push run 35986338500](https://github.com/amthorn78/glow-dating-app/actions/runs/35986338500)
+passed all four jobs/81 browser cases, completing at `2026-09-24T10:23:21Z` and
+`2026-09-24T10:23:25Z`. Actual mobile logs confirm 485 tests, 373 contract cases,
+development export and 81/81 browser cases in each run. Security completed without
+findings at `2026-09-24T10:24:01.746802Z`. Code review completed at
+`2026-09-24T10:23:37.419873Z` with three further P2 findings; that head was not merged.
+
+- [Retained policy/clock authority](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092504108):
+  Python stored directional guards omitted interaction-policy and discovery-clock
+  revisions, permitting revoked original likes to form a match after restoration.
+- [Discovery presentation scope](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092504115):
+  mobile scenario/queue invalidation advanced interaction authority, restricting
+  valid matches without any participant or policy change.
+- [Private consumption freshness](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092504129):
+  Python's global consumption revision invalidated another viewer's page after
+  a private reverse unilateral like, despite unchanged exclusions.
+
+The correction retains policy/clock authority from both accepted directional
+actions in a match. Discovery consumption uses viewer-scoped exclusion revisions;
+the global commit guard remains separate for atomic writes. A viewer first
+observed during a final callback also receives the relevant committed invalidation.
+Full API validation passes **241 tests**, Ruff/format and mypy, without database
+setup. Mobile presentation writers retire pages/batches without revoking durable
+interaction authority; actual source/policy writers still revoke. Full mobile
+`npm run check` passes **491 tests**, TypeScript and ESLint. Independent mobile
+review passes **128 interaction/discovery tests and 52 additional writer cases**.
+Exact final Python review and publication gates are recorded in the external report.
+
 ## Publication boundary
 
-The source-scope/action-projection correction is prepared for publication as a
-child of actual PR14 head `8ccf35e23b5276d318fa9577d91b6e2385996d18`. The branch and PR are
+The shared-authority/private-consumption correction is prepared for publication as a
+child of actual PR14 head `554fbd81cafb966cdc1564c3f9889baf2e486dcf`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.
