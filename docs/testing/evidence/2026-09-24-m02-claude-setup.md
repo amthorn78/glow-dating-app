@@ -377,3 +377,191 @@ Nathan relayed the M02-I1 report: branch `claude/eager-goodall-1zjgey`, head `3a
 - **The manager:** fix every finding except a workflow change inside M02, as correction round M02-C1, before merge. The Setup script is then pasted once.
 
 The disposition table is in the brief.
+
+## Correction session M02-C1
+
+**M02-C1**, 24 September 2026. A manual implementation session in the `Glow app` environment, running as root (uid 0). Branch `claude/vigilant-einstein-i95w78`, created from main `07b3b10`. The start gate ran `git fetch origin claude/fervent-darwin-idyko3` and `git merge --ff-only 485756128bbd5bff2e6238bbbab5f11bde050c3a`, and `git rev-parse HEAD` printed `485756128bbd5bff2e6238bbbab5f11bde050c3a`.
+
+Commits: `e9e5ac0` (classifier), `52a1ea9` (pin-drift test), `b3e3b20` (ruff exclusion), `435b31e` (mobile instructions), `f8c17db` (script), `c5893a5` (Setup-script bullets), followed by the commit that adds this section.
+
+"Old" below means the file at `4857561`; "new" means this session's file. Old runs used a scratch copy of the old script.
+
+### Environment (names only)
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | Present; values not read |
+| `command -v node npm npx python3.12` | `/root/.local/bin/{node,npm,npx,python3.12}` |
+| Versions | `node` v24.19.0, `npm` 11.9.0, `python3.12` Python 3.12.14 |
+| This container's Setup-script toolchain | Node tree: 3401 of 5672 entries `ubuntu:ubuntu` (uid 1000), 2271 root. Python tree: 4164 entries, all root. The environment still runs the Setup script from before M02-I1. The new script would replace that Node tree, so it was run only on a copy, and `/root/.local` was left as found |
+| Tools used by the script | GNU bash 5.2.21, util-linux `setsid` 2.39.3, curl 8.5.0, GNU tar 1.35, GNU coreutils 9.4 |
+
+### Script changes
+
+| Finding | Change |
+|---|---|
+| 1. Symlinks | `trusted_tree` rejects a tree whose root is not a real directory (a symlink or a dangling link). Every symlink in the tree must have relative text that never climbs above the tree root, component by component, and must resolve (`realpath -e`) to a regular file inside the tree's real path. A dangling link fails `realpath -e`. The check runs before anything in the tree executes, as before |
+| 8. Isolated Python | Both standard-library checks (the already-installed check and the post-build check) run `python3.12 -I` |
+| 9. Directories | `safe_dir` stops the script unless the prefix directory and the link directory (`$HOME/.local/bin`) are owned by the running account and not writable by group or others. Every parent of each, up to `/`, must belong to root or the running account and must not be writable by group or others unless it has the sticky bit (`/tmp`). The prefix is resolved to its physical path once, and only that path is used afterwards, including in the links. The link directory is found again through `PATH` at every lookup, so its path may not contain a symlink (its logical and physical paths must agree). Both checks run before any tree is inspected or executed |
+| 10. Robustness | `unset CDPATH` at the top, and the prefix is resolved with `cd -P -- … && pwd -P`. `curl -q` is the first option (ignores `~/.curlrc`), with `--connect-timeout 30` and stall protection `--speed-limit 1024 --speed-time 60`, and no total time limit. curl documents a stall abort as a timeout, which `--retry 3` retries; this was not exercised here. Downloads, both extractions, the npm install and the three Python build steps run through `run`: a background `setsid` step in its own process group that the script waits for. `SIGINT` and `SIGTERM` stop that whole group (TERM, up to 5 s, then KILL), remove the temporary directory, print a message and re-raise the signal. npm is installed through the tree's own `bin/npm`. `set +m` keeps background steps from being process-group leaders, so `setsid` does not fork |
+| 13. Timing text | The header and the build log line say about two minutes |
+| Not in the review | `export NODE_DISABLE_COMPILE_CACHE=1`; see "Node compile cache" below |
+
+Pins, hashes and URLs are unchanged. The script remains mode 100755.
+
+### Script checks
+
+All runs used `env -i HOME=<temporary> PATH=/usr/bin:/bin LANG=C.UTF-8`, plus the variables named, with no proxy or CA variables. The final battery ran on the committed script (`git hash-object` `450b3cf6504dd0ab13ae2932d8da5a5346319c81`). Old-script results come from earlier runs in this session.
+
+| Test | Result |
+|---|---|
+| `bash -n` | Exit 0 |
+| Fresh run into an empty temporary `HOME` (mode 700, 0:0) | Exit 0 in 98.7 s. Node tree 5672 entries and Python tree 4164 entries, all 0:0, with 12 and 8 symlinks. No group- or world-writable non-link entries and no setuid or setgid bits. `.local`, `.local/bin`, `.local/share` and the prefix are 0:0 with mode 755, and the four links are 0:0. Linked versions: v24.19.0 / 11.9.0 / 11.9.0 (`npx`) / Python 3.12.14, OpenSSL 3.0.13. `python3` was unchanged (`/usr/bin/python3`, 3.11.15) |
+| Rerun from the file, and from `bash -s <` the file | Both exit 0 in 0.6 s, reporting both components already installed. Inode and mtime of all 9837 prefix entries were unchanged |
+
+**Adversarial cases.** A "stand-in" is a `bin/node` shell script that appends a line to a marker file and prints the pinned versions. The old script's run counts come from its own runs.
+
+| Case | Old script | New script |
+|---|---|---|
+| A. Node tree root is a root-owned symlink to a copy whose `bin/node` is a stand-in | Exit 0 in 0.1 s; kept the tree; stand-in ran 4 times | Exit 0 in 7.8 s: "replacing … it breaks the ownership, permission or symlink rules", re-extracted. Stand-in not run. The root is a directory, and the symlink's former target was left in place |
+| B1. `bin/node` is a root-owned absolute symlink to a uid-1000 stand-in outside the tree | Stand-in ran 4 times; kept | Replaced in 11.0 s; not run. 5672 entries, 0 non-root, 12 symlinks |
+| B2. `bin/node` is `../../../../../../<outside>/evil-node` (relative, climbs out) | Stand-in ran 4 times; kept | Replaced in 11.7 s; not run |
+| B3. `bin/corepack` dangles | Kept | Replaced in 11.8 s |
+| B4. `bin/node` leaves the tree to a hop that points back to the real binary | Kept (ran the real binary) | Replaced in 11.6 s |
+| C1. Prefix owned by uid 1000, holding a trusted-looking tree with a stand-in | Stand-in ran 4 times | Exit 1 in 0.0 s: "prefix directory … is not owned by the running account (uid 0)". Not run |
+| C2 and C3. Prefix mode 775 and 757 | Stand-in ran 4 times each | Exit 1: "… is writable by group or others". Not run |
+| C4. Prefix parent mode 777 | Stand-in ran 4 times | Exit 1: "… has an unsafe parent …: it must belong to root or the running account and must not be writable by group or others unless sticky". Not run |
+| C6. Prefix parent owned by uid 1000 (755) | Stand-in ran 4 times | Exit 1, unsafe parent. Not run |
+| C5. Prefix parent mode 1777, root-owned (sticky) | Not run | Exit 0 in 0.6 s; accepted |
+| C7. `--prefix` is a symlink to a root-owned 755 directory | Not run | Exit 0 in 0.7 s; the reported paths use the physical directory |
+| D1. `.local/bin` owned by uid 1000 (prefix elsewhere, with a stand-in) | Stand-in ran 4 times; links created there | Exit 1 in 0.0 s: "link directory … is not owned by the running account (uid 0)". Not run; no links |
+| D2. `.local/bin` mode 777 | Same as D1 | Exit 1: "… is writable by group or others" |
+| D3. `.local/bin` is a symlink to a root-owned 755 directory | Same as D1 | Exit 1: "link directory … must not be or pass through a symlink" |
+| D4. `.local` is a symlink to a real directory | Same as D1 | Exit 1: same message as D3 |
+| D5. `.local` mode 777 | Same as D1 | Exit 1: unsafe parent `.local` |
+| E1. Python tree without the standard-library `ssl.py`; fake `ssl.py` on `PYTHONPATH` | Exit 0 in 0.4 s: "Python 3.12.14 already installed". Fake imported once; afterwards `python3.12 -I -c 'import ssl'` failed | Exit 0 in 149.2 s: rebuilt Python. Fake not imported. `ssl` works (OpenSSL 3.0.13); 4164 entries 0:0 |
+| E2. Complete Python; fake `ssl.py` on `PYTHONPATH` | Fake imported once | Not imported; already installed |
+| F1. Complete Python; `ssl.py` in the working directory | Fake imported once | Not imported; already installed |
+| F3. Python without `ssl.py`; fake `ssl.py` in `~/.local/lib/python3.12/site-packages` | Fake imported once; the broken tree was kept | Rebuilt in 148.1 s; not imported |
+| G. `--prefix tc --no-link` from `work/`, with `CDPATH` set to a directory that also holds `tc/` with a stand-in | Exit 2 in 0.7 s. The prefix became that other `tc` path twice, joined by a newline, and `tar` failed: "Cannot open: No such file or directory" | Exit 0 in 0.6 s; `work/tc` used; stand-in not run |
+
+E1 and F3 ran in parallel, so each rebuild shared the 4 CPUs with the other. A first attempt at the E and F cases wrote a malformed fake module (a `printf` error in the test helper); those runs were discarded and repeated as above.
+
+**Wrong hashes** (scratch copies of the new script, each with its own `TMPDIR`):
+
+| Copy | Result |
+|---|---|
+| Wrong `NODE_SHA256` | Exit 1 in 0.6 s: "Node archive SHA-256 mismatch". Nothing extracted; no links; `TMPDIR` empty |
+| Wrong `NPM_INTEGRITY` | Exit 1 in 5.2 s: "npm tarball SHA-512 mismatch". The verified Node tree was extracted with its bundled npm (5779 entries); npm was not installed; no links; `TMPDIR` empty |
+| Wrong `PYTHON_SHA256` (Node already present) | Exit 1 in 0.8 s: "Python source SHA-256 mismatch". No Python entries; no links; `TMPDIR` empty |
+| Unknown option `--bogus` | Exit 1 with usage |
+
+**Interruption during the Python build.** Each run had the Node tree pre-copied, its own `TMPDIR` and its own session. It was started by a launcher that restores the default `SIGINT` disposition, because background jobs start with it ignored. The signal was sent to the script's pid once the `configure` and `make` logs existed and a compiler was running in the build directory.
+
+| | Old, `SIGTERM` | New, `SIGTERM` | New, `SIGINT` |
+|---|---|---|---|
+| Live processes working under `TMPDIR` at the signal | 9 | 10 | 7 |
+| Script exit | 143 after 0.10 s | 143 after 0.27 s | 130 after 0.19 s |
+| Live processes under `TMPDIR` 2 s later | 4: `make`, `sh`, `gcc`, `cc1` | 0 | 0 |
+| Processes left in the run's session | 4 | 0 | 0 |
+| `TMPDIR` entries left | 2: a compiler temporary `cc01bRin.s` and `node-compile-cache`. The work directory itself was gone; bash ran the old `EXIT` trap on `SIGTERM`, while the build kept running in the deleted directory | 0 | 0 |
+| Message | None | "stopped by SIGTERM; temporary files removed" | "stopped by SIGINT; temporary files removed" |
+
+After both new-script interruptions the prefix held the complete Node tree, no Python directory (the script removes it before `configure`) and no links. The leftover old-script processes were killed after the observation.
+
+An earlier version of the new script ran the Python steps as `run … >log 2>&1`. The handler then ran with its standard error in that step log, which it deleted, so the message was lost. The redirection now happens inside the step's own subshell. The result above is from the final script.
+
+**Copy of this container's Setup-script toolchain.** `cp -a` of `/root/.local/share/glow-app-toolchain` into a temporary prefix. Before: Node tree 5672 entries, 3401 non-root, 12 symlinks; Python tree 4164 entries, 0 non-root, 8 symlinks. `--prefix <copy> --no-link` exited 0 in 9.1 s: it replaced the Node tree and kept Python. Afterwards both trees had 0 non-root entries, and a rerun was a no-op in 0.7 s. The real prefix (9837 entries: inode, mtime and owner) and `/root/.local/bin` (27 entries) were unchanged.
+
+### Node compile cache (not in the review)
+
+A run of the wrong-`PYTHON_SHA256` copy with its own `TMPDIR` left one entry there, `node-compile-cache`. npm 11 enables Node's compile cache in `$TMPDIR/node-compile-cache` when it starts, for example on `npm --version`.
+
+- With a `node-compile-cache` directory pre-created in `TMPDIR`, owned by uid 1000 with mode 777, root's `npm --version` wrote 73 entries into it. That is compiled code read back from outside the checked trees.
+- With `NODE_DISABLE_COMPILE_CACHE=1`, `npm --version` left 0 entries in `TMPDIR`.
+- This container already has a root-owned `/tmp/node-compile-cache`, created at 16:02 by its Setup-script run.
+
+The script now exports `NODE_DISABLE_COMPILE_CACHE=1` for every Node and npm process it starts. Afterwards the wrong-hash copy left 0 entries in `TMPDIR`.
+
+### Classifier
+
+- `env -i … python3.12 -I -m unittest discover -s scripts -p 'test_change_scope.py' -v` on Python 3.12.14: **13 tests OK** (9 before). The same command with the system `python3` (3.11.15): 13 OK.
+- New tests:
+  - A criss-cross history with increasing commit dates. `git merge-base --all` returns two bases, the code commit and the documentation commit. From one base the diff is documentation only, and from the other it includes `app.py`. The result is `{"full": true, "reason": "multiple-merge-bases"}`.
+  - Unrelated histories give `comparison-unavailable`.
+  - `.claude/agents/helper.md`, `.claude/skills/x/SKILL.md`, `.claude/commands/deploy.md`, `docs/.claude/x.md`, `apps/mobile/.claude/rules/r.md`, `.CLAUDE/agents/helper.md`, `.Claude/skills/x/SKILL.md`, and `.claude/agents/helper.md` with `docs/planning/brief.md` are full scope.
+  - `CLAUDE.md`, `AGENTS.md`, `apps/mobile/CLAUDE.md`, `docs/continuity/claude-code-handoff.md`, `docs/claude/notes.md`, `.claude.md`, `docs/.claude-notes/x.md` and `docs/claude.md/x.md` stay `ordinary-docs-only`.
+  - The single-base test now also asserts one merge base and the reason.
+- The committed tests run against the old classifier: 13 run, **9 failures**. There are 8 `.claude` subtests, plus the criss-cross test (`False is not true`), where the old classifier's single `git merge-base` picked the newest base, the code commit, and classified the history as ordinary documentation. The fixture's dates make git pick that base. The assertions do not depend on which base git picks.
+- `ruff check` with the API configuration on both files: 7 E501 and 2 I001, the same counts as the old files (`scripts/` is not in CI's lint scope).
+
+### Pin-drift test
+
+`python3.12 -m unittest tests.test_toolchain_pins -v` from `services/api` in a clean process environment: 3 tests OK.
+
+Each edit below was made to `.github/workflows/foundation.yml` and reverted with `git checkout`, and `git diff --quiet` confirmed the revert. The old test ran from its `4857561` source with `ROOT` pointed at this checkout.
+
+| Edit | Old test | New test |
+|---|---|---|
+| Line 66 `python-version: 3.13.1` (unquoted) | OK (false pass) | FAILED: `Python pins disagree (diverging files first): 3.13.1 in .github/workflows/foundation.yml:66; 3.12.14 in scripts/bootstrap-toolchain.sh:46, services/api/.python-version, .github/workflows/foundation.yml:134, Dockerfile:3` |
+| Line 95 `node-version: "24.20.0"` | OK (false pass) | FAILED: `Node pins disagree (diverging files first): 24.20.0 in .github/workflows/foundation.yml:95; 24.19.0 in scripts/bootstrap-toolchain.sh:42, apps/mobile/package.json engines.node, packages/contracts/package.json engines.node, .github/workflows/foundation.yml:137` |
+| Line 97 `npm i -g npm@11.10.0` | OK (false pass) | FAILED: `npm pins disagree (diverging files first): 11.10.0 in .github/workflows/foundation.yml:97; 11.9.0 in scripts/bootstrap-toolchain.sh:44, apps/mobile/package.json engines.npm, apps/mobile/package.json packageManager, packages/contracts/package.json engines.npm, packages/contracts/package.json packageManager, .github/workflows/foundation.yml:140` |
+| Line 97 `npm install npm@11.10.0 --global` (flag after) | OK (false pass) | FAILED: `.github/workflows/foundation.yml: 1 npm install pins recognized for 2 'actions/setup-node@' matches` |
+| Line 134 `python-version-file: services/api/.python-version` | OK (false pass) | FAILED: `.github/workflows/foundation.yml: 1 python-version pins recognized for 2 'actions/setup-python@' matches` |
+| Line 140 npm install replaced by `echo skipped` | OK (false pass) | FAILED: `.github/workflows/foundation.yml: 1 npm install pins recognized for 2 'actions/setup-node@' matches` |
+
+The npm count invariant: Node 24.19.0 bundles npm 11.17.0, so every job that sets up Node must install the pinned npm once. The recognized npm installs must therefore equal both the `actions/setup-node@` uses and the `npm@` references in the workflow. A spelling the pattern does not parse then changes a count instead of passing unseen.
+
+### Ruff
+
+In `services/api`, with ruff 0.16.8 from `requirements-dev.lock`:
+
+| Command | Result |
+|---|---|
+| `ruff format --check .` (new configuration) | 57 files already formatted, exit 0 |
+| `ruff check .` | All checks passed |
+| `ruff format --check --config <old pyproject.toml> .` | 58 files already formatted |
+| With a temporary `TEMP-ruff-markdown-check.md` containing an unformatted Python block, old configuration | exit 1: 1 file would be reformatted, 58 files already formatted |
+| The same file, new configuration | 57 files already formatted, exit 0; `ruff check .` passed |
+
+The temporary file was deleted, and `git status` showed only the intended changes.
+
+### Mobile instruction
+
+`apps/mobile/scripts/development.mjs` runs `node_modules/expo/bin/cli` with all its arguments, with `GLOW_APP_ENV=development` and `EXPO_PUBLIC_GLOW_MODE=fixture`, and refuses other values. After `npm ci --ignore-scripts` (exit 0 in 24 s, with `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` passed by reference), `CI=1 EXPO_OFFLINE=1 node scripts/development.mjs run:ios --help` and `… run:android --help` each exited 0 with Expo's usage for that command. A bare `npx expo run:android --help` also printed help, because help does not load `app.config.ts`. This shows forwarding only. No native build or device run was performed.
+
+### API suite on the pinned toolchain
+
+Every command ran with `env -i HOME=/root PATH=/root/.local/bin:/usr/bin:/bin LANG=C.UTF-8` plus the variables shown.
+
+| Command | Result |
+|---|---|
+| `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock` | Exit 0 in 61 s. pip 25.0.1 printed a newer-release notice |
+| `pip check` | "No broken requirements found." |
+| `GLOW_ENV=test manage.py check` | No issues |
+| `GLOW_ENV=test manage.py test tests --verbosity 2` | Exit 0; **253 tests OK** in 7.7 s |
+| `ruff check .` / `ruff format --check .` / `mypy` | All checks passed / 57 files already formatted / no issues in 29 source files |
+| `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v` | 38 tests OK |
+
+### Documentation checks
+
+- Relative-link check over the three changed Markdown files (`apps/mobile/AGENTS.md`, `docs/operations/local-development.md`, this record), using a scratch checker for file targets and heading anchors that skips code: 3 files, 9 relative links, 0 broken.
+- `git diff --check 4857561 HEAD`: clean.
+- Changed paths against `4857561`: the seven owned files above and this record. The script stays mode 100755; the Python files stay 100644.
+- **Trusted-base classification.** `main`'s `scripts/change_scope.py` (`07b3b10`) was extracted to a temporary directory and run with `python3 -I … --base 07b3b10720ddd333ada807a56595f369263714fe --head c5893a5cb2abbc463314eb7fc1ea84b3be4a79cf --merge-base`. The result was `{"full": true, "reason": "behavior-or-empty"}` with 29 paths, including all three scripts, `services/api/pyproject.toml` and the pin test. `git merge-base --all` returned one base. The final head adds only this Markdown section; its classification is in the M02-C1 report.
+
+### Limits
+
+- **The Setup script changed and must be pasted once after M02 merges.** The script has not run as an actual environment Setup script. The closest test is the run on a copy of this container's Setup-script toolchain above. This container's Node tree stays uid-1000-owned until the new script runs here.
+- **Parent directories:** the check runs up to `/`. It trusts root-owned parents and sticky directories. `TMPDIR`, where `mktemp -d` creates the private work directory (mode 700), is not checked.
+- **Unchanged scope:** the ownership check still trusts content owned by the running account. Files inside the link directory are not checked. `/root/.local/bin/uv` and `uvx` are owned by 1001:117 here; they come from the container image and are outside M02.
+- **Signals:**
+  - Only `SIGINT` and `SIGTERM` are handled; `SIGKILL` cannot be, and `SIGHUP` was not tested.
+  - A signal that arrives during a short foreground command (`find`, `sha256sum`, `rm`, a `--version` check) takes effect when that command ends.
+  - One gap is not covered: a signal between starting a step and recording its pid.
+  - An interruption during `make install` was not tested in this session. It leaves a partial Python tree, which the next run's import check rejects; the M02-I1 section tests that state with `encodings` removed.
+  - Without `ps` or `awk`, the handler sends `KILL` right after `TERM`. This was established by reading the code, not tested.
+- **`.claude` matching:** it ignores case only. Other filesystem aliases, such as HFS+ ignorable Unicode characters or Windows 8.3 short names, are not detected.
+- **CI:** it loads the classifier from `main`, so the new classifier rules apply to later PRs only after M02 merges. No hosted CI result is recorded here. Pushing the session branch starts a Foundation push run.
+- **Not run:** mobile checks beyond `npm ci` and the two help commands, and the rendered suite. The intermittent rendered cases were not touched.
