@@ -1,9 +1,9 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.3 · **Date:** 23 September 2026
-**Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.  
-**State at publication:** planning complete and recorded; the owner has authorized App Builder 1 to implement under decision D08. Implementation has not started at this handoff checkpoint.  
-**Execution model:** App Builder 1 implements; App Planner 1 coordinates and manages the build. Use bounded work items and evidence at each checkpoint, without a Flowmaster system or automatic phase-approval cycle.
+**Document identity:** GAPP-PF01 · **Revision:** 1.4 · **Date:** 24 September 2026
+**Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
+**Current direction:** P01–P05 completed at recorded preparation/fixture scope; new features paused for repository documentation migration and Claude Code setup. Current evidence is in the repository handoff and Notion coordination records.
+**Execution model:** the receiving Claude Code session manages separate bounded implementation sessions. App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
 
@@ -39,23 +39,23 @@ Voice/video, public feeds, consumer web parity, custom chat infrastructure, spec
 |---|---|---|
 | Operational control | [Glow Dating App — Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) | Current state, active work, blockers, next action and exact authoritative links |
 | Work register | [Glow Dating App — Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) | Task/decision/dependency/risk status and evidence pointers; never a second technical specification |
-| Drive project | [Glow Dating App](https://drive.google.com/drive/folders/1MXxJc_6tk-1Kf4QQhoEJPe-3uphKmrC1) | Initial planning and durable external source material |
-| Initial plan | [01 Planning](https://drive.google.com/drive/folders/1RO0in9nhTVqe_4GE5-XqURU-Ogk6F4oJ) | This governing plan until its explicit repository authority transfer |
-| Research and sources | [02 Research and Sources](https://drive.google.com/drive/folders/1cZvOmqyN-NeU2BXNUSbHVk9F_LCeSPWS) | Original brief and dated research; historical evidence rather than live implementation truth |
-| Separate application canon | [03 PF Canon](https://drive.google.com/drive/folders/13p0mGihAV6DFT2tIm1LapP4E3TKI2f2s) | GAPP-PF00 authority index; routes GAPP-PF01 to this plan |
-| Working material | [04 Ephemeral Working Files](https://drive.google.com/drive/folders/1OuH16DIQQz-cO9yjXHuZob_idXvt3x6k) | Drafts, experiments and temporary material; no implied authority |
-| Application repository | Not yet established; candidate `amthorn78/glow-dating-app` | Code and implementation-essential documentation after P01 |
+| Persistent planning | `docs/planning/` | Durable plans, briefs, source snapshots, decisions and database audit evidence |
+| Separate application canon | `docs/pf-canon/` | Current GAPP-PF00 and GAPP-PF01, in Markdown |
+| Working material | `docs/ephemeral/` | Prunable single-use Markdown prompts and temporary handoffs after promotion of unique evidence |
+| Application repository | Private `amthorn78/glow-dating-app`, default branch `main` | All durable implementation documentation and code; no operational Drive dependency |
 
 **Three documentation layers remain distinct.** Repository implementation documents describe the actual code, contracts, configuration, testing and operation. The **GAPP-PF** canon owns application-level governing rules and durable architectural constraints. Ephemeral files are noncanonical. These are logical layers: the application canon may live in a clearly separated `docs/pf-canon/` directory inside the application repository. It never joins or renumbers the HDE PF canon.
 
-### Authority transfer in P01
+### Historical authority transfer in P01 — completed
+
+The following steps describe the completed transfer, not a requirement to access Drive again. D09 and `docs/README.md` now govern ongoing documentation.
 
 1. Establish or select the application repository after the bounded reuse assessment. Record its exact owner, name, visibility, default branch and baseline commit in Notion.
 2. Commit GAPP-PF00 and this plan under `docs/pf-canon/`. Preserve the initial plan revision and source links. Add a small `AGENTS.md` that routes sessions to the index and current handoff; it does not duplicate the canon.
 3. Record the authority-transfer commit and date in the index, Notion and the Drive index. Thereafter the repository owns the current plan. Mark the Drive plan as a historical planning snapshot and link to the repository authority; do not maintain two editable copies.
 4. Create focused implementation documents only when their owning work is undertaken. Notion holds a link and completion state, not a pasted copy. A generated file becomes canonical only through an explicit promotion with an owner and replacement/retirement of any superseded home.
 
-Proposed repository locations below are **planned**, not existing paths:
+Repository locations (the WordPress plugin remains planned; other component/documentation homes exist):
 
 | Location | Content |
 |---|---|
@@ -67,6 +67,7 @@ Proposed repository locations below are **planned**, not existing paths:
 | `docs/architecture/`, `docs/adr/` | System/data diagrams, state machines, threat model and durable implementation decisions |
 | `docs/operations/`, `docs/testing/` | Setup, environments, runbooks, acceptance matrix and evidence index |
 | `docs/continuity/` | Current handoff and concise append-only implementation log |
+| `docs/planning/`, `docs/ephemeral/` | Persistent plans versus prunable prompts; all Markdown; see documentation guide |
 | `.work/` | Ignored local scratch, generated intermediates and experimental material; secrets never committed |
 
 Use stable document titles and IDs in durable references; record source revision/commit in evidence metadata. HDE reference material remains external. This project adopts its discipline of intent → change → proof, single authority, clear boundaries and honest claim states. It does not import the HDE Epic/CRD approval or multi-session machinery.
@@ -131,7 +132,7 @@ On 23 September 2026, during AP1-P03-001 execution, Nathan directed: “the app 
 
 The newer owner direction recorded in [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) prefers the **same logical PostgreSQL database as HDE**, with app-owned schema/tables and restricted app runtime/migration roles, unless assessment establishes a strong concrete reason against it. No legacy user information needs migration. Appropriate existing app structures may be reused or repurposed after object-level ownership/dependency review; the 32 provisional P02 models are not a decision to create 32 new tables. Map HDE-owned, reusable app-owned, obsolete app-owned and new-required objects before committing a physical layout, with exactly one migration owner per table and explicit allowed reads/writes. HDE schema/data/behavior, credentials, grants and actual dependencies remain protected; shared capacity and deployment effects must be assessed. Neither a shared database nor `public` is an app-only cleanup boundary.
 
-The separately issued [AP1-DBA-001 audit assignment](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view) permits bounded read-only catalog inspection in its dedicated scope before P11. It was issued, not executed, in the inspected control record. This narrow exception supersedes earlier blanket no-inspection wording only for that audit. It authorizes no DDL, deletion, role/grant change, deployment or persistence wiring. This P03 execution performs no database connection. P11 still owns runtime connection, migration and database-dependent acceptance. A02 remains unresolved until verified inventory and effect review; no protected shared resource becomes application-owned by this preference.
+The [completed 23 September database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) resolve the dated logical-database/ownership inspection: HDE and legacy backend use database `railway` with privileged `postgres`; protect `hde` and `public.hde_body_graphs_current`. None of the 32 provisional app models maps to an approved reusable physical legacy relation. The audit recommends a clean app-owned schema and restricted roles; no role/DDL/runtime change has occurred. These dated observations require reverification before P11 mutation. A02 remains open for implemented isolation, capacity, effects and acceptance. The audit’s early read-only exception does not authorize new database connections during this migration.
 
 ## 5. HDE integration contract: fixed responsibilities, provisional wire details
 
@@ -427,6 +428,10 @@ The owner has authorized implementation in the new session; the earlier planning
 
 App Builder 1 owns implementation, tests, repository documentation and accurate task updates. App Planner 1 owns coordination, progress assessment, cross-work dependencies and build-direction reconciliation. Reports are evidence-bearing checkpoints, not automatic approval requests. Continue independent authorized work after reporting unless a real decision or protected-resource boundary blocks it. Use the shared Notion report record and an addressed progress message for handoff; never claim another ChatGPT session received or read a report without verified delivery/acknowledgment. No background session transport or monitoring is implied by these role names.
 
+### Claude Code transition — D09
+
+On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code and paused new feature implementation. All documentation needed to plan, implement, review and hand off work must be repository Markdown. Notion remains coordination/status; Drive is historical provenance only. Persistent plans live in `docs/planning/`, disposable prompts in `docs/ephemeral/`, and the existing PF canon stays here. The receiving Claude session is the manager and commissions bounded one-off implementation sessions. Its first work is code/instruction/docs/CI/environment audit followed by a bounded setup and workflow optimization, not P06 feature work. No external prompt library is imported as governing workflow. Follow the [manager workflow](../planning/manager-workflow.md), [initiation](../planning/claude-code-initiation.md) and [migration record](../planning/claude-code-migration.md). D08’s protected boundary, ordinary app authorization and P11 sequencing remain unchanged. The earlier named-session grant is applied to this explicitly directed replacement environment, not an expansion to HDE.
+
 ### Initial decisions
 
 | ID | Decision | State / governing basis |
@@ -434,11 +439,13 @@ App Builder 1 owns implementation, tests, repository documentation and accurate 
 | D01 | Fresh application foundation with maintained component reuse; existing assets assessed, not automatically inherited | Owner chose the scratch-build direction and clarified optional reuse |
 | D02 | Preserve current HDE and its database; no app-side engine reimplementation | Owner's explicit integration priority |
 | D03 | Production DB connection/database-dependent integration in P11; data design early | Owner's implementation brief |
-| D04 | Notion operational control; Drive initial planning; repo technical authority after recorded transfer | Owner's implementation brief |
+| D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09 | Owner brief and 24 September transition direction |
 | D05 | Separate GAPP-PF canon; one capable session; no automatic approval at each phase | Owner's implementation brief |
 | D06 | Expo/RN + modular Django/DRF baseline, managed capabilities behind adapters | Selected planning design from research; exact pins and bounded reuse ADR in P01 |
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
 | D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; current controlling permission record |
+
+| D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions; feature pause and setup optimization first | Owner direction, 24 September 2026 |
 
 ### Provisional assumptions and dependencies
 
@@ -494,7 +501,9 @@ Required final acceptance covers the complete account-to-profile-to-recommendati
 
 No calendar delivery promise is made from the earlier research's team-based estimates. The first implementation checkpoints provide actual task throughput, access constraints and defect rates. Reforecast from completed evidence, preserve scope priorities, and distinguish hands-on effort from external waiting time.
 
-## 12. Publication checkpoint and next action
+## 12. Historical initial publication checkpoint — superseded
+
+Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature work. The following initial P00/P01 checkpoint is preserved as history, not a current assignment.
 
 **Completed by this planning task:** brief/source review; bounded existing-estate metadata inspection; current HDE/service and colocated Postgres identification; new Drive planning/research/canon/working structure; separate application Notion control/register; governing plan and canon index; seeded work/decision/dependency/risk records and continuity state.
 
@@ -504,8 +513,8 @@ No calendar delivery promise is made from the earlier research's team-based esti
 
 ### Source and evidence ledger
 
-- [Owner implementation brief](https://drive.google.com/file/d/1P52syYgKzsIUWscTMXPUcylBru4S1bO6/view): primary sequencing, documentation, autonomy and planning-only instructions. Owner's 23 September clarification adds optional reuse of GitHub/Railway structures and priority preservation of HDE/database.
-- [Glow mobile dating implementation research](https://drive.google.com/file/d/1wyYFc6nbBh0xCl6HBCgWGVH3sE8KNunq/view): dated comparison, product requirements and linked official/source-code evidence. Its whole-build HDE-completion dependency is superseded by this plan; historical cost/version observations are rechecked when used.
+- [Owner implementation brief](../planning/sources/2026-09-23-original-brief.md): primary sequencing, documentation, autonomy and planning-only instructions. Owner's 23 September clarification adds optional reuse of GitHub/Railway structures and priority preservation of HDE/database.
+- [Glow mobile dating implementation research](../planning/sources/2026-09-23-original-research.md): dated comparison, product requirements and linked official/source-code evidence. Its whole-build HDE-completion dependency is superseded by this plan; historical cost/version observations are rechecked when used.
 - Supplied **Reference — Glow Development Philosophy** and **Reference — Technical Writing Best Practices**: documentation/engineering discipline, not imported HDE process authority.
 - Supplied **Canon — HDE CLI/API/Vendor Reference**, architecture/infrastructure sources, and [HDE HTTP reader source at inspected commit](https://github.com/amthorn78/glow-hdengine-v2/blob/a63bf801665fbc19839fc013fcdb05386a1b0d09/adapter/http_reader.py): bounded engine integration evidence. This plan is not an audit of every attached HDE PF document.
 - GitHub owner repository search and Railway projects/services/config/deployment reads on 23 September 2026: identities in section 3. Config-variable values and live SQL were not read.
@@ -520,3 +529,5 @@ No calendar delivery promise is made from the earlier research's team-based esti
 1.2 — P01.2 publishes the plan into the established private application repository. The initial 1.1 baseline is preserved; the repository authority note distinguishes historical planning statements from current execution state.
 
 1.3 — records Nathan’s same-Railway-project correction and newer same-logical-database/clean-app-data direction from Implementation Control; replaces separate-project/database defaults with app schema/role ownership pending A02 audit. Records the separately scoped AP1-DBA-001 read-only exception. D08 protected-resource effects and P11 runtime/migration sequencing remain unchanged.
+
+1.4 — records D09, repository-only Markdown authority and Claude manager transition; incorporates completed dated database audit without authorizing integration.

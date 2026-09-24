@@ -3,7 +3,7 @@ name: Foundation
 on:
   pull_request:
   push:
-    branches: [main, 'app-builder-1/**']
+    branches: [main, 'app-builder-1/**', 'app-planner-1/**', 'claude/**']
 
 permissions:
   contents: read
@@ -13,7 +13,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Change scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Classify the complete change using trusted base policy
+        id: scope
+        env:
+          COMPARE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          COMPARE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          IS_PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
+        run: |
+          # Do not import or execute candidate Python before this decision.
+          # First adoption, a new branch or missing policy conservatively runs all checks.
+          policy_dir=$(mktemp -d "$RUNNER_TEMP/glow-scope.XXXXXX")
+          policy_base="$COMPARE_BASE"
+          # An earlier feature-branch commit is not a reviewed policy authority.
+          if [ "$IS_PULL_REQUEST" != true ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            policy_base=$(git rev-parse refs/remotes/origin/main 2>/dev/null || true)
+          fi
+          if [[ "$policy_base" =~ ^[0-9a-f]{40}$ ]] && git show "$policy_base:scripts/change_scope.py" > "$policy_dir/change_scope.py"; then
+            args=(--base "$COMPARE_BASE" --head "$COMPARE_HEAD" --github-output "$GITHUB_OUTPUT")
+            if [ "$IS_PULL_REQUEST" = true ]; then args+=(--merge-base); fi
+            python3 -I "$policy_dir/change_scope.py" "${args[@]}"
+          else
+            echo 'full=true' >> "$GITHUB_OUTPUT"
+            echo 'Full checks: trusted comparison policy unavailable.'
+          fi
+
   api:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API checks
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -27,6 +64,9 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12.14'
+      - name: Test candidate scope policy after trusted classification
+        working-directory: ${{ github.workspace }}
+        run: python -I -m unittest discover -s scripts -p 'test_change_scope.py' -v
       - run: python -m pip install --require-hashes -r requirements-dev.lock
       - run: python -m pip check
       - run: python manage.py check && python manage.py test tests --verbosity 2
@@ -36,6 +76,8 @@ jobs:
       - run: PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v
 
   mobile:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: Mobile checks
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -78,6 +120,8 @@ jobs:
           retention-days: 14
 
   smoke:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API mobile smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -101,6 +145,8 @@ jobs:
           GLOW_SMOKE_PYTHON: python
 
   artifact:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API artifact checks
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -114,3 +160,26 @@ jobs:
           docker build --platform linux/amd64 --tag glow-api:ci --iidfile .work/api-image-id .
       - name: Inspect image, refuse unsafe modes, smoke loopback and terminate
         run: python3 scripts/container_smoke.py glow-api:ci
+
+  gate:
+    name: Foundation gate
+    if: always()
+    needs: [scope, api, mobile, smoke, artifact]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require successful checks or an explicit documentation exemption
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          results = json.loads(os.environ["RESULTS"])
+          assert results["scope"]["result"] == "success", "Change classification failed"
+          full = results["scope"]["outputs"].get("full")
+          assert full in {"true", "false"}, "Missing classification output"
+          expected = "success" if full == "true" else "skipped"
+          for job in ("api", "mobile", "smoke", "artifact"):
+              assert results[job]["result"] == expected, f"Unexpected {job} result"
+          print("Application checks passed" if full == "true" else "Ordinary documentation: application jobs intentionally skipped")
+          PYTHON

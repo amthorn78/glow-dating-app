@@ -30,7 +30,7 @@ Before committing a persistence layout, classify existing objects as HDE-owned, 
 
 PF07 v2.3.2 section 2.2 documents a shared instance, HDE schema `hde`, and backend schema TBD. It does not establish the current live logical-database/object map. The control record's historical/source finding of HDE object `public.hde_body_graphs_current` prevents treating `public` as an app-only deletion boundary: no wholesale drop/reset.
 
-[AP1-DBA-001](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view) is issued for a separate dedicated terminal-capable audit session and is not recorded as executed. Its bounded read-only catalog inspection is a narrow, session-specific exception; this P03 implementation still opens no database connection. The audit is not permission for DDL, role/grant changes, legacy retirement, HDE mutation or early app persistence. P11 retains wiring, migrations and database-dependent acceptance.
+[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles is the audited direction. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
 
 ## Consequences and controls
 
