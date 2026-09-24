@@ -185,4 +185,118 @@ The workflow's concurrency group is per ref with `cancel-in-progress: true`.
 
 ## Implementation session
 
-*Reserved for M02-I1 results.*
+**M02-I1**, 24 September 2026. A manual implementation session in the `Glow app` environment, running as root (uid 0). Branch `claude/eager-goodall-1zjgey`. The start gate ran `git fetch origin claude/fervent-darwin-idyko3` and `git merge --ff-only 9280bdc4666f48c0e89ae8b03e09818faec4419e` from main `07b3b10`, and `git rev-parse HEAD` printed `9280bdc4666f48c0e89ae8b03e09818faec4419e`.
+
+Commits: `999bebc` (script), `d90ac9c` (pin-drift test), `16a6473` (documentation) and `fe26041` (mobile installer correction), followed by the commit that adds this section.
+
+### Environment (names only)
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | Present; values not read |
+| `command -v node npm npx python3.12` | `/root/.local/bin/{node,npm,npx,python3.12}` |
+| Versions | `node` v24.19.0, `npm` 11.9.0, `python3.12` Python 3.12.14 |
+| Proxy and CA names | `HTTPS_PROXY`, `NODE_EXTRA_CA_CERTS` and `SSL_CERT_FILE` are present. They were compared, without printing, to the loopback proxy and `/root/.ccr/ca-bundle.crt` described in the container's `/root/.ccr/README.md`, and matched |
+
+The container's Setup-script toolchain showed the same ownership as App Manager 2 recorded: 3401 of 5672 Node-tree entries were uid:gid 1000:1000 (`ubuntu`), and the Python tree had no non-root entries.
+
+Other observations:
+
+- `/root` is mode 700, so in this container uid 1000 cannot reach the tree through `/root`.
+- `/root/.local/bin/uv` and `uvx` are owned by 1001:117. They are part of the container image, not installed by the script, and are outside M02.
+
+### Archive and script review
+
+- **Archives.** `node-v24.19.0-linux-x64.tar.xz` records all 5779 entries as `iojs/iojs`, numerically 1000/1000. `Python-3.12.14.tgz` records 0/0. Neither archive has a group- or world-writable entry or a setuid or setgid bit. GNU tar 1.35 running as root restores recorded owners by default. That is the source of the uid-1000 Node tree.
+- **Fast path.** The old fast path ran `bin/node --version` from an existing tree before any ownership check, and then kept the tree.
+- **`--version` without a standard library.** `PYTHONHOME=/nonexistent python3.12 --version` printed `Python 3.12.14` and exited 0. The old Python fast path, which checked only `--version`, therefore accepted an install whose standard library was incomplete.
+- **npm version check.** The old check ran `npm` through `PATH`. If the tree's `bin/npm` was missing, it could have run another npm; this container also has `/opt/node22/bin/npm` and `/usr/local/bin/npm`.
+
+**Change (`999bebc`):**
+
+- Both archives are extracted with `tar --no-same-owner --no-same-permissions` under `umask 022`.
+- `trusted_tree` requires every entry to be owned by the running uid and no non-link entry to be group- or world-writable. It runs before anything in an existing tree executes. A failing tree is replaced from the hash-verified archive, not repaired in place, and the check is asserted again after installation.
+- The Python fast path also imports `bz2, ctypes, lzma, sqlite3, ssl, zlib`.
+- npm is checked through the tree's own `bin/npm`.
+- Pins, hashes, URLs and linking are unchanged. The Setup script must be pasted again.
+
+### Script checks
+
+All runs used `env -i HOME=<temporary> PATH=/usr/bin:/bin LANG=C.UTF-8`, with no proxy or CA variables. The unmodified script (`9280bdc`) was run from a scratch copy.
+
+| Test | Result |
+|---|---|
+| `bash -n scripts/bootstrap-toolchain.sh` | Exit 0 before and after the change |
+| Fresh run, unmodified script | Exit 0 in 125 s. Node tree: 3401 entries 1000:1000 and 2271 entries 0:0. The 0:0 entries are the 2269 in `lib/node_modules/npm` plus the `bin/npm` and `bin/npx` links. Python tree: 4164 entries 0:0 |
+| Fresh run, changed script | Exit 0 in 128 s. Node tree 5672 entries 0:0; Python tree 4164 entries 0:0. No group- or world-writable non-link entries and no setuid or setgid bits. Prefix, `.local`, `.local/bin` and the four links are 0:0. Linked versions: v24.19.0 / 11.9.0 / 11.9.0 (`npx`) / Python 3.12.14, OpenSSL 3.0.13 |
+| Rerun (file) and rerun (`bash -s <` script, as a pasted Setup script) | Both exit 0, in 0.43 s and 0.50 s, reporting both components already installed. Inode and mtime of all 9837 prefix entries were unchanged |
+| Unknown option `--bogus` | Exit 1 with usage |
+| Scratch copy, wrong `NODE_SHA256` | Exit 1 in 0 s: `Node archive SHA-256 mismatch`. Nothing extracted; no links |
+| Scratch copy, wrong `NPM_INTEGRITY` | Exit 1 in 4 s: `npm tarball SHA-512 mismatch`. The verified Node tree was extracted, still with its bundled npm (5779 entries); npm was not installed; no links. The next run rejects that tree through the npm version check |
+| Scratch copy, wrong `PYTHON_SHA256` | Exit 1 in 9 s: `Python source SHA-256 mismatch`. No Python entries; no links |
+| Temporary directories after the failures | None left under `/tmp` |
+| Changed script on the unmodified script's output (uid-1000 Node tree) | Exit 0 in 10.8 s. Logged `replacing …/node-v24.19.0-linux-x64: it has entries owned by another account or writable by group or others`, re-extracted Node and kept Python (same `bin/python3.12` inode). Node 5672 entries 0:0. The next run was a no-op |
+| uid-1000 Node tree with a planted `bin/node` wrapper that creates a marker file | Unmodified script: kept the tree and executed the planted binary as root (marker created). Changed script: replaced the tree without executing it (no marker); 0 non-root entries afterwards |
+| One group-writable file (`lib/node_modules/npm/package.json`) in a root-owned Node tree | Changed script: replaced the tree; 0 group- or world-writable entries afterwards |
+| `lib/python3.12/encodings` removed (simulated interrupted `make install`) | Unmodified script: exit 0 in 0 s, "Python 3.12.14 already installed", after which `python3.12 -c 'import ssl'` failed (`ModuleNotFoundError: No module named 'encodings'`). Changed script: rebuilt Python in 118 s; standard library usable; 4164 entries 0:0 |
+| Changed script on this container's actual Setup-script toolchain (`env -i HOME=/root PATH=/usr/bin:/bin`) | Exit 0 in 10.0 s. The Node tree (3401 non-root entries) was replaced and Python kept (same inode). Afterwards both trees were entirely 0:0, versions v24.19.0 / 11.9.0 / 3.12.14, and a rerun was a no-op. The later checks below ran on this repaired toolchain |
+
+### Pin-drift test
+
+`services/api/tests/test_toolchain_pins.py` has three tests (Python, Node, npm). It reads the files and executes nothing. With `GLOW_ENV=test .venv/bin/python manage.py test tests.test_toolchain_pins` from `services/api`, three tests passed.
+
+Temporary edits, each reverted, with `git status` confirming the revert:
+
+| Edit | Result |
+|---|---|
+| `Dockerfile` tag 3.12.14 → 3.12.15 | FAILED (failures=1): `Python pins disagree (diverging files first): 3.12.15 in Dockerfile; 3.12.14 in scripts/bootstrap-toolchain.sh, services/api/.python-version, .github/workflows/foundation.yml` |
+| `apps/mobile/package.json` `engines.npm` → 11.9.1 | FAILED: `npm pins disagree (diverging files first): 11.9.1 in apps/mobile/package.json engines.npm; 11.9.0 in scripts/bootstrap-toolchain.sh, apps/mobile/package.json packageManager, packages/contracts/package.json engines.npm, packages/contracts/package.json packageManager, .github/workflows/foundation.yml` |
+| Script `NODE_VERSION` → 24.19.1 | FAILED: `Node pins disagree (diverging files first): 24.19.1 in scripts/bootstrap-toolchain.sh; 24.19.0 in apps/mobile/package.json engines.node, packages/contracts/package.json engines.node, .github/workflows/foundation.yml` |
+
+All three messages come from the committed test (`d90ac9c`).
+
+### Full suite on the pinned toolchain
+
+Every command ran with `env -i HOME=/root PATH=/root/.local/bin:/usr/bin:/bin LANG=C.UTF-8` plus the variables shown.
+
+| Command | Result |
+|---|---|
+| `python3.12 -I -m unittest discover -s scripts -p 'test_change_scope.py' -v` | Exit 0; 9 tests OK |
+| `python3.12 -m venv services/api/.venv`; `pip install --require-hashes -r requirements-dev.lock` | Exit 0 in 11 s. pip 25.0.1 printed a newer-release notice |
+| `pip check` | "No broken requirements found." |
+| `GLOW_ENV=test manage.py check` | No issues |
+| `GLOW_ENV=test manage.py test tests --verbosity 2` | Exit 0; **253 tests OK** (250 before + 3) in 9.8 s |
+| `ruff check .` / `ruff format --check .` / `mypy` | All checks passed / 58 files already formatted / no issues in 29 source files |
+| `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v` | 38 tests OK |
+| `GLOW_ENV=test python -m glow_persistence.static_check` | 32 app models; migrations 0001/0002; no SQL or connection |
+| `GLOW_ENV=test python smoke.py` | live 200, ready 503, recommendations 200 |
+| `npm ci --ignore-scripts --prefix apps/mobile` and `--prefix packages/contracts`, bare `env -i` | **Failed**: exit 1 after 72 s and 71 s. The debug logs show `http fetch GET https://registry.npmjs.org/… attempt 3 failed with SELF_SIGNED_CERT_IN_CHAIN`, then npm's `Exit handler never called!` |
+| The same installs with `HTTPS_PROXY="$HTTPS_PROXY" NODE_EXTRA_CA_CERTS="$NODE_EXTRA_CA_CERTS"` added (values passed by reference, not printed) | Exit 0. Mobile: 670 packages in 28 s, 14 moderate advisories (pre-existing). Contracts: 20 packages in 2 s, 0 vulnerabilities |
+| `npm run check --prefix packages/contracts` | Exit 0; 373/373 |
+| `npm run check --prefix apps/mobile` | Exit 0 in 22 s; typecheck, lint, 516/516 |
+| `EXPO_OFFLINE=1 npm run check:expo` | Exit 0; "Dependencies are up to date", with the offline-mode caveat |
+| `EXPO_OFFLINE=1 npm run export:development` | Exit 0 in 29 s; iOS (1326 modules) and Android (1467 modules) development bundles in `.work/native-export` |
+| `GLOW_SMOKE_PYTHON=… node scripts/smoke.mjs` | PASS (live 200, ready 503, writes 405) |
+| `GLOW_SMOKE_PYTHON=… node --test scripts/smoke.test.mjs` | 1/1 |
+
+**npm under `env -i`.** The environment re-terminates outbound TLS at its proxy (`/root/.ccr/README.md`). curl and pip use the system trust store, which holds the proxy CA, so the script's downloads and `pip install` succeeded without CA variables. Node uses its bundled CA store and needs `NODE_EXTRA_CA_CERTS`. App Manager 2's observation that direct HTTPS worked under `env -i` used curl; it does not extend to npm. The local-development guide now records the pass-through.
+
+**Rendered suite (informational only).** `npx playwright test` ran through an uncommitted scratch configuration in the ignored `apps/mobile/.work/`. It extended `playwright.config.ts` with `launchOptions.executablePath` set to the preinstalled `/opt/pw-browsers/chromium` (revision 1194), under a clean process environment. Result: exit 0, 83 passed in 4.7 minutes, including both `state-corrections.spec.ts:45` cases ("… obsolete unsaved birth draft" in 2.9 s). This is not the pinned browser, and one local pass says nothing about the intermittent hosted failure. The scratch configuration was deleted afterwards. The web server printed an Electron `Running as root without --no-sandbox` fatal line; it did not affect the run.
+
+### Documentation checks
+
+- Relative-link check over every changed Markdown file, using a scratch checker for file targets and heading anchors that skips code: 11 files, 85 relative links, 0 broken. Before the change, all 21 relative links in `docs/continuity/history/p05-2-handoff.md` were broken, and all 21 now resolve. The rewrite changed only link targets: the file is identical to its previous version once link targets are masked.
+- `git diff --check`: clean.
+- **Expo installer.** In `apps/mobile`, `EXPO_OFFLINE=1 CI=1 npx expo install --check` without the wrapper exited 1: `app.config.ts` threw from `getConfig`. `EXPO_OFFLINE=1 CI=1 node scripts/development.mjs install --check` exited 0 ("Dependencies are up to date"). `apps/mobile/AGENTS.md` therefore runs Expo's installer through the wrapper, adding `npm_config_ignore_scripts=true`. `@expo/package-manager` spawns npm with the inherited process environment (`BasePackageManager`), which is why that setting reaches npm. This was established by reading the code; no package install was run.
+
+### Classification
+
+The trusted policy is `main`'s `scripts/change_scope.py`, extracted to a temporary directory and run with `python3 -I … --base 07b3b10720ddd333ada807a56595f369263714fe --head <head> --merge-base`. On head `16a6473` the result was `{"full": true, "reason": "behavior-or-empty"}` with 24 paths, including `scripts/bootstrap-toolchain.sh` and `services/api/tests/test_toolchain_pins.py`. The final head, which adds only Markdown on top of `16a6473`, was classified the same way before the push; that result is in the M02-I1 report.
+
+### Limits
+
+- No hosted CI result is recorded here. Pushing the session branch starts a Foundation push run on its head; its result is in the M02-I1 report, and a PR run follows only when the manager integrates. The Setup script has not yet run with the changed file as an actual environment Setup script; the closest test is the manual run on this container's Setup-script toolchain above.
+- It is not known whether pasting a changed Setup script rebuilds the environment's cached filesystem. If a cache from the earlier script is reused, the changed script replaces the uid-1000 Node tree when it runs. If the Setup script does not run at all on a cached container, the tree stays as it is until the script runs.
+- The script does not validate a pre-existing custom `--prefix` directory or `$HOME/.local/bin`. It creates the default prefix itself under the running account's `HOME`.
+- The ownership check trusts files owned by the running account. It detects foreign ownership and group or world write access, not content changed by that same account.
