@@ -33,7 +33,7 @@ npm run test:rendered                      # fixture journeys rendered in Chromi
 
 Change dependencies only when an assignment requires it.
 
-1. Choose the SDK-compatible version with `npx expo install <package>`, never `npm install <package>` or another package manager. `.npmrc` sets `save-exact`; the result must be an exact version in `package.json`.
+1. Choose the SDK-compatible version with Expo's installer, never `npm install <package>` or another package manager. Run it through the wrapper so `app.config.ts` accepts the environment: `npm_config_ignore_scripts=true node scripts/development.mjs install <package>` is `npx expo install <package>` with the fixture environment and without package install scripts. A bare `npx expo install` fails the config guard. `.npmrc` sets `save-exact`; the result must be an exact version in `package.json`.
 2. Reinstall with `npm ci --ignore-scripts` and review the complete `package-lock.json` diff, including new transitive packages and install scripts.
 3. Update `dependency-inventory.json` (lockfile package entries with license metadata) to match the lockfile.
 4. Run the checks above. A dependency change is full scope for CI and review.
