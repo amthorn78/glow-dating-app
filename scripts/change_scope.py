@@ -7,16 +7,22 @@ import re
 import subprocess
 
 
-BEHAVIOR_PATHS = frozenset({
-    "docs/README.md",
-    "docs/continuity/current-handoff.md",
-    "docs/continuity/claude-code-handoff.md",
-    "docs/planning/manager-workflow.md",
-    "docs/planning/claude-code-initiation.md",
-    "docs/operations/ci-and-branch-policy.md",
+# Exempt only inert evidence/provenance, never operational instructions by default.
+ORDINARY_PATHS = frozenset({
+    "docs/continuity/migration-publication.md",
+    "apps/mobile/EXPO-TEMPLATE-LICENSE.md",
+    "docs/testing/foundation-checkpoint.md",
+    "docs/testing/p02-checkpoint.md",
+    "docs/testing/p03-checkpoint.md",
+    "docs/testing/p04-1-checkpoint.md",
+    "docs/testing/p04-2-checkpoint.md",
+    "docs/testing/p04-3-checkpoint.md",
+    "docs/testing/p05-1-checkpoint.md",
+    "docs/testing/p05-2-checkpoint.md",
+    "docs/testing/p05-3-checkpoint.md",
 })
+ORDINARY_PREFIXES = ("docs/continuity/history/", "docs/testing/evidence/")
 BEHAVIOR_NAMES = frozenset({"agents.md", "claude.md", "claude.local.md", "skill.md", "copilot-instructions.md"})
-READMES = frozenset({"README.md", "apps/mobile/README.md", "services/api/README.md", "packages/contracts/README.md"})
 
 
 def ordinary_document(path: str) -> bool:
@@ -25,9 +31,7 @@ def ordinary_document(path: str) -> bool:
         return False
     if p.name.lower() in BEHAVIOR_NAMES or p.name.lower().endswith(".instructions.md"):
         return False
-    if path in BEHAVIOR_PATHS or path.startswith(("docs/pf-canon/", "docs/ephemeral/", "docs/planning/")):
-        return False
-    return path in READMES or (path.startswith("docs/") and p.suffix == ".md")
+    return path in ORDINARY_PATHS or (path.startswith(ORDINARY_PREFIXES) and p.suffix == ".md")
 
 
 def git(*args: str) -> bytes:

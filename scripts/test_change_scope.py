@@ -20,7 +20,7 @@ class ChangeScopeTests(unittest.TestCase):
         self.git("config", "user.email", "test@example.invalid")
         self.git("config", "user.name", "Test")
         self.write("app.py", "baseline\n")
-        self.write("docs/notes.md", "notes\n")
+        self.write("docs/testing/evidence/notes.md", "notes\n")
         self.base = self.commit()
 
     def tearDown(self):
@@ -39,35 +39,35 @@ class ChangeScopeTests(unittest.TestCase):
         self.git("commit", "-qm", "change")
         return self.git("rev-parse", "HEAD")
 
-    def test_docs_add_edit_delete_and_readme(self):
-        self.write("docs/new.md", "new\n")
-        self.write("README.md", "readme\n")
-        Path("docs/notes.md").unlink()
+    def test_inert_docs_add_edit_delete_and_license(self):
+        self.write("docs/continuity/history/new.md", "new\n")
+        self.write("apps/mobile/EXPO-TEMPLATE-LICENSE.md", "license\n")
+        Path("docs/testing/evidence/notes.md").unlink()
         self.assertFalse(classify(self.base, self.commit())["full"])
 
     def test_code_hidden_behind_later_docs_commit(self):
         self.write("app.py", "code\n")
         self.commit()
-        self.write("docs/notes.md", "docs\n")
+        self.write("docs/testing/evidence/notes.md", "docs\n")
         self.assertTrue(classify(self.base, self.commit(), merge_base=True)["full"])
 
     def test_code_renamed_into_documentation(self):
-        Path("app.py").rename("docs/app.md")
+        Path("app.py").rename("docs/testing/evidence/app.md")
         self.assertTrue(classify(self.base, self.commit())["full"])
 
     def test_behavior_markdown_and_configuration(self):
-        for path in ["AGENTS.md", "docs/nested/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", "docs/planning/new-implementation-brief.md", "docs/planning/nested/assignment.md", ".env.example", ".github/workflows/ci.yml", "docs/code.py", "unknown.md"]:
+        for path in ["README.md", "services/api/README.md", "docs/operations/build-and-deploy.md", "docs/operations/operational-runbooks.md", "docs/architecture/privacy-and-safety-rules.md", "docs/adr/new-policy.md", "docs/testing/p11-deferred-acceptance.md", "AGENTS.md", "docs/continuity/history/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", "docs/planning/new-implementation-brief.md", "docs/planning/nested/assignment.md", ".env.example", ".github/workflows/ci.yml", "docs/code.py", "unknown.md"]:
             with self.subTest(path=path):
                 self.write(path, "changed\n")
                 self.assertTrue(classify(self.base, self.commit())["full"])
                 self.git("reset", "--hard", self.base)
 
     def test_symlink_and_executable_docs_are_not_exempt(self):
-        Path("docs/notes.md").unlink()
-        Path("docs/notes.md").symlink_to("../app.py")
+        Path("docs/testing/evidence/notes.md").unlink()
+        Path("docs/testing/evidence/notes.md").symlink_to("../../../app.py")
         self.assertTrue(classify(self.base, self.commit())["full"])
         self.git("reset", "--hard", self.base)
-        Path("docs/notes.md").chmod(0o755)
+        Path("docs/testing/evidence/notes.md").chmod(0o755)
         self.assertTrue(classify(self.base, self.commit())["full"])
 
     def test_trusted_base_policy_ignores_candidate_substitution(self):
@@ -95,7 +95,7 @@ class ChangeScopeTests(unittest.TestCase):
 
     def test_pr_compares_merge_base(self):
         self.git("checkout", "-qb", "feature")
-        self.write("docs/notes.md", "feature docs\n")
+        self.write("docs/testing/evidence/notes.md", "feature docs\n")
         head = self.commit()
         self.git("checkout", "--detach", self.base)
         self.write("app.py", "base branch changed\n")
