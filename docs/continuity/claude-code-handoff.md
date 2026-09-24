@@ -68,7 +68,7 @@ Follow [manager workflow](../planning/manager-workflow.md): inspect baseline →
 
 [Local setup](../operations/local-development.md) provides pinned install/run/check commands. Root and mobile `CLAUDE.md` import applicable `AGENTS.md`; the first manager should review and optimize these minimal entry points, not create a second instruction hierarchy. Official [Claude memory documentation](https://code.claude.com/docs/en/memory) describes imports; confirm the installed Claude version's behavior locally.
 
-`AGENTS.md` governs AI review selection. Ordinary documentation-only changes skip application jobs and review work; if an external Codex trigger starts a reviewer, it must classify and exit. Mixed changes, agent instructions, PF canon, active handoffs/prompts, workflow/configuration and `.env.example` changes receive full checks and reviews. `Foundation` retains API checks, Mobile checks, API mobile smoke and API artifact checks as stable job names; a lightweight scope job and Foundation gate run for all changes. Missing comparisons fail closed. Classification runs the trusted base script in isolated Python before candidate code; first adoption without a base policy runs full checks. Candidate scope tests run in the separate full-scope API job. See [CI/review policy](../operations/ci-and-branch-policy.md) for exact behavior and the external-trigger limitation. Preserve the documented private-account branch-enforcement limitation; procedural checking is not platform protection.
+`AGENTS.md` governs AI review selection. Ordinary documentation-only changes skip application jobs and review work; if an external Codex trigger starts a reviewer, it must classify and exit. Mixed changes, agent instructions, PF canon, active handoffs/prompts, workflow/configuration and `.env.example` changes receive full checks and reviews. `Foundation` retains API checks, Mobile checks, API mobile smoke and API artifact checks as stable job names; a lightweight scope job and Foundation gate run for all changes. Missing comparisons fail closed. Classification runs trusted policy in isolated Python before candidate code: PR base for pull requests, preceding main for main pushes, fetched main for feature pushes. First adoption without a trusted policy runs full checks. Candidate scope tests run in the separate full-scope API job. See [CI/review policy](../operations/ci-and-branch-policy.md) for exact behavior and the external-trigger limitation. Preserve the documented private-account branch-enforcement limitation; procedural checking is not platform protection.
 
 ## Environment-variable inventory
 
@@ -162,14 +162,16 @@ All are nonsecret except that the GitHub token is an ephemeral platform credenti
 | `PYTHONPATH` | Contract test import path | Test shell/CI uses `.` from API directory; not deployment config |
 | `EXPO_OFFLINE` | Installed-SDK/offline Expo checks | CI/mobile checks and Playwright set `1`; optional other local work |
 | `CI` | Noninteractive Expo test mode; GitHub runner and Playwright child `1` | Local browser harness/CI only |
-| `BROWSER` | Suppress browser auto-open | Playwright child `none` | Browser harness only |
-| `PYTHONDONTWRITEBYTECODE` | Disable Python bytecode writes | Dockerfile `1` | Artifact only |
-| `PYTHONUNBUFFERED` | Unbuffered process logs | Dockerfile `1` | Artifact only |
-| `PIP_DISABLE_PIP_VERSION_CHECK` | Suppress pip version check | Dockerfile `1` | Image build/runtime tooling |
-| `TZ` | UTC process timezone | Dockerfile `UTC` | Artifact only |
-| `COMPARE_BASE`, `COMPARE_HEAD`, `IS_PULL_REQUEST` | Immutable comparison IDs and diff mode | Foundation scope-step environment from GitHub event | CI only; classifier CLI uses equivalent arguments locally |
-| `GITHUB_OUTPUT` | Runner-owned step-output file | GitHub runner, used by classifier | CI only; never a secret/value dump target |
-| `RESULTS` | Serialized job conclusions for Foundation gate | Workflow `toJSON(needs)` | CI only; no application input |
+| `BROWSER` | Suppress browser auto-open; Playwright child `none` | Browser harness only |
+| `PYTHONDONTWRITEBYTECODE` | Disable Python bytecode writes; Dockerfile `1` | Artifact only |
+| `PYTHONUNBUFFERED` | Unbuffered process logs; Dockerfile `1` | Artifact only |
+| `PIP_DISABLE_PIP_VERSION_CHECK` | Suppress pip version check; Dockerfile `1` | Image build/runtime tooling |
+| `TZ` | UTC process timezone; Dockerfile `UTC` | Artifact only |
+| `COMPARE_BASE`, `COMPARE_HEAD`, `IS_PULL_REQUEST` | Immutable comparison IDs and diff mode; Foundation scope-step environment from GitHub event | CI only; classifier CLI uses equivalent arguments locally |
+| `GITHUB_OUTPUT` | Runner-owned step-output file; GitHub runner, used by classifier | CI only; never a secret/value dump target |
+| `RESULTS` | Serialized job conclusions for Foundation gate; Workflow `toJSON(needs)` | CI only; no application input |
+| `RUNNER_TEMP` | Runner-owned temporary directory; stores the extracted trusted classifier | GitHub CI only; never candidate-controlled storage |
+| `GITHUB_REF` | Runner event ref; selects main-push versus feature-push policy source | GitHub CI only; comparisons still use immutable SHAs |
 
 The workflow's platform `github.token` is handled by checkout with `persist-credentials: false`, read-only contents permission and no exposure to application code. No project API secret is configured or needed in these jobs. OS/tool-inherited variables are not an approved deployment secret mechanism.
 

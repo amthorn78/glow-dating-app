@@ -34,7 +34,12 @@ jobs:
           # Do not import or execute candidate Python before this decision.
           # First adoption, a new branch or missing policy conservatively runs all checks.
           policy_dir=$(mktemp -d "$RUNNER_TEMP/glow-scope.XXXXXX")
-          if [[ "$COMPARE_BASE" =~ ^[0-9a-f]{40}$ ]] && git show "$COMPARE_BASE:scripts/change_scope.py" > "$policy_dir/change_scope.py"; then
+          policy_base="$COMPARE_BASE"
+          # An earlier feature-branch commit is not a reviewed policy authority.
+          if [ "$IS_PULL_REQUEST" != true ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            policy_base=$(git rev-parse refs/remotes/origin/main 2>/dev/null || true)
+          fi
+          if [[ "$policy_base" =~ ^[0-9a-f]{40}$ ]] && git show "$policy_base:scripts/change_scope.py" > "$policy_dir/change_scope.py"; then
             args=(--base "$COMPARE_BASE" --head "$COMPARE_HEAD" --github-output "$GITHUB_OUTPUT")
             if [ "$IS_PULL_REQUEST" = true ]; then args+=(--merge-base); fi
             python3 -I "$policy_dir/change_scope.py" "${args[@]}"
