@@ -217,10 +217,39 @@ projections. **57 interaction tests plus 27 discovery tests** pass; full mobile
 review and final publication identities are recorded in the external report;
 earlier passing runs do not certify this later source.
 
+## Stored canonical match identity correction
+
+The four-file projection correction `e3760963ed683db9b54ec6774715d79dfebe80dd`,
+tree `a114a342324ebbb5eaa836136ed1d110912f1229`, is published as the verified
+child of 4db111f0. Both [PR run 35983644411](https://github.com/amthorn78/glow-dating-app/actions/runs/35983644411)
+and [push run 35983639541](https://github.com/amthorn78/glow-dating-app/actions/runs/35983639541)
+passed all four jobs, 468 mobile tests and **81/81 browser cases**. They completed
+at `2026-09-24T09:56:13Z` and `2026-09-24T09:55:58Z` respectively. Security
+completed without findings at `2026-09-24T09:56:14.008843Z`; code review completed
+at `2026-09-24T09:55:05.994042Z` with
+[P2: update an existing match under its stored canonical pair](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092254016).
+No merge occurred on that head.
+
+After a registry incarnation changes a participant's UUID, recomputing an existing
+match's storage key can leave the old row behind. The independent before-fix probe
+observed two stored rows with the same match ID after unmatch and a stale original
+projection. The same-key block lookup omitted the existing match's immediate
+restriction/event. Existing matches must be resolved by their retained participants
+and updated under their own stored canonical pair; only creation of a genuinely new
+match computes its initial current pair. Receipt replay must find the same retained
+match. The correction covers this single identity-incarnation write/read family;
+two added regression methods cover either participant UUID replacement and either
+unmatch caller, one retained match ID/key, exact receipt replay, one revocation
+and immediate block restriction. Independent before/after probes and three focused
+methods pass with no remaining finding in this bounded family. All **30 interaction
+methods**, scoped Ruff/format and mypy pass. The complete API suite passes **234
+tests**, with no database setup; Ruff checks all 57 formatted files and mypy checks
+29 source files. Exact final publication gates are recorded externally.
+
 ## Publication boundary
 
-The final projection correction source/checkpoint is prepared for publication as
-a child of actual PR14 head `4db111f0cf574bd998d451ae1fb75e1f15049aad`. The branch and PR are
+The stored canonical-match correction source/checkpoint is prepared for publication
+as a child of actual PR14 head `e3760963ed683db9b54ec6774715d79dfebe80dd`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.

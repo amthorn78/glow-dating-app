@@ -50,8 +50,11 @@ not merged. The next correction was published at
 `4db111f0cf574bd998d451ae1fb75e1f15049aad`, tree
 `fb7b474fef2e144fed2d7e68b1d6f2a2b8436c07`, and again passed both full runs/81
 browser cases. Code review then found deleted-target match projections after
-unmatch; its final shared-projection correction is prepared locally. See the
-checkpoint and read
+unmatch; that shared-projection correction was published at
+`e3760963ed683db9b54ec6774715d79dfebe80dd`, tree
+`a114a342324ebbb5eaa836136ed1d110912f1229`, and passed both full runs/81 cases.
+Its code review found a stored canonical-match key replacement edge in Python.
+That bounded correction is prepared locally. See the checkpoint and read
 actual current head, PR and newer external reports before recovery.
 
 Terminal Git authentication was unavailable. All **231** baseline blobs/modes and
@@ -107,7 +110,7 @@ candidate/main tree relationship and all four jobs on actual merged main.
 An earlier candidate pass does not certify later source or merged main.
 
 **Next action at this source checkpoint:** publish the narrow PR14 corrections as
-an actual child of `4db111f0cf574bd998d451ae1fb75e1f15049aad`, then satisfy new final-candidate checks
+an actual child of `e3760963ed683db9b54ec6774715d79dfebe80dd`, then satisfy new final-candidate checks
 and review before checked merge and actual-main gates. Independent Python/mobile
 and contract/static/documentation review covers the initial source; the narrow
 correction has its own focused review. The checkpoint preserves the P2 and first

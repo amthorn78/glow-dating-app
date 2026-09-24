@@ -55,6 +55,11 @@ and synthetic provider output have no role in match formation.
 | Participant unmatch | Revoke an active/restricted pair with the current match version. Repeated unmatch is safe. It does not require discovery eligibility, available compatibility or a selected history policy. |
 | Block/unblock | Own directional block revision applies. Either block denies new interaction/contact; unblock removes only that block and never restores the historical grant. |
 
+An existing match retains its creation-time canonical key across fixture registry
+incarnation changes. Lookup uses its retained participant account identities;
+unmatch, block and replay never rekey or duplicate that aggregate. A source change
+revokes current grants and supplies no rematch permission.
+
 Consumption belongs to authoritative interaction state. Once an actor commits
 like/pass, that direction cannot reappear as untouched merely by switching mode,
 refreshing or accepting a delayed page. A historical match also cannot return

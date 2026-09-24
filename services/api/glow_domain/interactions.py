@@ -430,6 +430,17 @@ class FixtureInteractionService:
             (m for m in self.repository._state.matches.values() if m.match_id == match_id), None
         )
 
+    def _match_between(self, actor: AccountId, target: AccountId) -> Match | None:
+        """Existing aggregates retain their pair key across registry incarnations."""
+        return next(
+            (
+                match
+                for match in self.repository._state.matches.values()
+                if actor in match.participants and target in match.participants
+            ),
+            None,
+        )
+
     def _guards(
         self, actor: AccountId, target: AccountId, *, mappings: bool = True
     ) -> tuple[FixtureReadGuard, ...] | None:
@@ -515,7 +526,7 @@ class FixtureInteractionService:
         # Unmatch remains available when target facts/visibility are unavailable.
         if operation != "unmatch" and not self._target_current(target):
             return CommandResult("unavailable")
-        pair = self._pair(actor, target.account_id)
+        pair = match.pair if match is not None else self._pair(actor, target.account_id)
         guards = self._guards(actor, target.account_id, mappings=operation == "interaction")
         if pair is None or guards is None:
             return CommandResult("unavailable")
@@ -562,7 +573,7 @@ class FixtureInteractionService:
                     return CommandResult(
                         "policy_unresolved" if current.state == "passed" else "state_conflict"
                     )
-                if pair in matches:
+                if pair in matches or self._match_between(actor, target.account_id) is not None:
                     return CommandResult("policy_unresolved")
                 batch_guards = self._batch_guards(intent, actor, session, target, mode)
                 if batch_guards is None:
@@ -618,7 +629,7 @@ class FixtureInteractionService:
                     return CommandResult("capacity_exceeded")
                 if match.state != "unmatched":
                     match = replace(match, state="unmatched", version=version)
-                    matches[pair] = match
+                    matches[match.pair] = match
                     events.append(
                         LogicalEvent(str(uuid4()), "contact_revoked", match.match_id, version)
                     )
@@ -651,12 +662,12 @@ class FixtureInteractionService:
                         previous_direction = directions.get(direction_key)
                         if previous_direction:
                             directions[direction_key] = replace(previous_direction, matchable=False)
-                existing = matches.get(pair)
+                existing = self._match_between(actor, target.account_id)
                 if action_state == "active" and existing and existing.state == "active":
                     if existing.version >= MAX_VERSION:
                         return CommandResult("capacity_exceeded")
                     existing = replace(existing, state="restricted", version=existing.version + 1)
-                    matches[pair] = existing
+                    matches[existing.pair] = existing
                     events.append(
                         LogicalEvent(
                             str(uuid4()), "contact_revoked", existing.match_id, existing.version
@@ -796,8 +807,7 @@ class FixtureInteractionService:
                     "version": row.version,
                 }
         elif self._target_current(target) and not self.repository.blocked(actor, target.account_id):
-            pair = self._pair(actor, target.account_id)
-            match = self.repository._state.matches.get(pair) if pair else None
+            match = self._match_between(actor, target.account_id)
             if match:
                 match = self._refresh_match(match)
             current = self.repository._state.directions.get((actor, target.account_id))

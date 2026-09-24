@@ -708,3 +708,78 @@ class InteractionTests(TestCase):
         reblocked = self.committed(self.a, self.block(key="reblock", version=2))
         self.assertEqual(reblocked["current_projection"]["state"], "active")
         self.assertEqual(reblocked["receipt"]["committed_version"], 3)
+
+    def test_unmatch_keeps_stored_pair_after_either_participant_uuid_replacement(self):
+        for changed_account in ("discovery-viewer", "discovery-jules"):
+            for caller in ("a", "b"):
+                with self.subTest(changed_account=changed_account, caller=caller):
+                    self.reset()
+                    match, first_like, second_like = self.match()
+                    stored_pair = next(iter(self.repo._state.matches))
+                    registry = self.fixture.registry
+                    registry.replace(
+                        tuple(
+                            replace(row, account_uuid=str(uuid4()))
+                            if row.account_id == AccountId(changed_account)
+                            else row
+                            for row in registry.identities
+                        )
+                    )
+                    service = getattr(self, caller)
+                    command = self.unmatch(match)
+                    result = self.committed(service, command)
+                    self.assertEqual(tuple(self.repo._state.matches), (stored_pair,))
+                    self.assertEqual(
+                        [row.match_id for row in self.repo._state.matches.values()],
+                        [match["match_id"]],
+                    )
+                    self.assertEqual(result["receipt"]["committed_version"], 2)
+                    self.assertEqual(result["current_projection"]["state"], "unmatched")
+                    self.assertEqual(result["current_projection"]["version"], 2)
+                    self.assertEqual(self.a.matches()[0]["state"], "unmatched")
+                    self.assertEqual(self.b.matches()[0]["state"], "unmatched")
+                    self.assertIsNone(self.committed(self.a, first_like)["current_projection"])
+                    self.assertIsNone(self.committed(self.b, second_like)["current_projection"])
+                    self.assertEqual(self.repo.counts["receipts"], 3)
+                    self.assertEqual(
+                        [
+                            (event.kind, event.aggregate_id, event.aggregate_version)
+                            for event in self.repo.events
+                        ],
+                        [
+                            ("match_created", match["match_id"], 1),
+                            ("contact_revoked", match["match_id"], 2),
+                        ],
+                    )
+                    state_before_replay = self.repo._state
+                    replay = self.committed(service, command)
+                    self.assertTrue(replay["replayed"])
+                    self.assertEqual(replay["receipt"], result["receipt"])
+                    self.assertEqual(replay["current_projection"], result["current_projection"])
+                    self.assertIs(self.repo._state, state_before_replay)
+
+    def test_block_updates_stored_match_after_participant_uuid_replacement(self):
+        for changed_account in ("discovery-viewer", "discovery-jules"):
+            with self.subTest(changed_account=changed_account):
+                self.reset()
+                match, _, _ = self.match()
+                stored_pair = next(iter(self.repo._state.matches))
+                registry = self.fixture.registry
+                registry.replace(
+                    tuple(
+                        replace(row, account_uuid=str(uuid4()))
+                        if row.account_id == AccountId(changed_account)
+                        else row
+                        for row in registry.identities
+                    )
+                )
+                self.committed(self.a, self.block())
+                self.assertEqual(tuple(self.repo._state.matches), (stored_pair,))
+                current = self.repo._state.matches[stored_pair]
+                self.assertEqual((current.state, current.version), ("restricted", 2))
+                self.assertEqual(current.match_id, match["match_id"])
+                self.assertEqual(self.repo.counts["receipts"], 3)
+                self.assertEqual(
+                    Counter(event.kind for event in self.repo.events),
+                    {"match_created": 1, "block_changed": 1, "contact_revoked": 1},
+                )
