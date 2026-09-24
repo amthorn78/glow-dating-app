@@ -124,6 +124,251 @@
           "const": "live_integrations_not_configured"
         }
       }
+    },
+    "DevelopmentDiscoveryPage": {
+      "description": "Closed, ephemeral development discovery adapter response. Not an authenticated HTTP route, production recommendation or permission for interactions. Actor and queue identities are fixture correlation only; opaque handles are non-durable and never contain source facts or engine references.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "mode",
+        "contract_version",
+        "viewer_id",
+        "session_id",
+        "request_id",
+        "discovery_mode",
+        "queue_id",
+        "state",
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "kind": {
+          "const": "discovery_page"
+        },
+        "mode": {
+          "const": "fixture"
+        },
+        "contract_version": {
+          "const": "gapp-dev-v1"
+        },
+        "viewer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "not": {
+            "pattern": "[\\r\\n]"
+          }
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "not": {
+            "pattern": "[\\r\\n]"
+          }
+        },
+        "discovery_mode": {
+          "enum": [
+            "recommended",
+            "broader"
+          ]
+        },
+        "queue_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "ready",
+            "partial",
+            "empty",
+            "exhausted",
+            "reload_required",
+            "error"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/DevelopmentDiscoveryProfile"
+          },
+          "description": "At most two allowlisted current candidate projections. Duplicate profile IDs reject. Pending-only compatibility carries no numeric score, real result or ranking meaning."
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "ready",
+                  "partial",
+                  "empty",
+                  "exhausted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "queue_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+                "not": {
+                  "pattern": "[\\r\\n]"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "empty",
+                  "exhausted",
+                  "reload_required",
+                  "error"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              },
+              "next_cursor": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DevelopmentDiscoveryProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "display_name",
+        "age",
+        "summary",
+        "compatibility",
+        "media_delivery_refs"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 120
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "compatibility": {
+          "$ref": "#/$defs/FixtureCompatibility"
+        },
+        "media_delivery_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^fixture-approved-[A-Za-z0-9_-]+$",
+            "not": {
+              "pattern": "[\\r\\n]"
+            }
+          }
+        }
+      },
+      "description": "Development discovery projection including only simulated approved media delivery references. These are local fixture labels, not actual photo delivery or provider rights."
     }
   },
   "$id": "urn:glow:contracts:gapp-dev-v1"

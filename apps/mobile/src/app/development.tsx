@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 import { Button, styles } from '../components/ui';
 import { useOnboarding, useProfiles } from '../onboarding/context';
+import { discoveryFor } from '../discovery/context';
 import { OnboardingScreen } from '../onboarding/shell';
 
 export default function DevelopmentScreen() {
@@ -25,6 +26,13 @@ export default function DevelopmentScreen() {
       {(['block_viewer', 'block_candidate', 'clear_blocks', 'viewer_preferences', 'restore_viewer_preferences', 'viewer_pause', 'viewer_resume', 'candidate_attribute'] as const).map(change => <Button key={change}
         label={`Change synthetic pair: ${change.replaceAll('_', ' ')}`} testID={`dev-pair-${change}`} secondary onPress={() => profiles.developmentPairChange(change)} />)}
       <Button label="Return to your profile" testID="dev-profile-return" secondary onPress={() => router.push('/profile')} />
+    </View>}
+    {state.stage === 'eligible' && <View style={styles.notice}>
+      <Text style={styles.eyebrow}>DISCOVERY TEST SCENARIOS</Text>
+      {(['normal', 'empty', 'pending', 'unavailable', 'error', 'offline'] as const).map(scenario => <Button key={scenario}
+        label={`Discovery ${scenario} fixture`} testID={`discovery-scenario-${scenario}`} secondary
+        onPress={() => discoveryFor(store).scenario(scenario)} />)}
+      <Button label="Invalidate discovery fixture" testID="discovery-invalidate" secondary onPress={() => discoveryFor(store).invalidate()} />
     </View>}
     <Button label="Save session checkpoint" testID="checkpoint-save" secondary disabled={!state.account || state.account.session_state !== 'valid'} onPress={() => store.saveCheckpoint()} />
     <Button label="Restore session checkpoint" testID="checkpoint-restore" secondary disabled={!state.checkpointAvailable} onPress={() => { store.restoreCheckpoint(); router.replace('/'); }} />

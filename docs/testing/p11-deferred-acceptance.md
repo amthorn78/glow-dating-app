@@ -84,7 +84,7 @@ authoritative database publication/action boundary using the real adapters.
 | DB10 | Acquire both accounts, profiles, media, consent, moderation, preferences, both directional blocks and selected policy from one consistent transaction view or reject/reload. Every relevant writer advances the correct aggregate/preference/block/policy revision in the same transaction. Prove first block insertion against a previously absent row, removal/reinsertion, same-value restoration and repeated A→B→A changes across connections and process restarts; an old token/result must stay obsolete. |
 | DB10 | Test exact adult boundaries and the eventually approved leap-day/date convention, policy effective intervals, consent/policy expiry and clock progression with no record edit. Recheck current time before the action commits or the projection is released; stale persisted counters alone cannot extend permission. Define production clock authority and time-dependent invalidation instead of copying the fixture epoch as a persistence mechanism. |
 | DB10 | Serialize policy publication/withdrawal with pair actions and all relevant writes. Inject concurrent preference, block, media, consent, pause, suspension and deletion changes before/after reads, during delayed provider work, during retries and while later candidates run. Bind retained eligibility and account–chart links, including input/mapping/identity changes, at an authoritative final publication boundary. Prove the production transaction/revocation boundary across connections/processes; neither sequential rechecks nor the synchronous fixture revision cells certify database atomicity. |
-| DB11 | P05.2/P11 must supply stable bounded database queries/cursors, index/query-plan evidence and current disclosure filtering under change. P05.1's bounded conformance batch is not a production queue, pagination/ranking implementation or measured capacity. |
+| DB11 | P11 must supply stable bounded database queries/cursors, index/query-plan evidence and current disclosure filtering under change. P05.2 now supplies a finite fixture queue and cursor composition; neither that implementation nor P05.1's conformance batch proves production persistence or measured capacity. |
 | DB05 / DB06 | Independently authorize likes, mutual matches, unmatch, channel entitlement, sending and history according to current relationship and approved policy. Pair eligibility alone grants none of them. Prove races against revocation; unblock/resume must not resurrect a historical match. Keep report/block/export/deletion on their own safety/privacy authorization paths. |
 | DB07 / DB08 | Persist revision changes and required invalidation/outbox events atomically, then authenticate and bind delayed results to exact account/source generation, pair, input/mapping/policy versions and event identity. Prove crash/restart, replay and same-value restoration cannot revive obsolete permission. |
 | PV01 / PV02 | Reuse the eligibility-before-mapping/provider and post-call/final-batch conformance rules against the supported HDE contract. Verify exact input/mapping/policy binding, cache rights and revision invalidation with approved access. Excluded/unresolved pairs must make no chart-mapping/provider call; fixtures cannot establish live throughput, policy enforcement or ready HD output. |
@@ -96,3 +96,26 @@ Unknown required policy denies its dependent operation. The separate same-databa
 audit does not authorize this fixture assignment to connect or mutate a database.
 P11 keeps disposable PostgreSQL → staging → authorized final app production
 integration, with all HDE/shared-object protection and target/role preflight.
+
+## P05.2 discovery carryforward
+
+The [bounded discovery fixture](../architecture/discovery-fixtures.md) implements
+finite queues, independently evaluated current pairs, explicit mode/refresh
+behavior and synchronous final publication/adoption guards. It changes no row
+above to passed. Shared fixture conformance and rendered browser checks cannot
+replace these live proofs.
+
+| Existing case | Specific remaining discovery proof |
+|---|---|
+| DB09 / DB11 | Bind the actor/session to maintained authentication, not submitted fixture correlation fields. Reject forged, cross-viewer, cross-session, wrong-mode, expired and revoked continuations under the real transport. Select and verify a durable opaque/signed cursor mechanism without private payloads. |
+| DB10 / DB11 | Bind selection membership/order, per-candidate eligibility, chart linkage and approved-media projection to a consistent authoritative publication boundary. Race later-candidate reads against earlier-candidate writes and shared-viewer/policy/time changes across separate connections/processes. Prove removal, same-value restoration, clock expiry and absent-block insertion cannot revive old pages or handles. |
+| DB11 / DB12 | Measure real bounded selection/scan, query plans/indexes, retained queue size/lifetime, refresh/continuation query counts and provider retries. Demonstrate mostly excluded populations, partial/outage outcomes, exhaustion and concurrent repeated reads without unbounded refill or duplicate cards. The fixture's 20 candidates, two-card pages and five-minute lifetime are not capacity or launch-policy evidence. |
+| DB07 / DB08 | Persist required queue/source invalidation and outbox effects atomically; bind delayed responses/events to current viewer/session, mode, queue and source generations. Restart/replay must not resurrect revoked projections, advance pagination twice or silently reuse obsolete membership/order. |
+| PV01 / PV02 / PV04 | Verify eligibility-before-mapping/provider and allowed output/cache/media rights against the supported live contracts. Apply the same disclosure rules to both modes; no real HD ordering/score, unauthorized fallback, quarantined media or cached obsolete delivery is inferred from synthetic results. |
+| N01 | Exercise finite browsing, mode preservation, refresh, offline/late responses and account changes on signed iOS/Android builds; verify touch/focus, large text, VoiceOver/TalkBack, device keyboard and memory behavior. Browser rendering and JavaScript exports do not establish this. |
+
+P05.3 separately owns pass/like intent, mutual matching, unmatch and interaction
+idempotency/outbox semantics; browsing and refresh create none of them. A05 still
+owns real taxonomy/geography/age ranges and resurfacing/rematch rules. A01/A07
+own supported compatibility output, rights and measured HDE throughput. R01/PR01
+remain open and no deployment or production activation is introduced.

@@ -4,6 +4,8 @@ export function validateDevelopmentProfile(value: unknown): boolean;
 export function validateFixtureCompatibility(value: unknown): boolean;
 export function validateLiveness(value: unknown): boolean;
 export function validateReadiness(value: unknown): boolean;
+export function validateDevelopmentDiscoveryPage(value: unknown): boolean;
+export function validateDevelopmentDiscoveryProfile(value: unknown): boolean;
 export function validateIdentifier(value: unknown): boolean;
 export function validateVersion(value: unknown): boolean;
 export function validatePolicyVersion(value: unknown): boolean;

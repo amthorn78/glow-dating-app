@@ -17,8 +17,9 @@ P05.1 extends this same internal seam with raw-fact eligibility acquisition,
 explicit eligibility-policy binding and additional delayed-revocation checks.
 AP1-P05.1-002 adds a bounded callback-free publication check after those reads.
 The [reciprocal fixture mapping](reciprocal-eligibility-fixtures.md) owns its
-provisional policy and shared truth table. Served development responses, closed
-production DTOs and the absence of active production routes are unchanged.
+provisional policy and shared truth table. P05.2 composes this same seam in the [bounded discovery fixture](discovery-fixtures.md),
+including projection/page publication guards. Served HTTP development responses,
+closed production DTOs and the absence of active production routes are unchanged.
 
 | Contract | Responsibility and implemented substitute | Trust and unresolved boundary |
 |---|---|---|

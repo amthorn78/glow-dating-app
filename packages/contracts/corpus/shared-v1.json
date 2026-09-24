@@ -3093,6 +3093,2807 @@
         }
       },
       "valid": false
+    },
+    {
+      "name": "discovery-page-ready-first-page",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-ready-last-page",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-broader-two-cards",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "broader",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          },
+          {
+            "profile_id": "profile-jules",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-empty",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "empty",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-empty-rejects-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "empty",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": null
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-empty-rejects-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "empty",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-exhausted",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "exhausted",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-exhausted-rejects-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "exhausted",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": null
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-exhausted-rejects-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "exhausted",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-reload_required",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "reload_required",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-reload_required-rejects-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "reload_required",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": null
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-reload_required-rejects-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "reload_required",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-error",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "error",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-error-rejects-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "error",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": null
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-error-rejects-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "error",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-reload_required-before-queue",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": null,
+        "state": "reload_required",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-error-before-queue",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": null,
+        "state": "error",
+        "items": [],
+        "next_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-partial-0-cards",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "partial",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-partial-1-cards",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "partial",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": true
+    },
+    {
+      "name": "discovery-page-ready-must-have-card",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-page-bound",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-0",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          },
+          {
+            "profile_id": "profile-1",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          },
+          {
+            "profile_id": "profile-2",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-duplicate-profiles",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          },
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-kind",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-mode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-contract_version",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-viewer_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-session_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-request_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-discovery_mode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-queue_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-state",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-missing-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-mode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "live",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-contract_version",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v2",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-kind",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "recommendations",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-discovery_mode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "unknown",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-state",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "success",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-queue_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": null,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-viewer_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-items",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": null,
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-next_cursor",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-session_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": false,
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-invalid-request_id",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": 1,
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-session_id-blank",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-session_id-newline",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "opaque\n",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-session_id-serialized-private",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "{\"engine_reference\":\"private\"}",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-session_id-oversized",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-session_id-unicode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "\ud800",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-request_id-blank",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-request_id-newline",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "opaque\n",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-request_id-serialized-private",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "{\"engine_reference\":\"private\"}",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-request_id-oversized",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-request_id-unicode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "\ud800",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-queue_id-blank",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-queue_id-newline",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "opaque\n",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-queue_id-serialized-private",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "{\"engine_reference\":\"private\"}",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-queue_id-oversized",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-queue_id-unicode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "\ud800",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-next_cursor-blank",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": ""
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-next_cursor-newline",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "opaque\n"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-next_cursor-serialized-private",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "{\"engine_reference\":\"private\"}"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-next_cursor-oversized",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-next_cursor-unicode",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "\ud800"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-birth_date",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "birth_date": "1990-06-15"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-engine_reference",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "engine_reference": "private-chart"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-source_versions",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "source_versions": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-eligibility",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "eligibility": true
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-access_token",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "access_token": "private"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-root-provider_payload",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1",
+        "provider_payload": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-card-birth_date",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "birth_date": "1990-06-15",
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-card-email",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "email": "private@example.invalid",
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-card-accepted_options",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "accepted_options": [
+              "demo_a"
+            ],
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-card-approved_media",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "approved_media": [],
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-private-card-engine_reference",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "engine_reference": "private-chart",
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-unsupported-compatibility-status-ready",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "ready",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-unsupported-compatibility-status-unavailable",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "unavailable",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-unsupported-compatibility-source-hde",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "hde"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-unsupported-compatibility-score-98",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture",
+              "score": 98
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-unsupported-compatibility-band-high",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture",
+              "band": "high"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-missing",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            }
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-empty",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": []
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-duplicate",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris",
+              "fixture-approved-iris"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-bound",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-0",
+              "fixture-approved-1",
+              "fixture-approved-2",
+              "fixture-approved-3",
+              "fixture-approved-4"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-raw_url",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "https://private.invalid/photo"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-engine_reference",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-chart-private"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-newline",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": [
+              "fixture-approved-iris\n"
+            ]
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "discovery-page-media-wrong_type",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryPage",
+      "value": {
+        "kind": "discovery_page",
+        "mode": "fixture",
+        "contract_version": "gapp-dev-v1",
+        "viewer_id": "discovery-viewer",
+        "session_id": "session-1",
+        "request_id": "request-1",
+        "discovery_mode": "recommended",
+        "queue_id": "queue-1",
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "profile-iris",
+            "display_name": "Fictional Iris",
+            "age": 36,
+            "summary": "A fictional candidate.",
+            "compatibility": {
+              "status": "pending",
+              "source": "fixture"
+            },
+            "media_delivery_refs": "fixture-approved-iris"
+          }
+        ],
+        "next_cursor": "cursor-1"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-DevelopmentDiscoveryProfile",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryProfile",
+      "value": {
+        "profile_id": "profile-iris",
+        "display_name": "Fictional Iris",
+        "age": 36,
+        "summary": "A fictional candidate.",
+        "compatibility": {
+          "status": "pending",
+          "source": "fixture"
+        },
+        "media_delivery_refs": [
+          "fixture-approved-iris"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-DevelopmentDiscoveryProfile",
+      "scope": "development",
+      "definition": "DevelopmentDiscoveryProfile",
+      "value": {
+        "profile_id": "profile-iris",
+        "display_name": "Fictional Iris",
+        "age": 36,
+        "summary": "A fictional candidate.",
+        "compatibility": {
+          "status": "pending",
+          "source": "fixture"
+        },
+        "media_delivery_refs": [
+          "fixture-approved-iris"
+        ],
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
     }
   ]
 }

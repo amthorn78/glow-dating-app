@@ -14,6 +14,15 @@ for policy, source/revision mapping and provider ordering, and
 an internal fixture seam, not served authentication or a production eligibility
 endpoint. GET smoke data and the guarded dummy-database runtime remain unchanged.
 
+P05.2 adds an internal, development/test-only bounded discovery composition in
+`glow_domain/discovery.py`, backed by the same eligibility/provider seams and
+`packages/contracts/fixtures/discovery-v1.json`. It models per-candidate authority,
+synthetic ordering, two-card pages, opaque ephemeral continuations and final
+publication guards. The mobile journey uses a conformant in-memory substitute.
+This module has no HTTP route: the anonymous GET below remains layout/smoke data,
+not authenticated discovery. See [discovery semantics](../../docs/architecture/discovery-fixtures.md)
+and [P05.2 evidence](../../docs/testing/p05-2-checkpoint.md).
+
 ## Reproduce locally
 
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:

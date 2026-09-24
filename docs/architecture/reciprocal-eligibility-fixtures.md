@@ -3,8 +3,9 @@
 This is the implementation record for **AP1-P05.1-001**, corrected by
 **AP1-P05.1-002 revision 1.1**. It defines a deterministic
 application fixture policy and current fact acquisition for ordered pairs. It is
-not launch policy, production authentication, PostgreSQL consistency, a discovery
-queue or a Human Design calculation. The existing closed candidate contract is
+not launch policy, production authentication, PostgreSQL consistency or a Human
+Design calculation. P05.2 composes these rules into a separate documented
+[bounded discovery fixture](discovery-fixtures.md). The existing closed candidate contract is
 unchanged; no production endpoint or database adapter is introduced.
 
 ## Source and trust boundary
@@ -240,14 +241,14 @@ synthetic references and unavailable compatibility. It excludes email, raw birth
 input, location, preferences, engine IDs, grants/private originals and reasons.
 Owner preview remains a separate management view.
 
-`useRecommendations` includes the captured pair version in its access key, checks
-it again after delayed loading and masks obsolete retained content during render
-before navigation or asynchronous effect cleanup. Its preexisting `gapp-dev-v1`
-Alex/Jordan/Riley records remain **static smoke/layout samples**. They are gated as
-a retained presentation by the viewer → owner pair; they are **not independently
-fact-derived eligible candidate pairs**. The actual P05.1 pair projection is
-`candidatePreview()`. P05.2 must implement real bounded discovery composition;
-this hook change is not that queue/pagination/ranking feature.
+At the P05.1 checkpoint, `useRecommendations` gated the earlier anonymous
+`gapp-dev-v1` Alex/Jordan/Riley layout samples through the fictional viewer-to-owner
+pair. Those samples were never independently authorized discovery candidates.
+P05.2's [bounded discovery composition](discovery-fixtures.md) supersedes that
+presentation path: it acquires the actual current owner as viewer and separately
+evaluates every fictional candidate. The old anonymous endpoint/transport remains
+layout/smoke evidence only. `candidatePreview()` continues to own the separate
+fictional eligible-viewer preview of the current owner's profile.
 
 Existing labeled development controls exercise each block direction, viewer
 preference changes/restoration, viewer pause/resume and candidate attribute
