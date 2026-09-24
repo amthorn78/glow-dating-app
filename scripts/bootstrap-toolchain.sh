@@ -18,15 +18,26 @@
 # environment's Setup script. Hash provenance:
 # docs/testing/evidence/2026-09-24-m02-claude-setup.md.
 # The script reads no application, provider or database configuration and
-# prints no environment values. The first run takes about 3-4 minutes.
+# prints no environment values. The first run takes about two minutes, mostly
+# building Python.
 #
-# Every installed file belongs to the account running the script and is not
-# writable by group or others. Archives are extracted without their recorded
-# owners (the Node archive records uid 1000). An existing tree that breaks this
-# rule is replaced from the verified archive, never repaired in place, and is
-# checked before anything in it is executed.
+# Trust rules, checked before anything in a tree is executed:
+# - The prefix and link directories belong to the running account and are not
+#   writable by group or others. Their parents belong to that account or root
+#   and are not writable by group or others unless sticky (/tmp). The link
+#   directory's path contains no symlink.
+# - Every installed entry belongs to the running account and no non-link is
+#   writable by group or others. Archives are extracted without their recorded
+#   owners (the Node archive records uid 1000).
+# - A tree's root is a real directory. Every symlink in it is relative, never
+#   climbs above the root and resolves to a regular file inside the tree.
+# An existing tree that breaks these rules is replaced from the verified
+# archive, never repaired in place. An unsafe directory stops the script.
 set -euo pipefail
 umask 022
+unset CDPATH  # cd must never search it; a relative --prefix is relative to the working directory
+# npm would otherwise read and write V8 compile cache in $TMPDIR, outside the checked trees.
+export NODE_DISABLE_COMPILE_CACHE=1
 
 readonly NODE_VERSION=24.19.0
 readonly NODE_SHA256=14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647
@@ -51,17 +62,105 @@ done
 
 [ "$(uname -s)" = Linux ] && [ "$(uname -m)" = x86_64 ] \
   || die "Linux x86_64 only; see docs/operations/local-development.md"
+command -v setsid >/dev/null || die "setsid (util-linux) is required"
 
-mkdir -p "$prefix"
-prefix=$(cd "$prefix" && pwd)
+uid=$(id -u)
+work=''
+child=''
+
+# Each long step runs in its own process group (run), so SIGINT or SIGTERM
+# stops the whole step, then the temporary directory is removed.
+group_running() {  # process-group-id: a member that has not exited (zombies excluded)
+  ps -e -o pgid= -o stat= | awk -v group="$1" '$1 == group && $2 !~ /^Z/ { found = 1 } END { exit !found }'
+}
+
+stop_child() {
+  [ -n "$child" ] || return 0
+  kill -TERM -- "-$child" 2>/dev/null || true
+  local waited=0
+  while [ "$waited" -lt 50 ] && group_running "$child"; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  kill -KILL -- "-$child" 2>/dev/null || true
+  wait "$child" 2>/dev/null || true
+  child=''
+}
+
+cleanup() { if [ -n "$work" ]; then rm -rf -- "$work"; fi; }
+
+interrupted() {  # signal
+  trap '' INT TERM
+  stop_child
+  cleanup
+  trap - "$1" EXIT
+  printf 'glow-toolchain: stopped by SIG%s; temporary files removed\n' "$1" >&2
+  kill -s "$1" "$$"
+  exit $((128 + $(kill -l "$1")))
+}
+
+trap cleanup EXIT
+trap 'interrupted INT' INT
+trap 'interrupted TERM' TERM
+
+# Without job control a background step is never a process-group leader, so
+# setsid(1) does not fork and the step's pid is its process-group id.
+set +m
+run() {  # directory log command...: own process group, waited for; log "-" keeps the output
+  local dir=$1 log=$2
+  shift 2
+  (
+    cd -- "$dir" || exit 1
+    if [ "$log" != - ]; then exec >"$log" 2>&1; fi
+    exec setsid "$@"
+  ) </dev/null &
+  child=$!
+  local status=0
+  wait "$child" || status=$?
+  child=''
+  return "$status"
+}
+
+safe_dir() {  # physical-directory label
+  local dir=$1 info owner mode
+  [ -d "$dir" ] && [ ! -L "$dir" ] || die "$2 $1 is not a directory"
+  info=$(stat -c '%u %a' -- "$dir") || die "cannot inspect $2 $1"
+  owner=${info% *} mode=$((8#${info#* }))
+  [ "$owner" = "$uid" ] || die "$2 $1 is not owned by the running account (uid $uid)"
+  [ $((mode & 8#022)) -eq 0 ] || die "$2 $1 is writable by group or others"
+  while [ "$dir" != / ]; do
+    dir=${dir%/*}
+    dir=${dir:-/}
+    info=$(stat -c '%u %a' -- "$dir") || die "cannot inspect $dir"
+    owner=${info% *} mode=$((8#${info#* }))
+    { [ "$owner" = 0 ] || [ "$owner" = "$uid" ]; } \
+      && { [ $((mode & 8#022)) -eq 0 ] || [ $((mode & 8#1000)) -ne 0 ]; } \
+      || die "$2 $1 has an unsafe parent $dir: it must belong to root or the running account and must not be writable by group or others unless sticky"
+  done
+}
+
+mkdir -p -- "$prefix"
+prefix=$(cd -P -- "$prefix" && pwd -P)
+safe_dir "$prefix" "prefix directory"
+if [ "$link" = true ]; then
+  mkdir -p -- "$HOME/.local/bin"
+  link_dir=$(cd -P -- "$HOME/.local/bin" && pwd -P)
+  # PATH resolves this directory again at every lookup, so its path may not
+  # pass through a symlink that could later be retargeted.
+  [ "$link_dir" = "$(cd -L -- "$HOME/.local/bin" && pwd -L)" ] \
+    || die "link directory $HOME/.local/bin must not be or pass through a symlink"
+  safe_dir "$link_dir" "link directory"
+fi
 node_dir="$prefix/node-v$NODE_VERSION-linux-x64"
 python_dir="$prefix/python-$PYTHON_VERSION"
-uid=$(id -u)
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+case "$work" in /*) ;; *) work="$PWD/$work" ;; esac  # a relative TMPDIR
 
 download() {  # url destination
-  curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  # -q (first) ignores ~/.curlrc. A stalled transfer (under 1 KiB/s for 60 s)
+  # fails and is retried; there is no total time limit.
+  run "$work" - curl -q --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+    --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
     --retry 3 --retry-delay 2 --output "$2" "$1" || die "download failed: $1"
 }
 
@@ -69,10 +168,39 @@ verify_sha256() {  # file expected-hex label
   echo "$2  $1" | sha256sum --check --status || die "$3 SHA-256 mismatch"
 }
 
-trusted_tree() {  # directory: every entry is ours and no non-link is group/other-writable
-  local foreign
-  foreign=$(find "$1" \( ! -user "$uid" -o \( ! -type l -perm /022 \) \) -print -quit) || return 1
-  [ -z "$foreign" ]
+link_inside() {  # tree-root symlink: relative, never above the root, to a regular file inside
+  local root=$1 entry=$2 text rest part depth target
+  case "$entry" in "$root"/*) ;; *) return 1 ;; esac
+  text=$(readlink -- "$entry" 2>/dev/null) || return 1
+  case "$text" in /* | '') return 1 ;; esac
+  rest=${entry#"$root"/}
+  rest=${rest//[!\/]/}
+  depth=${#rest}  # depth of the link's directory below the root
+  rest=$text/
+  while [ -n "$rest" ]; do
+    part=${rest%%/*}
+    rest=${rest#*/}
+    case "$part" in
+      '' | .) ;;
+      ..) depth=$((depth - 1)); [ "$depth" -ge 0 ] || return 1 ;;
+      *) depth=$((depth + 1)) ;;
+    esac
+  done
+  target=$(realpath -e -- "$entry" 2>/dev/null) || return 1
+  case "$target" in "$root"/*) ;; *) return 1 ;; esac
+  [ -f "$entry" ]
+}
+
+trusted_tree() {  # directory: see the trust rules at the top
+  local root=$1 foreign
+  [ -d "$root" ] && [ ! -L "$root" ] || return 1
+  root=$(realpath -e -- "$root") || return 1
+  foreign=$(find "$root" \( ! -user "$uid" -o \( ! -type l -perm /022 \) \) -print -quit) || return 1
+  [ -z "$foreign" ] || return 1
+  # pipefail: a find error or any failing link rejects the tree.
+  find "$root" -type l -print0 | while IFS= read -r -d '' entry; do
+    link_inside "$root" "$entry" || exit 1
+  done
 }
 
 node_npm() {  # the npm inside the Node tree, never another npm on PATH
@@ -80,8 +208,8 @@ node_npm() {  # the npm inside the Node tree, never another npm on PATH
 }
 
 install_node() {
-  if [ -e "$node_dir" ] && ! trusted_tree "$node_dir"; then
-    log "replacing $node_dir: it has entries owned by another account or writable by group or others"
+  if { [ -e "$node_dir" ] || [ -L "$node_dir" ]; } && ! trusted_tree "$node_dir"; then
+    log "replacing $node_dir: it breaks the ownership, permission or symlink rules"
   elif [ -x "$node_dir/bin/node" ] && [ "$("$node_dir/bin/node" --version)" = "v$NODE_VERSION" ] &&
     [ "$(node_npm --version)" = "$NPM_VERSION" ]; then
     log "Node $NODE_VERSION with npm $NPM_VERSION already installed"
@@ -90,33 +218,37 @@ install_node() {
   log "installing Node $NODE_VERSION"
   download "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" "$work/node.tar.xz"
   verify_sha256 "$work/node.tar.xz" "$NODE_SHA256" "Node archive"
-  rm -rf "$node_dir"
-  tar --no-same-owner --no-same-permissions -xJf "$work/node.tar.xz" -C "$prefix"
+  rm -rf -- "$node_dir"
+  run "$work" - tar --no-same-owner --no-same-permissions -xJf "$work/node.tar.xz" -C "$prefix"
   log "installing npm $NPM_VERSION"
   download "https://registry.npmjs.org/npm/-/npm-$NPM_VERSION.tgz" "$work/npm.tgz"
   local integrity
   integrity=$("$node_dir/bin/node" -e 'const c=require("crypto"),f=require("fs");process.stdout.write("sha512-"+c.createHash("sha512").update(f.readFileSync(process.argv[1])).digest("base64"))' "$work/npm.tgz")
   [ "$integrity" = "$NPM_INTEGRITY" ] || die "npm tarball SHA-512 mismatch"
-  PATH="$node_dir/bin:$PATH" npm install --global --prefix "$node_dir" --offline \
-    --no-audit --no-fund --loglevel=error "$work/npm.tgz" >/dev/null
+  run "$work" "$work/npm-install.log" env PATH="$node_dir/bin:$PATH" "$node_dir/bin/npm" install \
+    --global --prefix "$node_dir" --offline --no-audit --no-fund --loglevel=error "$work/npm.tgz" || {
+    tail -n 40 "$work/npm-install.log" >&2
+    die "npm install failed"
+  }
 }
 
 install_python() {
   # --version succeeds even without a standard library, so an interrupted
-  # install is detected by importing the required modules.
-  if [ -e "$python_dir" ] && ! trusted_tree "$python_dir"; then
-    log "replacing $python_dir: it has entries owned by another account or writable by group or others"
+  # install is detected by importing the required modules. -I keeps
+  # PYTHONPATH, the working directory and user site-packages out of the check.
+  if { [ -e "$python_dir" ] || [ -L "$python_dir" ]; } && ! trusted_tree "$python_dir"; then
+    log "replacing $python_dir: it breaks the ownership, permission or symlink rules"
   elif [ -x "$python_dir/bin/python3.12" ] &&
     [ "$("$python_dir/bin/python3.12" --version)" = "Python $PYTHON_VERSION" ] &&
-    "$python_dir/bin/python3.12" -c "$PYTHON_MODULES" 2>/dev/null; then
+    "$python_dir/bin/python3.12" -I -c "$PYTHON_MODULES" 2>/dev/null; then
     log "Python $PYTHON_VERSION already installed"
     return
   fi
-  log "building Python $PYTHON_VERSION (about 3 minutes)"
+  log "building Python $PYTHON_VERSION (about two minutes)"
   download "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz" "$work/python.tgz"
   verify_sha256 "$work/python.tgz" "$PYTHON_SHA256" "Python source"
-  tar --no-same-owner --no-same-permissions -xzf "$work/python.tgz" -C "$work"
-  rm -rf "$python_dir"
+  run "$work" - tar --no-same-owner --no-same-permissions -xzf "$work/python.tgz" -C "$work"
+  rm -rf -- "$python_dir"
   local step
   for step in configure make install; do
     case "$step" in
@@ -124,12 +256,12 @@ install_python() {
       make) set -- make -j"$(nproc)" ;;
       install) set -- make install ;;
     esac
-    (cd "$work/Python-$PYTHON_VERSION" && "$@") >"$work/python-$step.log" 2>&1 || {
+    run "$work/Python-$PYTHON_VERSION" "$work/python-$step.log" "$@" || {
       tail -n 40 "$work/python-$step.log" >&2
       die "Python $step failed"
     }
   done
-  "$python_dir/bin/python3.12" -c "$PYTHON_MODULES" \
+  "$python_dir/bin/python3.12" -I -c "$PYTHON_MODULES" \
     || die "Python is missing a required standard-library module"
 }
 
@@ -137,7 +269,7 @@ install_node
 install_python
 
 trusted_tree "$node_dir" && trusted_tree "$python_dir" \
-  || die "installed toolchain has entries owned by another account or writable by group or others"
+  || die "installed toolchain breaks the ownership, permission or symlink rules"
 node_version=$("$node_dir/bin/node" --version)
 npm_version=$(node_npm --version)
 python_version=$("$python_dir/bin/python3.12" --version)
@@ -146,12 +278,11 @@ python_version=$("$python_dir/bin/python3.12" --version)
 [ "$python_version" = "Python $PYTHON_VERSION" ] || die "unexpected Python version"
 
 if [ "$link" = true ]; then
-  mkdir -p "$HOME/.local/bin"
   for tool in node npm npx; do
-    ln -sfn "$node_dir/bin/$tool" "$HOME/.local/bin/$tool"
+    ln -sfn "$node_dir/bin/$tool" "$link_dir/$tool"
   done
-  ln -sfn "$python_dir/bin/python3.12" "$HOME/.local/bin/python3.12"
-  log "linked node, npm, npx and python3.12 into $HOME/.local/bin"
+  ln -sfn "$python_dir/bin/python3.12" "$link_dir/python3.12"
+  log "linked node, npm, npx and python3.12 into $link_dir"
 else
   log "add to PATH: $node_dir/bin:$python_dir/bin"
 fi
