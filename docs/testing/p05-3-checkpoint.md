@@ -367,10 +367,51 @@ passes **156 targeted interaction/discovery/route tests**, a **30-case cleanup
 matrix** and **six final-publication variants**. Exact final publication gates are
 recorded in the external report.
 
+## Aggregate projection and original replay target correction
+
+Candidate `74fd2a87e453b32fdbac07e2aac0bd081da9c9b5`, tree
+`9d6549ee527256d1be167bf9d00585421840dc0a`, is the verified sixteen-file child
+of 0859fc45 (56 changed files overall). Both
+[PR run 35989624779](https://github.com/amthorn78/glow-dating-app/actions/runs/35989624779)
+and [push run 35989619707](https://github.com/amthorn78/glow-dating-app/actions/runs/35989619707)
+passed all four jobs/**83 browser cases**, completing at `2026-09-24T10:57:56Z`
+and `2026-09-24T10:57:04Z`. Actual logs confirm 244 API tests, 38 Python contract
+methods, 516 mobile tests, 373 JavaScript cases, exports, smoke and container
+validation. Security completed without findings at `2026-09-24T10:56:19.860005Z`.
+Code review completed at `2026-09-24T11:00:01.808955Z` with two Python P2 findings;
+that head was not merged.
+
+- [Aggregate read authority](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092812344):
+  a later match projection's source callback could revoke an earlier projection
+  after its individual validation but before the final list returned.
+- [Original receipt target](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092812351):
+  after a profile UUID was reassigned, replay could combine the original receipt
+  with a current projection resolved for a different target account.
+
+The aggregate read retains per-row source guards and stored match identity plus
+shared session/registry/clock/policy authority through all later callbacks, then
+compares them without another callback. It does not use the repository's global
+commit revision to invalidate reads for unrelated private actions. Replay now
+requires the projection target, current profile binding and object reference to
+match the original receipt, with registry authority retained through return.
+Five initial regression methods reproduced seven pre-fix failures; that source
+passed 249 API tests. Independent review then reproduced a later reverse block
+leaving an earlier restricted/unmatched match object unchanged. Each projected row
+now also retains both directional block identities through the final comparison,
+including absence and block/unblock within one callback. The sixth new method
+reproduced eight failures in a twelve-subcase matrix before this correction.
+All **46 interaction methods** and the full **250-test API suite** pass with
+Ruff/format and mypy. Independent review passes seven targeted methods plus
+multi-state deletion/block, unrelated-private-action and five-operation registry
+removal/restoration/result-time-rebinding probes, preserving receipts and cleanup.
+The mobile analogue review passed seven existing list/store callback tests and
+an ownership-swap/restoration probe; its source remains unchanged at **516 tests**.
+Exact independent Python review and final publication gates are recorded externally.
+
 ## Publication boundary
 
-The participant-cleanup correction is prepared for publication as a
-child of actual PR14 head `0859fc4560088619b5d48eecbdbe3a3c3bb5a96e`. The branch and PR are
+The aggregate-projection/original-target correction is prepared for publication as a
+child of actual PR14 head `74fd2a87e453b32fdbac07e2aac0bd081da9c9b5`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.

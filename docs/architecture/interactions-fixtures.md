@@ -112,6 +112,9 @@ receipt or half-applied action.
 The immutable `CommandReceipt` contains only outcome code, object UUID and the
 version committed by that command. `InteractionCommandResult` separates it from
 `current_projection`, which is rebuilt under present access and may be null.
+Projection remains bound to the receipt's original target. Reassigning a submitted
+profile UUID to a different account cannot pair the old receipt with that account's
+interaction or block state; a mismatched current binding suppresses projection.
 A directional projection also requires its original stored source guards, binding
 identities, policy/clock revisions and matchability; fresh eligibility cannot revive revoked original
 authority. A receipt describing a past `liked` action does not promise a current active
@@ -169,6 +172,9 @@ moderation/block reason, provider payload and secret remain excluded. An
 otherwise current active projection may reuse only the allowlisted candidate
 fields and approved synthetic media. A revoked connection uses generic
 unavailable copy; prior profile details are not a cached permission.
+Multi-match reads retain each row's complete authority until all later source
+reads finish, then validate it without another callback before returning the list.
+Unrelated private commits do not invalidate otherwise current match rows.
 
 Unmatch, either-direction block and applicable account/consent/visibility/source
 changes invalidate new contact decisions and retained projections. Participant

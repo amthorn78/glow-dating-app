@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from glow_domain.discovery import QUEUE_LIFETIME_MS
 from glow_domain.discovery_fixtures import build_discovery_fixture
+from glow_domain.eligibility import BlockState
 from glow_domain.identity import AccountId
 from glow_domain.interaction_fixtures import build_interaction_fixture
 from glow_domain.interactions import (
@@ -1094,3 +1095,198 @@ class InteractionTests(TestCase):
                 self.assertEqual(replay["receipt"], result["receipt"])
                 self.assertIsNone(replay["current_projection"])
                 self.assertIs(self.repo._state, before_replay)
+
+    def two_matches(self):
+        first, _, _ = self.match()
+        self.committed(self.a, self.intent(target="discovery-morgan", key="like-morgan"))
+        self.committed(self.c, self.intent(self.c, "discovery-viewer", key="morgan-reciprocal"))
+        matches = self.a.matches()
+        self.assertEqual(len(matches), 2)
+        second = next(row for row in matches if row["match_id"] != first["match_id"])
+        return first, second
+
+    def test_match_list_rechecks_earlier_projection_after_later_source_callback(self):
+        for earlier_state in ("active", "restricted", "unmatched"):
+            with self.subTest(earlier_state=earlier_state):
+                self.reset()
+                first, second = self.two_matches()
+                earlier_target = AccountId("discovery-jules")
+                if earlier_state == "unmatched":
+                    self.committed(self.a, self.unmatch(first))
+                elif earlier_state == "restricted":
+                    self.source.put_participant(self.source._participants[earlier_target])
+                    self.assertEqual(
+                        self.a.match_projection(first["match_id"])["state"], "restricted"
+                    )
+                original_acquire = self.source.acquire
+                fired = False
+
+                def remove_earlier(
+                    viewer,
+                    candidate,
+                    original_acquire=original_acquire,
+                    earlier_target=earlier_target,
+                ):
+                    nonlocal fired
+                    result = original_acquire(viewer, candidate)
+                    if AccountId("discovery-morgan") in (viewer, candidate) and not fired:
+                        fired = True
+                        self.source.remove_participant(earlier_target)
+                    return result
+
+                with patch.object(self.source, "acquire", side_effect=remove_earlier):
+                    projected = self.a.matches()
+                self.assertTrue(fired)
+                self.assertEqual([row["match_id"] for row in projected], [second["match_id"]])
+
+    def test_match_list_survives_unrelated_private_commit_in_later_callback(self):
+        first, second = self.two_matches()
+        iris, noor = AccountId("discovery-iris"), AccountId("discovery-noor")
+        self.source.observe_block(iris, noor, BlockState.CLEAR)
+        self.source.observe_block(noor, iris, BlockState.CLEAR)
+        other = self.fixture.session(iris, "private-actor")
+        private_intent = self.intent(other, "discovery-noor", key="private-like")
+        original_acquire = self.source.acquire
+        fired = False
+
+        def private_commit(viewer, candidate):
+            nonlocal fired
+            result = original_acquire(viewer, candidate)
+            if AccountId("discovery-morgan") in (viewer, candidate) and not fired:
+                fired = True
+                self.committed(other, private_intent)
+            return result
+
+        with patch.object(self.source, "acquire", side_effect=private_commit):
+            projected = self.a.matches()
+        self.assertTrue(fired)
+        self.assertEqual(
+            [row["match_id"] for row in projected], [first["match_id"], second["match_id"]]
+        )
+        self.assertTrue(all(row["state"] == "active" for row in projected))
+        self.assertEqual(self.repo.counts["directions"], 5)
+
+    def swap_jules_morgan_profile_uuids(self):
+        registry = self.fixture.registry
+        jules = registry.account(AccountId("discovery-jules"))
+        morgan = registry.account(AccountId("discovery-morgan"))
+        registry.replace(
+            tuple(
+                replace(row, profile_uuid=morgan.profile_uuid)
+                if row == jules
+                else replace(row, profile_uuid=jules.profile_uuid)
+                if row == morgan
+                else row
+                for row in registry.identities
+            )
+        )
+
+    def test_block_replay_cannot_project_a_reassigned_profile_target(self):
+        command = self.block()
+        original = self.committed(self.a, command)
+        self.committed(self.a, self.block("discovery-morgan", key="block-morgan"))
+        self.committed(
+            self.a,
+            self.block("discovery-morgan", action="unblock", key="unblock-morgan", version=1),
+        )
+        original_rows = self.fixture.registry.identities
+        self.swap_jules_morgan_profile_uuids()
+        before = self.repo._state
+        replay = self.committed(self.a, command)
+        self.assertEqual(replay["receipt"], original["receipt"])
+        self.assertIsNone(replay["current_projection"])
+        self.assertIs(self.repo._state, before)
+        self.fixture.registry.replace(original_rows)
+        restored = self.committed(self.a, command)
+        self.assertEqual(restored["current_projection"], original["current_projection"])
+        self.assertEqual(restored["receipt"], original["receipt"])
+        self.assertIs(self.repo._state, before)
+
+    def test_interaction_replay_cannot_project_new_direction_for_reassigned_uuid(self):
+        for original_action, new_action in (("like", "pass"), ("pass", "like")):
+            with self.subTest(original_action=original_action):
+                self.reset()
+                command = self.intent(action=original_action)
+                original = self.committed(self.a, command)
+                self.swap_jules_morgan_profile_uuids()
+                new_command = self.intent(
+                    target="discovery-morgan", key="new-target", action=new_action
+                )
+                self.assertEqual(new_command["target_profile_id"], command["target_profile_id"])
+                self.committed(self.a, new_command)
+                before = self.repo._state
+                replay = self.committed(self.a, command)
+                self.assertEqual(replay["receipt"], original["receipt"])
+                self.assertIsNone(replay["current_projection"])
+                self.assertIs(self.repo._state, before)
+
+    def test_result_time_registry_rebind_suppresses_block_projection(self):
+        command = self.block()
+        original = self.committed(self.a, command)
+        original_account = self.fixture.registry.account
+        actor = self.fixture.discovery.viewer
+        actor_lookups = 0
+
+        def rebind_during_result(account):
+            nonlocal actor_lookups
+            result = original_account(account)
+            if account == actor:
+                actor_lookups += 1
+                if actor_lookups == 2:
+                    self.swap_jules_morgan_profile_uuids()
+            return result
+
+        before = self.repo._state
+        with patch.object(self.fixture.registry, "account", side_effect=rebind_during_result):
+            replay = self.committed(self.a, command)
+        self.assertGreaterEqual(actor_lookups, 2)
+        self.assertEqual(replay["receipt"], original["receipt"])
+        self.assertIsNone(replay["current_projection"])
+        self.assertIs(self.repo._state, before)
+
+    def test_match_list_rechecks_both_block_directions_even_after_unblock(self):
+        for earlier_state in ("active", "restricted", "unmatched"):
+            for caller in ("a", "b"):
+                for remove_block in (False, True):
+                    with self.subTest(state=earlier_state, caller=caller, remove=remove_block):
+                        self.reset()
+                        first, second = self.two_matches()
+                        if earlier_state == "unmatched":
+                            self.committed(self.a, self.unmatch(first))
+                        elif earlier_state == "restricted":
+                            target = AccountId("discovery-jules")
+                            self.source.put_participant(self.source._participants[target])
+                            self.a.match_projection(first["match_id"])
+                        service = getattr(self, caller)
+                        target_name = "discovery-jules" if caller == "a" else "discovery-viewer"
+                        original_acquire = self.source.acquire
+                        fired = False
+
+                        def change_block(
+                            viewer,
+                            candidate,
+                            service=service,
+                            target_name=target_name,
+                            original_acquire=original_acquire,
+                            remove_block=remove_block,
+                        ):
+                            nonlocal fired
+                            result = original_acquire(viewer, candidate)
+                            if AccountId("discovery-morgan") in (viewer, candidate) and not fired:
+                                fired = True
+                                self.committed(service, self.block(target_name))
+                                if remove_block:
+                                    self.committed(
+                                        service,
+                                        self.block(
+                                            target_name, action="unblock", key="unblock", version=1
+                                        ),
+                                    )
+                            return result
+
+                        with patch.object(self.source, "acquire", side_effect=change_block):
+                            projected = self.a.matches()
+                        self.assertTrue(fired)
+                        self.assertEqual(
+                            [row["match_id"] for row in projected], [second["match_id"]]
+                        )

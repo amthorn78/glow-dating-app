@@ -808,10 +808,64 @@ class FixtureInteractionService:
         }
 
     def matches(self) -> tuple[dict[str, Any], ...]:
+        bindings = self._bindings()
+        shared_guards = (
+            acquire_guard(self.discovery.authority),
+            acquire_guard(self.registry),
+            acquire_guard(self.discovery.clock),
+            capture_revisions(self._policy_revision),
+        )
+        context = self._actor()
+        if context is None:
+            return ()
+        retained: list[
+            tuple[dict[str, Any], Match, FixtureReadGuard, tuple[Block | None, Block | None]]
+        ] = []
+        matches = tuple(
+            match
+            for match in self.repository._state.matches.values()
+            if context[0] in match.participants
+        )
+        for match in matches:
+            source_guard = acquire_guard(self.discovery.source, *match.participants)
+            if source_guard is None:
+                continue
+            left, right = match.participants
+            block_rows = (
+                self.repository._state.blocks.get((left, right)),
+                self.repository._state.blocks.get((right, left)),
+            )
+            value = self.match_projection(match.match_id)
+            current = self.repository._state.matches.get(match.pair)
+            if (
+                value is not None
+                and current is not None
+                and value["match_id"] == current.match_id
+                and value["version"] == current.version
+                and value["state"] == current.state
+            ):
+                retained.append((value, current, source_guard, block_rows))
+        # All dependency callbacks finished. Global UOW changes do not revoke a
+        # read: only shared authority, this pair's sources, and this match row do.
+        if any(
+            old is not new for old, new in zip(bindings, self._bindings(), strict=True)
+        ) or not all(guard_is_current(guard) for guard in shared_guards):
+            return ()
         return tuple(
             value
-            for match in tuple(self.repository._state.matches.values())
-            if (value := self.match_projection(match.match_id)) is not None
+            for value, match, source_guard, block_rows in retained
+            if guard_is_current(source_guard)
+            and self.repository._state.matches.get(match.pair) is match
+            and self.repository._state.blocks.get(match.participants) is block_rows[0]
+            and self.repository._state.blocks.get((match.participants[1], match.participants[0]))
+            is block_rows[1]
+            and (
+                match.state != "active"
+                or (
+                    self._authority_current(match.bindings)
+                    and all(guard_is_current(guard) for guard in match.guards)
+                )
+            )
         )
 
     def contact_decision(self, match_id: str) -> dict[str, Any]:
@@ -834,15 +888,23 @@ class FixtureInteractionService:
     ) -> CommandResult:
         bindings = self._bindings()
         authority_guard = acquire_guard(self.discovery.authority)
+        registry_guard = acquire_guard(self.registry)
         context = self._actor()
         if context is None or context[0] != actor:
             return CommandResult("unavailable")
+        # The receipt retains the original target independently of current UUID
+        # lookup. Rebinding a submitted profile cannot select another object's state.
+        if target is not None and (
+            target.account_id != receipt.target
+            or self.registry.profile(target.profile_uuid) != target
+        ):
+            target = None
         projection: dict[str, Any] | None = None
         if operation == "unmatch":
             projection = self.match_projection(receipt.object_ref)
         elif operation == "block" and target is not None:
             row = self.repository._state.blocks.get((actor, target.account_id))
-            if row and self._target_current(target):
+            if row and row.object_id == receipt.object_ref and self._target_current(target):
                 projection = {
                     "kind": "block",
                     "target_profile_id": target.profile_uuid,
@@ -862,6 +924,7 @@ class FixtureInteractionService:
             eligible = self.discovery.batch.eligibility.evaluate(actor, target.account_id)
             if (
                 current
+                and current.object_id == receipt.object_ref
                 and current.matchable
                 and self.policy_version == "development-interactions-1"
                 and self._authority_current(current.bindings)
@@ -878,6 +941,8 @@ class FixtureInteractionService:
                     "state": current.state,
                     "match_id": match.match_id if match else None,
                 }
+        if not guard_is_current(registry_guard):
+            projection = None
         if not guard_is_current(authority_guard) or any(
             old is not new for old, new in zip(bindings, self._bindings(), strict=True)
         ):
