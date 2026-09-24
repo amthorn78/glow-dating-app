@@ -135,6 +135,8 @@ Nathan ran the review session at the extra-high level on head `ccebd1bf5eb23155f
 
 ## Correction brief — M02-C1 (manual implementation session)
 
+**Status:** done on 24 September 2026, at the extra-high level. The work is on `claude/vigilant-einstein-i95w78`, head `9be82285ca70668f427d0adb23ae68ae6b2faa2b`. App Manager 2 verified it and fast-forwarded it into the manager branch. The deviations it accepted and the remaining limits are in the evidence record. A delta review of the final head against `ccebd1b` follows.
+
 **Outcome:** findings 1–3 and 6–11, and the script part of 13, fixed with evidence, on top of the manager branch head named in the prompt.
 
 **Owned paths (writable):**

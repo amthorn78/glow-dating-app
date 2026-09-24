@@ -565,3 +565,40 @@ Every command ran with `env -i HOME=/root PATH=/root/.local/bin:/usr/bin:/bin LA
 - **`.claude` matching:** it ignores case only. Other filesystem aliases, such as HFS+ ignorable Unicode characters or Windows 8.3 short names, are not detected.
 - **CI:** it loads the classifier from `main`, so the new classifier rules apply to later PRs only after M02 merges. No hosted CI result is recorded here. Pushing the session branch starts a Foundation push run.
 - **Not run:** mobile checks beyond `npm ci` and the two help commands, and the rendered suite. The intermittent rendered cases were not touched.
+
+## App Manager 2 — M02-C1 verification and integration (24 September 2026)
+
+Nathan relayed the M02-C1 report: branch `claude/vigilant-einstein-i95w78`, head `9be8228`, run at the extra-high level. App Manager 2 checked it against the pushed branch in the `Glow app` environment. No HDE variable names were present, the three `STREAM_*` names were present, and the toolchain was v24.19.0 / 11.9.0 / 3.12.14.
+
+| Check | Result |
+|---|---|
+| Remote head | `9be82285ca70668f427d0adb23ae68ae6b2faa2b`, tree `d7cdf41ed1e8662ee5c58e2b2bcdd2dea9e6feb7`, as reported |
+| Ancestry | The start SHA `485756128bbd5bff2e6238bbbab5f11bde050c3a` is an ancestor. There are seven commits: `e9e5ac0`, `52a1ea9`, `b3e3b20`, `435b31e`, `f8c17db`, `c5893a5`, `9be8228` |
+| Changed paths | 8 files, +489/−50, all within M02-C1's owned paths. The script stays mode 100755. `pyproject.toml` gained only `extend-exclude = ["*.md"]`. The `apps/mobile/AGENTS.md` change is the development-build line in "Rules", and the `local-development.md` change is the Setup-script bullets. The evidence change is one appended hunk |
+| Script, read in full | `CDPATH` is unset and the Node compile cache disabled. The prefix and link directories are checked with their parents; the link directory's path may not contain a symlink. `trusted_tree` requires a real root directory, ownership by the running account, no group or other write, and relative symlinks that never climb above the root and resolve to regular files inside it; a `find` or link failure rejects the tree through `pipefail`. Nothing in an untrusted tree runs. The standard-library checks use `-I`. Long steps run in their own process group, and SIGINT and SIGTERM stop the group and remove the temporary directory. `curl -q` has a connection timeout and stall abort. npm is installed through the tree's own `bin/npm` |
+| Classifier | A path component equal to `.claude`, ignoring case, is full scope. `git merge-base --all` returning anything other than exactly one base is full scope, reason `multiple-merge-bases`. Unrelated histories fail closed as `comparison-unavailable` |
+| Manager re-runs, detached worktree at `9be8228` | `bash -n` exit 0. Classifier tests: 13 OK (`python3.12 -I`). Pin test: 3 OK. `ruff format --check .` in `services/api`: 57 files; `ruff check .` passed. `git diff --check 4857561 9be8228` clean |
+| Regression direction (manager) | The new `scripts/test_change_scope.py`, copied beside `ccebd1b`'s `change_scope.py` in a temporary directory and run with `python3.12 -I -m unittest discover`: 13 tests, `FAILED (failures=9)`. The failures are the eight `.claude` subtests and the criss-cross test, so the new tests catch the old behavior |
+| Pin-test demonstrations (manager) | The first `python-version` made unquoted `3.13.1` failed, naming `.github/workflows/foundation.yml:66`. The first npm install made `npm i -g npm@11.10.0` failed, naming `.github/workflows/foundation.yml:97`. Both edits were reverted and the worktree was clean |
+| Classification | `main`'s policy, `python3 -I … --merge-base`: `{"full": true, "reason": "behavior-or-empty"}`, 29 paths, one merge base |
+| Hosted CI | Push run [36049068606](https://github.com/amthorn78/glow-dating-app/actions/runs/36049068606) on `9be8228` succeeded on all six jobs, read job by job, including the rendered step. The gate log says `Application checks passed`, so under the push-run evidence rule it counts as evidence for code |
+
+**Deviations accepted:**
+
+- `NODE_DISABLE_COMPILE_CACHE=1`. npm 11 otherwise wrote compiled code into a `$TMPDIR` cache directory another account had created.
+- The stricter symlink rule: relative links, never climbing above the root, and regular-file targets. All 20 real links pass.
+- `.claude` matching ignores case.
+- A symlinked `--prefix` is resolved to its physical path, while a symlinked link directory is refused.
+- npm install output goes to a log that is printed on failure.
+- Pin-test messages carry line numbers, and there are extra classifier tests for unrelated histories and the single-base reason.
+
+**Limits carried forward:**
+
+- `TMPDIR` is not checked; `mktemp -d` creates a directory only the running account can open.
+- `.claude` aliases other than case are not detected, such as invisible Unicode characters or Windows short names.
+- Files inside the link directory are not checked. In this container, `/root/.local/bin/uv` and `uvx` are owned by uid 1001 and come from the image; `/root` is mode 700.
+- Only SIGINT and SIGTERM are handled.
+- The new classifier rules apply to later PRs only after M02 merges.
+- This container's own toolchain still has the uid-1000 Node tree from the pre-M02 Setup script, until the final script is pasted after merge.
+
+**Integration.** `git merge --ff-only 9be82285ca70668f427d0adb23ae68ae6b2faa2b` on `claude/fervent-darwin-idyko3`; no manager push had moved the branch since the start SHA. A delta review of the final head against `ccebd1b` follows.

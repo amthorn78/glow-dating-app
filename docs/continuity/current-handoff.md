@@ -11,7 +11,7 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 
 ## Status — App Manager 2, 24 September 2026
 
-**Where M02 stands.** M02-I1 is integrated, and the exact-head review of `ccebd1b` returned **approve for merge, with nothing blocking**. App Manager 2 is fixing every finding except a workflow change before merge, in **correction round M02-C1**, which is commissioned and waiting for Nathan's relay. After it comes a delta review of the final head against `ccebd1b`, then the merge. The details are in the evidence record's App Manager 2 sections and in the brief's disposition table.
+**Where M02 stands.** M02-I1 is integrated. The exact-head review of `ccebd1b` approved with findings. **Correction round M02-C1 is done, verified and integrated** (head `9be8228`, push run 36049068606 6/6 with `Application checks passed`). **The delta review of the final head against `ccebd1b` is commissioned and waiting for Nathan's relay.** Merge follows a clean delta review and 6/6 CI on the final head. The details are in the evidence record's App Manager 2 sections and the brief's disposition table.
 
 - **Environment (names only).** No HDE variables; the three `STREAM_*` names are present; the Setup script produced the pinned toolchain. Nathan added the TypeSafe API credential on 24 September.
 - **PR.** M02 is on `claude/fervent-darwin-idyko3`, [draft PR18](https://github.com/amthorn78/glow-dating-app/pull/18). It replaced [PR17](https://github.com/amthorn78/glow-dating-app/pull/17), which is closed with a link.
@@ -49,7 +49,7 @@ App Manager 1 was the first Claude manager. It ran in the environment shared wit
 
 ## App Manager 2 — next actions
 
-**Progress (24 September):** 1 to 3 are done. For 4, the review of `ccebd1b` approved with findings, and correction round M02-C1 is commissioned; a delta review follows it.
+**Progress (24 September):** 1 to 3 are done. For 4, the review of `ccebd1b` approved with findings, correction round M02-C1 is integrated, and the delta review of the final head is commissioned.
 
 1. **Verify the environment (names only).** None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be present. `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with `node --version` v24.19.0, `npm --version` 11.9.0 and `python3.12 --version` 3.12.14. If anything differs, tell Nathan exactly which setting to fix. Never print values.
 2. **Verify the repository.** Check main, open PRs and the worktree. Run `git fetch origin claude/ecstatic-goodall-qajdh4` and review its head and PR17's CI runs. A session can push only its own working branch, so:
