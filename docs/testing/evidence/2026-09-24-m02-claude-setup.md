@@ -81,6 +81,34 @@ The pinned toolchain was Python 3.12.14, Node 24.19.0 and npm 11.9.0. Python and
 - Official Claude Code documentation (read 24 September) states the following. Subagents receive project `CLAUDE.md`. Imports resolve relative to the importing file. A cloud Setup script runs before Claude Code launches and its filesystem result is cached for about seven days. SessionStart hooks run on every session start and resume.
 - The Notion Work Register (62 rows) was queried read-only. 47 rows cite the historical Drive plan as their Plan Reference. There is no D09, M01 or M02 row, and A03 shows Ready.
 
+## App Manager 1 — publication, Setup script and handover
+
+**Proposal commit.** `6b476941e569006638077b1b0333473dfd4f4f5d` (tree `f32f204974547e996edd7d5bb1c2218e8ddcaca2`) was pushed to `claude/ecstatic-goodall-qajdh4`, and [draft PR17](https://github.com/amthorn78/glow-dating-app/pull/17) was opened. Both hosted runs for that head passed all six jobs. `Change scope` classified the head as full scope, and all four application jobs ran.
+
+| Run | Event | Jobs |
+|---|---|---|
+| [36019083905](https://github.com/amthorn78/glow-dating-app/actions/runs/36019083905) | push | 6/6 success |
+| [36019116522](https://github.com/amthorn78/glow-dating-app/actions/runs/36019116522) | pull request | 6/6 success |
+
+These runs cover the proposal head only, not later heads.
+
+**`scripts/bootstrap-toolchain.sh`.** The npm tarball pin (`sha512-BBZoU926…YdNaA==`) is the `dist.integrity` value from registry metadata for `npm@11.9.0`. All runs used `env -i HOME=<temporary> PATH=/usr/bin:/bin LANG=C.UTF-8`, with no proxy or CA variables.
+
+| Test | Result |
+|---|---|
+| `bash -n` | Syntax OK |
+| Fresh run (default prefix and links) | Exit 0 in 96 s: Node 24.19.0, npm 11.9.0 (offline install of the verified tarball), CPython 3.12.14 (`--with-ensurepip=install --disable-test-modules`, `make -j4`) |
+| Rerun | Exit 0 in 0 s; reported both components already installed |
+| Links | `node`, `npm`, `npx`, `python3.12` → versions v24.19.0 / 11.9.0 / 11.9.0 / 3.12.14. `python3` unchanged (3.11.15). `ssl` reported OpenSSL 3.0.13 |
+| Scratch copy with a wrong `NODE_SHA256` | Exit 1, `Node archive SHA-256 mismatch`; 0 toolchain entries extracted |
+| Script supplied on stdin (`bash -s < script`, as a pasted Setup script) | Exit 0 |
+| Unknown option | Exit 1 with usage |
+| API suite on a venv from this Python build, `requirements-dev.lock` installed with hashes | 250 tests OK |
+
+Direct HTTPS to nodejs.org without `HTTPS_PROXY` returned 200 in this environment. The script has not yet run as an actual environment Setup script; App Manager 2 verifies that result.
+
+**Superseded subagent attempt.** App Manager 1 first commissioned M02-I1 as an Agent-tool subagent with worktree isolation. The harness created its worktree from `main` (`07b3b10`), not from the manager branch head (`6b47694`). The subagent stopped at its start gate. It made no edits or commits, and the worktree was removed. Nathan then fixed the manual relay, recorded verbatim in `docs/planning/manager-workflow.md`: the manager never starts implementation or review work itself, and implementation sessions may use any tools they need.
+
 ## Implementation session
 
 *Reserved for M02-I1 results.*

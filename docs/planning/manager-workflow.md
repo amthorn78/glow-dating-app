@@ -1,13 +1,110 @@
-# Manager-led implementation sessions
+# Manager workflow — manual relay
 
-The receiving Claude Code session is the manager. Nathan remains product/account owner. This is a high-trust AI implementation experiment: use the codebase, repository Markdown and Notion; do not import Nathan's prompt libraries, HDE workflows or a new orchestration framework as governing authority.
+Nathan remains product and account owner. This is a high-trust AI implementation experiment run from the codebase, repository Markdown and Notion. Do not import Nathan's prompt libraries, HDE workflows or a new orchestration framework as governing authority.
 
-1. Verify remote main, open PRs, worktree and applicable instructions. Read current handoff and relevant code before assigning work. Distinguish verified behavior, dated evidence, inherited plans and unresolved assumptions.
-2. Select one bounded work item. Record outcome, permitted surfaces, exclusions, starting commit, acceptance checks, dependencies and reporting requirements in a persistent implementation brief under `docs/planning/`. Do useful independent work before escalating a concrete missing input.
-3. Commission a separate one-off implementation session for that item. Put its disposable prompt under `docs/ephemeral/`, linking the durable brief. Give it full context for a fresh session. Separate branches/worktrees for concurrent writers; never let multiple sessions edit the same owned files uncoordinated. No automatic phase progression or large agent system is required.
-4. The implementer reports changed paths, commit/PR identity, actual tests, review findings, limitations and remaining work. Keep enduring evidence under `docs/testing/`; a Notion status or chat claim alone is not proof.
-5. The manager reviews the diff and exact-head evidence, commissions a bounded independent review where warranted, resolves findings and follows [CI/review policy](../operations/ci-and-branch-policy.md). Classify the whole PR before requesting automated review; ordinary documentation does not need application tests or code review. For workflow/policy/instruction changes, independently classify with the pre-change policy and inspect the entire workflow diff plus actual job steps/results; candidate-controlled YAML can bypass its own checks, so green status alone is insufficient. Behavior-changing Markdown is full scope; all of `docs/planning/`, including newly named implementation briefs, is conservatively classified as full scope.
-6. Merge only within the standing app-only authorization after appropriate checks. Verify actual merged tree/checks, update the current handoff and persistent decisions, then synchronize short status/evidence links to Notion. If Notion is unavailable, record the unsynchronized update in the repository and reconcile later; no Drive file is required.
-7. Keep feature implementation paused during the Claude setup optimization. Afterwards reconcile P06.1 prerequisites with Nathan's current direction before commissioning live work. Never turn fixture success into production acceptance.
+## The process: Nathan relays every session by hand
 
-HDE source, canon, database objects, credentials, services and shared resources remain protected by effect. P11 owns app database wiring/migrations after ownership prerequisites. No legacy-user migration is needed; legacy retirement still needs its own consumer/backup/authorization review. No credentials belong in source, prompts, reports or Notion.
+Nathan's direction, 24 September 2026:
+
+> "this will be a manual relay. You give me prompts for the implementors, I relay back their findings and you follow up as needed. that is the process. I reinitiate you manually as needed."
+>
+> "just make sure you don't restrict the implementor sessions, they can use whatever tools, subagents, wakeups, etc they need"
+
+- **The manager writes prompts.** For each bounded work item it writes a persistent brief and a paste-ready prompt.
+- **Nathan starts every implementation and review session himself.** He opens it in the dedicated app cloud environment, pastes the prompt, and relays that session's report back to the manager.
+- **The manager follows up through Nathan.** It checks relayed findings against the pushed branch, then gives Nathan the next prompt: a correction, a review or a close-out.
+- **Nathan reinitiates managers.** Manager sessions (App Manager 1, App Manager 2, …) do not run continuously. Every manager leaves a self-contained handoff so the next one can start cold.
+
+**The manager never starts implementation or review work itself.** It does not use subagents (Agent/Task tool) or remote-session tools for that work. When it needs something done, it writes a prompt for Nathan. Nathan brings the manager back when there is something to act on.
+
+**Implementation and review sessions are not restricted in tooling.** They may use any tools, subagents, scheduled wake-ups or other capabilities their assignment needs. Their boundaries are about scope: owned paths, their own branch, and the reporting the prompt asks for.
+
+| Session | Started by | Does | Never |
+|---|---|---|---|
+| **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
+| **Implementation** | Nathan, pasting a manager prompt | Works within its owned paths on its own session branch from the named commit, using any tools, subagents or wake-ups it needs; runs the listed checks; pushes its own branch; reports | Edits manager-owned files or other sessions' branches; merges to main (the manager integrates) |
+| **Review** | Nathan, pasting a manager review prompt | Reviews one exact head with any tools it needs; reports findings | Changes the reviewed branch |
+
+## Cycle
+
+1. **Start.** Check the environment first, by names only: `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` means the HDE-shared environment. Say so and never read or use the values. Then check the pinned toolchain (`node --version`, `npm --version`, `python3.12 --version`). Verify remote main, open PRs and the worktree. Read the current handoff, applicable instructions and the relevant code. Keep verified behavior, dated evidence, inherited plans and unresolved assumptions separate.
+2. **Brief.** Choose one bounded work item. Write its persistent brief in `docs/planning/` using the template below. Do useful independent work before asking Nathan for a concrete missing input.
+3. **Prompt.** Write the paste-ready prompt in `docs/ephemeral/YYYY-MM-DD-work-id-purpose.md`, linking the brief. Commit and push it on the manager branch, then give Nathan the exact text to paste. A fresh session must be able to act on it alone.
+4. **Relay.** Nathan runs the session and relays its report. The report is a claim until the manager has checked it against the pushed branch.
+5. **Verify and integrate.**
+   - Fetch the implementer branch and review `git diff <start>..<head>` completely.
+   - Re-run cheap checks where useful.
+   - Classify the whole change (command below).
+   - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
+   - Push the manager branch and read the actual CI job steps and results.
+6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
+7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md), then:
+   - Merge within the standing app-only authorization.
+   - Verify actual main and record an ordinary-documentation receipt in `docs/testing/evidence/`.
+   - Update the current handoff and sync Notion (Implementation Control and the Work Register row).
+   - Prune closed prompts once their unique content lives in persistent homes.
+   - If Notion is unavailable, record the pending sync in the repository.
+
+## Branches and pushes
+
+- A cloud session can push only its own working branch.
+  - An implementation session first runs `git fetch origin <manager-branch>` and `git merge --ff-only <start-sha>` on its own branch, then verifies `git rev-parse HEAD`. It pushes only that branch and reports the branch name and head SHA.
+  - The manager integrates relayed branches into its own branch, which is the PR head.
+- A reinitiated manager cannot push the previous manager's branch. It continues on its own branch from the previous head, opens a replacement PR and closes the old PR with a link to the new one.
+- Concurrent writers need disjoint owned paths. Never let two sessions edit the same file uncoordinated.
+
+## Classification (trusted base policy)
+
+Run this from the repository root. The policy runs from a temporary directory outside the candidate tree, and no candidate code runs:
+
+```bash
+git fetch origin main
+base=$(git rev-parse origin/main); head=$(git rev-parse HEAD)
+policy_dir=$(mktemp -d)
+git show "$base:scripts/change_scope.py" > "$policy_dir/change_scope.py"
+python3 -I "$policy_dir/change_scope.py" --base "$base" --head "$head" --merge-base
+```
+
+Use the PR's base SHA when it differs from `origin/main`. `ordinary-docs-only` means no application checks and no code or security review. Anything else is full scope. For workflow, policy or instruction changes, also inspect the entire workflow diff and the actual job steps and results; candidate-controlled YAML can bypass its own checks.
+
+## Brief template (persistent, `docs/planning/`)
+
+A brief contains:
+
+- Work ID and title
+- Owner and manager
+- Starting commit and manager branch
+- Outcome
+- Owned paths (writable)
+- Manager-owned paths
+- Exclusions
+- Dependencies and inputs
+- Acceptance checks, as exact commands with expected results
+- Classification expectation
+- Evidence home
+- Report format
+- Review plan
+
+## Prompt template (disposable, `docs/ephemeral/`)
+
+A prompt contains:
+
+- Header: owner, brief link, deletion condition.
+- Role line: "You are an implementation (or review) session started manually by Nathan; you are not the manager."
+- Environment check and credential rule.
+- Start gate: fetch, fast-forward to the named SHA, verify.
+- Deliverables limited to owned paths, with the explicit exclusions.
+- Checks to run.
+- Push rule: own session branch only.
+- Report format: branch, SHAs, tree, changed paths, every check with exact results, failures, deviations, open questions.
+- Tooling line: "You may use any tools, subagents, scheduled wake-ups or other capabilities you need."
+
+Store inert evidence and receipts in `docs/testing/evidence/YYYY-MM-DD-work-id-purpose.md`. Behavior-affecting Markdown elsewhere is full scope.
+
+## Boundaries
+
+- Feature work stays paused until Nathan's recorded direction in the current handoff resumes it. Reconcile P06.1 prerequisites with Nathan before commissioning live work. Never turn fixture success into production acceptance.
+- HDE source, canon, database objects, credentials, services and shared resources remain protected by effect.
+- P11 owns app database wiring and migrations after ownership prerequisites.
+- No legacy-user migration is needed; legacy retirement still needs its own consumer, backup and authorization review.
+- No credentials belong in source, prompts, reports or Notion.

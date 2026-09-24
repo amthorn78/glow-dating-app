@@ -1,20 +1,54 @@
-# Current handoff — Claude Code migration
+# Current handoff — App Manager 2 (M02 in progress)
 
-**Owner direction:** pause new features; move implementation from ChatGPT web to Claude Code. The receiving session is the manager and first audits/optimizes its repository setup and documentation workflow. P06.1 is not currently dispatched. Nathan remains product/account owner.
+**Process: manual relay** (Nathan, 24 September 2026).
 
-1. Verify remote `amthorn78/glow-dating-app` main, open PRs and worktree. Read the [migration publication receipt](migration-publication.md) for the checked merged baseline. Never push synthetic snapshot history.
-2. Read root and applicable nested `AGENTS.md` files, README files, [documentation map](../README.md), [PF00](../pf-canon/GAPP-PF00-Canon-Index-and-Authority.md) and [PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md).
-3. Read the **[full Claude handoff](claude-code-handoff.md)** and use the **[paste-ready initiation prompt](../planning/claude-code-initiation.md)**. Follow the [manager workflow](../planning/manager-workflow.md), not an imported prompt library.
-4. Reconcile [Notion Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) / [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) status; repository Markdown contains durable assignment context. No Drive file is needed.
+- The manager gives Nathan prompts for implementers. Nathan runs each implementation or review session himself and relays its findings back. The manager follows up as needed.
+- Nathan reinitiates managers manually.
+- The manager never starts implementation or review work itself (no subagents or remote-session tools for that work).
+- Implementation and review sessions may use any tools, subagents or wake-ups they need.
 
-## Accepted application baseline
+The full procedure is in [manager workflow](../planning/manager-workflow.md). Nathan remains product and account owner. Feature work stays paused; P06.1 is not dispatched.
 
-P01–P05 are complete at their recorded preparation/fixture scope. P05.3 PR14 merged as `ea394543533e99f611158b9026a2bd01de8d09b3`, tree `b1676a034b416bf459daf41405e3b12b5d782f6e`. [AB1-R012](history/AB1-R012.md) records exact candidate/main checks, review corrections and failure history. Its proposed P06 continuation is superseded by the migration direction. The earlier [P05.3 handoff](history/p05-3-handoff.md) is historical.
+## State at handover
 
-The app has fixture onboarding/profiles/media, eligibility/discovery and interactions, an API smoke runtime, contracts and static model/migration definitions. No real auth, persistence, Stream/HDE call, provider delivery, signed native build or release readiness is established. Readiness stays 503, provider sending is unavailable, database integration stays P11. The [completed dated database audit](../planning/database-audit-2026-09-23.md) is evidence, not permission to connect/mutate during this transition.
+App Manager 1 was the first Claude manager. It ran in the environment shared with HDE, which injects `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` and `PORT` (names observed; values never read).
 
-HDE and shared infrastructure remain protected by effect. Preferred future storage is clean app-owned schema/restricted roles in the same logical `railway` database, without legacy-user migration. Stream stays preferred; secret slots are future definitions, not working environment loaders. See the handoff inventory before asking for any credential.
+- **main:** `07b3b10720ddd333ada807a56595f369263714fe` (PR16). The application behavior baseline is unchanged since PR14 (`ea39454…`). P01–P05 are complete only at fixture scope. [Migration receipt](migration-publication.md).
+- **M02 (Claude setup optimization):** in progress on branch `claude/ecstatic-goodall-qajdh4`, [draft PR17](https://github.com/amthorn78/glow-dating-app/pull/17).
+  - **Brief:** [claude-setup-optimization](../planning/claude-setup-optimization.md). **Evidence:** [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md).
+  - **Done by App Manager 1 (reviewed with the PR):** repository review, the proposal, a verified baseline (all local checks pass on the pinned toolchain in a clean process environment), `scripts/bootstrap-toolchain.sh` (tested; this is the dedicated environment's Setup script), and the manual-relay procedure in `CLAUDE.md`, `AGENTS.md`, the manager workflow, PF00 1.4 and PF01 1.5 (D09).
+  - **Remaining:** implementation item M02-I1 (brief section "Implementation brief — M02-I1"; prompt in `docs/ephemeral/2026-09-24-m02-implementation-prompt.md`). Then review, CI, merge, receipt, this handoff and Notion.
+- **Dedicated app cloud environment:** Nathan is creating it with the settings in the brief's "Owner action" section. App Manager 2 is the first session in it.
 
-## Next bounded assignment
+## App Manager 2 — next actions
 
-Claude manager: review code, all applicable instructions and repository Markdown, CI and actual environment usage; propose and implement the smallest useful setup/instruction/template/documentation improvement using separate bounded implementation sessions. Keep feature work paused through that checkpoint, verify checks/reviews/merged state, preserve limits and update this handoff plus Notion pointers.
+1. **Verify the environment (names only).** None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with `node --version` v24.19.0, `npm --version` 11.9.0 and `python3.12 --version` 3.12.14. If anything differs, tell Nathan exactly which setting to fix. Never print values.
+2. **Verify the repository.** Check main, open PRs and the worktree. Run `git fetch origin claude/ecstatic-goodall-qajdh4` and review its head and PR17's CI runs. A session can push only its own working branch, so:
+   - fast-forward your branch to that head (`git merge --ff-only`) and push it;
+   - open a replacement draft PR (M02);
+   - close PR17 with a link to the replacement.
+3. **Commission M02-I1.** Put your branch's head SHA into the prompt's start gate and give Nathan the M02-I1 prompt to paste into a new implementation session in the same environment. When Nathan relays the report:
+   - verify it against the pushed branch;
+   - classify the change with trusted base policy;
+   - integrate the branch and push;
+   - check the actual CI job steps.
+4. **Review.** Write a bounded code/security review prompt for the exact final head. Nathan runs it in a separate session and relays the findings. Send corrections back through prompts; every new head needs its own checks and review.
+5. **Merge and close.** Merge after all six Foundation jobs pass and review is clean. Then:
+   - verify main;
+   - record an ordinary-documentation receipt in `docs/testing/evidence/`;
+   - update this handoff;
+   - sync Notion (Implementation Control, Work Register M02 row, D09 row);
+   - prune closed prompts.
+6. **Propose, don't dispatch.** Then propose to Nathan whether to prepare P06.1. It needs Stream access, plan and budget, a secret-injection decision, and chat-history policy.
+
+## Accepted baseline and limits
+
+The app has fixture onboarding/profiles/media, eligibility/discovery and interactions, an API smoke runtime, contracts and static model/migration definitions. Not established:
+
+- real authentication or persistence;
+- Stream or HDE calls;
+- provider delivery;
+- a signed native build;
+- release readiness.
+
+Readiness stays 503, provider sending stays unavailable, and database integration stays with P11. The [database audit](../planning/database-audit-2026-09-23.md) is dated evidence, not permission to connect. HDE and shared infrastructure remain protected by effect. Stream remains preferred; secret slots are future definitions, not loaders. Outstanding owner inputs are in the [Claude handoff](claude-code-handoff.md#prioritized-inputs-nathan-must-supply).

@@ -64,7 +64,13 @@ Protect all HDE objects including `hde` and `public.hde_body_graphs_current`; `p
 
 Notion [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) and [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) coordinate task state/blockers/evidence links. Repository Markdown contains everything needed to understand and complete an assignment. Capture a unique Notion/chat decision here before an implementer depends on it. No Drive access or update is required. Historical source copies are marked as superseded where relevant.
 
-Follow [manager workflow](../planning/manager-workflow.md): inspect baseline → persist bounded assignment → commission separate implementation session → review exact-head evidence → appropriate checks/review → checked merge → actual-main verification → repository continuity and Notion sync. Give fresh sessions their own complete prompts; preserve unrelated work and use separate worktrees for concurrent writers. The manager owns coordination and decisions rather than delegating an unbounded whole project.
+Follow the [manager workflow](../planning/manager-workflow.md). It is a **manual relay** (Nathan, 24 September 2026):
+
+- The manager gives Nathan prompts for implementers. Nathan runs each implementation or review session himself and relays its findings. The manager follows up as needed, and Nathan reinitiates managers manually.
+- The manager never starts implementation or review work itself (no subagents or remote-session tools for that work). Those sessions may use any tools, subagents or wake-ups they need.
+- The sequence: inspect baseline → persist bounded assignment → write the prompt → Nathan runs the session and relays the report → verify against the pushed branch → appropriate checks/review → checked merge → actual-main verification → repository continuity and Notion sync.
+
+Give fresh sessions complete prompts. Preserve unrelated work, and give concurrent writers separate session branches. The manager owns coordination and decisions rather than delegating an unbounded whole project.
 
 [Local setup](../operations/local-development.md) provides pinned install/run/check commands. Root and mobile `CLAUDE.md` import applicable `AGENTS.md`; the first manager should review and optimize these minimal entry points, not create a second instruction hierarchy. Official [Claude memory documentation](https://code.claude.com/docs/en/memory) describes imports; confirm the installed Claude version's behavior locally.
 

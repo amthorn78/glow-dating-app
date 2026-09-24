@@ -1,9 +1,9 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.4 · **Date:** 24 September 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.5 · **Date:** 24 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** P01–P05 completed at recorded preparation/fixture scope; new features paused for repository documentation migration and Claude Code setup. Current evidence is in the repository handoff and Notion coordination records.
-**Execution model:** the receiving Claude Code session manages separate bounded implementation sessions. App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
+**Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
 
@@ -430,7 +430,7 @@ App Builder 1 owns implementation, tests, repository documentation and accurate 
 
 ### Claude Code transition — D09
 
-On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code and paused new feature implementation. All documentation needed to plan, implement, review and hand off work must be repository Markdown. Notion remains coordination/status; Drive is historical provenance only. Persistent plans live in `docs/planning/`, disposable prompts in `docs/ephemeral/`, and the existing PF canon stays here. The receiving Claude session is the manager and commissions bounded one-off implementation sessions. Its first work is code/instruction/docs/CI/environment audit followed by a bounded setup and workflow optimization, not P06 feature work. No external prompt library is imported as governing workflow. Follow the [manager workflow](../planning/manager-workflow.md), [initiation](../planning/claude-code-initiation.md) and [migration record](../planning/claude-code-migration.md). D08’s protected boundary, ordinary app authorization and P11 sequencing remain unchanged. The earlier named-session grant is applied to this explicitly directed replacement environment, not an expansion to HDE.
+On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code and paused new feature implementation. All documentation needed to plan, implement, review and hand off work must be repository Markdown. Notion remains coordination/status; Drive is historical provenance only. Persistent plans live in `docs/planning/`, disposable prompts in `docs/ephemeral/`, and the existing PF canon stays here. The receiving Claude session is the manager and commissions bounded one-off implementation sessions. Its first work is code/instruction/docs/CI/environment audit followed by a bounded setup and workflow optimization, not P06 feature work. No external prompt library is imported as governing workflow. Follow the [manager workflow](../planning/manager-workflow.md), [initiation](../planning/claude-code-initiation.md) and [migration record](../planning/claude-code-migration.md). D08’s protected boundary, ordinary app authorization and P11 sequencing remain unchanged. The earlier named-session grant is applied to this explicitly directed replacement environment, not an expansion to HDE. The same day Nathan fixed the operating process as a **manual relay**. The manager gives Nathan prompts for implementers. Nathan starts every implementation or review session himself, relays its findings back, and reinitiates managers manually. The manager never starts implementation or review work itself through subagents or remote-session tools. Implementation and review sessions may use any tools, subagents or scheduled wake-ups they need.
 
 ### Initial decisions
 
@@ -445,7 +445,7 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
 | D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; current controlling permission record |
 
-| D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions; feature pause and setup optimization first | Owner direction, 24 September 2026 |
+| D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions run as Nathan's manual relay; feature pause and setup optimization first | Owner direction, 24 September 2026 |
 
 ### Provisional assumptions and dependencies
 
@@ -531,3 +531,5 @@ Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature
 1.3 — records Nathan’s same-Railway-project correction and newer same-logical-database/clean-app-data direction from Implementation Control; replaces separate-project/database defaults with app schema/role ownership pending A02 audit. Records the separately scoped AP1-DBA-001 read-only exception. D08 protected-resource effects and P11 runtime/migration sequencing remain unchanged.
 
 1.4 — records D09, repository-only Markdown authority and Claude manager transition; incorporates completed dated database audit without authorizing integration.
+
+1.5 — records Nathan's manual-relay operating process in D09 (24 September 2026, M02). No product scope, phase acceptance, D08 authority or HDE boundary changes.
