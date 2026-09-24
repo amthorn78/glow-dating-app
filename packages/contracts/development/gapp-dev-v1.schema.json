@@ -369,6 +369,53 @@
         }
       },
       "description": "Development discovery projection including only simulated approved media delivery references. These are local fixture labels, not actual photo delivery or provider rights."
+    },
+    "DevelopmentInteractionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "kind",
+        "aggregate_id",
+        "aggregate_version",
+        "contract_version"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "kind": {
+          "enum": [
+            "match_created",
+            "contact_revoked",
+            "block_changed"
+          ]
+        },
+        "aggregate_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "aggregate_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "contract_version": {
+          "const": "gapp-interactions-fixture-v1"
+        }
+      },
+      "description": "Minimal logical outbox event from one simulated commit. event_id is the dedup identity. No direction, actor, profile, birth, token, engine or provider data. Does not attest provider delivery, durable storage or exactly-once dispatch."
     }
   },
   "$id": "urn:glow:contracts:gapp-dev-v1"

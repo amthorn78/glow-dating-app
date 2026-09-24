@@ -356,6 +356,21 @@ export class ProfileStore {
     discoveryCaptures.set(capture, [{ cell: this.discoveryCell, revision }, guard, this.pairs.captureGuard()]);
     return capture;
   }
+  /** Private interaction reads remain limited to an active owner. */
+  captureInteractionOwner(): Readonly<{ ownerId: string; sessionId: string; profileId: string | null }> | null {
+    return activeOwner(this.authority) ? this.captureInteractionCleanupOwner() : null;
+  }
+  /** Valid nondeleted participants can remove a connection without profile/discovery access. */
+  captureInteractionCleanupOwner(): Readonly<{ ownerId: string; sessionId: string; profileId: string | null }> | null {
+    if (!this.authority.ownerId || this.authority.sessionState !== 'valid' ||
+      !['active', 'suspended', 'deletion_pending'].includes(this.authority.accountState)) return null;
+    const token = Object.freeze({ ownerId: this.authority.ownerId,
+      sessionId: `fixture-session-${this.authority.generation}`, profileId: this.snapshot.profile?.profile_id ?? null });
+    const guard = fixtureProfileGuard(this.adapter);
+    if (!guard) return null;
+    discoveryCaptures.set(token, [{ cell: this.discoveryCell, revision: this.discoveryCell.revision }, guard]);
+    return token;
+  }
   candidateContext(): CandidateViewContext | null {
     const pair = this.currentPair();
     if (!this.snapshot.profile || !pair?.version) return null;

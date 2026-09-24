@@ -45,6 +45,7 @@ function Navigation() {
     <Stack.Protected guard={canAccessRoute('/remaining', state)}><Stack.Screen name="remaining" /></Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/restricted', state)}><Stack.Screen name="restricted" /></Stack.Protected>
     <Stack.Protected guard={canAccessRoute('/recommended', state)}><Stack.Screen name="recommended" /><Stack.Screen name="explore" /></Stack.Protected>
+    <Stack.Protected guard={canAccessRoute('/matches', state)}><Stack.Screen name="matches" /><Stack.Screen name="match" /></Stack.Protected>
     <Stack.Screen name="development" />
     <Stack.Screen name="+not-found" />
     <Stack.Screen name="_sitemap" />

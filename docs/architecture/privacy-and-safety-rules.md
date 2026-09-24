@@ -37,6 +37,19 @@ Closed schemas reject extra fields; they cannot replace server object authorizat
 - Unblock/resume does not implicitly reactivate a historical match or contact
   grant. A05 owns resurfacing, rematch and existing-history choices. Unknown
   history policy returns no history permission; it does not erase safety evidence.
+- P05.3 [interaction fixtures](interactions-fixtures.md) keep another person's
+  unilateral like/pass private. Only committed mutual state has a participant
+  projection; discovery, synthetic compatibility and a pending button state
+  cannot imply a match. Immutable command receipts contain only the submitting
+  actor's minimal logical outcome, object reference and committed version.
+  Current match/profile projection is reauthorized separately on every read or
+  replay. A cached receipt cannot restore contact or disclose revoked details.
+- Participant unmatch is immediate revocation and does not require current
+  discovery eligibility, compatibility availability or resolved history/rematch
+  policy. Blocking likewise remains available while paused or after unmatch.
+  These paths do not claim deletion of prior messages, safety evidence or remote
+  bytes. P05.3's event records contain only versioned references; no event grants
+  a channel, token, history access or delivery permission.
 - An accepted upload remains quarantined until safe decoding, metadata stripping
   and moderation succeed. Only approved variants receive authorized delivery.
 - Deletion revokes app access/visibility first, records a durable job and tombstone,

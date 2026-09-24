@@ -79,3 +79,50 @@ private/unknown fields, pending-only compatibility, cursor restrictions and
 duplicate IDs through Python and generated JavaScript validators. The JavaScript
 cases also exercise the actual page parser. Existing development and production
 cases remain unchanged.
+
+## P05.3 interaction command boundary
+
+Production `InteractionIntent`, `UnmatchIntent`, `BlockIntent` and their existing
+projections retain strict lowercase UUID identities and numeric safe-integer
+versions. `fixtures/interactions-v1.json` supplies an explicit, fictional
+composition-owned registry mapping P05.2 account/profile handles to distinct app
+account/profile UUIDs. The adapter binds a current authorized queue to its own
+UUID batch and version; a client cannot provide a profile-to-account mapping.
+The shared raw command traces include private unilateral actions, both reciprocal
+orders, same-intent replay, changed action/target conflicts, unresolved pass
+reversal, participant unmatch and block/unblock without restoration. Expected
+values are test oracles and are never loaded as permission.
+
+The additive unpublished production catalog types `CommandReceipt` and
+`InteractionCommandResult` are internal command shapes, separate from the existing
+`AppResponse` union and empty production HTTP paths. Older existing response
+validators continue to reject the new discriminator. A deployed consumer must
+negotiate a future supported contract before using it; neither route activation
+nor a silent deployed contract extension occurs here.
+
+A receipt contains only original `outcome_code`, `object_ref` and
+`committed_version`. The result separately carries `replayed` and a freshly
+permitted `current_projection`, or null. Projection type must match the command
+family. Receipt values cannot be reconstructed from a mutable current row or
+changed to that row's newer state/version. Deduplication uses trusted
+**actor/operation/key**; target and every other intent-defining field belong to
+the canonical digest. Request correlation is independent. A changed target
+conflicts on the original key. Recovery of a committed intent may precede old
+batch/expected-version checks after present actor/object access checks, while a
+new key never bypasses current authorization.
+
+`DevelopmentInteractionEvent` is a closed logical outbox shape with event UUID,
+kind, aggregate UUID/version and `gapp-interactions-fixture-v1`. The event UUID is
+its delivery dedup identity. It contains no directional action, account, profile,
+birth, token or provider body. No actual external dispatch is implemented.
+The shared Python/generated-JavaScript corpus checks all new shapes, absent
+projection, private-field rejection, strict UUID/version boundaries and the
+preserved `AppResponse` negotiation boundary.
+
+The provisional `IdempotencyRecord` and its existing unapplied migration agree on
+minimal nullable receipt columns, mandatory complete receipt on `completed`,
+absent receipt on `pending`, safe positive committed versions and the unchanged
+actor/operation/key unique constraint. The outcome code now distinguishes the
+interaction-family outcomes. These are static design guarantees only; no DDL or
+database test was executed. P11 must prove durable immutable receipt/outbox
+publication, canonical-pair uniqueness, all-writer versioning and actual races.

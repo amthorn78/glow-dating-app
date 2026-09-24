@@ -1,0 +1,503 @@
+{
+  "version": "interactions-fixtures-v1",
+  "description": "Closed development identity bridge and shared interaction command traces. Identities are fictional app identities; no HD chart reference confers app identity or authority. Cases provide expected states solely to tests, never runtime authorization.",
+  "policy": {
+    "version": "development-interactions-1",
+    "allow_pass_to_like": false,
+    "allow_rematch": false,
+    "allow_history": false
+  },
+  "limits": {
+    "max_receipts": 200,
+    "max_events": 200
+  },
+  "identities": [
+    {
+      "account_id": "discovery-viewer",
+      "profile_id": "profile-viewer",
+      "account_uuid": "10000000-0000-4000-8000-000000000001",
+      "profile_uuid": "20000000-0000-4000-8000-000000000001"
+    },
+    {
+      "account_id": "discovery-iris",
+      "profile_id": "profile-iris",
+      "account_uuid": "10000000-0000-4000-8000-000000000002",
+      "profile_uuid": "20000000-0000-4000-8000-000000000002"
+    },
+    {
+      "account_id": "discovery-jules",
+      "profile_id": "profile-jules",
+      "account_uuid": "10000000-0000-4000-8000-000000000003",
+      "profile_uuid": "20000000-0000-4000-8000-000000000003"
+    },
+    {
+      "account_id": "discovery-kai",
+      "profile_id": "profile-kai",
+      "account_uuid": "10000000-0000-4000-8000-000000000004",
+      "profile_uuid": "20000000-0000-4000-8000-000000000004"
+    },
+    {
+      "account_id": "discovery-lena",
+      "profile_id": "profile-lena",
+      "account_uuid": "10000000-0000-4000-8000-000000000005",
+      "profile_uuid": "20000000-0000-4000-8000-000000000005"
+    },
+    {
+      "account_id": "discovery-morgan",
+      "profile_id": "profile-morgan",
+      "account_uuid": "10000000-0000-4000-8000-000000000006",
+      "profile_uuid": "20000000-0000-4000-8000-000000000006"
+    },
+    {
+      "account_id": "discovery-noor",
+      "profile_id": "profile-noor",
+      "account_uuid": "10000000-0000-4000-8000-000000000007",
+      "profile_uuid": "20000000-0000-4000-8000-000000000007"
+    },
+    {
+      "account_id": "discovery-paused",
+      "profile_id": "profile-paused",
+      "account_uuid": "10000000-0000-4000-8000-000000000008",
+      "profile_uuid": "20000000-0000-4000-8000-000000000008"
+    },
+    {
+      "account_id": "discovery-deleted",
+      "profile_id": "profile-deleted",
+      "account_uuid": "10000000-0000-4000-8000-000000000009",
+      "profile_uuid": "20000000-0000-4000-8000-000000000009"
+    },
+    {
+      "account_id": "discovery-restricted",
+      "profile_id": "profile-restricted",
+      "account_uuid": "10000000-0000-4000-8000-000000000010",
+      "profile_uuid": "20000000-0000-4000-8000-000000000010"
+    },
+    {
+      "account_id": "discovery-blockedout",
+      "profile_id": "profile-blockedout",
+      "account_uuid": "10000000-0000-4000-8000-000000000011",
+      "profile_uuid": "20000000-0000-4000-8000-000000000011"
+    },
+    {
+      "account_id": "discovery-blockedin",
+      "profile_id": "profile-blockedin",
+      "account_uuid": "10000000-0000-4000-8000-000000000012",
+      "profile_uuid": "20000000-0000-4000-8000-000000000012"
+    },
+    {
+      "account_id": "discovery-nonreciprocal",
+      "profile_id": "profile-nonreciprocal",
+      "account_uuid": "10000000-0000-4000-8000-000000000013",
+      "profile_uuid": "20000000-0000-4000-8000-000000000013"
+    },
+    {
+      "account_id": "discovery-unknownmedia",
+      "profile_id": "profile-unknownmedia",
+      "account_uuid": "10000000-0000-4000-8000-000000000014",
+      "profile_uuid": "20000000-0000-4000-8000-000000000014"
+    },
+    {
+      "account_id": "discovery-missing",
+      "profile_id": "profile-missing",
+      "account_uuid": "10000000-0000-4000-8000-000000000015",
+      "profile_uuid": "20000000-0000-4000-8000-000000000015"
+    }
+  ],
+  "cases": [
+    {
+      "name": "one_like_is_private",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "one_pass_is_consumed",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "pass",
+          "idempotency_key": "pass-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "passed"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "reciprocal_likes_one_match",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "like",
+          "idempotency_key": "like-2",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 2,
+        "match_count": 1,
+        "active_match_count": 1,
+        "match_created_events": 1,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "reciprocal_reversed_order",
+      "steps": [
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "like",
+          "idempotency_key": "like-2",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 2,
+        "match_count": 1,
+        "active_match_count": 1,
+        "match_created_events": 1,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "same_intent_replay",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          },
+          "replay_intent": true
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "changed_action_conflicts",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "same-key",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "pass",
+          "idempotency_key": "same-key",
+          "expected_version": 0,
+          "expected": {
+            "error": "idempotency_conflict"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "changed_target_conflicts",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "same-key",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-morgan",
+          "action": "like",
+          "idempotency_key": "same-key",
+          "expected_version": 0,
+          "expected": {
+            "error": "idempotency_conflict"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "pass_to_like_policy_unresolved",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "pass",
+          "idempotency_key": "pass-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "passed"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 1,
+          "expected": {
+            "error": "policy_unresolved"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 1,
+        "match_count": 0,
+        "active_match_count": 0,
+        "match_created_events": 0,
+        "contact_revoked_events": 0,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "either_participant_unmatch",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "like",
+          "idempotency_key": "like-2",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "unmatch",
+          "idempotency_key": "unmatch-1",
+          "expected_version": 1,
+          "expected": {
+            "outcome_code": "unmatched"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 2,
+        "match_count": 1,
+        "active_match_count": 0,
+        "match_created_events": 1,
+        "contact_revoked_events": 1,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "unmatch_repeat_safe",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "like",
+          "idempotency_key": "like-2",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "unmatch",
+          "idempotency_key": "unmatch-1",
+          "expected_version": 1,
+          "expected": {
+            "outcome_code": "unmatched"
+          }
+        },
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "unmatch",
+          "idempotency_key": "unmatch-1",
+          "expected_version": 1,
+          "expected": {
+            "outcome_code": "unmatched"
+          },
+          "replay_intent": true
+        }
+      ],
+      "expected": {
+        "directional_count": 2,
+        "match_count": 1,
+        "active_match_count": 0,
+        "match_created_events": 1,
+        "contact_revoked_events": 1,
+        "block_changed_events": 0
+      }
+    },
+    {
+      "name": "block_unblock_does_not_restore",
+      "steps": [
+        {
+          "actor": "discovery-viewer",
+          "target_profile_id": "profile-jules",
+          "action": "like",
+          "idempotency_key": "like-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "like",
+          "idempotency_key": "like-2",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "liked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "block",
+          "idempotency_key": "block-1",
+          "expected_version": 0,
+          "expected": {
+            "outcome_code": "blocked"
+          }
+        },
+        {
+          "actor": "discovery-jules",
+          "target_profile_id": "profile-viewer",
+          "action": "unblock",
+          "idempotency_key": "unblock-1",
+          "expected_version": 1,
+          "expected": {
+            "outcome_code": "unblocked"
+          }
+        }
+      ],
+      "expected": {
+        "directional_count": 2,
+        "match_count": 1,
+        "active_match_count": 0,
+        "match_created_events": 1,
+        "contact_revoked_events": 1,
+        "block_changed_events": 2
+      }
+    }
+  ]
+}

@@ -5,6 +5,20 @@ import { discoveryViewerIsCurrent, discoveryViewerToken, type DiscoveryViewerTok
 import { parseDevelopmentDiscoveryPage } from '../contracts/discovery.ts';
 import type { DevelopmentDiscoveryPage, DevelopmentDiscoveryProfile } from '../contracts/generated/gapp-dev-v1.ts';
 
+export type InteractionPairCapture = Readonly<{ viewerId: string; sessionId: string; targetAccountId: string;
+  profileHandle: string; candidateAge: number; viewerFacts: ParticipantFacts; targetFacts: ParticipantFacts }>;
+const accountGuards = new WeakMap<object, { cell: { revision: number }; revision: number }>();
+export function interactionAccountIsCurrent(token: object) { const guard = accountGuards.get(token); return !!guard && guard.cell.revision === guard.revision; }
+const interactionGuards = new WeakMap<object, { viewer: object; cell: { revision: number }; revision: number;
+  candidate: Guard; identity: Guard; publication: readonly Guard[];
+  time: { revision: number }; timeRevision: number; expires: number | null }>();
+/** Final comparison invokes no caller-supplied callback or source accessor. */
+export function interactionPairIsCurrent(capture: object): boolean {
+  const guard = interactionGuards.get(capture);
+  return guard !== undefined && guard.cell.revision === guard.revision && currentGuard(guard.candidate) && currentGuard(guard.identity) &&
+    guard.publication.every(currentGuard) && guard.time.revision === guard.timeRevision &&
+    discoveryViewerIsCurrent(guard.viewer) && (guard.expires === null || nativeNow() < guard.expires);
+}
 export type DiscoveryMode = 'recommended' | 'broader';
 export type DiscoveryScenario = 'normal' | 'empty' | 'pending' | 'unavailable' | 'error' | 'offline';
 type Mapping = Readonly<{ account_id: string; state: string; engine_reference: string | null; birth_input_version: string; mapping_version: string }>;
@@ -34,7 +48,7 @@ export class FixtureDiscoveryTime {
   }
 }
 const timeValue = (source: FixtureDiscoveryTime) => timeCells.get(source)!.value ?? nativeNow();
-type Queue = { id: string; mode: DiscoveryMode; viewer: DiscoveryViewerToken; revision: number; sharedRevision: number; timeRevision: number; guards: Map<string, Guard>; created: number;
+type Queue = { cell: Cell; id: string; mode: DiscoveryMode; viewer: DiscoveryViewerToken; revision: number; sharedRevision: number; timeRevision: number; guards: Map<string, Guard>; created: number;
   members: readonly string[]; cursors: Map<string, number>; pages: Map<number, DevelopmentDiscoveryPage> };
 export type FixtureProviderRequest = Readonly<{ viewer_id: string; candidate_id: string; viewer_mapping_version: string; candidate_mapping_version: string;
   viewer_birth_input_version: string; candidate_birth_input_version: string; viewer_engine_reference: string; candidate_engine_reference: string;
@@ -57,6 +71,10 @@ export class FixtureDiscoveryAdapter {
   private viewerLinkIdentity: string | null = null;
   private queues = new Map<DiscoveryMode, Queue>();
   private revision = 0;
+  private readonly publicationCell = { revision: 0 };
+  private readonly profileCells = new Map<string, Cell>();
+  private readonly interactionCell = { revision: 0 };
+  private consumed: (viewerId: string, profileId: string) => boolean = () => false;
   private sharedRevision = 0;
   private readonly recordCells = new Map<string, Cell>();
   private observedDay: string | null = null;
@@ -64,7 +82,7 @@ export class FixtureDiscoveryAdapter {
   private policy: PairPolicy | null = FIXTURE_PAIR_POLICY;
   private scenario: DiscoveryScenario = 'normal';
   private listeners = new Set<() => void>();
-  private publications = new WeakMap<DevelopmentDiscoveryPage, { queue: Queue; guards: readonly Guard[]; revision: number }>();
+  private publications = new WeakMap<DevelopmentDiscoveryPage, { queue: Queue; guards: readonly Guard[]; revision: number; queueRevision: number }>();
   readonly calls = { scans: 0, mappings: 0, provider: 0 };
   constructor(profiles: ProfileStore, options: Options) {
     if (!options.isDevelopment || options.mode !== 'fixture') throw new Error('Discovery requires the development fixture runtime.');
@@ -72,37 +90,57 @@ export class FixtureDiscoveryAdapter {
     if (!timeCells.has(this.timeSource)) throw new TypeError('Unregistered fixture clock.');
     this.pause = options.pause ?? (() => Promise.resolve()); this.afterCandidate = options.afterCandidate ?? (() => {});
     this.afterMapping = options.afterMapping ?? (() => {}); this.provider = options.provider;
-    for (const record of population.candidates) { this.records.set(record.account_id, freeze(clone(record)) as DiscoveryRecord); this.recordCells.set(record.account_id, { revision: 0 }); }
+    for (const record of population.candidates) { this.records.set(record.account_id, freeze(clone(record)) as DiscoveryRecord); this.recordCells.set(record.account_id, { revision: 0 });
+      if (record.facts?.profile_id && !this.profileCells.has(record.facts.profile_id)) this.profileCells.set(record.facts.profile_id, { revision: 0 }); }
     let ownerKey = profiles.getSnapshot().ownerKey;
     profiles.subscribe(() => {
       const state = profiles.getSnapshot();
       if (state.ownerKey !== ownerKey || !state.canDiscover) {
-        ownerKey = state.ownerKey; this.queues.clear(); this.publications = new WeakMap();
+        ownerKey = state.ownerKey; this.retireQueues(); this.publications = new WeakMap();
         this.viewerLink = null; this.viewerLinkIdentity = null; this.changed();
       }
     });
   }
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  private changed(accountId?: string) { this.revision += 1;
+  private changed(accountId?: string) { this.revision += 1; this.publicationCell.revision += 1;
     if (accountId) { const cell = this.recordCells.get(accountId) ?? { revision: 0 }; cell.revision += 1; this.recordCells.set(accountId, cell); }
-    else this.sharedRevision += 1;
+    else { this.sharedRevision += 1; this.interactionCell.revision += 1; }
     for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); }
     this.listeners.forEach(listener => listener()); }
+  /** Presentation/filter changes retire discovery work without revoking durable pair authority. */
+  private queuesChanged() { this.revision += 1; this.publicationCell.revision += 1; this.sharedRevision += 1;
+    for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); }
+    this.listeners.forEach(listener => listener()); }
+  private retireQueues() { for (const queue of this.queues.values()) queue.cell.revision += 1; this.queues.clear(); }
   /** Synthetic source writers advance even on replacement/restoration with identical values. */
   replace(record: DiscoveryRecord): void {
     if (!this.records.has(record.account_id) && this.records.size >= DISCOVERY_LIMITS.maxCandidates) throw new RangeError('Fixture population is full.');
-    this.records.set(record.account_id, freeze(clone(record))); this.changed(record.account_id); }
+    const previousProfile = this.records.get(record.account_id)?.facts?.profile_id ?? null;
+    const next = freeze(clone(record)), nextProfile = next.facts?.profile_id ?? null;
+    this.records.set(record.account_id, next);
+    // Ownership changes retire only the old/new profile identities. Removed cells stay invalid
+    // through retained captures; the live map contains at most the bounded population's profiles.
+    if (previousProfile !== nextProfile) {
+      if (previousProfile) {
+        const previous = this.profileCells.get(previousProfile); if (previous) previous.revision += 1;
+        if (![...this.records.values()].some(row => row.facts?.profile_id === previousProfile)) this.profileCells.delete(previousProfile);
+      }
+      if (nextProfile) { const cell = this.profileCells.get(nextProfile) ?? { revision: 0 }; cell.revision += 1; this.profileCells.set(nextProfile, cell); }
+    }
+    this.changed(record.account_id); }
   inspect(accountId: string): DiscoveryRecord | undefined { return this.records.get(accountId); }
   replaceViewerMapping(mapping: Mapping | null) { this.viewerLink = freeze(clone(mapping)); this.changed(); }
   inspectViewerMapping(): Mapping | null { return this.viewerLink; }
   setPolicy(policy: PairPolicy | null) { this.policy = freeze(clone(policy)); this.changed(); }
-  setScenario(value: DiscoveryScenario) { this.scenario = value; this.changed(); }
-  invalidate() { this.changed(); }
-  clear() { this.queues.clear(); this.changed(); }
+  setScenario(value: DiscoveryScenario) { this.scenario = value; this.queuesChanged(); }
+  invalidate() { this.queuesChanged(); }
+  interactionsChanged() { this.queuesChanged(); }
+  interactionPolicyChanged() { this.changed(); }
+  clear() { this.retireQueues(); this.queuesChanged(); }
   private time() {
     const timestamp = this.clock().getTime(), now = timeValue(this.timeSource);
     const day = Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : 'invalid';
-    if (day !== this.observedDay || !Number.isFinite(now) || now < this.lastNow) { this.revision += 1; this.sharedRevision += 1; this.observedDay = day; }
+    if (day !== this.observedDay || !Number.isFinite(now) || now < this.lastNow) { this.revision += 1; this.publicationCell.revision += 1; this.interactionCell.revision += 1; this.sharedRevision += 1; this.observedDay = day; }
     this.lastNow = now;
     return { timestamp, now };
   }
@@ -131,12 +169,59 @@ export class FixtureDiscoveryAdapter {
     return fresh !== null && fresh.facts.account_id === queue.viewer.viewerId && fresh.sessionId === queue.viewer.sessionId && this.authorityCurrent(queue, time.now) && guards.every(currentGuard) &&
       revision === this.revision;
   }
+  /** Retained source guard for target existence; safety commands do not require target eligibility. */
+  captureAccountRecord(accountId: string): object | null {
+    const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
+    if (!cell || row?.facts?.account_id !== accountId) return null;
+    const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
+  }
+  captureAccountSession(accountId: string, cleanup = false): object | null {
+    const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
+    if (!cell || row?.facts?.account_id !== accountId || row.facts.session_state !== 'valid' ||
+      !(cleanup ? ['active', 'suspended', 'deletion_pending'] : ['active']).includes(row.facts.account_state ?? '')) return null;
+    const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
+  }
+  bindConsumption(source: (viewerId: string, profileId: string) => boolean) { this.consumed = source; this.queuesChanged(); }
+  /** App-owned mapping acquisition and eligibility, without chart/provider evaluation. */
+  captureInteractionPair(profileHandle: string): InteractionPairCapture | null {
+    const current = this.time();
+    const revision = this.interactionCell.revision, timeRevision = timeCells.get(this.timeSource)!.revision;
+    const viewer = this.profiles.captureDiscoveryViewer();
+    if (!viewer || !viewer.policy || !this.policy) return null;
+    const rows = [...this.records.values()].filter(row => row.facts?.profile_id === profileHandle);
+    if (rows.length !== 1 || !rows[0]!.facts) return null;
+    const row = rows[0]!, candidateCell = this.recordCells.get(row.account_id), identityCell = this.profileCells.get(profileHandle);
+    if (!candidateCell || !identityCell) return null;
+    const candidate = { cell: candidateCell, revision: candidateCell.revision }, identity = { cell: identityCell, revision: identityCell.revision };
+    const repository = new FixturePairRepository(() => new Date(current.timestamp));
+    repository.setPolicy(this.policy); repository.put(viewer.facts); repository.put(row.facts!);
+    repository.observeBlock(viewer.facts.account_id, row.account_id, row.blocks.viewer);
+    repository.observeBlock(row.account_id, viewer.facts.account_id, row.blocks.candidate);
+    const decision = repository.evaluate(viewer.facts.account_id, row.account_id);
+    if (decision.state !== 'ready' || decision.candidateAge == null || !currentGuard(candidate) || !currentGuard(identity) ||
+      revision !== this.interactionCell.revision || timeRevision !== timeCells.get(this.timeSource)!.revision || !discoveryViewerIsCurrent(viewer)) return null;
+    const capture = freeze({ viewerId: viewer.facts.account_id, sessionId: viewer.sessionId, targetAccountId: row.account_id,
+      profileHandle, candidateAge: decision.candidateAge, viewerFacts: viewer.facts, targetFacts: row.facts! });
+    interactionGuards.set(capture, { viewer, cell: this.interactionCell, revision, candidate, identity, publication: [], time: timeCells.get(this.timeSource)!, timeRevision, expires: null });
+    return capture;
+  }
+  authorizeInteraction(page: DevelopmentDiscoveryPage, profileHandle: string): InteractionPairCapture | null {
+    if (!this.isCurrent(page) || !page.items.some(item => item.profile_id === profileHandle)) return null;
+    const capture = this.captureInteractionPair(profileHandle), publication = this.publications.get(page);
+    if (!capture || !publication || page.viewer_id !== capture.viewerId || page.session_id !== capture.sessionId) return null;
+    const guard = interactionGuards.get(capture)!;
+    guard.publication = [{ cell: this.publicationCell, revision: publication.revision }, { cell: publication.queue.cell, revision: publication.queueRevision }];
+    // Native clock captures wall-clock expiry; controlled test clocks bind their retained revision.
+    const source = timeCells.get(this.timeSource)!;
+    if (source.value === null) guard.expires = publication.queue.created + DISCOVERY_LIMITS.lifetimeMs;
+    return capture;
+  }
   private response(mode: DiscoveryMode, requestId: string, viewer: DiscoveryViewerCapture | null,
     state: DevelopmentDiscoveryPage['state'], queue: Queue | null = null, items: DevelopmentDiscoveryProfile[] = [], cursor: string | null = null): DevelopmentDiscoveryPage {
     const result = freeze(parseDevelopmentDiscoveryPage({ mode: 'fixture', contract_version: 'gapp-dev-v1', kind: 'discovery_page',
       viewer_id: viewer?.facts.account_id ?? 'unavailable-viewer', session_id: viewer?.sessionId ?? 'unavailable-session',
       discovery_mode: mode, queue_id: queue?.id ?? null, request_id: requestId, state, items, next_cursor: cursor }));
-    if (queue) this.publications.set(result, { queue, revision: this.revision, guards: items.map(item => queue.guards.get(queue.members.find(id => this.records.get(id)?.facts?.profile_id === item.profile_id)!)!).filter(Boolean) });
+    if (queue) this.publications.set(result, { queue, revision: this.revision, queueRevision: queue.cell.revision, guards: items.map(item => queue.guards.get(queue.members.find(id => this.records.get(id)?.facts?.profile_id === item.profile_id)!)!).filter(Boolean) });
     return result;
   }
   async request(mode: DiscoveryMode, requestId: string, cursor: string | null, refresh = false): Promise<DevelopmentDiscoveryPage> {
@@ -152,7 +237,7 @@ export class FixtureDiscoveryAdapter {
     if (linkIdentity !== this.viewerLinkIdentity) {
       this.viewerLinkIdentity = linkIdentity;
       this.viewerLink = freeze({ ...population.viewer.mapping, account_id: viewer.facts.account_id });
-      this.revision += 1; this.sharedRevision += 1;
+      this.revision += 1; this.publicationCell.revision += 1; this.sharedRevision += 1;
     }
     const revision = this.revision;
     if (this.scenario === 'error' || this.scenario === 'offline') {
@@ -172,12 +257,13 @@ export class FixtureDiscoveryAdapter {
         if (record.facts) repository.put(record.facts);
         repository.observeBlock(viewer.facts.account_id, record.account_id, record.blocks.viewer);
         repository.observeBlock(record.account_id, viewer.facts.account_id, record.blocks.candidate);
-        if (repository.evaluate(viewer.facts.account_id, record.account_id).state === 'ready') eligible.push(record);
+        if (repository.evaluate(viewer.facts.account_id, record.account_id).state === 'ready' && !this.consumed(viewer.facts.account_id, record.facts!.profile_id!)) eligible.push(record);
       }
       eligible.sort((a, b) => (mode === 'recommended' ? a.recommendation_priority - b.recommendation_priority : 0) ||
         (a.facts!.profile_id! < b.facts!.profile_id! ? -1 : a.facts!.profile_id! > b.facts!.profile_id! ? 1 : 0));
       if (revision !== this.revision || !discoveryViewerIsCurrent(viewer)) return this.response(mode, requestId, viewer, 'reload_required');
-      queue = { id: handle('queue'), mode, viewer: discoveryViewerToken(viewer), revision, sharedRevision: this.sharedRevision, timeRevision: timeCells.get(this.timeSource)!.revision,
+      if (queue) queue.cell.revision += 1;
+      queue = { cell: { revision: 0 }, id: handle('queue'), mode, viewer: discoveryViewerToken(viewer), revision, sharedRevision: this.sharedRevision, timeRevision: timeCells.get(this.timeSource)!.revision,
         guards: new Map(eligible.map(row => { const cell = this.recordCells.get(row.account_id)!; return [row.account_id, { cell, revision: cell.revision }]; })), created: opening.now,
         members: this.scenario === 'empty' ? [] : eligible.map(record => record.account_id), cursors: new Map(), pages: new Map() };
       this.queues.set(mode, queue);

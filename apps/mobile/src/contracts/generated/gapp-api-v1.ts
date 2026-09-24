@@ -694,3 +694,20 @@ export interface AppResponse1 {
     | MediaUploadGrant
     | MediaCollection;
 }
+/**
+ * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CommandReceipt".
+ */
+export interface CommandReceipt {
+  outcome_code: 'liked' | 'passed' | 'unmatched' | 'blocked' | 'unblocked';
+  object_ref: string;
+  committed_version: number;
+}
+export interface InteractionCommandResult {
+  kind: 'interaction_command_result';
+  receipt: CommandReceipt;
+  replayed: boolean;
+  current_projection: InteractionOutcome | MatchProjection | BlockOutcome | null;
+}

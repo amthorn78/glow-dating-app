@@ -184,6 +184,12 @@
       },
       "MediaCollection": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/MediaCollection"
+      },
+      "CommandReceipt": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CommandReceipt"
+      },
+      "InteractionCommandResult": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionCommandResult"
       }
     }
   },

@@ -114,8 +114,36 @@ replace these live proofs.
 | PV01 / PV02 / PV04 | Verify eligibility-before-mapping/provider and allowed output/cache/media rights against the supported live contracts. Apply the same disclosure rules to both modes; no real HD ordering/score, unauthorized fallback, quarantined media or cached obsolete delivery is inferred from synthetic results. |
 | N01 | Exercise finite browsing, mode preservation, refresh, offline/late responses and account changes on signed iOS/Android builds; verify touch/focus, large text, VoiceOver/TalkBack, device keyboard and memory behavior. Browser rendering and JavaScript exports do not establish this. |
 
-P05.3 separately owns pass/like intent, mutual matching, unmatch and interaction
-idempotency/outbox semantics; browsing and refresh create none of them. A05 still
+P05.3's [interaction composition](../architecture/interactions-fixtures.md) owns
+pass/like intent, mutual matching, unmatch and interaction idempotency/outbox
+semantics; browsing and refresh create none of them. A05 still
 owns real taxonomy/geography/age ranges and resurfacing/rematch rules. A01/A07
 own supported compatibility output, rights and measured HDE throughput. R01/PR01
 remain open and no deployment or production activation is introduced.
+
+## P05.3 interaction carryforward
+
+The synchronous in-memory commit, shared command cases and client journeys do
+not execute any live case above. Preserve DB01–DB13, PV01–PV08, PR01, N01 and
+R01 as separately evidenced obligations. Use independent database connections
+and explicit barriers around reads, locks, commit and worker acknowledgments;
+sequential fixture calls cannot stand in for those races.
+
+| Existing case | Specific remaining interaction proof |
+|---|---|
+| DB04 / DB05 | Prove ordered directional uniqueness and one canonical UUID pair under simultaneous reciprocal likes, reversed arrival order and fresh-key repeats. Race insertion of the previously absent pair row; the selected lock/unique-conflict strategy must yield one match identity and one logical `match_created` event. No second pair row or automatic rematch follows unmatch/restriction. |
+| DB04 / DB05 / DB07 | Race identical actor/operation/key commands on separate connections, then reuse that identity with changed action, target, expected version or batch/evidence. Exactly one valid logical commit wins; changed digest conflicts without a second action. State, immutable outcome/reference/committed-version receipt and required outbox event commit together. A pending row cannot permit concurrent re-execution. |
+| DB05 / DB09 / DB11 | Lose the response after a committed action invalidates/consumes its batch. An identical retry by a currently authorized actor recovers the original immutable receipt without re-execution; a new key with the stale batch fails. Current projection must reflect later authorized state or generic unavailability, never the receipt's old active match. Prove session revocation/account deletion denies access and that dedup expiry/cleanup does not make blind replay safe. |
+| DB06 / DB10 | Lock/recheck both accounts, policy, mapping and pair state with every relevant writer participating. Race the final like against first block insertion, block removal/reinsertion, same-value restoration, consent withdrawal, pause, suspension, deletion, policy/time expiry and mapping changes. No obsolete match/contact grant commits. Protect absent-block observations using persistent directional/account revisions, not only locks on existing block rows. |
+| DB06 / PV03 | Race participant unmatch/block against match reads, channel provisioning and new send authorization. Revocation commits without requiring discovery eligibility or history policy; no new send authorization begins after that boundary. Repeated unmatch is safe; unblock/resume and late provisioning acknowledgment cannot reactivate contact. Separately record the actual provider policy for an already authorized in-flight send. |
+| DB07 / DB08 | Crash before the domain transaction commits, after commit but before dispatch, during worker lease, after provider acceptance but before acknowledgment, and after acknowledgment but before local completion. Rollback leaves no action/match/receipt/event; a committed event survives restart. Redelivery is deduplicated by logical identity, and stale aggregate/contact versions cannot overwrite revocation. An outbox insertion alone proves no external exactly-once delivery. |
+| DB10 / DB11 / DB12 | Persist action-driven consumption in the same authoritative boundary as interaction state and required invalidation. Across connections, both modes, refresh, another device and restart, a consumed direction or historical match cannot appear as an untouched candidate. Measure bounded queries, locks, queue invalidation and storage/retry limits under contention; capacity must refuse safely without evicting receipts into replayability. |
+| DB08 / DB13 | Restore a disposable backup with retained receipts, outbox work and revocations, then replay tombstones and delayed events before traffic. Deleted or unmatched identities must not regain discovery/contact, duplicate matches or new logical creation events. Observe actual reconciliation and cleanup under the approved retention policy. |
+| N01 | On signed iOS/Android builds verify Like/Pass, participant match list/detail/unmatch, pending/error focus, large text and VoiceOver/TalkBack. Exercise double activation, response loss, offline retry, navigation cancellation and account/session switching. The same intent keeps its idempotency key; late responses cannot announce a false match or restore revoked cards. |
+
+P06.1 must establish provider permission/economics proof with A04/A08; fixture
+match/contact state does not establish a Stream account, channel, token, history
+right, Maker entitlement or paid activation. P11 must map these boundaries into
+the reviewed app schema/restricted roles in the shared logical database without
+altering HDE or legacy objects. A05 still owns resurfacing/rematch/history and
+retention choices; no test case selects them for launch.

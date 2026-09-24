@@ -36,6 +36,20 @@ require HDE to reproduce the scaffold.
 
 Application PostgreSQL is the planned dating-domain system of record. Current development has no domain persistence. Changes that must agree atomically belong in one future application transaction, with provider side effects dispatched after commit through an outbox. There is no proposed cross-provider two-phase transaction. HDE production access, application database connection and database-dependent proof remain P11 work.
 
+P05.3's [interaction fixture composition](interactions-fixtures.md) joins trusted
+discovery membership to directional actions, one canonical match, immutable
+receipts, a simulated atomic outbox and participant revocation. The mobile
+implementation is a nonpersistent presentation substitute checked against shared
+contracts/cases; Python remains the domain implementation. Neither installs a
+production mutation route or supplies provider contact. P06 consumes the current
+match/contact revision and must prove actual provider enforcement independently.
+
+The audited P11 direction is clean application-owned schema/roles in HDE's same
+logical database `railway`. Isolation means bounded app ownership and privileges,
+not a new logical database requirement. Existing HDE/legacy relations, grants
+and shared-resource effects remain protected; this fixture task connects no
+database and applies no migration.
+
 | Boundary | Authoritative decision/data owner | Client or adapter projection | Required enforcement, not yet implemented |
 |---|---|---|---|
 | Native client → app API | App domain services | Minimum user-facing state and allowed actions | Object ownership, identity, eligibility, stale-state checks, input bounds and rate limits |
