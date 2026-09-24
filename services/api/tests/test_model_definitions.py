@@ -130,6 +130,28 @@ assert rejected(m.RecommendationEntry._meta.get_field('position'), 100)
 assert rejected(m.Entitlement._meta.get_field('state'), 'active')
 """)
 
+    def test_receipt_is_minimal_complete_and_target_is_not_a_dedup_scope(self):
+        self.check_script("""
+fields = {field.name: field for field in m.IdempotencyRecord._meta.fields}
+assert not any(isinstance(field, models.JSONField) for field in fields.values())
+assert isinstance(fields['result_ref'], models.UUIDField)
+assert isinstance(fields['result_version'], models.PositiveBigIntegerField)
+codes = {value for value, _ in fields['outcome_code'].choices}
+assert {'liked', 'passed', 'unmatched', 'blocked', 'unblocked'} <= codes
+dedup = next(c for c in m.IdempotencyRecord._meta.constraints if c.name == 'intent_dedup')
+assert dedup.fields == ('actor_id', 'operation', 'key')
+receipt = next(c for c in m.IdempotencyRecord._meta.constraints if c.name == 'intent_result')
+assert receipt.condition.connector == 'OR'
+completed, pending = (dict(branch.children) for branch in receipt.condition.children)
+assert completed['state'] == 'completed' and pending['state'] == 'pending'
+for field in ('result_ref', 'result_version', 'outcome_code'):
+    assert completed[field + '__isnull'] is False
+    assert pending[field + '__isnull'] is True
+assert completed['result_version__gte'] == 1
+assert completed['result_version__lte'] == 9007199254740991
+assert set(completed['outcome_code__in']) == codes
+""")
+
     def test_model_registry_does_not_leak_into_fixture_runtime(self):
         result = subprocess.run(
             [

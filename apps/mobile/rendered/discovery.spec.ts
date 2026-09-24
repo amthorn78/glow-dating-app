@@ -102,7 +102,12 @@ test('explicit refresh starts a new finite queue without recording a like or pas
   await expect.poll(() => identities(page)).toEqual(expectedPages.recommended[0]);
   await expect(active(page, 'discovery-next')).toBeEnabled();
   await expect(active(page, 'screen-recommended')).toContainText(/browsing|navigation/i);
-  await expect(page.getByRole('button', { name: /^(like|pass|send message)$/i })).toHaveCount(0);
+  // P05.3 adds explicit actions. Navigating/refreshing still does not consume
+  // either card or claim a committed action or match.
+  await expect(active(page, 'like-profile-jules')).toBeEnabled();
+  await expect(active(page, 'pass-profile-jules')).toBeEnabled();
+  await expect(active(page, 'interaction-feedback')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^send message$/i })).toHaveCount(0);
 });
 
 test('loading announces progress, hides the previous page and prevents a double advance', async ({ page }) => {

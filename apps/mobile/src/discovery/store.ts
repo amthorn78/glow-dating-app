@@ -58,6 +58,7 @@ export class DiscoveryStore {
     }
     return this.states[mode];
   };
+  currentMode() { return this.mode; }
   enter(mode: DiscoveryMode) {
     if (this.mode !== mode) { this.generation += 1; this.mode = mode; }
     // Cancelled loading screens can start their same finite first page again when revisited.

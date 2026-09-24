@@ -4,6 +4,7 @@ import { Button, styles } from '../components/ui';
 import { useOnboarding, useProfiles } from '../onboarding/context';
 import { discoveryFor } from '../discovery/context';
 import { OnboardingScreen } from '../onboarding/shell';
+import { InteractionScenarios } from '../interactions/controls';
 
 export default function DevelopmentScreen() {
   const { state, store } = useOnboarding();
@@ -26,6 +27,7 @@ export default function DevelopmentScreen() {
       {(['block_viewer', 'block_candidate', 'clear_blocks', 'viewer_preferences', 'restore_viewer_preferences', 'viewer_pause', 'viewer_resume', 'candidate_attribute'] as const).map(change => <Button key={change}
         label={`Change synthetic pair: ${change.replaceAll('_', ' ')}`} testID={`dev-pair-${change}`} secondary onPress={() => profiles.developmentPairChange(change)} />)}
       <Button label="Return to your profile" testID="dev-profile-return" secondary onPress={() => router.push('/profile')} />
+      <InteractionScenarios />
     </View>}
     {state.stage === 'eligible' && <View style={styles.notice}>
       <Text style={styles.eyebrow}>DISCOVERY TEST SCENARIOS</Text>

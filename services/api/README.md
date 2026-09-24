@@ -23,6 +23,38 @@ This module has no HTTP route: the anonymous GET below remains layout/smoke data
 not authenticated discovery. See [discovery semantics](../../docs/architecture/discovery-fixtures.md)
 and [P05.2 evidence](../../docs/testing/p05-2-checkpoint.md).
 
+P05.3 adds internal fixture commands in `glow_domain/interactions.py` and an
+explicit two-session composition in `interaction_fixtures.py`. Both directions
+must submit legitimate, current-batch likes before the system creates one
+canonical account-UUID match. `page()` returns the unchanged discovery page plus
+a composition-owned UUID batch binding; production profile UUIDs come from the
+shared `interactions-v1.json` registry, never a client account assertion.
+
+`FixtureInteractionService.command()` accepts closed production interaction,
+unmatch and block intents. It derives the actor from its trusted fixture session,
+stages directional/match/block state, SHA-256 payload-bound receipt and minimal
+logical events, and replaces one owned state only after callback-free revision
+checks. A lost response can recover its immutable receipt after batch consumption;
+current projections are separately authorized. Both discovery modes exclude
+consumed directions, either block and every existing match pair. Source/mapping
+replacement or same-value restoration permanently restricts an active match on
+the next authority read; unmatch works without discovery or provider eligibility.
+`contact_decision()` always denies send, and `FixtureInteractionWorker` observes
+controlled events without delivery. No authenticated HTTP mutation, SQL,
+provider channel, chat token or live contact is enabled.
+
+The substitute retains at most 200 receipts plus pending reservations together,
+200 discretionary events, and up to 190 separately reserved source-revocation
+events for its twenty-identity cap. Capacity refuses without evicting replay
+evidence. Reset is explicit and nondurable. Tests exercise two sessions, shared
+raw command traces, immutable replay, atomic abort/reentrant ordering, current
+eligibility, canonical uniqueness, block/unmatch, source restoration, late
+projection callbacks, capacity and stale fake-worker completion. These do not
+prove database isolation, crash recovery or external exactly-once delivery.
+See [interaction semantics](../../docs/architecture/interactions-fixtures.md),
+[P05.3 evidence](../../docs/testing/p05-3-checkpoint.md) and the
+[P11 obligations](../../docs/testing/p11-deferred-acceptance.md).
+
 ## Reproduce locally
 
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:

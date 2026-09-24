@@ -18,7 +18,7 @@ export function Page({ children, testID }: PropsWithChildren<{ testID?: string }
   </KeyboardAvoidingView></SafeAreaView>;
 }
 
-function focusText(node: Text | null) {
+export function focusText(node: Text | null) {
   if (!node) return;
   if (Platform.OS === 'web') {
     // React Native Web exposes its host element through the ref. Keep DOM-only
@@ -85,7 +85,7 @@ export function Button({ label, onPress, secondary = false, disabled = false, hi
 export function PreviewNotice() {
   return <View style={styles.notice}>
     <Text style={styles.eyebrow}>DEVELOPMENT PREVIEW</Text>
-    <Text style={styles.noticeText}>Fictional people. No live compatibility, likes, matches, or messaging.</Text>
+    <Text style={styles.noticeText}>Fictional people and interactions. No live compatibility or messaging.</Text>
   </View>;
 }
 

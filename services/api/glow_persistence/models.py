@@ -780,11 +780,16 @@ class IdempotencyRecord(Record):
     actor_id = models.UUIDField()
     operation = models.CharField(max_length=100)
     key = models.CharField(max_length=128)
+    # Canonical intent digest includes target; actor/operation/key alone is unique.
     request_digest = models.CharField(max_length=64)
+    # Immutable commit receipt, never a cached private/current projection.
     result_ref = models.UUIDField(null=True, blank=True)
     result_version = models.PositiveBigIntegerField(null=True, blank=True)
     outcome_code = models.CharField(
-        max_length=16, null=True, blank=True, choices=choices("committed")
+        max_length=16,
+        null=True,
+        blank=True,
+        choices=choices("committed", "liked", "passed", "unmatched", "blocked", "unblocked"),
     )
     state = models.CharField(
         max_length=16, choices=choices("pending", "completed"), default="pending"
@@ -801,7 +806,15 @@ class IdempotencyRecord(Record):
                     result_ref__isnull=False,
                     result_version__gte=1,
                     result_version__isnull=False,
-                    outcome_code="committed",
+                    result_version__lte=9007199254740991,
+                    outcome_code__in=(
+                        "committed",
+                        "liked",
+                        "passed",
+                        "unmatched",
+                        "blocked",
+                        "unblocked",
+                    ),
                     outcome_code__isnull=False,
                 )
                 | Q(

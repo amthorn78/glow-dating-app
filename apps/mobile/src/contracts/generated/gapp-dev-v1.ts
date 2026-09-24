@@ -98,3 +98,16 @@ export interface DevelopmentDiscoveryProfile {
    */
   media_delivery_refs: [string, ...string[]];
 }
+/**
+ * Minimal logical outbox event from one simulated commit. event_id is the dedup identity. No direction, actor, profile, birth, token, engine or provider data. Does not attest provider delivery, durable storage or exactly-once dispatch.
+ *
+ * This interface was referenced by `GlowDevelopmentContractGappDevV1`'s JSON-Schema
+ * via the `definition` "DevelopmentInteractionEvent".
+ */
+export interface DevelopmentInteractionEvent {
+  event_id: string;
+  kind: 'match_created' | 'contact_revoked' | 'block_changed';
+  aggregate_id: string;
+  aggregate_version: number;
+  contract_version: 'gapp-interactions-fixture-v1';
+}

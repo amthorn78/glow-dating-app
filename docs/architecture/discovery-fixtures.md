@@ -83,7 +83,15 @@ person may appear once in each mode's separate queue, but never twice within one
 accepted queue. Mode switching does not reset the other queue. Explicit refresh
 replaces only the selected queue and invalidates its former continuation handles.
 Browsing, reaching exhaustion and refresh record no pass, like or other intent.
-P05.3 owns those interactions and matching/unmatch semantics.
+P05.3's [interaction composition](interactions-fixtures.md) adds explicit
+commands. Once that composition commits a directional action, both modes and
+refresh consult authoritative interaction consumption; the acted-on person
+cannot reappear as untouched. Existing matched/restricted/unmatched pairs also
+remain excluded while resurfacing/rematch policy is unresolved. This narrows
+the per-mode repetition rule above: it describes browsing before consumption,
+not permission to repeat an action after a mode change. A commit can invalidate
+the current queues and require a fresh bounded read; it does not refill them
+automatically or weaken expiry/publication guards.
 
 ## Continuation identity and adoption
 
@@ -95,6 +103,14 @@ closed development-discovery-profile projections and a nullable next cursor. The
 [contract package](../../packages/contracts/README.md) owns generated types,
 validators and shared cases. Unknown fields and duplicate profile IDs reject.
 Production `PageRequest`/`CandidatePage` remain separate inactive design contracts.
+
+P05.3 maps the current authorized development page/batch to composition-owned
+UUIDs before building closed interaction intents. `profile-jules`-style card IDs
+and process-local queue handles remain development identifiers. The mapping
+binds current actor/session, mode, queue, membership and revisions; it cannot be
+chosen by the client. A displayed card or copied cursor never authorizes a new
+like/pass. An identical committed command may recover its immutable receipt
+after consuming that batch, but a new command cannot reuse the stale authority.
 
 Queue and cursor handles are opaque in-memory references. Their internal binding
 includes the current viewer/session, exact mode and queue, stable position,

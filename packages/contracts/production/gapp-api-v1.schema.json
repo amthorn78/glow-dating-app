@@ -2898,6 +2898,170 @@
           }
         }
       }
+    },
+    "CommandReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome_code",
+        "object_ref",
+        "committed_version"
+      ],
+      "properties": {
+        "outcome_code": {
+          "enum": [
+            "liked",
+            "passed",
+            "unmatched",
+            "blocked",
+            "unblocked"
+          ]
+        },
+        "object_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "committed_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "description": "Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained."
+    },
+    "InteractionCommandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "receipt",
+        "replayed",
+        "current_projection"
+      ],
+      "properties": {
+        "kind": {
+          "const": "interaction_command_result"
+        },
+        "receipt": {
+          "$ref": "#/$defs/CommandReceipt"
+        },
+        "replayed": {
+          "type": "boolean"
+        },
+        "current_projection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InteractionOutcome"
+            },
+            {
+              "$ref": "#/$defs/MatchProjection"
+            },
+            {
+              "$ref": "#/$defs/BlockOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Internal fixture-command result catalog; no HTTP route or deployed contract activation. Receipt is original and immutable; projection is rebuilt under current actor/object access and may be null. Replay never regrants contact. Existing AppResponse does not silently accept this new discriminator.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "receipt": {
+                "properties": {
+                  "outcome_code": {
+                    "enum": [
+                      "liked",
+                      "passed"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "current_projection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/InteractionOutcome"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "receipt": {
+                "properties": {
+                  "outcome_code": {
+                    "enum": [
+                      "unmatched"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "current_projection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/MatchProjection"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "receipt": {
+                "properties": {
+                  "outcome_code": {
+                    "enum": [
+                      "blocked",
+                      "unblocked"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "current_projection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/BlockOutcome"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

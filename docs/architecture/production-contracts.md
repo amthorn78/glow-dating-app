@@ -38,7 +38,7 @@ handles are test choices, not production policy or cursor cryptography.
 
 `PageRequest` requests a bounded recommendations/discovery collection. `CandidatePage` identifies the batch/version/expiry and an opaque nullable next cursor. The future repository cursor binds authenticated viewer, collection, batch/version, policy and both-sided eligibility revisions, and stable position. It contains no private payload; reject a forged, wrong-viewer, wrong-collection, stale or expired cursor with a generic stale response. A cursor grants no permission. Ordering is stable within a batch; refresh produces a new version. `empty` is valid and never triggers HDE work merely to fill a list. Non-ready pages expose no items or continuation cursor. Final ranking/granularity remains A01/A07.
 
-Every mutating intent contains an idempotency key and expected version. The future unit of work scopes deduplication to authenticated actor, operation, target and key and stores a canonical-payload digest plus result atomically with the domain change/outbox. Same key/same payload returns the prior logical command outcome **only after current authorization and safe projection checks**. Retain a minimal immutable receipt (outcome code, object reference and committed version) with the idempotency record; an object reference to a mutable row alone cannot reconstruct the original result. Replay never promises identical response bytes or renews media/export grants. Fetch any current private projection separately under present access rules; return generic unavailable when access has been withdrawn. Different payload conflicts; pending operation cannot run twice. Request IDs are diagnostics, not idempotency keys. Scope-specific retention/expiry for deduplication remains A05; no duration is invented. Expired deduplication records require authoritative state inspection and must not imply safe blind replay. At P11, prove simultaneous reciprocal likes yield one canonical match and one logical outbox event.
+Every mutating intent contains an idempotency key and expected version. Deduplication is unique by **authenticated actor, operation and key**, matching `IdempotencyRecord.intent_dedup`. The target and every intent-defining field belong in the canonical-payload digest; target is not an additional uniqueness dimension. Reusing a key for another target therefore conflicts instead of executing a second action. The future unit of work stores the digest and result atomically with domain changes/outbox. Same key/same payload returns the prior logical command outcome **only after current authorization and safe projection checks**. Retain a minimal immutable receipt (outcome code, object reference and committed version) with the idempotency record; an object reference to a mutable row alone cannot reconstruct the original result. Replay never promises identical response bytes or renews media/export grants. Fetch any current private projection separately under present access rules; return generic unavailable when access has been withdrawn. Different payload conflicts; pending operation cannot run twice. Request IDs are diagnostics, not idempotency keys. Scope-specific retention/expiry for deduplication remains A05; no duration is invented. Expired deduplication records require authoritative state inspection and must not imply safe blind replay. At P11, prove simultaneous reciprocal likes yield one canonical match and one logical outbox event.
 
 Before new discovery, like or contact authorization, follow [trusted eligibility](trusted-eligibility.md): authenticated server identity, exact ordered account pair, both snapshot revisions, policy revision, both preference directions and both block directions. Wrong-pair evidence is rejected; stale versions reload/re-evaluate; missing policy denies. Consent withdrawal, suspension, block, pause and deletion invalidate dependent projections. Both participants are checked before chart/provider work. PairEvidenceVersion is an optimistic precondition, never a client authorization claim. Generic public errors hide the internal exclusion reasons. Profile/birth/media edits must validate their own current owner and object version as well.
 
@@ -133,6 +133,43 @@ approved-variant references. Durable aggregate revisions, private byte/grant
 binding, replay receipts and provider-event transactions still require the P11
 persistence design and integration cases; static agreement does not provide
 those guarantees.
+
+## P05.3 internal interaction result and identity bridge
+
+Existing closed `InteractionIntent`, `UnmatchIntent` and `BlockIntent` remain
+the command shapes. The additive internal `CommandReceipt` records only
+`outcome_code` (`liked`, `passed`, `unmatched`, `blocked` or `unblocked`),
+`object_ref` and the original positive `committed_version`.
+`InteractionCommandResult` has `kind: interaction_command_result`, that receipt,
+`replayed`, and `current_projection`: an existing `InteractionOutcome`,
+`MatchProjection`, `BlockOutcome`, or null. The current projection is separately
+authorized; it never changes the receipt or turns a past active match into a
+present permission. Neither type is added to the served `AppResponse` union or
+an HTTP route. They belong to the unpublished internal catalog and its generated
+validators; existing production wire responses are unchanged.
+
+`DevelopmentInteractionEvent` is a closed internal fixture record with event UUID,
+kind (`match_created`, `contact_revoked` or `block_changed`), aggregate UUID and
+version, and `contract_version: gapp-interactions-fixture-v1`. It carries no
+profile, private action, chat content, token or provider body. A logical event is
+not a provider delivery receipt.
+
+The shared `interactions-v1.json` catalog maps development account/profile names
+to distinct account/profile UUIDs. Composition also binds UUID batch identity to
+the current development queue, viewer/session, mode, membership and versions.
+An arbitrary client-supplied mapping cannot establish this binding. Existing
+development `profile-jules`-style IDs and process-local queue handles remain
+development identifiers; production UUID validation is not weakened. See
+[interaction fixtures](interactions-fixtures.md) for execution, receipt recovery,
+consumption and revocation semantics.
+
+`CommandMeta.expected_version` addresses the directional interaction for
+like/pass, the match for unmatch, and the directional block for block/unblock.
+Zero requires absence; a positive value requires that object's current revision.
+An already committed identical command is checked as a replay before applying
+the new-command batch/precondition rules. This recovers a lost response even
+after the command consumed its old batch; it does not authorize a new action
+using that batch or preserve a withdrawn access grant.
 
 ### Compound actions and model projections
 

@@ -37,3 +37,22 @@ test('current owners can manage profile after consent withdrawal but cannot disc
   store.logout();
   for (const route of routes) assert.equal(canAccessRoute(route, store.getSnapshot()), false);
 });
+
+test('match revocation routes require an active session but remain available after eligibility loss', () => {
+  const store = create();
+  for (const route of ['/matches', '/match'] as const) {
+    assert.equal(sanitizeDestination(route), route);
+    assert.equal(sanitizeDestination(`${route}?match=forged`), '/');
+    assert.equal(canAccessRoute(route, store.getSnapshot()), false);
+  }
+  store.scenario('eligible');
+  store.setConsent(false);
+  assert.equal(canAccessRoute('/recommended', store.getSnapshot()), false);
+  assert.equal(canAccessRoute('/matches', store.getSnapshot()), true);
+  assert.equal(canAccessRoute('/match', store.getSnapshot()), true);
+  store.expire();
+  assert.equal(canAccessRoute('/matches', store.getSnapshot()), false);
+  assert.equal(canAccessRoute('/match', store.getSnapshot()), false);
+  store.scenario('suspended');
+  assert.equal(canAccessRoute('/matches', store.getSnapshot()), false);
+});

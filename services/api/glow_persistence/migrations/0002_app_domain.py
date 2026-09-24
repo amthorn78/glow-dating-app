@@ -689,7 +689,20 @@ class Migration(migrations.Migration):
                 (
                     "outcome_code",
                     models.CharField(
-                        blank=True, choices=[("committed", "committed")], max_length=16, null=True
+                        blank=True,
+                        choices=[
+                            (value, value)
+                            for value in (
+                                "committed",
+                                "liked",
+                                "passed",
+                                "unmatched",
+                                "blocked",
+                                "unblocked",
+                            )
+                        ],
+                        max_length=16,
+                        null=True,
                     ),
                 ),
                 (
@@ -719,11 +732,22 @@ class Migration(migrations.Migration):
                     models.CheckConstraint(
                         condition=models.Q(
                             models.Q(
-                                ("outcome_code", "committed"),
+                                (
+                                    "outcome_code__in",
+                                    (
+                                        "committed",
+                                        "liked",
+                                        "passed",
+                                        "unmatched",
+                                        "blocked",
+                                        "unblocked",
+                                    ),
+                                ),
                                 ("outcome_code__isnull", False),
                                 ("result_ref__isnull", False),
                                 ("result_version__gte", 1),
                                 ("result_version__isnull", False),
+                                ("result_version__lte", 9007199254740991),
                                 ("state", "completed"),
                             ),
                             models.Q(

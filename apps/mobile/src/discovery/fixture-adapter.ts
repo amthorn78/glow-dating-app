@@ -5,6 +5,18 @@ import { discoveryViewerIsCurrent, discoveryViewerToken, type DiscoveryViewerTok
 import { parseDevelopmentDiscoveryPage } from '../contracts/discovery.ts';
 import type { DevelopmentDiscoveryPage, DevelopmentDiscoveryProfile } from '../contracts/generated/gapp-dev-v1.ts';
 
+export type InteractionPairCapture = Readonly<{ viewerId: string; sessionId: string; targetAccountId: string;
+  profileHandle: string; candidateAge: number; viewerFacts: ParticipantFacts; targetFacts: ParticipantFacts }>;
+const accountGuards = new WeakMap<object, { cell: { revision: number }; revision: number }>();
+export function interactionAccountIsCurrent(token: object) { const guard = accountGuards.get(token); return !!guard && guard.cell.revision === guard.revision; }
+const interactionGuards = new WeakMap<object, { viewer: object; cell: { revision: number }; revision: number;
+  time: { revision: number }; timeRevision: number; expires: number | null }>();
+/** Final comparison invokes no caller-supplied callback or source accessor. */
+export function interactionPairIsCurrent(capture: object): boolean {
+  const guard = interactionGuards.get(capture);
+  return guard !== undefined && guard.cell.revision === guard.revision && guard.time.revision === guard.timeRevision &&
+    discoveryViewerIsCurrent(guard.viewer) && (guard.expires === null || nativeNow() < guard.expires);
+}
 export type DiscoveryMode = 'recommended' | 'broader';
 export type DiscoveryScenario = 'normal' | 'empty' | 'pending' | 'unavailable' | 'error' | 'offline';
 type Mapping = Readonly<{ account_id: string; state: string; engine_reference: string | null; birth_input_version: string; mapping_version: string }>;
@@ -57,6 +69,8 @@ export class FixtureDiscoveryAdapter {
   private viewerLinkIdentity: string | null = null;
   private queues = new Map<DiscoveryMode, Queue>();
   private revision = 0;
+  private readonly interactionCell = { revision: 0 };
+  private consumed: (viewerId: string, profileId: string) => boolean = () => false;
   private sharedRevision = 0;
   private readonly recordCells = new Map<string, Cell>();
   private observedDay: string | null = null;
@@ -83,7 +97,7 @@ export class FixtureDiscoveryAdapter {
     });
   }
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  private changed(accountId?: string) { this.revision += 1;
+  private changed(accountId?: string) { this.revision += 1; this.interactionCell.revision += 1;
     if (accountId) { const cell = this.recordCells.get(accountId) ?? { revision: 0 }; cell.revision += 1; this.recordCells.set(accountId, cell); }
     else this.sharedRevision += 1;
     for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); }
@@ -98,11 +112,12 @@ export class FixtureDiscoveryAdapter {
   setPolicy(policy: PairPolicy | null) { this.policy = freeze(clone(policy)); this.changed(); }
   setScenario(value: DiscoveryScenario) { this.scenario = value; this.changed(); }
   invalidate() { this.changed(); }
+  interactionsChanged() { this.revision += 1; for (const queue of this.queues.values()) { queue.pages.clear(); queue.cursors.clear(); } this.listeners.forEach(listener => listener()); }
   clear() { this.queues.clear(); this.changed(); }
   private time() {
     const timestamp = this.clock().getTime(), now = timeValue(this.timeSource);
     const day = Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : 'invalid';
-    if (day !== this.observedDay || !Number.isFinite(now) || now < this.lastNow) { this.revision += 1; this.sharedRevision += 1; this.observedDay = day; }
+    if (day !== this.observedDay || !Number.isFinite(now) || now < this.lastNow) { this.revision += 1; this.interactionCell.revision += 1; this.sharedRevision += 1; this.observedDay = day; }
     this.lastNow = now;
     return { timestamp, now };
   }
@@ -130,6 +145,42 @@ export class FixtureDiscoveryAdapter {
     const fresh = this.profiles.captureDiscoveryViewer();
     return fresh !== null && fresh.facts.account_id === queue.viewer.viewerId && fresh.sessionId === queue.viewer.sessionId && this.authorityCurrent(queue, time.now) && guards.every(currentGuard) &&
       revision === this.revision;
+  }
+  captureAccountSession(accountId: string): object | null {
+    const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
+    if (!cell || row?.facts?.account_id !== accountId || row.facts.account_state !== 'active' || row.facts.session_state !== 'valid') return null;
+    const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
+  }
+  bindConsumption(source: (viewerId: string, profileId: string) => boolean) { this.consumed = source; this.changed(); }
+  /** App-owned mapping acquisition and eligibility, without chart/provider evaluation. */
+  captureInteractionPair(profileHandle: string): InteractionPairCapture | null {
+    const current = this.time();
+    const revision = this.interactionCell.revision, timeRevision = timeCells.get(this.timeSource)!.revision;
+    const viewer = this.profiles.captureDiscoveryViewer();
+    if (!viewer || !viewer.policy || !this.policy) return null;
+    const rows = [...this.records.values()].filter(row => row.facts?.profile_id === profileHandle);
+    if (rows.length !== 1 || !rows[0]!.facts) return null;
+    const row = rows[0]!, repository = new FixturePairRepository(() => new Date(current.timestamp));
+    repository.setPolicy(this.policy); repository.put(viewer.facts); repository.put(row.facts!);
+    repository.observeBlock(viewer.facts.account_id, row.account_id, row.blocks.viewer);
+    repository.observeBlock(row.account_id, viewer.facts.account_id, row.blocks.candidate);
+    const decision = repository.evaluate(viewer.facts.account_id, row.account_id);
+    if (decision.state !== 'ready' || decision.candidateAge == null ||
+      revision !== this.interactionCell.revision || timeRevision !== timeCells.get(this.timeSource)!.revision || !discoveryViewerIsCurrent(viewer)) return null;
+    const capture = freeze({ viewerId: viewer.facts.account_id, sessionId: viewer.sessionId, targetAccountId: row.account_id,
+      profileHandle, candidateAge: decision.candidateAge, viewerFacts: viewer.facts, targetFacts: row.facts! });
+    interactionGuards.set(capture, { viewer, cell: this.interactionCell, revision, time: timeCells.get(this.timeSource)!, timeRevision, expires: null });
+    return capture;
+  }
+  authorizeInteraction(page: DevelopmentDiscoveryPage, profileHandle: string): InteractionPairCapture | null {
+    if (!this.isCurrent(page) || !page.items.some(item => item.profile_id === profileHandle)) return null;
+    const capture = this.captureInteractionPair(profileHandle), publication = this.publications.get(page);
+    if (!capture || !publication || page.viewer_id !== capture.viewerId || page.session_id !== capture.sessionId) return null;
+    const guard = interactionGuards.get(capture)!;
+    // Native clock captures wall-clock expiry; controlled test clocks bind their retained revision.
+    const source = timeCells.get(this.timeSource)!;
+    if (source.value === null) guard.expires = publication.queue.created + DISCOVERY_LIMITS.lifetimeMs;
+    return capture;
   }
   private response(mode: DiscoveryMode, requestId: string, viewer: DiscoveryViewerCapture | null,
     state: DevelopmentDiscoveryPage['state'], queue: Queue | null = null, items: DevelopmentDiscoveryProfile[] = [], cursor: string | null = null): DevelopmentDiscoveryPage {
@@ -172,7 +223,7 @@ export class FixtureDiscoveryAdapter {
         if (record.facts) repository.put(record.facts);
         repository.observeBlock(viewer.facts.account_id, record.account_id, record.blocks.viewer);
         repository.observeBlock(record.account_id, viewer.facts.account_id, record.blocks.candidate);
-        if (repository.evaluate(viewer.facts.account_id, record.account_id).state === 'ready') eligible.push(record);
+        if (repository.evaluate(viewer.facts.account_id, record.account_id).state === 'ready' && !this.consumed(viewer.facts.account_id, record.facts!.profile_id!)) eligible.push(record);
       }
       eligible.sort((a, b) => (mode === 'recommended' ? a.recommendation_priority - b.recommendation_priority : 0) ||
         (a.facts!.profile_id! < b.facts!.profile_id! ? -1 : a.facts!.profile_id! > b.facts!.profile_id! ? 1 : 0));

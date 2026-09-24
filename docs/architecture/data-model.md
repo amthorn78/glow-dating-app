@@ -66,10 +66,15 @@ P11 rechecks the actual selected release and configuration.
 
 ## Data groups and ownership
 
-All rows below belong to the isolated application database. Engine references
-are opaque external identifiers, never foreign keys into engine tables. A FK
-targets only an app model or the app's maintained auth table. Index names shown
-are definitions, not proven query plans or capacity claims.
+All rows below are application-owned. The audited storage direction is a dedicated
+app schema with restricted owner/migrator/runtime roles in HDE's same logical
+PostgreSQL database, `railway`. The audit maps all 32 provisional models to new
+app-owned relations if retained; none reuses a legacy or HDE physical table.
+The final P11 design may consolidate provisional models. Engine references are
+opaque external identifiers, never foreign keys into engine tables. A FK targets
+only an app model or the app's maintained auth table. Index names shown are
+definitions, not proven query plans or capacity claims. No schema, grant or
+migration is activated by this fixture work.
 
 | Models | Relationships, constraints and indexes | Privacy and lifecycle |
 |---|---|---|
@@ -88,7 +93,7 @@ are definitions, not proven query plans or capacity claims.
 | `SafetyReport`, `ModerationCase`, `Appeal`, `StaffAudit` | Reporter/subject nullable `SET_NULL`; preserved subject marker. Protected report/case relationships. Resolved case/appeal requires outcome. Unique audit request ID; object/time audit and moderation queue indexes. | Safety-restricted description/evidence and immutable audit. Evidence-ref JSON shape/ownership validated before save. Staff subject is external authenticated operator identity, distinct from dating accounts. No support-to-moderation privilege inheritance. |
 | `SupportRequest` | Optional account or secure contact reference, bounded subject/description, explicit lifecycle and retention metadata. | Account-private/support-restricted. Public requests get generic acknowledgment; contact verification precedes account action. Category is server-classified, not an undeclared mandatory client field. |
 | `ExportJob`, `DeletionJob`, `ProviderLifecycleStep` | Own-account export with ready artifact/expiry requirements. Unique deletion subject and nullable account FK survive purge. Each step belongs to exactly one export or deletion; unique idempotency key and verified evidence requirement. Retry queue index. | App orchestration; processor owns actual export/purge. Required processor manifest and scope completeness are UOW/domain checks. Completed deletion cannot be inferred from row state alone. |
-| `DeletionTombstone`, `IdempotencyRecord` | Tombstone UUID subject survives without account FK; protected deletion job. Intent dedup unique by actor/operation/key with payload digest and result reference. | Restore-replay and operational-minimized. No email/birth/chat payloads in tombstones/receipts. Tombstone must exist at revocation, before eventual hard purge. |
+| `DeletionTombstone`, `IdempotencyRecord` | Tombstone UUID subject survives without account FK; protected deletion job. Intent dedup unique by actor/operation/key, with target and complete canonical intent bound by the digest; immutable outcome code, result reference and committed version. | Restore-replay and operational-minimized. No email/birth/chat payloads or cached grants in tombstones/receipts. Tombstone must exist at revocation, before eventual hard purge. |
 | `Entitlement` | Unique account/product reference; only permitted state `disabled`. | Conditional boundary only. No paid entitlement can be activated with these definitions; A06 and maintained provider integration require later schema change. |
 
 ## Trusted eligibility and unit-of-work boundaries
@@ -119,10 +124,13 @@ row that privileged actions lock. These are requirements, not working locks.
 | Staff action | Validated external actor/scope and object ownership, reasoned transition, immutable staff audit and outbox | Narrow provider action/reconciliation with no elevated WordPress database access |
 | Inbox or worker completion | Verify signature outside data mutation; then unique event receipt/digest, current identity/version check, derived state and new outbox event if needed | Acknowledgment; stale/duplicate events cannot overwrite current state |
 
-Idempotency keys are scoped to authenticated actor and operation; changed request
-content under the same key is a conflict, not a second action. Completed records
-keep only an immutable `committed` outcome code, object UUID and its committed
-revision. They do not cache a private response or grant. Replay first rechecks
+Idempotency keys are scoped to authenticated actor and operation; changed target
+or other canonical request content under the same key is a conflict, not a second
+action. Completed records keep an immutable outcome code, object UUID and its
+committed revision. P05.3 adds `liked`, `passed`, `unmatched`, `blocked` and
+`unblocked` to the existing `committed` code in the static definition and matching
+unapplied migration. These identify the original logical result independently of
+the object's later state. They do not cache a private response or grant. Replay first rechecks
 current authorization, preserves that logical receipt, then builds only a current
 safe projection (or generic unavailable/denied if revoked/deleted). The object
 may since have changed; never mislabel its current version as the original result.

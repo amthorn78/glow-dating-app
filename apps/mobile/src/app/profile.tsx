@@ -43,6 +43,7 @@ export default function ProfileScreenRoute() {
     {profile?.visibility === 'paused' && <Button label="Resume profile" testID="profile-resume" disabled={state.busy} onPress={() => void profiles.setVisibility('resume', outcome)} />}
     {profile?.visibility === 'paused' && <Text style={styles.body}>Your profile is paused. Editing keeps it paused. Resuming checks your current eligibility and does not restore past contact permissions.</Text>}
     {state.canDiscover && <Button label="Open recommendation preview" testID="profile-discovery" secondary onPress={() => router.push('/recommended')} />}
+    <Button label="Your matches" testID="open-matches" secondary onPress={() => router.push('/matches')} />
     {canAccessRoute('/birth', onboarding) && <Button label="Edit private birth input" testID="profile-birth" secondary onPress={() => router.push('/birth')} />}
     <Button label="Review eligibility and consent" testID="profile-eligibility" secondary onPress={() => router.push('/eligibility')} />
     <Button label="Refresh saved details" testID="profile-reload" secondary disabled={state.busy} onPress={() => void profiles.reload(outcome)} />

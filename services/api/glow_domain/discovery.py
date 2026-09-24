@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
-from typing import Literal, TypedDict
+from typing import Literal, Protocol, TypedDict
 from uuid import uuid4
 
 from .eligibility import PredicateOutcome
@@ -310,6 +310,14 @@ class _Queue:
     valid: bool = True
 
 
+class DiscoveryConsumption(Protocol):
+    """App interaction state; its retained revision participates in queue freshness."""
+
+    def publication_guard(self) -> FixtureReadGuard: ...
+
+    def excludes(self, viewer: AccountId, candidate: AccountId) -> bool: ...
+
+
 class FixtureDiscoveryService:
     """Two finite mode queues; explicit refresh, repeatable opaque page handles.
 
@@ -326,12 +334,14 @@ class FixtureDiscoveryService:
         batch: FixtureCompatibilityBatchService,
         authority: FixtureDiscoveryAuthority,
         clock: FixtureDiscoveryClock,
+        consumption: DiscoveryConsumption | None = None,
     ) -> None:
         require_fixture_environment(environment)
         if batch.eligibility.repository is not source:
             raise ValueError("Discovery and eligibility must share their fact source.")
         self.environment, self.source, self.batch = environment, source, batch
         self.authority, self.clock = authority, clock
+        self.consumption = consumption
         self._queues: dict[DiscoveryMode, _Queue] = {}
 
     def page(
@@ -506,6 +516,7 @@ class FixtureDiscoveryService:
             self.batch.provider,
             self.authority,
             self.clock,
+            self.consumption,
         )
 
     def _bindings_current(self, queue: _Queue) -> bool:
@@ -533,6 +544,9 @@ class FixtureDiscoveryService:
             return None
         if type(population_guard) is not FixtureReadGuard:
             return None
+        consumption_guard = acquire_guard(self.consumption) if self.consumption else None
+        if self.consumption is not None and consumption_guard is None:
+            return None
         members = self.source.select(mode)
         if (
             type(members) is not tuple
@@ -545,6 +559,10 @@ class FixtureDiscoveryService:
         retained: list[_MemberCapture] = []
         excluded_guards: list[FixtureReadGuard] = []
         for member in members:
+            if self.consumption is not None and self.consumption.excludes(
+                viewer, member.account_id
+            ):
+                continue
             decision = self.batch.eligibility.evaluate(viewer, member.account_id)
             if decision.problem is EvidenceProblem.POLICY_PENDING:
                 return None
@@ -576,6 +594,12 @@ class FixtureDiscoveryService:
             mode,
             now + QUEUE_LIFETIME_MS,
             tuple(retained),
-            (authority_guard, time_guard, population_guard, *excluded_guards),
+            (
+                authority_guard,
+                time_guard,
+                population_guard,
+                *excluded_guards,
+                *((consumption_guard,) if consumption_guard else ()),
+            ),
             self._bindings(),
         )

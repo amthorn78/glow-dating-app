@@ -1,6 +1,6 @@
 # Glow native development foundation
 
-An iOS/Android Expo Router application with fixture account/onboarding, profile/preferences/visibility, private media and bounded discovery journeys. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Media selection, lifecycle and review controls use in-memory substitutes; no photo reaches a real provider. Maintained production authentication, likes, matching, messaging, provider uploads, persistence and HDE connections remain unavailable.
+An iOS/Android Expo Router application with fixture account/onboarding, profile/preferences/visibility, private media, bounded discovery and like/pass/match/unmatch journeys. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Media and interaction commands use in-memory substitutes; no photo reaches a real provider. Production authentication, interactions, messaging, provider uploads, persistence and HDE connections remain unavailable.
 
 ## Reproduce
 
@@ -34,6 +34,7 @@ Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical 
 - `src/contracts/recommendations.ts`: closed `gapp-dev-v1` response projection using generated TypeScript and standalone runtime schema validators. Rejects private/unrecognized fields, HDE scores/ready results, duplicate IDs and underage records. These checks are defense in depth; real eligibility must be enforced by the API in later phases.
 - `src/data/recommendations.ts`: credential-free, bounded GET to `/api/v1/development/recommendations`, retained for layout/HTTP smoke with cancellation and response validation. This does not supply the P05.2 queue. No writes.
 - `src/discovery`: bounded in-memory recommendation and broader-discovery composition, current per-candidate eligibility, continuation/adoption guards and shared fictional source corpus. See [discovery semantics](../../docs/architecture/discovery-fixtures.md).
+- `src/interactions`: current-session fixture commands, immutable-receipt retry, committed consumption, participant-scoped matches and revocation. The Python domain remains authoritative; this presentation substitute follows shared contract cases.
 - `src/config/development.ts`: explicit fixture configuration and origin validation.
 - `app.config.ts` and `src/app/_layout.tsx`: build-config and runtime development guards.
 
@@ -64,7 +65,8 @@ evaluates current owner-to-candidate pairs from the shared discovery population.
 [reciprocal policy/integration](../../docs/architecture/reciprocal-eligibility-fixtures.md)
 and [P05.1 evidence](../../docs/testing/p05-1-checkpoint.md).
 [P05.2 discovery](../../docs/architecture/discovery-fixtures.md) adds bounded
-queues; P05.3 interactions remain separate. No production endpoint is added.
+queues; P05.3 composes explicit interaction commands with their current authority.
+No production endpoint is added.
 
 `src/contracts/generated/` is generated from `packages/contracts` schemas. Do not edit it directly. The development parser consumes generated validation and a key-uniqueness check; `production.ts` adds parsers for the P02 logical design without an HTTP client or activated production route. Use the repository contract generation/check commands in `../../packages/contracts/README.md`. All current screen data remains synthetic and pending. No native dependency/API was changed for contract validation.
 
@@ -300,3 +302,62 @@ See [P05.2 checkpoint](../../docs/testing/p05-2-checkpoint.md) for actual result
 [discovery semantics](../../docs/architecture/discovery-fixtures.md) for exact
 bounds/provenance and [P11](../../docs/testing/p11-deferred-acceptance.md) for real
 authentication, persistence, provider and native-device acceptance.
+
+## P05.3 interaction walkthrough
+
+On an eligible fictional card, use the labeled **Like Fictional Jules** or **Pass Fictional Jules**
+controls. Pending submission is announced separately from a committed result.
+An accepted choice is consumed by authoritative interaction state in both modes;
+switching modes or refreshing does not turn a saved pass into a new opportunity.
+Committed actions invalidate any existing mode queues. Use **Refresh preview**
+to start that mode's next bounded selection of remaining people; an untouched
+mode still loads normally on first entry. A reciprocal setup that records only
+the other person's private like leaves your current candidate page unchanged.
+An error does not imply a successful like or match. **Retry same action** retains
+the original intent and idempotency key; stale authority requires a fresh preview.
+
+**Your matches** shows only the current participant's permitted connections. A
+unilateral like produces no mutual-match row. On **Development scenarios**, the
+explicit **Submit fictional Jules reciprocal like** setup submits the other
+fictional participant's command through the same service. Use it before or after
+your own like to exercise both arrival orders. This is an internal test setup,
+not a client-supplied reciprocity or match flag. Normal screens never reveal
+another person's unreciprocated action.
+
+Open a mutual match to view only its allowed synthetic profile and current
+connection status. **Unmatch** commits a versioned revocation. Pausing your
+profile leaves **Your matches** available from the owner profile so an active
+participant can still unmatch. Restricted and unmatched rows show a generic
+connection status, with the former profile removed. Unblock and resume do not
+reactivate a historical match. There is no undo, automatic rematch, provider
+channel, messaging token or chat-history access.
+
+The developer controls include normal, offline, lost-response and delayed
+delivery. Select offline, submit a command, return delivery to normal, and choose
+**Retry same action** to test a recoverable error. A lost-response scenario commits
+before withholding confirmation, so its consumed card cannot become actionable
+again while retry recovers the original receipt. A delayed submission exposes
+**Complete delayed fixture delivery** in its clearly labeled fixture feedback.
+Leaving a pending screen suppresses obsolete response adoption; account/session
+replacement also clears private projections. Block/unblock setup uses the same
+interaction authority and cannot grant a new match or contact permission.
+
+Routes `/matches` and `/match` remain fixed, query-free Router destinations.
+Selected IDs stay inside the current scoped store, and the service rechecks
+participant access. Navigation guards are presentation safeguards, not backend
+authorization. Web action buttons preserve keyboard focus during pending work;
+committed/error feedback receives focus only on the active route. The rendered
+suite covers these states at 320px as well as the 69 inherited cases. One inherited
+refresh case now explicitly checks that navigation creates no committed result
+while the new Like/Pass controls remain available; its finite-queue assertions
+are preserved.
+
+Implementation checked the committed Expo **57.0.24** and Router **57.0.22**
+against the official [SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/),
+[documentation index](https://docs.expo.dev/llms.txt),
+[Router API](https://docs.expo.dev/versions/v57.0.0/sdk/router/),
+[navigation guide](https://docs.expo.dev/router/basics/navigation/) and
+[protected routes](https://docs.expo.dev/router/advanced/protected/).
+No package or native-directory change was needed. Actual check results belong in
+[P05.3 evidence](../../docs/testing/p05-3-checkpoint.md); Chromium rendering does
+not establish native keyboard, VoiceOver/TalkBack or signed-device acceptance.
