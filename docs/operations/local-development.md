@@ -104,8 +104,12 @@ Glow app manager, implementation and review sessions run in the dedicated `Glow 
 
 - It runs before Claude Code starts, as the session account (root in the observed containers). It installs Node 24.19.0, npm 11.9.0 and CPython 3.12.14 from hash-verified downloads into `$HOME/.local/share/glow-app-toolchain`.
 - It links `node`, `npm`, `npx` and `python3.12` into `$HOME/.local/bin`, which is first on `PATH`. It never replaces `python3` or `python`.
-- Installed files belong to the account running the script and are not writable by group or others. An existing tree that breaks this rule is replaced from the verified archive before anything in it runs.
-- A rerun with the toolchain present changes nothing and takes under a second. A fresh install took about two minutes in M02 tests, mostly building Python.
+- Trust rules, all checked before anything in a tree runs:
+  - Installed files belong to the account running the script and are not writable by group or others.
+  - Symlinks may not leave their tree. Each one is relative, stays inside the tree at every step and resolves to a regular file there. A tree whose root is a symlink fails the check.
+  - The prefix directory and the link directory (`$HOME/.local/bin`) must belong to the running account and must not be writable by group or others. Their parent directories must belong to that account or root and must not be writable by group or others unless sticky, like `/tmp`. The link directory's path may not contain a symlink.
+  - A tree that breaks a rule is replaced from the verified archive. An unsafe prefix or link directory stops the script with an error; correct its owner or mode and rerun.
+- A rerun with the toolchain present changes nothing and takes under a second. The first run takes about two minutes, mostly building Python.
 - When a merged PR changes the file, Nathan pastes it into the environment again.
 
 **First-session verification** (names only; never print values):
