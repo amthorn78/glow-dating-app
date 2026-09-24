@@ -193,3 +193,25 @@ test('one expiry notification removes mounted pages and does not schedule an exp
   assert.equal(store.getSnapshot('recommended').page, null);
   context.mock.timers.tick(600000); assert.equal(notifications, 1);
 });
+
+for (const changed of ['discovery-jules', 'discovery-paused']) test(`terminal page retires after post-publication replacement of ${changed}`, async () => {
+  const adapter = new FixtureDiscoveryAdapter(owner().profiles, options);
+  let page = await adapter.request('recommended', 'start', null);
+  while (page.next_cursor) page = await adapter.request('recommended', 'next', page.next_cursor);
+  assert.deepEqual(ids(page), ['profile-lena', 'profile-noor']);
+  assert.equal(page.next_cursor, null); assert.equal(adapter.isCurrent(page), true);
+  const record = adapter.inspect(changed)!;
+  adapter.replace(record);
+  assert.equal(adapter.isCurrent(page), false, 'Terminal membership remains bound even when the changed source is not on the last page.');
+});
+
+test('a safely reduced partial publication survives its own source change but retires on any later one', async () => {
+  const adapter = new FixtureDiscoveryAdapter(owner().profiles, { ...options, afterCandidate: id => {
+    if (id === 'discovery-morgan') adapter.replace(adapter.inspect('discovery-jules')!);
+  } });
+  const page = await adapter.request('recommended', 'partial', null);
+  assert.deepEqual(ids(page), ['profile-morgan']); assert.equal(page.state, 'partial'); assert.equal(page.next_cursor, null);
+  assert.equal(adapter.isCurrent(page), true);
+  adapter.replace(adapter.inspect('discovery-paused')!);
+  assert.equal(adapter.isCurrent(page), false);
+});

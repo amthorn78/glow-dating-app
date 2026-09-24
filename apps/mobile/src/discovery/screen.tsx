@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button, Page, PreviewNotice, ProfileCard, ScreenTitle, colors, styles } from '../components/ui';
 import { useOnboarding } from '../onboarding/context';
+import { NextPageButton } from './next-page-button';
 import { useDiscovery } from './context';
 import type { DiscoveryMode } from './fixture-adapter';
 
@@ -35,8 +36,7 @@ export function DiscoveryScreen({ mode }: { mode: DiscoveryMode }) {
       </View>)}
     </View>
     <View style={styles.group}>
-      <Button label="Next page" testID="discovery-next" disabled={loading || !state.page?.next_cursor} onPress={() => void discovery.next()}
-        hint="Browse the next fictional profiles. This does not record a like or a pass." />
+      <NextPageButton disabled={loading || !state.page?.next_cursor} onPress={() => void discovery.next()} />
       <Button label="Refresh preview" testID="discovery-refresh" secondary disabled={loading} onPress={() => void discovery.refresh()}
         hint="Start a new selection in this view." />
       <Text style={styles.small}>Browsing does not record likes or passes. Refresh starts this view again. Switching views keeps each view’s place; people may appear in both.</Text>

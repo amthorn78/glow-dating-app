@@ -64,7 +64,7 @@ export class FixtureDiscoveryAdapter {
   private policy: PairPolicy | null = FIXTURE_PAIR_POLICY;
   private scenario: DiscoveryScenario = 'normal';
   private listeners = new Set<() => void>();
-  private publications = new WeakMap<DevelopmentDiscoveryPage, { queue: Queue; guards: readonly Guard[] }>();
+  private publications = new WeakMap<DevelopmentDiscoveryPage, { queue: Queue; guards: readonly Guard[]; revision: number }>();
   readonly calls = { scans: 0, mappings: 0, provider: 0 };
   constructor(profiles: ProfileStore, options: Options) {
     if (!options.isDevelopment || options.mode !== 'fixture') throw new Error('Discovery requires the development fixture runtime.');
@@ -125,18 +125,18 @@ export class FixtureDiscoveryAdapter {
   isCurrent(page: DevelopmentDiscoveryPage): boolean {
     const publication = this.publications.get(page);
     if (!publication) return false;
-    const { queue, guards } = publication;
+    const { queue, guards, revision } = publication;
     const time = this.time();
     const fresh = this.profiles.captureDiscoveryViewer();
     return fresh !== null && fresh.facts.account_id === queue.viewer.viewerId && fresh.sessionId === queue.viewer.sessionId && this.authorityCurrent(queue, time.now) && guards.every(currentGuard) &&
-      (page.next_cursor === null || queue.revision === this.revision);
+      revision === this.revision;
   }
   private response(mode: DiscoveryMode, requestId: string, viewer: DiscoveryViewerCapture | null,
     state: DevelopmentDiscoveryPage['state'], queue: Queue | null = null, items: DevelopmentDiscoveryProfile[] = [], cursor: string | null = null): DevelopmentDiscoveryPage {
     const result = freeze(parseDevelopmentDiscoveryPage({ mode: 'fixture', contract_version: 'gapp-dev-v1', kind: 'discovery_page',
       viewer_id: viewer?.facts.account_id ?? 'unavailable-viewer', session_id: viewer?.sessionId ?? 'unavailable-session',
       discovery_mode: mode, queue_id: queue?.id ?? null, request_id: requestId, state, items, next_cursor: cursor }));
-    if (queue) this.publications.set(result, { queue, guards: items.map(item => queue.guards.get(queue.members.find(id => this.records.get(id)?.facts?.profile_id === item.profile_id)!)!).filter(Boolean) });
+    if (queue) this.publications.set(result, { queue, revision: this.revision, guards: items.map(item => queue.guards.get(queue.members.find(id => this.records.get(id)?.facts?.profile_id === item.profile_id)!)!).filter(Boolean) });
     return result;
   }
   async request(mode: DiscoveryMode, requestId: string, cursor: string | null, refresh = false): Promise<DevelopmentDiscoveryPage> {

@@ -123,8 +123,12 @@ A relevant source change invalidates the affected queue membership/continuation
 and requires explicit refresh. During final page publication, unchanged candidate
 projections may survive as a partial page under their own retained guards, with
 no continuation; a shared viewer/policy/time change suppresses the whole page. Same-value replacement/removal/restoration stays a new source incarnation.
-Old membership/order metadata and cursors cannot become current merely because
-later values look equal. Conservatively invalidating a queue is acceptable; silently
+Every published page also retains the source revision captured at publication,
+including a terminal page with no cursor. A later participating source write
+invalidates that page even when its currently visible candidates are unchanged.
+A safe partial page formed during a request binds the new publication revision;
+its unchanged survivors do not exempt it from the next write. Old membership/
+order metadata and cursors cannot become current merely because values look equal. Conservatively invalidating a queue is acceptable; silently
 promoting a formerly excluded pair into that queue is not. Logout/account switch or lost owner eligibility clears the adapter
 queue/page/cursor caches and UI state. A single bounded expiry timer checks the
 retained mode pages at their next expiry, retracts expired mounted content and
@@ -195,6 +199,9 @@ retained public projections, logs and accessibility labels.
 | Error/offline | The request did not produce an adoptable page; controlled retry/refresh offers no unauthorized fallback |
 
 Recommended and broader navigation uses Expo Router and accessible controls.
+The web Next page control stays focusable through loading/exhaustion using
+`aria-disabled` plus an activation guard; native uses the existing shared Button.
+This scoped behavior preserves keyboard focus without programmatic refocusing.
 Ordinary product copy omits source versions, exclusion reasons and engineering
 counters. Developer scenarios are separately labeled synthetic. Small-screen
 rendered checks and web focus behavior do not prove native device keyboard,

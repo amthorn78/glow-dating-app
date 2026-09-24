@@ -119,8 +119,8 @@ Synthetic ready/pending are ready pages; typed unavailable is one attempt/partia
 the declared transient outage is at most three attempts/partial. These counts
 overlap the combined suites.
 
-After the final source corrections, combined local validation passed the following
-gates. Python used the fresh `services/api/.venv` runner:
+Before initial candidate publication, corrected source passed the following
+combined local gates. Python used the fresh `services/api/.venv` runner:
 
 | Check | Observed result |
 |---|---|
@@ -138,8 +138,8 @@ gates. Python used the fresh `services/api/.venv` runner:
 
 Counts overlap and must not be added into a coverage total. These results cover
 the inspected local source; subsequent changes require affected checks again.
-Hosted rendered/container and exact final-candidate/main evidence remain separate
-gates below.
+Subsequent hosted execution exposed the focus defect recorded below. These local
+results do not certify its later correction or final-main behavior.
 
 ## Preserved intermediate findings
 
@@ -183,18 +183,89 @@ semantics. The review also tightened malformed request/mapping identity handling
 and distinguishes typed provider unavailability from rejected pair/provenance.
 These source findings are distinct from the three executed negative controls.
 
-Final independent focused verification passed **45/45 mobile discovery cases**
+Pre-publication independent focused verification passed **45/45 mobile discovery cases**
 (24 source/race and 21 shared conformance), **14/14 Python discovery methods**
 and `git diff --check`. The final narrow delta included bounded mapping/input/
 reference fields, exact provider version binding, null-authority and expiry-timer
-regressions. The review's final working-source disposition had **no remaining
-concrete findings**. A first reviewer command with an incorrect interpreter path
+regressions. That initial working-source disposition had **no remaining concrete findings**;
+subsequent hosted execution and automatic review found the issues below. A first reviewer command with an incorrect interpreter path
 exited 127 without running tests; the corrected explicit command passed.
 
 The remote candidate still needs its own automated review/check disposition.
 Preserve the local negative controls and intermediate bundler/check tooling
 failures in the external report; no earlier-head review is promoted to final-head
 coverage. Any later source delta requires corresponding review.
+
+## Initial publication and hosted focus finding
+
+[PR 13](https://github.com/amthorn78/glow-dating-app/pull/13) published initial
+candidate `3986df82a0acf0d64e3f04522c1f1718863cdd32`, tree
+`353cc0c0a093726ff89b866f3c7c08cbc93c015f`, with actual parent
+`c229d3df9a8fe05157b125b189667bbf872a0d7c`. All 37 changed blobs/modes and the
+complete tree were verified. This is published source, not an accepted merge.
+
+The initial [PR run 35952863749](https://github.com/amthorn78/glow-dating-app/actions/runs/35952863749)
+and [branch run 35952862408](https://github.com/amthorn78/glow-dating-app/actions/runs/35952862408)
+failed in **Mobile checks only**. The PR's API, API mobile smoke and API artifact
+jobs passed: actual logs confirmed 203 API tests, 37 Python contract methods,
+Ruff/mypy results, loopback responses, rejected writes, the port-ownership
+negative control and built-container validation. Those passes do not override
+the failing required Mobile gate.
+
+[PR Mobile job 107484926075](https://github.com/amthorn78/glow-dating-app/actions/runs/35952863749/job/107484926075)
+executed **68/69 browser cases successfully**: all 52 inherited cases and sixteen
+of the seventeen new cases passed. The new 320px enlarged-text keyboard case in
+`rendered/discovery.spec.ts` failed its retained-focus assertion at line 289.
+Pressing Enter on Next page loaded page two, but disabling the focused control
+during loading lost its keyboard focus. The application behavior requires a
+correction; the existing assertion, test count, timeouts and retry policy remain.
+Local browser installation remains unavailable, so corrected rendered behavior
+must be established on the revised hosted candidate.
+
+Both automatic reviews completed on the **initial candidate**: security at
+`2026-09-24T03:50:37.126889Z` and code at `2026-09-24T03:53:14.477455Z`, as
+recorded in the [review receipt](https://github.com/amthorn78/glow-dating-app/pull/13#issuecomment-5807202791).
+Security had no posted findings. Code review raised
+[P2: terminal-page publication revision](https://github.com/amthorn78/glow-dating-app/pull/13#discussion_r4089715629):
+`isCurrent` did not compare queue revision when a page had no next cursor, so a
+later change to an earlier/excluded candidate could retain obsolete terminal
+membership/completion metadata. Initial-head review completion closes neither
+that finding nor the browser failure and does not cover the correction head.
+
+### Prepared correction and observed delta verification
+
+The focused web `NextPageButton` uses a native HTML button with `aria-disabled`
+and an activation handler that refuses work when disabled. It remains focusable
+during loading and exhaustion, without programmatic refocusing or focus theft
+from another screen. The native implementation delegates to the existing shared
+Button; unrelated/native controls and the PR12 scroll fix are unchanged. The
+original 69-case browser suite, including its failed focus assertion, remains
+unchanged. This is a reviewed source correction; hosted rendering on the revised
+candidate is still required to prove it fixes the observed behavior.
+
+The terminal-page correction captures the current source revision when each page
+is published and requires that revision for **every** retained page, including
+terminal pages. A partial page constructed during a candidate mutation binds the
+new publication revision while retaining only unchanged candidate guards; the
+next source write invalidates it. Independent R4 reproduction followed the three
+recommended pages and performed a same-value replacement of the excluded paused
+candidate. Before correction, the terminal Lena/Noor page remained current
+(`before: true, after: true`). The corrected probe returns `after: false`. Three
+new regressions cover terminal changes and the safe partial-page distinction.
+
+After this five-source-file correction, `npm run check` passed lint/types and
+**410 mobile tests** (362 inherited plus 48 discovery cases). Independent narrow
+review passed **48/48 discovery cases** (27 source/race plus 21 conformance),
+repeated the terminal-page probe, checked the scoped focus mechanism and reported
+no remaining concrete correction findings. Both corrected iOS/Android development
+JavaScript exports completed with **exit 0**. The Python/contract source was
+unchanged by this correction. No local browser test ran.
+
+The correction needs verified publication on the existing PR, renewed final-head
+code/security review disposition and all four Foundation jobs. Do not attribute
+the earlier review receipts or 68/69 result to the correction candidate. The
+external report records its exact head, complete tree and future hosted outcomes
+without asking this containing commit to certify itself.
 
 ## Required validation and checked publication
 

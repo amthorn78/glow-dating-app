@@ -136,13 +136,18 @@ Python **3.12.14**, Node **24.19.0**, npm **11.9.0** and committed dependency lo
 This session created a fresh **services/api/.venv** and installed hash-locked Python
 dependencies; `pip check` and both `npm ci --ignore-scripts` installs passed.
 Current combined local checks passed **203 API tests, 37 Python contract methods,
-302 JavaScript contract cases and 407 mobile tests**, lint/types/static checks,
+302 JavaScript contract cases and initially 407 mobile tests**, lint/types/static checks,
 actual API/mobile HTTP smoke and both final development JavaScript exports.
 Counts overlap. Independent working-source review found no remaining concrete
 findings after correction. Current Chromium installation failed before test
 execution and Docker is unavailable; **69 browser cases are collected, not locally
-executed**. Hosted browser/container gates and remote final-head review remain
-required. See the checkpoint for preserved intermediate failures and exact limits.
+executed**. Initial hosted container/API/smoke checks passed, but Mobile checks failed
+the new keyboard-focus case at 68/69 browser cases. Final correction-head gates
+and reviews remain required. The prepared focus/publication-revision correction then passed **410
+mobile tests**, lint/types, independent **48-case** discovery review and both
+corrected development JavaScript exports (exit 0). The browser assertions are
+unchanged; corrected hosted execution remains unverified. See the checkpoint for
+preserved intermediate failures and exact limits.
 
 Required final-candidate checks include API/domain/static checks, Python/JS
 contracts and deterministic generation, mobile lint/types/tests, API/mobile HTTP
@@ -154,13 +159,25 @@ mergeability and review dispositions; wait for already-running reviews and recor
 unavailable coverage honestly. After the authorized checked merge, verify ordered
 parents, candidate/main tree relationship and all four jobs on actual merged main.
 
-**Next action at this source checkpoint:** publish the locally checked candidate
-to `app-builder-1/p05-2-discovery` using the verified remote parent/tree, verify
-its changed blobs and complete tree, and open its scoped PR.
-No PR number or remote source publication is asserted by this containing record.
-On recovery, first inspect the latest task/report and actual branch/open PRs so
-a completed publication is not repeated. Continue that actual candidate's
-Foundation/review gates, checked merge and final-main verification.
+**Published recovery point:** [PR 13](https://github.com/amthorn78/glow-dating-app/pull/13),
+initial candidate `3986df82a0acf0d64e3f04522c1f1718863cdd32`, tree
+`353cc0c0a093726ff89b866f3c7c08cbc93c015f`, actual parent equal to the verified
+starting main. All 37 changed blobs/modes and the tree were verified. Initial PR
+run `35952863749` and branch run `35952862408` failed only Mobile checks. The PR
+rendered suite passed all 52 inherited cases and sixteen new ones; the new 320px
+keyboard case lost Next page focus after Enter loaded page two. Its assertion is
+preserved. Initial-head code/security reviews completed; security had no posted
+findings, while code review identified the terminal-page publication-revision
+P2 recorded in the checkpoint. Initial reviews do not cover a correction head.
+
+**Next action at this source checkpoint:** publish the locally checked and
+independently reviewed Next page focus/terminal-page publication-revision delta
+and these records on the existing PR 13 branch. Verify its
+actual remote parent, changed blobs and full tree; require all four Foundation
+jobs and final-head review disposition before merge. On recovery, inspect the
+actual PR/head and latest external checkpoint before repeating a publication.
+After checked merge, verify ordered parents/tree relationship and every actual
+merged-main job. Do not merge the failed initial candidate.
 
 If external closure records already verify all final-main gates, record/read back
 **Verified → Done at fixture scope**, update Control and append the addressed
