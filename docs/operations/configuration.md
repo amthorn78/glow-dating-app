@@ -75,13 +75,7 @@ secret values, databases, volumes or HDE networking. See
 [resource ownership](resource-ownership.md) for current metadata and boundaries.
 Local served fixture configuration rejects future target identity variables.
 
-The newer owner direction prefers the **same logical PostgreSQL database as HDE**
-with app-owned schema/table boundaries, restricted app runtime/migration roles
-and maximum appropriate structural reuse after ownership/dependency/capacity
-audit. No legacy user data needs migration. The separately issued
-[AP1-DBA-001 catalog audit](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view)
-has not been executed at this checkpoint; its bounded catalog-connection exception
-does not activate P03 persistence or move runtime/migrations out of P11.
+[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles is the audited direction. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
 
 The current validator checks **API/worker service identity**, not logical database,
 schema/table ownership or role grants. It deliberately refuses the protected

@@ -1,17 +1,17 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.2 · **Recorded:** 23 September 2026  
+**Identity:** GAPP-PF00 · **Revision:** 1.3 · **Recorded:** 24 September 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
 
-1. Read [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) for live status and the next action.
-2. Read the current governing document identified below and the relevant task in the [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e).
-3. Once a repository is established, read its current continuity handoff and verify branch, commit and worktree before writing.
+1. Read [current handoff](../continuity/current-handoff.md), verify remote main/open PRs/worktree, and read applicable repository agent instructions.
+2. Read [PF01](GAPP-PF01-A-to-Z-Implementation-Plan.md), the relevant persistent plan and code. [The documentation guide](../README.md) maps every durable home.
+3. Reconcile task status with [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) and the [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e). A fresh session can understand and implement its assignment from repository Markdown alone; unavailable Notion access requires a later status sync, not a Drive dependency.
 
 ## Current session authority
 
-**App Planner 1** is coordinator and build manager. **App Builder 1** is the authorized implementation session and reports to App Planner 1. The exact create/modify grant, the exception for any HDE-affecting change and the reporting responsibilities are owned by **GAPP-PF01, decision D08**. Read that current authorization before applying older approval language. The earlier planning-only checkpoint is complete; App Builder 1 is authorized to begin implementation. Live activation/progress state belongs to Notion, not this index.
+Nathan's 24 September direction pauses new features for migration to Claude Code. The receiving Claude session is the manager, commissions separate bounded implementation sessions, reviews evidence and maintains continuity. App Planner 1 prepares the migration; App Builder 1's earlier reports remain historical evidence. [Manager workflow](../planning/manager-workflow.md) implements the owner's high-trust experiment without importing prompt libraries. PF01 D08's app-only authority and effect-based HDE protection remain; D09 records the documentation/environment transition.
 
 ## Canon registry
 
@@ -26,21 +26,19 @@ The plan owns the initial governing direction, phase acceptance, architectural b
 
 | Information | Owner |
 |---|---|
-| Current task, blocker, next action and execution status | Notion control page and work register |
+| Current task, blocker, next action and execution status | Notion coordination plus repository current handoff; durable scope/evidence in Markdown |
 | Governing implementation sequence and project-level constraints | Current GAPP-PF01 |
 | Implementation contracts, code, runtime configuration definitions, tests and runbooks | Application repository after recorded establishment |
 | Durable architectural rationale | Repository ADRs once established; initial decisions remain in GAPP-PF01 until transferred |
 | HDE behavior and contracts | HDE's own canonical sources and supported release; referenced, never rewritten by app documentation |
-| Original brief and dated research | [Research and Sources](https://drive.google.com/drive/folders/1cZvOmqyN-NeU2BXNUSbHVk9F_LCeSPWS) |
-| Temporary drafts, experiments and generated intermediates | [Ephemeral Working Files](https://drive.google.com/drive/folders/1OuH16DIQQz-cO9yjXHuZob_idXvt3x6k) or ignored local working directory; noncanonical |
+| Original brief and dated research | [Repository source snapshots](../planning/sources/2026-09-23-original-research.md) |
+| Temporary drafts, experiments and generated intermediates | [`docs/ephemeral/`](../ephemeral/README.md) or ignored local working directory; noncanonical |
 
 ## Repository authority transfer
 
 **Repository selected and created:** `amthorn78/glow-dating-app`, private, default branch `main`, 23 September 2026. This publication initiates P01.2 authority transfer. Exact commit and pointer-verification evidence are recorded in [authority transfer](../continuity/authority-transfer.md). The transfer is effective after those external pointer updates are verified; no local copy alone transfers authority.
 
-P01 records the exact repository URL, visibility, default branch and authority-transfer commit. GAPP-PF00 and GAPP-PF01 then move to a distinct `docs/pf-canon/` namespace in that repository. Update this Drive index and Notion with the new canonical links and transfer date. Retain the Drive plan as an explicitly historical snapshot; do not continue editing parallel plan copies. Implementation documents are created in their appropriate repository homes and referenced here only if they become canon entries.
-
-Do not perform this transfer merely by creating a local file or announcing it in conversation. It is complete only when the committed repository documents and updated control pointers have been verified.
+The P01 transfer was completed and verified as recorded in [authority transfer](../continuity/authority-transfer.md). It is not a procedure a new session must repeat. The current canon is repository Markdown. Historical Drive snapshots are provenance only; no further Drive read/write or pointer update is required. See [migration record](../planning/claude-code-migration.md) for the remaining source recovery and current documentation map.
 
 ## Evidence and revision record
 
@@ -54,3 +52,5 @@ Use stable titles and document IDs for durable references. Record the concrete s
 
 
 1.2 — P01.2 repository publication in the verified private application repository; authority-transfer evidence and external pointers recorded separately to avoid a self-referential commit hash. Initial plan revision and source links preserved.
+
+1.3 — repository-only Markdown operational authority; Claude manager workflow and feature pause; Drive references become historical provenance.

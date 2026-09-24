@@ -25,12 +25,7 @@ The planner reports documentary HDE schema `hde` and the source-defined
 `public.hde_body_graphs_current` object; neither is a verified live catalog, and
 `public` is not an app-only deletion boundary.
 
-[AP1-DBA-001](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view)
-is issued for a dedicated bounded read-only catalog audit; it has not been
-executed in this P03 session. Only that audit has the early connection exception.
-It permits no DDL, deletion, role/grant changes, legacy startup execution or
-runtime wiring. Consume its verified findings before layout implementation.
-A02, shared-capacity effects and actual app-only grants remain unresolved.
+[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles is the audited direction. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
 
 ## Committed schema order
 

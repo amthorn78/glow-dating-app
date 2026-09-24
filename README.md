@@ -1,10 +1,10 @@
 # Glow dating application
 
-Private, isolated Expo/React Native and Django/DRF application foundation. App Builder 1 implements; App Planner 1 coordinates. Nathan Amthor owns the project.
+Private monorepo for the Glow iOS/Android dating app: Expo/React Native mobile and Django/DRF API. Nathan Amthor owns the project. **P01–P05 are complete at their recorded preparation/fixture scope. New features are paused while implementation moves to Claude Code.** P06–P12 remain open.
 
-Start with [the canon index](docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), [governing plan](docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), and [current handoff](docs/continuity/current-handoff.md).
+Start with the [documentation map](docs/README.md), [current handoff](docs/continuity/current-handoff.md), [Claude manager brief](docs/continuity/claude-code-handoff.md), [PF canon](docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md) and [governing plan](docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md). All implementation documentation lives here as Markdown; Notion coordinates status. No Google Drive access is required.
 
-The current milestone adds the P04.1 native shell and synthetic account/onboarding journey to the P03 operational preparation and database-independent P02 foundation. Registration/sign-in, verification/recovery, adult/consent and private birth screens use controlled development fixtures; ordinary onboarding ends with the profile still incomplete. Production API routes remain unimplemented. Synthetic preview data is never genuine Human Design compatibility. Live authentication, database persistence, providers, native signed builds and release acceptance require their planned evidence. The Glow HD Engine and shared legacy resources remain protected.
+Onboarding, profiles/preferences, media, eligibility, discovery, likes/matches and unmatch use controlled fixtures. The served API exposes synthetic GET smoke data; authenticated production routes, live Stream/HDE, database persistence, signed native builds and release acceptance remain unimplemented or unproven. Synthetic compatibility is never a real Human Design result. The HDE remains a separate protected integration target; the app consumes supported results instead of calculating charts. Database wiring remains P11.
 
 ## Evidence and decisions
 
@@ -24,6 +24,8 @@ The current milestone adds the P04.1 native shell and synthetic account/onboardi
 - [Deferred database/provider/native acceptance](docs/testing/p11-deferred-acceptance.md)
 
 ## Run the development foundation
+
+Use the [local setup guide](docs/operations/local-development.md) and [verified environment inventory](docs/operations/environment-inventory.md). The Claude initiation prompt is [here](docs/planning/claude-code-initiation.md).
 
 Use Python 3.12.14, Node 24.19.0 and npm 11.9.0. Install the API's hash-locked development dependencies as described in [API setup](services/api/README.md), and use `npm ci --ignore-scripts` in `apps/mobile/` as described in [mobile setup](apps/mobile/README.md).
 

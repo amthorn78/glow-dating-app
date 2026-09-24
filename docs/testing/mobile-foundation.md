@@ -20,7 +20,7 @@ Scaffold actually executed:
 CI=1 npx --yes create-expo-app@5.0.0 /workspace/scratch/be03f90e714e/glow-dating-app/apps/mobile --template expo-template-default@57.0.26 --no-install
 ```
 
-The template was generated successfully, then tutorial screens, sample assets and web output configuration were replaced. The upstream MIT notice is preserved in `EXPO-TEMPLATE-LICENSE.txt`. `dependency-inventory.json` records all 669 lockfile package entries and their declared licenses; all entries declare license metadata. This is a metadata inventory, not a legal review or a complete supply-chain security certification.
+The template was generated successfully, then tutorial screens, sample assets and web output configuration were replaced. The upstream MIT notice is preserved in `EXPO-TEMPLATE-LICENSE.md`. `dependency-inventory.json` records all 669 lockfile package entries and their declared licenses; all entries declare license metadata. This is a metadata inventory, not a legal review or a complete supply-chain security certification.
 
 Official sources checked before pinning:
 
