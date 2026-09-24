@@ -548,17 +548,19 @@ class FixtureInteractionService:
         if operation == "unmatch":
             if match is None or actor not in match.participants:
                 return CommandResult("unavailable")
-            other = next(person for person in match.participants if person != actor)
-            target = self.registry.account(other)
+            target_account = next(person for person in match.participants if person != actor)
+            # Cleanup authority comes from the retained match, not the current
+            # availability of the other participant's profile registry row.
+            target = self.registry.account(target_account)
         else:
             target = self.registry.profile(intent["target_profile_id"])
-        if target is None or target.account_id == actor:
+            if target is None or not self._target_current(target):
+                return CommandResult("unavailable")
+            target_account = target.account_id
+        if target_account == actor:
             return CommandResult("unavailable")
-        # Unmatch remains available when target facts/visibility are unavailable.
-        if operation != "unmatch" and not self._target_current(target):
-            return CommandResult("unavailable")
-        pair = match.pair if match is not None else self._pair(actor, target.account_id)
-        guards = self._guards(actor, target.account_id, mappings=operation == "interaction")
+        pair = match.pair if match is not None else self._pair(actor, target_account)
+        guards = self._guards(actor, target_account, mappings=operation == "interaction")
         if pair is None or guards is None:
             return CommandResult("unavailable")
         guards = (authority_guard, *guards) if authority_guard else guards
@@ -594,9 +596,10 @@ class FixtureInteractionService:
             events = list(state.events)
             expected = intent["meta"]["expected_version"]
             if operation == "interaction":
+                assert target is not None
                 if self.policy_version != "development-interactions-1":
                     return CommandResult("policy_unresolved")
-                current = directions.get((actor, target.account_id))
+                current = directions.get((actor, target_account))
                 if expected != (current.version if current else 0):
                     return CommandResult("stale_version")
                 action_state = "liked" if intent["action"] == "like" else "passed"
@@ -604,17 +607,17 @@ class FixtureInteractionService:
                     return CommandResult(
                         "policy_unresolved" if current.state == "passed" else "state_conflict"
                     )
-                if pair in matches or self._match_between(actor, target.account_id) is not None:
+                if pair in matches or self._match_between(actor, target_account) is not None:
                     return CommandResult("policy_unresolved")
                 batch_guards = self._batch_guards(intent, actor, session, target, mode)
                 if batch_guards is None:
                     return CommandResult("stale_batch")
                 guards = (*guards, *batch_guards)
-                if self.repository.blocked(actor, target.account_id):
+                if self.repository.blocked(actor, target_account):
                     return CommandResult("unavailable")
                 if self.discovery.batch.eligibility.repository is not self.discovery.source:
                     return CommandResult("unavailable")
-                decision = self.discovery.batch.eligibility.evaluate(actor, target.account_id)
+                decision = self.discovery.batch.eligibility.evaluate(actor, target_account)
                 if decision.state is not EligibilityDecisionState.READY:
                     return CommandResult("unavailable")
                 # Source/registry/mapping cells survive after session/queue consumption.
@@ -622,14 +625,14 @@ class FixtureInteractionService:
                 row = current or Direction(
                     str(uuid4()),
                     actor,
-                    target.account_id,
+                    target_account,
                     action_state,
                     1,
                     durable_guards,
                     self._authority_bindings(),
                 )
-                directions[(actor, target.account_id)] = row
-                reciprocal = directions.get((target.account_id, actor))
+                directions[(actor, target_account)] = row
+                reciprocal = directions.get((target_account, actor))
                 if (
                     row.state == "liked"
                     and row.matchable
@@ -642,7 +645,7 @@ class FixtureInteractionService:
                     match = Match(
                         str(uuid4()),
                         pair,
-                        (actor, target.account_id),
+                        (actor, target_account),
                         "active",
                         1,
                         (*row.guards, *reciprocal.guards, *durable_guards),
@@ -650,7 +653,7 @@ class FixtureInteractionService:
                     )
                     matches[pair] = match
                     events.append(LogicalEvent(str(uuid4()), "match_created", match.match_id, 1))
-                receipt = Receipt(digest, row.state, row.object_id, row.version, target.account_id)
+                receipt = Receipt(digest, row.state, row.object_id, row.version, target_account)
             elif operation == "unmatch":
                 assert match is not None
                 if expected != match.version:
@@ -664,9 +667,9 @@ class FixtureInteractionService:
                     events.append(
                         LogicalEvent(str(uuid4()), "contact_revoked", match.match_id, version)
                     )
-                receipt = Receipt(digest, "unmatched", match.match_id, version, target.account_id)
+                receipt = Receipt(digest, "unmatched", match.match_id, version, target_account)
             else:
-                block = blocks.get((actor, target.account_id))
+                block = blocks.get((actor, target_account))
                 if expected != (block.version if block else 0):
                     return CommandResult("stale_version")
                 action_state = "active" if intent["action"] == "block" else "removed"
@@ -679,21 +682,21 @@ class FixtureInteractionService:
                 block = Block(
                     block.object_id if block else str(uuid4()),
                     actor,
-                    target.account_id,
+                    target_account,
                     action_state,
                     version,
                 )
-                blocks[(actor, target.account_id)] = block
+                blocks[(actor, target_account)] = block
                 if changed:
                     events.append(
                         LogicalEvent(str(uuid4()), "block_changed", block.object_id, version)
                     )
                 if action_state == "active":
-                    for direction_key in ((actor, target.account_id), (target.account_id, actor)):
+                    for direction_key in ((actor, target_account), (target_account, actor)):
                         previous_direction = directions.get(direction_key)
                         if previous_direction:
                             directions[direction_key] = replace(previous_direction, matchable=False)
-                existing = self._match_between(actor, target.account_id)
+                existing = self._match_between(actor, target_account)
                 if action_state == "active" and existing and existing.state == "active":
                     if existing.version >= MAX_VERSION:
                         return CommandResult("capacity_exceeded")
@@ -709,7 +712,7 @@ class FixtureInteractionService:
                     "blocked" if action_state == "active" else "unblocked",
                     block.object_id,
                     version,
-                    target.account_id,
+                    target_account,
                 )
             event_count = state.discretionary_events + len(events) - len(state.events)
             if event_count > MAX_EVENTS:
@@ -773,6 +776,7 @@ class FixtureInteractionService:
     def match_projection(self, match_id: str) -> dict[str, Any] | None:
         bindings = self._bindings()
         authority_guard = acquire_guard(self.discovery.authority)
+        registry_guard = acquire_guard(self.registry)
         context = self._actor()
         match = self._match(match_id)
         if context is None or match is None or context[0] not in match.participants:
@@ -786,6 +790,7 @@ class FixtureInteractionService:
         if (
             self.repository.blocked(actor, other)
             or not guard_is_current(authority_guard)
+            or not guard_is_current(registry_guard)
             or any(old is not new for old, new in zip(bindings, self._bindings(), strict=True))
             or (
                 match.state == "active" and not all(guard_is_current(item) for item in match.guards)
@@ -821,7 +826,7 @@ class FixtureInteractionService:
     def _result(
         self,
         actor: AccountId,
-        target: FixtureIdentity,
+        target: FixtureIdentity | None,
         operation: str,
         receipt: Receipt,
         *,
@@ -835,7 +840,7 @@ class FixtureInteractionService:
         projection: dict[str, Any] | None = None
         if operation == "unmatch":
             projection = self.match_projection(receipt.object_ref)
-        elif operation == "block":
+        elif operation == "block" and target is not None:
             row = self.repository._state.blocks.get((actor, target.account_id))
             if row and self._target_current(target):
                 projection = {
@@ -844,7 +849,11 @@ class FixtureInteractionService:
                     "state": row.state,
                     "version": row.version,
                 }
-        elif self._target_current(target) and not self.repository.blocked(actor, target.account_id):
+        elif (
+            target is not None
+            and self._target_current(target)
+            and not self.repository.blocked(actor, target.account_id)
+        ):
             match = self._match_between(actor, target.account_id)
             if match:
                 match = self._refresh_match(match)

@@ -61,8 +61,12 @@ Its review found targeted-source scope and original-action projection gaps. Thei
 correction was published at `554fbd81cafb966cdc1564c3f9889baf2e486dcf`, tree
 `72df178bea03722a195a91e8f0e63cf74da505d2`, and passed both full runs/81 cases.
 Review then found retained Python policy/clock authority, mobile presentation
-invalidation and private consumption freshness gaps. Their bounded correction is
-prepared locally. See the checkpoint and read
+invalidation and private consumption freshness gaps. Their correction was published
+at `0859fc4560088619b5d48eecbdbe3a3c3bb5a96e`, tree
+`ed0f2eeaa6a106d76383d5bc4c16253ed10ed538`, and passed both full runs/81 cases.
+Review then found cleanup denial after target-registry removal in Python and for
+valid-session suspended/deletion-pending actors in mobile. Their bounded correction
+is prepared locally. See the checkpoint and read
 actual current head, PR and newer external reports before recovery.
 
 Terminal Git authentication was unavailable. All **231** baseline blobs/modes and
@@ -118,7 +122,7 @@ candidate/main tree relationship and all four jobs on actual merged main.
 An earlier candidate pass does not certify later source or merged main.
 
 **Next action at this source checkpoint:** publish the narrow PR14 corrections as
-an actual child of `554fbd81cafb966cdc1564c3f9889baf2e486dcf`, then satisfy new final-candidate checks
+an actual child of `0859fc4560088619b5d48eecbdbe3a3c3bb5a96e`, then satisfy new final-candidate checks
 and review before checked merge and actual-main gates. Independent Python/mobile
 and contract/static/documentation review covers the initial source; the narrow
 correction has its own focused review. The checkpoint preserves the P2 and first

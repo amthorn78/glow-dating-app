@@ -1,20 +1,21 @@
 import type { InteractionCommandResult } from '../contracts/generated/gapp-api-v1.ts';
 import type { DiscoveryMode } from '../discovery/fixture-adapter.ts';
 import type { DiscoveryStore } from '../discovery/store.ts';
-import type { ProfileStore } from '../profiles/store.ts';
-import { FixtureInteractionAdapter, InteractionFailure, type MatchView } from './fixture-adapter.ts';
+import { discoveryViewerIsCurrent, type ProfileStore } from '../profiles/store.ts';
+import { FixtureInteractionAdapter, InteractionFailure, type CleanupMatchView, type MatchView } from './fixture-adapter.ts';
 export type InteractionScenario = 'normal' | 'offline' | 'lost_response' | 'delayed';
 export type InteractionState = Readonly<{ status: 'idle' | 'pending' | 'error' | 'committed';
   pending: Readonly<{ profileId: string; action: 'like' | 'pass' | 'unmatch' | 'block' | 'unblock' }> | null;
-  error: string | null; message: string | null; canRetry: boolean; matches: readonly MatchView[];
+  error: string | null; message: string | null; canRetry: boolean; matches: readonly MatchView[]; cleanupMatches: readonly CleanupMatchView[];
   selectedMatchId: string | null; scenario: InteractionScenario }>;
 type Prepared = ReturnType<FixtureInteractionAdapter['prepare']> | ReturnType<FixtureInteractionAdapter['unmatchIntent']>;
 type Submission = { prepared: Prepared; mode: DiscoveryMode | null; profileId: string; action: 'like' | 'pass' | 'unmatch'; owner: string; generation: number };
 export class InteractionStore {
-  private state: InteractionState = Object.freeze({ status: 'idle', pending: null, error: null, message: null, canRetry: false, matches: [], selectedMatchId: null, scenario: 'normal' });
+  private state: InteractionState = Object.freeze({ status: 'idle', pending: null, error: null, message: null, canRetry: false, matches: [], cleanupMatches: [], selectedMatchId: null, scenario: 'normal' });
   private listeners = new Set<() => void>();
   private sequence = 0;
   private generation = 0;
+  private refreshRevision = 0;
   private pending: Submission | null = null;
   private retryable: Submission | null = null;
   private release: (() => void) | null = null;
@@ -40,8 +41,14 @@ export class InteractionStore {
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   readonly getSnapshot = () => this.state;
   private publish(patch: Partial<InteractionState>) { this.state = Object.freeze({ ...this.state, ...patch }); this.listeners.forEach(listener => listener()); }
-  refresh() { const matches = this.adapter.matches(); this.publish({ matches, ...(this.state.message === 'Mutual match confirmed.' && !matches.some(match => match.state === 'active') ? { message: 'New contact is unavailable.' } : {}), selectedMatchId: matches.some(match => match.match_id === this.state.selectedMatchId) ? this.state.selectedMatchId : null }); }
-  selectMatch(matchId: string) { this.refresh(); this.publish({ selectedMatchId: this.state.matches.some(match => match.match_id === matchId) ? matchId : null }); }
+  refresh() {
+    const revision = ++this.refreshRevision, authority = this.profiles.captureInteractionCleanupOwner();
+    // Acquire private projections last; a nested revocation refresh supersedes this publication.
+    const cleanupMatches = authority ? this.adapter.cleanupMatches() : [], matches = authority ? this.adapter.matches() : [];
+    if (revision !== this.refreshRevision || authority && !discoveryViewerIsCurrent(authority)) return;
+    this.publish({ matches, cleanupMatches, ...(this.state.message === 'Mutual match confirmed.' && !matches.some(match => match.state === 'active') ? { message: 'New contact is unavailable.' } : {}), selectedMatchId: cleanupMatches.some(match => match.match_id === this.state.selectedMatchId) ? this.state.selectedMatchId : null });
+  }
+  selectMatch(matchId: string) { this.refresh(); this.publish({ selectedMatchId: this.state.cleanupMatches.some(match => match.match_id === matchId) ? matchId : null }); }
   canAct(mode: DiscoveryMode, profileId: string): boolean {
     const page = this.discovery.getSnapshot(mode).page;
     return this.state.status !== 'pending' && !!page && page.items.some(item => item.profile_id === profileId) &&
@@ -96,7 +103,7 @@ export class InteractionStore {
     const projection = result.current_projection;
     let message = result.receipt.outcome_code === 'unmatched' ? 'Unmatched. New contact is unavailable.' : result.receipt.outcome_code === 'liked' ? 'Like saved.' : 'Pass saved.';
     if (projection?.kind === 'interaction' && projection.match_id) message = 'Mutual match confirmed.';
-    if (!projection) message = 'Your request was committed. Current access is unavailable.';
+    if (!projection && result.receipt.outcome_code !== 'unmatched') message = 'Your request was committed. Current access is unavailable.';
     this.publish({ status: 'committed', error: null, message });
   }
   private failure(error: unknown) { this.publish({ status: 'error', error: error instanceof InteractionFailure ? error.message : 'The action could not be confirmed. Reload current state.', message: null, canRetry: this.retryable !== null }); }

@@ -139,6 +139,32 @@ test('blocking purges retained match details and unblocking does not restore a m
   await expect(matchRows(page).first()).not.toContainText('Mutual match');
 });
 
+for (const restriction of ['suspended', 'deletion_pending'] as const) {
+  test(`a current ${restriction} participant can only end the existing connection without profile disclosure`, async ({ page }) => {
+    await mutual(page);
+    await development(page);
+    await active(page, `scenario-${restriction}`).click();
+    await expect(active(page, 'screen-restricted')).toBeVisible();
+    await active(page, 'open-matches').click();
+    await expect(matchRows(page)).toHaveCount(1);
+    await expect(matchRows(page).first()).toContainText('Connection unavailable');
+    await expect(page.getByTestId('match-list').filter({ hasText: 'Fictional Jules' })).toHaveCount(0);
+    await expect(active(page, 'open-profile')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Back to recommended', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'View connection status', exact: true }).click();
+    await expect(active(page, 'match-detail')).not.toContainText(/Fictional Jules|You both liked|birth_date|other_profile_id/);
+    await expect(active(page, 'match-detail')).toContainText('Messaging is unavailable');
+    await expect(active(page, 'match-unmatch')).toBeEnabled();
+    await active(page, 'match-unmatch').click();
+    await expect(active(page, 'match-detail')).toContainText('You are unmatched');
+    await expect(active(page, 'match-unmatch')).toHaveCount(0);
+    await active(page, 'logout').click();
+    await expect(active(page, 'screen-account')).toBeVisible();
+    await expect(page.getByTestId('match-detail')).toHaveCount(0);
+    await expect(page.getByTestId('match-list')).toHaveCount(0);
+  });
+}
+
 test('offline error remains an error, focuses feedback, and retries the same current intent', async ({ page }) => {
   await eligible(page);
   await setDelivery(page, 'offline');

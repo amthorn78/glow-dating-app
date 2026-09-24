@@ -970,3 +970,127 @@ class InteractionTests(TestCase):
         after, batch = self.b.page(mode="recommended", request_id="after-commit")
         self.assertEqual(after["state"], "reload_required")
         self.assertIsNone(batch)
+
+    def test_unmatch_missing_other_registry_row_uses_retained_match_identity(self):
+        for caller, missing_account in (("a", "discovery-jules"), ("b", "discovery-viewer")):
+            with self.subTest(caller=caller):
+                self.reset()
+                match, _, _ = self.match()
+                service = getattr(self, caller)
+                original_rows = self.fixture.registry.identities
+                self.fixture.registry.replace(
+                    tuple(
+                        row for row in original_rows if row.account_id != AccountId(missing_account)
+                    )
+                )
+                command = self.unmatch(match)
+                original = self.committed(service, command)
+                self.assertEqual(
+                    original["receipt"],
+                    {
+                        "outcome_code": "unmatched",
+                        "object_ref": match["match_id"],
+                        "committed_version": 2,
+                    },
+                )
+                self.assertIsNone(original["current_projection"])
+                self.assertEqual(self.repo.counts["matches"], 1)
+                self.assertEqual(self.repo.counts["receipts"], 3)
+                self.assertEqual(
+                    Counter(event.kind for event in self.repo.events),
+                    {"match_created": 1, "contact_revoked": 1},
+                )
+                state_before_replay = self.repo._state
+                replay = self.committed(service, command)
+                self.assertTrue(replay["replayed"])
+                self.assertEqual(replay["receipt"], original["receipt"])
+                self.assertIsNone(replay["current_projection"])
+                self.assertIs(self.repo._state, state_before_replay)
+                self.assertEqual(
+                    service.command(self.unmatch(match, key="stale")).code, "stale_version"
+                )
+                conflicting = self.unmatch(match, version=2)
+                self.assertEqual(service.command(conflicting).code, "idempotency_conflict")
+                self.assertEqual(self.c.command(command).code, "unavailable")
+                self.assertIs(self.repo._state, state_before_replay)
+                # A current trusted session is still required, even for receipt recovery.
+                actor = service.discovery.authority.read()[0]
+                facts = self.source._participants[actor]
+                self.source.put_participant(replace(facts, session_state="revoked"))
+                self.assertEqual(service.command(command).code, "unavailable")
+                self.assertIs(self.repo._state, state_before_replay)
+                self.source.put_participant(facts)
+                self.fixture.registry.replace(original_rows)
+                restored = self.committed(service, command)
+                self.assertEqual(restored["receipt"], original["receipt"])
+                self.assertEqual(restored["current_projection"]["state"], "unmatched")
+                self.assertIs(self.repo._state, state_before_replay)
+                repeated = self.committed(service, self.unmatch(match, key="repeat", version=2))
+                self.assertEqual(repeated["receipt"]["committed_version"], 2)
+                self.assertEqual(len(self.repo.events), 2)
+
+    def test_other_registry_removal_during_unmatch_aborts_then_retry_can_cleanup(self):
+        for caller, missing_account in (("a", "discovery-jules"), ("b", "discovery-viewer")):
+            with self.subTest(caller=caller):
+                self.reset()
+                match, _, _ = self.match()
+                service = getattr(self, caller)
+                retained_rows = tuple(
+                    row
+                    for row in self.fixture.registry.identities
+                    if row.account_id != AccountId(missing_account)
+                )
+                before = self.repo._state
+                service.before_commit = lambda rows=retained_rows: self.fixture.registry.replace(
+                    rows
+                )
+                command = self.unmatch(match)
+                self.assertEqual(service.command(command).code, "stale_version")
+                self.assertIs(self.repo._state, before)
+                self.assertEqual(self.repo.counts["pending"], 0)
+                service.before_commit = lambda: None
+                result = self.committed(service, command)
+                self.assertIsNone(result["current_projection"])
+                self.assertEqual(result["receipt"]["committed_version"], 2)
+                self.assertEqual(self.repo.counts["matches"], 1)
+                self.assertEqual(len(self.repo.events), 2)
+
+    def test_unmatch_projection_withholds_registry_row_removed_by_final_lookup(self):
+        for caller, missing_account in (("a", "discovery-jules"), ("b", "discovery-viewer")):
+            with self.subTest(caller=caller):
+                self.reset()
+                match, _, _ = self.match()
+                service = getattr(self, caller)
+                registry = self.fixture.registry
+                original_account = registry.account
+                target = AccountId(missing_account)
+                lookup_count = 0
+
+                def remove_on_projection(
+                    account, original_account=original_account, target=target, registry=registry
+                ):
+                    nonlocal lookup_count
+                    result = original_account(account)
+                    if account == target:
+                        lookup_count += 1
+                        if lookup_count == 2:
+                            registry.replace(
+                                tuple(
+                                    row for row in registry.identities if row.account_id != target
+                                )
+                            )
+                    return result
+
+                command = self.unmatch(match)
+                with patch.object(registry, "account", side_effect=remove_on_projection):
+                    result = self.committed(service, command)
+                self.assertIsNone(registry.account(target))
+                self.assertIsNone(result["current_projection"])
+                self.assertEqual(result["receipt"]["committed_version"], 2)
+                self.assertEqual(next(iter(self.repo._state.matches.values())).state, "unmatched")
+                self.assertEqual(len(self.repo.events), 2)
+                before_replay = self.repo._state
+                replay = self.committed(service, command)
+                self.assertEqual(replay["receipt"], result["receipt"])
+                self.assertIsNone(replay["current_projection"])
+                self.assertIs(self.repo._state, before_replay)

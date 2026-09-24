@@ -4,6 +4,7 @@ import { createFixtureOnboardingStore } from '../onboarding/store.ts';
 import { FixtureDiscoveryAdapter, FixtureDiscoveryTime } from '../discovery/fixture-adapter.ts';
 import { FIXTURE_PAIR_POLICY } from '../eligibility/facts.ts';
 import { FixtureInteractionAdapter, InteractionFailure } from './fixture-adapter.ts';
+import { createFixtureProfileStore } from '../profiles/store.ts';
 const options = { isDevelopment: true, mode: 'fixture' };
 function setup() {
   const owner = createFixtureOnboardingStore(options); owner.scenario('eligible');
@@ -11,12 +12,23 @@ function setup() {
   const adapter = new FixtureInteractionAdapter(owner.profiles, discovery);
   return { owner, time, discovery, adapter };
 }
-async function command(fixture: ReturnType<typeof setup>, action: 'like' | 'pass' = 'like', key = 'interaction-test:1') {
+async function command(fixture: Pick<ReturnType<typeof setup>, 'adapter' | 'discovery'>, action: 'like' | 'pass' = 'like', key = 'interaction-test:1') {
   const page = await fixture.discovery.request('recommended', 'test', null, true);
   return fixture.adapter.prepare(page, 'profile-jules', action, key);
 }
-function execute(fixture: ReturnType<typeof setup>, prepared: ReturnType<FixtureInteractionAdapter['prepare']>) {
+function execute(fixture: Pick<ReturnType<typeof setup>, 'adapter'>, prepared: ReturnType<FixtureInteractionAdapter['prepare']>) {
   return fixture.adapter.execute(prepared.session, prepared.intent);
+}
+function setupAuthority() {
+  const profiles = createFixtureProfileStore(options);
+  const authority = { ownerId: '11111111-1111-4111-8111-111111111111', generation: 1, accountVersion: 1,
+    accountState: 'active', sessionState: 'valid', adult: true, birthDate: '1990-06-15', consentState: 'accepted',
+    consentVersion: 'development-consent-1', consentCurrent: true, consentRevision: '1:development-consent-1', sourceRevision: 0 };
+  profiles.synchronize(authority); profiles.seedEligible();
+  const discovery = new FixtureDiscoveryAdapter(profiles, options), adapter = new FixtureInteractionAdapter(profiles, discovery);
+  return { profiles, discovery, adapter, change(accountState: string, sessionState = 'valid', generation = 1) {
+    profiles.synchronize({ ...authority, accountState, sessionState, generation });
+  } };
 }
 test('current composition maps UUIDs, persists private own action and consumes both queues without provider work', async () => {
   const fixture = setup(), prepared = await command(fixture);
@@ -399,4 +411,86 @@ test('interaction policy replacement remains an authority write independent of q
   fixture.adapter.setPolicy(false); fixture.adapter.setPolicy(true);
   assert.equal(fixture.adapter.matches()[0]?.state, 'restricted');
   const replay = execute(fixture, original); assert.deepEqual(replay.receipt, committed.receipt); assert.equal(replay.current_projection, null);
+});
+for (const accountState of ['suspended', 'deletion_pending'] as const)
+  test(`${accountState} owner can clean up an existing match without private projection or new actions`, async () => {
+    const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+    const matchId = fixture.adapter.inspect().matches[0]!.id;
+    fixture.owner.scenario(accountState);
+    assert.equal(fixture.owner.profiles.getSnapshot().profile, null);
+    assert.deepEqual(fixture.adapter.cleanupMatches(), [{ match_id: matchId, version: 2, state: 'restricted' }]);
+    const cleanup = fixture.adapter.unmatchIntent(matchId, 'restricted:unmatch');
+    const result = fixture.adapter.execute(cleanup.session, cleanup.intent);
+    assert.equal(result.receipt.outcome_code, 'unmatched'); assert.equal(result.current_projection, null);
+    assert.deepEqual(fixture.adapter.matches(), []); assert.equal(fixture.adapter.contact(matchId), null);
+    assert.throws(() => fixture.adapter.session(), InteractionFailure);
+    assert.throws(() => fixture.adapter.block('profile-jules', true, 'restricted:block'), InteractionFailure);
+    assert.throws(() => fixture.adapter.reciprocal('profile-iris', 'restricted:reciprocal'), InteractionFailure);
+    const replay = fixture.adapter.execute(cleanup.session, cleanup.intent);
+    assert.equal(replay.replayed, true); assert.deepEqual(replay.receipt, result.receipt); assert.equal(replay.current_projection, null);
+    assert.equal(fixture.adapter.inspect().receipts.length, 3);
+  });
+for (const accountState of ['suspended', 'deletion_pending'] as const)
+  test(`${accountState} same-session participant retains only minimal cleanup authority`, async () => {
+    const fixture = setupAuthority(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+    const session = fixture.adapter.session(), matchId = fixture.adapter.inspect().matches[0]!.id;
+    fixture.change(accountState);
+    const reference = fixture.adapter.cleanupMatches()[0]!;
+    assert.deepEqual(Object.keys(reference).sort(), ['match_id', 'state', 'version']);
+    const intent = { operation: 'unmatch' as const, match_id: matchId, meta: { expected_version: reference.version, idempotency_key: 'same-session:cleanup' } };
+    assert.equal(fixture.adapter.execute(session, intent).current_projection, null);
+    assert.equal(fixture.adapter.inspect().matches[0]?.state, 'unmatched');
+  });
+for (const accountState of ['suspended', 'deletion_pending'] as const)
+  test(`${accountState} reverse participant can unmatch but cannot regain private projections or block`, async () => {
+    const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+    const row = fixture.discovery.inspect('discovery-jules')!;
+    fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: accountState } });
+    const session = fixture.adapter.developmentSession('profile-jules'), match = fixture.adapter.inspect().matches[0]!;
+    const intent = { operation: 'unmatch' as const, match_id: match.id, meta: { expected_version: match.version, idempotency_key: 'reverse:cleanup' } };
+    const result = fixture.adapter.execute(session, intent);
+    assert.equal(result.receipt.outcome_code, 'unmatched'); assert.equal(result.current_projection, null);
+    const replay = fixture.adapter.execute(session, intent); assert.deepEqual(replay.receipt, result.receipt); assert.equal(replay.current_projection, null);
+    assert.throws(() => fixture.adapter.execute(session, { operation: 'block', action: 'block', target_profile_id: fixture.owner.profiles.getSnapshot().profile!.profile_id,
+      meta: { expected_version: 0, idempotency_key: 'reverse:forbidden' } }), InteractionFailure);
+    fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: accountState, session_state: 'expired' } });
+    assert.throws(() => fixture.adapter.execute(session, intent), InteractionFailure);
+  });
+for (const [accountState, sessionState] of [['deleted', 'valid'], ['unverified', 'valid'], ['active', 'expired'], ['active', 'revoked'], ['none', 'none'], ['suspended', 'expired']])
+  test(`${accountState}/${sessionState} owner cannot read cleanup references or submit retained cleanup`, async () => {
+    const fixture = setupAuthority(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+    const matchId = fixture.adapter.inspect().matches[0]!.id, prepared = fixture.adapter.unmatchIntent(matchId, 'denied:cleanup');
+    fixture.change(accountState!, sessionState!);
+    assert.deepEqual(fixture.adapter.cleanupMatches(), []); assert.deepEqual(fixture.adapter.matches(), []);
+    assert.equal(fixture.adapter.contact(matchId), null);
+    assert.throws(() => fixture.adapter.unmatchIntent(matchId, 'new:cleanup'), InteractionFailure);
+    assert.throws(() => fixture.adapter.execute(prepared.session, prepared.intent), InteractionFailure);
+    assert.equal(fixture.adapter.inspect().receipts.length, 2);
+  });
+for (const revoke of ['deleted', 'expired', 'new_session'] as const)
+  test(`restricted cleanup final ${revoke} revocation cannot commit or replay`, async () => {
+    const fixture = setupAuthority(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+    let generation = 1; fixture.change('suspended');
+    const matchId = fixture.adapter.inspect().matches[0]!.id, prepared = fixture.adapter.unmatchIntent(matchId, 'pending:cleanup');
+    const revokeAuthority = () => fixture.change(revoke === 'deleted' ? 'deleted' : 'suspended', revoke === 'expired' ? 'expired' : 'valid', revoke === 'new_session' ? ++generation : generation);
+    fixture.adapter.setBeforeCommit(revokeAuthority);
+    assert.throws(() => fixture.adapter.execute(prepared.session, prepared.intent), InteractionFailure);
+    assert.equal(fixture.adapter.inspect().matches[0]?.state, 'restricted'); assert.equal(fixture.adapter.inspect().receipts.length, 2);
+    fixture.adapter.setBeforeCommit(null); fixture.change('suspended', 'valid', generation);
+    const current = fixture.adapter.unmatchIntent(matchId, 'committed:cleanup'), result = fixture.adapter.execute(current.session, current.intent);
+    revokeAuthority(); assert.throws(() => fixture.adapter.execute(current.session, current.intent), InteractionFailure);
+    assert.deepEqual(fixture.adapter.inspect().receipts.at(-1), result.receipt);
+  });
+test('cleanup references retain membership and final authority without disclosing a deleted target', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'other:like'); execute(fixture, await command(fixture));
+  const row = fixture.discovery.inspect('discovery-jules')!, matchId = fixture.adapter.inspect().matches[0]!.id;
+  fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: 'deleted' } });
+  assert.deepEqual(fixture.adapter.matches(), []);
+  assert.deepEqual(fixture.adapter.cleanupMatches(), [{ match_id: matchId, version: 2, state: 'restricted' }]);
+  assert.throws(() => fixture.adapter.unmatchIntent('00000000-0000-4000-8000-000000000001', 'unknown:cleanup'), InteractionFailure);
+  const cleanup = fixture.adapter.unmatchIntent(matchId, 'deleted:cleanup');
+  assert.equal(fixture.adapter.execute(cleanup.session, cleanup.intent).current_projection, null);
+  const capture = fixture.owner.profiles.captureInteractionCleanupOwner.bind(fixture.owner.profiles);
+  fixture.owner.profiles.captureInteractionCleanupOwner = () => { const owner = capture(); fixture.owner.profiles.captureInteractionCleanupOwner = capture; fixture.owner.logout(); return owner; };
+  assert.deepEqual(fixture.adapter.cleanupMatches(), []);
 });

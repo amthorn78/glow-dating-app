@@ -59,6 +59,10 @@ An existing match retains its creation-time canonical key across fixture registr
 incarnation changes. Lookup uses its retained participant account identities;
 unmatch, block and replay never rekey or duplicate that aggregate. A source change
 revokes current grants and supplies no rematch permission.
+Participant unmatch may use that retained membership when the other participant's
+registry row is absent. A current authorized caller, expected version and legal
+command remain required. Missing target authority suppresses the current projection;
+it does not prevent cleanup or rewrite the immutable receipt.
 
 Consumption belongs to authoritative interaction state. Once an actor commits
 like/pass, that direction cannot reappear as untouched merely by switching mode,
@@ -171,7 +175,10 @@ changes invalidate new contact decisions and retained projections. Participant
 authority is separate from discovery presentation: offline/pending scenarios,
 queue clearing and refresh do not revoke an otherwise valid action or match.
 They still retire affected discovery pages and pending batch commands. Participant
-unmatch remains reachable while paused/ineligible. Unblock/resume, a repeated
+unmatch remains reachable while paused/ineligible and for valid-session suspended
+or deletion-pending actors. Mobile exposes only match ID, version and state through
+a separate participant cleanup view when profile disclosure is unavailable.
+Deleted actors and invalid sessions have no cleanup authority. Unblock/resume, a repeated
 like or an old completion cannot resurrect the match. No assertion is made that
 past messages, safety evidence or provider bytes were erased.
 

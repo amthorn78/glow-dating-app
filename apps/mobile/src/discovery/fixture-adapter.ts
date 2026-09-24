@@ -175,9 +175,10 @@ export class FixtureDiscoveryAdapter {
     if (!cell || row?.facts?.account_id !== accountId) return null;
     const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
   }
-  captureAccountSession(accountId: string): object | null {
+  captureAccountSession(accountId: string, cleanup = false): object | null {
     const row = this.records.get(accountId), cell = this.recordCells.get(accountId);
-    if (!cell || row?.facts?.account_id !== accountId || row.facts.account_state !== 'active' || row.facts.session_state !== 'valid') return null;
+    if (!cell || row?.facts?.account_id !== accountId || row.facts.session_state !== 'valid' ||
+      !(cleanup ? ['active', 'suspended', 'deletion_pending'] : ['active']).includes(row.facts.account_state ?? '')) return null;
     const token = Object.freeze({}); accountGuards.set(token, { cell, revision: cell.revision }); return token;
   }
   bindConsumption(source: (viewerId: string, profileId: string) => boolean) { this.consumed = source; this.queuesChanged(); }

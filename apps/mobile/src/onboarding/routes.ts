@@ -22,9 +22,11 @@ export function canAccessRoute(route: SafeRoute, state: OnboardingSnapshot): boo
   if (route === '/verify') return state.stage === 'verification';
   if (route === '/recommended' || route === '/explore') return state.stage === 'eligible';
   const active = state.account?.state === 'active' && state.account.session_state === 'valid';
-  // Revocation remains reachable when discovery eligibility is lost. The
-  // interaction service independently authorizes every participant projection.
-  if (route === '/matches' || route === '/match') return active;
+  // A current restricted participant may end an existing connection. This route
+  // never grants profile/discovery access; the service supplies minimal cleanup
+  // records for suspended/deletion-pending accounts and rechecks every command.
+  if (route === '/matches' || route === '/match') return state.account?.session_state === 'valid' &&
+    ['active', 'suspended', 'deletion_pending'].includes(state.account.state);
   if (route === '/eligibility' || ['/profile', '/profile-edit', '/preferences', '/profile-preview', '/media'].includes(route)) return active;
   const eligibleForBirth = active && state.adult === 'pass' && state.consent.state === 'accepted' && state.consent.policy_version === FIXTURE_POLICY.version;
   if (route === '/birth') return eligibleForBirth;

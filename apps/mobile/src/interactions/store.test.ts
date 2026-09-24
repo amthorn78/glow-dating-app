@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createFixtureOnboardingStore } from '../onboarding/store.ts';
-import { FixtureDiscoveryAdapter } from '../discovery/fixture-adapter.ts';
+import { FixtureDiscoveryAdapter, FixtureDiscoveryTime } from '../discovery/fixture-adapter.ts';
 import { DiscoveryStore } from '../discovery/store.ts';
 import { FixtureInteractionAdapter } from './fixture-adapter.ts';
 import { InteractionStore } from './store.ts';
 const options = { isDevelopment: true, mode: 'fixture' };
 const tick = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
-async function setup() {
+async function setup(time?: FixtureDiscoveryTime) {
   const owner = createFixtureOnboardingStore(options); owner.scenario('eligible');
-  const discovery = new DiscoveryStore(owner.profiles, new FixtureDiscoveryAdapter(owner.profiles, options));
+  const discovery = new DiscoveryStore(owner.profiles, new FixtureDiscoveryAdapter(owner.profiles, { ...options, time }));
   const adapter = new FixtureInteractionAdapter(owner.profiles, discovery.adapter), store = new InteractionStore(owner.profiles, discovery, adapter);
   discovery.enter('recommended'); await tick(); return { owner, discovery, adapter, store };
 }
@@ -65,3 +65,43 @@ test('retry from a different discovery mode cannot strand a pending state; origi
   discovery.enter('recommended'); await store.retry();
   assert.equal(store.getSnapshot().status, 'committed'); assert.equal(adapter.inspect().actions.length, 1);
 });
+for (const accountState of ['suspended', 'deletion_pending'] as const)
+  test(`${accountState} store offers minimal cleanup selection and same-key lost-response recovery`, async () => {
+    const { store, owner, adapter } = await setup(); store.developmentReciprocal('profile-jules'); await store.submit('recommended', 'profile-jules', 'like');
+    const matchId = store.getSnapshot().matches[0]!.match_id;
+    owner.scenario(accountState);
+    assert.deepEqual(store.getSnapshot().matches, []); assert.deepEqual(store.getSnapshot().cleanupMatches, [{ match_id: matchId, version: 2, state: 'restricted' }]);
+    store.selectMatch(matchId); assert.equal(store.getSnapshot().selectedMatchId, matchId);
+    store.setScenario('lost_response'); await store.unmatch(matchId);
+    assert.equal(store.getSnapshot().canRetry, true); assert.equal(store.getSnapshot().cleanupMatches[0]?.state, 'unmatched');
+    store.setScenario('normal'); await store.retry();
+    assert.equal(store.getSnapshot().message, 'Unmatched. New contact is unavailable.'); assert.equal(adapter.inspect().receipts.length, 3);
+    assert.deepEqual(store.getSnapshot().matches, []); assert.equal(adapter.contact(matchId), null);
+    owner.logout(); assert.deepEqual(store.getSnapshot().cleanupMatches, []); assert.equal(store.getSnapshot().selectedMatchId, null);
+  });
+test('active owner can select a generic cleanup reference after target deletion', async () => {
+  const { store, adapter, discovery } = await setup(); store.developmentReciprocal('profile-jules'); await store.submit('recommended', 'profile-jules', 'like');
+  const matchId = store.getSnapshot().matches[0]!.match_id, target = discovery.adapter.inspect('discovery-jules')!;
+  discovery.adapter.replace({ ...target, facts: { ...target.facts!, account_state: 'deleted' } });
+  assert.deepEqual(store.getSnapshot().matches, []); assert.equal(store.getSnapshot().cleanupMatches[0]?.match_id, matchId);
+  store.selectMatch(matchId); await store.unmatch(matchId);
+  assert.equal(store.getSnapshot().selectedMatchId, matchId); assert.equal(store.getSnapshot().cleanupMatches[0]?.state, 'unmatched');
+  assert.equal(adapter.contact(matchId), null);
+});
+for (const revoke of ['logout', 'target_delete', 'time'] as const)
+  test(`a final cleanup ${revoke} callback cannot overwrite newer store revocation with retained private matches`, async () => {
+    const time = new FixtureDiscoveryTime(0), { owner, store, discovery } = await setup(time); store.developmentReciprocal('profile-jules'); await store.submit('recommended', 'profile-jules', 'like');
+    const capture = owner.profiles.captureInteractionCleanupOwner.bind(owner.profiles); let reads = 0, changed = false;
+    owner.profiles.captureInteractionCleanupOwner = () => {
+      const token = capture();
+      if (++reads === 6) {
+        changed = true; owner.profiles.captureInteractionCleanupOwner = capture;
+        if (revoke === 'logout') owner.logout();
+        else if (revoke === 'time') time.set(1);
+        else { const target = discovery.adapter.inspect('discovery-jules')!; discovery.adapter.replace({ ...target, facts: { ...target.facts!, account_state: 'deleted' } }); }
+      }
+      return token;
+    };
+    store.refresh(); assert.equal(changed, true); assert.deepEqual(store.getSnapshot().matches, []);
+    assert.equal(store.getSnapshot().cleanupMatches.length, revoke === 'logout' ? 0 : 1);
+  });

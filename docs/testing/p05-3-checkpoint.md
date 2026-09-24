@@ -322,10 +322,55 @@ interaction authority; actual source/policy writers still revoke. Full mobile
 review passes **128 interaction/discovery tests and 52 additional writer cases**.
 Exact final Python review and publication gates are recorded in the external report.
 
+## Participant cleanup authority correction
+
+Candidate `0859fc4560088619b5d48eecbdbe3a3c3bb5a96e`, tree
+`ed0f2eeaa6a106d76383d5bc4c16253ed10ed538`, is the verified nine-file child of
+554fbd81. Both [PR run 35987734669](https://github.com/amthorn78/glow-dating-app/actions/runs/35987734669)
+and [push run 35987729831](https://github.com/amthorn78/glow-dating-app/actions/runs/35987729831)
+passed all four jobs/81 browser cases, completing at `2026-09-24T10:37:31Z` and
+`2026-09-24T10:36:00Z`. Actual logs confirm 241 API tests, 38 Python contract
+methods, 491 mobile tests, 373 JavaScript contract cases, development export,
+smoke guards and built-image validation. Security completed without findings at
+`2026-09-24T10:37:09.666842Z`. Code review completed at
+`2026-09-24T10:37:31.624302Z` with two further P2 findings; that head was not merged.
+
+- [Removed target identity](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092619996):
+  Python required the other participant's current registry row before unmatch,
+  although the aggregate retained its identity and the caller remained authorized
+  for cleanup. Missing disclosure authority must suppress projection, not cleanup.
+- [Restricted-session cleanup](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092620004):
+  mobile routes and adapter required an active account, denying participant
+  unmatch to valid-session suspended/deletion-pending accounts. Cleanup authority
+  must remain separate from profile/discovery/new-interaction authority.
+
+Python cleanup now uses the stored match participant identity even if the target
+registry row is absent. Every match-state projection retains its registry guard
+through final reads. Independent before/after probes and three targeted regression
+methods pass; the full API suite passes **244 tests**, Ruff/format and mypy.
+
+Mobile separates cleanup authority from private match/profile authority. Current
+valid-session active/suspended/deletion-pending participants may read only match
+ID, version and state for cleanup; deleted actors, invalid sessions and outsiders
+remain denied. Routes and generic list/detail views expose that path, including
+when an active participant cannot obtain the other profile's projection. Two new
+routed regressions preserve all prior 81 browser assertions; **83 cases are now
+collected**, with hosted rendering still required for this source.
+
+Independent review also reproduced an outer store refresh republishing old private
+matches after a nested logout or target deletion during cleanup-list acquisition.
+The store retains actor/publication authority, acquires cleanup references before
+the final private views and compares authority without callbacks before publishing.
+Logout, target-deletion and nonnotifying clock variants now pass. Full mobile
+`npm run check` passes **516 tests**, TypeScript and ESLint. Independent review
+passes **156 targeted interaction/discovery/route tests**, a **30-case cleanup
+matrix** and **six final-publication variants**. Exact final publication gates are
+recorded in the external report.
+
 ## Publication boundary
 
-The shared-authority/private-consumption correction is prepared for publication as a
-child of actual PR14 head `554fbd81cafb966cdc1564c3f9889baf2e486dcf`. The branch and PR are
+The participant-cleanup correction is prepared for publication as a
+child of actual PR14 head `0859fc4560088619b5d48eecbdbe3a3c3bb5a96e`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.

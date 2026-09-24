@@ -23,7 +23,7 @@ export class InteractionFailure extends Error {
     offline: 'The response was not received. Retry the same request to reconcile its outcome.' })[code]); this.code = code; }
 }
 type Intent = InteractionIntent | UnmatchIntent | BlockIntent;
-type Session = Readonly<{ actor: string; sessionId: string; profileId: string }>;
+type Session = Readonly<{ actor: string; sessionId: string; profileId: string | null }>;
 type Identity = Readonly<{ account_id: string; profile_id: string; account_uuid: string; profile_uuid: string }>;
 type Action = Readonly<{ id: string; actor: string; target: string; state: 'liked' | 'passed'; version: number; source: InteractionPairCapture; matchable: boolean }>;
 type Match = Readonly<{ id: string; first: string; second: string; state: 'active' | 'restricted' | 'unmatched'; version: number; contactVersion: number; source: InteractionPairCapture }>;
@@ -34,6 +34,7 @@ type State = Readonly<{ discretionaryEvents: number; revision: number; actions: 
   blocks: ReadonlyMap<string, Block>; receipts: ReadonlyMap<string, ReceiptRecord>; events: readonly LogicalEvent[] }>;
 type Batch = Readonly<{ page: DevelopmentDiscoveryPage; actor: string; sessionId: string; profileId: string; pair: InteractionPairCapture }>;
 export type MatchView = MatchProjection & Readonly<{ profile: DevelopmentDiscoveryProfile | null }>;
+export type CleanupMatchView = Readonly<Pick<MatchProjection, 'match_id' | 'version' | 'state'>>;
 const sessions = new WeakMap<object, { authority: object; pair?: InteractionPairCapture; reverse: boolean }>();
 function transition(flow: string, event: string, from: string, to: string, policies: readonly string[] = []) {
   const rule = flows.flows.find(value => value.id === flow)?.transitions.find(value => value.event === event && value.from === from && value.to === to);
@@ -62,7 +63,7 @@ export class FixtureInteractionAdapter {
   }
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private emit() { this.listeners.forEach(listener => listener()); }
-  private owner() { const current = this.profiles.captureInteractionOwner(); if (!current) throw new InteractionFailure('unavailable'); return current; }
+  private owner(cleanup = false) { const current = cleanup ? this.profiles.captureInteractionCleanupOwner() : this.profiles.captureInteractionOwner(); if (!current) throw new InteractionFailure('unavailable'); return current; }
   private target(profile: string): Identity {
     const rows = this.identities.filter(value => value.profile_uuid === profile || value.profile_id === profile);
     if (rows.length !== 1) throw new InteractionFailure('unavailable');
@@ -73,18 +74,21 @@ export class FixtureInteractionAdapter {
     return identity;
   }
   session(): Session {
-    const authority = this.owner();
-    if (!authority.profileId) throw new InteractionFailure('unavailable');
+    return this.createSession(false);
+  }
+  private createSession(cleanup: boolean): Session {
+    const authority = this.owner(cleanup);
+    if (!cleanup && !authority.profileId) throw new InteractionFailure('unavailable');
     const session = freeze({ actor: authority.ownerId, sessionId: authority.sessionId, profileId: authority.profileId });
     sessions.set(session, { authority, reverse: false }); return session;
   }
-  private validateSession(session: Session) {
+  private validateSession(session: Session, cleanup = false) {
     const registered = sessions.get(session);
     if (!registered) throw new InteractionFailure('unavailable');
-    const current = this.owner();
+    const current = this.owner(cleanup);
     if (current.sessionId !== session.sessionId ||
       (!registered.reverse && current.ownerId !== session.actor)) throw new InteractionFailure('unavailable');
-    const reverse = registered.reverse ? this.discovery.captureAccountSession(this.target(session.profileId).account_id) : null;
+    const reverse = registered.reverse && session.profileId ? this.discovery.captureAccountSession(this.target(session.profileId).account_id, cleanup) : null;
     if (registered.reverse && !reverse) throw new InteractionFailure('unavailable');
     return { owner: current, reverse };
   }
@@ -155,8 +159,11 @@ export class FixtureInteractionAdapter {
   }
   private result(session: Session, record: ReceiptRecord, replayed: boolean, targetGuard: object | null): InteractionCommandResult {
     this.sourceChanged(false);
-    const authority = this.validateSession(session), current = this.state;
-    const projection = this.projection(session, record);
+    const authority = this.validateSession(session, record.operation === 'unmatch'), current = this.state;
+    // Cleanup authorization never restores a restricted participant's private read authority.
+    let privateAuthority: ReturnType<FixtureInteractionAdapter['validateSession']> | null = null;
+    try { privateAuthority = this.validateSession(session); } catch { /* The immutable cleanup receipt remains available. */ }
+    const projection = privateAuthority ? this.projection(session, record) : null;
     const permitted = (projection?.kind !== 'match' || this.matchProjectionCurrent(projection)) && (!targetGuard || interactionAccountIsCurrent(targetGuard)) && this.state === current && discoveryViewerIsCurrent(authority.owner) && (!authority.reverse || interactionAccountIsCurrent(authority.reverse));
     const result: InteractionCommandResult = { kind: 'interaction_command_result', receipt: record.receipt, replayed, current_projection: permitted ? projection : null };
     if (!validateInteractionCommandResult(result)) throw new InteractionFailure('invalid_request'); return freeze(result);
@@ -175,7 +182,7 @@ export class FixtureInteractionAdapter {
   }
   execute(session: Session, submitted: Intent): InteractionCommandResult {
     const intent = this.captureIntent(submitted);
-    const commandAuthority = this.validateSession(session);
+    const commandAuthority = this.validateSession(session, intent.operation === 'unmatch');
     const submittedTarget = intent.operation !== 'unmatch' && !sessions.get(session)!.reverse ? this.target(intent.target_profile_id) : null;
     const targetGuard = submittedTarget ? this.discovery.captureAccountRecord(submittedTarget.account_id) : null;
     if (submittedTarget && !targetGuard) throw new InteractionFailure('unavailable');
@@ -257,7 +264,7 @@ export class FixtureInteractionAdapter {
       if (initial.discretionaryEvents + events.length - initial.events.length > corpus.limits.max_events) throw new InteractionFailure('capacity');
       this.beforeCommit?.();
       // Finish every callback-capable authority read, then compare captured concrete cells and owned state.
-      this.validateSession(session);
+      this.validateSession(session, intent.operation === 'unmatch');
       if (targetGuard && !interactionAccountIsCurrent(targetGuard) || !discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || batchPair && !interactionPairIsCurrent(batchPair) || this.state !== initial) throw new InteractionFailure('stale');
       this.state = { discretionaryEvents: initial.discretionaryEvents + events.length - initial.events.length, revision: initial.revision + 1, actions, matches, blocks, receipts, events: freeze(events) };
       // Notifications follow the indivisible owned-state publication. Consumption invalidates both modes.
@@ -317,9 +324,18 @@ export class FixtureInteractionAdapter {
     return freeze(result);
   }
   unmatchIntent(matchId: string, key: string): { session: Session; intent: UnmatchIntent } {
-    const session = this.session(), match = [...this.state.matches.values()].find(value => value.id === matchId);
+    const session = this.createSession(true), match = [...this.state.matches.values()].find(value => value.id === matchId);
     if (!match || ![match.first, match.second].includes(session.actor)) throw new InteractionFailure('unavailable');
     return { session, intent: { operation: 'unmatch', match_id: matchId, meta: { expected_version: match.version, idempotency_key: key } } };
+  }
+  cleanupMatches(): readonly CleanupMatchView[] {
+    // Cleanup references need no target/profile/time read and grant no private projection.
+    const authority = this.profiles.captureInteractionCleanupOwner();
+    if (!authority) return [];
+    const current = this.state;
+    const result = [...current.matches.values()].filter(match => [match.first, match.second].includes(authority.ownerId))
+      .map(match => ({ match_id: match.id, version: match.version, state: match.state }));
+    return this.state === current && discoveryViewerIsCurrent(authority) ? freeze(result) : [];
   }
   block(profile: string, blocked: boolean, key: string): InteractionCommandResult {
     const session = this.session(), target = this.target(profile);
@@ -329,7 +345,7 @@ export class FixtureInteractionAdapter {
   /** Internal composition only: valid synthetic session, independent of discovery eligibility for revocation. */
   developmentSession(profile: string): Session {
     const authority = this.owner(), target = this.target(profile), facts = this.discovery.inspect(target.account_id)!.facts!;
-    if (facts.account_state !== 'active' || facts.session_state !== 'valid') throw new InteractionFailure('unavailable');
+    if (!['active', 'suspended', 'deletion_pending'].includes(facts.account_state ?? '') || facts.session_state !== 'valid') throw new InteractionFailure('unavailable');
     const session = freeze({ actor: target.account_uuid, profileId: target.profile_uuid, sessionId: authority.sessionId });
     sessions.set(session, { authority, reverse: true }); return session;
   }
