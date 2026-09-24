@@ -38,7 +38,12 @@ Private repository `amthorn78/glow-dating-app`, ID 1383293037, default branch ma
 Verified starting main: `833408ab3e04ad4f649e71ca0483e606806dddbb`, tree
 `5ec516752b591e6b9f558d7fa50241a08b31576f`. No open PR or prior P05.3 branch existed
 at startup. Scoped branch: **app-builder-1/p05-3-interactions**, created with that
-actual remote parent. Read its current head/PR and newer reports before recovery.
+actual remote parent. [PR14](https://github.com/amthorn78/glow-dating-app/pull/14)
+initial head is `c4209d4ab90320dded692f0b4da584bba31f8207`, verified tree
+`5abeba974d8b82fb6e9b4afae612469d78cd556a`. Its initial runs failed one new browser
+case (80/81; all 69 inherited passed), and code review found unrelated-pair safety
+invalidation. Narrow corrections are prepared locally; see the checkpoint. Read
+actual current head, PR and newer external reports before recovery.
 
 Terminal Git authentication was unavailable. All **231** baseline blobs/modes and
 the complete tree were verified against pinned GitHub source. The local snapshot
@@ -92,13 +97,14 @@ coverage honestly. After checked merge verify merge SHA/ordered parents,
 candidate/main tree relationship and all four jobs on actual merged main.
 An earlier candidate pass does not certify later source or merged main.
 
-**Next action at this source checkpoint:** publish the implemented and locally
-validated P05.3 source/checkpoint to the scoped branch with real ancestry, open its
-PR and satisfy final-candidate/final-main gates. Independent Python/mobile and
-contract/static/documentation review has no unresolved concrete finding; exact
-local results and corrected defects are in the checkpoint. On recovery, reconcile
-live PR/checkpoint state before repeating any action. Do not declare Done while
-source, required checks, review, merge or final-main evidence remains pending.
+**Next action at this source checkpoint:** publish the narrow PR14 corrections as
+an actual child of its initial candidate, then satisfy new final-candidate checks
+and review before checked merge and actual-main gates. Independent Python/mobile
+and contract/static/documentation review covers the initial source; the narrow
+correction has its own focused review. The checkpoint preserves the P2 and first
+hosted failures. On recovery, reconcile live PR/checkpoint state before repeating
+any action. Do not declare Done while publication, required checks, review, merge
+or final-main evidence remains pending.
 
 After every required gate, record/read back **Verified → Done at fixture scope**,
 update Control and append **AB1-R012 — To App Planner 1** with exact external

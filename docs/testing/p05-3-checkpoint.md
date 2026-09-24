@@ -98,14 +98,57 @@ narrow correction watches its canonical source directory without copying flow lo
 `EXPO_OFFLINE=1 npm run export:development` then passed both iOS and Android
 development JavaScript exports; this is not a signed/native-device test.
 
+## Initial hosted publication and correction
+
+[PR14](https://github.com/amthorn78/glow-dating-app/pull/14) opened with candidate
+`c4209d4ab90320dded692f0b4da584bba31f8207`, tree
+`5abeba974d8b82fb6e9b4afae612469d78cd556a`, actual parent
+`833408ab3e04ad4f649e71ca0483e606806dddbb`. All **251 published blobs/modes** and
+complete tree were verified. No synthetic local history was pushed.
+
+Initial [PR run 35980054193](https://github.com/amthorn78/glow-dating-app/actions/runs/35980054193)
+and [push run 35980010914](https://github.com/amthorn78/glow-dating-app/actions/runs/35980010914)
+passed API, smoke and container jobs but failed Mobile checks: **80/81 browser
+cases passed**, including all **69 inherited cases**. The new delayed-action/account
+switch case expected an enabled Jules card immediately after replacing the session.
+The retained discovery queue correctly required an explicit refresh; it must not
+adopt a new session automatically. The correction asserts reload-required/zero stale
+cards and performs the existing Refresh action before keeping the original enabled
+card and zero-match assertions. Timeouts/retries and inherited assertions are unchanged.
+Actual corrected browser execution remains a hosted gate, not a local claim.
+
+[Automatic code review](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4091934598)
+on that initial head identified a **P2**: the mobile adapter's global safety revision
+suppressed otherwise valid reciprocal matching after an unrelated block/unblock or
+unmatch. Independent controls reproduced the original unrelated-pair failures.
+The correction tombstones only the affected pair's stored actions, matching Python.
+Independent review then reproduced a submitting-old-like resurrection in the first
+correction: checking only the opposite row was insufficient. Match formation now
+requires **both** stored directions to be matchable and source-current. Same-pair
+block/unblock, repeated old likes, source restoration and unmatch cannot revive
+contact; unrelated safety actions preserve a valid reciprocal match. The analogous
+source-current case was inferred and tested after correction, not claimed as an
+executed pre-fix failure. Seven focused regressions cover this correction.
+
+Initial remote code review completed at `2026-09-24T09:18:28.739512Z` and security
+at `2026-09-24T09:19:02.540497Z`, per the
+[receipt](https://github.com/amthorn78/glow-dating-app/pull/14#issuecomment-5811314395).
+Those receipts cover **c4209d4a only**, with the P2 recorded above. They do not
+certify the later correction. The narrow correction independent review passed **45/45 interaction tests** with
+no remaining concrete finding. Complete corrected `npm run check` passes **456
+mobile tests**, TypeScript and ESLint. The earlier 449 count above describes the
+initial candidate. The actual-store browser reproduction observed reload-required,
+no page and zero actions before Refresh; after Refresh and late release the Like
+control is available with zero actions/matches. Final hosted results are recorded
+externally.
+
 ## Publication boundary
 
-This source checkpoint precedes its containing remote candidate. All changed source
-and documentation are prepared locally for one scoped publication; no candidate PR
-or merge is claimed by this file. The remote branch exists at the verified baseline.
-The exact published head, PR, reviewed heads, run/job links and merge/main identity
-belong in **AB1-R012** on the existing shared report page, avoiding a self-referential
-commit/check loop. The local synthetic history is never pushed.
+The corrected source/checkpoint is prepared for publication as a child of the
+actual initial PR14 candidate. The branch and initial PR are published; these
+correction files remain local at this checkpoint. Exact corrected head, reviewed
+heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
+existing shared report page, avoiding a self-referential commit/check loop.
 
 Required gates: all four Foundation jobs on the actual final candidate, including
 documentation; final-head review dispositions; checked merge after current

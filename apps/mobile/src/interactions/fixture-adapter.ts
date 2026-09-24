@@ -25,12 +25,12 @@ export class InteractionFailure extends Error {
 type Intent = InteractionIntent | UnmatchIntent | BlockIntent;
 type Session = Readonly<{ actor: string; sessionId: string; profileId: string }>;
 type Identity = Readonly<{ account_id: string; profile_id: string; account_uuid: string; profile_uuid: string }>;
-type Action = Readonly<{ id: string; actor: string; target: string; state: 'liked' | 'passed'; version: number; source: InteractionPairCapture; safetyRevision: number }>;
+type Action = Readonly<{ id: string; actor: string; target: string; state: 'liked' | 'passed'; version: number; source: InteractionPairCapture; matchable: boolean }>;
 type Match = Readonly<{ id: string; first: string; second: string; state: 'active' | 'restricted' | 'unmatched'; version: number; contactVersion: number; source: InteractionPairCapture }>;
 type Block = Readonly<{ id: string; actor: string; target: string; state: 'active' | 'removed'; version: number }>;
 export type LogicalEvent = DevelopmentInteractionEvent;
 type ReceiptRecord = Readonly<{ digest: string; receipt: CommandReceipt; target: string; operation: Intent['operation'] }>;
-type State = Readonly<{ discretionaryEvents: number; revision: number; safetyRevision: number; actions: ReadonlyMap<string, Action>; matches: ReadonlyMap<string, Match>;
+type State = Readonly<{ discretionaryEvents: number; revision: number; actions: ReadonlyMap<string, Action>; matches: ReadonlyMap<string, Match>;
   blocks: ReadonlyMap<string, Block>; receipts: ReadonlyMap<string, ReceiptRecord>; events: readonly LogicalEvent[] }>;
 type Batch = Readonly<{ page: DevelopmentDiscoveryPage; actor: string; sessionId: string; profileId: string; pair: InteractionPairCapture }>;
 export type MatchView = MatchProjection & Readonly<{ profile: DevelopmentDiscoveryProfile | null }>;
@@ -42,7 +42,7 @@ function transition(flow: string, event: string, from: string, to: string, polic
 }
 /** In-process presentation substitute; Python owns production domain semantics. No route/network/provider. */
 export class FixtureInteractionAdapter {
-  private state: State = { discretionaryEvents: 0, revision: 0, safetyRevision: 0, actions: new Map(), matches: new Map(), blocks: new Map(), receipts: new Map(), events: [] };
+  private state: State = { discretionaryEvents: 0, revision: 0, actions: new Map(), matches: new Map(), blocks: new Map(), receipts: new Map(), events: [] };
   private readonly identities: readonly Identity[] = freeze(corpus.identities.map(identity => ({ ...identity })));
   private readonly batches = new Map<string, Batch>();
   private readonly pending = new Map<string, string>();
@@ -207,6 +207,13 @@ export class FixtureInteractionAdapter {
           transition('F13', intent.action, prior?.state ?? 'none', next);
           object = prior?.state === next ? prior : freeze({ id: prior?.id ?? uuid(0x85, ++this.serial), actor: session.actor, target: targetId, state: next, version: (prior?.version ?? 0) + 1 });
           blocks.set(directional, object as Block); outcome = next === 'active' ? 'blocked' : 'unblocked';
+          // Only this blocked pair loses old reciprocal-like authority. Unblock cannot restore it.
+          if (next === 'active') {
+            for (const key of [directional, direction(targetId, session.actor)]) {
+              const previous = actions.get(key);
+              if (previous) actions.set(key, freeze({ ...previous, matchable: false }));
+            }
+          }
           if (object !== prior) events.push(freeze({ event_id: uuid(0x84, ++this.serial), kind: 'block_changed', aggregate_id: object.id, aggregate_version: object.version, contract_version: 'gapp-interactions-fixture-v1' }));
           const match = matches.get(canonical);
           if (next === 'active' && match?.state === 'active') { const revoked = freeze({ ...match, state: 'restricted' as const, version: match.version + 1, contactVersion: match.contactVersion + 1 }); matches.set(canonical, revoked); events.push(this.event(revoked, 'match.revoked')); }
@@ -225,10 +232,11 @@ export class FixtureInteractionAdapter {
           transition('F08', intent.action, prior?.state ?? 'none', next);
           const match = matches.get(canonical);
           if (match && match.state !== 'active') throw new InteractionFailure('policy_unresolved');
-          object = prior?.state === next ? prior : freeze({ id: prior?.id ?? uuid(0x82, ++this.serial), actor: session.actor, target: targetId, state: next, version: (prior?.version ?? 0) + 1, source: durablePair, safetyRevision: initial.safetyRevision });
+          object = prior?.state === next ? prior : freeze({ id: prior?.id ?? uuid(0x82, ++this.serial), actor: session.actor, target: targetId, state: next, version: (prior?.version ?? 0) + 1, source: durablePair, matchable: true });
           actions.set(directional, object as Action); outcome = next;
-          if (!match && next === 'liked' && actions.get(direction(targetId, session.actor))?.state === 'liked' &&
-            interactionPairIsCurrent(actions.get(direction(targetId, session.actor))!.source) && actions.get(direction(targetId, session.actor))!.safetyRevision === initial.safetyRevision) {
+          if (!match && next === 'liked' && actions.get(directional)!.matchable && interactionPairIsCurrent(actions.get(directional)!.source) &&
+            actions.get(direction(targetId, session.actor))?.state === 'liked' &&
+            interactionPairIsCurrent(actions.get(direction(targetId, session.actor))!.source) && actions.get(direction(targetId, session.actor))!.matchable) {
             transition('F09', 'reciprocal', 'none', 'active', ['reciprocal_likes']);
             const [first, second] = [session.actor, targetId].sort();
             const created: Match = freeze({ id: uuid(0x83, ++this.serial), first: first!, second: second!, state: 'active', version: 1, contactVersion: 1, source: this.discovery.captureInteractionPair(pair.profileHandle)! });
@@ -244,7 +252,7 @@ export class FixtureInteractionAdapter {
       // Finish every callback-capable authority read, then compare captured concrete cells and owned state.
       this.validateSession(session);
       if (!discoveryViewerIsCurrent(commandAuthority.owner) || commandAuthority.reverse && !interactionAccountIsCurrent(commandAuthority.reverse) || pair && !interactionPairIsCurrent(pair) || durablePair && !interactionPairIsCurrent(durablePair) || this.state !== initial) throw new InteractionFailure('stale');
-      this.state = { discretionaryEvents: initial.discretionaryEvents + events.length - initial.events.length, revision: initial.revision + 1, safetyRevision: initial.safetyRevision + (intent.operation === 'interaction' ? 0 : 1), actions, matches, blocks, receipts, events: freeze(events) };
+      this.state = { discretionaryEvents: initial.discretionaryEvents + events.length - initial.events.length, revision: initial.revision + 1, actions, matches, blocks, receipts, events: freeze(events) };
       // Notifications follow the indivisible owned-state publication. Consumption invalidates both modes.
       if (!registered.reverse || matches.size !== initial.matches.size) this.discovery.interactionsChanged(); this.emit();
       return this.result(session, record, false);

@@ -140,3 +140,56 @@ for (const at of [3, 4]) test(`final match projection clock callback ${at} canno
   const views = adapter.matches(); assert.equal(views.some(view => view.state === 'active' || view.profile !== null), false);
   assert.equal(adapter.inspect().matches[0]?.state, 'restricted');
 });
+for (const safety of ['block', 'unblock', 'unmatch'] as const) test(`unrelated ${safety} preserves a current unilateral like for reciprocal matching`, async () => {
+  const fixture = setup();
+  if (safety === 'unmatch') {
+    fixture.adapter.reciprocal('profile-iris', 'iris:like');
+    const page = await fixture.discovery.request('broader', 'iris-page', null, true);
+    execute(fixture, fixture.adapter.prepare(page, 'profile-iris', 'like', 'owner:iris-like'));
+  }
+  execute(fixture, await command(fixture));
+  if (safety === 'unmatch') {
+    const prior = fixture.adapter.inspect().matches[0]!;
+    const unmatch = fixture.adapter.unmatchIntent(prior.id, 'iris:unmatch');
+    fixture.adapter.execute(unmatch.session, unmatch.intent);
+  } else {
+    fixture.adapter.block('profile-iris', true, 'iris:block');
+    if (safety === 'unblock') fixture.adapter.block('profile-iris', false, 'iris:unblock');
+  }
+  fixture.adapter.reciprocal('profile-jules', 'jules:like');
+  const active = fixture.adapter.matches().filter(match => match.state === 'active');
+  assert.equal(active.length, 1); assert.equal(active[0]?.profile?.profile_id, 'profile-jules');
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'match_created').length, safety === 'unmatch' ? 2 : 1);
+});
+for (const blocker of ['owner', 'other'] as const) test(`same-pair ${blocker} block and unblock cannot revive a unilateral like`, async () => {
+  const fixture = setup(); execute(fixture, await command(fixture));
+  if (blocker === 'owner') {
+    fixture.adapter.block('profile-jules', true, 'jules:block'); fixture.adapter.block('profile-jules', false, 'jules:unblock');
+  } else {
+    const session = fixture.adapter.developmentSession('profile-jules');
+    const target = fixture.owner.profiles.getSnapshot().profile!.profile_id;
+    fixture.adapter.execute(session, { operation: 'block', target_profile_id: target, action: 'block', meta: { expected_version: 0, idempotency_key: 'other:block' } });
+    fixture.adapter.execute(session, { operation: 'block', target_profile_id: target, action: 'unblock', meta: { expected_version: 1, idempotency_key: 'other:unblock' } });
+  }
+  fixture.adapter.reciprocal('profile-jules', 'jules:like');
+  assert.equal(fixture.adapter.inspect().actions.length, 2); assert.equal(fixture.adapter.inspect().matches.length, 0);
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'match_created').length, 0);
+});
+test('a repeated tombstoned submitting like cannot match a fresh opposite like', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:original');
+  fixture.adapter.block('profile-jules', true, 'jules:block'); fixture.adapter.block('profile-jules', false, 'jules:unblock');
+  execute(fixture, await command(fixture));
+  assert.equal(fixture.adapter.inspect().matches.length, 0);
+  fixture.adapter.reciprocal('profile-jules', 'jules:repeat');
+  assert.equal(fixture.adapter.inspect().actions.length, 2); assert.equal(fixture.adapter.inspect().matches.length, 0);
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'match_created').length, 0);
+});
+test('a repeated submitting like with a stale source cannot match a fresh opposite like', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:original');
+  fixture.discovery.replace(fixture.discovery.inspect('discovery-jules')!);
+  execute(fixture, await command(fixture));
+  assert.equal(fixture.adapter.inspect().matches.length, 0);
+  fixture.adapter.reciprocal('profile-jules', 'jules:repeat');
+  assert.equal(fixture.adapter.inspect().actions.length, 2); assert.equal(fixture.adapter.inspect().matches.length, 0);
+  assert.equal(fixture.adapter.inspect().events.filter(event => event.kind === 'match_created').length, 0);
+});

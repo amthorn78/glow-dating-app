@@ -208,6 +208,12 @@ test('leaving a delayed action then switching accounts cannot adopt a late resul
   await expect(active(page, 'screen-account')).toBeVisible();
   await active(page, 'development-link').click();
   await active(page, 'scenario-eligible').click();
+  // This retained store has crossed a session boundary. Its old queue must
+  // remain revoked until the user explicitly acquires a fresh current batch.
+  await expect(active(page, 'screen-recommended')).toBeVisible();
+  await expect(active(page, 'discovery-status')).toContainText('This preview has changed.');
+  await expect(active(page, 'like-profile-jules')).toHaveCount(0);
+  await active(page, 'discovery-refresh').click();
   await expect(active(page, 'like-profile-jules')).toBeEnabled();
   await development(page);
   await active(page, 'interaction-release').click();
