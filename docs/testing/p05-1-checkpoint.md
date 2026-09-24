@@ -1,7 +1,7 @@
 # P05.1 reciprocal eligibility checkpoint
 
 **Assignment:** AP1-P05.1-001 revision 1.0. **Scope:** fixture-only app execution.
-**State of this checkpoint:** implementation prepared; publication/checks pending;
+**State of this checkpoint:** initial PR published; corrective candidate/checks pending;
 this record does not claim final-candidate checks, merge, merged-main success or
 P05.1 acceptance. Notion owns task state.
 
@@ -102,6 +102,36 @@ post-callback projection guards. Further author/reviewer inspection bound age
 and media to the evaluated immutable facts and captured clock, and snapshots
 expected context before dependency callbacks. These reviews prove their inspected
 source/regression scope, not final hosted review or production transaction safety.
+
+## Initial publication and expected-version correction
+
+[PR 10](https://github.com/amthorn78/glow-dating-app/pull/10) published the first
+P05.1 candidate, `f809063cdf2aba236a50db74b349eb36990089bb`, tree
+`0e670d5e4de9d2365d71c50696501ec30ab2016d`. Initial
+[PR run 35938826828](https://github.com/amthorn78/glow-dating-app/actions/runs/35938826828)
+and [push run 35938796359](https://github.com/amthorn78/glow-dating-app/actions/runs/35938796359)
+were pending complete hosted evidence, with review also running. No final result
+or merge acceptance is inferred from publication.
+
+Independent final source review reproduced an additional TypeScript precondition
+defect after that publication. Supplying `false`, `0`, an empty string or `null`
+as the expected pair version could be treated like an omitted precondition by
+truthiness checks and return `ready`. TypeScript's declared parameter type does
+not validate those runtime values. The correction validates every supplied
+expected version before invoking the injected clock/dependencies; only omitted
+`undefined` means no precondition. A valid precondition has exactly nine own
+enumerable data fields, each a nonblank string. Extra/missing/symbol/accessor
+fields and malformed values raise the neutral `TypeError` before acquisition;
+canonical immutable capture invokes no getter or `toJSON` callback.
+
+The table-driven regression checks every vector field, explicit zero clock/
+acquisition calls on malformed inputs, and valid omitted/current/reordered
+positive controls. After this correction, `npm run check` in `apps/mobile`
+passed TypeScript, ESLint and **348 mobile tests**. This supersedes the initial
+347-test local checkpoint for the changed source. Hosted checks/review for the
+corrective candidate remain required; the earlier green suite did not establish
+this uncovered runtime-input boundary. No candidate2 identity or result is
+claimed in this containing update.
 
 ## Required acceptance commands and publication checks
 

@@ -32,6 +32,17 @@ facts from reviewed authenticated persistence. Expected versions are rejection
 conditions, never capabilities. A client cannot supply predicates, a repository,
 policy approval or fictional viewer facts to a production handler.
 
+TypeScript validates every defined expected pair version before invoking the
+clock or acquisition dependencies. Only `undefined` omits the precondition;
+`false`, `0`, an empty string and `null` are malformed inputs, not equivalent to
+omission. The version requires exactly the nine own enumerable data fields,
+each a nonblank string. Extra/missing/symbol/accessor fields reject with a neutral
+`TypeError`. Canonical immutable capture reads data descriptors without invoking
+getters or `toJSON`, so malformed preconditions cannot erase their own constraint
+or mutate it through those callbacks. Runtime validation supplements the declared
+TypeScript type; the fixed shape is an internal programming boundary, not a new
+production DTO or capability.
+
 Invalid programming types/identities raise validation errors rather than becoming
 successful policy results. Expected missing records/time/policy fail closed.
 Python's declared `EvidenceUnavailable()` is a fixed-message expected acquisition

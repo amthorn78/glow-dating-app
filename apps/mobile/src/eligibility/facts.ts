@@ -30,6 +30,20 @@ const nonblank = (value: unknown): value is string => typeof value === 'string' 
   const code = character.codePointAt(0)!;
   return !whitespace.has(code) && !(code >= 9 && code <= 13) && !(code >= 0x2000 && code <= 0x200a);
 });
+const versionFields = ['viewer_id', 'candidate_id', 'viewer_snapshot_version', 'candidate_snapshot_version',
+  'policy_version', 'viewer_preference_version', 'candidate_preference_version', 'viewer_block_version',
+  'candidate_block_version'] as const satisfies readonly (keyof PairVersion)[];
+/** A defined malformed precondition is a programming error, never an omitted constraint. */
+function captureExpected(value: PairVersion | undefined): PairVersion | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+      Reflect.ownKeys(value).length !== versionFields.length) throw new TypeError('Invalid fixture pair precondition.');
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (versionFields.some(field => !Object.hasOwn(descriptors, field) || !Object.hasOwn(descriptors[field]!, 'value') ||
+      !descriptors[field]!.enumerable || !nonblank(descriptors[field]!.value))) throw new TypeError('Invalid fixture pair precondition.');
+  // Copy exact data properties in canonical order without invoking getters or toJSON callbacks.
+  return Object.freeze(Object.fromEntries(versionFields.map(field => [field, descriptors[field]!.value])) as PairVersion);
+}
 function validatePerson(person: ParticipantFacts): void {
   if (!person || typeof person !== 'object' || !nonblank(person.account_id) || !nonblank(person.source_id) ||
       !Number.isSafeInteger(person.generation) || person.generation < 1) throw new TypeError('Invalid fixture participant identity.');
@@ -148,13 +162,13 @@ export class FixturePairRepository {
   }
   evaluate(viewerId: string, candidateId: string, expected?: PairVersion): Readonly<{ state: PairState; version: PairVersion | null; candidateAge?: number | null }> {
     if (!nonblank(viewerId) || !nonblank(candidateId)) throw new TypeError('Invalid fixture pair identity.');
-    expected = expected === undefined ? undefined : freeze(copy(expected));
+    expected = captureExpected(expected);
     const now = this.clock(), day = Number.isFinite(now.getTime()) ? now.toISOString().slice(0, 10) : 'invalid';
     if (day !== this.day) { this.day = day; this.clockRevision = ++this.serial; }
     const viewer = this.people.get(viewerId), candidate = this.people.get(candidateId);
     const leftBlock = this.blocks.get(JSON.stringify([viewerId, candidateId])), rightBlock = this.blocks.get(JSON.stringify([candidateId, viewerId]));
     const capturedClock = () => new Date(now.getTime());
-    if (expected && (expected.viewer_id !== viewerId || expected.candidate_id !== candidateId)) return { state: 'rejected', version: null };
+    if (expected !== undefined && (expected.viewer_id !== viewerId || expected.candidate_id !== candidateId)) return { state: 'rejected', version: null };
     const result = derivePair(viewer?.facts ?? null, candidate?.facts ?? null, this.policy,
       leftBlock?.state ?? 'unknown', rightBlock?.state ?? 'unknown', capturedClock);
     if (!viewer || !candidate || result.state === 'rejected') return { state: 'rejected', version: null };
@@ -164,6 +178,6 @@ export class FixturePairRepository {
       policy_version: JSON.stringify([this.policyRevision, this.policy?.version, this.clockRevision]),
       viewer_preference_version: String(viewer.revision), candidate_preference_version: String(candidate.revision),
       viewer_block_version: String(this.blockRevisions.get(viewerId) ?? 0), candidate_block_version: String(this.blockRevisions.get(candidateId) ?? 0) });
-    return freeze({ state: result.state === 'excluded' ? 'excluded' : expected && !same(expected, version) ? 'reload_required' : 'ready', version, candidateAge: ageAt(candidate.facts.birth_date, capturedClock) });
+    return freeze({ state: result.state === 'excluded' ? 'excluded' : expected !== undefined && !same(expected, version) ? 'reload_required' : 'ready', version, candidateAge: ageAt(candidate.facts.birth_date, capturedClock) });
   }
 }

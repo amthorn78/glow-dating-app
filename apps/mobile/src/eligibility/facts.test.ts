@@ -128,3 +128,32 @@ test('expected versions are copied before an injected dependency can mutate a st
   patchExpected = () => { Object.assign(stale, current); };
   assert.equal(repo.evaluate(viewer.account_id, candidate.account_id, stale).state, 'reload_required');
 });
+
+
+test('defined malformed pair preconditions are rejected before acquisition rather than omitted', () => {
+  let clockCalls = 0;
+  const repo = new FixturePairRepository(() => { clockCalls += 1; return new Date('2026-09-23T12:00:00Z'); });
+  const { viewer, candidate } = corpus.base;
+  repo.put(viewer); repo.put(candidate);
+  repo.observeBlock(viewer.account_id, candidate.account_id, 'clear'); repo.observeBlock(candidate.account_id, viewer.account_id, 'clear');
+  const current = repo.evaluate(viewer.account_id, candidate.account_id).version!;
+  const malformed: unknown[] = [false, 0, '', null, true, NaN, [], {}, 'claimed-current', { ...current, extra: 'unexpected' },
+    { ...current, [Symbol('unexpected')]: 'value' }];
+  for (const field of Object.keys(current) as (keyof PairVersion)[]) {
+    const missing: Partial<PairVersion> = { ...current }; delete missing[field]; malformed.push(missing);
+    for (const value of [undefined, null, false, 0, {}, '', ' \t\n', '\u0085']) malformed.push({ ...current, [field]: value });
+  }
+  let getterCalls = 0;
+  malformed.push(Object.defineProperty({ ...current }, 'policy_version', { enumerable: true, get: () => { getterCalls += 1; return current.policy_version; } }));
+  const readsBefore = clockCalls;
+  for (const value of malformed) {
+    assert.throws(() => repo.evaluate(viewer.account_id, candidate.account_id, value as PairVersion),
+      { name: 'TypeError', message: 'Invalid fixture pair precondition.' });
+    assert.equal(clockCalls, readsBefore, 'Malformed preconditions must not reach the clock or evidence acquisition.');
+  }
+  assert.equal(getterCalls, 0);
+  assert.equal(repo.evaluate(viewer.account_id, candidate.account_id, undefined).state, 'ready');
+  assert.equal(repo.evaluate(viewer.account_id, candidate.account_id, current).state, 'ready');
+  const reordered = Object.fromEntries(Object.entries(current).reverse()) as PairVersion;
+  assert.equal(repo.evaluate(viewer.account_id, candidate.account_id, reordered).state, 'ready');
+});
