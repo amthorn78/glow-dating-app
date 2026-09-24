@@ -248,3 +248,52 @@ test('target deletion in the final replay projection read suppresses the block p
   assert.equal(replay.replayed, true); assert.deepEqual(replay.receipt, committed.receipt);
   assert.equal(replay.current_projection, null); assert.deepEqual(fixture.adapter.inspect(), before);
 });
+test('unmatch cleans up a deleted target without disclosing its profile through response or replay', async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like'); execute(fixture, await command(fixture));
+  const row = fixture.discovery.inspect('discovery-jules')!, matchId = fixture.adapter.inspect().matches[0]!.id;
+  fixture.discovery.replace({ ...row, facts: { ...row.facts!, account_state: 'deleted' } });
+  const prepared = fixture.adapter.unmatchIntent(matchId, 'deleted-target:unmatch');
+  const result = fixture.adapter.execute(prepared.session, prepared.intent);
+  assert.equal(result.receipt.outcome_code, 'unmatched'); assert.equal(fixture.adapter.inspect().matches[0]?.state, 'unmatched');
+  assert.equal(result.current_projection, null);
+  const replay = fixture.adapter.execute(prepared.session, prepared.intent);
+  assert.equal(replay.replayed, true); assert.deepEqual(replay.receipt, result.receipt); assert.equal(replay.current_projection, null);
+  assert.deepEqual(fixture.adapter.matches(), []); assert.equal(fixture.adapter.contact(matchId), null);
+});
+for (const replay of [false, true]) test(`unmatch ${replay ? 'replay' : 'response'} keeps its receipt but hides a target deleted by the final projection read`, async () => {
+  const fixture = setup(); fixture.adapter.reciprocal('profile-jules', 'jules:like'); execute(fixture, await command(fixture));
+  const matchId = fixture.adapter.inspect().matches[0]!.id, prepared = fixture.adapter.unmatchIntent(matchId, 'final-target:unmatch');
+  const original = replay ? fixture.adapter.execute(prepared.session, prepared.intent) : null;
+  const inspect = fixture.discovery.inspect.bind(fixture.discovery); let changed = false;
+  fixture.discovery.inspect = account => {
+    const row = inspect(account);
+    if (account === 'discovery-jules' && !changed) { changed = true; fixture.discovery.replace({ ...row!, facts: { ...row!.facts!, account_state: 'deleted' } }); }
+    return row;
+  };
+  const result = fixture.adapter.execute(prepared.session, prepared.intent);
+  assert.equal(changed, true); assert.equal(result.replayed, replay); assert.equal(result.receipt.outcome_code, 'unmatched');
+  if (original) assert.deepEqual(result.receipt, original.receipt);
+  assert.equal(result.current_projection, null); assert.equal(fixture.adapter.inspect().matches[0]?.state, 'unmatched');
+});
+for (const state of ['restricted', 'unmatched'] as const) test(`a later ${state} match read cannot expose an earlier deleted target`, async () => {
+  const fixture = setup();
+  const revoke = (profile: string, matchId: string) => {
+    if (state === 'restricted') { fixture.adapter.block(profile, true, `${profile}:block`); fixture.adapter.block(profile, false, `${profile}:unblock`); }
+    else { const command = fixture.adapter.unmatchIntent(matchId, `${profile}:unmatch`); fixture.adapter.execute(command.session, command.intent); }
+  };
+  fixture.adapter.reciprocal('profile-jules', 'jules:like'); execute(fixture, await command(fixture));
+  const jules = fixture.adapter.inspect().matches[0]!; revoke('profile-jules', jules.id);
+  fixture.adapter.reciprocal('profile-iris', 'iris:like');
+  const page = await fixture.discovery.request('broader', 'iris-page', null, true);
+  execute(fixture, fixture.adapter.prepare(page, 'profile-iris', 'like', 'owner:iris-like'));
+  const iris = fixture.adapter.inspect().matches.find(match => match.id !== jules.id)!; revoke('profile-iris', iris.id);
+  const inspect = fixture.discovery.inspect.bind(fixture.discovery); let changed = false;
+  fixture.discovery.inspect = account => {
+    const row = inspect(account);
+    if (account === 'discovery-iris' && !changed) { changed = true; const prior = inspect('discovery-jules')!;
+      fixture.discovery.replace({ ...prior, facts: { ...prior.facts!, account_state: 'deleted' } }); }
+    return row;
+  };
+  const views = fixture.adapter.matches(); assert.equal(changed, true);
+  assert.equal(views.some(view => view.match_id === jules.id), false);
+});

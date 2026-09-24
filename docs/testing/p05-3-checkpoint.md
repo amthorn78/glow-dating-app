@@ -186,10 +186,41 @@ The next narrow publication preserves all prior checks/review history and requir
 fresh hosted checks and final-head review before merge. No production contract or
 policy is relaxed.
 
+## Final deleted-target projection correction
+
+The next candidate `4db111f0cf574bd998d451ae1fb75e1f15049aad`, tree
+`fb7b474fef2e144fed2d7e68b1d6f2a2b8436c07`, is the verified seven-file child of
+2b69e080. Both [PR run 35982485970](https://github.com/amthorn78/glow-dating-app/actions/runs/35982485970)
+and [push run 35982480461](https://github.com/amthorn78/glow-dating-app/actions/runs/35982480461)
+passed all four jobs, **81/81 browser cases**, 232 API tests, 463 mobile tests,
+contracts, exports and container checks. The PR and push runs completed at
+`2026-09-24T09:44:37Z` and `2026-09-24T09:43:55Z` respectively.
+
+One [manual code-review request returned Unknown error](https://github.com/amthorn78/glow-dating-app/pull/14#issuecomment-5811665223)
+at `2026-09-24T09:39:02Z`; it is not successful coverage. The separate new-commit
+review remained running and completed at `2026-09-24T09:45:12.659178Z` with
+[P2: suppress deleted-target unmatch projections](https://github.com/amthorn78/glow-dating-app/pull/14#discussion_r4092166133).
+Security review completed without findings on 4db111f0 at
+`2026-09-24T09:42:47.027855Z`. No merge occurred on that head.
+
+Participant unmatch must still commit when the other participant is deleted, but
+its fresh response cannot expose that deleted profile identifier. The same shared
+match projection is used by list, contact, unmatch result and replay, so the
+correction covers those call sites and retains current-target authority through
+final callback-capable reads in every match state. Cleanup authorization stays
+separate from projection authorization. Independent before-fix probes observed
+restricted/unmatched deleted-target projections in list, command and replay paths.
+Five new regressions cover deleted-target cleanup/replay, deletion during final
+response/replay reads and later-row invalidation of restricted/unmatched list
+projections. **57 interaction tests plus 27 discovery tests** pass; full mobile
+`npm run check` passes **468 tests**, TypeScript and ESLint. Exact independent
+review and final publication identities are recorded in the external report;
+earlier passing runs do not certify this later source.
+
 ## Publication boundary
 
-The second corrected source/checkpoint is prepared for publication as a child of
-actual PR14 head `2b69e0805fe569745729f8028ab83b7e705df2bf`. The branch and PR are
+The final projection correction source/checkpoint is prepared for publication as
+a child of actual PR14 head `4db111f0cf574bd998d451ae1fb75e1f15049aad`. The branch and PR are
 published; this next narrow correction remains local at this checkpoint. Exact corrected head, reviewed
 heads, run/job links, merge and actual-main identity belong in **AB1-R012** on the
 existing shared report page, avoiding a self-referential commit/check loop.

@@ -52,6 +52,7 @@ export class FixtureInteractionAdapter {
   private policy = true;
   private reconciling = false;
   private beforeCommit: (() => void) | null;
+  private readonly matchProjectionGuards = new WeakMap<MatchProjection, { owner: object; target: object | null; match: Match }>();
   readonly profiles: ProfileStore;
   readonly discovery: FixtureDiscoveryAdapter;
   constructor(profiles: ProfileStore, discovery: FixtureDiscoveryAdapter, options: { beforeCommit?: () => void } = {}) {
@@ -155,7 +156,7 @@ export class FixtureInteractionAdapter {
     this.sourceChanged(false);
     const authority = this.validateSession(session), current = this.state;
     const projection = this.projection(session, record);
-    const permitted = (!targetGuard || interactionAccountIsCurrent(targetGuard)) && this.state === current && discoveryViewerIsCurrent(authority.owner) && (!authority.reverse || interactionAccountIsCurrent(authority.reverse));
+    const permitted = (projection?.kind !== 'match' || this.matchProjectionCurrent(projection)) && (!targetGuard || interactionAccountIsCurrent(targetGuard)) && this.state === current && discoveryViewerIsCurrent(authority.owner) && (!authority.reverse || interactionAccountIsCurrent(authority.reverse));
     const result: InteractionCommandResult = { kind: 'interaction_command_result', receipt: record.receipt, replayed, current_projection: permitted ? projection : null };
     if (!validateInteractionCommandResult(result)) throw new InteractionFailure('invalid_request'); return freeze(result);
   }
@@ -262,20 +263,35 @@ export class FixtureInteractionAdapter {
       return this.result(session, record, false, targetGuard);
     } finally { this.pending.delete(key); }
   }
+  private matchProjectionCurrent(projection: MatchProjection): boolean {
+    const guard = this.matchProjectionGuards.get(projection);
+    return !!guard && discoveryViewerIsCurrent(guard.owner) && (!guard.target || interactionAccountIsCurrent(guard.target)) &&
+      this.state.matches.get(pairKey(guard.match.first, guard.match.second)) === guard.match;
+  }
+  /** Reading a match needs current target disclosure authority; cleanup does not. */
   private projectMatch(session: Session, match: Match): MatchProjection | null {
     if (![match.first, match.second].includes(session.actor)) return null;
     const target = match.first === session.actor ? match.second : match.first;
     const identity = this.identities.find(value => value.account_uuid === target);
+    // Capture the concrete record revision before any callback-capable target/owner read.
+    const targetGuard = identity ? this.discovery.captureAccountRecord(identity.account_id) : null;
+    if (identity && !targetGuard) return null;
     const owner = this.profiles.captureInteractionOwner();
-    const otherProfile = identity?.profile_uuid ?? (owner?.ownerId === target ? owner.profileId : null);
-    return otherProfile ? freeze({ kind: 'match', match_id: match.id, version: match.version, other_profile_id: otherProfile, state: match.state }) : null;
+    if (!owner) return null;
+    if (identity) { try { this.target(identity.profile_uuid); } catch { return null; } }
+    const otherProfile = identity?.profile_uuid ?? (owner.ownerId === target ? owner.profileId : null);
+    if (!otherProfile) return null;
+    const projection: MatchProjection = freeze({ kind: 'match', match_id: match.id, version: match.version, other_profile_id: otherProfile, state: match.state });
+    this.matchProjectionGuards.set(projection, { owner, target: targetGuard, match });
+    return this.matchProjectionCurrent(projection) ? projection : null;
   }
   matches(): readonly MatchView[] {
     let session: Session; try { session = this.session(); } catch { return []; }
     this.sourceChanged(false);
-    const initial = this.state, authority = this.validateSession(session), captures: InteractionPairCapture[] = [];
+    const initial = this.state, authority = this.validateSession(session), captures: InteractionPairCapture[] = [], projections: MatchProjection[] = [];
     const result = [...initial.matches.values()].flatMap(match => {
       const projection = this.projectMatch(session, match); if (!projection) return [];
+      projections.push(projection);
       const identity = this.identities.find(value => value.profile_uuid === projection.other_profile_id);
       const pair = identity && match.state === 'active' ? this.pair(identity) : null;
       if (pair) captures.push(pair);
@@ -294,7 +310,7 @@ export class FixtureInteractionAdapter {
       return [{ ...projection, profile: safe }];
     });
     // Projection reads may invoke a clock callback that revokes an earlier match.
-    if (this.state !== initial || !discoveryViewerIsCurrent(authority.owner) || !captures.every(interactionPairIsCurrent) ||
+    if (this.state !== initial || !discoveryViewerIsCurrent(authority.owner) || !captures.every(interactionPairIsCurrent) || !projections.every(projection => this.matchProjectionCurrent(projection)) ||
       [...initial.matches.values()].some(match => match.state === 'active' && !interactionPairIsCurrent(match.source))) return [];
     return freeze(result);
   }
@@ -331,7 +347,8 @@ export class FixtureInteractionAdapter {
     this.sourceChanged(false);
     let session: Session; try { session = this.session(); } catch { return null; }
     const match = [...this.state.matches.values()].find(value => value.id === matchId);
-    if (!match || !this.projectMatch(session, match)) return null;
+    const projection = match ? this.projectMatch(session, match) : null;
+    if (!match || !projection || !this.matchProjectionCurrent(projection)) return null;
     const current = this.state.matches.get(pairKey(match.first, match.second));
     return freeze({ matchVersion: current?.version ?? match.version, contactVersion: current?.contactVersion ?? match.contactVersion, eligible: current === match && match.state === 'active' && interactionPairIsCurrent(match.source), providerReady: false, canSend: false });
   }
