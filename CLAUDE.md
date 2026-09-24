@@ -1,3 +1,26 @@
 @AGENTS.md
 
-Start with `docs/continuity/current-handoff.md` and `docs/continuity/claude-code-handoff.md`. Read all applicable nested `AGENTS.md` files before touching a component. The initiation assignment is `docs/planning/claude-code-initiation.md`; this session manages bounded implementation sessions. No external prompt library or Drive access is required.
+# Claude sessions: manual relay
+
+**Nathan runs a manual relay.**
+
+- The manager gives Nathan prompts for implementers.
+- Nathan runs each implementation session himself and relays its findings back.
+- The manager follows up as needed.
+- Nathan reinitiates managers manually.
+
+The full procedure is in `docs/planning/manager-workflow.md`.
+
+- **Manager** (started by Nathan from a manager start prompt): begin with `docs/continuity/current-handoff.md` and follow the manager workflow. The manager never starts implementation or review work itself: no subagents or remote-session tools for that work. It writes the prompt and hands it to Nathan.
+- **Implementation or review session** (started by Nathan from a prompt in `docs/ephemeral/`): follow that prompt and its linked brief.
+  - You may use any tools, subagents, scheduled wake-ups or other capabilities the assignment needs.
+  - Keep changes within the owned paths.
+  - Push your own session branch and report as the prompt requires. The manager integrates branches, merges and syncs Notion.
+
+**Environment.** App sessions run in the dedicated app cloud environment: no HDE variables, and the pinned toolchain from `scripts/bootstrap-toolchain.sh`. At session start, check variable names only. If `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is present, the session is in the HDE-shared environment:
+
+- tell Nathan;
+- never read, print or use those values;
+- run app commands only in a clean process environment.
+
+Create the API virtual environment with `python3.12`. Read the applicable nested `AGENTS.md` before touching a component. No external prompt library or Drive access is required.

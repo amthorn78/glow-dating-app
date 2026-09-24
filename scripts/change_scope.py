@@ -7,31 +7,19 @@ import re
 import subprocess
 
 
-# Exempt only inert evidence/provenance, never operational instructions by default.
-ORDINARY_PATHS = frozenset({
-    "docs/continuity/migration-publication.md",
-    "apps/mobile/EXPO-TEMPLATE-LICENSE.md",
-    "docs/testing/foundation-checkpoint.md",
-    "docs/testing/p02-checkpoint.md",
-    "docs/testing/p03-checkpoint.md",
-    "docs/testing/p04-1-checkpoint.md",
-    "docs/testing/p04-2-checkpoint.md",
-    "docs/testing/p04-3-checkpoint.md",
-    "docs/testing/p05-1-checkpoint.md",
-    "docs/testing/p05-2-checkpoint.md",
-    "docs/testing/p05-3-checkpoint.md",
-})
-ORDINARY_PREFIXES = ("docs/continuity/history/", "docs/testing/evidence/")
-BEHAVIOR_NAMES = frozenset({"agents.md", "claude.md", "claude.local.md", "skill.md", "copilot-instructions.md"})
-
-
+# Nathan, 24 September 2026: documentation never runs application CI or code/security
+# review. A change made only of regular Markdown files is ordinary documentation; any
+# script or other non-Markdown file, symlink or executable file makes it full scope.
+# Paths with a `.claude` component also stay full scope (Nathan, 24 September 2026):
+# Claude Code skills, commands, agents and rules there can carry shell commands and
+# permissions. The match ignores case, as case-insensitive filesystems do.
 def ordinary_document(path: str) -> bool:
     p = PurePosixPath(path)
     if path != str(p) or p.is_absolute() or ".." in p.parts:
         return False
-    if p.name.lower() in BEHAVIOR_NAMES or p.name.lower().endswith(".instructions.md"):
+    if any(part.casefold() == ".claude" for part in p.parts):
         return False
-    return path in ORDINARY_PATHS or (path.startswith(ORDINARY_PREFIXES) and p.suffix == ".md")
+    return p.suffix == ".md"
 
 
 def git(*args: str) -> bytes:
@@ -44,7 +32,11 @@ def classify(base: str, head: str, *, merge_base: bool = False) -> dict:
         return {"full": True, "reason": "missing-or-invalid-comparison", "paths": []}
     try:
         if merge_base:
-            base = git("merge-base", base, head).decode().strip()
+            # Criss-cross history has several merge bases; any single one can hide changes.
+            bases = git("merge-base", "--all", base, head).decode().split()
+            if len(bases) != 1:
+                return {"full": True, "reason": "multiple-merge-bases", "paths": []}
+            base = bases[0]
         fields = git("diff", "--raw", "--no-abbrev", "--no-renames", "-z", base, head, "--").split(b"\0")
         paths = []
         full = False
