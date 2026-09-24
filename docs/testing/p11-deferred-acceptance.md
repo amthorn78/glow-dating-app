@@ -70,12 +70,20 @@ snapshot/locking guarantees or durable invalidation. The
 [reciprocal fixture mapping](../architecture/reciprocal-eligibility-fixtures.md)
 describes those source rules. Every existing row above remains open.
 
+AP1-P05.1-002 fixes the demonstrated synchronous final-read callback defects
+within this fixture scope. Participating fact/policy/time and account–chart-link
+writers advance retained monotonic revision cells; a callback-free check after
+all reads suppresses stale compatibility. This is an implemented in-process
+publication mechanism, not a deferred excuse for known fixture defects and not
+proof of cross-connection/process consistency. P11 must supply an equivalent
+authoritative database publication/action boundary using the real adapters.
+
 | Existing case | Specific remaining reciprocal-eligibility proof |
 |---|---|
 | DB09 | Derive the actor and current session from maintained authenticated persistence. Verify account/profile/asset identity separation, current verification, consent, session expiry and cross-device revocation. A fixture repository or current client precondition must never confer actor authority. |
 | DB10 | Acquire both accounts, profiles, media, consent, moderation, preferences, both directional blocks and selected policy from one consistent transaction view or reject/reload. Every relevant writer advances the correct aggregate/preference/block/policy revision in the same transaction. Prove first block insertion against a previously absent row, removal/reinsertion, same-value restoration and repeated A→B→A changes across connections and process restarts; an old token/result must stay obsolete. |
 | DB10 | Test exact adult boundaries and the eventually approved leap-day/date convention, policy effective intervals, consent/policy expiry and clock progression with no record edit. Recheck current time before the action commits or the projection is released; stale persisted counters alone cannot extend permission. Define production clock authority and time-dependent invalidation instead of copying the fixture epoch as a persistence mechanism. |
-| DB10 | Serialize policy publication/withdrawal with pair actions and all relevant writes. Inject concurrent preference, block, media, consent, pause, suspension and deletion changes before/after reads, during delayed provider work, during retries and while later candidates run. Revalidate each retained outcome before return and prove the production transaction/revocation boundary; sequential fixture rechecks cannot certify an atomic multi-candidate snapshot. |
+| DB10 | Serialize policy publication/withdrawal with pair actions and all relevant writes. Inject concurrent preference, block, media, consent, pause, suspension and deletion changes before/after reads, during delayed provider work, during retries and while later candidates run. Bind retained eligibility and account–chart links, including input/mapping/identity changes, at an authoritative final publication boundary. Prove the production transaction/revocation boundary across connections/processes; neither sequential rechecks nor the synchronous fixture revision cells certify database atomicity. |
 | DB11 | P05.2/P11 must supply stable bounded database queries/cursors, index/query-plan evidence and current disclosure filtering under change. P05.1's bounded conformance batch is not a production queue, pagination/ranking implementation or measured capacity. |
 | DB05 / DB06 | Independently authorize likes, mutual matches, unmatch, channel entitlement, sending and history according to current relationship and approved policy. Pair eligibility alone grants none of them. Prove races against revocation; unblock/resume must not resurrect a historical match. Keep report/block/export/deletion on their own safety/privacy authorization paths. |
 | DB07 / DB08 | Persist revision changes and required invalidation/outbox events atomically, then authenticate and bind delayed results to exact account/source generation, pair, input/mapping/policy versions and event identity. Prove crash/restart, replay and same-value restoration cannot revive obsolete permission. |

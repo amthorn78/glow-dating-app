@@ -17,6 +17,11 @@ from glow_domain.compatibility import (
 )
 from glow_domain.eligibility import BlockState, PredicateOutcome
 from glow_domain.eligibility_facts import DEVELOPMENT_POLICY, FixtureEligibilityRepository
+from glow_domain.fixture_coherence import (
+    FixtureChartMappingRepository,
+    FixtureRevision,
+    capture_revisions,
+)
 from glow_domain.identity import AccountId, ChartMappingState
 from glow_domain.provider_contracts import (
     BirthInput,
@@ -332,11 +337,37 @@ class FixtureCompatibilityConformanceTests(CompatibilityConformanceCases, NoNetw
             )
 
 
+class ExcludedAccounts(set):
+    def __init__(self, revisions):
+        super().__init__()
+        self.revisions = revisions
+
+    def add(self, account):
+        super().add(account)
+        self.revisions[account].advance()
+
+
 class EvidenceRepository:
     def __init__(self):
-        self.excluded = set()
+        self.revisions = {name: FixtureRevision() for name in ("viewer", "candidate", "another")}
+        self.global_revision = FixtureRevision()
+        self.excluded = ExcludedAccounts(self.revisions)
         self.version = "synthetic-snapshot-v1"
         self.calls = []
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, value):
+        self._version = value
+        self.global_revision.advance()
+
+    def publication_guard(self, *accounts):
+        return capture_revisions(
+            self.global_revision, *(self.revisions[account.value] for account in accounts)
+        )
 
     def acquire(self, viewer_id, candidate_id):
         self.calls.append((viewer_id, candidate_id))
@@ -360,17 +391,16 @@ class EvidenceRepository:
         )
 
 
-class MappingRepository:
+class MappingRepository(FixtureChartMappingRepository):
     def __init__(self):
-        self.items = {
-            name: mapping(name, f"explicit-fixture-chart-{name}")
-            for name in ("viewer", "candidate", "another")
-        }
+        super().__init__(environment="test")
+        for name in ("viewer", "candidate", "another"):
+            self.put(AccountId(name), mapping(name, f"explicit-fixture-chart-{name}"))
         self.calls = []
 
     def get(self, account_id):
         self.calls.append(account_id)
-        return self.items.get(account_id.value)
+        return super().get(account_id)
 
 
 class BatchConformanceTests(NoNetworkCase):
@@ -415,7 +445,7 @@ class BatchConformanceTests(NoNetworkCase):
             ),
         )
         for value, expected in cases:
-            self.mappings.items["candidate"] = value
+            self.mappings.put(AccountId("candidate"), value)
             result = self.service().evaluate(
                 AccountId("viewer"), (CandidateWork(AccountId("candidate"), "pair-1"),)
             )
@@ -443,8 +473,9 @@ class BatchConformanceTests(NoNetworkCase):
             (lambda: setattr(self.evidence, "version", "v2"), "reload_required"),
             (lambda: self.evidence.excluded.add("candidate"), "excluded"),
             (
-                lambda: self.mappings.items.update(
-                    candidate=replace(self.mappings.items["candidate"], mapping_version="v2")
+                lambda: self.mappings.put(
+                    AccountId("candidate"),
+                    replace(self.mappings.get(AccountId("candidate")), mapping_version="v2"),
                 ),
                 "stale",
             ),
@@ -487,8 +518,9 @@ class BatchConformanceTests(NoNetworkCase):
         for mutation, expected in (
             (lambda: self.evidence.excluded.add("candidate"), "excluded"),
             (
-                lambda: self.mappings.items.update(
-                    candidate=replace(self.mappings.items["candidate"], mapping_version="v2")
+                lambda: self.mappings.put(
+                    AccountId("candidate"),
+                    replace(self.mappings.get(AccountId("candidate")), mapping_version="v2"),
                 ),
                 "stale",
             ),
@@ -543,7 +575,7 @@ class BatchConformanceTests(NoNetworkCase):
                 self.assertEqual(self.provider.calls, expected_provider_calls)
 
     def test_later_revocation_supersedes_earlier_unresolved_mapping_outcome(self):
-        self.mappings.items["candidate"] = None
+        self.mappings.put(AccountId("candidate"), None)
         provider, evidence = self.provider, self.evidence
 
         class RevokesEarlierCandidate:

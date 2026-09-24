@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from .eligibility import BlockState, EligibilitySnapshot, PairPolicyInputs, PredicateOutcome
+from .fixture_coherence import FixtureReadGuard, FixtureRevision, capture_revisions
 from .identity import AccountId, require_nonblank
 from .trusted_eligibility import (
     BoundPairPolicy,
@@ -340,11 +341,24 @@ class FixtureEligibilityRepository:
         self._preference_revisions: dict[AccountId, int] = {}
         self._blocks: dict[tuple[AccountId, AccountId], BlockState] = {}
         self._block_revisions: dict[AccountId, int] = {}
+        self._publication_revisions: dict[AccountId, FixtureRevision] = {}
+        self._policy_time_revision = FixtureRevision()
         self._policy_revision = 0
         self._policy: DevelopmentEligibilityPolicy | None = None
         self._time_epoch = 0
         self._last_day: str | None = None
         self.set_policy(policy)
+
+    def _publication_revision(self, account_id: AccountId) -> FixtureRevision:
+        if account_id not in self._publication_revisions:
+            self._publication_revisions[account_id] = FixtureRevision()
+        return self._publication_revisions[account_id]
+
+    def publication_guard(self, *accounts: AccountId) -> FixtureReadGuard:
+        return capture_revisions(
+            self._policy_time_revision,
+            *(self._publication_revision(account_id) for account_id in accounts),
+        )
 
     def put_participant(self, facts: ParticipantFacts) -> None:
         if not isinstance(facts, ParticipantFacts):
@@ -356,6 +370,7 @@ class FixtureEligibilityRepository:
         self._preference_revisions[facts.account_id] = (
             self._preference_revisions.get(facts.account_id, 0) + 1
         )
+        self._publication_revision(facts.account_id).advance()
 
     def remove_participant(self, account_id: AccountId) -> None:
         if not isinstance(account_id, AccountId):
@@ -363,6 +378,7 @@ class FixtureEligibilityRepository:
         self._participants.pop(account_id, None)
         self._snapshot_revisions[account_id] = self._snapshot_revisions.get(account_id, 0) + 1
         self._preference_revisions[account_id] = self._preference_revisions.get(account_id, 0) + 1
+        self._publication_revision(account_id).advance()
 
     def observe_block(self, actor_id: AccountId, target_id: AccountId, state: BlockState) -> None:
         if not isinstance(actor_id, AccountId) or not isinstance(target_id, AccountId):
@@ -372,12 +388,14 @@ class FixtureEligibilityRepository:
         self._blocks[(actor_id, target_id)] = state
         self._block_revisions[actor_id] = self._block_revisions.get(actor_id, 0) + 1
         self._snapshot_revisions[actor_id] = self._snapshot_revisions.get(actor_id, 0) + 1
+        self._publication_revision(actor_id).advance()
 
     def set_policy(self, policy: DevelopmentEligibilityPolicy | None) -> None:
         if policy is not None and not isinstance(policy, DevelopmentEligibilityPolicy):
             raise TypeError("Policy must be a development policy record or explicitly unavailable.")
         self._policy = policy
         self._policy_revision += 1
+        self._policy_time_revision.advance()
 
     def acquire(
         self, viewer_id: AccountId, candidate_id: AccountId
@@ -398,6 +416,7 @@ class FixtureEligibilityRepository:
         if day != self._last_day:
             self._time_epoch += 1
             self._last_day = day
+            self._policy_time_revision.advance()
         viewer = self._participants.get(viewer_id)
         candidate = self._participants.get(candidate_id)
         if viewer is None or candidate is None:

@@ -34,7 +34,7 @@ const versionFields = ['viewer_id', 'candidate_id', 'viewer_snapshot_version', '
   'policy_version', 'viewer_preference_version', 'candidate_preference_version', 'viewer_block_version',
   'candidate_block_version'] as const satisfies readonly (keyof PairVersion)[];
 /** A defined malformed precondition is a programming error, never an omitted constraint. */
-function captureExpected(value: PairVersion | undefined): PairVersion | undefined {
+export function capturePairVersion(value: PairVersion | undefined): PairVersion | undefined {
   if (value === undefined) return undefined;
   if (value === null || typeof value !== 'object' || Array.isArray(value) ||
       Reflect.ownKeys(value).length !== versionFields.length) throw new TypeError('Invalid fixture pair precondition.');
@@ -162,12 +162,14 @@ export class FixturePairRepository {
   }
   evaluate(viewerId: string, candidateId: string, expected?: PairVersion): Readonly<{ state: PairState; version: PairVersion | null; candidateAge?: number | null }> {
     if (!nonblank(viewerId) || !nonblank(candidateId)) throw new TypeError('Invalid fixture pair identity.');
-    expected = captureExpected(expected);
-    const now = this.clock(), day = Number.isFinite(now.getTime()) ? now.toISOString().slice(0, 10) : 'invalid';
+    expected = capturePairVersion(expected);
+    // A supplied Date can itself carry callbacks. Finish its one numeric read before source capture.
+    const suppliedTime = this.clock().getTime(), timestamp = Number.isFinite(suppliedTime) ? suppliedTime : NaN;
+    const day = Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : 'invalid';
     if (day !== this.day) { this.day = day; this.clockRevision = ++this.serial; }
     const viewer = this.people.get(viewerId), candidate = this.people.get(candidateId);
     const leftBlock = this.blocks.get(JSON.stringify([viewerId, candidateId])), rightBlock = this.blocks.get(JSON.stringify([candidateId, viewerId]));
-    const capturedClock = () => new Date(now.getTime());
+    const capturedClock = () => new Date(timestamp);
     if (expected !== undefined && (expected.viewer_id !== viewerId || expected.candidate_id !== candidateId)) return { state: 'rejected', version: null };
     const result = derivePair(viewer?.facts ?? null, candidate?.facts ?? null, this.policy,
       leftBlock?.state ?? 'unknown', rightBlock?.state ?? 'unknown', capturedClock);

@@ -157,3 +157,36 @@ test('defined malformed pair preconditions are rejected before acquisition rathe
   const reordered = Object.fromEntries(Object.entries(current).reverse()) as PairVersion;
   assert.equal(repo.evaluate(viewer.account_id, candidate.account_id, reordered).state, 'ready');
 });
+
+test('the supplied Date is captured numerically before facts and never invokes a late method callback', () => {
+  const { viewer, candidate } = corpus.base;
+  let timeReads = 0, lateMutation = false;
+  const repo = new FixturePairRepository(() => {
+    const supplied = new Date('2026-09-23T12:00:00Z');
+    supplied.getTime = () => {
+      timeReads += 1;
+      if (timeReads > 1) { lateMutation = true; repo.put({ ...candidate, consent_state: 'withdrawn' }); }
+      return Date.prototype.getTime.call(supplied);
+    };
+    return supplied;
+  });
+  repo.put(viewer); repo.put(candidate);
+  repo.observeBlock(viewer.account_id, candidate.account_id, 'clear'); repo.observeBlock(candidate.account_id, viewer.account_id, 'clear');
+  assert.equal(repo.evaluate(viewer.account_id, candidate.account_id).state, 'ready');
+  assert.equal(timeReads, 1); assert.equal(lateMutation, false);
+});
+
+test('the one supplied Date callback may revoke source facts before they are captured', () => {
+  const { viewer, candidate } = corpus.base;
+  const repo = new FixturePairRepository(() => {
+    const supplied = new Date('2026-09-23T12:00:00Z');
+    supplied.getTime = () => {
+      repo.put({ ...candidate, consent_state: 'withdrawn' });
+      return Date.prototype.getTime.call(supplied);
+    };
+    return supplied;
+  });
+  repo.put(viewer); repo.put(candidate);
+  repo.observeBlock(viewer.account_id, candidate.account_id, 'clear'); repo.observeBlock(candidate.account_id, viewer.account_id, 'clear');
+  assert.equal(repo.evaluate(viewer.account_id, candidate.account_id).state, 'excluded');
+});

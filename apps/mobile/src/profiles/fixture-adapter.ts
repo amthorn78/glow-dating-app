@@ -40,6 +40,9 @@ export interface ProfileAdapter {
   seedEligible(): void;
   developmentChange(change: DevelopmentChange): void;
 }
+const fixtureSources = new WeakMap<ProfileAdapter, { revision: number }>();
+/** Pure local guard: no adapter method, injected getter, clock or other dependency runs here. */
+export const fixtureProfileRevision = (adapter: ProfileAdapter): number | null => fixtureSources.get(adapter)?.revision ?? null;
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const blankAuthority = (): ProfileAuthority => ({ ownerId: null, generation: 0, accountVersion: 0,
   accountState: 'none', sessionState: 'none', adult: false, consentCurrent: false, sourceRevision: 0, consentRevision: 'none' });
@@ -47,6 +50,7 @@ const blankAuthority = (): ProfileAuthority => ({ ownerId: null, generation: 0, 
 export function createProfileAdapter(options: { isDevelopment: boolean; mode: string | undefined; pause?: () => Promise<void> }): ProfileAdapter {
   if (!options.isDevelopment || options.mode !== 'fixture') throw new Error('Profiles require the explicit development fixture runtime.');
   const pause = options.pause ?? (() => Promise.resolve());
+  const source = { revision: 0 };
   let authority = blankAuthority(), authorityRevision = 0, epoch = 0;
   let state: FixtureProfileState = { profile: null, preferences: null, policy: FIXTURE_PREFERENCE_POLICY, evidence: EMPTY_EVIDENCE };
   type Receipt = { canonical: string; result: OwnProfile | OwnPreferences };
@@ -104,6 +108,7 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
     kind: 'fixture',
     synchronize(next) {
       if (JSON.stringify(next) === JSON.stringify(authority)) return;
+      source.revision += 1;
       adapter.cancelPending(); authorityRevision += 1;
       if (next.ownerId !== authority.ownerId || next.generation !== authority.generation) {
         state = { profile: null, preferences: null, policy: FIXTURE_PREFERENCE_POLICY, evidence: EMPTY_EVIDENCE }; receipts.clear();
@@ -195,12 +200,13 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
         return;
       }
       if (JSON.stringify(staged.receipt.result) !== JSON.stringify(result)) throw new ProfileFailure('invalid_request');
-      state = staged.state; receipts.set(staged.receiptKey, staged.receipt); staged = null;
+      state = staged.state; source.revision += 1; receipts.set(staged.receiptKey, staged.receipt); staged = null;
     },
     cancelPending() { epoch += 1; staged = null; },
     synchronizeMedia(collection) {
       const ids = collection.items.filter(item => item.state === 'approved' && item.approved_delivery_ref !== null).map(item => item.asset_id);
       adapter.cancelPending(); authorityRevision += 1;
+      source.revision += 1;
       state.evidence = { ...state.evidence, media: ids.length > 0 };
       if (state.profile) {
         const profile = { ...state.profile, version: state.profile.version + 1, media_ids: ids };
@@ -211,6 +217,7 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
     },
     seedEligible() {
       if (!activeOwner(authority) || !authority.adult || !authority.consentCurrent) throw new ProfileFailure('forbidden');
+      source.revision += 1;
       adapter.cancelPending(); authorityRevision += 1; receipts.clear();
       state = { policy: FIXTURE_PREFERENCE_POLICY,
         profile: { kind: 'own_profile', profile_id: profileId(), version: 1, display_name: 'Alex',
@@ -221,6 +228,7 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
     },
     developmentChange(change) {
       if (!activeOwner(authority)) throw new ProfileFailure('unauthenticated');
+      source.revision += 1;
       adapter.cancelPending(); authorityRevision += 1;
       if (change === 'profile' && state.profile) state.profile = { ...state.profile, version: state.profile.version + 1,
         display_name: 'Alex current', summary: 'A newer fictional biography.' };
@@ -232,5 +240,6 @@ export function createProfileAdapter(options: { isDevelopment: boolean; mode: st
       if (change === 'profile' || change === 'preferences') retract();
     },
   };
+  fixtureSources.set(adapter, source);
   return adapter;
 }

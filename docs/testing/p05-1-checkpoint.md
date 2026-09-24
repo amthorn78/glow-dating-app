@@ -1,9 +1,15 @@
 # P05.1 reciprocal eligibility checkpoint
 
-**Assignment:** AP1-P05.1-001 revision 1.0. **Scope:** fixture-only app execution.
-**State of this checkpoint:** initial PR published; corrective candidate/checks pending;
-this record does not claim final-candidate checks, merge, merged-main success or
-P05.1 acceptance. Notion owns task state.
+**Current assignment:** AP1-P05.1-002 revision 1.1. **Scope:** fixture-only app correction.
+**Current state:** AP1-ACK009 reopened P05.1 for the two final-batch freshness
+findings; correction execution set it In progress. Notion owns task state. Final
+candidate/merge identities and later check results belong in AB1-R010, if unused,
+and the existing task/control records, not a self-certifying containing commit.
+
+The AP1-P05.1-001 sections below preserve the earlier session's observed evidence,
+failures and publication state. Their pending/next-action wording is historical
+and superseded by the **AP1-P05.1-002 correction checkpoint** at the end. PR10's
+eventual successful merge does not close the subsequently reproduced findings.
 
 ## Reconciled source and publication identity
 
@@ -92,7 +98,7 @@ acceptance follows from either command. The existing 47 rendered cases are
 preserved; four new cases target retained pair revocation. Their 51-case suite
 has not been executed locally because Chromium installation failed.
 
-Independent source review reproduced and corrected four defects before
+Independent source review in AP1-P05.1-001 reported corrections for four defects before
 publication: a later final mapping read could leave an earlier revoked result;
 two participants could share profile/asset/source identity; malformed TypeScript
 verification facts could be treated as truthy; and a final clock callback could
@@ -102,6 +108,9 @@ post-callback projection guards. Further author/reviewer inspection bound age
 and media to the evaluated immutable facts and captured clock, and snapshots
 expected context before dependency callbacks. These reviews prove their inspected
 source/regression scope, not final hosted review or production transaction safety.
+AP1-R009-F01/F02 subsequently established that the final eligibility-only sweep
+still left two synchronous callback windows; the current correction below
+supersedes any completeness implication of that earlier review statement.
 
 ## Initial publication and expected-version correction
 
@@ -199,3 +208,182 @@ AB1-R009 if still unused with those final identities/results and recovery/next
 instructions for Nathan to relay; saving is not automatic planner delivery or
 acknowledgment. Future CI/merge evidence belongs in that external closure report,
 not a required self-certifying follow-up commit to this containing checkpoint.
+
+## AP1-P05.1-002 correction checkpoint
+
+**24 September 2026 UTC · revision 1.1 · fixture-only scope.** AP1-ACK009 preserves
+AB1-R009/PR10 completion history and reopens P05.1 for AP1-R009-F01/F02. The current
+[Drive correction assignment](https://drive.google.com/file/d/1doBr_chh_fjodNCLbu6yyiCU_TDcUfYB/view)
+was retrieved completely and matched the attachment: 31,496 UTF-8 bytes, SHA-256
+`431b7a4e048fcb094a7345c9e8ed84ed82da330d5cc3edcd39a6b74202c3da83`.
+The existing task was set In progress and read back. P05.2/P05.3 remain Planned.
+AB1-R010 was unused at startup; recheck its existing shared report home before
+publication. No parallel task/canon is created.
+
+### Reconciled baseline and preserved PR10 proof
+
+Remote main remains `01e834d7f059feb2fcd41bf4c218178206290d04`, tree
+`8bf5e31b76620ce284800aca6b1e907c32490738`, at correction startup; no open PR was
+present. Direct git authentication was unavailable. All 211 connector-retrieved
+file blobs/modes and the complete tree were verified before changes. Local
+snapshot history is not remote ancestry; publish only with actual remote parents
+and recheck newer legitimate work before any update.
+
+PR10 final candidate `25d8b2bb16a5200f2b952f4dd26e0da6d00c5300` shares that tree.
+The merge's ordered parents are `8f9dfbc30e3d0b4568d71482ca7334bf172afafa`, then
+the final candidate. Candidate runs
+[35939127773](https://github.com/amthorn78/glow-dating-app/actions/runs/35939127773),
+[35939123430](https://github.com/amthorn78/glow-dating-app/actions/runs/35939123430)
+and [merged-main 35939614030](https://github.com/amthorn78/glow-dating-app/actions/runs/35939614030)
+passed all four Foundation jobs. Historical totals were 178 API, 348 mobile,
+51 rendered, 212 JS contract cases and 37 Python contract methods, plus both
+development JS exports. Counts overlap. The preserved 141-row raw-fact corpus
+runs in multiple suites. These results preceded the new findings.
+
+PR10 final-head code review completed before merge. Automatic security completed
+only on initial head `f809063cdf2aba236a50db74b349eb36990089bb`; final requests
+produced no final-head receipt. No service error or final-head security pass is
+asserted for PR10. The current repair must inspect its own final-head reviews.
+
+### Unchanged-baseline reproductions
+
+The supplied appendix ran on the verified unchanged source with Python 3.12.14,
+socket creation blocked and no database. The observed JSON was retained as
+`python-baseline-reproduction.json` in session evidence for the external report.
+It deliberately asserts the old defective output; maintained regressions require
+safe behavior instead.
+
+| Run | Observed before method return | Fresh/current comparison |
+|---|---|---|
+| Unchanged positive control | 14 eligibility/clock reads, 12 mapping reads, two provider calls; both entries evaluated with compatibility | Earlier pair ready; retained/current mapping both `mapping-1`. |
+| AP1-R009-F01 | Last later-candidate eligibility acquisition withdrew the earlier candidate's consent; both entries still evaluated with compatibility | Fresh earlier-pair evaluation excluded it. |
+| AP1-R009-F02 | Last later-candidate mapping read replaced the earlier link; both entries still evaluated with compatibility | Retained key carried `mapping-1`; current repository held `mapping-2`; fresh eligibility remained ready. |
+
+Both defect runs had the same 14 eligibility reads, 12 mapping reads and two
+provider calls as the control. Read counts identify the baseline sequence, not
+the future implementation contract. No thread, live provider or SQL was involved.
+
+The corrected reproduction, retained as `python-corrected-reproduction.json`,
+uses the participating mapping writer and the same last-read mutation ordering:
+
+| Run | Corrected observed outcome | Preserved control/bound |
+|---|---|---|
+| Unchanged control | Both entries `evaluated`, both retain compatibility; batch `evaluated` | Fresh first pair ready; retained/current link both `synthetic-mapping-v1`. |
+| AP1-R009-F01 | Earlier entry `reload_required`, no compatibility; unaffected later entry `evaluated`; batch `partial` | Mutation fired; fresh first pair excluded. |
+| AP1-R009-F02 | Earlier entry `stale`, no compatibility; unaffected later entry `evaluated`; batch `partial` | Mutation fired; current link `mapping-2`; fresh first pair ready. |
+
+Every corrected run retained **14 eligibility/clock reads, 12 mapping reads and
+two provider calls**. No extra sweep, acquisition, provider replay or retry was
+used to close the demonstrated final-return window.
+
+### Correction and bounded publication design
+
+`fixture_coherence.py` provides concrete revision cells and immutable captures.
+The fact repository's per-account cells advance on participant put/removal and
+outgoing block observations; its shared policy/time cell advances on policy
+writes and observed day/availability changes. The new fixture account–chart-link
+repository advances retained per-account cells on every `put`, including removal,
+same-value replacement and restoration. Guards remain bound to the original
+attempt across retries and provider calls.
+
+The batch retains real callback-capable reads and current exclusion diagnostics.
+After the last read, one pure concrete-cell/integer comparison suppresses retained
+compatibility when a participating source changed: fact/policy/time changes
+become `reload_required`; mapping changes become `stale`. Unaffected outcomes
+remain available; a shared-viewer or policy/time change invalidates every dependent
+pair. No denied attempt is promoted after restoration. Missing/malformed/
+unavailable guard participation fails closed before provider dispatch. No clock,
+repository, provider, custom getter/equality/hash or new retry follows acceptance.
+The existing cap remains twenty candidates and one to three total provider
+attempts. This is synchronous fixture coherence, not PostgreSQL atomicity.
+
+Maintained tests use named final-acquisition/final-mapping phases and actual source
+writes in both batch orders. They cover earlier-candidate and shared-viewer
+consent/block/media/policy changes; input/mapping/identity replacement; same-value
+restoration; unavailable/malformed guards; guard-acquisition callbacks; continuous
+change; positive controls and unchanged denied-provider ordering. Existing retry,
+idempotency/provenance and truth-table coverage remains required.
+
+Corresponding mobile inspection reproduced final-clock profile-adapter policy,
+media, preference and profile writes retaining an obsolete preview; a `toJSON`
+context substitution bypass; and a supplied Date method mutating facts after
+capture. Private factory-adapter revisions, media-binding revisions, strict
+descriptor-only context capture and one numeric timestamp capture before source
+facts address these paths. The last preview acceptance check uses only local
+revision/identity comparisons and returns `null` on invalidation. Real MediaStore
+writer participation and restoration have focused regressions. There is no
+presentation change requiring new rendered cases; all 51 existing cases remain.
+
+Independent review then reproduced a same-value `MediaStore.seedEligible()`
+reset that suppressed its evidence notification. The reset now invalidates that
+notification signature so the existing profile synchronization path observes the
+new source incarnation. A dedicated final-clock regression covers the real
+writer. The intermediate 361-test mobile pass preceded this correction and is
+not the final local mobile result.
+
+### Observed current-session setup and independent gates
+
+These results were observed during correction setup; they do not certify a later
+candidate containing source or documentation changes.
+
+| Check | Observed result |
+|---|---|
+| Runtime pins and hash-locked Python install | Python 3.12.14, Node 24.19.0, npm 11.9.0; root `.venv` hash-locked install and `pip check` passed. |
+| Workspace installs | `npm ci --ignore-scripts` passed in mobile and contracts; no package upgrades. |
+| JS contracts and generation | `npm run check` passed 212 cases and deterministic generation `--check`. |
+| Python contract checks | 37 methods passed. |
+| Static model agreement | 32 models/two unapplied migrations agree; no database. |
+| Root HTTP/startup smoke | Passed using `GLOW_SMOKE_PYTHON` set to the root `.venv`; startup regression passed one test. |
+| Expo compatibility | Offline check reported dependencies up to date, with its explicit unreliable-offline-validation caveat. |
+| Dependency audit | 14 moderate, zero high/critical; GHSA-vcc3-ghjq-m6fr and GHSA-w5hq-g745-h8pq remain pre-release remediation items. |
+| Local rendered/container capability | Chromium install failed with an invalid ZIP before tests; Docker executable unavailable. Hosted jobs must supply these results. |
+
+After the source corrections, these local commands also completed successfully:
+
+| Directory / command | Observed corrected-source result |
+|---|---|
+| `services/api`: `GLOW_ENV=test ../../.venv/bin/python manage.py check`; `GLOW_ENV=test ../../.venv/bin/python manage.py test tests --verbosity 2` | No Django issues; **189 API tests passed**, unused database setup skipped. |
+| `services/api`: `../../.venv/bin/ruff check .`; `../../.venv/bin/ruff format --check .`; `../../.venv/bin/mypy` | Passed; **51 files** satisfy format checks and **25 source files** pass mypy. |
+| `apps/mobile`: `npm run check` | TypeScript, ESLint and **362 mobile tests passed**, including the final MediaStore reset regression. |
+| `apps/mobile`: `EXPO_OFFLINE=1 npm run export:development` | Both iOS and Android development JS exports completed with exit zero. This is not native build/device acceptance. |
+
+The new Python suite adds eleven methods, including **120** final-read mutation
+combinations (64 eligibility and 56 mapping). The prior provider/fact/trusted
+checks and all 141 corpus rows remain. Counts overlap and are not an aggregate
+coverage total. Source review and focused regressions supplement these results;
+the external report records the exact reviewed candidate and any unavailable
+automatic review coverage.
+
+All four required Foundation jobs still must pass on the actual final candidate
+including docs and on merged main. Hosted rendered/container results and those
+future identities are not asserted here. Candidate evidence alone does not close
+the correction.
+
+### Current publication, effects and next action
+
+Use scoped branch `app-builder-1/p05-1-batch-freshness-correction`; verify actual
+remote branch/head/PR before uncertain writes. Review the complete delta and
+actual final-head feedback, wait for an already-running review, and state missing
+coverage precisely. Immediately before merge verify current head/base/main,
+mergeability, review disposition, all four Foundation jobs and absence of
+deployment/production effects. After merge verify exact SHA, ordered parents,
+candidate/main tree relationship and all merged-main jobs. These future identities
+belong in the external report, not a containing-commit attestation.
+
+Changes are app fixture source/tests/docs and existing Notion records. No database
+connection, SQL, applied migration, live HDE/provider call, Railway/Cloudflare
+mutation, deployment, production activation, public release, purchase, destructive
+retirement or person-directed message is part of this correction. Read-only
+Railway metadata showed HDE/legacy/PostgreSQL/Redis services and no app service
+in the shared project; it grants no right to mutate protected resources.
+
+Finish AP1-P05.1-002 and its observed gates, then update/read back existing P05.1
+In progress → Verified → Done **at fixture scope**, Control and addressed report
+**To App Planner 1 · AB1-R010 if unused**. AB1-R009's earlier closure is insufficient.
+P05.2 remains the next proposed task only after this repair, for stable bounded
+queues, accessible browsing, freshness/empty/error states, permitted output
+granularity and independently authorized actual candidates. P05.2/P05.3 remain
+Planned and unstarted. P07 WordPress and P11 database/live/native proofs remain
+separate. Saving a report is not delivery to another ChatGPT session; Nathan can
+relay it. Before interruption publish recoverable source and record actual remote
+head/PR, unpublished files, completed checks, blocker and one next action.

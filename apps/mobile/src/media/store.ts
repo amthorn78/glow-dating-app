@@ -192,6 +192,8 @@ export class MediaStore {
   }
   async reload(outcome: MediaOutcome = 'success'): Promise<void> { await this.run(context => this.adapter.read(context, outcome), 'Current photo status loaded.', true); }
   seedEligible(): void { this.operation += 1; this.adapter.seedEligible(); this.ownerRemovalRevocations.clear(); this.moderationRevocations.clear();
+    // Reset is a new accepted source incarnation even when its visible collection matches the previous one.
+    this.evidenceSignature = '';
     this.publish({ busy: false, error: null, message: null }); }
   invalidatePolicy(): void { this.operation += 1; this.adapter.invalidatePolicy(); this.selection = null; this.publish({ busy: false, selection: null,
     selectionRevision: this.snapshot.selectionRevision + 1, message: 'Synthetic media policy changed. Delivery and new uploads are unavailable.' }); }

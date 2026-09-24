@@ -15,6 +15,7 @@ a separate reviewed mapping, actual rights and P11 evidence.
 
 P05.1 extends this same internal seam with raw-fact eligibility acquisition,
 explicit eligibility-policy binding and additional delayed-revocation checks.
+AP1-P05.1-002 adds a bounded callback-free publication check after those reads.
 The [reciprocal fixture mapping](reciprocal-eligibility-fixtures.md) owns its
 provisional policy and shared truth table. Served development responses, closed
 production DTOs and the absence of active production routes are unchanged.
@@ -75,7 +76,10 @@ authentication and cannot turn untrusted JSON into authorization.
 2. Acquire pair/version-bound eligibility. Excluded, unknown, wrong-pair,
    policy-pending and stale evidence ends that candidate before chart/provider
    access. Empty/all-excluded input yields `empty` without provider work.
-3. Read both mappings; reject absent/wrong identities and return pending for an
+3. After initial ready eligibility, capture its participating fixture guard and
+   the account–chart-link guard before the first mapping read. Missing or
+   unavailable participation fails closed before provider work. Read both mappings;
+   reject absent/wrong identities and return pending for an
    unresolved chart. Preserve direction. Compare full versions across retries.
    Recheck eligibility after mapping callbacks and before provider dispatch;
    a mapping read may itself cross a source or clock change.
@@ -92,14 +96,45 @@ authentication and cannot turn untrusted JSON into authorization.
 6. After all provider calls, reacquire eligibility for every retained outcome,
    including missing/pending-mapping outcomes. A denied earlier attempt is never
    promoted by later restoration. Retained provider outputs also recheck both
-   mappings and eligibility after those callbacks. Finally perform an eligibility-
-   only sweep after all mapping callbacks: a later candidate's mapping read may
-   have revoked an already revalidated earlier outcome. Discard obsolete output
-   before returning; these sequential checks are not an atomic database snapshot.
-7. Preserve an outcome for every submitted candidate. One failed candidate does
-   not fabricate output for it or discard another candidate's result. `partial`
+   mappings and eligibility after those callbacks. The eligibility-only sweep
+   preserves current exclusion diagnostics but is not the publication boundary:
+   its own last read can invalidate an earlier pair. Finish with one callback-free
+   check of the originally captured fact/policy/time and mapping revision cells.
+   Changed fact evidence returns `reload_required`; changed mapping evidence
+   returns `stale`. Both remove compatibility. No dependency read follows this
+   acceptance check.
+7. Preserve an outcome for every submitted candidate. Per-account changes discard
+   affected retained outputs while preserving unaffected results; shared-viewer or
+   policy/time changes invalidate every dependent result. `partial`
    describes mixed completion; `evaluated` describes completed fixture calls,
    not real compatibility readiness or an entitlement.
+
+### Synchronous fixture publication boundary
+
+`fixture_coherence.py` defines concrete `FixtureRevision` cells and immutable
+`FixtureReadGuard` captures. The fact repository retains per-account cells for
+participant replacement/removal and outgoing block observations, plus a shared
+policy/time cell for policy writes and observed day/availability changes. The
+`FixtureChartMappingRepository` retains per-account cells and advances them on
+every `put(account_id, mapping_or_none)`, including deletion and same-value
+restoration. A plain get-only dictionary cannot establish monotonic invalidation
+and is not silently copied into a trusted adapter.
+
+Guards remain bound to the original attempt across retries and provider calls.
+Guard acquisition itself is callback-capable and occurs before the normal source
+rechecks. The final `guard_is_current` function accepts exact concrete cell/guard
+types, reads stored integers directly and invokes no virtual getter, custom
+equality/hash, clock or repository operation. Affecting writers must use the
+repository write operations and their retained cells. This internal composition
+contract does not protect against a malicious adapter fabricating trusted facts
+or bypassing its own writer discipline.
+
+The candidate cap remains twenty and the configured retry cap one to three total
+provider attempts per candidate. The correction adds no retry, provider call or
+callback-capable sweep. Continuously changing or unavailable evidence cannot be
+chased into permission. This covers synchronous fixture callbacks, including
+later-candidate writes to an earlier candidate or the shared viewer. It is not
+database isolation, locking, durable invalidation or a cross-thread guarantee.
 
 `ExpectedProviderFailure` carries only a declared code. It never preserves raw
 upstream text or private input. Expected timeout/outage, unsupported output,
@@ -122,8 +157,9 @@ symmetry. No cache store, TTL, permitted reuse or actual invalidation delivery i
 implemented. `CompatibilityRequest` requires that policy revision explicitly;
 the trusted batch takes it from `PairEvidenceVersion`, and finalized fixture
 idempotency keys cannot replay prior-policy output. A client-supplied current
-policy assertion grants no eligibility. Post-call/final rechecks narrow stale windows; only the
-future P11 transaction/recheck boundary can establish race behavior for privileged
+policy assertion grants no eligibility. The pure publication guard closes the
+demonstrated in-process callback window; the future P11 transaction/recheck
+boundary must establish race behavior for privileged
 actions. Compatibility still cannot authorize a like, match or message.
 
 ## Transaction and lifecycle responsibilities

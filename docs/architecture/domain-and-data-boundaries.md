@@ -8,6 +8,32 @@ A bounded internal implementation exists in `services/api/glow_domain`: explicit
 
 The native mobile client renders application projections and submits intents. The application API must authenticate, authorize, recheck current state and own dating-domain transitions. A WordPress operator plugin will submit narrowly scoped staff requests to that same API; it will not become a second dating backend. HDE remains the protected owner of chart calculation and compatibility intelligence. App-owned birth-input and opaque chart-reference mapping must not become an HDE implementation.
 
+Nathan's 24 September 2026 clarification, carried by AP1-P05.1-002 revision 1.1,
+keeps the application in one repository, `amthorn78/glow-dating-app`:
+
+| Repository location | Responsibility and present boundary |
+|---|---|
+| `apps/mobile/` | Mobile frontend; renders projections and submits intents. |
+| `services/api/` | Dating backend; owns dating authorization, state transitions and audit history. |
+| `packages/contracts/` | Shared application contracts and generated definitions. |
+| `wordpress/glow-admin/` | Planned P07 operator plugin; not implemented by this correction. It will call scoped dating admin APIs and retain only WordPress CMS/staff concerns. |
+
+Separate frontend/backend repositories are unnecessary. Sharing a repository does
+not combine their runtimes, deployment boundaries or trust levels. WordPress has
+no privileged direct access to app/HDE tables. The existing HDE repository/service
+stays separate and protected. The app can progress with provisional fixtures before
+HDE is ready; later, one app-owned adapter must implement the verified supported
+engine contract, with live integration and acceptance before launch.
+
+Here, `ChartMapping` is an **account–chart link**: an app account ID, an opaque
+engine reference, pending/resolved state, birth-input version and mapping version.
+It calculates no chart. The app retains necessary linkage/provenance and permitted
+projections; HDE remains authoritative for calculation, mechanics, interpretation,
+engine-owned chart data and supported compatibility output. If HDE supplies an
+equivalent linkage/version facility, the app will reuse it and retain only its
+necessary ownership references. Provisional interfaces must adapt to HDE, not
+require HDE to reproduce the scaffold.
+
 Application PostgreSQL is the planned dating-domain system of record. Current development has no domain persistence. Changes that must agree atomically belong in one future application transaction, with provider side effects dispatched after commit through an outbox. There is no proposed cross-provider two-phase transaction. HDE production access, application database connection and database-dependent proof remain P11 work.
 
 | Boundary | Authoritative decision/data owner | Client or adapter projection | Required enforcement, not yet implemented |
