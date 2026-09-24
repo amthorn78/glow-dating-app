@@ -337,3 +337,43 @@ Nathan relayed the M02-I1 report: branch `claude/eager-goodall-1zjgey`, head `3a
 - The first v4 request, for M02-I1, returned 403 `authentication_error`.
 - After Nathan added the API credential, the identical request returned HTTP 200 in the already-running session. The result: Score 2.55, P(high) 0.41, P(extra high) 0.57, which reads as extra high. The manager's call was high.
 - Nathan ran extra high. The recorded outcome is adequate, and the better call is TypeSafe.
+
+## App Manager 2 — exact-head review relay (24 September 2026)
+
+**Review.** Nathan ran the review session at the extra-high level on `ccebd1bf5eb23155fec17ef7670164e5431d3849`.
+
+- Its start gate, merge base (`07b3b10`) and trusted-base classification (full scope, 25 paths) matched the manager's.
+- Verdict: approve for merge, with nothing blocking.
+- Findings: six should-fix, one residual risk and several nits.
+- The session reports it changed nothing in the repository or on GitHub.
+
+**Hosted CI on `ccebd1b`.** [Push run 36037425892](https://github.com/amthorn78/glow-dating-app/actions/runs/36037425892) and [PR run 36037435481](https://github.com/amthorn78/glow-dating-app/actions/runs/36037435481) both succeeded on all six jobs. Read job by job, all four application jobs ran, including the rendered step, and the gate succeeded.
+
+**Manager verification of the findings:**
+
+| Finding | Manager check | Result |
+|---|---|---|
+| 1. Symlinks bypass `trusted_tree` | Read the code: `find` runs in its default mode, a symlink is judged by its own owner and its target is never examined | Confirmed |
+| 2. CI's ruff reads Markdown | In a scratch venv installed from `requirements-dev.lock` (ruff 0.16.8), in `services/api`: `ruff format --check README.md` printed "1 file already formatted"; `ruff format --check .` printed 58 files; with `--extend-exclude '*.md'` it printed 57 | Confirmed. `pyproject.toml` holds only `[tool.ruff]`, `[tool.ruff.lint]` and `[tool.mypy]` settings |
+| 3. A single merge base | Read the code: `git merge-base` without `--all` | Confirmed by reading; the reviewer's criss-cross repository was not rebuilt |
+| 4. Push-run cancellation | `foundation.yml`: concurrency group `foundation-${{ github.ref }}` with `cancel-in-progress: true`; a push compares from `github.event.before`; the gate prints `Application checks passed` or `Ordinary documentation: application jobs intentionally skipped` | Confirmed from the workflow text |
+| 5. Stale lines | `docs/planning/manager-workflow.md:108` and `docs/ephemeral/README.md:5` at `ccebd1b` | Confirmed |
+| 6. Pin-test false passes | Read the patterns: single quotes only, and the exact `npm install --global` spelling | Confirmed by reading |
+| 8. Missing `-I` | Read the code | Confirmed |
+| 11. Mobile Expo command | `apps/mobile/scripts/development.mjs` passes every argument to the Expo CLI with the fixture environment | Confirmed; the wrapper form works |
+| 13. PF01 table | A blank line separated the D08 and D09 rows | Confirmed |
+
+**Facts gathered for the corrections:**
+
+- The toolchain trees in this container have 12 symlinks in the Node tree and 8 in the Python tree. All are relative and resolve inside their tree.
+- `/root` is mode 700. `/root/.local`, `/root/.local/bin`, `/root/.local/share` and the prefix are root-owned with mode 755.
+
+**Correction to an earlier observation.** App Manager 1's search, in the section above, found nothing that reads Markdown. That missed ruff: the API job's `ruff format --check .` formats Markdown files, as finding 2 shows.
+
+**Decisions:**
+
+- **Nathan, 24 September:** Markdown under `.claude/` stays full scope, chosen when asked.
+- **Nathan's policy:** one work item at a time, with the correction round belonging to M02.
+- **The manager:** fix every finding except a workflow change inside M02, as correction round M02-C1, before merge. The Setup script is then pasted once.
+
+The disposition table is in the brief.

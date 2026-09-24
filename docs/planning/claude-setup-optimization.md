@@ -107,6 +107,83 @@ These edits are part of the M02 change and receive the same checks and exact-hea
 
 **Report:** branch, commit SHAs and tree, changed paths, exact commands with exit codes and counts, preserved failures, deviations and open questions. Durable results go in the evidence record's implementer section.
 
+## Exact-head review of `ccebd1b` and its disposition (24 September 2026)
+
+Nathan ran the review session at the extra-high level on head `ccebd1bf5eb23155fec17ef7670164e5431d3849`.
+
+- **Verdict:** approve for merge, with nothing blocking. There were six should-fix findings, one residual risk and several nits.
+- **Verification:** App Manager 2 checked the findings against the code; see the evidence record.
+- **Disposition:** everything except a workflow change is fixed inside M02 in one correction round, M02-C1. The Setup script is then pasted once, and no known gap goes live with the documentation exemption.
+- **Decision (Nathan, 24 September):** paths under `.claude/` stay full scope.
+- **Policy (Nathan, 24 September):** one work item at a time. The correction round is part of M02.
+
+| # | Finding | Fix | Owner |
+|---|---|---|---|
+| 1 | A root-owned symlink bypasses `trusted_tree` (tree root or entry pointing outside the tree) | Reject a symlinked tree root and any symlink that resolves outside its tree or dangles | M02-C1 |
+| 2 | Ruff 0.16.8 formats Python code blocks inside Markdown, so an exempt Markdown change can break a later API job | `extend-exclude = ["*.md"]` under `[tool.ruff]` in `services/api/pyproject.toml` | M02-C1; the manager corrected the policy claim |
+| 3 | A single merge base can hide code changes in criss-cross history | Use `git merge-base --all`; more than one base means full scope; add a regression test | M02-C1 |
+| 4 | A Markdown-only push can cancel a code push run, and its own run then skips the application jobs | Procedural rule: a push run counts for code only if its gate says `Application checks passed`. No workflow change | Manager (done) |
+| 5 | Stale "Markdown is full scope" lines | Reworded in the manager workflow and `docs/ephemeral/README.md` | Manager (done) |
+| 6 | The pin test can false-pass on double quotes, unquoted values or `npm i -g` | Tolerant patterns and match-count assertions | M02-C1 |
+| 7 | `.claude/**` Markdown was exempt | The classifier makes any path with a `.claude` component full scope, with a test | M02-C1; the manager updated the documents |
+| 8 | The Python checks run without `-I` | Add `-I` | M02-C1 |
+| 9 | The prefix and link directories are unchecked | Check owner, mode and symlink status | M02-C1 |
+| 10 | Inherited `CDPATH` breaks a relative `--prefix`; `SIGTERM` leaves a temporary directory; `curl` has no `-q` or timeouts; the npm install runs whichever npm is on `PATH` | Fix each | M02-C1 |
+| 11 | `apps/mobile/AGENTS.md` names a bare `npx expo run` | Use the wrapper | M02-C1 |
+| 12 | The CI policy still describes pre-relay review requests | Reworded to the manual relay | Manager (done) |
+| 13 | Timing text disagrees; the D09 row fell outside the PF01 table; the migration plan was not marked superseded; the inventory did not mention the TypeSafe credential | Script timing text: M02-C1. The rest: the manager (done) | Both |
+
+## Correction brief — M02-C1 (manual implementation session)
+
+**Outcome:** findings 1–3 and 6–11, and the script part of 13, fixed with evidence, on top of the manager branch head named in the prompt.
+
+**Owned paths (writable):**
+
+- `scripts/bootstrap-toolchain.sh`
+- `scripts/change_scope.py` and `scripts/test_change_scope.py`
+- `services/api/tests/test_toolchain_pins.py`
+- `services/api/pyproject.toml`, only the `extend-exclude` key under `[tool.ruff]`
+- `apps/mobile/AGENTS.md`, only the development-build line under "Rules"
+- `docs/operations/local-development.md`, only the Setup-script bullets under "Claude Code cloud sessions"
+- a new "Correction session M02-C1" section at the end of the evidence record
+
+**Manager-owned (do not edit):**
+
+- this brief, `docs/ephemeral/`, `docs/continuity/current-handoff.md`, `docs/continuity/claude-code-handoff.md`
+- root `AGENTS.md` and `CLAUDE.md`, `docs/planning/manager-workflow.md`, `docs/planning/claude-code-migration.md`, PF canon
+- `docs/README.md`, `docs/operations/ci-and-branch-policy.md`, `docs/operations/environment-inventory.md`
+- the existing sections of the evidence record
+
+**Exclusions:**
+
+- Application code; dependency manifests and locks, and any other `pyproject.toml` key.
+- Workflows, `.env.example` files, the `Dockerfile`, mobile tests and source.
+- Anything affecting HDE; provider, database, Railway or deployment actions; credentials.
+- `playwright install`, `eas`, `migrate`.
+
+**Design constraints:**
+
+- **The script's trust model:** everything installed belongs to the running account; nothing is group- or world-writable; there are no symlinks that leave their tree. Nothing inside a tree runs before the tree passes that check.
+- **The real trees must still pass:** the 12 relative symlinks inside the Node tree and the 8 inside the Python tree all resolve inside their trees. `$HOME/.local` and `$HOME/.local/bin` are root-owned with mode 755 in this environment.
+- **Classifier changes fail closed.** Nathan's Markdown exemption is otherwise unchanged.
+- **The pins stay the same.**
+
+**Acceptance checks:**
+
+1. **Script:**
+   - `bash -n`; a fresh run into a temporary `HOME` in a clean process environment; an idempotent rerun; the wrong-hash cases still fail closed.
+   - Each adversarial case from the review now fails safe without executing anything from the tree: a symlinked tree root, a symlink resolving outside the tree, a foreign-owned or writable prefix or link directory, a fake standard-library module on `PYTHONPATH` or in the working directory, a relative `--prefix` with `CDPATH` set, and `SIGTERM` during the Python build.
+   - Record owners before and after.
+2. **Classifier:**
+   - The existing tests pass.
+   - New tests: a criss-cross history with more than one merge base is full scope; `.claude/agents/x.md` and a nested `docs/.claude/x.md` are full scope; ordinary Markdown stays ordinary.
+3. **Pin test:** it passes, and the review's three false-pass edits now fail, naming the diverging file.
+4. **Ruff:** `ruff format --check .` in `services/api` reports 57 files, and a Markdown file with an unformatted Python block no longer fails it.
+5. **API suite:** `pip install --require-hashes`, `pip check`, `manage.py check`, `manage.py test tests` (report the count), ruff, format, mypy and the contract tests.
+6. **Final checks:** relative links in changed Markdown, `git diff --check`, and trusted-base classification (full scope).
+
+**Review plan:** after integration, a delta review of the final head against `ccebd1b` that also confirms each finding is resolved. Then all six Foundation jobs on the final head, merge, verification of main, a receipt, and the one-time Setup-script paste.
+
 ## Review and merge gates
 
 1. Manager verification of the relayed report against the pushed branch.

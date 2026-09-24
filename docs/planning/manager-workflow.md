@@ -19,6 +19,11 @@ Nathan's direction, 24 September 2026:
 
 **Implementation and review sessions are not restricted in tooling.** They may use any tools, subagents, scheduled wake-ups or other capabilities their assignment needs. Their boundaries are about scope: owned paths, their own branch, and the reporting the prompt asks for.
 
+**One work item at a time (Nathan, 24 September 2026).** *"I don't think we should start new tasks until CI and reviews are clear on a current one."*
+
+- The manager starts or commissions no new work item until the current item's final head passes every CI job and its exact-head review is clean. New work items include implementation, diagnosis, documentation sweeps and feature preparation.
+- Corrections, re-reviews and the merge close-out belong to the current item.
+
 | Session | Started by | Does | Never |
 |---|---|---|---|
 | **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
@@ -41,6 +46,7 @@ Nathan's direction, 24 September 2026:
    - Classify the whole change (command below).
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.
+   - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
 6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
 7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md), then:
    - Merge within the standing app-only authorization.
@@ -71,7 +77,12 @@ git show "$base:scripts/change_scope.py" > "$policy_dir/change_scope.py"
 python3 -I "$policy_dir/change_scope.py" --base "$base" --head "$head" --merge-base
 ```
 
-Use the PR's base SHA when it differs from `origin/main`. A change made only of Markdown files classifies as `ordinary-docs-only`: no application checks and no code or security review. The manager still reads the diff when integrating. Anything else is full scope. For workflow or classification-policy changes, also inspect the entire workflow diff and the actual job steps and results; candidate-controlled YAML can bypass its own checks. The classifier always comes from `main`, so a policy change affects later PRs only after it merges.
+Use the PR's base SHA when it differs from `origin/main`. A change made only of Markdown files classifies as `ordinary-docs-only`: no application checks and no code or security review. Two exceptions stay full scope (Nathan, 24 September 2026; enforced by the classifier once M02-C1 merges):
+
+- any path under a `.claude/` directory;
+- a comparison with more than one merge base.
+
+When `git merge-base --all` returns more than one base, review against `origin/main` directly, not `origin/main...HEAD`. The manager still reads the diff when integrating. Anything else is full scope. For workflow or classification-policy changes, also inspect the entire workflow diff and the actual job steps and results; candidate-controlled YAML can bypass its own checks. The classifier always comes from `main`, so a policy change affects later PRs only after it merges.
 
 ## Brief template (persistent, `docs/planning/`)
 
@@ -105,7 +116,7 @@ A prompt contains:
 - Report format: branch, SHAs, tree, changed paths, every check with exact results, failures, deviations, open questions.
 - Tooling line: "You may use any tools, subagents, scheduled wake-ups or other capabilities you need."
 
-Store inert evidence and receipts in `docs/testing/evidence/YYYY-MM-DD-work-id-purpose.md`. Behavior-affecting Markdown elsewhere is full scope.
+Store inert evidence and receipts in `docs/testing/evidence/YYYY-MM-DD-work-id-purpose.md`.
 
 ## Boundaries
 

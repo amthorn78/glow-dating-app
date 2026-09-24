@@ -444,7 +444,6 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | D06 | Expo/RN + modular Django/DRF baseline, managed capabilities behind adapters | Selected planning design from research; exact pins and bounded reuse ADR in P01 |
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
 | D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; current controlling permission record |
-
 | D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions run as Nathan's manual relay; feature pause and setup optimization first | Owner direction, 24 September 2026 |
 
 ### Provisional assumptions and dependencies
