@@ -4,7 +4,7 @@ Two contracts remain distinct:
 
 | Contract | Current scope |
 |---|---|
-| `development/gapp-dev-v1.schema.json` and `development/openapi.json` | Three implemented, isolated development GET responses. Compatibility stays pending/fixture; readiness stays 503. |
+| `development/gapp-dev-v1.schema.json` and `development/openapi.json` | Three implemented, isolated development GET responses, plus an additive in-memory discovery page DTO. No new HTTP route. Compatibility stays pending/fixture; readiness stays 503. |
 | `production/gapp-api-v1.schema.json`, `production/openapi.json` and `production/flows-v1.json` | P02 app-owned logical production contract/state baseline, with executable schema and transition-oracle checks. No production routes, auth wiring, persistence or providers are implemented by this package. |
 
 [Production contracts](../../docs/architecture/production-contracts.md) defines every F01–F20 owner, projection, actor, state/error/version and pending-policy boundary. The JSON Schema files own payloads; flow registry owns transition tuples and projection scopes. `transition_contract.py` is test-only design validation, not runtime API authorization. HDE wire fields and credential APIs are not invented. F01 references maintained allauth; final HDE ready output remains unavailable pending A01/A07.
@@ -38,3 +38,44 @@ provider batch's zero-call exclusions and ready positive controls. The existing
 JSON Schema/generated candidate contract is unchanged. See
 [source/policy mapping](../../docs/architecture/reciprocal-eligibility-fixtures.md)
 and [actual P05.1 evidence](../../docs/testing/p05-1-checkpoint.md).
+
+## P05.2 discovery composition
+
+`DevelopmentDiscoveryPage` adds a closed development DTO without changing the
+existing layout GET or production contract. The Python discovery composition and
+explicitly fictional mobile in-memory adapter share this shape. The page contains
+fixture viewer/session/request/queue correlation, mode, state, at most two
+`DevelopmentDiscoveryProfile` projections and an optional continuation. This new
+profile type preserves the existing fields and adds one to four unique simulated
+approved-media delivery references; the original `DevelopmentProfile` is unchanged.
+Only `fixture-approved-…` labels are accepted, with no real photo URL or claim of
+provider delivery. All compatibility
+remains `pending`/`fixture`, including synthetic provider success. There are no
+numeric scores, bands, private birth facts, preferences, block details, mapping
+references or provider payloads in the projection.
+
+`ready` has one or two cards; `partial` permits zero to two cards and denotes
+incomplete synthetic provider work. `empty`, `exhausted`, `reload_required` and
+`error` have no cards or continuation. Normal queue outcomes require a queue
+identity; errors before queue creation may use null. Identity and cursor fields
+use bounded opaque strings. Shape validation does not establish the current
+actor, source versions, queue freshness or authority: the adapters and mobile
+adoption checks enforce those boundaries. Cursors are non-durable in-memory
+handles, not production signing, encryption or access secrets.
+
+`fixtures/discovery-v1.json` contains one shared fictional viewer and fourteen
+independent candidate records: six eligible pairs plus exclusions and missing
+facts. It provides full participant, approved-media, policy, directional-block and
+mapping inputs, explicit synthetic provider states, limits and independent
+expected decisions/order. Runtime adapters consume the raw inputs rather than
+the expected results. Both modes use the same eligible population and retain
+independent progress; recommended order uses synthetic priority followed by
+profile ID, and broader order uses profile ID. Priority has no Human Design
+meaning. See [discovery architecture](../../docs/architecture/discovery-fixtures.md)
+and [P05.2 evidence](../../docs/testing/p05-2-checkpoint.md).
+
+The shared schema corpus runs valid and invalid page states, identity constraints,
+private/unknown fields, pending-only compatibility, cursor restrictions and
+duplicate IDs through Python and generated JavaScript validators. The JavaScript
+cases also exercise the actual page parser. Existing development and production
+cases remain unchanged.

@@ -210,21 +210,15 @@ No profile or preferences are passed as route parameters or logged as routine
 diagnostics. No browser storage, SQLite, shadow backend or process-restart recovery
 is introduced.
 
-`use-recommendations.ts` binds loaded results to owner/generation, the current
-profile discovery revision and P05.1's captured ordered pair version. It masks
-obsolete results synchronously during render,
-then aborts obsolete requests and rejects delayed completions against the live
-state. This also applies to retained hidden screens; waiting only for effect cleanup
-would allow a render of an earlier owner's or revoked candidate list. The hook
-retains its existing configured-API error/retry behavior without falling back to
-bundled fixtures after an API failure.
-
-The hook's existing `gapp-dev-v1` Alex/Jordan/Riley items remain static smoke/layout
-samples. They are gated as retained presentation by the fictional viewer → owner
-pair, not evaluated as three independently eligible pairs. `candidatePreview()`
-is the fact-derived P05.1 projection; P05.2 owns bounded discovery composition.
-Pair-only revocation can redact retained data while owner readiness and editing
-stay available. No new navigation, queue or ranking feature is implied.
+At the P04/P05.1 checkpoint, `use-recommendations.ts` bound retained anonymous
+layout results to owner/generation, profile discovery revision and the fictional
+viewer-to-owner pair. Its Alex/Jordan/Riley samples were not independently
+authorized candidates. P05.2's [bounded discovery composition](discovery-fixtures.md)
+now uses the actual current owner as viewer and separate candidate facts, while
+the earlier anonymous GET/loader remains layout/HTTP smoke only. The new queue
+still masks obsolete presentation synchronously and rejects delayed completions
+on source/owner/session changes. `candidatePreview()` remains a separate
+fictional viewer projection, not authorization for the queue's other people.
 
 ## P04.3 integration with the media collection
 

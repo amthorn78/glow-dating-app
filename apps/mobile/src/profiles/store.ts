@@ -1,6 +1,6 @@
 import type { CandidateProfile, MediaCollection, OwnPreferences, OwnProfile, PreferenceSelection, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { parseAppIntent, parseAppResponse } from '../contracts/production.ts';
-import { createProfileAdapter, fixtureProfileRevision, ProfileFailure, type DevelopmentChange, type ProfileAdapter,
+import { createProfileAdapter, fixtureProfileRevision, fixtureProfileGuard, ProfileFailure, type DevelopmentChange, type ProfileAdapter,
   type ProfileContext, type ProfileOutcome, type ProfileRecords } from './fixture-adapter.ts';
 import { activeOwner, canonicalSelections, PROFILE_REQUEST_ID, projectCandidate, requirements,
   type ProfileAuthority } from './policy.ts';
@@ -8,6 +8,20 @@ import { capturePairVersion, FIXTURE_PAIR_POLICY, FixturePairRepository, type Pa
 import { FIXTURE_CLOCK, type FixtureClock } from '../onboarding/policy.ts';
 
 export type { ProfileOutcome } from './fixture-adapter.ts';
+export type DiscoveryViewerCapture = Readonly<{ facts: ParticipantFacts; policy: typeof FIXTURE_PAIR_POLICY | null; sessionId: string }>;
+const discoveryCaptures = new WeakMap<object, readonly Readonly<{ cell: Readonly<{ revision: number }>; revision: number }>[]>();
+/** No clock, provider, media reader, adapter method, equality or user getter is invoked here. */
+export function discoveryViewerIsCurrent(capture: object): boolean {
+  const guards = discoveryCaptures.get(capture);
+  return guards !== undefined && guards.every(guard => guard.cell.revision === guard.revision);
+}
+export type DiscoveryViewerToken = Readonly<{ viewerId: string; sessionId: string }>;
+export function discoveryViewerToken(capture: DiscoveryViewerCapture): DiscoveryViewerToken {
+  const token = Object.freeze({ viewerId: capture.facts.account_id, sessionId: capture.sessionId });
+  const guards = discoveryCaptures.get(capture);
+  if (guards) discoveryCaptures.set(token, guards);
+  return token;
+}
 export type ProfileDraft = Pick<ProfileIntent, 'display_name' | 'summary'>;
 export type CandidateViewContext = Readonly<{ viewerId: string; candidateProfileId: string; generation: number; discoveryRevision: number; version: PairVersion }>;
 export interface ProfileSnapshot {
@@ -65,6 +79,7 @@ export class ProfileStore {
   private mediaSource: (() => MediaCollection) | null = null;
   private mediaRevoker: (() => void) | null = null;
   private mediaBindingRevision = 0;
+  private readonly discoveryCell = { revision: 0 };
   private pauseRequested = false;
   private pendingIntents = new Map<string, { signature: string; intent: ProfileIntent | PreferencesIntent | VisibilityIntent }>();
   private fictionalViewer: ParticipantFacts | null = null;
@@ -85,6 +100,7 @@ export class ProfileStore {
   readonly getSnapshot = () => this.snapshot;
   readonly subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(patch: Partial<ProfileSnapshot>): void {
+    this.discoveryCell.revision += 1;
     const state = this.adapter.inspect();
     const missing = requirements(state.profile, state.preferences, this.authority, state.policy, state.evidence);
     this.snapshot = freeze({ ...this.snapshot, ...clone(patch), policyVersion: state.policy?.version ?? null,
@@ -328,6 +344,18 @@ export class ProfileStore {
     return sourceSnapshot === this.snapshot && sourceAuthority === this.authority &&
       sourceRevision === fixtureProfileRevision(this.adapter) && mediaRevision === this.mediaBindingRevision ? result : null;
   }
+  /** Current owner facts for the separate discovery composition, never the preview viewer's grant. */
+  captureDiscoveryViewer(): DiscoveryViewerCapture | null {
+    const revision = this.discoveryCell.revision, guard = fixtureProfileGuard(this.adapter);
+    if (!guard || !this.snapshot.canDiscover || !this.authority.ownerId) return null;
+    const pair = this.currentPair();
+    const facts = this.pairs.inspect(this.authority.ownerId);
+    if (!pair || !facts || revision !== this.discoveryCell.revision || guard.cell.revision !== guard.revision) return null;
+    const capture = freeze({ facts, policy: this.pairPolicy && this.snapshot.policyVersion === 'development-preferences-1' ? FIXTURE_PAIR_POLICY : null,
+      sessionId: `fixture-session-${this.authority.generation}` });
+    discoveryCaptures.set(capture, [{ cell: this.discoveryCell, revision }, guard, this.pairs.captureGuard()]);
+    return capture;
+  }
   candidateContext(): CandidateViewContext | null {
     const pair = this.currentPair();
     if (!this.snapshot.profile || !pair?.version) return null;
@@ -380,7 +408,7 @@ export class ProfileStore {
     this.publish({ discoveryRevision: this.snapshot.discoveryRevision + 1 });
   }
   bindMedia(source: () => MediaCollection, revoke: () => void): void {
-    this.mediaBindingRevision += 1;
+    this.mediaBindingRevision += 1; this.discoveryCell.revision += 1;
     this.mediaSource = source; this.mediaRevoker = revoke;
   }
   synchronizeMedia(collection: MediaCollection): void {

@@ -43,6 +43,11 @@ export interface ProfileAdapter {
 const fixtureSources = new WeakMap<ProfileAdapter, { revision: number }>();
 /** Pure local guard: no adapter method, injected getter, clock or other dependency runs here. */
 export const fixtureProfileRevision = (adapter: ProfileAdapter): number | null => fixtureSources.get(adapter)?.revision ?? null;
+/** Internal concrete revision cell; only factory-owned writers can participate. */
+export const fixtureProfileGuard = (adapter: ProfileAdapter): Readonly<{ cell: Readonly<{ revision: number }>; revision: number }> | null => {
+  const cell = fixtureSources.get(adapter);
+  return cell ? Object.freeze({ cell, revision: cell.revision }) : null;
+};
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const blankAuthority = (): ProfileAuthority => ({ ownerId: null, generation: 0, accountVersion: 0,
   accountState: 'none', sessionState: 'none', adult: false, consentCurrent: false, sourceRevision: 0, consentRevision: 'none' });

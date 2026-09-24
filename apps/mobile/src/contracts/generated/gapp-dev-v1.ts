@@ -62,3 +62,39 @@ export interface Readiness {
   mode: 'fixture';
   reason: 'live_integrations_not_configured';
 }
+export interface DevelopmentDiscoveryPage {
+  kind: 'discovery_page';
+  mode: 'fixture';
+  contract_version: 'gapp-dev-v1';
+  viewer_id: string;
+  session_id: string;
+  request_id: string;
+  discovery_mode: 'recommended' | 'broader';
+  queue_id: string | null;
+  state: 'ready' | 'partial' | 'empty' | 'exhausted' | 'reload_required' | 'error';
+  /**
+   * At most two allowlisted current candidate projections. Duplicate profile IDs reject. Pending-only compatibility carries no numeric score, real result or ranking meaning.
+   *
+   * @maxItems 2
+   */
+  items: DevelopmentDiscoveryProfile[];
+  next_cursor: string | null;
+}
+/**
+ * Development discovery projection including only simulated approved media delivery references. These are local fixture labels, not actual photo delivery or provider rights.
+ *
+ * This interface was referenced by `GlowDevelopmentContractGappDevV1`'s JSON-Schema
+ * via the `definition` "DevelopmentDiscoveryProfile".
+ */
+export interface DevelopmentDiscoveryProfile {
+  profile_id: string;
+  display_name: string;
+  age: number;
+  summary: string;
+  compatibility: FixtureCompatibility;
+  /**
+   * @minItems 1
+   * @maxItems 4
+   */
+  media_delivery_refs: [string, ...string[]];
+}

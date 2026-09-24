@@ -143,6 +143,10 @@ export class FixturePairRepository {
   private blocks = new Map<string, { state: BlockState; revision: number }>();
   private blockRevisions = new Map<string, number>();
   private serial = 0;
+  private readonly coherence = { revision: 0 };
+  captureGuard(): Readonly<{ cell: Readonly<{ revision: number }>; revision: number }> {
+    return Object.freeze({ cell: this.coherence, revision: this.coherence.revision });
+  }
   private policy: PairPolicy | null = FIXTURE_PAIR_POLICY;
   private policyRevision = 0;
   private clockRevision = 0;
@@ -150,13 +154,14 @@ export class FixturePairRepository {
   private readonly clock: FixtureClock;
   constructor(clock: FixtureClock) { this.clock = clock; }
   put(person: ParticipantFacts): void {
-    validatePerson(person);
+    validatePerson(person); this.coherence.revision += 1;
     this.people.set(person.account_id, { facts: freeze(copy(person)), revision: ++this.serial });
   }
   inspect(accountId: string): ParticipantFacts | null { return this.people.get(accountId)?.facts ?? null; }
-  setPolicy(policy: PairPolicy | null): void { this.policy = freeze(copy(policy)); this.policyRevision = ++this.serial; }
+  setPolicy(policy: PairPolicy | null): void { this.coherence.revision += 1; this.policy = freeze(copy(policy)); this.policyRevision = ++this.serial; }
   observeBlock(actorId: string, targetId: string, value: BlockState): void {
     if (!nonblank(actorId) || !nonblank(targetId) || !['clear', 'blocked', 'unknown'].includes(value)) throw new TypeError('Invalid fixture block observation.');
+    this.coherence.revision += 1;
     this.blocks.set(JSON.stringify([actorId, targetId]), { state: value, revision: ++this.serial });
     this.blockRevisions.set(actorId, this.serial);
   }
@@ -166,7 +171,7 @@ export class FixturePairRepository {
     // A supplied Date can itself carry callbacks. Finish its one numeric read before source capture.
     const suppliedTime = this.clock().getTime(), timestamp = Number.isFinite(suppliedTime) ? suppliedTime : NaN;
     const day = Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : 'invalid';
-    if (day !== this.day) { this.day = day; this.clockRevision = ++this.serial; }
+    if (day !== this.day) { this.coherence.revision += 1; this.day = day; this.clockRevision = ++this.serial; }
     const viewer = this.people.get(viewerId), candidate = this.people.get(candidateId);
     const leftBlock = this.blocks.get(JSON.stringify([viewerId, candidateId])), rightBlock = this.blocks.get(JSON.stringify([candidateId, viewerId]));
     const capturedClock = () => new Date(timestamp);

@@ -1,6 +1,6 @@
 # Glow native development foundation
 
-An iOS/Android Expo Router application with fixture account/onboarding, profile/preferences/visibility and private media journeys. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Media selection, lifecycle and review controls use in-memory substitutes; no photo reaches a real provider. Maintained production authentication, likes, matching, messaging, provider uploads, persistence and HDE connections remain unavailable.
+An iOS/Android Expo Router application with fixture account/onboarding, profile/preferences/visibility, private media and bounded discovery journeys. This is an isolated development preview, not a usable dating service. All people and credentials are fictional. Media selection, lifecycle and review controls use in-memory substitutes; no photo reaches a real provider. Maintained production authentication, likes, matching, messaging, provider uploads, persistence and HDE connections remain unavailable.
 
 ## Reproduce
 
@@ -15,13 +15,13 @@ npm start
 
 The `start`, `android`, and `ios` scripts explicitly select development fixture mode when unset. They reject any request for a different mode. On a suitably equipped workstation, `npm run android` or `npm run ios` opens the installed emulator/simulator. Native runtime and device acceptance have not yet been performed. Consumer web delivery is outside scope; only iOS/Android are configured. React DOM/web packages are pinned Router peers, not a web product.
 
-To exercise the nonpersistent API vertical smoke flow, first start the isolated application API using the repository setup instructions, then:
+The earlier nonpersistent API layout transport remains available for smoke checks. Its optional development origin is configured as follows after starting the isolated API:
 
 ```sh
 EXPO_PUBLIC_GLOW_API_BASE_URL=http://127.0.0.1:8000 npm start
 ```
 
-Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. Set no origin to use bundled fixtures. A configured API failure shows an error and a retry action; it never silently falls back to bundled data.
+Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. The transport loader uses bundled layout fixtures when no origin is configured. A configured loader failure remains an error without silently falling back to bundled data. P05.2 recommendation and broader-discovery screens use their separate, explicitly in-memory discovery composition, not this anonymous layout endpoint; setting an origin does not turn that journey into authenticated API discovery. The root HTTP/mobile smoke script exercises the retained transport.
 
 `EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. Normal builds allow only `EXPO_PUBLIC_GLOW_MODE` and `EXPO_PUBLIC_GLOW_API_BASE_URL`, without echoing rejected names or values. The rendered test harness additionally accepts Expo's injected `EXPO_PUBLIC_PROJECT_ROOT` only when it exactly equals this app-config directory; arbitrary values remain rejected. This checks names, not the semantic contents of the allowed app values; the API-origin validator still rejects credentials. Official [Expo environment guidance](https://docs.expo.dev/guides/environment-variables/) confirms these values are embedded in client code. Reopen/reload Metro after changing environment configuration.
 
@@ -32,11 +32,12 @@ Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical 
 - `src/profiles`: owner-bound in-memory adapter and drafts using existing generated profile/preferences/visibility contracts; provisional catalog, version/idempotency checks, completeness/visibility and candidate projection. No production protocol or durable persistence is added.
 - `src/media`: owner-bound in-memory lifecycle adapter/store, versioned development limits, actual PNG container checks, Expo system-picker boundary and synthetic provider/system/moderator events. Current approved owned assets supply profile media evidence. There is no pixel decoder, metadata stripping, real storage/delivery or production media route.
 - `src/contracts/recommendations.ts`: closed `gapp-dev-v1` response projection using generated TypeScript and standalone runtime schema validators. Rejects private/unrecognized fields, HDE scores/ready results, duplicate IDs and underage records. These checks are defense in depth; real eligibility must be enforced by the API in later phases.
-- `src/data/recommendations.ts`: credential-free, bounded GET to `/api/v1/development/recommendations`, with cancellation and response validation. No writes.
+- `src/data/recommendations.ts`: credential-free, bounded GET to `/api/v1/development/recommendations`, retained for layout/HTTP smoke with cancellation and response validation. This does not supply the P05.2 queue. No writes.
+- `src/discovery`: bounded in-memory recommendation and broader-discovery composition, current per-candidate eligibility, continuation/adoption guards and shared fictional source corpus. See [discovery semantics](../../docs/architecture/discovery-fixtures.md).
 - `src/config/development.ts`: explicit fixture configuration and origin validation.
 - `app.config.ts` and `src/app/_layout.tsx`: build-config and runtime development guards.
 
-`Next fictional profile` only changes the locally displayed item. `Explore more` navigates to a list of the same fixtures. Both have non-gesture controls. There are no deceptive inactive like/chat buttons. Portraits are abstract initials, not real people or approved brand assets. Typography and color are provisional implementation styling, not a brand lock.
+Recommended and broader discovery use finite queues with accessible browsing controls, explicit refresh and honest exhaustion. Each mode preserves its own progress; switching modes does not reset it. Browsing records no like or pass, and no chat action is available. Portraits are synthetic placeholders, not real people or approved brand assets. Typography and color remain provisional implementation styling, not a brand lock.
 
 ## Release exclusion and verification
 
@@ -57,11 +58,13 @@ explicit raw facts and shared
 `packages/contracts/fixtures/reciprocal-eligibility-v1.json` corpus. Owner readiness
 is separate from fictional viewer → owner candidate-preview permission; retained
 results bind the current pair version and candidate age comes from private fixture
-birth date/clock. Existing Alex/Jordan/Riley recommendation items remain static
-smoke/layout samples, not independently evaluated candidate pairs. See
+birth date/clock. The earlier Alex/Jordan/Riley items remain static smoke/layout samples in the
+anonymous HTTP fixture. They do not supply the P05.2 journey, which independently
+evaluates current owner-to-candidate pairs from the shared discovery population. See
 [reciprocal policy/integration](../../docs/architecture/reciprocal-eligibility-fixtures.md)
-and [P05.1 evidence](../../docs/testing/p05-1-checkpoint.md). P05.2/P05.3 discovery
-queues and interactions remain separate; no production endpoint is added.
+and [P05.1 evidence](../../docs/testing/p05-1-checkpoint.md).
+[P05.2 discovery](../../docs/architecture/discovery-fixtures.md) adds bounded
+queues; P05.3 interactions remain separate. No production endpoint is added.
 
 `src/contracts/generated/` is generated from `packages/contracts` schemas. Do not edit it directly. The development parser consumes generated validation and a key-uniqueness check; `production.ts` adds parsers for the P02 logical design without an HTTP client or activated production route. Use the repository contract generation/check commands in `../../packages/contracts/README.md`. All current screen data remains synthetic and pending. No native dependency/API was changed for contract validation.
 
@@ -261,3 +264,39 @@ by this walkthrough. See [media semantics](../../docs/architecture/private-media
 [provider mapping](../../docs/architecture/media-provider-mapping.md) and
 [deferred acceptance](../../docs/testing/p11-deferred-acceptance.md) for the
 remaining native, processing, storage, delivery, purge and durability proofs.
+
+## P05.2 discovery walkthrough
+
+Use the explicitly eligible fictional scenario, then open recommended people.
+Ordinary registration/onboarding remains blocked when required facts are unresolved.
+Each card comes from an independently checked pair in the shared fictional
+population, with synthetic approved-media placeholders and pending compatibility.
+No engine score or live Human Design result is implied.
+
+Browse the finite recommended queue, then use broader discovery. Each mode keeps
+its own progress; returning to a mode resumes it. A person can appear in both
+separate mode queues, but not twice within one accepted queue. Reaching the end
+shows exhaustion. Manual refresh creates a new bounded queue for that mode only;
+neither browsing nor refresh records a pass, like or resurfacing decision.
+
+The fixture uses two cards per page, scans/retains at most twenty candidates,
+retains one queue per mode and expires a queue after five minutes on its numeric
+lifetime clock, separate from the fixed civil-day eligibility fixture clock. Both modes apply the same reciprocal eligibility/disclosure rules; broader
+discovery never restores an excluded candidate as fallback. Recommended ordering
+is fixture priority then profile ID; broader ordering is profile ID. Neither
+ordering expresses Human Design compatibility or selected launch policy.
+
+Source changes, pause, consent/media loss, expiry, logout or account replacement
+discard obsolete cards and continuations. Same-value restoration cannot resurrect
+a former queue. Reload requires explicit refresh. Loading, empty, partial,
+pending/unavailable, exhausted and error/offline states remain distinct; provider
+errors do not mean there are no eligible people. A retry cannot adopt a late
+response from an earlier request, account, mode or refresh.
+
+Run the existing check/export/rendered commands above. The new discovery suite
+adds to the inherited 52 browser cases, including the real-scroll birth-field
+focus regression; hosted results are required when local Chromium is unavailable.
+See [P05.2 checkpoint](../../docs/testing/p05-2-checkpoint.md) for actual results,
+[discovery semantics](../../docs/architecture/discovery-fixtures.md) for exact
+bounds/provenance and [P11](../../docs/testing/p11-deferred-acceptance.md) for real
+authentication, persistence, provider and native-device acceptance.

@@ -1,0 +1,813 @@
+{
+  "version": "discovery-fixtures-v1",
+  "description": "Development-only fictional raw participant/source/media/policy/block/mapping facts. Both adapters consume this file; expected values are independent conformance oracles, never runtime authorization. Synthetic priority has no Human Design meaning. The same eligible population is used in both modes; each mode retains its own finite queue progress.",
+  "clock": "2026-09-23T12:00:00Z",
+  "limits": {
+    "page_size": 2,
+    "max_candidates": 20,
+    "max_retained_queues": 2,
+    "queue_lifetime_ms": 300000,
+    "max_provider_attempts": 3
+  },
+  "policy": {
+    "version": "development-eligibility-1",
+    "consent_version": "development-consent-1",
+    "preference_version": "development-preferences-1",
+    "media_version": "development-media-1",
+    "minimum_age": 18,
+    "leap_birthday": "march_1",
+    "effective_from": "2026-01-01",
+    "effective_until": null,
+    "readiness": "resolved"
+  },
+  "viewer": {
+    "facts": {
+      "account_id": "discovery-viewer",
+      "generation": 1,
+      "source_id": "source-discovery-viewer-1",
+      "profile_id": "profile-viewer",
+      "birth_date": "1990-06-15",
+      "account_state": "active",
+      "session_state": "valid",
+      "verified": true,
+      "consent_state": "accepted",
+      "consent_version": "development-consent-1",
+      "display_name": "Fictional Viewer",
+      "summary": "Fictional Viewer enjoys thoughtful conversations and shared interests.",
+      "visibility": "visible",
+      "moderation": "approved",
+      "chart_state": "resolved",
+      "attribute": "demo_a",
+      "preference_dimension": "demo_connection",
+      "preference_version": "development-preferences-1",
+      "accepted_options": [
+        "demo_a"
+      ],
+      "approved_media": [
+        {
+          "asset_id": "asset-viewer",
+          "owner_id": "discovery-viewer",
+          "profile_id": "profile-viewer",
+          "generation": 1,
+          "state": "approved",
+          "policy_version": "development-media-1",
+          "delivery_ref": "fixture-approved-viewer"
+        }
+      ]
+    },
+    "mapping": {
+      "account_id": "discovery-viewer",
+      "state": "resolved",
+      "engine_reference": "fixture-chart-discovery-viewer",
+      "birth_input_version": "birth-1",
+      "mapping_version": "mapping-1"
+    }
+  },
+  "candidates": [
+    {
+      "account_id": "discovery-iris",
+      "facts": {
+        "account_id": "discovery-iris",
+        "generation": 1,
+        "source_id": "source-discovery-iris-1",
+        "profile_id": "profile-iris",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Iris",
+        "summary": "Fictional Iris enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-iris",
+            "owner_id": "discovery-iris",
+            "profile_id": "profile-iris",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-iris"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-iris",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-iris",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 2,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-jules",
+      "facts": {
+        "account_id": "discovery-jules",
+        "generation": 1,
+        "source_id": "source-discovery-jules-1",
+        "profile_id": "profile-jules",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Jules",
+        "summary": "Fictional Jules enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-jules",
+            "owner_id": "discovery-jules",
+            "profile_id": "profile-jules",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-jules"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-jules",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-jules",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 1,
+      "provider_state": "pending",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-kai",
+      "facts": {
+        "account_id": "discovery-kai",
+        "generation": 1,
+        "source_id": "source-discovery-kai-1",
+        "profile_id": "profile-kai",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Kai",
+        "summary": "Fictional Kai enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-kai",
+            "owner_id": "discovery-kai",
+            "profile_id": "profile-kai",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-kai"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-kai",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-kai",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 2,
+      "provider_state": "unavailable",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-lena",
+      "facts": {
+        "account_id": "discovery-lena",
+        "generation": 1,
+        "source_id": "source-discovery-lena-1",
+        "profile_id": "profile-lena",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Lena",
+        "summary": "Fictional Lena enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-lena",
+            "owner_id": "discovery-lena",
+            "profile_id": "profile-lena",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-lena"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-lena",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-lena",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 3,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-morgan",
+      "facts": {
+        "account_id": "discovery-morgan",
+        "generation": 1,
+        "source_id": "source-discovery-morgan-1",
+        "profile_id": "profile-morgan",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Morgan",
+        "summary": "Fictional Morgan enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-morgan",
+            "owner_id": "discovery-morgan",
+            "profile_id": "profile-morgan",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-morgan"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-morgan",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-morgan",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 1,
+      "provider_state": "error",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-noor",
+      "facts": {
+        "account_id": "discovery-noor",
+        "generation": 1,
+        "source_id": "source-discovery-noor-1",
+        "profile_id": "profile-noor",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Noor",
+        "summary": "Fictional Noor enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-noor",
+            "owner_id": "discovery-noor",
+            "profile_id": "profile-noor",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-noor"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-noor",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-noor",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 3,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-paused",
+      "facts": {
+        "account_id": "discovery-paused",
+        "generation": 1,
+        "source_id": "source-discovery-paused-1",
+        "profile_id": "profile-paused",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Paused",
+        "summary": "Fictional Paused enjoys thoughtful conversations and shared interests.",
+        "visibility": "paused",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-paused",
+            "owner_id": "discovery-paused",
+            "profile_id": "profile-paused",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-paused"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-paused",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-paused",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-deleted",
+      "facts": {
+        "account_id": "discovery-deleted",
+        "generation": 1,
+        "source_id": "source-discovery-deleted-1",
+        "profile_id": "profile-deleted",
+        "birth_date": "1990-06-15",
+        "account_state": "deleted",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Deleted",
+        "summary": "Fictional Deleted enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-deleted",
+            "owner_id": "discovery-deleted",
+            "profile_id": "profile-deleted",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-deleted"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-deleted",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-deleted",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-restricted",
+      "facts": {
+        "account_id": "discovery-restricted",
+        "generation": 1,
+        "source_id": "source-discovery-restricted-1",
+        "profile_id": "profile-restricted",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Restricted",
+        "summary": "Fictional Restricted enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "restricted",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-restricted",
+            "owner_id": "discovery-restricted",
+            "profile_id": "profile-restricted",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-restricted"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-restricted",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-restricted",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-blockedout",
+      "facts": {
+        "account_id": "discovery-blockedout",
+        "generation": 1,
+        "source_id": "source-discovery-blockedout-1",
+        "profile_id": "profile-blockedout",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional BlockedOut",
+        "summary": "Fictional BlockedOut enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-blockedout",
+            "owner_id": "discovery-blockedout",
+            "profile_id": "profile-blockedout",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-blockedout"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-blockedout",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-blockedout",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "blocked",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-blockedin",
+      "facts": {
+        "account_id": "discovery-blockedin",
+        "generation": 1,
+        "source_id": "source-discovery-blockedin-1",
+        "profile_id": "profile-blockedin",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional BlockedIn",
+        "summary": "Fictional BlockedIn enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-blockedin",
+            "owner_id": "discovery-blockedin",
+            "profile_id": "profile-blockedin",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-blockedin"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-blockedin",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-blockedin",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "blocked"
+      }
+    },
+    {
+      "account_id": "discovery-nonreciprocal",
+      "facts": {
+        "account_id": "discovery-nonreciprocal",
+        "generation": 1,
+        "source_id": "source-discovery-nonreciprocal-1",
+        "profile_id": "profile-nonreciprocal",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional Nonreciprocal",
+        "summary": "Fictional Nonreciprocal enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_b"
+        ],
+        "approved_media": [
+          {
+            "asset_id": "asset-nonreciprocal",
+            "owner_id": "discovery-nonreciprocal",
+            "profile_id": "profile-nonreciprocal",
+            "generation": 1,
+            "state": "approved",
+            "policy_version": "development-media-1",
+            "delivery_ref": "fixture-approved-nonreciprocal"
+          }
+        ]
+      },
+      "mapping": {
+        "account_id": "discovery-nonreciprocal",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-nonreciprocal",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-unknownmedia",
+      "facts": {
+        "account_id": "discovery-unknownmedia",
+        "generation": 1,
+        "source_id": "source-discovery-unknownmedia-1",
+        "profile_id": "profile-unknownmedia",
+        "birth_date": "1990-06-15",
+        "account_state": "active",
+        "session_state": "valid",
+        "verified": true,
+        "consent_state": "accepted",
+        "consent_version": "development-consent-1",
+        "display_name": "Fictional UnknownMedia",
+        "summary": "Fictional UnknownMedia enjoys thoughtful conversations and shared interests.",
+        "visibility": "visible",
+        "moderation": "approved",
+        "chart_state": "resolved",
+        "attribute": "demo_a",
+        "preference_dimension": "demo_connection",
+        "preference_version": "development-preferences-1",
+        "accepted_options": [
+          "demo_a"
+        ],
+        "approved_media": null
+      },
+      "mapping": {
+        "account_id": "discovery-unknownmedia",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-unknownmedia",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    },
+    {
+      "account_id": "discovery-missing",
+      "facts": null,
+      "mapping": {
+        "account_id": "discovery-missing",
+        "state": "resolved",
+        "engine_reference": "fixture-chart-discovery-missing",
+        "birth_input_version": "birth-1",
+        "mapping_version": "mapping-1"
+      },
+      "recommendation_priority": 0,
+      "provider_state": "ready",
+      "blocks": {
+        "viewer": "clear",
+        "candidate": "clear"
+      }
+    }
+  ],
+  "expected": {
+    "eligible_account_ids": [
+      "discovery-iris",
+      "discovery-jules",
+      "discovery-kai",
+      "discovery-lena",
+      "discovery-morgan",
+      "discovery-noor"
+    ],
+    "pair_states": {
+      "discovery-iris": "ready",
+      "discovery-jules": "ready",
+      "discovery-kai": "ready",
+      "discovery-lena": "ready",
+      "discovery-morgan": "ready",
+      "discovery-noor": "ready",
+      "discovery-paused": "excluded",
+      "discovery-deleted": "excluded",
+      "discovery-restricted": "excluded",
+      "discovery-blockedout": "excluded",
+      "discovery-blockedin": "excluded",
+      "discovery-nonreciprocal": "excluded",
+      "discovery-unknownmedia": "excluded",
+      "discovery-missing": "rejected"
+    },
+    "recommended_profile_ids": [
+      "profile-jules",
+      "profile-morgan",
+      "profile-iris",
+      "profile-kai",
+      "profile-lena",
+      "profile-noor"
+    ],
+    "broader_profile_ids": [
+      "profile-iris",
+      "profile-jules",
+      "profile-kai",
+      "profile-lena",
+      "profile-morgan",
+      "profile-noor"
+    ],
+    "page_states_by_mode": {
+      "recommended": [
+        "partial",
+        "partial",
+        "ready"
+      ],
+      "broader": [
+        "ready",
+        "partial",
+        "partial"
+      ]
+    },
+    "provider_attempts_by_account": {
+      "discovery-iris": 1,
+      "discovery-jules": 1,
+      "discovery-kai": 1,
+      "discovery-lena": 1,
+      "discovery-morgan": 3,
+      "discovery-noor": 1,
+      "discovery-paused": 0,
+      "discovery-deleted": 0,
+      "discovery-restricted": 0,
+      "discovery-blockedout": 0,
+      "discovery-blockedin": 0,
+      "discovery-nonreciprocal": 0,
+      "discovery-unknownmedia": 0,
+      "discovery-missing": 0
+    },
+    "provider_state_semantics": {
+      "ready": {
+        "page_state": "ready",
+        "attempts": 1
+      },
+      "pending": {
+        "page_state": "ready",
+        "attempts": 1
+      },
+      "unavailable": {
+        "page_state": "partial",
+        "attempts": 1
+      },
+      "error": {
+        "page_state": "partial",
+        "attempts": 3
+      }
+    }
+  }
+}

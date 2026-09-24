@@ -30,6 +30,12 @@ Messages shown to users come from controlled client copy keyed by code; the erro
 
 ## Pagination, idempotency and stale state
 
+P05.2 implements a separate, closed development adapter page and bounded queue
+under [discovery fixtures](discovery-fixtures.md). It does not activate these
+production contracts, add production paths or turn the anonymous development GET
+into authenticated discovery. Its synthetic limits/order and opaque in-memory
+handles are test choices, not production policy or cursor cryptography.
+
 `PageRequest` requests a bounded recommendations/discovery collection. `CandidatePage` identifies the batch/version/expiry and an opaque nullable next cursor. The future repository cursor binds authenticated viewer, collection, batch/version, policy and both-sided eligibility revisions, and stable position. It contains no private payload; reject a forged, wrong-viewer, wrong-collection, stale or expired cursor with a generic stale response. A cursor grants no permission. Ordering is stable within a batch; refresh produces a new version. `empty` is valid and never triggers HDE work merely to fill a list. Non-ready pages expose no items or continuation cursor. Final ranking/granularity remains A01/A07.
 
 Every mutating intent contains an idempotency key and expected version. The future unit of work scopes deduplication to authenticated actor, operation, target and key and stores a canonical-payload digest plus result atomically with the domain change/outbox. Same key/same payload returns the prior logical command outcome **only after current authorization and safe projection checks**. Retain a minimal immutable receipt (outcome code, object reference and committed version) with the idempotency record; an object reference to a mutable row alone cannot reconstruct the original result. Replay never promises identical response bytes or renews media/export grants. Fetch any current private projection separately under present access rules; return generic unavailable when access has been withdrawn. Different payload conflicts; pending operation cannot run twice. Request IDs are diagnostics, not idempotency keys. Scope-specific retention/expiry for deduplication remains A05; no duration is invented. Expired deduplication records require authoritative state inspection and must not imply safe blind replay. At P11, prove simultaneous reciprocal likes yield one canonical match and one logical outbox event.
