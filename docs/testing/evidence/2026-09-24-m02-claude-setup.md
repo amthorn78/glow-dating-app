@@ -115,6 +115,72 @@ Direct HTTPS to nodejs.org without `HTTPS_PROXY` returned 200 in this environmen
 - `ruff check` on both files reported 9 findings, the same count as `main`'s versions: pre-existing line-length/import style. `scripts/` is not in CI's lint scope.
 - A search of tests, application source, scripts, the workflow and the Dockerfile found nothing that reads Markdown. The only match is a code comment in `glow_persistence/models.py`.
 
+## App Manager 2 — start verification (24 September 2026)
+
+**Host:** a Claude Code cloud session in the dedicated `Glow app` environment. It is the first session there and runs as root (uid 0). Its working branch is `claude/fervent-darwin-idyko3`.
+
+### Environment (names only)
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `PORT` | Not set |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | Set and non-empty. The first two compared equal to the inventory's documented nonsecret values without being printed. For the secret, only presence was tested |
+| Proxy and CA names present | `HTTPS_PROXY`, `https_proxy`, `NO_PROXY`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`. Values not read |
+
+### Setup script — first real run
+
+The toolchain directories were created at 16:02–16:03 UTC, just before this session started, so the environment's Setup script ran for this container.
+
+| Check | Result |
+|---|---|
+| `command -v node npm npx python3.12` | All in `/root/.local/bin` |
+| Link targets | Under `/root/.local/share/glow-app-toolchain/`: `node` → `node-v24.19.0-linux-x64/bin/node`; `npm` and `npx` → that tree's `lib/node_modules/npm/bin/npm-cli.js` and `npx-cli.js`; `python3.12` → `python-3.12.14/bin/python3.12` |
+| Versions | `node` v24.19.0, `npm` 11.9.0, `python3.12` Python 3.12.14 |
+| `python3` | `/usr/local/bin/python3`, Python 3.11.15 (unchanged) |
+| Standard library | `bz2`, `ctypes`, `lzma`, `sqlite3`, `ssl`, `zlib` import. OpenSSL 3.0.13 |
+| Ownership | `node-v24.19.0-linux-x64/` and its `bin/node` are uid:gid 1000:1000, which is `ubuntu:ubuntu` (that account exists in this container), mode 755. `lib/node_modules/npm` and `python-3.12.14/bin/python3.12` are owned by root |
+
+**Ownership observation.** `tar` running as root keeps the archive's numeric owners, so the extracted Node tree belongs to a non-root account while root executes its binaries. The npm install and the Python `make install` run as root, so those files are root-owned. This was passed to M02-I1 to evaluate and fix.
+
+### Network
+
+Status codes only, for `https://nodejs.org/dist/v24.19.0/SHASUMS256.txt`, `https://www.python.org/ftp/python/3.12.14/` and `https://registry.npmjs.org/npm/11.9.0`:
+
+- through the session's proxy configuration: each returned 200;
+- directly, under `env -i HOME=/tmp PATH=/usr/bin:/bin`: each returned 200.
+
+### Repository, classification and replacement PR
+
+- **Remote state.** main was `07b3b10720ddd333ada807a56595f369263714fe` (PR16). The only open PR was draft PR17, head `a335c4fa621bcb3b756dc8ed44289a1dddda7eb1`, five commits ahead of main.
+- **Trusted-base classification.** `main`'s `scripts/change_scope.py` was extracted to a temporary directory outside the worktree and run with `python3 -I … --base 07b3b10… --head a335c4f… --merge-base`. Result: `{"full": true, "reason": "behavior-or-empty"}` with 17 paths. That set includes `scripts/bootstrap-toolchain.sh`, `scripts/change_scope.py` and `scripts/test_change_scope.py`, and no `.github/` path. The complete classifier diff was read.
+- **Branch and PRs.**
+  - `claude/fervent-darwin-idyko3` was fast-forwarded from `07b3b10` to `a335c4f` with no changes and pushed.
+  - [Draft PR18](https://github.com/amthorn78/glow-dating-app/pull/18) was opened as the replacement.
+  - PR17 was closed with a [link comment](https://github.com/amthorn78/glow-dating-app/pull/17#issuecomment-5817767473).
+
+### PR17 hosted runs
+
+The workflow's concurrency group is per ref with `cancel-in-progress: true`.
+
+| Head | Push run | PR run |
+|---|---|---|
+| `6b47694` | [36019083905](https://github.com/amthorn78/glow-dating-app/actions/runs/36019083905) success | [36019116522](https://github.com/amthorn78/glow-dating-app/actions/runs/36019116522) success |
+| `c68b7b2` | [36020655609](https://github.com/amthorn78/glow-dating-app/actions/runs/36020655609) cancelled | [36020662524](https://github.com/amthorn78/glow-dating-app/actions/runs/36020662524) cancelled |
+| `022929d` | [36020824519](https://github.com/amthorn78/glow-dating-app/actions/runs/36020824519) success | [36020836838](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838) **failure** |
+| `6c45bd4` | [36022580663](https://github.com/amthorn78/glow-dating-app/actions/runs/36022580663) success | [36022589152](https://github.com/amthorn78/glow-dating-app/actions/runs/36022589152) success |
+| `a335c4f` | [36024345357](https://github.com/amthorn78/glow-dating-app/actions/runs/36024345357) success | [36024353198](https://github.com/amthorn78/glow-dating-app/actions/runs/36024353198) success: all six jobs, including the rendered step (16:03:13–16:06:58 UTC) and the gate, read job by job |
+
+**Failure preserved: PR run 36020836838 on `022929d`.**
+
+- API checks, API mobile smoke and API artifact checks passed.
+- Mobile [job 107706842358](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838/job/107706842358) failed at step "Render and exercise account onboarding": 82 passed, 1 failed, in 3.1 minutes. The Foundation gate failed as a consequence.
+- **Failing case:** `rendered/state-corrections.spec.ts:45:7 › eligibility correction replaces an obsolete unsaved birth draft`. After `adult-date` was filled with `1992-07-16` and `eligibility-submit` was clicked, `expect(getByTestId('screen-birth').filter({ visible: true })).toBeVisible()` timed out after 10000 ms at line 57.
+- **Logged diagnostics:** the visible screen was `screen-eligibility`. The birth-control diagnostics were `submitCount: 0`, no date or place fields, and `visibleAlertPresent: true`.
+- The alert text is not in the log. The workflow uploads only the two layout screenshots, not Playwright's `error-context.md`.
+- `022929d` changed no mobile files, and the push run for the same head passed.
+- The same case failed with the same symptom on PR14's first PR attempt (run 35991614536). There, too, the parallel push run passed; see [AB1-R012](../../continuity/history/AB1-R012.md).
+- Root cause unknown. It is not relabeled as an infrastructure failure.
+
 ## Implementation session
 
 *Reserved for M02-I1 results.*

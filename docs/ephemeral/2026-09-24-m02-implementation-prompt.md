@@ -6,6 +6,8 @@
 
 **Manager:** before giving this prompt to Nathan, replace `<MANAGER_BRANCH>` and `<START_SHA>` with your pushed branch and its head SHA.
 
+**Revision:** App Manager 2, 24 September 2026. It adds the `main`-instructions note, the Node-tree ownership finding from the environment's first Setup-script run, the mobile-test exclusion, the intermittent rendered failure and the network fact for clean-environment runs.
+
 ---
 
 You are **implementation session M02-I1** for the Glow dating app, private repository `amthorn78/glow-dating-app`.
@@ -13,6 +15,7 @@ You are **implementation session M02-I1** for the Glow dating app, private repos
 - Nathan started you manually. He will relay your report to the manager (App Manager 2). You are not the manager.
 - You may use any tools, subagents, scheduled wake-ups or other capabilities the work needs.
 - Your boundaries concern scope: stay within the owned paths, work on your own session branch, and report as below.
+- The `CLAUDE.md` loaded when your session started comes from `main`. It is older and describes the first *manager* assignment. After the start gate, the branch versions of `CLAUDE.md` and `AGENTS.md` govern. Do not re-run `docs/planning/claude-code-initiation.md`. Do not take on manager duties: writing prompts for Nathan, opening or merging PRs, and updating Notion.
 
 ## 1. Environment check (names only; never print values)
 
@@ -43,6 +46,12 @@ If the fast-forward or the check fails, stop and report. Then read, completely:
 ## 3. Deliverables (owned paths only — see the brief)
 
 1. **Validate `scripts/bootstrap-toolchain.sh`**, which the manager wrote and tested once. Review it for correctness, security and idempotence. Fix only real defects. Any change means Nathan must paste the new file into the environment's Setup script, so report changes prominently.
+
+   **Known finding (App Manager 2, from the environment's first real Setup-script run).** Everything under `$HOME/.local/share/glow-app-toolchain/node-v24.19.0-linux-x64/`, including `bin/node`, is owned by uid:gid 1000:1000. That is the `ubuntu` account in this container. The cause is that `tar` running as root keeps the archive's numeric owners. Root executes those binaries, and a non-root account can replace them. The npm install and the Python install are root-owned. Treat this as a defect unless you show otherwise:
+
+   - fix the extraction, for example with `tar --no-same-owner`;
+   - decide whether the already-installed fast path must detect or repair a wrongly owned tree, because an existing install is otherwise kept as is;
+   - check that nothing else the script installs keeps foreign ownership.
 2. **`services/api/tests/test_toolchain_pins.py`** (new; must be discovered by `manage.py test tests`). Statically assert that the pins agree:
    - the Node, npm and Python pins in the script;
    - `services/api/.python-version`;
@@ -77,13 +86,20 @@ If the fast-forward or the check fails, stop and report. Then read, completely:
    - **`docs/continuity/history/p05-2-handoff.md`:** fix relative link paths only.
 6. **Evidence record:** fill the "Implementation session" section with environment check results, exact commands, exit codes, counts, versions, timings, failures and limits. Record observations only, never instructions.
 
-Do not edit manager-owned files: the brief, `docs/ephemeral/`, `docs/continuity/current-handoff.md`, root `CLAUDE.md` and `AGENTS.md`, `docs/planning/manager-workflow.md` and PF canon. Do not edit application code, dependency manifests or locks, `.env.example` files, workflows, `scripts/change_scope.py` or its tests, or the `Dockerfile`.
+Do not edit manager-owned files: the brief, `docs/ephemeral/`, `docs/continuity/current-handoff.md`, root `CLAUDE.md` and `AGENTS.md`, `docs/planning/manager-workflow.md` and PF canon. Do not edit application code, mobile tests (including `apps/mobile/rendered/`), dependency manifests or locks, `.env.example` files, workflows, `scripts/change_scope.py` or its tests, or the `Dockerfile`.
+
+**Known intermittent failure (outside M02 scope).** Hosted CI has twice failed the rendered case `rendered/state-corrections.spec.ts:45` ("eligibility correction replaces an obsolete unsaved birth draft"). Each time the page stayed on eligibility with an alert visible.
+
+- The occurrences were [PR run 36020836838](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838) on an M02 head and PR14's first PR attempt ([AB1-R012](../continuity/history/AB1-R012.md)). The root cause is unknown.
+- Do not change tests or source to address it.
+- The rendered suite is optional here and informational only, because the container's Chromium is not the pinned browser. If you run it, record the result as an observation.
 
 ## 4. Checks (report exact results)
 
 1. `bash -n scripts/bootstrap-toolchain.sh`.
 2. Script runs:
-   - a fresh run into a temporary directory with a temporary `HOME` (`env -i HOME=<tmp> PATH=/usr/bin:/bin bash scripts/bootstrap-toolchain.sh`), recording versions and timing;
+   - a fresh run into a temporary directory with a temporary `HOME` (`env -i HOME=<tmp> PATH=/usr/bin:/bin bash scripts/bootstrap-toolchain.sh`), recording versions and timing. In this environment, direct HTTPS to nodejs.org, www.python.org and registry.npmjs.org worked under `env -i` without proxy variables (App Manager 2, 24 September);
+   - the owner and group of every installed tree after the fresh run (for example `stat -c '%u:%g %n'`), before and after your ownership fix;
    - an idempotent rerun;
    - a scratch copy with a wrong hash, which must fail before extraction.
 3. The pin-drift test passes, then fails when a pin is changed through a temporary, reverted edit. Show the message.
@@ -107,7 +123,7 @@ Your final message is the report Nathan relays:
 - before/after behavior;
 - every check with its exact result;
 - failures and their resolution;
-- whether `scripts/bootstrap-toolchain.sh` changed (re-paste needed);
+- whether `scripts/bootstrap-toolchain.sh` changed (re-paste needed), and how you handled the Node-tree ownership finding, including whether an existing install is repaired or re-extracted;
 - deviations from the brief;
 - open questions and limitations.
 

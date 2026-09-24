@@ -21,7 +21,7 @@ This file is the proposal and the persistent brief. Observed evidence is in [the
 
 **Inherited plans (not re-proven):** P06.1 Stream proof, P11 persistence and live integration, and the A01/A07 HDE contract dependencies, as written in the Claude handoff and PF01.
 
-**Unresolved:** The Setup script ran successfully as a manual run here (96 s fresh). Its first real run as an environment Setup script is verified by App Manager 2. Hosted CI for this change will exist only on its own PR heads. A broad sweep of the remaining architecture, testing and operations documents for stale statements was started as a read-only helper, then stopped before reporting; it produced no findings.
+**Unresolved:** The Setup script ran successfully as a manual run here (96 s fresh). App Manager 2 verified its first real run as the `Glow app` environment's Setup script on 24 September: it produced the linked toolchain with exact versions. That run also left the extracted Node tree owned by a non-root account (uid 1000), which M02-I1 must evaluate and fix; see the evidence record. Hosted CI for this change will exist only on its own PR heads. The rendered case `state-corrections.spec.ts:45` failed intermittently on one M02 PR run, the same case and symptom as PR14's first attempt; it is outside M02 scope. A broad sweep of the remaining architecture, testing and operations documents for stale statements was started as a read-only helper, then stopped before reporting; it produced no findings.
 
 ## Proposal — smallest useful optimization
 
