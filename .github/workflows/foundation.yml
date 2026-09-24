@@ -65,6 +65,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Render and exercise account onboarding
         run: npm run test:rendered
+      - name: Diagnose the inherited birth journey without retries
+        if: always() && github.ref == 'refs/heads/app-builder-1/p05-1-birth-diagnostics'
+        run: npm run test:rendered -- --grep 'private birth journey validates input' --repeat-each=10
       - name: Save empty-form layout evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

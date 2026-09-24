@@ -8,7 +8,90 @@ test.afterEach(async ({ page }, testInfo) => {
   // Only safe screen identities, never URLs, form values or private page snapshots.
   const screens = await page.locator('[data-testid^="screen-"]:visible').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-testid'))).catch(() => []);
   console.info('Visible screen identities after failure:', screens);
+  const birth = await page.evaluate(() => (window as typeof window & {
+    __glowBirthDiagnostics?: { read: () => unknown };
+  }).__glowBirthDiagnostics?.read() ?? null).catch(() => null);
+  if (birth) console.info('Private birth interaction diagnostics after failure:', JSON.stringify(birth));
 });
+
+/** Observe only this fixture journey; never record field values, URLs, page text or private snapshots. */
+async function observePrivateBirthJourney(page: Page) {
+  await page.addInitScript(() => {
+    const allowed = new Set(['screen-account', 'screen-verify', 'screen-eligibility', 'screen-birth', 'screen-remaining',
+      'birth-date', 'birth-place', 'birth-time', 'birth-submit', 'time-known', 'time-approximate', 'time-unknown', 'edit-birth']);
+    const events: Record<string, unknown>[] = [];
+    const started = performance.now();
+    const visible = (node: Element) => {
+      const bounds = node.getBoundingClientRect(), style = getComputedStyle(node);
+      return bounds.width > 0 && bounds.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const controls = (id: string) => Array.from(document.querySelectorAll(`[data-testid="${id}"]`)).filter(visible);
+    const identity = (node: EventTarget | null) => {
+      if (!(node instanceof Element)) return 'other';
+      const id = node.closest('[data-testid]')?.getAttribute('data-testid') ?? 'other';
+      return allowed.has(id) ? id : 'other';
+    };
+    const field = (id: string, pattern?: RegExp) => controls(id).map(node => ({
+      empty: node instanceof HTMLInputElement ? node.value.length === 0 : null,
+      shapeValid: node instanceof HTMLInputElement && pattern ? pattern.test(node.value) : null,
+    }));
+    const state = () => {
+      const alerts = Array.from(document.querySelectorAll('[role="alert"]')).filter(visible);
+      const feedback = controls('feedback').map(node => node.textContent ?? '').join('\n');
+      const messages: [string, string][] = [
+        ['input_invalid', 'Check the civil birth date, time precision and place. Future dates are unavailable.'],
+        ['eligibility_required', 'Complete current adult eligibility and consent first.'],
+        ['source_stale', 'The fixture changed. Reload its current state and try again.'],
+        ['adapter_unavailable', 'The fixture adapter is unavailable. You can retry.'],
+        ['request_invalid', 'The synthetic request could not be completed. Check the fixture and try again.'],
+        ['response_invalid', 'The adapter could not complete this request. Retry when available.'],
+        ['birth_saved', 'Private synthetic birth input saved. Chart resolution and profile completion remain separate.'],
+      ];
+      return {
+        screens: Array.from(document.querySelectorAll('[data-testid^="screen-"]')).filter(visible)
+          .map(node => node.getAttribute('data-testid')).filter(id => id !== null && allowed.has(id)),
+        focused: identity(document.activeElement),
+        focusedHeading: document.activeElement?.getAttribute('role') === 'heading',
+        date: field('birth-date', /^\d{4}-\d{2}-\d{2}$/), place: field('birth-place'),
+        time: field('birth-time', /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/),
+        precision: ['known', 'approximate', 'unknown'].filter(value => controls(`time-${value}`).some(node => node.getAttribute('aria-checked') === 'true')),
+        submitDisabled: controls('birth-submit').map(node => node.getAttribute('aria-disabled') === 'true' || node.hasAttribute('disabled')),
+        busy: Array.from(document.querySelectorAll('[role="progressbar"]')).some(visible), alert: alerts.length > 0,
+        feedback: messages.filter(([, message]) => feedback.includes(message)).map(([code]) => code),
+      };
+    };
+    const record = (entry: Record<string, unknown>) => {
+      events.push({ atMs: Math.round(performance.now() - started), ...entry });
+      if (events.length > 160) events.shift();
+    };
+    let lastState = '';
+    const captureState = () => {
+      const current = state(), signature = JSON.stringify(current);
+      if (signature !== lastState) { lastState = signature; record({ event: 'state', ...current }); }
+    };
+    for (const kind of ['focusin', 'focusout', 'input', 'change', 'pointerdown', 'pointerup', 'pointercancel', 'click']) {
+      document.addEventListener(kind, event => {
+        const target = identity(event.target);
+        if (target === 'other') return;
+        record({ event: kind, target, trusted: event.isTrusted,
+          ...(event instanceof MouseEvent ? { x: Math.round(event.clientX), y: Math.round(event.clientY) } : {}) });
+        captureState();
+      }, true);
+    }
+    let lastScroll = -Infinity;
+    document.addEventListener('scroll', event => {
+      if (controls('screen-birth').length === 0 || performance.now() - lastScroll < 50) return;
+      lastScroll = performance.now();
+      record({ event: 'scroll', target: identity(event.target), focused: identity(document.activeElement),
+        top: event.target instanceof Element ? Math.round(event.target.scrollTop) : Math.round(window.scrollY) });
+    }, { capture: true, passive: true });
+    new MutationObserver(captureState).observe(document, { subtree: true, childList: true, characterData: true,
+      attributes: true, attributeFilter: ['aria-disabled', 'aria-checked', 'style'] });
+    (window as typeof window & { __glowBirthDiagnostics?: { read: () => unknown } }).__glowBirthDiagnostics = {
+      read: () => ({ current: state(), events }),
+    };
+  });
+}
 async function account(page: Page, mode: 'register' | 'sign-in' = 'register') {
   await page.goto('/account');
   await active(page, `mode-${mode}`).click();
@@ -101,6 +184,7 @@ test('direct private routes and malformed query destinations cannot bypass the a
 });
 
 test('private birth journey validates input, preserves uncertainty and stops before profile discovery', async ({ page }) => {
+  await observePrivateBirthJourney(page);
   await reachBirth(page);
   await active(page, 'birth-date').fill('2027-06-15');
   await active(page, 'birth-place').fill('Fictional Harbor');
