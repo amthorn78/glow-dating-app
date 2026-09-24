@@ -141,6 +141,43 @@ test('private birth journey validates input, preserves uncertainty and stops bef
   expect(await page.locator('input,textarea').evaluateAll(nodes => nodes.some(node => (node as HTMLInputElement).value === 'Fictional Harbor'))).toBe(false);
 });
 
+test('programmatic birth form scrolling preserves input focus and subsequent private input', async ({ page }) => {
+  await reachBirth(page);
+  await active(page, 'birth-place').fill('Fictional Scroll Harbor');
+  await active(page, 'time-known').click();
+  const time = active(page, 'birth-time');
+  await time.scrollIntoViewIfNeeded();
+  const keptFocus = await time.evaluate(field => new Promise<boolean>((resolve, reject) => {
+    type Responder = { scrollResponderHandleScroll: (event: unknown) => void };
+    type ScrollNode = HTMLElement & { getScrollResponder?: () => Responder };
+    let scroller = field.parentElement as ScrollNode | null;
+    while (scroller && typeof scroller.getScrollResponder !== 'function') scroller = scroller.parentElement as ScrollNode | null;
+    if (!(field instanceof HTMLInputElement) || !scroller?.getScrollResponder) {
+      reject(new Error('Expected real fixture input and scroll responder.')); return;
+    }
+    const responder = scroller.getScrollResponder(), original = responder.scrollResponderHandleScroll;
+    // Observe completion of the real handler, including its scroll-end debounce.
+    // Do not replace _handleScroll, keyboard dismissal, focus handling or any app state.
+    responder.scrollResponderHandleScroll = event => {
+      responder.scrollResponderHandleScroll = original;
+      original(event);
+      resolve(document.activeElement === field);
+    };
+    field.focus({ preventScroll: true });
+    scroller.scrollTop = scroller.scrollTop > 0 ? scroller.scrollTop - 1 : 1;
+    scroller.dispatchEvent(new Event('scroll'));
+  }));
+  expect(keptFocus).toBe(true);
+  await expect(time).toBeFocused();
+  // Keyboard input goes to the retained active element; this does not refocus it.
+  await page.keyboard.type('09:30:00');
+  await expect(time).toHaveValue('09:30:00');
+  await active(page, 'birth-submit').click();
+  await expect(active(page, 'screen-remaining')).toBeVisible();
+  await active(page, 'edit-birth').click();
+  await expect(active(page, 'birth-time')).toHaveValue('09:30:00');
+});
+
 test('an interrupted private form resumes within its session and clears on account switch', async ({ page }) => {
   await reachBirth(page);
   await active(page, 'birth-place').fill('Private Draft Island');
