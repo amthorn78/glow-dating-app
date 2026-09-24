@@ -25,7 +25,7 @@ def ordinary_document(path: str) -> bool:
         return False
     if p.name.lower() in BEHAVIOR_NAMES or p.name.lower().endswith(".instructions.md"):
         return False
-    if path in BEHAVIOR_PATHS or path.startswith(("docs/pf-canon/", "docs/ephemeral/")):
+    if path in BEHAVIOR_PATHS or path.startswith(("docs/pf-canon/", "docs/ephemeral/", "docs/planning/")):
         return False
     return path in READMES or (path.startswith("docs/") and p.suffix == ".md")
 

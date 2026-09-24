@@ -56,7 +56,7 @@ class ChangeScopeTests(unittest.TestCase):
         self.assertTrue(classify(self.base, self.commit())["full"])
 
     def test_behavior_markdown_and_configuration(self):
-        for path in ["AGENTS.md", "docs/nested/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", ".env.example", ".github/workflows/ci.yml", "docs/code.py", "unknown.md"]:
+        for path in ["AGENTS.md", "docs/nested/AGENTS.md", "CLAUDE.md", "docs/rules.instructions.md", "docs/pf-canon/policy.md", "docs/ephemeral/prompt.md", "docs/continuity/current-handoff.md", "docs/planning/manager-workflow.md", "docs/planning/new-implementation-brief.md", "docs/planning/nested/assignment.md", ".env.example", ".github/workflows/ci.yml", "docs/code.py", "unknown.md"]:
             with self.subTest(path=path):
                 self.write(path, "changed\n")
                 self.assertTrue(classify(self.base, self.commit())["full"])
