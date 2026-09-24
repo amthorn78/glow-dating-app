@@ -30,7 +30,11 @@ Nathan's direction, 24 September 2026:
 1. **Start.** Check the environment first, by names only: `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` means the HDE-shared environment. Say so and never read or use the values. Then check the pinned toolchain (`node --version`, `npm --version`, `python3.12 --version`). Verify remote main, open PRs and the worktree. Read the current handoff, applicable instructions and the relevant code. Keep verified behavior, dated evidence, inherited plans and unresolved assumptions separate.
 2. **Brief.** Choose one bounded work item. Write its persistent brief in `docs/planning/` using the template below. Do useful independent work before asking Nathan for a concrete missing input.
 3. **Prompt.** Write the paste-ready prompt in `docs/ephemeral/YYYY-MM-DD-work-id-purpose.md`, linking the brief. Commit and push it on the manager branch, then give Nathan the exact text to paste. A fresh session must be able to act on it alone.
-4. **Relay.** Nathan runs the session and relays its report. The report is a claim until the manager has checked it against the pushed branch.
+   - **Recommend a reasoning level** with every prompt (Nathan, 24 September 2026). Give the manager's own Opus reasoning level (low, medium, high, extra high or max), decided before seeing TypeSafe's. Beside it, give the reading of the TypeSafe effort scorer v4.
+   - The scorer's method, its pre-registered decision rule and the uses table are in the Notion page *TypeSafe effort scorer — Glow app usage log* (under the Glow Operations Hub). It sends only one or two sentences describing the session's work; the API credential is attached by the environment.
+   - Both readings are advisory. Nathan picks the level, and neither reading gates anything.
+   - Add a row for the prompt to the uses table.
+4. **Relay.** Nathan runs the session and relays its report. The report is a claim until the manager has checked it against the pushed branch. Record the level Nathan used, the outcome (adequate, too low or too high) and the better call in the uses table.
 5. **Verify and integrate.**
    - Fetch the implementer branch and review `git diff <start>..<head>` completely.
    - Re-run cheap checks where useful.
@@ -52,6 +56,8 @@ Nathan's direction, 24 September 2026:
   - The manager integrates relayed branches into its own branch, which is the PR head.
 - A reinitiated manager cannot push the previous manager's branch. It continues on its own branch from the previous head, opens a replacement PR and closes the old PR with a link to the new one.
 - Concurrent writers need disjoint owned paths. Never let two sessions edit the same file uncoordinated.
+- **Branch and PR discretion.** Nathan, 24 September 2026: *"I will trust you to manage the branches and PRs as you see fit."* The manager decides branch and PR mechanics within these rules. Merging still requires the gates in the [CI/review policy](../operations/ci-and-branch-policy.md). It never uses force-pushes or rewritten history.
+- **Actions re-runs.** The manager session's GitHub integration cannot re-run Actions jobs; on 24 September 2026 a failed-jobs re-run returned `403 Resource not accessible by integration`. When a re-run is warranted, the manager says so on the PR and asks Nathan to use "Re-run failed jobs" on the run page. Pushing an empty commit to trigger CI is not allowed.
 
 ## Classification (trusted base policy)
 

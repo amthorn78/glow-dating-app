@@ -300,3 +300,40 @@ The trusted policy is `main`'s `scripts/change_scope.py`, extracted to a tempora
 - It is not known whether pasting a changed Setup script rebuilds the environment's cached filesystem. If a cache from the earlier script is reused, the changed script replaces the uid-1000 Node tree when it runs. If the Setup script does not run at all on a cached container, the tree stays as it is until the script runs.
 - The script does not validate a pre-existing custom `--prefix` directory or `$HOME/.local/bin`. It creates the default prefix itself under the running account's `HOME`.
 - The ownership check trusts files owned by the running account. It detects foreign ownership and group or world write access, not content changed by that same account.
+
+## App Manager 2 — M02-I1 verification and integration (24 September 2026)
+
+Nathan relayed the M02-I1 report: branch `claude/eager-goodall-1zjgey`, head `3a0726d`. App Manager 2 checked it against the pushed branch in the same `Glow app` environment. No HDE variable names were present, the three `STREAM_*` names were present, and the toolchain was v24.19.0 / 11.9.0 / 3.12.14.
+
+| Check | Result |
+|---|---|
+| Remote head | `origin/claude/eager-goodall-1zjgey` is `3a0726d47248e40d9462d0dbb5ffc34f08ab4c5f`, tree `5892e40c196386106d796fd6483e93bd1597f87d`, as reported |
+| Ancestry | The start SHA `9280bdc4666f48c0e89ae8b03e09818faec4419e` is an ancestor. There are five commits: `999bebc`, `d90ac9c`, `16a6473`, `fe26041`, `3a0726d` |
+| Changed paths | 13 files, +366/−60. All are within the brief's owned paths except `apps/mobile/README.md`: a one-line comment, disclosed in the report and accepted. No manager-owned file, application code, dependency manifest or lock, workflow, `.env.example`, classifier or `Dockerfile` changed. The script stays mode 100755 and the new test is 100644 |
+| Diff read | Complete. **Script:** both archives are extracted without their recorded owners or permissions under `umask 022`; `trusted_tree` runs before anything in an existing tree executes; a failing tree is re-extracted rather than repaired; the Python fast path imports the required modules; npm is checked through the tree's own `bin/npm`; the trust check is asserted after installation. **Test:** reads files only and names the diverging file. **Documentation:** as briefed |
+| Evidence section | A single hunk, confined to "Implementation session" |
+| `docs/continuity/history/p05-2-handoff.md` | Identical to its previous version once link targets are masked. 21 of 39 targets changed, and all of them resolve |
+| Manager re-runs | `bash -n` exit 0. Pin test: 3 tests OK (`python3.12 -m unittest tests.test_toolchain_pins` from `services/api`, clean process environment). Classifier tests: 9 OK (`python3.12 -I`). `git diff --check` clean. A first pin-test attempt with `python3.12 -I` could not import `tests`, because isolated mode leaves the working directory off `sys.path`. That was the manager's invocation, not a test defect |
+| Classification | `main`'s policy, run with `python3 -I … --merge-base` on head `3a0726d`: `{"full": true, "reason": "behavior-or-empty"}`, 24 paths |
+| Hosted CI | Push run [36030512434](https://github.com/amthorn78/glow-dating-app/actions/runs/36030512434) on `3a0726d` succeeded on all six jobs, read job by job. The implementer's report quotes 253 API tests and 83/83 rendered cases from its logs |
+
+**Integration.** `git merge --ff-only 3a0726d47248e40d9462d0dbb5ffc34f08ab4c5f` on `claude/fervent-darwin-idyko3`. No manager push had moved the branch since the start SHA. The manager commit that adds this section also updates the brief, the manager workflow and the current handoff, and adds the review prompt.
+
+**Corrections to the M02-I1 prompt, accepted from the implementer:**
+
+1. The prompt's `npx expo install` guidance fails as written, because `app.config.ts` rejects a bare Expo CLI run. The wrapper form is used instead.
+2. App Manager 2's statement that direct HTTPS works under `env -i` came from curl probes only. In this environment npm also needs `NODE_EXTRA_CA_CERTS` and the proxy variable.
+
+**PR18 CI before integration (head `9280bdc`):**
+
+- [PR run 36025924316](https://github.com/amthorn78/glow-dating-app/actions/runs/36025924316) succeeded on all six jobs.
+- [Push run 36025919795](https://github.com/amthorn78/glow-dating-app/actions/runs/36025919795) failed Mobile checks at 82/83 rendered cases. The failing case was `rendered/onboarding.spec.ts:103` ("private birth journey validates input, preserves uncertainty and stops before profile discovery"): after `birth-submit`, `screen-remaining` did not appear within 10 s (line 113). The gate failed as a consequence.
+- `9280bdc` changed only Markdown.
+- A failed-jobs-only re-run requested through the manager's GitHub integration returned `403 Resource not accessible by integration`. This is stated on [PR18](https://github.com/amthorn78/glow-dating-app/pull/18#issuecomment-5817984693).
+- This is the third intermittent rendered failure of one kind: a form submit that does not advance to the next screen.
+
+**Reasoning-level tracking.** At Nathan's direction, the manager scores each prompt with the TypeSafe effort scorer v4 beside its own call. The method is PE37's frozen v4, and the uses are in the Notion page *TypeSafe effort scorer — Glow app usage log*.
+
+- The first v4 request, for M02-I1, returned 403 `authentication_error`.
+- After Nathan added the API credential, the identical request returned HTTP 200 in the already-running session. The result: Score 2.55, P(high) 0.41, P(extra high) 0.57, which reads as extra high. The manager's call was high.
+- Nathan ran extra high. The recorded outcome is adequate, and the better call is TypeSafe.

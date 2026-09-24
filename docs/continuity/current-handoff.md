@@ -11,24 +11,31 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 
 ## Status — App Manager 2, 24 September 2026
 
-App Manager 2 is the first session in the `Glow app` environment. It has completed next actions 1 and 2 and the commissioning part of 3. **M02-I1 is waiting for Nathan's relay.** Details are in the [evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md#app-manager-2--start-verification-24-september-2026).
+App Manager 2 is the first session in the `Glow app` environment. Next actions 1–3 are done: M02-I1 ran, was verified and is integrated. **The exact-head code and security review (next action 4) is commissioned and waiting for Nathan's relay.** The details are in the evidence record's App Manager 2 sections ([start verification](../testing/evidence/2026-09-24-m02-claude-setup.md#app-manager-2--start-verification-24-september-2026) and [M02-I1 verification and integration](../testing/evidence/2026-09-24-m02-claude-setup.md#app-manager-2--m02-i1-verification-and-integration-24-september-2026)).
 
-- **Environment verified (names only).**
-  - `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` and `PORT` are absent.
-  - The three `STREAM_*` names are present.
-  - The Setup script's first real run produced Node v24.19.0, npm 11.9.0 and Python 3.12.14 in `$HOME/.local/bin`, with `python3` unchanged.
-  - That run also left the extracted Node tree owned by uid 1000 (`ubuntu`), while root runs it. M02-I1 evaluates and fixes this; a changed script must be pasted into the environment again.
-- **M02 continues on `claude/fervent-darwin-idyko3`, [draft PR18](https://github.com/amthorn78/glow-dating-app/pull/18).**
-  - The branch was fast-forwarded to PR17's head `a335c4fa621bcb3b756dc8ed44289a1dddda7eb1`. [PR17](https://github.com/amthorn78/glow-dating-app/pull/17) is closed with a link.
-  - On that head, [PR run 36024353198](https://github.com/amthorn78/glow-dating-app/actions/runs/36024353198) and [push run 36024345357](https://github.com/amthorn78/glow-dating-app/actions/runs/36024345357) both succeeded; all six jobs of the PR run were read job by job.
-  - Trusted-base classification is full scope, 17 paths. It includes the classification-policy change; the workflow is unchanged.
-- **M02-I1 commissioned.** It starts from the head of `claude/fervent-darwin-idyko3` that carries this handoff revision; the prompt given to Nathan names the exact SHA. Push nothing else to the manager branch before integrating, so integration stays a fast-forward. If the branch must move, integrate with a merge commit.
+- **Environment (names only).** No HDE variables; the three `STREAM_*` names are present; the Setup script produced the pinned toolchain. Nathan added the TypeSafe API credential on 24 September, and `api.typesafe.ai` answers in running sessions.
+- **M02 is on `claude/fervent-darwin-idyko3`, [draft PR18](https://github.com/amthorn78/glow-dating-app/pull/18).** It replaced [PR17](https://github.com/amthorn78/glow-dating-app/pull/17) at head `a335c4f`; PR17 is closed with a link.
+- **M02-I1 is integrated.**
+  - The session branch is `claude/eager-goodall-1zjgey`, head `3a0726d47248e40d9462d0dbb5ffc34f08ab4c5f`: five commits from the start SHA `9280bdc`. It was fast-forwarded into the manager branch.
+  - Verification:
+    - the complete diff was read;
+    - the 13 files are within the owned paths, apart from one disclosed, accepted one-line `apps/mobile/README.md` edit;
+    - classification is full scope (24 paths);
+    - hosted push run 36030512434 passed 6/6, read job by job;
+    - the manager re-ran `bash -n`, the pin test (3/3) and the classifier tests (9/9).
+  - **The Setup script changed.** Nathan pastes the new `scripts/bootstrap-toolchain.sh` into the `Glow app` Setup script **after the review passes and M02 merges**, not before. Until then, new sessions still get the old script's uid-1000 Node tree. The new script replaces that tree the first time it runs.
+- **Review commissioned** for the head that carries this handoff revision; the review prompt names the exact SHA. Any correction produces a new head, which needs its own CI and review.
+- **Reasoning levels (Nathan, 24 September).**
+  - Every prompt gets two readings: the manager's level and the TypeSafe effort scorer v4 reading. They are tracked in the Notion page *TypeSafe effort scorer — Glow app usage log*; the procedure is step 3 of the [manager workflow](../planning/manager-workflow.md).
+  - M02-I1: the manager said high and TypeSafe said extra high. Nathan ran extra high, and the outcome was adequate.
+- **Branch and PR discretion (Nathan, 24 September):** *"I will trust you to manage the branches and PRs as you see fit."* This is recorded in the manager workflow, with the merge gates unchanged.
 - **Recurring intermittent rendered failure (outside M02 scope).**
-  - [PR run 36020836838](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838) on M02 head `022929d` failed only `rendered/state-corrections.spec.ts:45` ("eligibility correction replaces an obsolete unsaved birth draft"). It stayed on eligibility with an alert visible.
-  - That is the same case and symptom as PR14's first attempt ([AB1-R012](history/AB1-R012.md)). Both failures were PR-event runs; the parallel push runs on the same heads passed.
-  - Root cause unknown; the alert text was never captured. Do not relabel it as infrastructure.
-  - If it recurs on an M02 head: request one failed-jobs-only rerun of the unchanged head, preserve both results and tell Nathan.
-  - A separate bounded diagnosis item is proposed to Nathan, not dispatched.
+  - There are three occurrences of one kind: a form submit that does not advance to the next screen.
+    - `state-corrections.spec.ts:45` failed on PR14's first attempt and on PR17's run 36020836838.
+    - `onboarding.spec.ts:103` failed on PR18's push run 36025919795, on `9280bdc`. The PR run for that same head passed 6/6.
+  - The root cause is unknown, and it is not infrastructure.
+  - The manager's GitHub integration cannot re-run Actions jobs (403). When a re-run is warranted, the manager says so and Nathan uses "Re-run failed jobs" on the run page.
+  - A bounded diagnosis item is proposed for after M02 merges; it is not dispatched.
 
 ## State at handover
 
@@ -49,7 +56,7 @@ App Manager 1 was the first Claude manager. It ran in the environment shared wit
 
 ## App Manager 2 — next actions
 
-**Progress (24 September):** 1 and 2 are done. In 3, the prompt has been given to Nathan; the relay steps start when he relays the M02-I1 report.
+**Progress (24 September):** 1 to 3 are done; M02-I1 is verified and integrated. 4 is commissioned: the review prompt is with Nathan.
 
 1. **Verify the environment (names only).** None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be present. `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with `node --version` v24.19.0, `npm --version` 11.9.0 and `python3.12 --version` 3.12.14. If anything differs, tell Nathan exactly which setting to fix. Never print values.
 2. **Verify the repository.** Check main, open PRs and the worktree. Run `git fetch origin claude/ecstatic-goodall-qajdh4` and review its head and PR17's CI runs. A session can push only its own working branch, so:

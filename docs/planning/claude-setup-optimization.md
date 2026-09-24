@@ -21,7 +21,7 @@ This file is the proposal and the persistent brief. Observed evidence is in [the
 
 **Inherited plans (not re-proven):** P06.1 Stream proof, P11 persistence and live integration, and the A01/A07 HDE contract dependencies, as written in the Claude handoff and PF01.
 
-**Unresolved:** The Setup script ran successfully as a manual run here (96 s fresh). App Manager 2 verified its first real run as the `Glow app` environment's Setup script on 24 September: it produced the linked toolchain with exact versions. That run also left the extracted Node tree owned by a non-root account (uid 1000), which M02-I1 must evaluate and fix; see the evidence record. Hosted CI for this change will exist only on its own PR heads. The rendered case `state-corrections.spec.ts:45` failed intermittently on one M02 PR run, the same case and symptom as PR14's first attempt; it is outside M02 scope. A broad sweep of the remaining architecture, testing and operations documents for stale statements was started as a read-only helper, then stopped before reporting; it produced no findings.
+**Unresolved:** The Setup script ran successfully as a manual run here (96 s fresh). App Manager 2 verified its first real run as the `Glow app` environment's Setup script on 24 September: it produced the linked toolchain with exact versions. That run also left the extracted Node tree owned by a non-root account (uid 1000). M02-I1 fixed this: the script now extracts without the recorded owners and replaces any foreign-owned tree before running it. See the evidence record. Hosted CI for this change will exist only on its own PR heads. The rendered case `state-corrections.spec.ts:45` failed intermittently on one M02 PR run, the same case and symptom as PR14's first attempt; it is outside M02 scope. A broad sweep of the remaining architecture, testing and operations documents for stale statements was started as a read-only helper, then stopped before reporting; it produced no findings.
 
 ## Proposal — smallest useful optimization
 
@@ -43,7 +43,7 @@ Not proposed:
 1. Create a cloud environment (suggested name `Glow app`).
 2. Environment variables: only the Stream development application's `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, added at Nathan's direction on 24 September. These are recorded in the [environment inventory](../operations/environment-inventory.md); the secret is recorded by name only. Never copy HDE `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `PORT` into it.
 3. Set Network access to Custom: allowed domains `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com` and `getstream.io`, with "Also include default list of common package managers" checked.
-4. Paste the full `scripts/bootstrap-toolchain.sh` into Setup script, unchanged. It links by default. When its pins change, paste the new file again.
+4. Paste the full `scripts/bootstrap-toolchain.sh` into Setup script, unchanged. It links by default. Paste the file again whenever it changes, not only when its pins change, once that change has merged.
 5. Start manager, implementation and review sessions for this repository in that environment.
 
 ## Completed directly by App Manager 1 (at Nathan's direction)
@@ -59,6 +59,12 @@ These edits are part of the M02 change and receive the same checks and exact-hea
 **Superseded attempt.** App Manager 1 first commissioned M02-I1 as a subagent in its own session. That session stopped at its start gate, because the harness based its worktree on `main`, and made no changes. Nathan then set the manual relay. No subagent implementation is part of M02.
 
 ## Implementation brief — M02-I1 (manual implementation session)
+
+**Status:** done on 24 September 2026, at the extra-high reasoning level Nathan chose.
+
+- The work is on `claude/eager-goodall-1zjgey`, head `3a0726d47248e40d9462d0dbb5ffc34f08ab4c5f`.
+- App Manager 2 verified it against the pushed branch and integrated it into the manager branch; see the evidence record.
+- The session's one deviation from the owned paths was a one-line accuracy edit to `apps/mobile/README.md`, which it disclosed and the manager accepted.
 
 **Outcome:** the remaining repository items below, with evidence.
 
