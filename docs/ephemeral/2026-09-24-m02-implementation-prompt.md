@@ -35,7 +35,7 @@ If the fast-forward or the check fails, stop and report. Then read, completely:
 
 - root `AGENTS.md` and `CLAUDE.md`
 - `docs/README.md`
-- the M02 brief and evidence record
+- the M02 brief, `docs/planning/claude-setup-optimization.md` (your assignment is its section "Implementation brief — M02-I1"), and the evidence record, `docs/testing/evidence/2026-09-24-m02-claude-setup.md`
 - `docs/planning/manager-workflow.md`
 - `docs/operations/local-development.md` and `docs/operations/ci-and-branch-policy.md`
 - `apps/mobile/AGENTS.md` and `apps/mobile/README.md`
@@ -47,7 +47,13 @@ If the fast-forward or the check fails, stop and report. Then read, completely:
 
 1. **Validate `scripts/bootstrap-toolchain.sh`**, which the manager wrote and tested once. Review it for correctness, security and idempotence. Fix only real defects. Any change means Nathan must paste the new file into the environment's Setup script, so report changes prominently.
 
-   **Known finding (App Manager 2, from the environment's first real Setup-script run).** Everything under `$HOME/.local/share/glow-app-toolchain/node-v24.19.0-linux-x64/`, including `bin/node`, is owned by uid:gid 1000:1000. That is the `ubuntu` account in this container. The cause is that `tar` running as root keeps the archive's numeric owners. Root executes those binaries, and a non-root account can replace them. The npm install and the Python install are root-owned. Treat this as a defect unless you show otherwise:
+   **Known finding (App Manager 2, from the environment's first real Setup-script run).** The extracted Node tree `$HOME/.local/share/glow-app-toolchain/node-v24.19.0-linux-x64/` kept the archive's numeric owners, uid:gid 1000:1000, because `tar` ran as root. In this container uid 1000 is the `ubuntu` account.
+
+   - 3401 entries are uid 1000, including the tree root, `bin/`, `bin/node` and `lib/node_modules/`.
+   - The npm that the script reinstalls (2271 entries, including `bin/npm` and `bin/npx`) is root-owned. It sits in directories uid 1000 can write, so that account can replace it too.
+   - The Python tree has no non-root entries.
+
+   Root executes these binaries. Treat this as a defect unless you show otherwise:
 
    - fix the extraction, for example with `tar --no-same-owner`;
    - decide whether the already-installed fast path must detect or repair a wrongly owned tree, because an existing install is otherwise kept as is;
@@ -90,7 +96,7 @@ Do not edit manager-owned files: the brief, `docs/ephemeral/`, `docs/continuity/
 
 **Known intermittent failure (outside M02 scope).** Hosted CI has twice failed the rendered case `rendered/state-corrections.spec.ts:45` ("eligibility correction replaces an obsolete unsaved birth draft"). Each time the page stayed on eligibility with an alert visible.
 
-- The occurrences were [PR run 36020836838](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838) on an M02 head and PR14's first PR attempt ([AB1-R012](../continuity/history/AB1-R012.md)). The root cause is unknown.
+- The occurrences were [PR run 36020836838](https://github.com/amthorn78/glow-dating-app/actions/runs/36020836838) on an M02 head and PR14's first PR attempt (`docs/continuity/history/AB1-R012.md`). The root cause is unknown.
 - Do not change tests or source to address it.
 - The rendered suite is optional here and informational only, because the container's Chromium is not the pinned browser. If you run it, record the result as an observation.
 

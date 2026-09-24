@@ -138,9 +138,11 @@ The toolchain directories were created at 16:02–16:03 UTC, just before this se
 | Versions | `node` v24.19.0, `npm` 11.9.0, `python3.12` Python 3.12.14 |
 | `python3` | `/usr/local/bin/python3`, Python 3.11.15 (unchanged) |
 | Standard library | `bz2`, `ctypes`, `lzma`, `sqlite3`, `ssl`, `zlib` import. OpenSSL 3.0.13 |
-| Ownership | `node-v24.19.0-linux-x64/` and its `bin/node` are uid:gid 1000:1000, which is `ubuntu:ubuntu` (that account exists in this container), mode 755. `lib/node_modules/npm` and `python-3.12.14/bin/python3.12` are owned by root |
+| Ownership: Node tree | uid:gid 1000:1000 (`ubuntu:ubuntu`; that account exists in this container) on 3401 entries. They include the tree root, `bin/`, `bin/node` (mode 755), `bin/corepack`, `include/`, `lib/`, `lib/node_modules/` and `share/` |
+| Ownership: npm | The reinstalled npm is root-owned on 2271 entries, including the `bin/npm` and `bin/npx` links and `lib/node_modules/npm` |
+| Ownership: Python tree | No entries with a non-root owner |
 
-**Ownership observation.** `tar` running as root keeps the archive's numeric owners, so the extracted Node tree belongs to a non-root account while root executes its binaries. The npm install and the Python `make install` run as root, so those files are root-owned. This was passed to M02-I1 to evaluate and fix.
+**Ownership observation.** `tar` running as root keeps the archive's numeric owners, so the extracted Node tree belongs to a non-root account while root executes its binaries. The npm install and the Python `make install` run as root, so their files are root-owned. npm's files, however, sit in directories uid 1000 can write (`bin/`, `lib/node_modules/`), so that account can replace them as well. This was passed to M02-I1 to evaluate and fix.
 
 ### Network
 
