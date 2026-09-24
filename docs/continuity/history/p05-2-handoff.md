@@ -10,11 +10,11 @@ App Builder 1 implements. The existing P05.2 task was set **In progress** at
 execution start; current status and final publication evidence belong to Notion.
 **P05.3 remains Planned.** P05 as a whole is unfinished.
 
-Read root [AGENTS](../../AGENTS.md), applicable
-[mobile instructions](../../apps/mobile/AGENTS.md),
-[GAPP-PF00](../pf-canon/GAPP-PF00-Canon-Index-and-Authority.md),
-[GAPP-PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), especially D08,
-and the [P05.2 checkpoint](../testing/p05-2-checkpoint.md). Repository technical
+Read root [AGENTS](../../../AGENTS.md), applicable
+[mobile instructions](../../../apps/mobile/AGENTS.md),
+[GAPP-PF00](../../pf-canon/GAPP-PF00-Canon-Index-and-Authority.md),
+[GAPP-PF01](../../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), especially D08,
+and the [P05.2 checkpoint](../../testing/p05-2-checkpoint.md). Repository technical
 authority transferred at `ac38e58651e5578ee8503b6423e4884203b42278`. Notion owns
 operational state; Drive holds historical plans and session prompts, not a second
 technical canon. HDE canon/change workflows remain separate.
@@ -84,8 +84,8 @@ Preserve all inherited browser behavior, including the real-scroll birth-focus
 regression. The shared Page keeps keyboard dismissal `none` on web and `on-drag`
 on native. No altered assertion, timeout or retry policy should conceal a regression.
 
-The [historical P05.1 handoff](history/p05-1-handoff.md) and
-[P05.1 checkpoint](../testing/p05-1-checkpoint.md) preserve preceding assignments
+The [historical P05.1 handoff](p05-1-handoff.md) and
+[P05.1 checkpoint](../../testing/p05-1-checkpoint.md) preserve preceding assignments
 and evidence. Their old next-action instructions are superseded here. Preserve
 [failed first PR11 main run 35944199382](https://github.com/amthorn78/glow-dating-app/actions/runs/35944199382),
 mixed diagnostic repetitions and the negative-control history. The unmerged
@@ -96,20 +96,20 @@ was not proven. Prior PR10 final-head security coverage remains limited as recor
 
 ## Implementation and required reading
 
-[P05.2 discovery architecture](../architecture/discovery-fixtures.md) owns the
+[P05.2 discovery architecture](../../architecture/discovery-fixtures.md) owns the
 fixture data path, shared source population, synthetic ordering, work bounds,
 opaque continuation handling, invalidation and privacy projection.
-[Trusted eligibility](../architecture/trusted-eligibility.md),
-[reciprocal fixtures](../architecture/reciprocal-eligibility-fixtures.md),
-[provider conformance](../architecture/provider-conformance.md),
-[profiles/preferences](../architecture/profiles-preferences-fixtures.md),
-[private media](../architecture/private-media-fixtures.md),
-[production contracts](../architecture/production-contracts.md) and
-[privacy/safety](../architecture/privacy-and-safety-rules.md) remain authoritative
+[Trusted eligibility](../../architecture/trusted-eligibility.md),
+[reciprocal fixtures](../../architecture/reciprocal-eligibility-fixtures.md),
+[provider conformance](../../architecture/provider-conformance.md),
+[profiles/preferences](../../architecture/profiles-preferences-fixtures.md),
+[private media](../../architecture/private-media-fixtures.md),
+[production contracts](../../architecture/production-contracts.md) and
+[privacy/safety](../../architecture/privacy-and-safety-rules.md) remain authoritative
 for their existing seams. Use the actual source, shared cases, generated validators,
-[contracts README](../../packages/contracts/README.md),
-[API README](../../services/api/README.md) and
-[mobile README](../../apps/mobile/README.md), not this summary as a code substitute.
+[contracts README](../../../packages/contracts/README.md),
+[API README](../../../services/api/README.md) and
+[mobile README](../../../apps/mobile/README.md), not this summary as a code substitute.
 
 Discovery consumes current per-candidate eligibility before mapping/provider work.
 Both modes use the same disclosure rules. Synthetic ready compatibility still
@@ -131,7 +131,7 @@ scenarios demonstrate discovery.
 ## Validation, publication and next action
 
 Exact observed checks and limitations belong in the
-[P05.2 checkpoint](../testing/p05-2-checkpoint.md) and external report. Use pinned
+[P05.2 checkpoint](../../testing/p05-2-checkpoint.md) and external report. Use pinned
 Python **3.12.14**, Node **24.19.0**, npm **11.9.0** and committed dependency locks.
 This session created a fresh **services/api/.venv** and installed hash-locked Python
 dependencies; `pip check` and both `npm ci --ignore-scripts` installs passed.
@@ -152,7 +152,7 @@ preserved intermediate failures and exact limits.
 Required final-candidate checks include API/domain/static checks, Python/JS
 contracts and deterministic generation, mobile lint/types/tests, API/mobile HTTP
 and guarded-startup smoke, both development JavaScript exports, and rendered and
-container evidence. All four [Foundation](../../.github/workflows/foundation.yml)
+container evidence. All four [Foundation](../../../.github/workflows/foundation.yml)
 jobs must pass: **API checks, Mobile checks, API mobile smoke, API artifact checks**.
 Review the complete final head including documentation, actual base/main,
 mergeability and review dispositions; wait for already-running reviews and record
@@ -188,7 +188,7 @@ as a separate fresh-session assignment. Do not silently start it.
 
 ## Continuing integration obligations
 
-The [P11 matrix](../testing/p11-deferred-acceptance.md) remains open. Fixture tests
+The [P11 matrix](../../testing/p11-deferred-acceptance.md) remains open. Fixture tests
 prove no persisted authentication, database isolation, multi-process race,
 real HDE throughput/output, provider permission, durable invalidation/delivery,
 restore, signed native build or release readiness.

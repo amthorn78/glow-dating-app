@@ -9,6 +9,7 @@ P01.3 establishes repeatable checks; P03 adds guarded API build/operational prep
 | actions/checkout | v7.0.1 | 3d3c42e5aac5ba805825da76410c181273ba90b1 |
 | actions/setup-python | v7.0.0 | 5fda3b95a4ea91299a34e894583c3862153e4b97 |
 | actions/setup-node | v7.0.0 | 820762786026740c76f36085b0efc47a31fe5020 |
+| actions/upload-artifact | v4 (workflow comment; exact patch release not verified) | ea165f8d65b6e75b540449e92b4886f43607fa02 |
 
 API dependencies install with required artifact hashes; mobile uses npm's committed lock/integrity values and `npm ci --ignore-scripts`. Python 3.12.14, Node 24.19.0 and npm 11.9.0 are the tested runtime baseline. The GitHub-hosted ubuntu-24.04 image is managed by GitHub and is not an immutable image digest; each job records its actual runner environment. The repository does not claim fully hermetic execution.
 

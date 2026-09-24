@@ -117,7 +117,7 @@ session and revision. They are not durable process-restart or cross-device stora
 npm run check
 EXPO_OFFLINE=1 npm run check:expo
 EXPO_OFFLINE=1 npm run export:development
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium   # workstation only; never in a Claude cloud container
 npm run test:rendered
 ```
 

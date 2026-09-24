@@ -11,7 +11,7 @@ This is the dedicated environment for every Glow app manager, implementation and
 | Setting | Value |
 |---|---|
 | Network access | Custom, with "Also include default list of common package managers" checked. Allowed domains: `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com`, `getstream.io` |
-| Setup script | `scripts/bootstrap-toolchain.sh`, pasted unchanged. Installs Node 24.19.0, npm 11.9.0 and CPython 3.12.14, linked in `$HOME/.local/bin`. Paste again whenever the file's pins change |
+| Setup script | `scripts/bootstrap-toolchain.sh`, pasted unchanged. Installs Node 24.19.0, npm 11.9.0 and CPython 3.12.14, linked in `$HOME/.local/bin`. Paste again whenever the file changes, not only its pins. See [local setup](local-development.md#claude-code-cloud-sessions) |
 | HDE variables | None. `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` and `PORT` belong only to the HDE environment |
 
 ### Stream development application (getstream.io)

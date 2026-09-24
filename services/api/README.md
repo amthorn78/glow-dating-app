@@ -60,8 +60,8 @@ See [interaction semantics](../../docs/architecture/interactions-fixtures.md),
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:
 
 ```bash
-python --version
-python -m venv .venv
+python3.12 --version   # Python 3.12.14
+python3.12 -m venv .venv
 .venv/bin/python -m pip install --require-hashes -r requirements-dev.lock
 GLOW_ENV=test .venv/bin/python manage.py check
 GLOW_ENV=test .venv/bin/python manage.py test tests --verbosity 2

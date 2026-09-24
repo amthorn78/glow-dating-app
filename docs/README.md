@@ -13,7 +13,7 @@ All project documentation is Markdown (`.md`). The repository is the durable imp
 | `docs/testing/` | Durable validation evidence and deferred acceptance | Phase/work-item names; identify commit, actual checks, failures and limits. |
 | `docs/continuity/` | Current handoff, Claude handoff and publication receipts | Current handoff routes sessions; history is dated/superseded, never an active assignment. |
 
-Start with [current handoff](continuity/current-handoff.md), [PF00](pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), [PF01](pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md) and applicable `AGENTS.md` files. The [Claude manager brief](continuity/claude-code-handoff.md) is the complete receiving packet; the [initiation prompt](planning/claude-code-initiation.md) is intentionally persistent during this environment transition.
+Start with [current handoff](continuity/current-handoff.md), [PF00](pf-canon/GAPP-PF00-Canon-Index-and-Authority.md), [PF01](pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md) and applicable `AGENTS.md` files. The [Claude manager brief](continuity/claude-code-handoff.md) is the complete receiving packet; the [initiation prompt](planning/claude-code-initiation.md) records the executed first manager assignment; new sessions start from the current handoff.
 
 ## Ephemeral promotion and pruning
 
