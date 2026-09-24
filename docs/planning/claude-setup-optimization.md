@@ -41,8 +41,8 @@ Not proposed:
 ## Owner action — dedicated environment settings
 
 1. Create a cloud environment (suggested name `Glow app`).
-2. Leave Environment variables empty. Never copy HDE `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `PORT` into it.
-3. Set Network access to Custom: allowed domains `www.python.org` and `docs.expo.dev`, with "Also include default list of common package managers" checked.
+2. Environment variables: only the Stream development application's `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, added at Nathan's direction on 24 September. These are recorded in the [environment inventory](../operations/environment-inventory.md); the secret is recorded by name only. Never copy HDE `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `PORT` into it.
+3. Set Network access to Custom: allowed domains `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com` and `getstream.io`, with "Also include default list of common package managers" checked.
 4. Paste the full `scripts/bootstrap-toolchain.sh` into Setup script, unchanged. It links by default. When its pins change, paste the new file again.
 5. Start manager, implementation and review sessions for this repository in that environment.
 

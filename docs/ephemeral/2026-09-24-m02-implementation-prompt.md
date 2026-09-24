@@ -16,7 +16,7 @@ You are **implementation session M02-I1** for the Glow dating app, private repos
 
 ## 1. Environment check (names only; never print values)
 
-1. Confirm that none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` is set. Check names only, for example `for n in DATABASE_URL HD_API_KEY GEO_API_KEY; do [ -n "${!n+x}" ] && echo "$n present"; done`. If any is present, you are in the wrong environment: stop and report.
+1. Confirm that none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` is set. Check names only, for example `for n in DATABASE_URL HD_API_KEY GEO_API_KEY; do [ -n "${!n+x}" ] && echo "$n present"; done`. If any is present, you are in the wrong environment: stop and report. The environment also sets `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` for Nathan's development Stream application (see `docs/operations/environment-inventory.md`). They are not used by M02; never print or copy the secret.
 2. Confirm the Setup script's toolchain: `command -v node npm npx python3.12` should resolve to `$HOME/.local/bin`, with `node --version` = v24.19.0, `npm --version` = 11.9.0 and `python3.12 --version` = Python 3.12.14. Record the results.
 3. Never run commands that dump the environment. Never connect to a database, provider, HDE or Railway. Never run `playwright install`, `eas` or `migrate`.
 
@@ -66,7 +66,7 @@ If the fast-forward or the check fails, stop and report. Then read, completely:
      - the wrong-environment fallback: a clean process environment such as `env -i HOME="$HOME" PATH="$PATH" LANG=C.UTF-8 …`, never printing values, and the refusal is correct behavior;
      - rendered-test limits: the preinstalled Chromium is revision 1194, not the pinned 1234; hosted CI is the evidence; never `playwright install` in the cloud container.
 5. **Other docs**
-   - **`docs/operations/environment-inventory.md`:** one pointer to that section.
+   - **`docs/operations/environment-inventory.md`:** it already records the `Glow app` environment and Stream development application (manager-written). Keep that section; link it from local-development instead of duplicating it.
    - **`docs/operations/ci-and-branch-policy.md`:** add the `actions/upload-artifact` row (`ea165f8d65b6e75b540449e92b4886f43607fa02`, workflow comment `v4`; exact patch release not verified).
    - **`docs/continuity/claude-code-handoff.md`:**
      - Local setup: the bootstrap script and the dedicated environment.

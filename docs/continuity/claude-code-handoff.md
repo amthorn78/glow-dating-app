@@ -156,7 +156,7 @@ These names are **denylist entries**, not supported connections. They must be ab
 | `HDE_API_URL`, `HD_API_BASE_URL`, `GLOW_HDE_API_URL` | Legacy/current HDE endpoint metadata; no secret value assumed | Never set; no live adapter |
 | `HDE_API_TOKEN`, `HD_API_KEY`, `GEO_API_KEY`, `GLOW_HDE_API_TOKEN` | HDE/geodata credentials; secret | Never set; last name also reserved above |
 
-Every `GUNICORN_*` name is rejected by the artifact entrypoint, unknown `GLOW_*` names by the API, and unapproved `EXPO_PUBLIC_*` names by mobile config/API. `EXPO_PUBLIC_STREAM_SECRET`, `EXPO_PUBLIC_HDE_API_TOKEN` and `EXPO_PUBLIC_UNKNOWN` occur only as negative-test examples; they are never supported configuration. There is no active environment variable for a Stream API key, app ID, region, channel type, token URL or webhook URL. Assigning names is future implementation work, not a missing `.env` value today.
+Every `GUNICORN_*` name is rejected by the artifact entrypoint, unknown `GLOW_*` names by the API, and unapproved `EXPO_PUBLIC_*` names by mobile config/API. `EXPO_PUBLIC_STREAM_SECRET`, `EXPO_PUBLIC_HDE_API_TOKEN` and `EXPO_PUBLIC_UNKNOWN` occur only as negative-test examples; they are never supported configuration. No code reads a Stream API key, app ID, region, channel type, token URL or webhook URL. Since 24 September the `Glow app` cloud environment provides `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` for Nathan's development Stream application; see [environment inventory](../operations/environment-inventory.md#stream-development-application-getstreamio). Wiring them into a loader is P06.1 work.
 
 ### Tooling variables explicitly used by the repository
 
@@ -194,10 +194,10 @@ The workflow's platform `github.token` is handled by checkout with `persist-cred
 
 | Input | Classification | Current repo name / status |
 |---|---|---|
-| Stream application API key | Client-safe identifier; not sufficient to authenticate a user | No environment loader/name exists; pure webhook argument is `api_key` |
-| Stream API secret | Server-only signing/administration secret | Future slot `GLOW_CHAT_API_SECRET`; pure webhook argument `secret`; no live loader |
+| Stream application API key | Client-safe identifier; not sufficient to authenticate a user | Development app: `STREAM_API_KEY=qdstwyevnyea` in the `Glow app` environment; not yet read by code; pure webhook argument is `api_key` |
+| Stream API secret | Server-only signing/administration secret | Development app: `STREAM_API_SECRET` in the `Glow app` environment (value never recorded); maps to the future slot `GLOW_CHAT_API_SECRET`; pure webhook argument `secret`; no live loader |
 | Per-user Stream token | Sensitive bearer credential delivered to that authenticated user's client | No endpoint/storage/refresh path exists; never a bundled environment value |
-| Stream app identity, region, environment and account plan | Nonsecret operational configuration | Not selected/verified; record an owner decision and SDK-specific configuration |
+| Stream app identity, region, environment and account plan | Nonsecret operational configuration | Development app `STREAM_APP_ID=1729640` (Nathan, 24 September 2026); region and plan not yet verified |
 | Channel type and role/grant configuration | Security policy | A08 proof outstanding; don't copy permissive demo defaults |
 | Public HTTPS callback URL and event selection, if used | Endpoint/configuration; signature secret stays server-side | No callback route or URL variable exists; P11 durable inbox required for effects |
 

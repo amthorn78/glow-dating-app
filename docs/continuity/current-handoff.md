@@ -18,11 +18,16 @@ App Manager 1 was the first Claude manager. It ran in the environment shared wit
   - **Brief:** [claude-setup-optimization](../planning/claude-setup-optimization.md). **Evidence:** [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md).
   - **Done by App Manager 1 (reviewed with the PR):** repository review, the proposal, a verified baseline (all local checks pass on the pinned toolchain in a clean process environment), `scripts/bootstrap-toolchain.sh` (tested; this is the dedicated environment's Setup script), and the manual-relay procedure in `CLAUDE.md`, `AGENTS.md`, the manager workflow, PF00 1.4 and PF01 1.5 (D09).
   - **Remaining:** implementation item M02-I1 (brief section "Implementation brief — M02-I1"; prompt in `docs/ephemeral/2026-09-24-m02-implementation-prompt.md`). Then review, CI, merge, receipt, this handoff and Notion.
-- **Dedicated app cloud environment:** Nathan is creating it with the settings in the brief's "Owner action" section. App Manager 2 is the first session in it.
+- **Dedicated app cloud environment `Glow app`:** Nathan is creating it with the settings recorded in the [environment inventory](../operations/environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026). App Manager 2 is the first session in it. The environment also provides Nathan's **development** Stream application:
+  - `STREAM_APP_ID=1729640`
+  - `STREAM_API_KEY=qdstwyevnyea`
+  - `STREAM_API_SECRET` (secret; name only; never print or record it)
+
+  No code reads these yet; P06.1 will. A session's environment is fixed at start, so switching environments requires a new session.
 
 ## App Manager 2 — next actions
 
-1. **Verify the environment (names only).** None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with `node --version` v24.19.0, `npm --version` 11.9.0 and `python3.12 --version` 3.12.14. If anything differs, tell Nathan exactly which setting to fix. Never print values.
+1. **Verify the environment (names only).** None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be present. `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with `node --version` v24.19.0, `npm --version` 11.9.0 and `python3.12 --version` 3.12.14. If anything differs, tell Nathan exactly which setting to fix. Never print values.
 2. **Verify the repository.** Check main, open PRs and the worktree. Run `git fetch origin claude/ecstatic-goodall-qajdh4` and review its head and PR17's CI runs. A session can push only its own working branch, so:
    - fast-forward your branch to that head (`git merge --ff-only`) and push it;
    - open a replacement draft PR (M02);
