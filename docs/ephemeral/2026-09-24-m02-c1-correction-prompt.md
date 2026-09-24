@@ -35,7 +35,7 @@ git rev-parse HEAD   # must print <START_SHA>
 If the fast-forward or the check fails, stop and report. Then read, completely:
 
 - root `AGENTS.md` and `CLAUDE.md`;
-- the M02 brief, `docs/planning/claude-setup-optimization.md`: the whole file, and especially the two sections named above;
+- the M02 brief, `docs/planning/claude-setup-optimization.md`: the whole file, and especially its sections "Exact-head review of `ccebd1b` and its disposition" and "Correction brief — M02-C1";
 - the evidence record, `docs/testing/evidence/2026-09-24-m02-claude-setup.md`, including the sections "Implementation session" and "App Manager 2 — exact-head review relay";
 - `docs/operations/ci-and-branch-policy.md` and `docs/operations/local-development.md`;
 - `.github/workflows/foundation.yml`;
