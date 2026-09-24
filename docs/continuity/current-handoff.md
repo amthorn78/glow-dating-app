@@ -41,6 +41,8 @@ App Manager 1 was the first Claude manager. It ran in the environment shared wit
    - prune closed prompts.
 6. **Propose, don't dispatch.** Then propose to Nathan whether to prepare P06.1. It needs Stream access, plan and budget, a secret-injection decision, and chat-history policy.
 
+**Open review item.** App Manager 1 read the core governance, operations, setup, CI, handoff and planning documents and the configuration code. Its helper sweep of the remaining `docs/architecture/`, `docs/testing/` and other `docs/operations/` files, looking for stale statements, was stopped before reporting and produced no findings. Include that sweep in a prompt if it is still wanted.
+
 ## Accepted baseline and limits
 
 The app has fixture onboarding/profiles/media, eligibility/discovery and interactions, an API smoke runtime, contracts and static model/migration definitions. Not established:
