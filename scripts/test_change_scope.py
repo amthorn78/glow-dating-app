@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import unittest
 
 from change_scope import classify
@@ -11,6 +12,7 @@ from change_scope import classify
 
 class ChangeScopeTests(unittest.TestCase):
     def setUp(self):
+        self.policy_source = Path(__file__).with_name("change_scope.py").read_text()
         self.old = os.getcwd()
         self.temp = tempfile.TemporaryDirectory()
         os.chdir(self.temp.name)
@@ -67,6 +69,25 @@ class ChangeScopeTests(unittest.TestCase):
         self.git("reset", "--hard", self.base)
         Path("docs/notes.md").chmod(0o755)
         self.assertTrue(classify(self.base, self.commit())["full"])
+
+    def test_trusted_base_policy_ignores_candidate_substitution(self):
+        self.write("scripts/change_scope.py", self.policy_source)
+        trusted_base = self.commit()
+        # This head would self-exempt if its classifier or tests ran first.
+        self.write("scripts/change_scope.py", "import json; print(json.dumps({'full': False}))\n")
+        self.write("scripts/test_change_scope.py", 'raise RuntimeError("must not run before classification")\n')
+        self.write("argparse.py", 'raise RuntimeError("candidate import shadow")\n')
+        head = self.commit()
+        with tempfile.TemporaryDirectory() as policy_dir:
+            trusted = Path(policy_dir) / "change_scope.py"
+            trusted.write_bytes(subprocess.check_output(["git", "show", f"{trusted_base}:scripts/change_scope.py"]))
+            import json
+            result = json.loads(subprocess.check_output([
+                sys.executable, "-I", str(trusted), "--base", trusted_base,
+                "--head", head, "--merge-base",
+            ]))
+        self.assertTrue(result["full"])
+        self.assertIn("scripts/test_change_scope.py", result["paths"])
 
     def test_unknown_base_empty_and_zero_fail_closed(self):
         for base in ["0" * 40, "a" * 40, "--help", self.base]:
