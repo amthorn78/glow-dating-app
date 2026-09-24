@@ -49,7 +49,10 @@ The class name, frozen DTOs and fixture labels do not establish source trust.
 A malicious or incorrectly wired repository could fabricate internally
 consistent evidence. A real adapter must be reviewed and tested against
 authoritative authenticated persistence at P11; no such adapter exists now.
-Fixture repositories used in tests are explicitly non-atomic substitutes.
+Fixture repositories used in tests do not implement database transactions. The
+P05.1 batch also requires participating fixture revision guards for synchronous
+publication, described below; this does not change source trust or authenticate
+an actor.
 
 The expected `EvidenceUnavailable()` exception has a fixed generic message and
 maps to `rejected / missing_evidence`; it carries no source/provider error body.
@@ -125,6 +128,23 @@ pair and input/mapping/engine/contract revisions. Reacquire eligibility using
 the captured vector and recheck chart mappings before publishing a returned
 result; discard stale/excluded results. Every retry repeats acquisition. A
 ready compatibility result never becomes a stored contact permission.
+
+AP1-P05.1-002 corrects the final fixture publication boundary: sequential
+callback-capable rechecks alone are insufficient, because the last candidate's
+read can change an earlier pair. `FixtureCompatibilityBatchService` captures
+concrete monotonic revision cells for both people's fact sources, policy/time
+and both account–chart links. Participating writes advance those cells even for
+same-value replacement, removal and restoration. All normal source/clock reads
+still occur; the last acceptance pass compares only the captured concrete cells
+and integers and invokes no source, clock, provider or user-supplied getter.
+
+Changed fact/policy/time evidence removes retained compatibility and returns
+`reload_required`; a changed account–chart link returns `stale`. Existing observed
+exclusions remain exclusions, and a denied attempt is never promoted after
+restoration. Unaffected pairs may retain their results. Missing or unavailable
+guard participation fails closed before provider work. This bounded in-process
+fixture guarantee closes the demonstrated callback sequences; cross-process,
+database and privileged-action ordering still require the P11 proof below.
 
 For a privileged pair mutation, `PairActionUnitOfWork.begin_pair_action` defines
 one application transaction. The future adapter must perform these steps:

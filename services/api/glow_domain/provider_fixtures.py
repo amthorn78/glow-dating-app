@@ -10,6 +10,7 @@ from .compatibility import (
     FixtureProvenance,
     fixture_cache_key,
 )
+from .fixture_coherence import FixtureReadGuard, acquire_guard, guard_is_current
 from .identity import AccountId, ChartMapping
 from .ports import ChartMappingRepository
 from .provider_contracts import (
@@ -306,14 +307,17 @@ class _PreparedCandidate:
     outcome: CandidateOutcome
     version: PairEvidenceVersion | None = None
     request: CompatibilityRequest | None = None
+    eligibility_guard: FixtureReadGuard | None = None
+    mapping_guard: FixtureReadGuard | None = None
 
 
 @dataclass(frozen=True)
 class FixtureCompatibilityBatchService:
     """Bounded app iteration, not an assumed engine batch endpoint.
 
-    Re-acquisition and rejection are demonstrated; atomic race prevention is
-    deliberately not claimed. The caller must never treat this as contact auth.
+    Real reads may invoke synchronous callbacks. Concrete monotonic source
+    guards are compared after the last callback to suppress obsolete outputs.
+    This is not database atomicity or contact authorization.
     """
 
     environment: str
@@ -344,11 +348,21 @@ class FixtureCompatibilityBatchService:
         # Later candidates may take time or change shared state. Revalidate
         # earlier outputs after all provider work before returning the batch.
         entries = tuple(self._revalidate(viewer, item) for item in prepared)
-        # A later mapping read can revoke a previously revalidated participant.
-        # Finish with eligibility-only reads after all mapping callbacks. This
-        # remains sequential fixture evidence, not a persistent transaction.
+        # Keep current exclusion diagnostics after all mapping callbacks.
+        # These reads may mutate earlier pairs too; they are not publication.
         entries = tuple(
             self._revalidate_eligibility(viewer, entry, item.version)
+            for entry, item in zip(entries, prepared, strict=True)
+        )
+        # Publication is a callback-free pass over retained concrete revision
+        # cells. No source/clock/provider/port lookup may follow this boundary.
+        # Invalidated earlier attempts never regain compatibility on restoration.
+        entries = tuple(
+            CandidateOutcome(entry.account_id, "reload_required")
+            if entry.compatibility is not None and not guard_is_current(item.eligibility_guard)
+            else CandidateOutcome(entry.account_id, "stale")
+            if entry.compatibility is not None and not guard_is_current(item.mapping_guard)
+            else entry
             for entry, item in zip(entries, prepared, strict=True)
         )
         if not entries or all(entry.state == "excluded" for entry in entries):
@@ -396,6 +410,8 @@ class FixtureCompatibilityBatchService:
 
         expected_version: PairEvidenceVersion | None = None
         expected_request: CompatibilityRequest | None = None
+        eligibility_guard: FixtureReadGuard | None = None
+        mapping_guard: FixtureReadGuard | None = None
         for attempt in range(1, self.retry_policy.max_attempts + 1):
             decision = self.eligibility.evaluate(viewer, item.account_id, expected_version)
             if decision.state is not EligibilityDecisionState.READY:
@@ -406,6 +422,19 @@ class FixtureCompatibilityBatchService:
             expected_version = decision.evidence_version
             if expected_version is None:
                 raise AssertionError("Ready eligibility must include captured source revisions.")
+            if attempt == 1:
+                eligibility_guard = acquire_guard(
+                    self.eligibility.repository, viewer, item.account_id
+                )
+                if eligibility_guard is None:
+                    return _PreparedCandidate(
+                        CandidateOutcome(item.account_id, "reload_required"), expected_version
+                    )
+                mapping_guard = acquire_guard(self.mappings, viewer, item.account_id)
+                if mapping_guard is None:
+                    return _PreparedCandidate(
+                        CandidateOutcome(item.account_id, "stale"), expected_version
+                    )
             viewer_mapping = self.mappings.get(viewer)
             candidate_mapping = self.mappings.get(item.account_id)
             if viewer_mapping is None or candidate_mapping is None:
@@ -446,6 +475,14 @@ class FixtureCompatibilityBatchService:
                 return _PreparedCandidate(
                     CandidateOutcome(item.account_id, before.state.value), expected_version
                 )
+            if not guard_is_current(eligibility_guard):
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "reload_required"), expected_version
+                )
+            if not guard_is_current(mapping_guard):
+                return _PreparedCandidate(
+                    CandidateOutcome(item.account_id, "stale"), expected_version
+                )
             outcome = evaluate_with_retry(
                 self.provider, request, self.provenance, item.idempotency_key, RetryPolicy(1)
             )
@@ -462,6 +499,14 @@ class FixtureCompatibilityBatchService:
                 ),
                 expected_version,
                 request,
+                eligibility_guard,
+                mapping_guard,
             )
-            return _PreparedCandidate(self._revalidate(viewer, prepared), expected_version, request)
+            return _PreparedCandidate(
+                self._revalidate(viewer, prepared),
+                expected_version,
+                request,
+                eligibility_guard,
+                mapping_guard,
+            )
         raise AssertionError("A validated retry policy must attempt at least once.")

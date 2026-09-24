@@ -2,7 +2,7 @@
 
 ## Current assignment and execution state
 
-**AP1-P05.1-001 revision 1.0: P05.1 — Implement reciprocal eligibility rules.**
+**AP1-P05.1-002 revision 1.1: P05.1 correction and revalidation.**
 Nathan Amthor owns product/resource decisions. **App Planner 1** coordinates and
 reviews progress; **App Builder 1** implements and reports. This fresh-session,
 fixture-only assignment runs through reviewed publication, checked merge,
@@ -11,17 +11,22 @@ credentials, dependencies or process survives.
 
 Private [amthorn78/glow-dating-app](https://github.com/amthorn78/glow-dating-app),
 ID **1383293037**, default branch **main**. Reconciled starting main:
-**8f9dfbc30e3d0b4568d71482ca7334bf172afafa**, tree
-**ef115f846ad325f8c1c3a60ecf44d87cadff7ced**. Scoped branch:
-**app-builder-1/p05-1-reciprocal-eligibility**. Verify actual remote main, branch,
+**01e834d7f059feb2fcd41bf4c218178206290d04**, tree
+**8bf5e31b76620ce284800aca6b1e907c32490738**. Correction branch name:
+**app-builder-1/p05-1-batch-freshness-correction**. Its actual publication identity
+belongs in the external report. Verify actual remote main, branch,
 open PRs and worktree before continuing. A newer legitimate head supersedes
 this starting identity; preserve unrelated work and reconcile it.
 
 The existing [P05.1 task](https://app.notion.com/p/3e44590a05eb8115ba8ef6f2fd2e049b)
-was **Planned / Autonomous** and set **In progress** when execution began. Its
-dependencies `P02.1,P04.2` are Done. The [complete assignment](https://drive.google.com/file/d/1Sy62foHcwxJGgdOPY1U3-i7Bc25bVXWj/view)
-is the execution packet. **AB1-R009 was unused at startup**; recheck before saving.
-This document does not attest its own future checks, merge or acceptance.
+was reopened **Ready for correction** by **AP1-ACK009** and set **In progress**
+when this correction began. Earlier Done history and green PR10 checks remain
+historical evidence; they do not close AP1-R009-F01/F02. The
+[current correction assignment](https://drive.google.com/file/d/1doBr_chh_fjodNCLbu6yyiCU_TDcUfYB/view)
+supersedes the previous instruction to progress to P05.2. Its revision 1.1 content
+matches the attached prompt. **AB1-R010 was unused at startup**; recheck before
+saving. P05.2/P05.3 remain Planned and unstarted. This document does not attest
+its own future checks, merge or acceptance.
 
 The [P05.1 checkpoint](../testing/p05-1-checkpoint.md), actual remote checks and
 [shared reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f) own
@@ -43,7 +48,7 @@ separate from this app assignment.
   [D08](https://app.notion.com/p/3e44590a05eb8106b26aea3147dc84bf),
   [Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) and
   [reports](https://app.notion.com/p/3e44590a05eb81d58971ee4cd870774f), including
-  AB1-R008/AP1-ACK008 and newer entries. Fetch the register schema before edits;
+  AB1-R009/AP1-ACK009 and newer entries. Fetch the register schema before edits;
   data source `collection://5ea4c24d-ec63-4afb-a434-8969c26b8fbe`.
 - [Trusted eligibility](../architecture/trusted-eligibility.md),
   [reciprocal fixtures](../architecture/reciprocal-eligibility-fixtures.md),
@@ -70,11 +75,37 @@ concrete unavailable capability without bypassing it.
 
 ## Accepted baseline and historical evidence
 
+PR10 merged at **2026-09-24T00:42:17Z** to the starting main above. Final candidate
+**25d8b2bb16a5200f2b952f4dd26e0da6d00c5300** and main share the starting tree;
+ordered parents are **8f9dfbc30e3d0b4568d71482ca7334bf172afafa**, then that candidate.
+All four Foundation jobs passed on candidate
+[35939127773](https://github.com/amthorn78/glow-dating-app/actions/runs/35939127773),
+[35939123430](https://github.com/amthorn78/glow-dating-app/actions/runs/35939123430)
+and [merged-main 35939614030](https://github.com/amthorn78/glow-dating-app/actions/runs/35939614030).
+Historical counts overlap: **348 mobile tests, 51 rendered Chromium cases,
+212 JS contract cases, 178 API tests and 37 Python contract methods**, plus both
+development JS exports. These checks preceded the newly reproduced defects.
+
+Final-head PR10 automatic code review completed before merge. Automatic security
+completion exists only for initial head
+**f809063cdf2aba236a50db74b349eb36990089bb**; final requests produced no final-head
+receipt. No service error or final-head security pass is asserted. Preserve the
+PR10 expected-version correction: every defined malformed TypeScript version
+rejects before clock/acquisition; a valid version contains exactly nine own,
+enumerable, nonblank string data fields without getter or `toJSON` invocation.
+
+The [PR10 handoff](https://github.com/amthorn78/glow-dating-app/blob/25d8b2bb16a5200f2b952f4dd26e0da6d00c5300/docs/continuity/current-handoff.md)
+and the historical sections of the [checkpoint](../testing/p05-1-checkpoint.md)
+preserve the prior assignment and publication history. Their old next-task
+instructions are superseded by this correction.
+
 **AP1-ACK008 accepted P04.3 and combined P04 at fixture scope.** PR8's media
 implementation merged as **b7fb0f87a79827ebb00f9a409b59e61019652f35**; PR9 corrected
 owner-removal resurrection and synchronous birth-draft input loss. PR9 merged
-at **2026-09-23T23:32:01Z** to the starting main above. Final candidate
-**f76821ba845cc9b4c3a4a148745a1f115f1ad441** and main share the starting tree;
+at **2026-09-23T23:32:01Z** to
+**8f9dfbc30e3d0b4568d71482ca7334bf172afafa**. Final candidate
+**f76821ba845cc9b4c3a4a148745a1f115f1ad441** and that main share tree
+**ef115f846ad325f8c1c3a60ecf44d87cadff7ced**;
 ordered parents are PR8's merge and that final candidate.
 
 All four jobs passed on candidate runs
@@ -101,7 +132,29 @@ authority loss/restoration. Actual PNG checks cover framing, CRC and declared
 bounds; pixel decoding, metadata stripping, moderation, delivery and purge remain
 simulated. Native selected bytes lack a verified bounded reader and are refused.
 
-## Bounded P05.1 outcome
+## Product and repository continuity
+
+Keep `apps/mobile/`, `services/api/` and `packages/contracts/` together in this
+application repository. Separate frontend/backend repositories are unnecessary;
+runtime, deployment and trust boundaries remain separate. The planned
+`wordpress/glow-admin/` plugin is P07 work and is not started here. It will call
+scoped dating admin APIs; the API owns dating authorization, transitions and
+audit history. WordPress keeps CMS/staff concerns and has no privileged direct
+app/HDE table access.
+
+The HDE repository/service remains separate and protected. The app may be built
+with fixtures before the verified HDE contract is ready; later, one app-owned
+adapter must use that supported contract, with real acceptance before launch.
+`ChartMapping` means an **account–chart link**: app account ID, opaque engine
+reference, pending/resolved state, birth-input version and mapping version. It
+performs no chart calculation. HDE owns calculation, mechanics, interpretation,
+engine-owned chart data and supported compatibility output. Store only necessary
+linkage/provenance and permitted app projections; reuse equivalent HDE linkage/
+version facilities if the supported contract provides them. Do not invent engine
+IDs/endpoints, duplicate engine algorithms/tables or resolve uncertain location/
+timezone/chart semantics speculatively.
+
+## P05.1 preserved behavior and correction
 
 Derive both participants' eligibility through the existing Python evaluator and
 trusted acquisition seam from app-owned account, consent, profile, approved-media,
@@ -124,6 +177,45 @@ integration. Adult/consent and synthetic preference policy remain provisional
 inputs. A05 owns launch geography, gender/orientation taxonomy, distance/age-range
 product rules, operating policy and resurfacing/rematch decisions. Missing policy
 denies dependent behavior while independent fixture work continues.
+
+The fixture policy is `development-eligibility-1`, using
+`development-consent-1`, `development-preferences-1`, `development-media-1`,
+age 18 and March-1 leap birthdays. The interval starts `2026-01-01` inclusive;
+supplied ends are exclusive. Corpus day is `2026-09-23`; the mobile clock is
+`2026-09-23T12:00:00Z`. `demo_a`/`demo_b` attributes are compared independently
+against the other's `demo_connection` accepted set. Missing facts/policy,
+unknown predicates or either blocked direction fail closed. These are provisional
+test rules, not approved launch/legal policy.
+
+On unchanged PR10 main, **AP1-R009-F01** was reproduced: the second pair's last
+eligibility acquisition withdrew the earlier candidate's consent, but both
+outcomes retained compatibility even though fresh first-pair evaluation excluded
+it. **AP1-R009-F02** replaced that earlier candidate's mapping with `mapping-2`
+during the last later mapping read; retained output still carried `mapping-1`
+while eligibility remained ready. The unchanged control evaluated both pairs.
+Each run made two synthetic provider calls. These are synchronous fixture
+defects, not deferred PostgreSQL concurrency.
+
+The correction retains real callback-capable mapping/eligibility reads and adds
+one callback-free publication check. Both fact sources, shared policy/time and
+both account–chart links supply retained monotonic revision cells. Affecting
+writers advance the same cells for replacement/removal/restoration, including
+same-value writes. Captures stay bound to the original attempt across retries.
+After the final callback, concrete-cell/integer comparisons suppress retained
+compatibility: changed fact/policy/time evidence becomes `reload_required`,
+changed linkage becomes `stale`. Earlier exclusions are never promoted by later
+restoration. Unaffected pairs retain results; shared-viewer or policy/time changes
+invalidate every dependent pair. Missing/unavailable guard participation fails
+closed before provider work. No source/clock/provider/getter call follows final
+acceptance. The cap remains twenty candidates and one to three total provider
+attempts; no new retry or callback-capable sweep is added. This establishes only
+the participating synchronous fixture boundary, not database/cross-thread safety.
+
+Mobile's actual pair remains fictional viewer → current owner. Existing
+Alex/Jordan/Riley recommendation cards are static layout/smoke samples, not
+three individually authorized discovery candidates. Keep that UI scope; P05.2
+must later authorize each real candidate independently. See the reciprocal
+fixture record for the mobile publication mechanism and its regressions.
 
 Eligibility authorizes only the next specifically checked workflow. It is not a
 like, match, channel entitlement, send permission or history grant. Block/report/
@@ -188,15 +280,17 @@ guards do not neutralize advisories.
 The [checkpoint](../testing/p05-1-checkpoint.md) distinguishes local and hosted
 evidence. Required Foundation jobs are **API checks, Mobile checks, API mobile
 smoke, API artifact checks**, on the actual final candidate including docs and
-on merged main. Keep all 47 inherited rendered cases meaningful without weakening
-assertions, timeouts or retry policy. Local Chromium installation failed before
-any case; Docker is unavailable locally, so hosted checks must supply those
+on merged main. Keep all **51** existing rendered cases meaningful without weakening
+assertions, timeouts or retry policy. During this correction, local Chromium
+installation failed with an invalid ZIP before any case; no local Docker
+executable is available, so hosted checks must supply those
 proofs. Tests may not open a database.
 
-**Next action:** read current AB1-R009 and Notion P05.1/Control first. If they
-record accepted P05.1 fixture closure with final merge/main evidence, the next
-proposed assignment is P05.2; preserve P05.2/P05.3 Planned until separately
-assigned. Otherwise resume P05.1 from actual remote state: publish the prepared
+**Next action:** read current AP1-ACK009, AB1-R010 if published and Notion
+P05.1/Control first. Only an accepted AP1-P05.1-002 correction with final merge/main
+evidence permits proposing P05.2. AB1-R009/PR10 closure alone does not. Preserve
+P05.2/P05.3 Planned until separately assigned. Otherwise resume this correction
+from actual remote state: publish the prepared
 candidate/open its scoped PR if absent, then inspect current Foundation checks
 and reviews. Complete concrete corrections with new candidate checks. Wait for an already
 running review. Record service errors/unavailable coverage; earlier-head review
@@ -207,7 +301,7 @@ ordered parents, candidate/main tree relationship and all merged-main jobs.
 
 Only after acceptance, update existing P05.1 **Verified → Done at fixture scope**,
 Control and their exact next-action pointers; read back. Append **To App Planner 1** report
-**AB1-R009 if unused** with actual UTC time, assignment, publication/run identities,
+**AB1-R010 if unused** with actual UTC time, assignment, publication/run identities,
 commands/results, reviews, effects, limits and recovery instructions. Saving is
 not delivery or planner acknowledgment. Give Nathan the concise report for relay;
 do not contact another session or promise background monitoring.

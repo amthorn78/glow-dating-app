@@ -1,6 +1,7 @@
 # P05.1 reciprocal eligibility fixtures
 
-This is the implementation record for **AP1-P05.1-001**. It defines a deterministic
+This is the implementation record for **AP1-P05.1-001**, corrected by
+**AP1-P05.1-002 revision 1.1**. It defines a deterministic
 application fixture policy and current fact acquisition for ordered pairs. It is
 not launch policy, production authentication, PostgreSQL consistency, a discovery
 queue or a Human Design calculation. The existing closed candidate contract is
@@ -76,8 +77,11 @@ corpus checks Python agrees. No locale parser, timezone lookup or birthday estim
 is used.
 
 The Python clock accepts a civil date, aware datetime converted to UTC civil day,
-or missing time. A naive datetime is unavailable time. Mobile uses its injected
-Date clock and UTC civil day; an invalid Date is unavailable. Every acquisition
+or missing time. A naive datetime is unavailable time. Mobile captures one numeric
+timestamp from its supplied Date before reading source facts, then constructs
+internal Date values from that primitive. No later method on the supplied Date
+can mutate facts after capture. It uses the UTC civil day; an invalid Date is
+unavailable. Every acquisition
 rechecks current time. An observed day change advances effective clock identity,
 even when a later clock observation returns to an earlier day. Stored record
 versions alone cannot preserve an expired predicate. This fixture epoch is not a
@@ -203,13 +207,32 @@ owner editing and the otherwise ready profile remain available. Explicit owner
 pause and media cleanup behavior are preserved.
 
 `candidateContext()` binds exact pair evidence, candidate profile ID, generation
-and discovery revision. `candidatePreview()` copies the expected context before
-dependencies, reacquires evidence and validates that context. Candidate age comes
+and discovery revision. `candidatePreview()` captures exactly its five own,
+enumerable data fields before dependencies and validates the nested nine-field
+pair version through the same descriptor-only validator. Accessors, extra fields
+and `toJSON` substitution cannot convert a stale precondition into permission.
+It reacquires evidence and validates that context. Candidate age comes
 from the same captured evaluation clock and immutable private birth facts; media
 references come from the evaluated immutable approved/current-policy facts. No
 separate unbound age/media read supplies the projection. It validates the closed
-allowlist, reacquires final context/evidence, then checks local source identity
-after the final clock callback before returning. The Alex scenario's date
+allowlist and reacquires final context/evidence. The factory-created profile
+adapter records source changes in a private WeakMap revision: accepted profile/
+preference adoption, authority synchronization, media synchronization, fixture
+seeding and development source changes participate. The store additionally tracks
+media-binding replacement. These revisions join the pair source signature;
+unadopted profile/preference changes deny publication. After the final clock
+callback, pure local revision/identity comparisons suppress an obsolete projection
+with `null`; no adapter method, clock or getter follows acceptance. An unregistered
+adapter cannot supply a permissive revision. This guarantee covers participating
+app fixture writers, not arbitrary untracked external media closures.
+
+The combined MediaStore notifies profile synchronization for current evidence
+changes. Its `seedEligible()` reset now forces that notification even when the
+visible collection is unchanged: a new accepted source incarnation must invalidate
+the earlier projection. Returning to the same visible facts does not restore an
+old candidate context.
+
+The Alex scenario's date
 `1990-06-15` yields age **36**
 on the reference day; another date/day is calculated rather than assigned 36.
 The projection contains only profile ID, display name, age, summary, approved
@@ -255,15 +278,37 @@ Acquisition precedes any chart mapping/provider call; each retry reacquires.
 provider provenance. Mapping reads are dependencies too: eligibility is rechecked
 after them before dispatch and during post-call/final-return validation. Every
 retained outcome, including missing/pending-mapping outcomes, is rechecked before
-return. A final eligibility-only sweep follows all mapping callbacks so a later
-candidate cannot revoke an already revalidated earlier result unnoticed.
+return. These reads may invoke callbacks and are not themselves a coherent final
+publication boundary. AP1-R009-F01/F02 demonstrated that a later final eligibility
+read can revoke an earlier pair, and a later mapping read can leave an earlier
+account–chart link stale without changing eligibility.
+
+The corrected batch captures participating concrete revision cells for both
+people's source facts, shared policy/time and both account–chart links. Participant
+put/removal and outgoing block observations advance retained per-account cells;
+policy writes and observed day/availability changes advance the shared cell.
+`FixtureChartMappingRepository.put` advances retained per-account cells for
+link writes, deletion and restoration. Same-value writes never revive an old
+capture. Guards remain bound to the original attempt across retries.
+
+After all callback-capable reads, one pure check compares the captured concrete
+cells and stored integers. It does not call the repository, clock, provider,
+getter or custom equality/hash operation, and no dependency read follows it.
+Changed fact/policy/time evidence suppresses retained compatibility with
+`reload_required`; changed linkage suppresses it with `stale`. Current observed
+exclusions are retained. Earlier denied attempts are never promoted after a
+restoration. Missing/unavailable guard participation fails closed before provider
+dispatch. Unaffected pairs remain evaluated; shared-viewer or policy/time changes
+invalidate every captured dependent pair.
 
 Pairs excluded or unresolved at initial eligibility acquisition make zero
 chart/provider calls. Revocation discovered after mapping work prevents provider
 dispatch; later revocation discards the affected result. No network or
 ready HD output is fabricated; synthetic ready compatibility still projects
-pending. Sequential rechecks narrow stale windows but are not an atomic
-multi-candidate transaction. [Provider conformance](provider-conformance.md) owns
+pending. The twenty-candidate and one-to-three-attempt bounds remain; the
+correction adds no retry, provider call or callback-capable sweep. The guarantee
+is synchronous fixture publication, not database atomicity, cross-thread
+serialization or durable invalidation. [Provider conformance](provider-conformance.md) owns
 the complete provider/version/error contract.
 
 ## Remaining integration proof

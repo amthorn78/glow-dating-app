@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { parseAppResponse, ProductionContractError } from '../contracts/production.ts';
-import { createProfileAdapter, ProfileFailure, type ProfileAdapter, type ProfileContext } from './fixture-adapter.ts';
+import { createProfileAdapter, fixtureProfileRevision, ProfileFailure, type ProfileAdapter, type ProfileContext } from './fixture-adapter.ts';
 import { FIXTURE_PREFERENCE_POLICY, PROFILE_IDS, PROFILE_REQUEST_ID, type ProfileAuthority } from './policy.ts';
 
 const options = { isDevelopment: true, mode: 'fixture' };
@@ -52,6 +52,24 @@ function delayOne() {
 test('profile fixture refuses non-development or non-fixture construction', () => {
   for (const invalid of [{ isDevelopment: false, mode: 'fixture' }, { isDevelopment: true, mode: 'production' },
     { isDevelopment: true, mode: undefined }]) assert.throws(() => createProfileAdapter(invalid));
+});
+
+test('every accepted profile source writer advances the callback-free publication revision', async () => {
+  const port = adapter();
+  let previous = fixtureProfileRevision(port)!;
+  const advanced = () => { const current = fixtureProfileRevision(port)!; assert.ok(current > previous); previous = current; };
+  port.synchronize({ ...authority, accountVersion: 2 }); advanced();
+  const context = port.context(), staged = await port.saveProfile(context, profileIntent());
+  assert.equal(fixtureProfileRevision(port), previous, 'A staged result is not accepted source state.');
+  port.acknowledge(context, staged); advanced();
+  port.seedEligible(); advanced();
+  port.seedEligible(); advanced();
+  for (const change of ['profile', 'preferences', 'policy', 'media', 'reciprocal'] as const) { port.developmentChange(change); advanced(); }
+  port.synchronizeMedia({ kind: 'media_collection', version: 1, items: [] }); advanced();
+  port.cancelPending(); assert.equal(fixtureProfileRevision(port), previous, 'Canceling staged work does not rewrite accepted facts.');
+  Object.defineProperty(port, 'sourceRevision', { get: () => { throw new Error('Injected getter must not run.'); } });
+  assert.equal(fixtureProfileRevision(port), previous);
+  assert.equal(fixtureProfileRevision(new Proxy(port, { get: () => { throw new Error('Proxy getter must not run.'); } })), null);
 });
 
 test('profile adapter denies wrong owner, generation and object before reads or writes', async () => {

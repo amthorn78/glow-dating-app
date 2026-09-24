@@ -15,6 +15,16 @@ The following port responsibilities come from the governing plan and are represe
 
 ## Non-negotiable separation
 
+The existing `ChartMapping` name means an **account–chart link**, not Human Design
+chart mapping or calculation. Its account ID, opaque engine reference, state and
+birth-input/mapping versions bind app-owned behavior to an external result. The
+fixture mapping repository only stores and invalidates that linkage. It does not
+calculate charts, invent engine identifiers or endpoints, or copy engine tables
+into a competing store. Collect honest birth inputs; unresolved location,
+timezone and chart semantics belong to the supported integration. If that contract
+already supplies equivalent linkage/version behavior, reuse it through the one
+app-owned adapter rather than preserving redundant provisional machinery.
+
 - HDE owns calculation and result semantics. The app does not import engine math, use undocumented tables, inspect diagnostics for hidden scores or repurpose a development route for production.
 - App eligibility runs before compatibility and is rechecked at interaction time. A compatibility result never creates a match or authorizes chat.
 - An app account ID and an HDE chart ID are different identities with an explicit mapping. Missing or stale mapping is a domain state, not permission to fabricate an identifier.

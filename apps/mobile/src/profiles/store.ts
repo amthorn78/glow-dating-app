@@ -1,10 +1,10 @@
 import type { CandidateProfile, MediaCollection, OwnPreferences, OwnProfile, PreferenceSelection, PreferencesIntent, ProfileIntent, VisibilityIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { parseAppIntent, parseAppResponse } from '../contracts/production.ts';
-import { createProfileAdapter, ProfileFailure, type DevelopmentChange, type ProfileAdapter,
+import { createProfileAdapter, fixtureProfileRevision, ProfileFailure, type DevelopmentChange, type ProfileAdapter,
   type ProfileContext, type ProfileOutcome, type ProfileRecords } from './fixture-adapter.ts';
 import { activeOwner, canonicalSelections, PROFILE_REQUEST_ID, projectCandidate, requirements,
   type ProfileAuthority } from './policy.ts';
-import { FIXTURE_PAIR_POLICY, FixturePairRepository, type ParticipantFacts, type PairVersion } from '../eligibility/facts.ts';
+import { capturePairVersion, FIXTURE_PAIR_POLICY, FixturePairRepository, type ParticipantFacts, type PairVersion } from '../eligibility/facts.ts';
 import { FIXTURE_CLOCK, type FixtureClock } from '../onboarding/policy.ts';
 
 export type { ProfileOutcome } from './fixture-adapter.ts';
@@ -34,6 +34,25 @@ const freeze = <T>(value: T): T => {
 const blankDraft = (): ProfileDraft => ({ display_name: '', summary: '' });
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const FIXTURE_VIEWER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const contextFields = ['viewerId', 'candidateProfileId', 'generation', 'discoveryRevision', 'version'] as const;
+function captureCandidateContext(value: CandidateViewContext | null): CandidateViewContext | null {
+  if (value === null) return null;
+  if (typeof value !== 'object' || Array.isArray(value) || Reflect.ownKeys(value).length !== contextFields.length) {
+    throw new TypeError('Invalid fixture candidate precondition.');
+  }
+  const fields = Object.getOwnPropertyDescriptors(value);
+  if (contextFields.some(field => !Object.hasOwn(fields, field) || !Object.hasOwn(fields[field]!, 'value') || !fields[field]!.enumerable)) {
+    throw new TypeError('Invalid fixture candidate precondition.');
+  }
+  const captured = Object.fromEntries(contextFields.map(field => [field, fields[field]!.value])) as CandidateViewContext;
+  if (typeof captured.viewerId !== 'string' || !captured.viewerId.trim() ||
+      typeof captured.candidateProfileId !== 'string' || !captured.candidateProfileId.trim() ||
+      !Number.isSafeInteger(captured.generation) || captured.generation < 1 ||
+      !Number.isSafeInteger(captured.discoveryRevision) || captured.discoveryRevision < 0 || captured.version === undefined) {
+    throw new TypeError('Invalid fixture candidate precondition.');
+  }
+  return Object.freeze({ ...captured, version: capturePairVersion(captured.version)! });
+}
 
 /** Same-session owner presentation; the fixture adapter remains the mutation authority. */
 export class ProfileStore {
@@ -45,6 +64,7 @@ export class ProfileStore {
   private adapter: ProfileAdapter;
   private mediaSource: (() => MediaCollection) | null = null;
   private mediaRevoker: (() => void) | null = null;
+  private mediaBindingRevision = 0;
   private pauseRequested = false;
   private pendingIntents = new Map<string, { signature: string; intent: ProfileIntent | PreferencesIntent | VisibilityIntent }>();
   private fictionalViewer: ParticipantFacts | null = null;
@@ -271,9 +291,13 @@ export class ProfileStore {
     const profile = this.snapshot.profile, owner = this.authority.ownerId;
     if (!profile || !owner || !this.fictionalViewer) return null;
     const sourceSnapshot = this.snapshot, sourceAuthority = this.authority;
+    const sourceRevision = fixtureProfileRevision(this.adapter), mediaRevision = this.mediaBindingRevision;
+    if (sourceRevision === null) return null;
     const records = this.adapter.inspect(), preferences = records.preferences;
     const media = this.mediaSource?.();
-    if (sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
+    if (sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority ||
+        sourceRevision !== fixtureProfileRevision(this.adapter) || mediaRevision !== this.mediaBindingRevision ||
+        !equal(records.profile, profile) || !equal(preferences, this.snapshot.preferences)) return null;
     const ids = media?.items.map(item => item.asset_id) ?? profile.media_ids;
     const validMedia = equal(ids, profile.media_ids) && records.evidence.media;
     const selection = preferences?.selections.length === 1 ? preferences.selections[0] : undefined;
@@ -292,7 +316,8 @@ export class ProfileStore {
         delivery_ref: media ? media.items.find(item => item.asset_id === asset_id)?.approved_delivery_ref ?? null : 'fixture:standalone-approved' })) : [],
     };
     // Aggregate signature includes every source revision, even a same-value write or A→B→A restoration.
-    const signature = JSON.stringify([candidate, this.authority, profile.version, preferences?.version, this.snapshot.discoveryRevision, media?.version]);
+    const signature = JSON.stringify([candidate, this.authority, profile.version, preferences?.version,
+      this.snapshot.discoveryRevision, media?.version, sourceRevision, mediaRevision]);
     if (signature !== this.pairSource) { this.pairSource = signature; this.pairs.put(candidate); }
     const policySignature = JSON.stringify([records.policy, this.authority.consentVersion]);
     if (policySignature !== this.pairPolicy) {
@@ -300,7 +325,8 @@ export class ProfileStore {
       this.pairs.setPolicy(records.policy?.version === 'development-preferences-1' ? FIXTURE_PAIR_POLICY : null);
     }
     const result = this.pairs.evaluate(FIXTURE_VIEWER_ID, owner);
-    return sourceSnapshot === this.snapshot && sourceAuthority === this.authority ? result : null;
+    return sourceSnapshot === this.snapshot && sourceAuthority === this.authority &&
+      sourceRevision === fixtureProfileRevision(this.adapter) && mediaRevision === this.mediaBindingRevision ? result : null;
   }
   candidateContext(): CandidateViewContext | null {
     const pair = this.currentPair();
@@ -309,10 +335,11 @@ export class ProfileStore {
       generation: this.authority.generation, discoveryRevision: this.snapshot.discoveryRevision, version: pair.version });
   }
   candidatePreview(context: CandidateViewContext | null = this.candidateContext()): CandidateProfile | null {
-    context = context === null ? null : freeze(clone(context));
+    context = captureCandidateContext(context);
     const current = this.candidateContext();
     if (!context || !current || !equal(context, current) || !this.snapshot.canDiscover || !this.snapshot.profile) return null;
     const sourceSnapshot = this.snapshot, sourceAuthority = this.authority;
+    const sourceRevision = fixtureProfileRevision(this.adapter), mediaRevision = this.mediaBindingRevision;
     const decision = this.pairs.evaluate(FIXTURE_VIEWER_ID, this.authority.ownerId!, context.version);
     if (decision.state !== 'ready' || sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
     const profile = clone(this.snapshot.profile), facts = this.pairs.inspect(this.authority.ownerId!);
@@ -327,7 +354,9 @@ export class ProfileStore {
     const finalContext = this.candidateContext();
     if (!equal(context, finalContext)) return null;
     const finalResult = this.pairs.evaluate(FIXTURE_VIEWER_ID, this.authority.ownerId!, context.version);
-    if (finalResult.state !== 'ready' || sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority) return null;
+    // Callback-free revision checks are the last acceptance boundary; no source read follows them.
+    if (finalResult.state !== 'ready' || sourceSnapshot !== this.snapshot || sourceAuthority !== this.authority ||
+        sourceRevision === null || sourceRevision !== fixtureProfileRevision(this.adapter) || mediaRevision !== this.mediaBindingRevision) return null;
     return projection;
   }
   /** Existing synthetic source controls; never a client/server evidence endpoint or contact operation. */
@@ -351,6 +380,7 @@ export class ProfileStore {
     this.publish({ discoveryRevision: this.snapshot.discoveryRevision + 1 });
   }
   bindMedia(source: () => MediaCollection, revoke: () => void): void {
+    this.mediaBindingRevision += 1;
     this.mediaSource = source; this.mediaRevoker = revoke;
   }
   synchronizeMedia(collection: MediaCollection): void {
