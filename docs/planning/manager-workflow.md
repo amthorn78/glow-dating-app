@@ -77,7 +77,7 @@ git show "$base:scripts/change_scope.py" > "$policy_dir/change_scope.py"
 python3 -I "$policy_dir/change_scope.py" --base "$base" --head "$head" --merge-base
 ```
 
-Use the PR's base SHA when it differs from `origin/main`. A change made only of Markdown files classifies as `ordinary-docs-only`: no application checks and no code or security review. Two exceptions stay full scope (Nathan, 24 September 2026; enforced by the classifier once M02-C1 merges):
+Use the PR's base SHA when it differs from `origin/main`. A change made only of Markdown files classifies as `ordinary-docs-only`: no application checks and no code or security review. Two exceptions stay full scope (Nathan, 24 September 2026; the classifier on `main` has enforced both since M02 merged that day):
 
 - any path under a `.claude/` directory;
 - a comparison with more than one merge base.
