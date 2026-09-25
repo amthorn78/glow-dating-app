@@ -1,0 +1,17 @@
+{
+  "name": "glow-stream-chat-proof-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P06.1 sandbox proof: Stream Chat client sessions driven by the Python harness. Never holds the API secret.",
+  "type": "module",
+  "engines": {
+    "node": "24.19.0",
+    "npm": "11.9.0"
+  },
+  "packageManager": "npm@11.9.0",
+  "dependencies": {
+    "https-proxy-agent": "5.0.1",
+    "stream-chat": "9.53.0",
+    "ws": "8.21.3"
+  }
+}
