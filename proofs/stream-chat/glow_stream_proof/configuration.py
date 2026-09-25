@@ -12,9 +12,9 @@ Design under proof: clients may only read their own match's channel. So:
 * Guest user creation is disabled.
 * Every default channel type keeps its features but every role's grants are
   emptied, so no client role can create, join, read or send in it.
-* ``glow-match``: members get ``read-channel`` and ``read-channel-members``
-  only; every other role gets nothing; features a client could use to put
-  content in front of the other member are off.
+* ``glow-match``: members get ``read-channel`` only; every other role gets
+  nothing; features a client could use to put content in front of the other
+  member are off.
 """
 
 from __future__ import annotations
@@ -27,7 +27,11 @@ from typing import Any, cast
 MATCH_TYPE = "glow-match"
 DEFAULT_TYPES = ("commerce", "gaming", "livestream", "messaging", "team")
 CLIENT_APP_ROLES = ("user", "guest", "anonymous")
-MATCH_MEMBER_GRANTS = ("read-channel", "read-channel-members")
+# Members may read their channel and nothing else. read-channel-members was
+# removed on 25 September 2026 after the second live run: a member can write
+# free-text custom data on its own membership (no permission governs that
+# write), so the other member must not be able to read membership data.
+MATCH_MEMBER_GRANTS = ("read-channel",)
 
 # Features of the glow-match type. Read events stay on: the proof records that
 # they carry no client free text. Typing events are off: on 25 September 2026

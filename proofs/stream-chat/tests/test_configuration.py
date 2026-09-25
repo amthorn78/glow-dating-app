@@ -86,7 +86,7 @@ class ConfigurationTest(unittest.TestCase):
         create = next(s for s in plan if s.method == "POST")
         self.assertEqual(create.body["name"], conf.MATCH_TYPE)
         grants = create.body["grants"]
-        self.assertEqual(grants["channel_member"], ["read-channel", "read-channel-members"])
+        self.assertEqual(grants["channel_member"], ["read-channel"])
         self.assertTrue(all(v == [] for r, v in grants.items() if r != "channel_member"))
         for feature in (
             "reactions",

@@ -21,7 +21,7 @@ from getstream.models import ChannelInput, ChannelMemberRequest, MessageRequest,
 from . import baseline, configuration, matrix
 from .app_send import AppSendService
 from .client_bridge import ClientSession, Reply, client_environment
-from .configuration import DEFAULT_TYPES, MATCH_TYPE
+from .configuration import MATCH_TYPE
 from .credentials import ServerCredentials
 from .policy import MatchState
 from .redaction import Redactor, describe_token, token_lifetime_seconds
@@ -32,6 +32,7 @@ PREFIX_ROOT = "p061i1-"
 TOKEN_TTL_SECONDS = 900
 CLEANUP_RESERVE = 60
 EVENT_WAIT_MS = 2500
+TYPE_CHANGE_SETTLE_SECONDS = 3
 DESTRUCTIVE_PHASE = 70
 T = MATCH_TYPE
 
@@ -179,6 +180,8 @@ class ProofRun:
     def _send(self, session: ClientSession, op: str, **params: Any) -> Reply:
         reply = session.send(op, **params)
         self.ws_attempts += reply.ws_attempts
+        for error in reply.async_errors:
+            self.notes.append(f"client {session.label} async error: {_generic(error, self.ctx)}")
         return reply
 
     def _step(self, step: matrix.SdkStep, session_label: str | None = None) -> Reply:
@@ -473,6 +476,37 @@ class ProofRun:
             f"message.new received {bool(got)}",
         )
 
+    # -- temporary type-level features ------------------------------------------------
+
+    def _put_match_type(self, features: Mapping[str, Any]) -> ApiResult:
+        body = {
+            "automod": configuration.MATCH_FEATURES["automod"],
+            "automod_behavior": configuration.MATCH_FEATURES["automod_behavior"],
+            "max_message_length": configuration.MATCH_FEATURES["max_message_length"],
+            **features,
+        }
+        return self.api.raw("PUT", f"/api/v2/chat/channeltypes/{T}", body=body)
+
+    def _type_features_on(self, features: Mapping[str, Any]) -> ApiResult:
+        result = self._put_match_type(features)
+        time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
+        return result
+
+    def _type_features_restore(self, features: Mapping[str, Any]) -> str:
+        """Put the production values back and verify them; stop the run if that fails."""
+        restore = {k: configuration.MATCH_FEATURES[k] for k in features}
+        result = self._put_match_type(restore)
+        time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
+        current = self.api.get(f"/api/v2/chat/channeltypes/{T}").body
+        wrong = {
+            k: current.get(k)
+            for k, v in restore.items()
+            if not isinstance(current, dict) or current.get(k) != v
+        }
+        if not result.ok or wrong:
+            raise RunStopped(f"could not restore {T} features {restore}: {result.status} {wrong}")
+        return f"restored {restore} ({result.status}, verified)"
+
     # -- matrix --------------------------------------------------------------------
 
     def run_matrix(
@@ -593,21 +627,31 @@ class ProofRun:
         well formed. The override is then removed and the same request is sent
         under the production configuration, where it must also fail.
         """
-        if not case.feature_override:
+        if not case.feature_override and not case.type_override:
             return self._evaluate_case(case)
         assert case.step is not None
         path = f"/channels/{T}/{self.ctx['AB']}"
-        override = dict(case.feature_override)
-        on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})
-        try:
-            result = self._evaluate_case(case)
-        finally:
-            off = self.api.raw("PATCH", path, body={"set": {"config_overrides": {}}})
+        if case.feature_override:
+            override = dict(case.feature_override)
+            on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})
+            try:
+                result = self._evaluate_case(case)
+            finally:
+                off = self.api.raw("PATCH", path, body={"set": {"config_overrides": {}}})
+            restored = f"channel override removed ({off.status})"
+        else:
+            override = dict(case.type_override)
+            on = self._type_features_on(override)
+            try:
+                result = self._evaluate_case(case)
+            finally:
+                restored = self._type_features_restore(override)
         production = self._step(case.step)
         result.detail["feature_override"] = {
+            "scope": "channel AB" if case.feature_override else f"type {T}",
             "features": override,
             "set_status": on.status,
-            "removed_status": off.status,
+            "restored": restored,
         }
         result.detail["production_config_observed"] = _observed(production)
         result.observed = (
@@ -648,7 +692,7 @@ class ProofRun:
         else:
             control_ok, control_desc = False, "no control"
         self.control_ok[case.id] = control_ok
-        detail: dict[str, Any] = {}
+        detail: dict[str, Any] = {"stream_message": reply.message}
         if case.expect == "no-leak":
             terms = matrix.substitute(list(control.expect_terms), self.ctx)
             found = bool(terms) and len(matrix.find_terms(control_body, terms)) == len(terms)
@@ -726,6 +770,7 @@ class ProofRun:
             "guest-role": self._proc_guest_role,
             "anonymous": self._proc_anonymous,
             "poll-vote": self._proc_poll_vote,
+            "member-custom": self._proc_member_custom,
             "profile-on-connect": self._proc_profile_on_connect,
             "role-on-connect": self._proc_role_on_connect,
             "typing-payload": self._proc_typing,
@@ -929,52 +974,71 @@ class ProofRun:
             {"claimed_total": claim_total},
         )
 
+    def _set_guest_creation_disabled(self, disabled: bool) -> ApiResult:
+        return self.api.raw("PATCH", "/api/v2/app", body={"guest_user_creation_disabled": disabled})
+
     def _proc_guest_create(self, case: matrix.Case, _arg: str) -> CaseResult:
         guest_id = f"{self.prefix}-guest"
+        user = {"id": guest_id, "name": "Synthetic guest"}
         self.ledger.reserve("users")
-        session = self._session("guest-create", None, max_api_calls=10)
+        session = self._session("guest-attempt", None, max_api_calls=10)
         try:
-            reply = self._send(
-                session, "guest", max_calls=3, user={"id": guest_id, "name": "Synthetic guest"}
-            )
+            reply = self._send(session, "guest", max_calls=3, user=user)
             if reply.ok:
-                self.users.append(guest_id)
                 self._send(session, "disconnect", max_calls=2)
         finally:
             session.close()
-        created = (reply.data or {}).get("me", {}) if reply.ok else {}
-        if isinstance(created, dict) and created.get("id"):
-            self.users.append(str(created["id"]))
         status, code = _status_code(reply)
         outcome = "success" if reply.ok else matrix.classify(status, code)
         exists_after = bool(self._server_user(guest_id).get("id"))
-        if not reply.ok and not exists_after:
-            self.ledger.release("users")  # refused: no user was created
-        elif exists_after and guest_id not in self.users:
+        if reply.ok or exists_after:
             self.users.append(guest_id)
-        self.ledger.reserve("users")
-        server_guest = f"{self.prefix}-sguest"
-        result, token = self.api.create_guest({"id": server_guest, "name": "Synthetic guest"})
-        if not result.ok:
-            self.ledger.release("users")
-        if result.ok:
-            gid = _dig(result.body, "user.id")
-            self.ctx["guest_id"] = str(gid) if gid else server_guest
-            self.users.append(self.ctx["guest_id"])
-            if token:
-                self._tokens["guest"] = token
-                self.token_claims["guest"] = describe_token(token)
-        verdict = matrix.refused_verdict(outcome, result.ok)
+        else:
+            self.ledger.release("users")  # refused: no user was created
+        control_ok = False
+        control_desc = "not run (the client request was not refused)"
+        guest_role = None
+        if not reply.ok:
+            # Positive control: the identical client request with guest creation
+            # enabled for a moment, then disabled again and verified.
+            self.ledger.reserve("users")
+            on = self._set_guest_creation_disabled(False)
+            time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
+            guest = self._session("guest", None, max_api_calls=30)
+            try:
+                creply = self._send(guest, "guest", max_calls=3, user=user)
+            finally:
+                off = self._set_guest_creation_disabled(True)
+                time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
+                app = self.api.get("/api/v2/app").body
+                disabled = _dig(app, "app.guest_user_creation_disabled")
+                if disabled is not True:
+                    raise RunStopped("guest creation could not be disabled again")
+            if creply.ok:
+                control_ok = True
+                me = (creply.data or {}).get("me") or {}
+                self.ctx["guest_id"] = str(me.get("id") or guest_id)
+                self.users.append(self.ctx["guest_id"])
+                guest_role = me.get("role")
+            else:
+                self.ledger.release("users")
+                guest.close()
+                self.sessions.pop("guest", None)
+            control_desc = (
+                f"identical request with guest creation enabled ({on.status}): "
+                f"{_observed(creply)}; disabled again ({off.status}) and verified"
+            )
+        verdict = matrix.refused_verdict(outcome, control_ok)
         return self._result(
             case,
             _request_line(reply.last_request, self.ctx),
             _observed(reply),
-            f"server POST /guest -> {result.status}",
+            control_desc,
             verdict,
             {
-                "server_guest_role": _dig(result.body, "user.role"),
+                "stream_message": reply.message,
                 "client_guest_user_exists_after": exists_after,
-                "client_error_message": reply.message,
+                "control_guest_role": guest_role,
             },
         )
 
@@ -986,7 +1050,7 @@ class ProofRun:
             return {
                 "target": "client",
                 "method": "queryChannels",
-                "args": [{"type": {"$in": [T, *DEFAULT_TYPES]}}, [], matrix.READ_OPTIONS],
+                "args": [{"type": T}, [], matrix.READ_OPTIONS],
             }, "A"
         if suffix == "users":
             return {
@@ -997,19 +1061,15 @@ class ProofRun:
         return {"target": "client", "method": "getMessage", "args": [self.ctx["m_x"]]}, "X"
 
     def _proc_guest_role(self, case: matrix.Case, suffix: str) -> CaseResult:
-        token = self._tokens.get("guest")
-        if token is None:
+        session = self.sessions.get("guest")
+        if session is None:
             return self._result(
                 case,
                 "-",
-                "not run: no server-issued guest token",
+                "not run: no guest session",
                 "-",
-                matrix.Verdict(matrix.INCONCLUSIVE, "guest control did not produce a token"),
+                matrix.Verdict(matrix.INCONCLUSIVE, "the guest control did not create a guest"),
             )
-        session = self.sessions.get("guest")
-        if session is None:
-            session = self._session("guest", token, max_api_calls=20)
-            self._send(session, "set_rest_user", max_calls=1, user_id=self.ctx["guest_id"])
         return self._probe_case(case, session, suffix)
 
     def _proc_anonymous(self, case: matrix.Case, suffix: str) -> CaseResult:
@@ -1054,65 +1114,187 @@ class ProofRun:
         )
 
     def _proc_poll_vote(self, case: matrix.Case, _arg: str) -> CaseResult:
-        poll = self.api.raw(
-            "POST",
-            "/polls",
-            body={"name": "server poll", "options": [{"text": "yes"}], "user_id": self.ctx["B"]},
-        )
-        poll_id = _dig(poll.body, "poll.id")
-        option_id = None
-        options = _dig(poll.body, "poll.options")
-        if isinstance(options, list) and options and isinstance(options[0], dict):
-            option_id = options[0].get("id")
-        if not poll.ok or not poll_id:
-            return self._result(
-                case,
-                "-",
-                "not set up",
-                f"server POST /polls -> {poll.status}/{poll.code}",
-                matrix.Verdict(matrix.INCONCLUSIVE, "server could not create a poll"),
+        """Polls cannot be overridden per channel, so they are enabled on the type
+        briefly: B's poll message is created, A's vote must still be refused by the
+        permission layer, the server's identical vote succeeds; then polls go off
+        again (verified) and A's vote is repeated under the production config."""
+        on = self._type_features_on({"polls": True})
+        vote_args: list[Any] = []
+        restored: str | None = None
+        try:
+            poll = self.api.raw(
+                "POST",
+                "/polls",
+                body={
+                    "name": "server poll",
+                    "options": [{"text": "yes"}],
+                    "user_id": self.ctx["B"],
+                },
             )
-        self.polls.append((str(poll_id), self.ctx["B"]))
-        msg = self.api.raw(
-            "POST",
-            f"/channels/{T}/{self.ctx['AB']}/message",
-            body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
-        )
-        message_id = _dig(msg.body, "message.id")
-        if not msg.ok or not message_id:
-            return self._result(
-                case,
-                "-",
-                "not set up",
-                f"server poll message -> {msg.status} / code {msg.code} ({msg.message})",
-                matrix.Verdict(
-                    matrix.INCONCLUSIVE,
-                    "server could not attach the poll to a message in AB (polls are off)",
-                ),
+            poll_id = _dig(poll.body, "poll.id")
+            options = _dig(poll.body, "poll.options")
+            option_id = (
+                options[0].get("id")
+                if isinstance(options, list) and options and isinstance(options[0], dict)
+                else None
             )
-        reply = self._send(
-            self.sessions["A"],
-            "call",
-            target="client",
-            method="castPollVote",
-            args=[message_id, poll_id, {"option_id": option_id}],
+            if poll.ok and poll_id:
+                self.polls.append((str(poll_id), self.ctx["B"]))
+            msg = self.api.raw(
+                "POST",
+                f"/channels/{T}/{self.ctx['AB']}/message",
+                body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
+            )
+            message_id = _dig(msg.body, "message.id")
+            if not (poll.ok and msg.ok and message_id):
+                restored = self._type_features_restore({"polls": True})
+                return self._result(
+                    case,
+                    "-",
+                    "not set up",
+                    f"polls on ({on.status}); poll {poll.status}; poll message {msg.status} / "
+                    f"code {msg.code} ({msg.message}); {restored}",
+                    matrix.Verdict(matrix.INCONCLUSIVE, "no poll message could be created in AB"),
+                )
+            vote_args = [message_id, poll_id, {"option_id": option_id}]
+            reply = self._send(
+                self.sessions["A"], "call", target="client", method="castPollVote", args=vote_args
+            )
+            record = self._failing_record(reply)
+            control_ok, control_desc = False, "no control"
+            if record is not None:
+                body = matrix.deep_merge(record.get("body"), {"user_id": self.ctx["A"]})
+                result = self.api.raw("POST", "/" + str(record.get("path")).lstrip("/"), body=body)
+                control_ok = result.ok
+                control_desc = f"server replay POST -> {result.status}"
+        finally:
+            if restored is None:
+                restored = self._type_features_restore({"polls": True})
+        production = self._send(
+            self.sessions["A"], "call", target="client", method="castPollVote", args=vote_args
         )
         status, code = _status_code(reply)
         outcome = "success" if reply.ok else matrix.classify(status, code)
-        record = self._failing_record(reply)
-        control_ok = False
-        control_desc = "no control"
-        if record is not None:
-            body = matrix.deep_merge(record.get("body"), {"user_id": self.ctx["A"]})
-            result = self.api.raw("POST", "/" + str(record.get("path")).lstrip("/"), body=body)
-            control_ok = result.ok
-            control_desc = f"server replay POST -> {result.status}"
+        verdict = matrix.refused_verdict(outcome, control_ok)
+        if production.ok:
+            verdict = matrix.Verdict(matrix.FAIL, "succeeded under the production configuration")
         return self._result(
             case,
             _request_line(record, self.ctx),
-            _observed(reply),
+            f"polls on: {_observed(reply)}; polls off (production): {_observed(production)}",
             control_desc,
-            matrix.refused_verdict(outcome, control_ok),
+            verdict,
+            {
+                "stream_message": reply.message,
+                "production_message": production.message,
+                "feature_override": {
+                    "scope": f"type {T}",
+                    "features": {"polls": True},
+                    "set_status": on.status,
+                    "restored": restored,
+                },
+            },
+        )
+
+    def _b_member_views(self, marker: str) -> dict[str, Any]:
+        """Whether B can read ``marker`` from A's membership, by each read B has."""
+        b = self.sessions["B"]
+        query = self._send(
+            b,
+            "call",
+            target="channel",
+            method="query",
+            args=[matrix.READ_OPTIONS],
+            type=T,
+            id=self.ctx["AB"],
+        )
+        members = self._send(
+            b,
+            "call",
+            target="channel",
+            method="queryMembers",
+            args=[{}],
+            type=T,
+            id=self.ctx["AB"],
+        )
+        events = self._events("B")
+        return {
+            "channel_query": _observed(query),
+            "channel_query_has_marker": bool(matrix.find_terms(_responses(query), [marker])),
+            "query_members": _observed(members),
+            "query_members_has_marker": bool(matrix.find_terms(_responses(members), [marker])),
+            "event_types": sorted({str(e.get("type")) for e in events}),
+            "events_have_marker": bool(matrix.find_terms(events, [marker])),
+        }
+
+    def _proc_member_custom(self, case: matrix.Case, _arg: str) -> CaseResult:
+        flat = self.prefix.replace("-", "")
+        marker = f"memberfree{flat}"
+        self.ctx["member_marker"] = marker
+        path = f"/channels/{T}/{self.ctx['AB']}"
+        undo = {"unset": ["glow_note"]}
+        self._events("B", wait_ms=0)
+        reply = self._send(
+            self.sessions["A"],
+            "call",
+            target="channel",
+            method="updateMemberPartial",
+            args=[{"set": {"glow_note": marker}}],
+            type=T,
+            id=self.ctx["AB"],
+        )
+        production = self._b_member_views(marker)
+        self.api.raw("PATCH", path + "/member", body=undo, params={"user_id": self.ctx["A"]})
+        # Control: grant read-channel-members on AB (the first configuration) and
+        # repeat A's identical write; B's same reads must now find it.
+        marker2 = f"memberctl{flat}"
+        grant = {"grants": {"channel_member": ["read-channel-members"]}}
+        on = self.api.raw("PATCH", path, body={"set": {"config_overrides": grant}})
+        try:
+            self._events("B", wait_ms=0)
+            creply = self._send(
+                self.sessions["A"],
+                "call",
+                target="channel",
+                method="updateMemberPartial",
+                args=[{"set": {"glow_note": marker2}}],
+                type=T,
+                id=self.ctx["AB"],
+            )
+            granted = self._b_member_views(marker2)
+        finally:
+            off = self.api.raw("PATCH", path, body={"set": {"config_overrides": {}}})
+            self.api.raw("PATCH", path + "/member", body=undo, params={"user_id": self.ctx["A"]})
+        leaks = [
+            name
+            for name in ("channel_query", "query_members", "events")
+            if production[f"{name}_has_marker" if name != "events" else "events_have_marker"]
+        ]
+        found = [
+            name
+            for name in ("channel_query", "query_members", "events")
+            if granted[f"{name}_has_marker" if name != "events" else "events_have_marker"]
+        ]
+        status, code = _status_code(reply)
+        outcome = "success" if reply.ok else matrix.classify(status, code)
+        verdict = matrix.no_leak_verdict(
+            outcome, [f"B read it via {n}" for n in leaks], on.ok and creply.ok, bool(found)
+        )
+        if verdict.label == matrix.HOLDS_FILTERED:
+            verdict = matrix.Verdict(
+                matrix.HOLDS_FILTERED,
+                "A's write is accepted and stored, but B cannot read it without "
+                f"read-channel-members; with that grant B reads it via {', '.join(found)}",
+            )
+        return self._result(
+            case,
+            _request_line(reply.last_request, self.ctx),
+            _observed(reply),
+            f"with read-channel-members granted on AB ({on.status}): A's write "
+            f"{_observed(creply)}; B found it via {found or 'nothing'}; override removed "
+            f"({off.status})",
+            verdict,
+            {"production_b_views": production, "granted_b_views": granted},
         )
 
     def _server_user(self, user_id: str) -> dict[str, Any]:

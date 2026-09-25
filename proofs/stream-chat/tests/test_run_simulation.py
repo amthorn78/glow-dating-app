@@ -13,7 +13,7 @@ from typing import Any
 import jwt
 
 import tests  # noqa: F401
-from glow_stream_proof import matrix
+from glow_stream_proof import configuration, matrix, proof_run
 from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.credentials import ServerCredentials
 from glow_stream_proof.proof_run import ProofRun
@@ -89,6 +89,10 @@ class FakeServer:
             return ok(method, path, {"poll": {"id": "p1", "options": [{"id": "o1"}]}})
         if path.endswith("/message"):
             return ok(method, path, {"message": {"id": "m-poll"}})
+        if path == "/api/v2/chat/channeltypes/glow-match" and method == "GET":
+            return ok(method, path, dict(configuration.MATCH_FEATURES), 200)
+        if path == "/api/v2/app" and method == "GET":
+            return ok(method, path, {"app": {"guest_user_creation_disabled": True}}, 200)
         if path in ("/api/v2/app", "/api/v2/chat/channeltypes", "/api/v2/roles"):
             return ok(method, path, {"app": {}, "channel_types": {}, "roles": []}, 200)
         return ok(method, path, {"file": "https://cdn.invalid/f"})
@@ -129,6 +133,8 @@ class FakeSession:
         if op == "events":
             return Reply(True, {"events": []}, None)
         if op == "guest":
+            if self.label == "guest":
+                return Reply(True, {"me": {"id": params["user"]["id"], "role": "guest"}}, None)
             return Reply(False, None, {"status": 403, "code": 17, "message": "no"})
         record: dict[str, Any] = {
             "method": "POST",
@@ -147,6 +153,13 @@ class FakeSession:
 
 
 class SimulationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._settle = proof_run.TYPE_CHANGE_SETTLE_SECONDS
+        proof_run.TYPE_CHANGE_SETTLE_SECONDS = 0
+
+    def tearDown(self) -> None:
+        proof_run.TYPE_CHANGE_SETTLE_SECONDS = self._settle
+
     def test_full_orchestration_against_fakes(self) -> None:
         ledger = UsageLedger()
         server = FakeServer(ledger)
@@ -179,6 +192,7 @@ class SimulationTest(unittest.TestCase):
         self.assertIn("AP11", {c["check_id"] for c in results["checks"]})
         self.assertIn("users_task", results["cleanup"])
         self.assertLessEqual(ledger.run.users, 20)
+        self.assertIn("guest_id", run.ctx)
 
 
 if __name__ == "__main__":

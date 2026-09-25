@@ -86,6 +86,9 @@ class Case:
     phase: int = 50
     # Channel-level feature overrides applied to AB for the permission-layer phase.
     feature_override: Mapping[str, Any] = field(default_factory=dict)
+    # Type-level features enabled briefly for features Stream cannot override per
+    # channel (custom events, polls); restored and verified right after.
+    type_override: Mapping[str, Any] = field(default_factory=dict)
 
 
 # -- placeholders ---------------------------------------------------------------
@@ -694,11 +697,12 @@ def _content() -> list[Case]:
                 "A",
                 "channel",
                 "sendEvent",
-                [{"type": "glow.proof", "glow_text": "custom event free text"}],
+                [{"type": "glow_proof", "glow_text": "custom event free text"}],
                 channel=ab,
             ),
             control=_replay(body_patch={"event": a_user}),
             phase=30,
+            type_override={"custom_events": True},
         ),
         Case(
             id="S13",
@@ -744,26 +748,14 @@ def _content() -> list[Case]:
             group="content",
             actor="A",
             token="A's valid token",
-            action="set a custom field on A's own membership in AB",
-            expect="refused",
-            step=_call(
-                "A",
-                "channel",
-                "updateMemberPartial",
-                [{"set": {"glow_note": "member free text"}}],
-                channel=ab,
+            action="set a free-text custom field on A's own membership in AB (can B read it?)",
+            expect="no-leak",
+            control=Control(
+                kind="custom",
+                note="server sets the same field; B's reads with read-channel-members granted",
             ),
-            control=_replay(
-                keep_params=("user_id",),
-                undo=(
-                    ServerRequest(
-                        "PATCH",
-                        "/channels/" + T + "/{AB}/member",
-                        {"unset": ["glow_note"]},
-                        {"user_id": "{A}"},
-                    ),
-                ),
-            ),
+            procedure="member-custom",
+            leak_terms=("{member_marker}",),
             phase=30,
         ),
         Case(
@@ -878,6 +870,33 @@ def _escalation() -> list[Case]:
                 undo=(
                     ServerRequest(
                         "PATCH", "/users", {"users": [{"id": "{A}", "unset": ["teams"]}]}
+                    ),
+                ),
+            ),
+            phase=40,
+        ),
+        Case(
+            id="E6",
+            group="self-escalation",
+            actor="A",
+            token="A's valid token",
+            action="set A's own channel_role to channel_moderator (member partial update)",
+            expect="refused",
+            step=_call(
+                "A",
+                "channel",
+                "updateMemberPartial",
+                [{"set": {"channel_role": "channel_moderator"}}],
+                channel=(T, "{AB}"),
+            ),
+            control=_replay(
+                keep_params=("user_id",),
+                undo=(
+                    ServerRequest(
+                        "PATCH",
+                        "/channels/" + T + "/{AB}/member",
+                        {"set": {"channel_role": "channel_member"}},
+                        {"user_id": "{A}"},
                     ),
                 ),
             ),

@@ -85,6 +85,7 @@ class MatrixDefinitionTest(unittest.TestCase):
             "E3",
             "E4",
             "E5",
+            "E6",
             # realtime
             "RT1",
             "RT2",
@@ -126,6 +127,7 @@ class MatrixDefinitionTest(unittest.TestCase):
                 "m_b",
                 "m_x",
                 "m_a_text",
+                "member_marker",
                 "m_b_text",
                 "xd_text",
                 "prefix",

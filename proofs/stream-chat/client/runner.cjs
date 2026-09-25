@@ -292,6 +292,18 @@ async function handle(cmd) {
   }
 }
 
+// The SDK can reject promises it does not await (for example on channels it
+// invalidated at disconnect). Record them instead of letting Node exit.
+const asyncErrors = [];
+process.on('unhandledRejection', (reason) => {
+  const text = reason && reason.message ? String(reason.message) : String(reason);
+  asyncErrors.push(`unhandledRejection: ${text}`.slice(0, 300));
+});
+process.on('uncaughtException', (err) => {
+  const text = err && err.message ? String(err.message) : String(err);
+  asyncErrors.push(`uncaughtException: ${text}`.slice(0, 300));
+});
+
 const rl = readline.createInterface({ input: process.stdin });
 let chain = Promise.resolve();
 rl.on('line', (line) => {
@@ -327,6 +339,7 @@ rl.on('line', (line) => {
     reply.api_calls = commandCalls;
     reply.api_calls_total = totalCalls;
     reply.ws_attempts = wsAttempts - wsBefore;
+    reply.async_errors = asyncErrors.splice(0, asyncErrors.length);
     process.stdout.write(JSON.stringify(reply) + '\n');
   });
 });

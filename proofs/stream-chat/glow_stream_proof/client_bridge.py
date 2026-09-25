@@ -57,6 +57,7 @@ class Reply:
     requests: list[dict[str, Any]] = field(default_factory=list)
     api_calls: int = 0
     ws_attempts: int = 0
+    async_errors: list[str] = field(default_factory=list)
 
     @property
     def status(self) -> int | None:
@@ -159,6 +160,7 @@ class ClientSession:
             requests=self._redactor.value(raw.get("requests") or []),
             api_calls=int(raw.get("api_calls") or 0),
             ws_attempts=int(raw.get("ws_attempts") or 0),
+            async_errors=[self._redactor.text(str(e)) for e in raw.get("async_errors") or []],
         )
         if reply.api_calls:
             self._ledger.reserve("api_calls", reply.api_calls, source="client")
