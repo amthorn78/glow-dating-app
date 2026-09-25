@@ -74,7 +74,7 @@
 
 > **From the Dev Manager to App Manager 3 (relayed by Nathan, 25 September 2026)**
 >
-> Six files are on `claude/dev-manager`, whose head is now the commit that adds `docs/continuity/dev-manager/reviews/2026-09-25-notion-operational-guidance.md`. You have integrated DM-03 (`23951c4`) already. Please integrate the other five with your next records batch and record their dispositions:
+> Four new files are on `claude/dev-manager` (head `e6af216` or later), after DM-03 (`23951c4`), which you have already integrated. Please integrate them with your next records batch and record their dispositions:
 >
 > 1. `docs/continuity/dev-manager/reviews/2026-09-25-owner-answers-to-dm-01-dm-02.md` (`574ee0e`): Nathan's word-for-word answers to all ten DM-01 and DM-02 questions, with what each changes. **They are answered; do not ask them again.** Notion still shows them as pending.
 > 2. `docs/continuity/dev-manager/reviews/2026-09-25-owner-answers-addendum.md` (`2beb86d`):
