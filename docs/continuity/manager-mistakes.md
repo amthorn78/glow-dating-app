@@ -30,6 +30,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM2-09 | 25 Sep 2026 | process | The next-manager start prompt left PF00, PF01 and the Claude handoff out of the required reading | App Manager 2, while fixing AM2-08 |
 | AM2-10 | 25 Sep 2026 | process | Tried to run the Setup script by hand in the manager session instead of handing over to a new session | Tool permission guard, then Nathan |
 | AM2-11 | 25 Sep 2026 | execution | Three Notion slips: a bare `.md` filename became a broken link, an update's match text omitted link markup, and a status block called current policy "history" | App Manager 2's readbacks |
+| AM3-01 | 25 Sep 2026 | execution | A Notion readback query passed a bare property filter where the tool requires a group, and failed validation | The Notion tool's input validation |
 
 ## App Manager 2
 
@@ -124,3 +125,12 @@ Each Claude manager records its own mistakes here when they are found. A mistake
   - Avoid bare `name.md` in Notion text.
   - Match link markup exactly as fetched.
   - Read the surrounding sections before writing a statement about them.
+
+## App Manager 3
+
+### AM3-01 — A Notion query with an unwrapped filter (execution)
+
+- **What happened:** after correcting the Work Register's P05.3 row, App Manager 3 read it back with a rows-mode query whose filter was a single property condition. The tool requires the filter to be a group, so the call failed input validation.
+- **Caught by:** the Notion tool's input validation.
+- **Effect:** none. The query was re-sent with the condition inside a group and confirmed the update.
+- **Prevention:** in rows-mode Notion queries, always wrap conditions in a group, as the reconciliation's first query did.
