@@ -1,6 +1,6 @@
 # M02 — Claude setup and workflow optimization
 
-**Status: done.** M02 merged on 24 September 2026 through [PR18](https://github.com/amthorn78/glow-dating-app/pull/18). The merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff` has the tree of the reviewed head `5e3fb2f`. The review disposition and the queued follow-ups are in "Delta review of `5e3fb2f`, merge and follow-ups" below; the merge receipt is in the evidence record.
+**Status: done.** M02 merged on 24 September 2026 through [PR18](https://github.com/amthorn78/glow-dating-app/pull/18). The merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff` has the tree of the reviewed head `5e3fb2f`. The review disposition and the recorded follow-ups are in "Delta review of `5e3fb2f`, merge and follow-ups" below; the merge receipt is in the evidence record.
 
 Owner: Nathan Amthor. Managers: App Manager 1 (first Claude manager, 24 September 2026), handing over to App Manager 2. Starting main: `07b3b10720ddd333ada807a56595f369263714fe` (PR16), tree `fda515b624c4916dbb7d037beec8e276a62b2e3b`. Assignment: [initiation](claude-code-initiation.md) — review, then carry out the smallest useful app-only setup/instruction/workflow optimization. Feature work stays paused; P06.1 is not dispatched.
 
@@ -197,12 +197,12 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 
 | Nit | Finding | Disposition |
 |---|---|---|
-| N1 | Each step runs in its own session (`setsid`), so a `SIGKILL` sent to the script's process group leaves the running step alive. A signal between the fork and `setsid()` is missed | Recorded as a limit in the evidence record. The code change is queued as follow-up hardening |
-| N2 | The pin test also counts pins inside YAML comments | Queued as follow-up hardening: strip comments before matching and counting |
+| N1 | Each step runs in its own session (`setsid`), so a `SIGKILL` sent to the script's process group leaves the running step alive. A signal between the fork and `setsid()` is missed | Recorded as a limit in the evidence record. The code change is a recorded follow-up (hardening) |
+| N2 | The pin test also counts pins inside YAML comments | A recorded follow-up (hardening): strip comments before matching and counting |
 | N3 | The inventory's TypeSafe row overstated containment | Fixed in the close-out |
-| N4 | The M02-C1 limits said the next run's import check rejects a partial Python install. A tree missing `bin/python3`, pip and the man pages passes it | Corrected in the evidence record. An optional completion stamp is queued as follow-up hardening |
+| N4 | The M02-C1 limits said the next run's import check rejects a partial Python install. A tree missing `bin/python3`, pip and the man pages passes it | Corrected in the evidence record. An optional completion stamp is a recorded follow-up (hardening) |
 | N5 | One `AGENTS.md` bullet lacked the `.claude` exception | Fixed in the close-out |
-| N6 | `extend-exclude = ["*.md"]` also skips Python inside a directory named `*.md` | Recorded in the CI policy; adding such a file is full scope anyway. Narrowing the pattern is queued as follow-up hardening |
+| N6 | `extend-exclude = ["*.md"]` also skips Python inside a directory named `*.md` | Recorded in the CI policy; adding such a file is full scope anyway. Narrowing the pattern is a recorded follow-up (hardening) |
 
 **Codex review after the merge.** Marking PR18 ready started Codex's automatic code and security review of `5e3fb2f`. It finished at 00:04 UTC on 25 September, five minutes after the merge.
 
@@ -210,14 +210,13 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 - The code review posted one P2, "Reject directory-shaped link destinations". In the linking step (`scripts/bootstrap-toolchain.sh:281-284`), if a destination is a real directory, `ln -sfn` creates the link inside it and the script still reports success.
 - App Manager 2 reproduced the `ln` behavior in a scratch directory. The lines date from App Manager 1's first version of the script, so the delta review did not cover them.
 - In the `Glow app` environment the four link paths are symlinks, which `ln -sfn` replaces correctly. The one-time paste is unaffected.
-- The fix joins the hardening item: refuse a destination that is not a symlink, or use `ln -T`, and check each link after creating it.
+- The fix is a recorded follow-up (hardening): refuse a destination that is not a symlink, or use `ln -T`, and check each link after creating it.
 
-**Queued work items.** One runs at a time, and Nathan chooses the order. The manager recommends this one:
+**Recorded follow-ups.** These are outside PF01's sequence. After M02, the plan's next step is a proposal on whether to resume P06.1: the [initiation](claude-code-initiation.md) assignment ends *"Complete the optimization before proposing whether to resume P06.1."* The manager presents these follow-ups with that proposal, and Nathan schedules them:
 
-1. **Rendered-test diagnosis.** Intermittent rendered failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
-2. **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
-3. **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
-4. **P06.1 proposal:** propose, don't dispatch.
+- **Rendered-test failures.** Intermittent failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
+- **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
+- **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
 
 ## Review and merge gates
 
