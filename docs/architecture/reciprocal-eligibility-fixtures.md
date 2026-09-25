@@ -320,5 +320,6 @@ revision increments, policy and absent-block races; DB11 proves queries/cursors;
 DB05/DB06 prove interaction/contact races; DB07/DB08 prove durable events/replay.
 A01/A07 govern supported HDE rights/contracts/throughput; A02 schema/roles; A04
 provider/native access; A05 launch/operator policies; A08 chat enforcement. A06
-stays disabled. Fixtures complete none of those proofs. Same logical DB/app-schema
-direction and every protected HDE/shared-resource boundary remain unchanged.
+stays disabled. Fixtures complete none of those proofs. They change neither the
+database placement, now the app's own logical database on HDE's service (ADR
+0004), nor any protected HDE/shared-resource boundary.

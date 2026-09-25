@@ -41,6 +41,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-07 | 25 Sep 2026 | accuracy | Recorded Nathan's principle as conditional on the I1 review along with the display rule, and left ADR 0003's interim safeguard out of PF01 | The Dev Manager (DM-03 G3, G4) |
 | AM3-08 | 25 Sep 2026 | accuracy | Two consistency slips in one batch: the brief both granted and excluded `.github/`, and freezing the Claude handoff left two operations pages citing its inventory as current | The Dev Manager (DM-03 E1, E2) |
 | AM3-09 | 25 Sep 2026 | follow-through | Revised PF00 and PF01 several times without updating Notion's operating procedure, which still cited PF00 1.4 and PF01 1.5 | The Dev Manager (Notion operational-guidance note) |
+| AM3-10 | 25 Sep 2026 | accuracy | Applied ADR 0004 in some documents and missed six others that still stated the superseded same-logical-database preference as current | App Manager 3, while writing the HDE contract request |
 
 ## App Manager 2
 
@@ -212,3 +213,19 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** Notion named outdated canon revisions as the procedure's authority. No decision is known to have relied on it.
 - **Correction:** the operating procedure is rewritten to match the repository and names the commit it was last matched to. The history moved to a sub-page.
 - **Prevention:** the repository–Notion match check that ends every records batch (manager workflow, "Notion and the repository").
+
+### AM3-10 — ADR 0004 applied in some documents and missed in others (accuracy)
+
+- **What happened:** the `9b548de` batch applied ADR 0004 (the app's own logical database, OD-18) to PF01, the migration plan, the P11 cases, the domain boundaries, two fixture notes, provider conformance and one row of the resource-ownership record. Six living documents still stated the superseded same-logical-database preference as current:
+  - `docs/operations/environments.md`, in five places;
+  - `docs/operations/resource-ownership.md`, in its opening paragraph and its persistence section;
+  - `docs/operations/configuration.md`;
+  - `docs/operations/operational-runbooks.md`, under backup and restore;
+  - `docs/architecture/data-model.md`;
+  - `docs/architecture/reciprocal-eligibility-fixtures.md`.
+
+  One paragraph of `docs/operations/migration-plan.md` also sat outside its supersession note. PR26's description called the architecture notes aligned.
+- **Caught by:** App Manager 3, while collecting the app's HDE requirements for the HDE contract request.
+- **Effect:** none known. No session or decision relied on those passages, and P11 has not started.
+- **Correction:** each passage now carries a supersession note or a corrected sentence citing ADR 0004. The State of the App snapshot, dated records and source snapshots keep their history.
+- **Prevention:** this repeats AM3-08's kind of slip: a change made in one home and missed in others. Its prevention is now a checklist item, "Supersession sweep", in step 5 of the manager workflow.

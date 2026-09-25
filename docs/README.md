@@ -25,6 +25,7 @@ Each kind of fact has one home. Other documents link to it rather than copy it.
 | Routing: the current item, next actions, who waits on whom | The [current handoff](continuity/current-handoff.md), kept under 5 KB |
 | Governing rules | `AGENTS.md` and `CLAUDE.md`, PF01, the manager workflow, the CI policy and the Dev Manager charter |
 | Architecture decisions | `docs/adr/` |
+| What the app asks of HDE's contract, and the delivered contract's receipt | The [HDE contract request](planning/hde-contract-request.md); the receipt goes in `docs/architecture/` when the contract arrives |
 | Nathan's standing directions | The [owner-direction register](continuity/owner-directions.md) |
 | Dev Manager consultations, verdicts and dispositions | The [review log](continuity/dev-manager/README.md) |
 | Managers' mistakes | The [mistakes log](continuity/manager-mistakes.md) |

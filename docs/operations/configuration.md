@@ -75,13 +75,14 @@ secret values, databases, volumes or HDE networking. See
 [resource ownership](resource-ownership.md) for current metadata and boundaries.
 Local served fixture configuration rejects future target identity variables.
 
-[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles is the audited direction. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
+[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles was the audited direction; [ADR 0004](../adr/0004-app-database-placement.md) has since given the app its own logical database on the same service. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
 
 The current validator checks **API/worker service identity**, not logical database,
 schema/table ownership or role grants. It deliberately refuses the protected
 Postgres service ID. Do not list that protected container as app-owned to make a
-profile pass. Future shared logical database acceptance requires the actual audit
-manifest and a schema/role-aware validator before activation. In particular,
+profile pass. Future database acceptance, in the app's own logical database on
+HDE's service (ADR 0004), requires the actual target manifest and a
+database/role-aware validator before activation. In particular,
 `public` is not wholly app-owned; `public.hde_body_graphs_current` is an identified
 engine-owned example. No wholesale schema/table reset is authorized. The 32 P02
 models remain provisional until compared with the actual ownership/reuse map.

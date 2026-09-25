@@ -50,4 +50,6 @@ The development HTTP presentation remains pending/fixture only. Internal `glow_d
 
 ## Adapter activation record still required
 
+The questions the app puts to HDE for this record are in the [HDE contract request](../planning/hde-contract-request.md) (OD-23).
+
 Before live use, record the supported contract/release, exact environment and non-secret service identity, authorized operation/data scope, input/output mapping, error/idempotency/retry model, output/cache rights, deletion responsibility and test evidence. Secure credentials must remain outside documents and source control. A01/A07 can block live compatibility while independent application work continues. No production endpoint URL or engine request schema is guessed here.
