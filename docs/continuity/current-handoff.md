@@ -14,7 +14,8 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 **M02 is merged.** [PR18](https://github.com/amthorn78/glow-dating-app/pull/18) merged on 24 September 2026 at 23:59 UTC as merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff`. That commit has the tree of the exact reviewed head `5e3fb2f`.
 
 - **Records:** the [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md) holds every session's results, both reviews, the CI evidence and the merge receipt. The [M02 brief](../planning/claude-setup-optimization.md) holds the review dispositions and, in its last sections, the queued follow-ups.
-- **Close-out:** the receipt, the fixes for three documentation nits and the pruned M02 prompts landed through a documentation-only PR, the one that carries this handoff.
+- **Close-out:** the receipt, the fixes for three documentation nits and the pruned M02 prompts landed through documentation-only [PR19](https://github.com/amthorn78/glow-dating-app/pull/19).
+- **Codex review after the merge.** Marking PR18 ready started Codex's automatic review of `5e3fb2f`, and it finished five minutes after the merge. It reported one P2 in the Setup script's linking step, which the manager verified. It does not affect the paste here, and its fix is queued. See the brief.
 
 - **Pending owner action: paste the Setup script once.**
   - Nathan pastes `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script, unchanged. It is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`.
@@ -53,7 +54,7 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 3. **Confirm the Setup-script paste** with Nathan if it is still pending.
 4. **Choose the next work item with Nathan**, one at a time, from the queue in the brief's section "Delta review of `5e3fb2f`, merge and follow-ups". The manager's recommended order:
    1. the rendered-test diagnosis;
-   2. the Setup-script and pin-test hardening (review nits N1, N2, N6 and an optional completion stamp);
+   2. the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp;
    3. the stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`, which is ordinary documentation;
    4. a P06.1 proposal. P06.1 needs Stream access, plan and budget, a secret-injection decision and a chat-history policy. Propose it; don't dispatch it.
 

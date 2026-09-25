@@ -204,10 +204,18 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 | N5 | One `AGENTS.md` bullet lacked the `.claude` exception | Fixed in the close-out |
 | N6 | `extend-exclude = ["*.md"]` also skips Python inside a directory named `*.md` | Recorded in the CI policy; adding such a file is full scope anyway. Narrowing the pattern is queued as follow-up hardening |
 
+**Codex review after the merge.** Marking PR18 ready started Codex's automatic code and security review of `5e3fb2f`. It finished at 00:04 UTC on 25 September, five minutes after the merge.
+
+- The security review posted no finding.
+- The code review posted one P2, "Reject directory-shaped link destinations". In the linking step (`scripts/bootstrap-toolchain.sh:281-284`), if a destination is a real directory, `ln -sfn` creates the link inside it and the script still reports success.
+- App Manager 2 reproduced the `ln` behavior in a scratch directory. The lines date from App Manager 1's first version of the script, so the delta review did not cover them.
+- In the `Glow app` environment the four link paths are symlinks, which `ln -sfn` replaces correctly. The one-time paste is unaffected.
+- The fix joins the hardening item: refuse a destination that is not a symlink, or use `ln -T`, and check each link after creating it.
+
 **Queued work items.** One runs at a time, and Nathan chooses the order. The manager recommends this one:
 
 1. **Rendered-test diagnosis.** Intermittent rendered failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
-2. **Setup-script and pin-test hardening:** N1, N2, N6 and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
+2. **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
 3. **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
 4. **P06.1 proposal:** propose, don't dispatch.
 
