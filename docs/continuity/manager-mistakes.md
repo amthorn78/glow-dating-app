@@ -32,6 +32,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM2-11 | 25 Sep 2026 | execution | Three Notion slips: a bare `.md` filename became a broken link, an update's match text omitted link markup, and a status block called current policy "history" | App Manager 2's readbacks |
 | AM3-01 | 25 Sep 2026 | execution | A Notion readback query passed a bare property filter where the tool requires a group, and failed validation | The Notion tool's input validation |
 | AM3-02 | 25 Sep 2026 | follow-through | Pushed records that did not recommend ultracode for the I1 review, although the manager had committed to recommend it if the scorer flagged it, and the scorer did | App Manager 3, while syncing Notion |
+| AM3-03 | 25 Sep 2026 | execution | Ran the trusted classifier with `--head HEAD` instead of a SHA; it failed closed | The classifier's fail-closed output |
 
 ## App Manager 2
 
@@ -143,3 +144,10 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none on the review. One extra documentation commit, which also became the review head.
 - **Correction:** the prompt, the brief and the handoff now recommend max with ultracode, as committed. Nathan picks the level.
 - **Prevention:** before recording a level, re-read what the manager has already promised: the handoff, the brief, the Notion rows and its messages to Nathan. Record a conditional level commitment in the brief's "Reasoning levels" when it is made.
+
+### AM3-03 — The classifier given a symbolic head (execution)
+
+- **What happened:** to classify its own documentation delta, App Manager 3 passed `--head HEAD` to the trusted classifier. The documented command resolves `head=$(git rev-parse HEAD)` first. The classifier printed `{"full": true, "reason": "missing-or-invalid-comparison", …}`.
+- **Caught by:** the classifier's fail-closed output.
+- **Effect:** none. The re-run with the full SHA printed `ordinary-docs-only` for `9ff600f..cd72000`.
+- **Prevention:** use the manager workflow's classification command as written.
