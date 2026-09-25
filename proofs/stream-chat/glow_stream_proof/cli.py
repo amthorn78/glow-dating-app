@@ -148,19 +148,25 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     ctx.say(f"run {prefix} started {started}")
     stop_reason = None
     cleanup_needed = False
+
+    def progress() -> None:
+        write_json(f"run-{prefix}-progress.json", run.results(), ctx.secrets)
+
     try:
         preflight = run.preflight()
         ctx.say(f"preflight: {preflight}")
         cleanup_needed = True
         run.setup()
         run.authorized_path()
-        run.run_matrix(only)
-        run.reconnect_check()
+        progress()
+        run.run_matrix(only, progress)
     except RunStopped as exc:
         stop_reason = f"stopped: {exc}"
     except GuardrailStop as exc:
         stop_reason = f"guardrail: {exc}"
         cleanup_needed = "stopping at once" not in str(exc)
+    except Exception as exc:  # recorded, never hidden; cleanup still runs
+        stop_reason = f"harness error: {type(exc).__name__}: {ctx.redactor.text(str(exc))}"
     finally:
         if cleanup_needed:
             try:

@@ -29,14 +29,17 @@ DEFAULT_TYPES = ("commerce", "gaming", "livestream", "messaging", "team")
 CLIENT_APP_ROLES = ("user", "guest", "anonymous")
 MATCH_MEMBER_GRANTS = ("read-channel", "read-channel-members")
 
-# Features of the glow-match type. Typing and read events stay on so the proof
-# can record what they carry; the run decides whether they may stay on.
+# Features of the glow-match type. Read events stay on: the proof records that
+# they carry no client free text. Typing events are off: on 25 September 2026
+# the first live run (typing on) showed that a client's typing.start event
+# delivers arbitrary custom fields, including free text, to the other member,
+# and no permission governs typing events.
 MATCH_FEATURES: dict[str, Any] = {
     "automod": "disabled",
     "automod_behavior": "flag",
     "max_message_length": 5000,
     "commands": [],
-    "typing_events": True,
+    "typing_events": False,
     "read_events": True,
     "connect_events": False,
     "custom_events": False,

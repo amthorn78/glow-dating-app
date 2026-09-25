@@ -84,6 +84,8 @@ class Case:
     procedure: str | None = None
     leak_terms: tuple[str, ...] = ()
     phase: int = 50
+    # Channel-level feature overrides applied to AB for the permission-layer phase.
+    feature_override: Mapping[str, Any] = field(default_factory=dict)
 
 
 # -- placeholders ---------------------------------------------------------------
@@ -285,7 +287,7 @@ def _tokens_and_access() -> list[Case]:
             actor="A",
             token="A's valid token",
             action="open a WebSocket connection claiming user B (local SDK check skipped)",
-            expect="refused",
+            expect="identity-kept",
             control=Control(kind="custom", session="B", note="B's own token connected as B"),
             procedure="token-ws:T4",
             phase=10,
@@ -528,6 +530,7 @@ def _content() -> list[Case]:
             ),
             control=_replay(body_patch={"message": a_user}),
             phase=30,
+            feature_override={"replies": True},
         ),
         Case(
             id="S3a",
@@ -586,6 +589,7 @@ def _content() -> list[Case]:
                 ),
             ),
             phase=30,
+            feature_override={"reactions": True},
         ),
         Case(
             id="S6",
@@ -603,6 +607,7 @@ def _content() -> list[Case]:
             ),
             control=Control(kind="server-upload", note="server uploads the same file as A"),
             phase=30,
+            feature_override={"uploads": True},
         ),
         Case(
             id="S7",
@@ -620,6 +625,7 @@ def _content() -> list[Case]:
             ),
             control=Control(kind="server-upload", note="server uploads the same image as A"),
             phase=30,
+            feature_override={"uploads": True},
         ),
         Case(
             id="S8",

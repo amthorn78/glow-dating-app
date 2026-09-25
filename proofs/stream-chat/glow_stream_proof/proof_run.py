@@ -12,7 +12,7 @@ import base64
 import json
 import secrets
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -32,6 +32,7 @@ PREFIX_ROOT = "p061i1-"
 TOKEN_TTL_SECONDS = 900
 CLEANUP_RESERVE = 60
 EVENT_WAIT_MS = 2500
+DESTRUCTIVE_PHASE = 70
 T = MATCH_TYPE
 
 
@@ -155,6 +156,7 @@ class ProofRun:
         self.connect_replies: dict[str, Reply] = {}
         self.control_ok: dict[str, bool] = {}
         self.ws_attempts = 0
+        self.started_ns = time.time_ns()
 
     # -- helpers ----------------------------------------------------------------
 
@@ -435,6 +437,19 @@ class ProofRun:
         return [e for e in events if isinstance(e, dict)]
 
     def reconnect_check(self) -> None:
+        try:
+            self._reconnect_check()
+        except GuardrailStop:
+            raise
+        except Exception as exc:  # recorded as it happened
+            self._check(
+                "AP11",
+                "client A disconnects, reconnects over the WebSocket and receives the next message",
+                False,
+                f"harness error: {type(exc).__name__}: {exc}",
+            )
+
+    def _reconnect_check(self) -> None:
         session = self.sessions["A"]
         dis = self._send(session, "disconnect", max_calls=2)
         con = self._send(session, "connect", max_calls=3, user={"id": self.ctx["A"]})
@@ -460,8 +475,15 @@ class ProofRun:
 
     # -- matrix --------------------------------------------------------------------
 
-    def run_matrix(self, only: set[str] | None = None) -> None:
+    def run_matrix(
+        self, only: set[str] | None = None, progress: Callable[[], None] | None = None
+    ) -> None:
+        reconnected = False
         for case in matrix.all_cases():
+            if case.phase >= DESTRUCTIVE_PHASE and not reconnected:
+                # The reconnect check needs AB; the destructive cases come after it.
+                self.reconnect_check()
+                reconnected = True
             if only and case.id not in only:
                 continue
             if not self._remaining_ok():
@@ -485,6 +507,10 @@ class ProofRun:
                     matrix.Verdict(matrix.INCONCLUSIVE, "harness error"),
                 )
             self.case_results.append(result)
+            if progress is not None:
+                progress()
+        if not reconnected:
+            self.reconnect_check()
 
     def _result(
         self,
@@ -524,7 +550,7 @@ class ProofRun:
         control = case.control
         path = "/" + str(record.get("path") or "").lstrip("/")
         params = {
-            k: str(v)
+            k: v if isinstance(v, str) else json.dumps(v)
             for k, v in (record.get("params") or {}).items()
             if k in control.keep_params or k == "payload"
         }
@@ -553,13 +579,50 @@ class ProofRun:
                 undone = self._server(undo)
                 undo_notes.append(f"undo {undo.method} {undone.status}")
         summary = f"server replay {method} -> {result.status}" + (
-            f" / code {result.code}" if result.code is not None else ""
+            f" / code {result.code} ({result.message})" if result.code is not None else ""
         )
         if undo_notes:
             summary += " (" + ", ".join(undo_notes) + ")"
         return result.ok, summary, result.body
 
     def _generic_case(self, case: matrix.Case) -> CaseResult:
+        """Run a case; for a feature-gated case, first with the feature enabled on AB.
+
+        With the feature on (a channel-level override), a refusal can only come
+        from the permission layer, and the server control shows the request is
+        well formed. The override is then removed and the same request is sent
+        under the production configuration, where it must also fail.
+        """
+        if not case.feature_override:
+            return self._evaluate_case(case)
+        assert case.step is not None
+        path = f"/channels/{T}/{self.ctx['AB']}"
+        override = dict(case.feature_override)
+        on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})
+        try:
+            result = self._evaluate_case(case)
+        finally:
+            off = self.api.raw("PATCH", path, body={"set": {"config_overrides": {}}})
+        production = self._step(case.step)
+        result.detail["feature_override"] = {
+            "features": override,
+            "set_status": on.status,
+            "removed_status": off.status,
+        }
+        result.detail["production_config_observed"] = _observed(production)
+        result.observed = (
+            f"feature on: {result.observed}; feature off (production): {_observed(production)}"
+        )
+        if not on.ok:
+            result.verdict = matrix.INCONCLUSIVE
+            result.reason = f"could not enable {override} on AB ({on.status})"
+        if production.ok:
+            result.verdict = matrix.FAIL
+            result.reason = "succeeded under the production configuration"
+            self._undo_client_success(case)
+        return result
+
+    def _evaluate_case(self, case: matrix.Case) -> CaseResult:
         assert case.step is not None
         reply = self._step(case.step)
         status, code = _status_code(reply)
@@ -704,7 +767,7 @@ class ProofRun:
         status, code = _status_code(reply)
         outcome = "success" if reply.ok else matrix.classify(status, code)
         verdict = matrix.refused_verdict(outcome, control.ok)
-        detail = {"token": self._describe_bad(kind, token), "set_user": set_reply.ok}
+        detail = {"token_used": self._describe_bad(kind, token), "set_user": set_reply.ok}
         return self._result(
             case,
             _request_line(reply.last_request, self.ctx),
@@ -749,9 +812,23 @@ class ProofRun:
         outcome = "success" if reply.ok else matrix.classify(status, code)
         control_ok = bool(control_reply and control_reply.ok)
         verdict = matrix.refused_verdict(outcome, control_ok)
+        me = ((reply.data or {}).get("me") or {}) if reply.ok else {}
+        connected_as = me.get("id") if isinstance(me, dict) else None
+        if kind == "T4" and reply.ok:
+            if connected_as == self.ctx["A"]:
+                verdict = matrix.Verdict(
+                    matrix.HOLDS_IGNORED,
+                    "claim ignored: Stream authenticated the connection as A (the token's user)",
+                )
+            elif connected_as == self.ctx["B"]:
+                verdict = matrix.Verdict(matrix.FAIL, "connected as B with A's token")
+            else:
+                verdict = matrix.Verdict(matrix.INCONCLUSIVE, "connected identity unknown")
         detail = {
-            "token": self._describe_bad(kind, token) if kind != "T4" else "A's valid token",
+            "token_used": self._describe_bad(kind, token) if kind != "T4" else "A's valid token",
             "error_kind": (reply.error or {}).get("kind"),
+            "error_message": reply.message,
+            "connected_as": _generic(str(connected_as), self.ctx) if connected_as else None,
             "ws_attempts": reply.ws_attempts,
         }
         return self._result(
@@ -870,9 +947,16 @@ class ProofRun:
             self.users.append(str(created["id"]))
         status, code = _status_code(reply)
         outcome = "success" if reply.ok else matrix.classify(status, code)
+        exists_after = bool(self._server_user(guest_id).get("id"))
+        if not reply.ok and not exists_after:
+            self.ledger.release("users")  # refused: no user was created
+        elif exists_after and guest_id not in self.users:
+            self.users.append(guest_id)
         self.ledger.reserve("users")
         server_guest = f"{self.prefix}-sguest"
         result, token = self.api.create_guest({"id": server_guest, "name": "Synthetic guest"})
+        if not result.ok:
+            self.ledger.release("users")
         if result.ok:
             gid = _dig(result.body, "user.id")
             self.ctx["guest_id"] = str(gid) if gid else server_guest
@@ -887,7 +971,11 @@ class ProofRun:
             _observed(reply),
             f"server POST /guest -> {result.status}",
             verdict,
-            {"server_guest_role": _dig(result.body, "user.role")},
+            {
+                "server_guest_role": _dig(result.body, "user.role"),
+                "client_guest_user_exists_after": exists_after,
+                "client_error_message": reply.message,
+            },
         )
 
     def _read_probe(self, suffix: str) -> tuple[dict[str, Any], str | None]:
@@ -1152,14 +1240,15 @@ class ProofRun:
             verdict = matrix.Verdict(matrix.FAIL, "B received the free-text field")
         elif not listening:
             verdict = matrix.Verdict(matrix.INCONCLUSIVE, "B's listener did not see the probe")
-        elif outcome == "success" and events:
+        elif events:
             verdict = matrix.Verdict(matrix.HOLDS, "delivered without the free-text field")
         elif outcome == "success":
             verdict = matrix.Verdict(matrix.HOLDS_IGNORED, "accepted; B received no such event")
-        elif outcome in ("auth", "permission", "feature"):
-            verdict = matrix.Verdict(matrix.HOLDS, f"refused ({outcome}); nothing delivered")
         else:
-            verdict = matrix.Verdict(matrix.INCONCLUSIVE, f"unexpected outcome ({outcome})")
+            # This case asks what reaches B: nothing did, whatever the refusal code.
+            verdict = matrix.Verdict(
+                matrix.HOLDS, f"refused ({outcome}); nothing delivered to B, who was listening"
+            )
         return self._result(
             case,
             _request_line(reply.last_request, self.ctx),
@@ -1289,9 +1378,44 @@ class ProofRun:
             )
             out["users_delete"] = res.status
             out["users_task"] = self._wait_task(_dig(res.body, "task_id"))
+        # Hard-deleting a user makes Stream create a system user
+        # ("deleted-user-<app>-<hash>") that takes over references; it is an
+        # artifact of this run's cleanup, so it is removed too.
+        artifacts = self._artifact_users()
+        out["artifact_users_found"] = len(artifacts)
+        if artifacts:
+            res = self.api.raw(
+                "POST",
+                "/api/v2/users/delete",
+                body={
+                    "user_ids": artifacts,
+                    "user": "hard",
+                    "messages": "hard",
+                    "conversations": "hard",
+                },
+            )
+            out["artifact_users_delete"] = res.status
+            out["artifact_users_task"] = self._wait_task(_dig(res.body, "task_id"))
         out.update(self.verify_clean())
         self.cleanup_result = out
         return out
+
+    def _artifact_users(self) -> list[str]:
+        result = self.api.get(
+            "/api/v2/users",
+            params={"payload": json.dumps({"filter_conditions": {}, "limit": 100})},
+        )
+        marker = f"deleted-user-{self.credentials.app_id}-"
+        found = []
+        for user in result.body.get("users", []) if isinstance(result.body, dict) else []:
+            created = user.get("created_at")
+            if (
+                str(user.get("id")).startswith(marker)
+                and isinstance(created, int)
+                and created >= self.started_ns
+            ):
+                found.append(str(user["id"]))
+        return found
 
     def verify_clean(self) -> dict[str, Any]:
         snapshot = baseline.read_snapshot(self.api)
@@ -1310,6 +1434,16 @@ class ProofRun:
                 1
                 for u in snapshot["users"].get("users", [])
                 if not str(u.get("id")).startswith(PREFIX_ROOT)
+            ),
+            "dashboard_users_present": sum(
+                1
+                for u in snapshot["users"].get("users", [])
+                if (u.get("custom") or {}).get("dashboard_user") is True
+            ),
+            "deleted_user_artifacts_remaining": sum(
+                1
+                for u in snapshot["users"].get("users", [])
+                if str(u.get("id")).startswith(f"deleted-user-{self.credentials.app_id}-")
             ),
         }
 

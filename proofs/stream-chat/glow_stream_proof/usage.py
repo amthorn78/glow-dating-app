@@ -91,6 +91,14 @@ class UsageLedger:
                 setattr(counts, attr, getattr(counts, attr) + amount)
         self.save()
 
+    def release(self, kind: str, amount: int = 1) -> None:
+        """Return a reservation that was not used (for example, a refused creation)."""
+        if kind not in KINDS:
+            raise ValueError(f"unknown usage kind {kind!r}")
+        for counts in (self.run, self.session):
+            setattr(counts, kind, max(0, getattr(counts, kind) - amount))
+        self.save()
+
     def remaining(self, kind: str) -> int:
         limit: int = getattr(self.limits, kind)
         return limit - max(int(getattr(self.run, kind)), int(getattr(self.session, kind)))
