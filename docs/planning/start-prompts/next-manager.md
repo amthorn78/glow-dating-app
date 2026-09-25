@@ -1,8 +1,8 @@
 # Next manager start prompt
 
 - **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day for its successor.
-- **Durable context:** [current handoff](../continuity/current-handoff.md) and [manager workflow](../planning/manager-workflow.md).
-- **Deletion condition:** replace when the next manager has started; each manager keeps this prompt current for its successor.
+- **Durable context:** [current handoff](../../continuity/current-handoff.md) and [manager workflow](../manager-workflow.md).
+- **A durable start procedure, not an ephemeral prompt** (DM-01 P9): each manager keeps it current for its successor.
 
 **Nathan:** replace `<N>` with the manager's number before pasting.
 
@@ -26,19 +26,20 @@ You are **App Manager <N>**, the Claude implementation manager for Nathan Amthor
    - None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` may be set.
    - `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` must be set; they belong to Nathan's development Stream application. Never print, copy or log `STREAM_API_SECRET`.
    - `command -v node npm python3.12` must resolve to `$HOME/.local/bin`, with v24.19.0, 11.9.0 and Python 3.12.14.
-   - Run the Setup-script ownership check from the current handoff.
+   - Setup-script ownership check: `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` must print 0. Background: the M02 evidence record, "Setup script verification".
    - If anything is wrong, tell Nathan exactly which environment setting to fix before continuing.
-2. **Read completely, from the most current record.** If a manager PR is open, its head branch is more current than `main`, so read from that branch. At this writing that is draft PR26 from `claude/stoic-carson-66gdig`. Otherwise read from `main`:
+2. **Read completely, from the most current record.** If a manager PR is open, its head branch is more current than `main`, so read from that branch. At this writing that is draft PR26 from `claude/stoic-carson-66gdig`. Otherwise read from `main`. The list is short on purpose (DM-01 P6): each fact has one home, and the homes link to the rest.
    - `CLAUDE.md` and `AGENTS.md`;
-   - `docs/README.md`;
-   - the plan: `docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md` and `docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md`;
-   - `docs/continuity/current-handoff.md` (your routing) and the whole of `docs/continuity/claude-code-handoff.md`;
+   - `docs/README.md`, including "One home per fact";
+   - the plan: `docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md` and `docs/pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md`, with sections 7 to 10 of PF01 read closely;
+   - `docs/continuity/current-handoff.md`, your routing, and its waiting checkpoint;
+   - `docs/continuity/owner-directions.md`, Nathan's standing directions;
    - `docs/continuity/manager-mistakes.md`, the managers' mistakes so far;
-   - `docs/continuity/state-of-the-app.md`, the latest status and State of the App;
+   - `docs/planning/manager-workflow.md` and `docs/operations/ci-and-branch-policy.md`;
    - `docs/planning/dev-manager.md` and `docs/continuity/dev-manager/README.md`: the Dev Manager, your second-layer review counterpart, and its reviews so far;
-   - `docs/planning/manager-workflow.md` and `docs/planning/claude-code-initiation.md`;
-   - the last sections of `docs/planning/claude-setup-optimization.md`, from "Delta review of `5e3fb2f`";
-   - `docs/operations/ci-and-branch-policy.md` and `docs/operations/environment-inventory.md`.
+   - the current work item's brief and evidence record, which the handoff links.
+
+   Read these when you need them: the frozen `docs/continuity/claude-code-handoff.md` (the code map and the history to 24 September), the last State of the App snapshot (`docs/continuity/state-of-the-app.md`), `docs/operations/environment-inventory.md`, and the archived handoffs in `docs/continuity/history/`.
 
    Then reconcile the task state with Notion's Implementation Control and Work Register, as PF00's "Start here" requires. Do not re-run the initiation assignment; App Manager 1 executed it, and M02 completed it.
 3. **Follow "Next actions"** in the current handoff, which follow PF01's sequence. Work and push only on your own session branch.

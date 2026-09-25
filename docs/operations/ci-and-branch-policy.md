@@ -31,6 +31,10 @@ The foundation passed hosted run 35856228910 for candidate `ca2abecceb1e8c532efd
 
 **Documentation is exempt (Nathan, 24 September 2026).** A change made only of regular Markdown (`.md`) files is ordinary documentation. It skips the four application jobs and code/security review. This covers every documentation path: `docs/`, READMEs, `AGENTS.md`/`CLAUDE.md`, plans, handoffs, prompts and canon.
 
+**A Dev Manager read for governing Markdown** (DM-01 P1, 25 September 2026). Governing Markdown still skips CI and code review, but it is read by the Dev Manager before its PR merges. That covers `AGENTS.md` or `CLAUDE.md` at any level, `docs/pf-canon/`, the manager workflow, the Dev Manager charter and this policy. Prompts that authorize credential use or live provider actions are read before Nathan runs them. That read is not a code review. See the [Dev Manager charter](../planning/dev-manager.md).
+
+**Dependency drift** (DM-02 B9). Each phase's evidence records one `npm audit` result line per npm package it touched, so a change in the advisory picture is visible.
+
 - **Exception:** paths under a `.claude/` directory stay full scope (Nathan, 24 September 2026). Claude Code skills, commands, agents and rules can carry shell commands, pre-approved tools and permission modes, as `.claude/settings.json` can.
 - **No application check reads Markdown content.** Ruff 0.16.8 also formats Python code blocks inside Markdown, so the API's ruff configuration excludes `*.md` (`services/api/pyproject.toml`). Otherwise an exempt Markdown change could break a later API job. The pattern also matches a directory named `*.md`, so ruff skips any Python file inside one. None exists, and adding one is a non-Markdown change, so it runs the full checks and review.
 

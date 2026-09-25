@@ -63,6 +63,11 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 - a new work item's brief when its choices have architectural or procedural consequences;
 - any decision where the tradeoffs are unclear or several roles' views matter.
 
+**Read before it takes effect** (DM-01 P1, accepted 25 September 2026). These are Dev Manager reads, not code reviews, and Nathan's documentation exemption from CI stays as it is:
+
+- **Governing Markdown:** `AGENTS.md` or `CLAUDE.md` at any level, `docs/pf-canon/`, the manager workflow, this charter and the CI and review policy. The primary manager batches these per PR. The PR merges only after the review log records a disposition for them.
+- **Prompts that authorize credential use or live provider actions:** read before Nathan runs them.
+
 **Also:** a periodic process and build review whenever Nathan asks for one, based on a fresh [State of the App](../continuity/state-of-the-app.md).
 
 **Not for:** routine verification, routine records, small documentation fixes, CI reruns, or exact-head code review.
@@ -80,14 +85,16 @@ The Dev Manager runs in its own Claude Code cloud session in the `Glow app` envi
    - what is asked: review, approval or challenge;
    - the documents the decision would touch.
 2. **Answer.** The Dev Manager writes its report as `docs/continuity/dev-manager/reviews/YYYY-MM-DD-dm-NN-topic.md`, commits it on `claude/dev-manager` and pushes. The report's last line is `Status: complete`. It changes no other file.
-3. **Integration.** The primary manager reads the report and merges the Dev Manager's branch into the manager branch; the change is documentation only. For each item it records the disposition in the [review log](../continuity/dev-manager/README.md): accepted, accepted with changes, declined with its reason, or referred to Nathan.
-4. **Relay to Nathan and records.** The primary manager relays the conclusions, concerns and approvals to Nathan, applies the documentation updates, and syncs Notion.
+3. **Integration.** The primary manager reads the report and merges the Dev Manager's branch into the manager branch with its next batched records push (see "Batching records" in the manager workflow). The branch only ever adds files under `reviews/`, so the merge never conflicts. For each item the primary manager records the disposition in the [review log](../continuity/dev-manager/README.md): accepted, accepted with changes, declined with its reason, or referred to Nathan.
+4. **Relay to Nathan and records.** The primary manager gives Nathan each report's path and its verdicts as written. It sends every item it declines, or accepts with changes, to Nathan with the Dev Manager's own text beside its reason. It also passes on the Dev Manager's questions for Nathan unchanged. Nathan can read the reports directly at any time. Then the primary manager applies the documentation updates and syncs Notion.
 
-**Verdicts:** `approved`, `approved with conditions`, `changes requested` or `refer to Nathan`. When the two managers disagree, both views go to Nathan, and his decision is recorded.
+**Continuity.** When the primary manager expects a report, it watches `claude/dev-manager`. Each consultation says what the primary manager will do if no report arrives, for example ask Nathan whether to proceed without it.
+
+**Verdicts:** `approved`, `approved with conditions`, `changes requested` or `refer to Nathan`. When the two managers disagree, both views go to Nathan, and his decision is recorded. A Dev Manager `approved` is neither an owner decision nor an exact-head review.
 
 ## Session lifecycle
 
-- The primary manager creates the session with the remote-session tools. It gives the session the [start prompt](../ephemeral/2026-09-25-dev-manager-start-prompt.md) and the first consultation, and names the exact commit and the `claude/dev-manager` branch.
+- The primary manager creates the session with the remote-session tools. It gives the session the [start prompt](start-prompts/dev-manager.md) and the first consultation, and names the exact commit and the `claude/dev-manager` branch.
 - The same session receives later consultations for as long as it stays available. If it has ended, the primary manager starts a new one from the start prompt. The new session reads the review log for continuity.
 - A new primary manager finds the session's identity and state in the current handoff and the review log.
 - Every Dev Manager session follows the environment rules of all app sessions: names-only checks, no HDE variables, and the Stream values never printed or used.
@@ -97,8 +104,8 @@ The Dev Manager runs in its own Claude Code cloud session in the `Glow app` envi
 | Record | Home |
 |---|---|
 | This charter | `docs/planning/dev-manager.md` |
-| The start prompt, kept current for later sessions | `docs/ephemeral/2026-09-25-dev-manager-start-prompt.md` |
+| The start prompt, kept current for later sessions | `docs/planning/start-prompts/dev-manager.md` |
 | The review log: consultations, verdicts and dispositions | `docs/continuity/dev-manager/README.md` |
 | The Dev Manager's reports | `docs/continuity/dev-manager/reviews/` |
-| The status and State of the App, refreshed for each periodic review | `docs/continuity/state-of-the-app.md` |
+| The status and State of the App: a snapshot, refreshed only for a periodic review | `docs/continuity/state-of-the-app.md` |
 | Coordination copies | Notion: *Dev Manager — reviews and approvals* and *Status and State of the App*, under Implementation Control |

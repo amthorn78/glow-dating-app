@@ -14,6 +14,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
   - **follow-through:** a commitment not kept;
   - **execution:** a wrong command or tool use.
 - Record what actually happened, including who caught it. Never soften an entry or leave one out.
+- **Every mistake gets a summary row. A full section is needed only when the mistake reached a record, a prompt, Nathan or `main`** (DM-01 P8, 25 September 2026). A slip that its own tool caught, with no effect, needs only its summary row.
+- **A repeated prevention becomes a checklist item.** When a mistake repeats one already logged, move its prevention into a checklist the manager actually runs, such as the manager workflow or a start prompt, and say where in the entry.
 
 ## Summary
 
@@ -34,6 +36,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-02 | 25 Sep 2026 | follow-through | Pushed records that did not recommend ultracode for the I1 review, although the manager had committed to recommend it if the scorer flagged it, and the scorer did | App Manager 3, while syncing Notion |
 | AM3-03 | 25 Sep 2026 | execution | Ran the trusted classifier with `--head HEAD` instead of a SHA; it failed closed | The classifier's fail-closed output |
 | AM3-04 | 25 Sep 2026 | execution | Bare Python module filenames in a Notion row became broken web links, the AM2-11 slip with `.py` | App Manager 3's readback |
+| AM3-05 | 25 Sep 2026 | process | Named the I1 review head, then changed the review prompt in a later commit, so the text Nathan received was not the prompt at the named head | The Dev Manager (DM-01 P2) |
 
 ## App Manager 2
 
@@ -87,7 +90,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **What happened:** on 24 September App Manager 2 told Nathan: "I'll deal with old session branches after M02 merges. I may not be able to delete them from this session … if so, I'll list them for you." The M02 close-out did neither.
 - **Caught by:** App Manager 2, while searching its transcript for this log.
 - **Effect:** none yet. The branches were left as they were.
-- **Correction:** the current handoff now lists them.
+- **Correction:** the current handoff now lists them. (That list is archived in the [earlier handoff](history/m02-p06-1-handoff.md) since the handoff was slimmed on 25 September 2026.)
   - The M02 session branches are fully merged into `main`: `claude/ecstatic-goodall-qajdh4`, `claude/eager-goodall-1zjgey` and `claude/vigilant-einstein-i95w78`.
   - A cloud session cannot delete another session's branch. Nathan may delete merged branches on GitHub.
   - `app-builder-1/p05-1-birth-diagnostics` is deliberately unmerged and stays.
@@ -159,3 +162,15 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Caught by:** App Manager 3's readback of the row.
 - **Effect:** none lasting. The row was rewritten minutes later without filenames.
 - **Prevention:** AM2-11's rule covers every filename with an extension, not only `name.md`. In Notion text, describe files without bare filenames.
+- **Checklist:** because this repeated AM2-11, the prevention moved into the manager workflow's "Writing to Notion" checklist on 25 September 2026.
+
+### AM3-05 — The review prompt changed after its review head was named (process)
+
+- **What happened:**
+  - At 08:03 UTC App Manager 3 committed `c0a34f8` and named it as the head for the exact-head review of P06.1-I1.
+  - At 08:08 it added a rule to the review prompt in `9819939`: run every live command from one checkout, one at a time.
+  - At 08:09 it gave Nathan the prompt text with that rule, and the text still named `c0a34f8`. The prompt stored at the named head was therefore an earlier text than the one Nathan received.
+- **Caught by:** the Dev Manager, in DM-01 finding P2.
+- **Effect:** none on any result, because the review had not run. Revision 2's header withdraws the earlier text, and App Manager 3's report on DM-01 and DM-02 tells Nathan not to use it.
+- **Correction:** revision 2 of the review prompt names I1's code head, `9ff600f`, and reads the later Markdown records at a named records commit. The review report states the prompt commit it received.
+- **Prevention:** workflow step 6, "Name the code head", and step 5, "Batching records".

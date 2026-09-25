@@ -2,7 +2,7 @@
 
 Prepared by App Planner 1 for Nathan Amthor, 24 September 2026. Repository: private [`amthorn78/glow-dating-app`](https://github.com/amthorn78/glow-dating-app), default branch `main`. The [publication receipt](migration-publication.md) supplies the verified migration merge, tree and check identities without making this document embed its own future commit hash. Verify current remote state before using the packet. This brief, the initiation prompt and all required documentation are repository Markdown.
 
-**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Nathan resumed P06.1 on 25 September. Its [brief](../planning/p06-1-chat-provider-proof.md) holds his answers to the owner inputs, the Stream dashboard baseline and P06.1-I1's results, including the S15 design blocker. Other feature work stays paused. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
+**Frozen on 25 September 2026** (DM-01 P3). This is the receiving packet as App Planner 1 wrote it for the first Claude manager; its first assignment is complete as M02. It is no longer kept current. Later facts live in their own homes: routing in the [current handoff](current-handoff.md), Nathan's standing directions in the [owner-direction register](owner-directions.md), and work-item answers and results in each brief, such as [P06.1's](../planning/p06-1-chat-provider-proof.md). Where this packet disagrees with them, they govern.
 
 ## Objective, current phase and limits
 

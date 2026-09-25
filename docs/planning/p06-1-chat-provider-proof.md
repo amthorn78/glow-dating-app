@@ -2,9 +2,9 @@
 
 **Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
-- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. See "S15: decided".
-- The exact-head review of I1 is commissioned.
-- Before P06.1-I2 is written, the new Dev Manager reviews the project's process and build (Nathan, 25 September 2026); see the [Dev Manager charter](dev-manager.md).
+- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The decision is conditional on the exact-head review confirming S15 live. See "S15: decided".
+- The Dev Manager's first reviews, DM-01 and DM-02, are in and considered. This brief applies the accepted changes: I2 is split into I2a and I2b, economics becomes a dashboard discovery, and the harness's checks join CI. See the [review log](../continuity/dev-manager/README.md).
+- Next: the Dev Manager reads the revised I1 review prompt (DM-03); then Nathan runs the review.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
@@ -94,7 +94,7 @@ Facts as the read-only discovery reported them:
   5. the plan's real limits and costs, and the approvals P06.2 and launch need.
 
   It also records the exact configuration that achieved this, and how to restore the defaults.
-- **Owned paths (writable):** `proofs/stream-chat/**` (new: harness, locks, README and offline tests) and `docs/testing/evidence/2026-09-25-p06-1-chat-provider-proof.md` (new; each session adds its section). P06.1-I2 also owns `docs/architecture/chat-provider-permissions.md`.
+- **Owned paths (writable):** `proofs/stream-chat/**` (new: harness, locks, README and offline tests) and `docs/testing/evidence/2026-09-25-p06-1-chat-provider-proof.md` (new; each session adds its section). P06.1-I2b also owns `docs/architecture/chat-provider-permissions.md`, and one new job for the harness's offline checks in `.github/workflows/foundation.yml` (DM-02 B6). That workflow change is full scope, under the CI policy's workflow rule.
 - **Manager-owned paths:** this brief and the rest of `docs/planning/`, `docs/continuity/`, `docs/ephemeral/`, `docs/pf-canon/`, root `AGENTS.md` and `CLAUDE.md`, and Notion.
 - **Exclusions:** every other path, including `apps/`, `services/`, `packages/`, `scripts/`, `.github/`, `Dockerfile`, `.dockerignore`, `.gitignore` and the `.env.example` files. No change to the fixture API or its guards, and no `GLOW_*` variable set. No database, HDE, Railway or production. Nothing in the Stream organization outside application 1729640. No plan, billing, Maker or team change, no key rotation or region change, no webhook or hook, and no push. No real people or personal data.
 - **Dependencies and inputs:** P02.1 and P05.3 are Done. A08 is resolved by this item. A04's P06.1 inputs are supplied: application 1729640 on the Free Chat plan, in US East, with a $0 budget.
@@ -115,19 +115,28 @@ Facts as the read-only discovery reported them:
 - **Classification expectation:** full scope.
 - **Evidence home:** `docs/testing/evidence/2026-09-25-p06-1-chat-provider-proof.md`.
 - **Report format:** as each session prompt specifies: branch, SHAs, tree, changed paths, every check with exact results, settings before and after, the matrix, usage, cleanup, failures, deviations, open questions and limits.
-- **Review plan:** an exact-head code and security review of I1's head in a session Nathan runs, then corrections if needed, then I2, then a delta review of the final head. Every Foundation job must pass on the PR head, and Codex's reviews must finish, before merge.
+- **Review plan:** an exact-head code and security review of I1's head in a session Nathan runs, then corrections if needed, then I2a and I2b, then a delta review of the final head. Every Foundation job must pass on the PR head, and Codex's reviews must finish, before merge.
 
 ### Sessions
 
 - **P06.1-I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): enforce and record the checks; lock down every channel type and create the proof's type; prove the authorized path; run the bypass matrix; clean up. Done on 25 September; see "P06.1-I1 result".
-- **Review of I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)): the exact-head code and security review. It may confirm S15 with at most two small live runs, and it changes no configuration.
-- **P06.1-I2** (written after the I1 review and the Dev Manager's first reviews have been considered):
-  - revocation and history under Nathan's policy; suspension and deletion; token expiry and revocation;
-  - reconnection and realtime events after revocation; a send racing a revocation; provider outage failing closed;
-  - the economics; final cleanup; and `docs/architecture/chat-provider-permissions.md`;
-  - the I1 follow-ups under "I1's open questions" below, and the work Nathan's S15 decision needs (see "S15: decided").
-
-  If that is too much for one session, P06.1 gets a third session.
+- **Review of I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)): the exact-head code and security review of I1's code head `9ff600f`. It **must** confirm S15 live, because a design decision rests on it (DM-01 P4). It may make one further small live run and changes no configuration. The Dev Manager reads the prompt before Nathan runs it (DM-03).
+- **P06.1-I2a, revocation and safety** (live, budgeted; DM-02 B2):
+  - **Revocation under Nathan's history policy, by named mechanism:** member removal, a channel-level ban, per-user `revoke_tokens_issued_before`, and hide or freeze. For each, state which of these it ends: REST reads, an **already-open WebSocket subscription**, token reuse and the S15 write. Messages stay retained for safety reports.
+  - **Suspension and deletion:** what a hard user delete does to messages and to member custom data needed as safety evidence. This conflicts with Nathan's history policy unless the design says otherwise, so record it plainly.
+  - **Tokens and devices:** token expiry, reconnection and cross-device use, with two clients per user.
+  - **Send versus revocation, on the provider side only:** a server send attempted after revocation is refused. The database-level ordering is P11's DB06; claim nothing more.
+  - **Outage as fault injection:** point the server's Stream client at an unreachable endpoint; the app send path must refuse with no partial state. No real outage is claimed.
+  - **The S15 mapping:** which fields a member can set; what the other member receives; whether the server can clear or overwrite member custom data; whether member removal deletes it. The harness checks that the three `member_custom_on_*` settings stay off.
+  - **Reruns:** G2 and S10 with the corrected harness; the existence-oracle comparison (existing against non-existent IDs); the fixes not yet exercised live.
+  - **Budget:** the prompt sets its own run plan against the 20-user cap and keeps one run in reserve for a rerun.
+- **P06.1-I2b, other products, documentation and CI** (live but small):
+  - Video and Feeds: what a user token can do, and a lockdown by configuration only. No media session, no push, nothing that could incur a charge.
+  - `docs/architecture/chat-provider-permissions.md`, with the exact configuration as a reviewed, reapplicable plan for a future production application (DM-02 B7).
+  - The Foundation job for the harness's offline checks (DM-02 B6).
+- **Economics** (not an implementation session): a read-only dashboard discovery that Nathan runs, like the baseline, plus Stream's public pricing and terms. It records the plan limits, overage behavior with no payment method on file, any attribution requirement, the data-processing agreement and region (US East against the launch geography, A05) and Maker eligibility.
+- **Removed from P06.1:** running the restore command. At P06.1's close, Nathan decides whether the development application stays locked down for P06.2, which is likely, or is restored.
+- **Before Nathan runs them:** the Dev Manager reads each live prompt (DM-01 P1).
 
 ### P06.1-I1 result
 
@@ -143,7 +152,7 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 - **Outcome 3, no client bypass: does not hold.** See S15 below.
   - A second channel, free text in typing events, was closed by turning typing events off.
   - Of 85 cases, 68 hold with an attributable refusal. 4 hold because the result is filtered, and 3 because the change is not applied. 9 are inconclusive under the quality rule, and 1 fails.
-- **The application's configuration now,** kept for I2:
+- **The application's configuration now,** kept for I2a and I2b:
   - guest user creation is disabled;
   - the `user`, `guest` and `anonymous` roles have no application grants;
   - every role's grants are empty in the five default types;
@@ -162,19 +171,30 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 
 ### S15: decided
 
-**Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."*
+**Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."* The durable record is [ADR 0003](../adr/0003-chat-display-rule.md).
+
+**Conditional on confirmation** (DM-01 P4). The decision rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, the decision returns to Nathan.
 
 - **The design:** option 1 below, the display rule. The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
-- **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager reviews before it is treated as settled:
+- **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager approved with conditions (DM-02 B1):
   - users never see a sign that anything happens outside Glow;
   - no provider's name, branding, identifiers, error text, notifications or data reaches the user interface;
   - everything a user sees comes from Glow's API, in Glow's own wording.
-- **What follows for P06.1-I2:**
-  - map the S15 channel completely: which fields a member can set, what the other member receives, whether the server can clear it and what removal does;
-  - keep the settings that copy member custom data into messages, typing events and mentions off, and check them in the harness;
-  - lock down Stream Video and Feeds, so nothing can ring or notify a user from outside Glow;
-  - record, for P06.2, every provider surface a user could otherwise see.
-- **What follows for P06.2:** the display rule and its test, opaque Stream user IDs, and provider errors that reach users only as Glow's own messages.
+- **Its scope** (DM-02 B1): Glow's in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share.
+- **It binds server and operator consumers too:** Stream member or user custom data is never forwarded into exports, staff or WordPress views, push content or analytics.
+- **Proposed carve-outs, for Nathan to confirm** (DM-02 question 1): legally required disclosures (privacy policies, store privacy labels, processor lists, and data-export contents where the law requires recipients), licence notices, and system screens the platform mandates. Until he confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect.
+- **The display rule's conditions** (DM-02 B7):
+  - I2a shows that member custom data cannot change anything Glow displays or forwards, and that revocation ends the write;
+  - deletion and export (PV07) include member custom data held at Stream;
+  - I1's configuration becomes a reviewed, reapplicable plan for the production application; the development application's lockdown is not a production control;
+  - one channel per person stays the recorded fallback if the first condition fails.
+- **Billing** is an open launch gate (A04), not a P06.1 blocker: Stream's general policy bills overages automatically, and no payment method is on file.
+- **What follows for P06.1-I2a and I2b:**
+  - I2a maps the S15 channel completely: which fields a member can set, what the other member receives, whether the server can clear it and what removal does;
+  - I2a keeps the settings that copy member custom data into messages, typing events and mentions off, and checks them in the harness;
+  - I2b locks down Stream Video and Feeds, so nothing can ring or notify a user from outside Glow;
+  - I2b records, for P06.2, every provider surface a user could otherwise see.
+- **What follows for P06.2:** the display rule and its test, opaque Stream user IDs, and provider errors that reach users only as Glow's own messages. Chat state comes from API-served fixtures through the development HTTP client, not from new client-side domain logic (DM-02 B10).
 
 The analysis Nathan decided on is kept below as the record.
 
@@ -214,16 +234,13 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 ### I1's open questions: manager dispositions
 
 1. **S15:** decided by Nathan on 25 September 2026: the display rule, with the principle recorded under "S15: decided".
-2. **Video and Feeds: yes, within P06.1.** PF01 puts voice, video and public feeds outside the initial release, so the app will not display them. A modified client could still use them with its user token, for example to ring the other member, or to run calls billed to Glow's Stream organization. I2 records what a user token can do there and locks it down through configuration. It opens no media session, sets up no push and does nothing that could incur a charge.
-3. **Guest reach (G2) and the poll vote (S10): yes.** I2 reruns them with the corrected harness and a fresh budget, together with the other fixes not yet exercised live.
-4. **Unguessable IDs: yes, a P06.2 requirement.** Stream user IDs are random and opaque, never derived from Glow's account IDs, names or emails, and never shown to other users. I2 records whether a refusal for an existing ID differs from one for an ID that does not exist.
+2. **Video and Feeds: yes, within P06.1.** PF01 puts voice, video and public feeds outside the initial release, so the app will not display them. A modified client could still use them with its user token, for example to ring the other member, or to run calls billed to Glow's Stream organization. I2b records what a user token can do there and locks it down through configuration. It opens no media session, sets up no push and does nothing that could incur a charge.
+3. **Guest reach (G2) and the poll vote (S10): yes.** I2a reruns them with the corrected harness and a fresh budget, together with the other fixes not yet exercised live.
+4. **Unguessable IDs: yes, a P06.2 requirement.** Stream user IDs are random and opaque, never derived from Glow's account IDs, names or emails, and never shown to other users. I2a records whether a refusal for an existing ID differs from one for an ID that does not exist.
 
 ### Reasoning levels
 
-| Session | Manager | TypeSafe v4 | Detail |
-|---|---|---|---|
-| P06.1-I1 | extra high | extra high | Score 2.99, confidence 0.99. Shape single_session at P 0.53 (new_silent_guard 0.31), so no ultracode under the pre-registered rule. Sent 02:11:41 UTC. Nathan ran extra high; outcome adequate, provisional until the review |
-| Review of I1 | max; ultracode if the scorer flags it | extra high, ultracode flagged | Score 3.33, confidence 0.70 (P 0.64 for extra high, 0.35 for max). Shape single_session at P 0.37, below the 0.5 rule, so ultracode is flagged; the runner-up is broad_verification at 0.26. Sent 07:57:11 UTC. Before the reading, the manager had committed to Nathan and in Notion to recommend max, or ultracode if the scorer flagged it. So it recommends ultracode: the review decides the basis for a design blocker, and its areas can run in parallel with independent verification of findings. Without ultracode, max in one session |
+Each prompt's header gives its recommended level. The readings and outcomes are kept only in the Notion page *TypeSafe effort scorer — Glow app usage log* (DM-01 P8). Both rows for this item, P06.1-I1 and the review of I1, are there.
 
 ## Risks and limits
 

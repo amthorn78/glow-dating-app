@@ -1,8 +1,8 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.8 · **Date:** 25 September 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.9 · **Date:** 25 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
-**Current direction:** P01–P05 completed at recorded preparation/fixture scope. The repository documentation migration (M01) and the Claude Code setup (M02) are complete. On 25 September 2026 Nathan resumed P06.1, the chat-provider permissions and economics proof; other new features stay paused until his recorded direction resumes them. The same day he decided P06.1's design blocker S15 (section 7) and established the Dev Manager (D10). Current evidence is in the repository handoff and Notion coordination records.
+**Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
@@ -204,13 +204,21 @@ WordPress itself needs a database to boot. If native plugin validation is requir
 
 ## 7. Product behavior and security requirements
 
+**Product presentation.** Nathan, 25 September 2026: *"There should never be any indication that there is anything happening outside Glow."* Users never see a sign that anything happens outside Glow. No provider's name, branding, identifiers, error text, notifications or data reaches them, and everything they see comes from Glow's API in Glow's own wording.
+
+- **Scope:** the in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share.
+- **Consumers:** the rule binds server and operator consumers too. Provider data a user could write is never forwarded into exports, staff views, push or analytics.
+- **Carve-outs:** legally required disclosures, licence notices and platform-mandated system screens are proposed carve-outs awaiting Nathan's confirmation.
+
+The first application of the rule is the chat display rule in [ADR 0003](../adr/0003-chat-display-rule.md).
+
 **Identity and onboarding.** Start with verified email and supported recovery. Add social login only with safe linking and platform-policy review. Use platform secure storage for native secrets, short-lived access credentials and server-side revocation of refresh/session state. Logout, password change, lost-device recovery, account suspension and deletion revoke the appropriate sessions. Test enumeration resistance, token replay, expired links, wrong-account linking and deep-link interception. Fixture sign-in is development-only and is never production authentication evidence.
 
 **Discovery and matching.** Apply age/consent/completeness/visibility/moderation/block/reciprocal-preference eligibility before HDE ranking. Recommendations and broader discovery share these rules. Use bounded, stable queues, cursor pagination and explicit refresh/invalidation; do not score the entire population against itself. A like is idempotent. Simultaneous reciprocal likes produce one match and one logical match-created event. Recheck current state for every privileged action. Define resurfacing, unmatch/rematch and deleted/paused-account behavior explicitly.
 
 **Media.** Issue short-lived upload grants; enforce ownership, size/count/type limits and safe decoding. Strip metadata, quarantine originals, moderate before publication and expose only approved variants through authorized delivery. Handle abandoned uploads, reordering, retries, removal and downstream purge. Neither an uploaded filename nor a successful vendor upload proves that an image is safe or publicly eligible.
 
-**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, stale tokens, existing channels, retries, reconnect and cross-device behavior. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default. On 25 September 2026 Nathan accepted the display rule for P06.1's finding S15, under which the app never displays chat-provider user or member data, and directed: *"There should never be any indication that there is anything happening outside Glow."* The [P06.1 brief](../planning/p06-1-chat-provider-proof.md) records the finding, the decision and its consequences for P06.1-I2 and P06.2.
+**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, stale tokens, existing channels, retries, reconnect and cross-device behavior. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default. On 25 September 2026 Nathan accepted the display rule for P06.1's finding S15: the app never displays chat-provider user or member data ([ADR 0003](../adr/0003-chat-display-rule.md); conditional on the exact-head review confirming S15). The [P06.1 brief](../planning/p06-1-chat-provider-proof.md) records the finding and its consequences for P06.1's later sessions and P06.2.
 
 **Safety, privacy and operations.** Block/report are available from profile and chat, including after unmatch. Moderation actions, evidence retention, appeal and urgent escalation have named operational owners. WordPress staff authentication is distinct from dating-user authentication; privileged API calls enforce scope and audit the staff actor. Draft real public community/child-safety/support policies, then have the owner confirm the actual operating responsibilities. Configure least privilege and redaction; no raw birth data, chat bodies, tokens or SQL parameters in routine logs.
 
@@ -539,3 +547,10 @@ Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature
 1.7 — records Nathan's direction of 25 September 2026 resuming P06.1 ("resume P06.1"); other feature work stays paused. No product scope, phase acceptance, D08 authority or HDE boundary changes.
 
 1.8 — records two directions of Nathan's on 25 September 2026: his S15 decision and principle (section 7), and the Dev Manager (D10), with the matching exception in D09. No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.9 — after the Dev Manager's DM-01 and DM-02 reviews (25 September 2026):
+
+- Section 7 opens with Nathan's presentation principle as a product-wide rule, with its scope, its reach to server and operator consumers, and proposed carve-outs awaiting his confirmation. The chat display rule moves to ADR 0003.
+- The header no longer restates status. It points to the new owner-direction register and to the current handoff.
+
+No product scope, phase acceptance, D08 authority or HDE boundary changes.

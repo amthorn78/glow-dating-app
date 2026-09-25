@@ -1,8 +1,8 @@
 # Dev Manager start prompt, with the first consultation (DM-01 and DM-02)
 
 - **Owner:** App Manager 3, at Nathan's direction of 25 September 2026. The primary manager sends this prompt when it creates a Dev Manager session.
-- **Charter:** [Dev Manager charter](../planning/dev-manager.md). **Review log:** [Dev Manager review log](../continuity/dev-manager/README.md).
-- **Deletion condition:** keep this prompt current for later Dev Manager sessions. When a later session starts, update the first consultation or replace it with the new one.
+- **Charter:** [Dev Manager charter](../dev-manager.md). **Review log:** [Dev Manager review log](../../continuity/dev-manager/README.md).
+- **A durable start procedure, not an ephemeral prompt** (DM-01 P9): keep it current for later Dev Manager sessions. When a later session starts, replace the first consultation with that session's own. The prompt the first session received is this file at `3888e8f`.
 
 **Primary manager:** replace `<BASIS_SHA>` with the exact manager-branch commit the session is created from.
 

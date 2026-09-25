@@ -40,10 +40,12 @@ Nathan's direction, 24 September 2026:
 1. **Start.** Check the environment first, by names only: `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` means the HDE-shared environment. Say so and never read or use the values. Then check the pinned toolchain (`node --version`, `npm --version`, `python3.12 --version`). Verify remote main, open PRs and the worktree. Read the current handoff, applicable instructions and the relevant code. Keep verified behavior, dated evidence, inherited plans and unresolved assumptions separate.
 2. **Brief.** Choose one bounded work item. Write its persistent brief in `docs/planning/` using the template below. Do useful independent work before asking Nathan for a concrete missing input. If the brief makes architectural or procedural choices, consult the [Dev Manager](dev-manager.md) before commissioning it.
 3. **Prompt.** Write the paste-ready prompt in `docs/ephemeral/YYYY-MM-DD-work-id-purpose.md`, linking the brief. Commit and push it on the manager branch, then give Nathan the exact text to paste. A fresh session must be able to act on it alone.
+   - **Say where the result goes.** Each prompt names the file and heading where its result will be recorded, so that a later manager finds it without reconstruction (DM-01 P6).
+   - **A Dev Manager read first** for any prompt that authorizes credential use or live provider actions, before Nathan runs it (DM-01 P1; [charter](dev-manager.md)).
    - **Recommend a reasoning level** with every prompt (Nathan, 24 September 2026). Give the manager's own Opus reasoning level (low, medium, high, extra high or max), decided before seeing TypeSafe's. Beside it, give the reading of the TypeSafe effort scorer v4.
    - The scorer's method, its pre-registered decision rule and the uses table are in the Notion page *TypeSafe effort scorer — Glow app usage log* (under the Glow Operations Hub). It sends only one or two sentences describing the session's work; the API credential is attached by the environment.
-   - Both readings are advisory. Nathan picks the level, and neither reading gates anything.
-   - Add a row for the prompt to the uses table.
+   - Both readings are advisory. Nathan picks the level, and neither reading gates anything. Make no conditional level commitments, such as "ultracode if the scorer flags it" (DM-01 P8).
+   - The readings live in the prompt's header and in the Notion uses table only, not in briefs, handoffs or reports (DM-01 P8). Add a row for the prompt to the uses table.
 4. **Relay.** Nathan runs the session and relays its report. The report is a claim until the manager has checked it against the pushed branch. Record the level Nathan used, the outcome (adequate, too low or too high) and the better call in the uses table.
 5. **Verify and integrate.**
    - Fetch the implementer branch and review `git diff <start>..<head>` completely.
@@ -51,15 +53,33 @@ Nathan's direction, 24 September 2026:
    - Classify the whole change (command below).
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.
+   - **Batching records** (DM-01 P2). While a code PR is under review, every manager push to its head branch starts a full PR run and moves the branch head. So batch the manager's records: push them only when a session needs them (a brief or prompt it must read) and at close-out, not after each step. Integrate Dev Manager reports in the same batches.
    - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
-6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head. A design decision that arises here, such as a design blocker, goes to the Dev Manager before it is treated as settled.
-7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md), then:
+6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
+   - **Name the code head.** A review prompt names the head that carries the code under review, not a later records commit. The review report states the commit of the prompt text it received (DM-01 P2).
+   - **Design decisions.** A design decision that arises here, such as a design blocker, goes to the Dev Manager before it is treated as settled. When the decision rests on a live finding, the exact-head review must confirm that finding live, and the decision stays conditional until it does (DM-01 P4).
+7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md). Branch protection is not enforceable on this repository, so fill in a **pre-merge checklist** in the PR description before merging (DM-01 P7):
+   - the run ID whose Foundation gate says `Application checks passed` on the exact head;
+   - the exact-head review report for that head;
+   - Codex's summary, showing both reviews complete;
+   - the Dev Manager's dispositions in the review log for any governing Markdown the PR carries (DM-01 P1).
+
+   Then:
    - **Wait for Codex.** Marking a draft ready starts Codex's automatic code and security review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows both reviews completed, and verify each Codex finding like any other review finding.
    - Merge within the standing app-only authorization.
    - Verify actual main and record an ordinary-documentation receipt in `docs/testing/evidence/`.
    - Update the current handoff and sync Notion (Implementation Control and the Work Register row).
    - Prune closed prompts once their unique content lives in persistent homes.
    - If Notion is unavailable, record the pending sync in the repository.
+
+**Waiting checkpoints** (DM-01 P6). Before any long wait (a relay, a review, a Dev Manager report), the manager records in the current handoff what it waits for, from whom, and what it does if nothing arrives. Compaction or a handover then loses nothing.
+
+**Writing to Notion: a checklist.** AM3-04 repeated AM2-11, so these preventions are now a checklist the manager runs on every Notion write:
+
+- Write no bare filename with an extension, such as `name.md` or `name.py`. Notion turns it into a web link. Describe the file instead, or link its repository URL.
+- Escape a literal `$` as `\$`.
+- In a rows-mode query, wrap the filters in a group (AM3-01).
+- Read back every write and compare it with what was intended.
 
 ## Branches and pushes
 
@@ -126,7 +146,7 @@ Store inert evidence and receipts in `docs/testing/evidence/YYYY-MM-DD-work-id-p
 
 ## Boundaries
 
-- Feature work stays paused until Nathan's recorded direction in the current handoff resumes it. Reconcile P06.1 prerequisites with Nathan before commissioning live work. Never turn fixture success into production acceptance.
+- Feature work stays paused until Nathan's recorded direction resumes it. His directions are in the [owner-direction register](../continuity/owner-directions.md). Reconcile P06.1 prerequisites with Nathan before commissioning live work. Never turn fixture success into production acceptance.
 - HDE source, canon, database objects, credentials, services and shared resources remain protected by effect.
 - P11 owns app database wiring and migrations after ownership prerequisites.
 - No legacy-user migration is needed; legacy retirement still needs its own consumer, backup and authorization review.
