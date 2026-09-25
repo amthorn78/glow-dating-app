@@ -24,6 +24,8 @@ Nathan's direction, 24 September 2026:
 - The manager starts or commissions no new work item until the current item's final head passes every CI job and its exact-head review is clean. New work items include implementation, diagnosis, documentation sweeps and feature preparation.
 - Corrections, re-reviews and the merge close-out belong to the current item.
 
+**Mistakes log (Nathan, 25 September 2026).** *"I also want you to track your mistakes."* Every manager records its own mistakes in the [manager mistakes log](../continuity/manager-mistakes.md) when they are found, whoever finds them. That covers departures from the plan or process, wrong statements, commitments not kept and wrong commands. Each entry records what caught the mistake, its effect, the correction and the prevention. A new manager reads the log at the start.
+
 | Session | Started by | Does | Never |
 |---|---|---|---|
 | **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |

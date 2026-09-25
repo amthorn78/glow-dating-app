@@ -2,6 +2,8 @@
 
 Prepared by App Planner 1 for Nathan Amthor, 24 September 2026. Repository: private [`amthorn78/glow-dating-app`](https://github.com/amthorn78/glow-dating-app), default branch `main`. The [publication receipt](migration-publication.md) supplies the verified migration merge, tree and check identities without making this document embed its own future commit hash. Verify current remote state before using the packet. This brief, the initiation prompt and all required documentation are repository Markdown.
 
+**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Feature work is still paused. The next step is a manager proposal on whether to resume P06.1. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
+
 ## Objective, current phase and limits
 
 Build an iOS/Android dating app around Glow-owned accounts, profiles, reciprocal eligibility, recommendations, discovery, likes, mutual matches, safety and one-to-one chat. Consume supported Glow HD Engine results when ready; HDE owns chart calculation, interpretation and engine data. The app must not become a second HDE. WordPress is a later operator/policy/support surface with a narrow plugin calling the dating API, not another dating backend. One monorepo can hold mobile, API, contracts, documentation and that future plugin; deployments remain separate components.
