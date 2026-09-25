@@ -14,7 +14,7 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 **At a glance:**
 
 - **Phase:** P01–P05 are complete at fixture scope. The documentation migration (M01) and the Claude setup (M02) are complete. **Feature work stays paused** until Nathan's recorded direction resumes it.
-- **Next step, per the plan:** App Manager 3 gave Nathan the [P06.1 proposal](../planning/p06-1-chat-provider-proof.md) on 25 September. It waits on his decision and five owner inputs; nothing is dispatched. See "Next actions".
+- **Next step, per the plan:** App Manager 3 gave Nathan the [P06.1 proposal](../planning/p06-1-chat-provider-proof.md) on 25 September. Nathan accepted inputs 3–5 the same day and is confirming inputs 1 and 2 from the Stream dashboard. His decision to resume is pending; nothing is dispatched. See "Next actions".
 - **Manager:** App Manager 3 is active on session branch `claude/stoic-carson-66gdig`. It started in the `Glow app` environment from the [start prompt](../ephemeral/2026-09-25-next-manager-start-prompt.md), which a later manager also uses.
 - **Setup script:** verified. Nathan's 25 September paste has taken effect; see below.
 - **Mistakes:** the [manager mistakes log](manager-mistakes.md) records every manager mistake (Nathan, 25 September). Read it at the start, and add your own when they are found.
@@ -70,7 +70,8 @@ Follow the plan: PF01's sequence and D09, and the [initiation](../planning/claud
 3. **P06.1 proposal: delivered on 25 September, awaiting Nathan.** Feature work stays paused until Nathan's recorded direction resumes it.
    - The [proposal](../planning/p06-1-chat-provider-proof.md) reconciles P02.1, P05.3, A04 and A08 with PF01's P06 section and step 1 of the [Claude handoff's live-verification sequence](claude-code-handoff.md#bounded-live-verification-sequence--after-setup-and-owner-inputs).
    - It asks Nathan for five owner inputs, from that handoff's prioritized inputs 2 and 3: the plan; the test application and its region; the budget; the secret handling; and the chat history after an unmatch or block.
-   - When Nathan answers, record his decision and inputs in the proposal and here, and sync Notion.
+   - **Answers so far:** Nathan accepted the recommendations for inputs 3–5 on 25 September; they are recorded in the proposal. For inputs 1 and 2 he is running the read-only [Stream dashboard discovery](../ephemeral/2026-09-25-p06-1-stream-discovery-prompt.md) in Claude in Chrome.
+   - When he relays its results, record the non-secret facts in the proposal, and get his explicit decision to resume and his permission for the proof to reconfigure application 1729640. Then sync Notion.
    - If he resumes P06.1, add its brief to the same file, write its prompt in `docs/ephemeral/` with both reasoning levels, and follow the [manager workflow](../planning/manager-workflow.md).
 4. **Recorded follow-ups: presented with the proposal on 25 September; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction:
    - the intermittent rendered-test failures, three so far, where a form submit does not advance. Earlier birth-journey diagnostics are on the unmerged branch `app-builder-1/p05-1-birth-diagnostics`;
