@@ -684,3 +684,15 @@ On `5e3fb2f`, [push run 36071229369](https://github.com/amthorn78/glow-dating-ap
 - **Mistakes log.** At Nathan's direction, `docs/continuity/manager-mistakes.md` now records App Manager 2's eleven mistakes, AM2-01 to AM2-11.
 - **Branches.** Every remote branch except `app-builder-1/p05-1-birth-diagnostics` is merged into `main`. That branch is deliberately unmerged. No PRs are open.
 - **Codex on the close-out PRs.** Its automatic reviews of PR19, PR20 and PR21 completed without findings.
+
+### Setup-script verification (App Manager 3, 25 September 2026)
+
+App Manager 3 is the first manager session started after Nathan's paste.
+
+- **Environment, names only:** `DATABASE_URL`, `HD_API_KEY` and `GEO_API_KEY` are unset. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` are set and non-empty; no value was read or printed.
+- **Toolchain:** `command -v node npm python3.12` gives `/root/.local/bin/node`, `/root/.local/bin/npm` and `/root/.local/bin/python3.12`, with `HOME=/root`. They report v24.19.0, 11.9.0 and Python 3.12.14, and the links point into `/root/.local/share/glow-app-toolchain`.
+- **Ownership check:** `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` printed 0. The tree has 9837 entries, all owned by root.
+- **Timing:** `glow-app-toolchain` was created at 00:25:42 UTC and the four links at 00:27:17 UTC. The base image's other entries date from 31 March 2026. This container booted at 01:27:49 UTC, so the Setup run finished about an hour before it started. The run began at about the time App Manager 2's container restarted, 00:25 UTC.
+- **Script identity:** `origin/main:scripts/bootstrap-toolchain.sh` is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`, the version Nathan pasted.
+- **Limit:** the Setup run's log is not kept on disk, so its lines were not read. The ownership check is the handoff's criterion.
+- **Result:** the paste has taken effect. The pending owner action recorded under "After the merge" is closed.
