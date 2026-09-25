@@ -2,8 +2,9 @@
 
 **Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
-- It found one bypass that configuration did not close, S15. **S15 needs Nathan's decision**; see "S15: decision needed".
+- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. See "S15: decided".
 - The exact-head review of I1 is commissioned.
+- Before P06.1-I2 is written, the new Dev Manager reviews the project's process and build (Nathan, 25 September 2026); see the [Dev Manager charter](dev-manager.md).
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
@@ -120,11 +121,11 @@ Facts as the read-only discovery reported them:
 
 - **P06.1-I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): enforce and record the checks; lock down every channel type and create the proof's type; prove the authorized path; run the bypass matrix; clean up. Done on 25 September; see "P06.1-I1 result".
 - **Review of I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)): the exact-head code and security review. It may confirm S15 with at most two small live runs, and it changes no configuration.
-- **P06.1-I2** (written after the review and Nathan's S15 decision):
+- **P06.1-I2** (written after the I1 review and the Dev Manager's first reviews have been considered):
   - revocation and history under Nathan's policy; suspension and deletion; token expiry and revocation;
   - reconnection and realtime events after revocation; a send racing a revocation; provider outage failing closed;
   - the economics; final cleanup; and `docs/architecture/chat-provider-permissions.md`;
-  - the I1 follow-ups under "I1's open questions" below, and the work Nathan's S15 decision needs.
+  - the I1 follow-ups under "I1's open questions" below, and the work Nathan's S15 decision needs (see "S15: decided").
 
   If that is too much for one session, P06.1 gets a third session.
 
@@ -159,7 +160,25 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 - **Cleanup:** the application holds only the dashboard user and no channels. One guest user had to be deleted by hand, and the harness was fixed.
 - **Not yet exercised live:** the restore command, and the harness fixes made after the final run: prefix matching, the G1 judgement, the R9 control and the guest and anonymous filters.
 
-### S15: decision needed
+### S15: decided
+
+**Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."*
+
+- **The design:** option 1 below, the display rule. The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
+- **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager reviews before it is treated as settled:
+  - users never see a sign that anything happens outside Glow;
+  - no provider's name, branding, identifiers, error text, notifications or data reaches the user interface;
+  - everything a user sees comes from Glow's API, in Glow's own wording.
+- **What follows for P06.1-I2:**
+  - map the S15 channel completely: which fields a member can set, what the other member receives, whether the server can clear it and what removal does;
+  - keep the settings that copy member custom data into messages, typing events and mentions off, and check them in the harness;
+  - lock down Stream Video and Feeds, so nothing can ring or notify a user from outside Glow;
+  - record, for P06.2, every provider surface a user could otherwise see.
+- **What follows for P06.2:** the display rule and its test, opaque Stream user IDs, and provider errors that reach users only as Glow's own messages.
+
+The analysis Nathan decided on is kept below as the record.
+
+#### The finding and the options, as put to Nathan
 
 **The finding.**
 
@@ -194,7 +213,7 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 
 ### I1's open questions: manager dispositions
 
-1. **S15:** Nathan decides; see above.
+1. **S15:** decided by Nathan on 25 September 2026: the display rule, with the principle recorded under "S15: decided".
 2. **Video and Feeds: yes, within P06.1.** PF01 puts voice, video and public feeds outside the initial release, so the app will not display them. A modified client could still use them with its user token, for example to ring the other member, or to run calls billed to Glow's Stream organization. I2 records what a user token can do there and locks it down through configuration. It opens no media session, sets up no push and does nothing that could incur a charge.
 3. **Guest reach (G2) and the poll vote (S10): yes.** I2 reruns them with the corrected harness and a fresh budget, together with the other fixes not yet exercised live.
 4. **Unguessable IDs: yes, a P06.2 requirement.** Stream user IDs are random and opaque, never derived from Glow's account IDs, names or emails, and never shown to other users. I2 records whether a refusal for an existing ID differs from one for an ID that does not exist.
@@ -209,7 +228,7 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 ## Risks and limits
 
 - **Intermittent rendered-test failures** (three so far: a form submit that does not advance) can turn P06.1's CI red. The manager cannot re-run jobs, so Nathan re-runs them. The diagnosis is a recorded follow-up.
-- **S15** stays a design blocker until Nathan decides; see "S15: decision needed".
+- **S15** is decided: the display rule. Its residual risk stays recorded under "S15: decided", and P06.2 must enforce the rule with a test.
 - **WebSocket:** verified by I1. The environment's proxy passes Stream's WebSocket: connect, events, disconnect and reconnect.
 - **The dashboard side effect,** which Nathan accepted: the admin role has no grants in the default types or `glow-match`. Restoring the recorded baseline returns the default types' grants.
 - **Silent passes:** a bypass test can pass for the wrong reason, for example a malformed request that fails for itself. The matrix quality rule answers this, and the exact-head review checks it.

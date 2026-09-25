@@ -15,7 +15,7 @@ Nathan's direction, 24 September 2026:
 - **The manager follows up through Nathan.** It checks relayed findings against the pushed branch, then gives Nathan the next prompt: a correction, a review or a close-out.
 - **Nathan reinitiates managers.** Manager sessions (App Manager 1, App Manager 2, …) do not run continuously. Every manager leaves a self-contained handoff so the next one can start cold.
 
-**The manager never starts implementation or review work itself.** It does not use subagents (Agent/Task tool) or remote-session tools for that work. When it needs something done, it writes a prompt for Nathan. Nathan brings the manager back when there is something to act on.
+**The manager never starts implementation or review work itself.** It does not use subagents (Agent/Task tool) or remote-session tools for that work. When it needs something done, it writes a prompt for Nathan. Nathan brings the manager back when there is something to act on. The one exception is the Dev Manager below: Nathan directed the manager to create that session and relay to it itself.
 
 **Implementation and review sessions are not restricted in tooling.** They may use any tools, subagents, scheduled wake-ups or other capabilities their assignment needs. Their boundaries are about scope: owned paths, their own branch, and the reporting the prompt asks for.
 
@@ -24,6 +24,8 @@ Nathan's direction, 24 September 2026:
 - The manager starts or commissions no new work item until the current item's final head passes every CI job and its exact-head review is clean. New work items include implementation, diagnosis, documentation sweeps and feature preparation.
 - Corrections, re-reviews and the merge close-out belong to the current item.
 
+**Dev Manager (Nathan, 25 September 2026).** *"The Dev Manager should act as a second layer of oversight rather than as the primary implementer."* It is a persistent management and review session that the primary manager creates itself and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions, and it watches the documentation chain. It has no scoring. Its [charter](dev-manager.md) holds Nathan's direction, the triggers for consulting it, the relay and the records. The primary manager stays responsible for coordination and for moving work forward.
+
 **Mistakes log (Nathan, 25 September 2026).** *"I also want you to track your mistakes."* Every manager records its own mistakes in the [manager mistakes log](../continuity/manager-mistakes.md) when they are found, whoever finds them. That covers departures from the plan or process, wrong statements, commitments not kept and wrong commands. Each entry records what caught the mistake, its effect, the correction and the prevention. A new manager reads the log at the start.
 
 | Session | Started by | Does | Never |
@@ -31,11 +33,12 @@ Nathan's direction, 24 September 2026:
 | **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
 | **Implementation** | Nathan, pasting a manager prompt | Works within its owned paths on its own session branch from the named commit, using any tools, subagents or wake-ups it needs; runs the listed checks; pushes its own branch; reports | Edits manager-owned files or other sessions' branches; merges to main (the manager integrates) |
 | **Review** | Nathan, pasting a manager review prompt | Reviews one exact head with any tools it needs; reports findings | Changes the reviewed branch |
+| **Dev Manager** | The primary manager, with the remote-session tools (Nathan, 25 September 2026) | Reviews and approves consequential decisions and process; periodic process and build reviews; documentation oversight. Answers through report files on its own branch | Implements, commissions sessions, merges, edits Notion or decides for Nathan |
 
 ## Cycle
 
 1. **Start.** Check the environment first, by names only: `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` means the HDE-shared environment. Say so and never read or use the values. Then check the pinned toolchain (`node --version`, `npm --version`, `python3.12 --version`). Verify remote main, open PRs and the worktree. Read the current handoff, applicable instructions and the relevant code. Keep verified behavior, dated evidence, inherited plans and unresolved assumptions separate.
-2. **Brief.** Choose one bounded work item. Write its persistent brief in `docs/planning/` using the template below. Do useful independent work before asking Nathan for a concrete missing input.
+2. **Brief.** Choose one bounded work item. Write its persistent brief in `docs/planning/` using the template below. Do useful independent work before asking Nathan for a concrete missing input. If the brief makes architectural or procedural choices, consult the [Dev Manager](dev-manager.md) before commissioning it.
 3. **Prompt.** Write the paste-ready prompt in `docs/ephemeral/YYYY-MM-DD-work-id-purpose.md`, linking the brief. Commit and push it on the manager branch, then give Nathan the exact text to paste. A fresh session must be able to act on it alone.
    - **Recommend a reasoning level** with every prompt (Nathan, 24 September 2026). Give the manager's own Opus reasoning level (low, medium, high, extra high or max), decided before seeing TypeSafe's. Beside it, give the reading of the TypeSafe effort scorer v4.
    - The scorer's method, its pre-registered decision rule and the uses table are in the Notion page *TypeSafe effort scorer — Glow app usage log* (under the Glow Operations Hub). It sends only one or two sentences describing the session's work; the API credential is attached by the environment.
@@ -49,7 +52,7 @@ Nathan's direction, 24 September 2026:
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.
    - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
-6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
+6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head. A design decision that arises here, such as a design blocker, goes to the Dev Manager before it is treated as settled.
 7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md), then:
    - **Wait for Codex.** Marking a draft ready starts Codex's automatic code and security review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows both reviews completed, and verify each Codex finding like any other review finding.
    - Merge within the standing app-only authorization.
