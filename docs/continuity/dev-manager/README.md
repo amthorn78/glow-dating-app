@@ -10,16 +10,16 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 
 | Session | Created | By | Branch | Basis commit | State |
 |---|---|---|---|---|---|
-| Dev Manager 1 | 25 September 2026 | App Manager 3, at Nathan's direction | `claude/dev-manager` | Recorded when created | Initializing |
+| Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | Working on DM-01 and DM-02 |
 
 ## Consultations
 
 | ID | Sent | Requested by | Question | Report | Verdict | Disposition |
 |---|---|---|---|---|---|---|
-| DM-01 | 25 September 2026 | Nathan, through App Manager 3 | **Process review:** how the project is managed and implemented | Pending | Pending | Pending |
-| DM-02 | 25 September 2026 | Nathan, through App Manager 3 | **Build review:** the state and direction of the application | Pending | Pending | Pending |
+| DM-01 | 25 September 2026, 09:00 UTC, as the session's first prompt | Nathan, through App Manager 3 | **Process review:** how the project is managed and implemented | Pending | Pending | Pending |
+| DM-02 | 25 September 2026, 09:00 UTC, as the session's first prompt | Nathan, through App Manager 3 | **Build review:** the state and direction of the application | Pending | Pending | Pending |
 
-Both reviews are based on the [status and State of the App](../state-of-the-app.md) of 25 September 2026. Per Nathan, no new implementation task is created until the Dev Manager has responded and its reviews have been considered.
+Both reviews are based on the [status and State of the App](../state-of-the-app.md) of 25 September 2026, at the basis commit above. The consultation text is the [start prompt](../../ephemeral/2026-09-25-dev-manager-start-prompt.md), with that commit filled in. Per Nathan, no new implementation task is created until the Dev Manager has responded and its reviews have been considered.
 
 ## Dispositions
 
