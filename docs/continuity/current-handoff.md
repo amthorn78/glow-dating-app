@@ -14,7 +14,7 @@ This file only routes: the current item, what happens next and who waits on whom
   - **S15:** the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) is conditional on the I1 review confirming S15 live. Nathan's principle is in force, and he confirmed its exceptions (OD-16).
   - **Linear order (OD-29):** one session at a time, one prompt per message.
     - **Done:** the flake diagnosis (OD-21): a focus race in the app, fixed; verified and integrated at `8b8b1bd`.
-    - **Next:** I1's exact-head review, revision 3 of its [prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md), records commit `516bee2`. The Stream variables are present; Nathan deletes them once it starts (OD-28).
+    - **Running:** I1's exact-head review, revision 3 of its [prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md), records commit `516bee2`. Nathan started it at max; he deletes the Stream variables once it has started (OD-28).
     - **Then:** the exact-head review of the fix at `8b8b1bd`.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-03, Nathan's answers and the dispositions.

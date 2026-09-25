@@ -9,7 +9,7 @@
   - the S15 exceptions are confirmed (OD-16);
   - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
   - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
-- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). Next is the I1 review, then the exact-head review of the fix.
+- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is running: Nathan started it on 25 September, at max. The exact-head review of the fix follows it.
 - **The Stream secret is settled** (OD-28): Nathan adds the three `STREAM_*` variables for each session that calls Stream, starts it, then deletes them.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
@@ -154,7 +154,7 @@ Facts as the read-only discovery reported them:
   - If the cause is unrelated to P06.1 and cannot turn PR26's CI red, the fix becomes a focused repair item.
   - **Result (25 September; branch `claude/trusting-mayer-bw6p40`, head `a7ab30b`):** cause class (a), a defect in the app's code. On web, `focusText` moved focus to the screen heading or the error alert one frame after they appeared; when a test had just focused a field, the entry that followed was erased, so the submit stayed put with an alert. The fix leaves focus in a shown text field that already has it, with a regression test. Route: fixed inside P06.1. The manager verified the report and integrated it at `8b8b1bd`; see the [evidence record](../testing/evidence/2026-09-25-p06-1-rendered-flake-diagnosis.md), "Manager verification".
 - **Review of the flake fix** (queued after the I1 review; OD-29). The fix is new code in PR26, so it needs its own exact-head review of code head `8b8b1bd` before OD-21's acceptance. It is not live and needs no Stream variables.
-- **The Stream secret in cloud sessions** (OD-20, decided by OD-28). One `Glow app` environment stays. For each session that calls Stream, Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, starts that one session, then deletes them; the prompt tells him when they are needed. The variables are in the environment now, for the I1 review. The secret is replaced at P06.1's close. CI needs no Stream secret.
+- **The Stream secret in cloud sessions** (OD-20, decided by OD-28). One `Glow app` environment stays. For each session that calls Stream, Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, starts that one session, then deletes them; the prompt tells him when they are needed. They were present when the I1 review started, the first session that calls Stream under OD-28. The secret is replaced at P06.1's close. CI needs no Stream secret.
 
 ### P06.1-I1 result
 
