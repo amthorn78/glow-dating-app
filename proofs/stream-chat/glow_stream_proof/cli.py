@@ -191,7 +191,8 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
 def cmd_verify_clean(ctx: Context) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
     users = [str(u.get("id")) for u in snapshot["users"].get("users", [])]
-    proof_users = [u for u in users if u.startswith(PREFIX_ROOT)]
+    # Stream prefixes guest IDs ("guest-<uuid>-<requested id>"), so match anywhere.
+    proof_users = [u for u in users if PREFIX_ROOT in u]
     channels = [str(c["channel"]["cid"]) for c in snapshot["channels"].get("channels", [])]
     ctx.say(f"proof users remaining: {proof_users}")
     ctx.say(f"channels remaining: {channels}")
@@ -202,9 +203,7 @@ def cmd_verify_clean(ctx: Context) -> int:
 def cmd_cleanup(ctx: Context, apply: bool) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
     users = [
-        str(u["id"])
-        for u in snapshot["users"].get("users", [])
-        if str(u["id"]).startswith(PREFIX_ROOT)
+        str(u["id"]) for u in snapshot["users"].get("users", []) if PREFIX_ROOT in str(u["id"])
     ]
     cids = [
         str(c["channel"]["cid"])

@@ -336,7 +336,7 @@ def _tokens_and_access() -> list[Case]:
         ("message", "fetch XD's message by ID", ("{xd_text}",)),
     ):
         for who, token, proc in (
-            ("guest", "server-issued guest token", "guest-role"),
+            ("guest", "guest created by G1's control", "guest-role"),
             ("anonymous", "none (anonymous)", "anonymous"),
         ):
             gid = "G2" if who == "guest" else "G3"
@@ -495,7 +495,8 @@ def _reading() -> list[Case]:
             action="query XD's members",
             expect="refused",
             step=_call("A", "channel", "queryMembers", [{}], channel=(T, "{XD}")),
-            control=Control(kind="session", session="X"),
+            # No client may read member lists (members have read-channel only).
+            control=_replay(),
             leak_terms=("{X}", "{D}"),
             phase=20,
         ),

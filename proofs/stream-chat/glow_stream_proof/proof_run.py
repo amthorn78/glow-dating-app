@@ -216,7 +216,7 @@ class ProofRun:
         dashboard_users = 0
         for user in snapshot["users"].get("users", []):
             uid = str(user.get("id"))
-            if uid.startswith(PREFIX_ROOT):
+            if PREFIX_ROOT in uid:
                 foreign_users.append(f"leftover proof user {uid}")
                 continue
             custom = user.get("custom") or {}
@@ -990,9 +990,11 @@ class ProofRun:
             session.close()
         status, code = _status_code(reply)
         outcome = "success" if reply.ok else matrix.classify(status, code)
-        exists_after = bool(self._server_user(guest_id).get("id"))
-        if reply.ok or exists_after:
-            self.users.append(guest_id)
+        # Stream stores guests as "guest-<uuid>-<requested id>"; read the ID it returned.
+        created_id = self._guest_created(reply)
+        exists_after = created_id is not None
+        if exists_after:
+            self.users.append(str(created_id))
         else:
             self.ledger.release("users")  # refused: no user was created
         control_ok = False
@@ -1014,19 +1016,25 @@ class ProofRun:
                 disabled = _dig(app, "app.guest_user_creation_disabled")
                 if disabled is not True:
                     raise RunStopped("guest creation could not be disabled again")
-            if creply.ok:
-                control_ok = True
-                me = (creply.data or {}).get("me") or {}
-                self.ctx["guest_id"] = str(me.get("id") or guest_id)
-                self.users.append(self.ctx["guest_id"])
-                guest_role = me.get("role")
+            # The control is the POST /guest request itself; setGuestUser then also
+            # connects, which the lockdown may refuse separately.
+            post = next((r for r in creply.requests if r.get("path") == "/guest"), None)
+            post_status = post.get("status") if post else None
+            control_ok = isinstance(post_status, int) and post_status < 300
+            control_created = self._guest_created(creply)
+            if control_created is not None:
+                self.ctx["guest_id"] = control_created
+                self.users.append(control_created)
+                guest_role = _dig(post.get("response") if post else None, "user.role")
             else:
                 self.ledger.release("users")
+            if not creply.ok:
                 guest.close()
                 self.sessions.pop("guest", None)
             control_desc = (
-                f"identical request with guest creation enabled ({on.status}): "
-                f"{_observed(creply)}; disabled again ({off.status}) and verified"
+                f"identical request with guest creation enabled ({on.status}): POST /guest "
+                f"{post_status}; guest connect {_observed(creply)}; disabled again "
+                f"({off.status}) and verified"
             )
         verdict = matrix.refused_verdict(outcome, control_ok)
         return self._result(
@@ -1042,6 +1050,15 @@ class ProofRun:
             },
         )
 
+    @staticmethod
+    def _guest_created(reply: Reply) -> str | None:
+        for record in reply.requests:
+            status = record.get("status")
+            if record.get("path") == "/guest" and isinstance(status, int) and status < 300:
+                created = _dig(record.get("response"), "user.id")
+                return str(created) if created else None
+        return None
+
     def _read_probe(self, suffix: str) -> tuple[dict[str, Any], str | None]:
         """The request a guest or anonymous client makes, and the session that controls it."""
         if suffix == "read-ab":
@@ -1050,7 +1067,7 @@ class ProofRun:
             return {
                 "target": "client",
                 "method": "queryChannels",
-                "args": [{"type": T}, [], matrix.READ_OPTIONS],
+                "args": [{"members": {"$in": [self.ctx["A"]]}}, [], matrix.READ_OPTIONS],
             }, "A"
         if suffix == "users":
             return {
@@ -1544,7 +1561,19 @@ class ProofRun:
             )
             out["channels_delete"] = res.status
             out["channels_task"] = self._wait_task(_dig(res.body, "task_id"))
-        users = sorted(set(self.users))
+        # Include any user whose ID contains this run's prefix (Stream prefixes
+        # guest IDs with "guest-<uuid>-"), not only the IDs recorded here.
+        listed = self.api.get(
+            "/api/v2/users",
+            params={"payload": json.dumps({"filter_conditions": {}, "limit": 100})},
+        ).body
+        found = [
+            str(u.get("id"))
+            for u in (listed.get("users", []) if isinstance(listed, dict) else [])
+            if self.prefix in str(u.get("id"))
+        ]
+        out["users_found_by_prefix_not_recorded"] = len(set(found) - set(self.users))
+        users = sorted(set(self.users) | set(found))
         if users:
             res = self.api.raw(
                 "POST",
@@ -1604,7 +1633,7 @@ class ProofRun:
         users = [
             str(u.get("id"))
             for u in snapshot["users"].get("users", [])
-            if str(u.get("id")).startswith(PREFIX_ROOT)
+            if PREFIX_ROOT in str(u.get("id"))
         ]
         channels = [
             str(c.get("channel", {}).get("cid")) for c in snapshot["channels"].get("channels", [])
@@ -1613,9 +1642,7 @@ class ProofRun:
             "remaining_proof_users": users,
             "remaining_channels": channels,
             "other_users_present": sum(
-                1
-                for u in snapshot["users"].get("users", [])
-                if not str(u.get("id")).startswith(PREFIX_ROOT)
+                1 for u in snapshot["users"].get("users", []) if PREFIX_ROOT not in str(u.get("id"))
             ),
             "dashboard_users_present": sum(
                 1

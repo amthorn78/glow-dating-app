@@ -134,7 +134,14 @@ class FakeSession:
             return Reply(True, {"events": []}, None)
         if op == "guest":
             if self.label == "guest":
-                return Reply(True, {"me": {"id": params["user"]["id"], "role": "guest"}}, None)
+                stored = f"guest-0000-{params['user']['id']}"  # Stream prefixes guest IDs
+                guest_post: dict[str, Any] = {
+                    "method": "POST",
+                    "path": "/guest",
+                    "status": 201,
+                    "response": {"user": {"id": stored, "role": "guest"}},
+                }
+                return Reply(True, {"me": {"id": stored, "role": "guest"}}, None, [guest_post])
             return Reply(False, None, {"status": 403, "code": 17, "message": "no"})
         record: dict[str, Any] = {
             "method": "POST",
@@ -192,7 +199,8 @@ class SimulationTest(unittest.TestCase):
         self.assertIn("AP11", {c["check_id"] for c in results["checks"]})
         self.assertIn("users_task", results["cleanup"])
         self.assertLessEqual(ledger.run.users, 20)
-        self.assertIn("guest_id", run.ctx)
+        self.assertTrue(run.ctx["guest_id"].startswith("guest-0000-p061i1-simulated"))
+        self.assertIn(run.ctx["guest_id"], run.users)
 
 
 if __name__ == "__main__":
