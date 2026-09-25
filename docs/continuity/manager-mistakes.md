@@ -33,6 +33,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-01 | 25 Sep 2026 | execution | A Notion readback query passed a bare property filter where the tool requires a group, and failed validation | The Notion tool's input validation |
 | AM3-02 | 25 Sep 2026 | follow-through | Pushed records that did not recommend ultracode for the I1 review, although the manager had committed to recommend it if the scorer flagged it, and the scorer did | App Manager 3, while syncing Notion |
 | AM3-03 | 25 Sep 2026 | execution | Ran the trusted classifier with `--head HEAD` instead of a SHA; it failed closed | The classifier's fail-closed output |
+| AM3-04 | 25 Sep 2026 | execution | Bare Python module filenames in a Notion row became broken web links, the AM2-11 slip with `.py` | App Manager 3's readback |
 
 ## App Manager 2
 
@@ -151,3 +152,10 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Caught by:** the classifier's fail-closed output.
 - **Effect:** none. The re-run with the full SHA printed `ordinary-docs-only` for `9ff600f..cd72000`.
 - **Prevention:** use the manager workflow's classification command as written.
+
+### AM3-04 — Bare module filenames in Notion (execution)
+
+- **What happened:** the usage-log row for the I1 review named `proof_run.py` and `matrix.py` in plain text. Notion turned `run.py` and `matrix.py` into links to `http://run.py` and `http://matrix.py`.
+- **Caught by:** App Manager 3's readback of the row.
+- **Effect:** none lasting. The row was rewritten minutes later without filenames.
+- **Prevention:** AM2-11's rule covers every filename with an extension, not only `name.md`. In Notion text, describe files without bare filenames.
