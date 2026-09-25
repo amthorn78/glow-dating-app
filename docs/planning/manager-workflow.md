@@ -49,6 +49,7 @@ Nathan's direction, 24 September 2026:
    - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
 6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
 7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md), then:
+   - **Wait for Codex.** Marking a draft ready starts Codex's automatic code and security review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows both reviews completed, and verify each Codex finding like any other review finding.
    - Merge within the standing app-only authorization.
    - Verify actual main and record an ordinary-documentation receipt in `docs/testing/evidence/`.
    - Update the current handoff and sync Notion (Implementation Control and the Work Register row).

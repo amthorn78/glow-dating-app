@@ -663,3 +663,14 @@ On `5e3fb2f`, [push run 36071229369](https://github.com/amthorn78/glow-dating-ap
   - The 47 Work Register Plan References that pointed to Drive now point to the repository: 46 to PF01, and AP1-DBA-001 to its preserved assignment in `docs/planning/sources/`. A re-query found none left.
   - A03 is Done, resolved by P01.1.
   - An M01 row now exists.
+
+### Codex review after the merge (25 September 2026)
+
+- **Timing.** Marking PR18 ready at 23:59 UTC started Codex's automatic code and security review of `5e3fb2f`; its summary gives the trigger as "Draft marked ready". The merge followed within seconds. The security review completed at 00:03:42 UTC and the code review at 00:04:22 UTC.
+- **Findings.** The security review posted no finding. The code review posted one P2, "Reject directory-shaped link destinations", at `scripts/bootstrap-toolchain.sh:281-282`.
+- **Manager verification.**
+  - In a scratch directory, with a real directory at `<linkdir>/node`, `ln -sfn <tree>/bin/node <linkdir>/node` exited 0. It created `<linkdir>/node/node` and left the destination a directory.
+  - The script checks nothing after `ln`, so it would log success.
+  - These lines are unchanged since App Manager 1's script (`a335c4f`). The first review covered them; the delta review did not.
+- **Effect here.** On 25 September, `/root/.local/bin/node`, `npm`, `npx` and `python3.12` were all symlinks, which `ln -sfn` replaces correctly. The one-time paste is unaffected.
+- **Disposition.** The fix is queued in the Setup-script hardening item; see the brief. The manager workflow now says to wait for Codex's summary before merging a full-scope PR.
