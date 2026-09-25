@@ -1,8 +1,8 @@
 # Next manager start prompt
 
-- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged.
+- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day for its successor.
 - **Durable context:** [current handoff](../continuity/current-handoff.md) and [manager workflow](../planning/manager-workflow.md).
-- **Deletion condition:** prune when the next manager has started; that manager leaves its own start prompt for its successor.
+- **Deletion condition:** replace when the next manager has started; each manager keeps this prompt current for its successor.
 
 **Nathan:** replace `<N>` with the manager's number before pasting.
 
@@ -53,7 +53,7 @@ You are **App Manager <N>**, the Claude implementation manager for Nathan Amthor
 
 **First report to Nathan:**
 
-- the environment check, including whether the Setup-script paste has taken effect;
+- the environment check, including the Setup-script ownership check;
 - repository and CI state;
-- the proposal on whether to resume P06.1, as the handoff describes: its prerequisites reconciled and the exact owner inputs it needs. Propose it; don't dispatch it;
+- the current work item and anything waiting on Nathan, as the handoff's "Next actions" describe. Propose; don't dispatch anything Nathan has not resumed;
 - the recorded follow-ups, for Nathan to schedule.
