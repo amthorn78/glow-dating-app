@@ -210,9 +210,10 @@ connection or HDE invocation is needed to demonstrate this fixture slice.
 
 The separate
 [AB1-DBA-001 audit](https://app.notion.com/p/3e44590a05eb81908661fc44eca0ce20)
-is completed read-only evidence, not P04.1 database authorization. It supports
-the owner-preferred shared logical database only after reviewed app schema/role
-isolation. The completed audit maps all 32 provisional models to new app-owned relations if
+is completed read-only evidence, not P04.1 database authorization. It supported
+the earlier owner-preferred shared logical database only after reviewed app schema/role
+isolation; the app now gets its own logical database on HDE's PostgreSQL service
+([ADR 0004](../adr/0004-app-database-placement.md)). The completed audit maps all 32 provisional models to new app-owned relations if
 retained. Final schema/search-path/auth-migration/role design remains P11 work. Preserve the `hde`
 schema, `public.hde_body_graphs_current` and current legacy dependencies; no
 fixture implementation changes those objects or performs their retirement.

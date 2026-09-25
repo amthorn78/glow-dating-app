@@ -10,7 +10,7 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 
 | Session | Created | By | Branch | Basis commit | State |
 |---|---|---|---|---|---|
-| Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | DM-01 and DM-02 answered at 09:09 UTC (`0f55891`); DM-03 answered at 09:36 UTC (`23951c4`); available |
+| Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | DM-01 and DM-02 answered at 09:09 UTC (`0f55891`); DM-03 answered at 09:36 UTC (`23951c4`); Nathan's answers and directions recorded (`574ee0e` to `d945478`); available |
 
 ## Consultations
 
@@ -61,7 +61,7 @@ App Manager 3 checked the facts it could against the repository before deciding.
 | B9 Dependency advisories | Consider | **Accepted** | A one-line `npm audit` result in each phase's evidence (CI policy). The State of the App's description of GHSA-vcc3-ghjq-m6fr (it is `decode-uri-component` denial of service) is corrected at its next refresh, so the reviewed snapshot stays as reviewed. Dependabot alerts are Nathan's option |
 | B10 Build and CI gaps | Soon | **Accepted**; the flake referred to Nathan (DM-01 question 1); HDE timing referred to Nathan (DM-02 question 6) | The install-order note added to local development. No further mobile mirroring of domain logic: P06.2 takes chat state from API-served fixtures (brief). The pre-merge checklist (P7) covers the advisory gate |
 
-**Questions for Nathan**, relayed as the Dev Manager wrote them in its reports: DM-01 questions 1–4 and DM-02 questions 1–6. Their answers are recorded here when given.
+**Questions for Nathan**, relayed as the Dev Manager wrote them in its reports: DM-01 questions 1–4 and DM-02 questions 1–6. Nathan's answers are recorded below, under "Nathan's answers and directions".
 
 ### DM-03 (App Manager 3, 25 September 2026)
 
@@ -99,3 +99,42 @@ The close-out read before PR26 merges covers all of them.
 4. The rest of the batch: approved with conditions (E1 to E4).
 
 It asked no new questions for Nathan.
+
+## Nathan's answers and directions (25 September 2026)
+
+Nathan answered the Dev Manager directly in its session, and the Dev Manager recorded his words and their consequences in five files. They arrived through Nathan's relay message and were integrated in the batch that follows `516bee2`.
+
+- [Owner answers to DM-01 and DM-02](reviews/2026-09-25-owner-answers-to-dm-01-dm-02.md) (`574ee0e`), A1–A8
+- [Addendum](reviews/2026-09-25-owner-answers-addendum.md) (`2beb86d`)
+- [Relay direction](reviews/2026-09-25-relay-direction.md) (`82e53f9`)
+- [Operational guidance in Notion](reviews/2026-09-25-notion-operational-guidance.md) (`e6af216`)
+- [Notion precedence delegated](reviews/2026-09-25-notion-precedence-delegated.md) (`d945478`)
+
+**Eight of the ten questions were answered.** The Dev Manager put eight points to Nathan, and its relay message says all ten were answered. Two were not among them:
+
+- **DM-01 question 2** (the Dev Manager read). The read stays in force under OD-15, as DM-03 G1 set out, unless Nathan withdraws it.
+- **DM-01 question 3** (the TypeSafe scorer). It is raised when the pre-registered ten-session comparison ends.
+
+Neither blocks anything, so neither is put to Nathan again now.
+
+| Answer | Question | Register | Disposition | Where applied |
+|---|---|---|---|---|
+| A1 S15 exceptions | DM-02 q1 | OD-16 | **Recorded and applied** | ADR 0003 decision 4, PF01 §7, the brief. The Dev Manager's reading of "essential system screens" (screens the operating system or store requires and Glow cannot replace) is adopted |
+| A2 Disposable PostgreSQL proof | DM-02 q2 | OD-17 | **Recorded and applied** | PF01 §6 and §8 (P06.DB after P06.1, before P06.2), the P11 deferred acceptance cases. The P06.DB brief is written when the item starts |
+| A3 The app's own logical database | DM-02 q3 | OD-18; OD-03 superseded | **Recorded and applied**, with one correction | New ADR 0004; ADR 0002's supersession note; PF01 §4, §6, P11A, P11C and A02; the migration plan, resource ownership, the P11 cases (the move-out proof joins DB01), the domain boundaries, the fixture notes and provider conformance. **Correction:** the Dev Manager wrote that the API "reserves its own connection name, `GLOW_DATABASE_URL`". In fact the fixture guards refuse that name, like every database connection name; P11 chooses the app's own setting. ADR 0004 says so |
+| A4 WordPress and Django | DM-02 q4 | OD-19 | **Recorded and applied**; the Dev Manager's safeguards go to the P07 brief | PF01 §1 and §4 |
+| A5 The Stream secret | DM-02 q5 | OD-20 | **Recorded.** The primary manager's plain-language recommendation goes to Nathan before I2a | The brief; the CI policy (no Stream secret in CI) |
+| A6 The intermittent CI failure | DM-01 q1 | OD-21 | **Recorded and applied.** The flake diagnosis prompt is written; it runs inside P06.1 | Manager workflow (one item at a time; no acceptance on a rerun alone), the CI policy, the brief |
+| A7 Stream Maker and the HDE contract | DM-02 q6 | OD-22, OD-23 | **Recorded and applied.** The HDE contract-requirements document is the manager's next writing task, while the sessions run | PF01 A01, A04, A05, A07 and R05; the brief's economics |
+| A8 No paid GitHub plan | DM-01 q4 | OD-24 | **Recorded and applied** | The CI policy lists what is not enforced and the procedural substitutes. Dependabot alerts are Nathan's option, not verified as free |
+| Relay by hand | — | OD-25 | **Recorded and applied.** Scheduled messages into the Dev Manager's session are retired | The charter (relay, continuity), the manager workflow, the Dev Manager start prompt |
+| Operational guidance in Notion | — | OD-26 | **Recorded and applied** | `AGENTS.md`, PF01 §2 and D04, PF00's authority map, `docs/README.md`, the manager workflow; in Notion, Implementation Control's operating procedure and a register page |
+| Notion precedence delegated | — | OD-27 | **Decided by App Manager 3:** the repository wins, and Notion is corrected to match. Every records batch ends with a match check and a readback | Manager workflow ("Notion and the repository"), the charter's records table |
+
+**The Dev Manager's Notion findings** (the operational-guidance note): all three gaps are accepted and fixed in Notion.
+
+- The status block now records the answers.
+- The operating procedure is rewritten to match the repository.
+- The register has its own Notion page.
+
+Implementation Control's history moves to a sub-page, as DM-01 P3 recommended.

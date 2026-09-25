@@ -5,7 +5,7 @@ Status: Accepted by Nathan.
 
 - **The display rule as S15's answer** is conditional on the exact-head review of P06.1-I1 confirming finding S15 live.
 - **The principle** (decision 3) is in force regardless of the review (DM-03 G4).
-- **The carve-outs** (decision 4) await Nathan's confirmation.
+- **The exceptions** (decision 4) are confirmed by Nathan (OD-16, 25 September 2026).
 Work item: P06.1 — Prove chat-provider permissions and economics
 
 ## Context
@@ -29,12 +29,18 @@ Nathan, 25 September 2026: *"I accept your recommendation on S15. There should n
 1. **The display rule.** The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API. The app ignores member custom data and `member.updated` events. Stream's settings that copy member custom data into messages, typing events and mentions stay off.
 2. **Server and operator consumers.** Stream member or user custom data is never forwarded into exports, staff or WordPress views, push content or analytics (DM-02 B1). Otherwise the hidden channel would reach a person through Glow itself.
 3. **The principle, product-wide.** Users never see a sign that anything happens outside Glow. No provider's name, branding, identifiers, error text, notifications or data reaches them; everything they see comes from Glow's API, in Glow's own wording. The scope is Glow's in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share. [PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md) section 7 records the principle.
-4. **Proposed carve-outs, awaiting Nathan's confirmation** (DM-02 question 1):
-   - legally required disclosures, such as privacy policies, store privacy labels, processor lists, and data-export contents where the law requires recipients;
-   - licence notices;
-   - system screens the platform mandates, such as permission dialogs, store purchase sheets and platform sign-in flows.
+4. **The exceptions.** Nathan confirmed them on 25 September 2026 (OD-16): *"Yes. S15 must allow legally required disclosures, licence notices, and essential system screens. Compliance takes priority. Please document these as narrow, explicit exceptions and make the resulting screens clear and usable. An optional product screen should not be classified as an exception merely because it is convenient to do so."*
 
-   Until Nathan confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect.
+   The list is exhaustive:
+   - **legally required disclosures,** such as privacy policies, store privacy labels, processor lists, and data-export contents where the law requires recipients;
+   - **licence notices;**
+   - **essential system screens:** screens the operating system or store requires and Glow cannot replace, such as permission dialogs, store purchase sheets and platform sign-in flows if social login is adopted.
+
+   Each exception has two requirements:
+   - **a named basis:** the law, store policy or platform requirement that makes it necessary;
+   - **usability:** the resulting screen is clear and usable wherever Glow controls its presentation.
+
+   **Nathan's test:** an optional product screen is not an exception because it is convenient. For example, a provider's hosted chat or payment widget chosen for convenience does not qualify.
 
 ## Why the display rule, and its limits
 
@@ -64,4 +70,4 @@ Nathan, 25 September 2026: *"I accept your recommendation on S15. There should n
 - the exact-head review narrows S15 or finds a configuration that closes it;
 - P06.1-I2a fails condition (a);
 - Stream adds a setting that disables client writes to member custom data;
-- Nathan decides the carve-outs.
+- an exception's basis changes, or a new one is proposed; only Nathan adds to the list.

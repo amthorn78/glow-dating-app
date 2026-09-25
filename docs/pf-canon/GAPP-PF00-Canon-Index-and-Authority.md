@@ -1,6 +1,6 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.8 · **Recorded:** 25 September 2026
+**Identity:** GAPP-PF00 · **Revision:** 1.9 · **Recorded:** 25 September 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
@@ -27,7 +27,8 @@ The plan owns the initial governing direction, phase acceptance, architectural b
 | Information | Owner |
 |---|---|
 | Current task, blocker, next action and execution status | Notion coordination plus repository current handoff; durable scope/evidence in Markdown |
-| Nathan's standing directions, with dates and quotes | [Owner-direction register](../continuity/owner-directions.md) |
+| Nathan's standing directions, with dates and quotes | [Owner-direction register](../continuity/owner-directions.md); Notion carries a copy |
+| Operational guidance: the relay, review paths, one item at a time, records | Repository Markdown: `AGENTS.md`, `CLAUDE.md`, the manager workflow, the Dev Manager charter and the CI policy. Notion's Implementation Control carries a matching copy (OD-26); where they differ, the repository wins and Notion is corrected (OD-27) |
 | Governing implementation sequence and project-level constraints | Current GAPP-PF01 |
 | Implementation contracts, code, runtime configuration definitions, tests and runbooks | Application repository after recorded establishment |
 | Durable architectural rationale | Repository ADRs once established; initial decisions remain in GAPP-PF01 until transferred |
@@ -65,3 +66,5 @@ Use stable titles and document IDs for durable references. Record the concrete s
 1.7 — records the Dev Manager (PF01 D10, Nathan, 25 September 2026) and its exception to the rule that the manager starts no sessions. No change to the authority map.
 
 1.8 — status leaves the canon (DM-01 P3). This index points to the owner-direction register and the current handoff instead. The authority map adds the register, and App Planner 1 and App Builder 1 are named as historical roles (DM-03 E4). No change to authority.
+
+1.9 — the authority map records that Notion carries a matching copy of the operational guidance and of the owner-direction register, and that the repository wins on any difference (OD-26, OD-27, 25 September 2026). No other change to authority.

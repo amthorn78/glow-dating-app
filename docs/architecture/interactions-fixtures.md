@@ -224,8 +224,8 @@ account, Maker entitlement, credit or paid activation.
 
 [Deferred acceptance](../testing/p11-deferred-acceptance.md) retains real
 multi-connection reciprocal/dedup/absent-block races, send-versus-revocation,
-pre/post-commit worker crashes, redelivery and restore cases. The audited P11
-storage direction remains a dedicated app schema and restricted roles in HDE's
-same logical database `railway`. HDE/legacy objects and shared effects stay
+pre/post-commit worker crashes, redelivery and restore cases. The P11
+storage direction is now the app's own logical database and restricted roles on
+HDE's PostgreSQL service ([ADR 0004](../adr/0004-app-database-placement.md), 25 September 2026). HDE/legacy objects and shared effects stay
 protected. P05.3 opens no database, runs no SQL/applied migration and activates
 no HDE/provider, infrastructure or deployment.

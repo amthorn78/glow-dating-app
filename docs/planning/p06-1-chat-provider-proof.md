@@ -2,9 +2,14 @@
 
 **Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
-- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The display rule, as S15's answer, is conditional on the exact-head review confirming S15 live. The principle is in force regardless, and its carve-outs await Nathan (DM-03 G4). See "S15: decided".
+- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The display rule, as S15's answer, is conditional on the exact-head review confirming S15 live. The principle is in force regardless (DM-03 G4), and Nathan confirmed its exceptions (OD-16). See "S15: decided".
 - The Dev Manager's first reviews, DM-01 and DM-02, are in and considered. This brief applies the accepted changes: I2 is split into I2a and I2b, economics becomes a dashboard discovery, and the harness's checks join CI. See the [review log](../continuity/dev-manager/README.md).
-- The Dev Manager read the revised I1 review prompt (DM-03) and approved it with conditions. Revision 3 applies them. Next: Nathan runs the review.
+- The Dev Manager read the revised I1 review prompt (DM-03) and approved it with conditions. Revision 3 applies them.
+- **Nathan's answers of 25 September** (OD-16 to OD-24) change this item in three ways:
+  - the S15 exceptions are confirmed (OD-16);
+  - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
+  - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
+- Next: Nathan runs the I1 review and the flake diagnosis. They are independent and can run side by side.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
@@ -95,8 +100,10 @@ Facts as the read-only discovery reported them:
 
   It also records the exact configuration that achieved this, and how to restore the defaults.
 - **Owned paths (writable):** `proofs/stream-chat/**` (new: harness, locks, README and offline tests) and `docs/testing/evidence/2026-09-25-p06-1-chat-provider-proof.md` (new; each session adds its section). P06.1-I2b also owns `docs/architecture/chat-provider-permissions.md`, and one new job for the harness's offline checks in `.github/workflows/foundation.yml` (DM-02 B6). That workflow change is full scope, under the CI policy's workflow rule.
+  - **The flake diagnosis** (OD-21) owns `docs/testing/evidence/2026-09-25-p06-1-rendered-flake-diagnosis.md`.
+  - Only if it proves a cause, it also owns the files under `apps/mobile/src/` and `apps/mobile/rendered/` that the fix requires. That is full scope.
 - **Manager-owned paths:** this brief and the rest of `docs/planning/`, `docs/continuity/`, `docs/ephemeral/`, `docs/pf-canon/`, root `AGENTS.md` and `CLAUDE.md`, and Notion.
-- **Exclusions:** every other path, including `apps/`, `services/`, `packages/`, `scripts/`, `.github/` (except the one Foundation job P06.1-I2b owns; DM-03 E1), `Dockerfile`, `.dockerignore`, `.gitignore` and the `.env.example` files. No change to the fixture API or its guards, and no `GLOW_*` variable set. No database, HDE, Railway or production. Nothing in the Stream organization outside application 1729640. No plan, billing, Maker or team change, no key rotation or region change, no webhook or hook, and no push. No real people or personal data.
+- **Exclusions:** every other path, including `apps/` (except what the flake diagnosis's proven fix requires), `services/`, `packages/`, `scripts/`, `.github/` (except the one Foundation job P06.1-I2b owns; DM-03 E1), `Dockerfile`, `.dockerignore`, `.gitignore` and the `.env.example` files. No change to the fixture API or its guards, and no `GLOW_*` variable set. No database, HDE, Railway or production. Nothing in the Stream organization outside application 1729640. No plan, billing, Maker or team change, no key rotation or region change, no webhook or hook, and no push. No real people or personal data.
 - **Dependencies and inputs:** P02.1 and P05.3 are Done. A08 is resolved by this item. A04's P06.1 inputs are supplied: application 1729640 on the Free Chat plan, in US East, with a $0 budget.
 - **Budget guardrails:** per session, at most 20 synthetic users, 30 channels, 10 concurrent connections and 5,000 API calls, counted by the harness. Stop before any step that would upgrade the plan or incur a charge.
 - **Credential rules:**
@@ -135,8 +142,16 @@ Facts as the read-only discovery reported them:
   - `docs/architecture/chat-provider-permissions.md`, with the exact configuration as a reviewed, reapplicable plan for a future production application (DM-02 B7).
   - The Foundation job for the harness's offline checks (DM-02 B6).
 - **Economics** (not an implementation session): a read-only dashboard discovery that Nathan runs, like the baseline, plus Stream's public pricing and terms. It records the plan limits, overage behavior with no payment method on file, any attribution requirement, the data-processing agreement and region (US East against the launch geography, A05) and Maker eligibility.
+  - **Maker status** (OD-22): Nathan submitted the Maker Account application by 25 September 2026. Stream's review takes about two weeks, which is an estimate, not an approval date, and no separate submission confirmation has been seen. The discovery checks the application's status in the dashboard.
+  - Nothing is assumed about approval or its terms. The $0 budget stands (OD-12).
 - **Removed from P06.1:** running the restore command. At P06.1's close, Nathan decides whether the development application stays locked down for P06.2, which is likely, or is restored.
 - **Before Nathan runs them:** the Dev Manager reads each live prompt (DM-01 P1).
+- **Rendered-test flake diagnosis** (OD-21; [prompt](../ephemeral/2026-09-25-p06-1-flake-diagnosis-prompt.md)). Nathan directed it now, inside P06.1, because a red occurrence would stop PR26 being verified.
+  - The session diagnoses the intermittent failure where a form submit does not advance.
+  - It fixes the failure only if it proves the cause, and never by weakening assertions, raising timeouts or adding retries.
+  - A passing rerun resolves nothing.
+  - If the cause is unrelated to P06.1 and cannot turn PR26's CI red, the fix becomes a focused repair item.
+- **The Stream secret in cloud sessions** (OD-20). Nathan wants the simplest setup that protects the secret, and asked the primary manager to explore it. Its plain-language recommendation goes to him before I2a is written, and his decision is recorded here and in the environment inventory. Until then, the current setup stands. CI needs no Stream secret.
 
 ### P06.1-I1 result
 
@@ -173,7 +188,7 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 
 **Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."* The durable record is [ADR 0003](../adr/0003-chat-display-rule.md).
 
-**Conditional on confirmation** (DM-01 P4). The choice of the display rule as S15's answer rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, that choice returns to Nathan. Nathan's principle does not depend on the review: it is in force, with its carve-outs pending (DM-03 G4).
+**Conditional on confirmation** (DM-01 P4). The choice of the display rule as S15's answer rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, that choice returns to Nathan. Nathan's principle does not depend on the review: it is in force (DM-03 G4), and its exceptions are confirmed (OD-16).
 
 - **The design:** option 1 below, the display rule. The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
 - **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager approved with conditions (DM-02 B1):
@@ -182,7 +197,7 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
   - everything a user sees comes from Glow's API, in Glow's own wording.
 - **Its scope** (DM-02 B1): Glow's in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share.
 - **It binds server and operator consumers too:** Stream member or user custom data is never forwarded into exports, staff or WordPress views, push content or analytics.
-- **Proposed carve-outs, for Nathan to confirm** (DM-02 question 1): legally required disclosures (privacy policies, store privacy labels, processor lists, and data-export contents where the law requires recipients), licence notices, and system screens the platform mandates. Until he confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect.
+- **The exceptions, confirmed by Nathan** (OD-16): legally required disclosures (privacy policies, store privacy labels, processor lists, and data-export contents where the law requires recipients), licence notices, and essential system screens. They are narrow and explicit, each with a named basis and a clear, usable screen. An optional product screen is not an exception because it is convenient. See ADR 0003, decision 4.
 - **The display rule's conditions** (DM-02 B7):
   - I2a shows that member custom data cannot change anything Glow displays or forwards, and that revocation ends the write;
   - deletion and export (PV07) include member custom data held at Stream;
@@ -244,7 +259,7 @@ Each prompt's header gives its recommended level. The readings and outcomes are 
 
 ## Risks and limits
 
-- **Intermittent rendered-test failures** (three so far: a form submit that does not advance) can turn P06.1's CI red. The manager cannot re-run jobs, so Nathan re-runs them. The diagnosis is a recorded follow-up.
+- **Intermittent rendered-test failures** (three so far: a form submit that does not advance) can turn P06.1's CI red. Nathan directed their diagnosis now, inside P06.1 (OD-21); see "Sessions". A passing rerun does not resolve them.
 - **S15** is decided: the display rule. Its residual risk stays recorded under "S15: decided", and P06.2 must enforce the rule with a test.
 - **WebSocket:** verified by I1. The environment's proxy passes Stream's WebSocket: connect, events, disconnect and reconnect.
 - **The dashboard side effect,** which Nathan accepted: the admin role has no grants in the default types or `glow-match`. Restoring the recorded baseline returns the default types' grants.

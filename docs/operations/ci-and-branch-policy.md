@@ -21,6 +21,28 @@ On 23 September 2026 the authenticated GitHub branch-protection form at `https:/
 
 Until enforceable branch controls are available, App Builder 1 uses scoped branches/PRs and checks the exact candidate's actual CI results before an authorized merge. This procedural discipline is not equivalent to platform-enforced checks. Do not force-push or bypass failing checks. Any account-level protection solution is a later concrete owner/account decision; local implementation remains available.
 
+**No paid plan** (Nathan, 25 September 2026; OD-24): *"No paid plan at this time; there is no budget for it. Use the review and branch controls available at no additional cost, document any protection we cannot enforce, and revisit a paid plan when there is a budget."*
+
+- **Not enforced on this private personal repository:**
+  - required status checks;
+  - required reviews;
+  - blocking direct pushes to `main`;
+  - blocking force-pushes;
+  - code-owner review.
+- **The procedural substitutes in force:**
+  - the Foundation gate on the exact head;
+  - the exact-head review;
+  - waiting for Codex's review;
+  - the pre-merge checklist in the PR description (manager workflow, step 7);
+  - the Dev Manager's read of governing Markdown;
+  - never force-pushing.
+- **A no-cost option:** Dependabot alerts, which only Nathan can turn on in the repository's settings. Whether they are free for this private repository was not verified from a session.
+- **Revisit** a paid plan when there is a budget, and at P09 (release preparation) at the latest.
+
+**No Stream secret in CI** (OD-20). No Foundation job needs or receives a Stream credential. The harness job planned for P06.1-I2b runs offline, and its tests assert that no `STREAM_*` variable is present. If a future job ever needs a secret, it is a repository secret referenced only by that step, and adding it is full scope.
+
+**Intermittent failures** (OD-21). A passing rerun alone does not resolve an intermittent failure. A head whose run failed intermittently needs a diagnosis, and then a fix or a recorded, reviewed explanation, before its work is accepted. See the manager workflow, step 5.
+
 ## Results
 
 The foundation passed hosted run 35856228910 for candidate `ca2abecceb1e8c532efdce8af949c110b03f7429` and merged through PR 1 at `2785bb59f692468acf058845396607be9ac5a058`. See `docs/testing/foundation-checkpoint.md` for the actual install/runtime correction, scope and limits. Later candidates require their own passing run.

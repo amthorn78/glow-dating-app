@@ -29,7 +29,7 @@ Read-only `list_workspaces`, `list_projects`, `list_services` and `get_service_c
 | Only listed environment in this project | `production`, `a06b149a-2876-40bf-84a0-7880feaf8b67` | Contains protected resources; not an app activation selection |
 | HDE service | `glow-hdengine-v2`, `62e7b993-6d30-48b4-9059-c1884b16e90b`; source `amthorn78/glow-hdengine-v2`, `main` | Protected |
 | Legacy backend | `glow-backend-v4`, `bfedf816-d6d4-4155-b495-cd6416e91e49`; source `amthorn78/glow-backend-v4`, `main` | Preserve; no reuse, restart or retirement |
-| PostgreSQL / volume | `c4d54416-d1ab-4818-898b-9b9be03bc69a` / `aad776ab-27cc-4994-87f0-589af0de7aa1` | Protected; preferred shared logical database subject to A02 object/role/capacity review |
+| PostgreSQL / volume | `c4d54416-d1ab-4818-898b-9b9be03bc69a` / `aad776ab-27cc-4994-87f0-589af0de7aa1` | Protected. The app gets its own logical database on this service (OD-18, [ADR 0004](../adr/0004-app-database-placement.md)), after the A02 capacity, operational-limits and role review before P11C |
 | Redis / volume | `87b4810c-3e23-4d27-b7fc-0bca7131ed37` / `9ec5ad1f-eab1-4722-ae02-28684aa3b89f` | Protected; consumers unresolved |
 | Dating-app resources | No separately identified app service returned in this project | Planned only; no app deployment or consumption observed |
 

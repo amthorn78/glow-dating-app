@@ -39,7 +39,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 **It does:**
 
-- read whatever it needs: the repository, the Git history and, when its session has the connector, Notion;
+- read whatever it needs: the repository, the Git history and, when its session has the connector, Notion. From 25 September 2026 it reads the relevant Notion pages in every consultation and reports any mismatch with the repository;
 - run read-only checks that help a review, such as the offline test suites, in a clean process environment;
 - give a verdict on each question it is asked, with its reasons, risks and required conditions;
 - name every document a decision makes out of date.
@@ -79,17 +79,17 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 The Dev Manager runs in its own Claude Code cloud session in the `Glow app` environment. It works from an exact commit of the manager branch and pushes only its own branch, `claude/dev-manager`. A cloud session can receive messages but cannot send any back. So its answers travel through the repository.
 
-1. **Consultation.** The primary manager sends the Dev Manager a self-contained consultation: as the first prompt when it creates the session, then by cross-session message. An idle cloud session cannot receive cross-session messages, so the primary manager can instead send a one-time Routine that fires into the Dev Manager's session (the remote-session tools' `create_trigger` with its session ID), as it did for DM-03. Each consultation has:
+1. **Consultation.** The primary manager sends the Dev Manager a self-contained consultation: as the first prompt when it creates the session, and afterwards as a paste-ready message that Nathan carries to the Dev Manager's session. Nathan, 25 September 2026 (OD-25): *"create a message for relay, that is how we should do things, reports in repo and messages to relay manually. Make note"*. DM-03 went as a one-time scheduled message into the session before that direction; that route is retired. Each consultation has:
    - an ID (`DM-NN`) and the question;
    - the exact commit and paths to read;
    - the options considered and the primary manager's recommendation;
    - what is asked: review, approval or challenge;
    - the documents the decision would touch.
-2. **Answer.** The Dev Manager writes its report as `docs/continuity/dev-manager/reviews/YYYY-MM-DD-dm-NN-topic.md`, commits it on `claude/dev-manager` and pushes. The report's last line is `Status: complete`. It changes no other file.
+2. **Answer.** The Dev Manager writes its report as `docs/continuity/dev-manager/reviews/YYYY-MM-DD-dm-NN-topic.md`, commits it on `claude/dev-manager` and pushes. The report's last line is `Status: complete`. It changes no other file. Its answer in the session ends with a paste-ready relay message for Nathan that names the report files and the branch commit (OD-25). The message is a pointer; everything it refers to is in a pushed file.
 3. **Integration.** The primary manager reads the report and merges the Dev Manager's branch into the manager branch with its next batched records push (see "Batching records" in the manager workflow). The branch only ever adds files under `reviews/`, so the merge never conflicts. For each item the primary manager records the disposition in the [review log](../continuity/dev-manager/README.md): accepted, accepted with changes, declined with its reason, or referred to Nathan.
 4. **Relay to Nathan and records.** The primary manager gives Nathan each report's path and its verdicts as written. It sends every item it declines, or accepts with changes, to Nathan with the Dev Manager's own text beside its reason. It also passes on the Dev Manager's questions for Nathan unchanged. Nathan can read the reports directly at any time. Then the primary manager applies the documentation updates and syncs Notion.
 
-**Continuity.** When the primary manager expects a report, it watches `claude/dev-manager`. Each consultation says what the primary manager will do if no report arrives, for example ask Nathan whether to proceed without it.
+**Continuity.** Nathan's relay message is the channel. Watching `claude/dev-manager` is only a fallback when the primary manager expects a report. Each consultation says what the primary manager will do if no report arrives, for example ask Nathan whether to proceed without it.
 
 **Verdicts:** `approved`, `approved with conditions`, `changes requested` or `refer to Nathan`. When the two managers disagree, both views go to Nathan, and his decision is recorded. A Dev Manager `approved` is neither an owner decision nor an exact-head review.
 
@@ -110,3 +110,4 @@ The Dev Manager runs in its own Claude Code cloud session in the `Glow app` envi
 | The Dev Manager's reports | `docs/continuity/dev-manager/reviews/` |
 | The status and State of the App: a snapshot, refreshed only for a periodic review | `docs/continuity/state-of-the-app.md` |
 | Coordination copies | Notion: *Dev Manager — reviews and approvals* and *Status and State of the App*, under Implementation Control |
+| Notion's copy of the operational guidance and the owner-direction register | Implementation Control and its register page. The repository wins on any difference, and every records batch checks the match (OD-26, OD-27) |

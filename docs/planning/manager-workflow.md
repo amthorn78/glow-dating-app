@@ -23,8 +23,13 @@ Nathan's direction, 24 September 2026:
 
 - The manager starts or commissions no new work item until the current item's final head passes every CI job and its exact-head review is clean. New work items include implementation, diagnosis, documentation sweeps and feature preparation.
 - Corrections, re-reviews and the merge close-out belong to the current item.
+- **A failure that can turn the current item's CI red belongs to the current item too** (Nathan, 25 September 2026; OD-21): *"CI needs to give us a dependable result. Investigate the failure now. If it is caused by this work or prevents this work from being verified, fix it as part of the current item. If it is unrelated, create a focused repair item and treat reliable CI as a prerequisite for accepting the affected work. A passing rerun alone does not resolve an intermittent failure."*
 
 **Dev Manager (Nathan, 25 September 2026).** *"The Dev Manager should act as a second layer of oversight rather than as the primary implementer."* It is a persistent management and review session that the primary manager creates itself and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions, and it watches the documentation chain. It has no scoring. Its [charter](dev-manager.md) holds Nathan's direction, the triggers for consulting it, the relay and the records. The primary manager stays responsible for coordination and for moving work forward.
+
+- **Messages travel by hand** (Nathan, 25 September 2026; OD-25): *"reports in repo and messages to relay manually"*.
+  - The Dev Manager's reports stay in `docs/continuity/dev-manager/reviews/`, and each answer ends with a paste-ready message for Nathan to carry to the primary manager.
+  - The primary manager gives Nathan paste-ready consultations in the same way. It no longer sends scheduled messages into the Dev Manager's session.
 
 **Mistakes log (Nathan, 25 September 2026).** *"I also want you to track your mistakes."* Every manager records its own mistakes in the [manager mistakes log](../continuity/manager-mistakes.md) when they are found, whoever finds them. That covers departures from the plan or process, wrong statements, commitments not kept and wrong commands. Each entry records what caught the mistake, its effect, the correction and the prevention. A new manager reads the log at the start.
 
@@ -33,7 +38,7 @@ Nathan's direction, 24 September 2026:
 | **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
 | **Implementation** | Nathan, pasting a manager prompt | Works within its owned paths on its own session branch from the named commit, using any tools, subagents or wake-ups it needs; runs the listed checks; pushes its own branch; reports | Edits manager-owned files or other sessions' branches; merges to main (the manager integrates) |
 | **Review** | Nathan, pasting a manager review prompt | Reviews one exact head with any tools it needs; reports findings | Changes the reviewed branch |
-| **Dev Manager** | The primary manager, with the remote-session tools (Nathan, 25 September 2026) | Reviews and approves consequential decisions and process; periodic process and build reviews; documentation oversight. Answers through report files on its own branch | Implements, commissions sessions, merges, edits Notion or decides for Nathan |
+| **Dev Manager** | The primary manager, with the remote-session tools (Nathan, 25 September 2026) | Reviews and approves consequential decisions and process; periodic process and build reviews; documentation oversight. Answers through report files on its own branch, with a relay message that Nathan carries (OD-25) | Implements, commissions sessions, merges, edits Notion or decides for Nathan |
 
 ## Cycle
 
@@ -53,7 +58,8 @@ Nathan's direction, 24 September 2026:
    - Classify the whole change (command below).
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.
-   - **Batching records** (DM-01 P2). While a code PR is under review, every manager push to its head branch starts a full PR run and moves the branch head. So batch the manager's records: push them only when a session needs them (a brief or prompt it must read) and at close-out, not after each step. Integrate Dev Manager reports in the same batches.
+   - **Batching records** (DM-01 P2). While a code PR is under review, every manager push to its head branch starts a full PR run and moves the branch head. So batch the manager's records: push them only when a session needs them (a brief or prompt it must read) and at close-out, not after each step. Integrate Dev Manager reports in the same batches. End every batch with the repository–Notion match check below.
+   - **No acceptance on a rerun alone** (OD-21). A head whose run failed intermittently is not accepted because a rerun passed. The failure needs a diagnosis, and then either a fix or a recorded, reviewed explanation. Reliable CI is a prerequisite for accepting the affected work.
    - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
 6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
    - **Name the code head.** A review prompt names the head that carries the code under review, not a later records commit. The review report states the commit of the prompt text it received (DM-01 P2).
@@ -74,6 +80,12 @@ Nathan's direction, 24 September 2026:
 
 **Waiting checkpoints** (DM-01 P6). Before any long wait (a relay, a review, a Dev Manager report), the manager records in the current handoff what it waits for, from whom, and what it does if nothing arrives. Compaction or a handover then loses nothing.
 
+**Notion and the repository** (Nathan, 25 September 2026; OD-26 and OD-27).
+
+- **What Notion carries.** Implementation Control carries a matching copy of the operational guidance, as its operating procedure, and of the owner-direction register, on its own page. Nathan: *"operational guidance should live in notion, not just in repo, do not ignore that resource, it is critical"*.
+- **Which copy wins.** Nathan made keeping the two consistent the primary manager's responsibility. App Manager 3's rule: **the repository wins, and Notion is corrected to match.** Sessions read the repository at an exact commit, and Git keeps its history.
+- **The match check.** Every records batch and every close-out ends with a check that Notion's operating procedure and register match the repository at the batch's commit, confirmed by a readback. The procedure page names the commit it was last matched to. A mismatch is a defect, fixed at once.
+
 **Writing to Notion: a checklist.** AM3-04 repeated AM2-11, so these preventions are now a checklist the manager runs on every Notion write:
 
 - Write no bare filename with an extension, such as `name.md` or `name.py`. Notion turns it into a web link. Describe the file instead, or link its repository URL.
@@ -89,7 +101,7 @@ Nathan's direction, 24 September 2026:
 - A reinitiated manager cannot push the previous manager's branch. It continues on its own branch from the previous head, opens a replacement PR and closes the old PR with a link to the new one.
 - Concurrent writers need disjoint owned paths. Never let two sessions edit the same file uncoordinated.
 - **Branch and PR discretion.** Nathan, 24 September 2026: *"I will trust you to manage the branches and PRs as you see fit."* The manager decides branch and PR mechanics within these rules. Merging still requires the gates in the [CI/review policy](../operations/ci-and-branch-policy.md). It never uses force-pushes or rewritten history.
-- **Actions re-runs.** The manager session's GitHub integration cannot re-run Actions jobs; on 24 September 2026 a failed-jobs re-run returned `403 Resource not accessible by integration`. When a re-run is warranted, the manager says so on the PR and asks Nathan to use "Re-run failed jobs" on the run page. Pushing an empty commit to trigger CI is not allowed.
+- **Actions re-runs.** A rerun can confirm a diagnosis; it never resolves an intermittent failure by itself (OD-21). The manager session's GitHub integration cannot re-run Actions jobs; on 24 September 2026 a failed-jobs re-run returned `403 Resource not accessible by integration`. When a re-run is warranted, the manager says so on the PR and asks Nathan to use "Re-run failed jobs" on the run page. Pushing an empty commit to trigger CI is not allowed.
 
 ## Classification (trusted base policy)
 

@@ -1,6 +1,6 @@
 # Repository documentation guide
 
-All project documentation is Markdown (`.md`). The repository is the durable implementation authority; no assignment requires Google Drive. Notion coordinates status, ownership, blockers and evidence links. Keep decisions, specifications and evidence here even when first discussed in Notion or chat.
+All project documentation is Markdown (`.md`). The repository is the durable implementation authority; no assignment requires Google Drive. Notion coordinates status, ownership, blockers and evidence links. It also carries a matching copy of the operational guidance and of the owner-direction register (OD-26); where they differ, the repository wins and Notion is corrected (OD-27). Keep decisions, specifications and evidence here even when first discussed in Notion or chat.
 
 | Location | Keep here | Lifetime / naming |
 |---|---|---|
@@ -31,6 +31,7 @@ Each kind of fact has one home. Other documents link to it rather than copy it.
 | The periodic status and State of the App | [A snapshot](continuity/state-of-the-app.md), refreshed only for a periodic review |
 | Reasoning-level readings | The prompt's header and the Notion usage log |
 | Live task state | The Notion Work Register row, which links here |
+| Notion's copy of the operational guidance and the register | Implementation Control and its register page. They match the repository, which wins on any difference; every records batch checks them |
 | History | `docs/continuity/history/` and Git |
 
 ## Ephemeral promotion and pruning

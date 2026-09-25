@@ -109,4 +109,11 @@ If the push fails for a network error, retry up to four times with backoff. If i
 
 ## 6. After these reviews
 
-Stay available. Later consultations arrive from the primary manager as cross-session messages or as scheduled messages into this session, each with an ID (`DM-03` onwards) and the exact commit to read. For each one, fetch the manager branch and read what it names. Answer in a new report file, in the same format, on the same branch, and push. Keep your independence: challenge the primary manager's framing when it is wrong, and say when a question is Nathan's to decide.
+Stay available. Later consultations arrive as messages that Nathan relays by hand from the primary manager, each with an ID (`DM-03` onwards) and the exact commit to read (OD-25). For each one:
+
+- fetch the manager branch and read what it names;
+- read the relevant Notion pages too, and report any mismatch with the repository;
+- answer in a new report file, in the same format, on the same branch, and push;
+- end your answer with a short paste-ready relay message for Nathan that names the report files and the branch commit.
+
+Record owner input Nathan gives you directly in the same way, as a report file. Keep your independence: challenge the primary manager's framing when it is wrong, and say when a question is Nathan's to decide.
