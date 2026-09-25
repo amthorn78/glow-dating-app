@@ -31,6 +31,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM2-10 | 25 Sep 2026 | process | Tried to run the Setup script by hand in the manager session instead of handing over to a new session | Tool permission guard, then Nathan |
 | AM2-11 | 25 Sep 2026 | execution | Three Notion slips: a bare `.md` filename became a broken link, an update's match text omitted link markup, and a status block called current policy "history" | App Manager 2's readbacks |
 | AM3-01 | 25 Sep 2026 | execution | A Notion readback query passed a bare property filter where the tool requires a group, and failed validation | The Notion tool's input validation |
+| AM3-02 | 25 Sep 2026 | follow-through | Pushed records that did not recommend ultracode for the I1 review, although the manager had committed to recommend it if the scorer flagged it, and the scorer did | App Manager 3, while syncing Notion |
 
 ## App Manager 2
 
@@ -134,3 +135,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Caught by:** the Notion tool's input validation.
 - **Effect:** none. The query was re-sent with the condition inside a group and confirmed the update.
 - **Prevention:** in rows-mode Notion queries, always wrap conditions in a group, as the reconciliation's first query did.
+
+### AM3-02 — A level commitment not carried into the review prompt (follow-through)
+
+- **What happened:** after P06.1-I1 started, App Manager 3 told Nathan twice that it expected to recommend "max, or ultracode if the scorer flags it" for the I1 review. It also wrote that into the Work Register's P06.1 row. The scorer then flagged ultracode: P(`single_session`) was 0.37. But the review prompt, the brief and the handoff said that the manager did not recommend ultracode. Commit `200437d` pushed them.
+- **Caught by:** App Manager 3, which read the P06.1 row while syncing Notion, before the prompt reached Nathan.
+- **Effect:** none on the review. One extra documentation commit, which also became the review head.
+- **Correction:** the prompt, the brief and the handoff now recommend max with ultracode, as committed. Nathan picks the level.
+- **Prevention:** before recording a level, re-read what the manager has already promised: the handoff, the brief, the Notion rows and its messages to Nathan. Record a conditional level commitment in the brief's "Reasoning levels" when it is made.

@@ -204,7 +204,7 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 | Session | Manager | TypeSafe v4 | Detail |
 |---|---|---|---|
 | P06.1-I1 | extra high | extra high | Score 2.99, confidence 0.99. Shape single_session at P 0.53 (new_silent_guard 0.31), so no ultracode under the pre-registered rule. Sent 02:11:41 UTC. Nathan ran extra high; outcome adequate, provisional until the review |
-| Review of I1 | max | extra high, ultracode flagged | Score 3.33, confidence 0.70 (P 0.64 for extra high, 0.35 for max). Shape single_session at P 0.37, below the 0.5 rule, so ultracode is flagged; the runner-up is broad_verification at 0.26. The manager does not recommend ultracode: one session, with any subagents it wants, covers the review. Sent 07:57:11 UTC |
+| Review of I1 | max; ultracode if the scorer flags it | extra high, ultracode flagged | Score 3.33, confidence 0.70 (P 0.64 for extra high, 0.35 for max). Shape single_session at P 0.37, below the 0.5 rule, so ultracode is flagged; the runner-up is broad_verification at 0.26. Sent 07:57:11 UTC. Before the reading, the manager had committed to Nathan and in Notion to recommend max, or ultracode if the scorer flagged it. So it recommends ultracode: the review decides the basis for a design blocker, and its areas can run in parallel with independent verification of findings. Without ultracode, max in one session |
 
 ## Risks and limits
 

@@ -2,7 +2,7 @@
 
 - **Owner:** App Manager 3. Nathan starts this session manually and relays its report.
 - **Durable brief:** [P06.1 brief](../planning/p06-1-chat-provider-proof.md), sections "P06.1-I1 result" and "Review plan". Evidence: [P06.1 evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
-- **Recommended reasoning level:** max from the manager. TypeSafe v4 reads extra high and flags ultracode; the manager does not recommend ultracode. Details are in the brief's "Reasoning levels".
+- **Recommended reasoning level: max, with ultracode.** Before the reading, the manager committed to max, or ultracode if the scorer flagged it. TypeSafe v4 reads extra high and flags ultracode. Nathan picks; without ultracode, run max in one session. Details are in the brief's "Reasoning levels".
 - **Deletion condition:** prune after P06.1 closes and the brief and evidence record hold the accepted review result.
 
 **Manager:** before giving this prompt to Nathan, replace `<REVIEW_HEAD>` with the exact head SHA of `claude/stoic-carson-66gdig` to be reviewed.

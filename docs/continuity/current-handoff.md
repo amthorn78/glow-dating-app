@@ -51,11 +51,11 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
   | M02-C1 | extra high | extra high | extra high | adequate | both |
   | Delta review | extra high | extra high, ultracode flagged | extra high, no ultracode | adequate | both |
   | P06.1-I1 | extra high | extra high | extra high | adequate, provisional until the review | both |
-  | Review of I1 | max | extra high, ultracode flagged | pending | pending | pending |
+  | Review of I1 | max; ultracode if flagged | extra high, ultracode flagged | pending | pending | pending |
 
   - The delta review had the first ultracode flag: P(`single_session`) was 0.43. The manager did not recommend ultracode; one session sufficed.
   - P06.1-I1's shape reading was single_session at P 0.53, just above the 0.5 rule, so no ultracode; the runner-up was new_silent_guard at 0.31.
-  - The review of I1 has the second ultracode flag: P(`single_session`) is 0.37. The manager does not recommend ultracode. The effort score was 3.33, with P 0.35 for max.
+  - The review of I1 has the second ultracode flag: P(`single_session`) is 0.37. Before the reading, the manager had committed to recommend max, or ultracode if the scorer flagged it, so it recommends ultracode. The effort score was 3.33, with P 0.35 for max.
   - The pre-registered comparison comes after 10 relayed sessions; 5 of 10 have outcomes.
 - **CI on main.** Main's application code last changed with PR18 (`2b6c7df`); every later merge is Markdown only and passed through the documentation exemption. On 25 September App Manager 2's branch push run [36081899675](https://github.com/amthorn78/glow-dating-app/actions/runs/36081899675) ran every application job on `b8ca009`'s tree: all six jobs passed, and the gate log says `Application checks passed`.
 - **CI reliability.** Three intermittent rendered failures of one kind have occurred: a form submit that does not advance. The manager's GitHub integration cannot re-run Actions jobs (403), so Nathan re-runs them when needed.
@@ -78,7 +78,7 @@ Follow the plan: PF01's sequence and D09, and the [initiation](../planning/claud
 3. **P06.1, the current work item (resumed by Nathan on 25 September).** Its [brief](../planning/p06-1-chat-provider-proof.md) holds the proposal, Nathan's answers and permission, the Stream dashboard baseline and the session plan.
    - **P06.1-I1 is done** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)). Nathan ran it at extra high. App Manager 3 verified the report against the pushed branch, re-ran the offline checks, integrated the head `9ff600f` by fast-forward and opened draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). The results and the verification are in the brief's "P06.1-I1 result" and at the end of the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
    - **Now, in parallel:**
-     - Nathan runs the exact-head review ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)) on the manager branch's head and relays the report. The manager's level is max; TypeSafe reads extra high and flags ultracode, which the manager does not recommend.
+     - Nathan runs the exact-head review ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)) on the manager branch's head and relays the report. The recommendation is max with ultracode: TypeSafe flagged ultracode, and the manager had committed to recommend it on a flag.
      - Nathan decides S15; see the brief's "S15: decision needed". The manager recommends option 1, the display rule.
    - Then: verify the review, and commission corrections if needed. After the review is clear and Nathan has decided S15, write P06.1-I2's prompt. It covers revocation and history under Nathan's policy, outage, economics, the architecture document, I1's follow-ups (Video and Feeds, the G2 and S10 reruns, the existence check) and what the S15 decision needs. Its head gets a delta review.
    - Close: pass every Foundation job on PR26's final head, mark it ready, wait for Codex's reviews, merge, verify `main`, and record the receipt, the handoff and Notion.
