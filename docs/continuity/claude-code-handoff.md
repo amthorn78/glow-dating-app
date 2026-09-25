@@ -2,7 +2,7 @@
 
 Prepared by App Planner 1 for Nathan Amthor, 24 September 2026. Repository: private [`amthorn78/glow-dating-app`](https://github.com/amthorn78/glow-dating-app), default branch `main`. The [publication receipt](migration-publication.md) supplies the verified migration merge, tree and check identities without making this document embed its own future commit hash. Verify current remote state before using the packet. This brief, the initiation prompt and all required documentation are repository Markdown.
 
-**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Nathan resumed P06.1 on 25 September; its [brief](../planning/p06-1-chat-provider-proof.md) holds his answers to the owner inputs and the Stream dashboard baseline. Other feature work stays paused. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
+**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Nathan resumed P06.1 on 25 September. Its [brief](../planning/p06-1-chat-provider-proof.md) holds his answers to the owner inputs, the Stream dashboard baseline and P06.1-I1's results, including the S15 design blocker. Other feature work stays paused. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
 
 ## Objective, current phase and limits
 
@@ -197,7 +197,7 @@ The workflow's platform `github.token` is handled by checkout with `persist-cred
 - `services/api/glow_api/configuration_profiles.py` has `GLOW_FEATURE_CHAT`, `GLOW_CHAT_ADAPTER` and the future `GLOW_CHAT_API_SECRET` slot. Served chat is disabled. No Stream dependency is present in the committed mobile/API locks.
 - `services/api/glow_domain/webhooks.py` accepts **function arguments**, not environment lookups: `StreamWebhookCredentials(api_key, secret)` and `verify_stream_signature(raw_body, signature, api_key, credentials, enabled=False, content_encoding="identity")`. It checks bounded identity-encoded bytes, API-key equality and HMAC-SHA256. It rejects unsupported compression. It does not establish freshness or replay safety.
 - There is no registered callback. `require_durable_webhook_admission()` refuses even a valid signature because durable inbox admission is unavailable. No token issuance, chat account sync, channel creation, SDK connection, push registration or message send is implemented. `contact_decision()` denies send.
-- Fixture tests and an installed Stream skill establish neither a valid account, Maker entitlement, pricing, SDK permission behavior nor a working live connection. The earlier proposed Pusher/Ably redesign was canceled; it is not the selected implementation.
+- Fixture tests and an installed Stream skill establish neither a valid account, Maker entitlement, pricing, SDK permission behavior nor a working live connection. Outside the app, P06.1-I1's sandbox harness has since recorded the development application's permission behavior over a working live connection; see the [P06.1 brief](../planning/p06-1-chat-provider-proof.md). Pricing and Maker status remain unverified. The earlier proposed Pusher/Ably redesign was canceled; it is not the selected implementation.
 
 ### Inputs the live adapter will need
 

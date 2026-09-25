@@ -1,6 +1,11 @@
 # P06.1 — Chat-provider permissions and economics proof
 
-**Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. App Manager 3 commissioned the first implementation session, P06.1-I1, the same day. The brief is in "Brief — P06.1" below; the sections before it are the proposal and Nathan's answers, kept as the record.
+**Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
+
+- It found one bypass that configuration did not close, S15. **S15 needs Nathan's decision**; see "S15: decision needed".
+- The exact-head review of I1 is commissioned.
+
+The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
 - **Work ID:** P06.1, "Prove chat-provider permissions and economics" (Work Register: Ready). Governing plan: [PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), P06 and A08.
 - **Owner:** Nathan Amthor. **Manager:** App Manager 3.
@@ -113,19 +118,100 @@ Facts as the read-only discovery reported them:
 
 ### Sessions
 
-- **P06.1-I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): enforce and record the checks; lock down every channel type and create the proof's type; prove the authorized path; run the bypass matrix; clean up.
-- **P06.1-I2** (written after I1's review): revocation and history under Nathan's policy; suspension and deletion; token expiry and revocation; reconnection and realtime events after revocation; a send racing a revocation; provider outage failing closed; the economics; final cleanup; and `docs/architecture/chat-provider-permissions.md`.
+- **P06.1-I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): enforce and record the checks; lock down every channel type and create the proof's type; prove the authorized path; run the bypass matrix; clean up. Done on 25 September; see "P06.1-I1 result".
+- **Review of I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)): the exact-head code and security review. It may confirm S15 with at most two small live runs, and it changes no configuration.
+- **P06.1-I2** (written after the review and Nathan's S15 decision):
+  - revocation and history under Nathan's policy; suspension and deletion; token expiry and revocation;
+  - reconnection and realtime events after revocation; a send racing a revocation; provider outage failing closed;
+  - the economics; final cleanup; and `docs/architecture/chat-provider-permissions.md`;
+  - the I1 follow-ups under "I1's open questions" below, and the work Nathan's S15 decision needs.
+
+  If that is too much for one session, P06.1 gets a third session.
+
+### P06.1-I1 result
+
+The session ran on 25 September 2026, on branch `claude/compassionate-lamport-531vtk`, from `0f45e64` to head `9ff600f`. Its record is the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md#p061-i1), and App Manager 3's verification is at its end. The manager integrated the head by fast-forward; draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26) carries it.
+
+- **Outcome 1, checks enforced: holds.** Both checks were already on.
+  - Development, wrong-secret and expired tokens got `401`.
+  - Client actions outside the design got `403`, with Stream code 17 or 70.
+- **Outcome 2, authorized path: holds,** 18 checks of 18:
+  - 900-second tokens and server-created one-to-one channels;
+  - app-mediated sends, with refusals that make no Stream call;
+  - REST reads, WebSocket delivery, disconnect and reconnect. The environment's proxy passes Stream's WebSocket.
+- **Outcome 3, no client bypass: does not hold.** See S15 below.
+  - A second channel, free text in typing events, was closed by turning typing events off.
+  - Of 85 cases, 68 hold with an attributable refusal. 4 hold because the result is filtered, and 3 because the change is not applied. 9 are inconclusive under the quality rule, and 1 fails.
+- **The application's configuration now,** kept for I2:
+  - guest user creation is disabled;
+  - the `user`, `guest` and `anonymous` roles have no application grants;
+  - every role's grants are empty in the five default types;
+  - in the new `glow-match` type, members may only read, and every content feature is off, typing events included.
+
+  The restore command exists but has not been run.
+- **Owner direction during the session.** The application held one user the proof did not create: Stream's dashboard administrator. The session stopped and asked. Nathan answered, at about 03:12 UTC: **"Proceed, leave it (Recommended)"**. The option he chose said three things:
+  - the proof never reads, changes or deletes that user;
+  - cleanup deletes only the proof's users;
+  - the lockdown also empties the admin role's grants in the five default types and `glow-match`.
+
+  So a dashboard feature that acts client-side as that user may be refused there. That is untested.
+- **Usage:** 19 of 20 users, 28 of 30 channels, a peak of 5 of 10 connections and 884 of 5,000 API calls. No response suggested a charge.
+- **Cleanup:** the application holds only the dashboard user and no channels. One guest user had to be deleted by hand, and the harness was fixed.
+- **Not yet exercised live:** the restore command, and the harness fixes made after the final run: prefix matching, the G1 judgement, the R9 control and the guest and anonymous filters.
+
+### S15: decision needed
+
+**The finding.**
+
+- A member's client can write up to 5 KB of free text as custom data on its own membership of its match channel. The call is `updateMemberPartial`, `PATCH /channels/glow-match/{id}/member`, and Stream answered `200`.
+- The other member's client receives that text in its ordinary channel query and in a realtime `member.updated` event.
+- No Stream permission governs the write. Removing `read-channel-members` hid only the separate members endpoint.
+- PF01: *"Provider inability to enforce safety is a design blocker, not a future polish item."* So the design or the provider changes before P06.2. The exact-head review also checks whether configuration can close S15 after all.
+
+**What it can and cannot do.**
+
+- The text never appears in a message. It reaches the other member's app as data, and that person sees it only if the app displays Stream member data.
+- It skips the app's moderation and its match and block check, but only while the writer is still a member. Under Nathan's history policy neither person can see the conversation after an unmatch or block. I2 proves how the server ends that access, and whether the write still works afterwards.
+
+**Options.** PF01 requires a design or provider change. Options 1 and 2 are design changes.
+
+1. **A display rule (recommended).**
+   - The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
+   - The application settings that copy member custom data into messages, typing events and mentions stay off, and the harness checks them.
+   - This relies on the recipient's app, which the writer cannot change. PF01's concern is a client the attacker controls.
+   - **Residual risk:** a hidden channel of up to 5 KB between two currently matched people who both run modified apps, which gives them nothing they could not do outside Glow. Unmoderated text is stored at Stream, and nobody sees it in the app.
+   - **Cost:** the rule and its test in P06.2. I2 maps the channel: which fields a member can set, what the other member receives, whether the server can clear it, and what removal does.
+2. **One channel per person.**
+   - Each person in a match gets a channel with only themselves as a member, and the server writes every message into both.
+   - A member's own data then reaches nobody else. That closes S15 at the provider level, which is PF01's wording. It also removes the one client-chosen value a read event carries, the message ID.
+   - **Costs:** two writes per message and two channels per match; read receipts relayed by the server or dropped; more server logic. I2 must prove the pattern: a server send into a channel the sender is not a member of, reads, events, unread counts and revocation.
+3. **Clearing the data by webhook.** It acts after the other member has already received the data, so it does not close S15. At most it is a supplement.
+4. **Another provider.** Not recommended. No other case failed; the nine inconclusive cases are rerun in I2 where they matter.
+
+Separately, Nathan may ask Stream support whether client writes to member custom data can be disabled. If they can, configuration closes S15.
+
+**Manager's recommendation: option 1**, unless the review finds a configuration that closes S15. Option 2 is the fallback if I2 shows that member data can change anything the app displays, or if Nathan wants the closure at the provider level.
+
+### I1's open questions: manager dispositions
+
+1. **S15:** Nathan decides; see above.
+2. **Video and Feeds: yes, within P06.1.** PF01 puts voice, video and public feeds outside the initial release, so the app will not display them. A modified client could still use them with its user token, for example to ring the other member, or to run calls billed to Glow's Stream organization. I2 records what a user token can do there and locks it down through configuration. It opens no media session, sets up no push and does nothing that could incur a charge.
+3. **Guest reach (G2) and the poll vote (S10): yes.** I2 reruns them with the corrected harness and a fresh budget, together with the other fixes not yet exercised live.
+4. **Unguessable IDs: yes, a P06.2 requirement.** Stream user IDs are random and opaque, never derived from Glow's account IDs, names or emails, and never shown to other users. I2 records whether a refusal for an existing ID differs from one for an ID that does not exist.
 
 ### Reasoning levels
 
 | Session | Manager | TypeSafe v4 | Detail |
 |---|---|---|---|
-| P06.1-I1 | extra high | extra high | Score 2.99, confidence 0.99. Shape single_session at P 0.53 (new_silent_guard 0.31), so no ultracode under the pre-registered rule. Sent 02:11:41 UTC |
+| P06.1-I1 | extra high | extra high | Score 2.99, confidence 0.99. Shape single_session at P 0.53 (new_silent_guard 0.31), so no ultracode under the pre-registered rule. Sent 02:11:41 UTC. Nathan ran extra high; outcome adequate, provisional until the review |
+| Review of I1 | max | extra high, ultracode flagged | Score 3.33, confidence 0.70 (P 0.64 for extra high, 0.35 for max). Shape single_session at P 0.37, below the 0.5 rule, so ultracode is flagged; the runner-up is broad_verification at 0.26. The manager does not recommend ultracode: one session, with any subagents it wants, covers the review. Sent 07:57:11 UTC |
 
 ## Risks and limits
 
 - **Intermittent rendered-test failures** (three so far: a form submit that does not advance) can turn P06.1's CI red. The manager cannot re-run jobs, so Nathan re-runs them. The diagnosis is a recorded follow-up.
-- **Unverified:** whether the environment's proxy passes Stream's WebSocket connection. The first session checks it.
+- **S15** stays a design blocker until Nathan decides; see "S15: decision needed".
+- **WebSocket:** verified by I1. The environment's proxy passes Stream's WebSocket: connect, events, disconnect and reconnect.
+- **The dashboard side effect,** which Nathan accepted: the admin role has no grants in the default types or `glow-match`. Restoring the recorded baseline returns the default types' grants.
 - **Silent passes:** a bypass test can pass for the wrong reason, for example a malformed request that fails for itself. The matrix quality rule answers this, and the exact-head review checks it.
 - **Billing:** the Free Chat plan's limits are far above the guardrails, but Stream's general policy is automatic overage billing and no payment method is on file. Before any real traffic, Nathan settles the billing arrangement (A04).
 - **Sandbox scope:** results cover the development application, its plan and synthetic users at the time of the run. Real persistence, concurrency and restore behavior stay with P11. Production credentials and launch pricing are separate.
