@@ -1,4 +1,4 @@
-# Current handoff — after M02 (App Manager 2, 25 September 2026)
+# Current handoff — after M02 (App Manager 2 to App Manager 3, 25 September 2026)
 
 **Process: manual relay** (Nathan, 24 September 2026).
 
@@ -11,16 +11,24 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 
 ## Status — 25 September 2026
 
+**At a glance:**
+
+- **Phase:** P01–P05 are complete at fixture scope. The documentation migration (M01) and the Claude setup (M02) are complete. **Feature work stays paused** until Nathan's recorded direction resumes it.
+- **Next step, per the plan:** App Manager 3 proposes whether to resume P06.1; see "Next actions".
+- **Handover:** Nathan starts App Manager 3 in the `Glow app` environment with the [start prompt](../ephemeral/2026-09-25-next-manager-start-prompt.md). Both reasoning levels are extra high.
+- **Setup script:** Nathan pasted the M02 version on 25 September. The first new session verifies it; see below.
+- **Mistakes:** the [manager mistakes log](manager-mistakes.md) records every manager mistake (Nathan, 25 September). Read it at the start, and add your own when they are found.
+
 **M02 is merged.** [PR18](https://github.com/amthorn78/glow-dating-app/pull/18) merged on 24 September 2026 at 23:59 UTC as merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff`. That commit has the tree of the exact reviewed head `5e3fb2f`.
 
 - **Records:** the [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md) holds every session's results, both reviews, the CI evidence and the merge receipt. The [M02 brief](../planning/claude-setup-optimization.md) holds the review dispositions and, in its last sections, the recorded follow-ups.
-- **Close-out:** the receipt, the fixes for three documentation nits and the pruned M02 prompts landed through documentation-only [PR19](https://github.com/amthorn78/glow-dating-app/pull/19).
+- **Close-out, all ordinary documentation:** [PR19](https://github.com/amthorn78/glow-dating-app/pull/19) (the receipt, three documentation nits and the pruned M02 prompts), [PR20](https://github.com/amthorn78/glow-dating-app/pull/20) (Codex's post-merge finding), [PR21](https://github.com/amthorn78/glow-dating-app/pull/21) (this handoff aligned with the plan) and the PR that added the mistakes log.
 - **Codex review after the merge.** Marking PR18 ready started Codex's automatic review of `5e3fb2f`, and it finished five minutes after the merge. It reported one P2 in the Setup script's linking step, which the manager verified. It does not affect the paste here. Its fix is a recorded follow-up; see the brief.
 
-- **Pending owner action: paste the Setup script once.**
-  - Nathan pastes `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script, unchanged. It is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`.
-  - Until then, new sessions get the old script's toolchain. Its Node tree is owned by uid 1000; on 25 September, 3401 entries under `$HOME/.local/share/glow-app-toolchain` were not root-owned.
-  - The first new session after the paste replaces that tree in about two minutes. Afterwards, `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` prints 0.
+- **Setup script: pasted by Nathan on 25 September, verification pending.**
+  - Nathan pasted `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script. It is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`.
+  - A Setup script runs only when a new session starts. App Manager 2's session resumed on its old disk, so it still has the old toolchain: on 25 September, 3401 entries under `$HOME/.local/share/glow-app-toolchain` were not root-owned, from the old script's uid-1000 Node tree.
+  - The first new session's Setup run replaces that tree in about two minutes. Its log says `replacing …/node-v24.19.0-linux-x64` and then `ready: node v24.19.0, npm 11.9.0, Python 3.12.14`. Afterwards, `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` prints 0.
 - **The documentation exemption is live.** CI loads the classifier from `main`. A change made only of Markdown files is ordinary documentation, so it runs no application jobs and needs no code or security review. Two cases stay full scope: any path with a `.claude` component, and a comparison with more than one merge base.
 - **Environment (names only):**
   - No HDE variables.
@@ -42,6 +50,10 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
   - The delta review had the first ultracode flag: P(`single_session`) was 0.43. The manager did not recommend ultracode; one session sufficed.
   - The pre-registered comparison comes after 10 relayed sessions; this is 4 of 10.
 - **CI reliability.** Three intermittent rendered failures of one kind have occurred: a form submit that does not advance. The manager's GitHub integration cannot re-run Actions jobs (403), so Nathan re-runs them when needed.
+- **Branches.** Every remote branch except one is fully merged into `main`. That includes the M02 session branches `claude/ecstatic-goodall-qajdh4`, `claude/eager-goodall-1zjgey` and `claude/vigilant-einstein-i95w78`, and the earlier `app-builder-1/*`, `app-planner-1/*` and `docs/*` branches.
+  - A cloud session cannot delete another session's branch. Nathan may delete merged branches on GitHub.
+  - `app-builder-1/p05-1-birth-diagnostics` is deliberately unmerged; its history is in the [P05.2 handoff](history/p05-2-handoff.md). Keep it.
+- **Open PRs:** none.
 
 ## Next actions
 
@@ -58,7 +70,7 @@ Follow the plan: PF01's sequence and D09, and the [initiation](../planning/claud
    - Ask only for the owner inputs the next bounded action needs, from that handoff's prioritized inputs 2 and 3: the Stream account and plan, the test application and region, budget and limits, the secret-injection approach, and the chat-history policy after a block or unmatch.
    - If Nathan resumes P06.1, write its brief in `docs/planning/` and its prompt in `docs/ephemeral/`, with both reasoning levels, and follow the [manager workflow](../planning/manager-workflow.md).
 4. **Present the recorded follow-ups with that proposal; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction:
-   - the intermittent rendered-test failures, three so far, where a form submit does not advance;
+   - the intermittent rendered-test failures, three so far, where a form submit does not advance. Earlier birth-journey diagnostics are on the unmerged branch `app-builder-1/p05-1-birth-diagnostics`;
    - the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp. A script change needs another paste;
    - App Manager 1's stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`.
 

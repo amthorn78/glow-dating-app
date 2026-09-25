@@ -674,3 +674,13 @@ On `5e3fb2f`, [push run 36071229369](https://github.com/amthorn78/glow-dating-ap
   - These lines are unchanged since App Manager 1's script (`a335c4f`). The first review covered them; the delta review did not.
 - **Effect here.** On 25 September, `/root/.local/bin/node`, `npm`, `npx` and `python3.12` were all symlinks, which `ln -sfn` replaces correctly. The one-time paste is unaffected.
 - **Disposition.** The fix is queued in the Setup-script hardening item; see the brief. The manager workflow now says to wait for Codex's summary before merging a full-scope PR.
+
+### After the close-out (25 September 2026)
+
+- **Setup-script paste.** Nathan reported pasting `scripts/bootstrap-toolchain.sh` from `main` (blob `450b3cf`) into the `Glow app` Setup script.
+- **Not verified here.** App Manager 2's container restarted at 00:25 UTC, but the session resumed on its old disk, so no Setup script ran. Afterwards `find /root/.local/share/glow-app-toolchain ! -user 0 | wc -l` still printed 3401, and the Node tree was still uid 1000. A new session is needed.
+- **Blocked command.** App Manager 2 tried to run `main`'s script by hand in its own session. The tool permission guard blocked it as destructive, and the command did not run. This is logged as AM2-10.
+- **Plan alignment.** Nathan pointed out that the post-M02 handoff departed from the plan. [PR21](https://github.com/amthorn78/glow-dating-app/pull/21) routes the next manager to the proposal on whether to resume P06.1. This is logged as AM2-08.
+- **Mistakes log.** At Nathan's direction, `docs/continuity/manager-mistakes.md` now records App Manager 2's eleven mistakes, AM2-01 to AM2-11.
+- **Branches.** Every remote branch except `app-builder-1/p05-1-birth-diagnostics` is merged into `main`. That branch is deliberately unmerged. No PRs are open.
+- **Codex on the close-out PRs.** Its automatic reviews of PR19, PR20 and PR21 completed without findings.

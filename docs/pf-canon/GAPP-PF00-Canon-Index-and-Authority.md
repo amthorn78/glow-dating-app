@@ -1,6 +1,6 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.4 · **Recorded:** 24 September 2026
+**Identity:** GAPP-PF00 · **Revision:** 1.5 · **Recorded:** 25 September 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
@@ -11,7 +11,7 @@
 
 ## Current session authority
 
-Nathan's 24 September direction pauses new features for migration to Claude Code. Claude work runs as Nathan's manual relay. A manager session writes briefs and prompts. Nathan starts each implementation or review session himself and relays its report back. The manager reviews that evidence and maintains continuity. Nathan reinitiates managers manually. The manager never starts implementation or review work itself; those sessions may use whatever tools they need. App Planner 1 prepares the migration; App Builder 1's earlier reports remain historical evidence. [Manager workflow](../planning/manager-workflow.md) implements the owner's high-trust experiment without importing prompt libraries. PF01 D08's app-only authority and effect-based HDE protection remain; D09 records the documentation/environment transition.
+Nathan's 24 September direction paused new features for the migration to Claude Code. The migration (M01) and the Claude setup (M02) are complete; the pause continues until Nathan's recorded direction resumes feature work. Claude work runs as Nathan's manual relay. A manager session writes briefs and prompts. Nathan starts each implementation or review session himself and relays its report back. The manager reviews that evidence and maintains continuity. Nathan reinitiates managers manually. The manager never starts implementation or review work itself; those sessions may use whatever tools they need. App Planner 1 prepares the migration; App Builder 1's earlier reports remain historical evidence. [Manager workflow](../planning/manager-workflow.md) implements the owner's high-trust experiment without importing prompt libraries. PF01 D08's app-only authority and effect-based HDE protection remain; D09 records the documentation/environment transition.
 
 ## Canon registry
 
@@ -56,3 +56,5 @@ Use stable titles and document IDs for durable references. Record the concrete s
 1.3 — repository-only Markdown operational authority; Claude manager workflow and feature pause; Drive references become historical provenance.
 
 1.4 — records Nathan's manual-relay operating direction of 24 September 2026 (M02). Nathan starts and relays implementation and review sessions; the manager never spawns them.
+
+1.5 — records that the migration (M01) and the Claude setup (M02) are complete while the feature pause continues (25 September 2026). No authority change.

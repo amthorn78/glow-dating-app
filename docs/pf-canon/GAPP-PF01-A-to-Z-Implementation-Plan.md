@@ -1,8 +1,8 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.5 · **Date:** 24 September 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.6 · **Date:** 25 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
-**Current direction:** P01–P05 completed at recorded preparation/fixture scope; new features paused for repository documentation migration and Claude Code setup. Current evidence is in the repository handoff and Notion coordination records.
+**Current direction:** P01–P05 completed at recorded preparation/fixture scope. The repository documentation migration (M01) and the Claude Code setup (M02) are complete. New features stay paused until Nathan's recorded direction resumes them; the next step is a manager proposal on whether to resume P06.1. Current evidence is in the repository handoff and Notion coordination records.
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
@@ -532,3 +532,5 @@ Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature
 1.4 — records D09, repository-only Markdown authority and Claude manager transition; incorporates completed dated database audit without authorizing integration.
 
 1.5 — records Nathan's manual-relay operating process in D09 (24 September 2026, M02). No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.6 — records in the current-direction line that the documentation migration (M01) and the Claude Code setup (M02) are complete. The feature pause continues until Nathan resumes it, and the next step is a proposal on whether to resume P06.1 (25 September 2026). No product scope, phase acceptance, D08 authority or HDE boundary changes.

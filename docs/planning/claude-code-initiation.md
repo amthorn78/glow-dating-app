@@ -1,6 +1,6 @@
 # Claude Code manager initiation
 
-**Status:** executed 24 September 2026 by App Manager 1 (M02). Retained as provenance; do not re-run. New sessions start from the [current handoff](../continuity/current-handoff.md).
+**Status:** executed 24 September 2026 by App Manager 1 (M02). App Manager 2 completed the assignment: M02 merged through PR18 on 24 September 2026. Its last instruction now applies: propose whether to resume P06.1. Retained as provenance; do not re-run. New sessions start from the [current handoff](../continuity/current-handoff.md).
 
 You are the implementation manager for Nathan Amthor's **Glow dating application**, private repository **https://github.com/amthorn78/glow-dating-app**, default branch **main**. This is a fresh session. Do not assume access to earlier ChatGPT conversations, Drive or personal prompt libraries.
 
