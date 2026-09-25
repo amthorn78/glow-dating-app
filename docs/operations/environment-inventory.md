@@ -24,5 +24,6 @@ This is the dedicated environment for every Glow app manager, implementation and
 | `STREAM_API_SECRET` | Held only in the environment settings; never recorded | **Secret.** Server-side signing/administration credential. Never print, copy or log it, and never expose it to mobile code or `EXPO_PUBLIC_*` |
 
 - This is Nathan's **development** Stream application. It is for sandbox testing with synthetic users only. Production needs its own Stream application and secret, stored separately.
-- **No code reads these names yet.** P06.1 will adopt them in the app's loader: they are the environment names for the future `GLOW_CHAT_API_SECRET` slot and the Stream API key and app ID.
-- The fixture API does not reject `STREAM_*` names, so existing checks are unaffected. Plan, region, pricing and permission behavior are unverified until the P06.1 proof records them.
+- **No application code reads these names.** P06.1's sandbox harness (`proofs/stream-chat/`) reads them on the server side only. The app's loader adopts them in P06.2, as the environment names for the future `GLOW_CHAT_API_SECRET` slot and the Stream API key and app ID.
+- The fixture API does not reject `STREAM_*` names, so existing checks are unaffected.
+- Nathan's dashboard lookup of 25 September 2026 recorded the application's region (US East), mode (Development) and plan (Free Chat, $0, not a trial); see the [P06.1 brief](../planning/p06-1-chat-provider-proof.md). Pricing at scale and permission behavior are unverified until the P06.1 proof records them.

@@ -1,4 +1,4 @@
-# Current handoff — App Manager 3, P06.1 proposed (25 September 2026)
+# Current handoff — App Manager 3, P06.1 in progress (25 September 2026)
 
 **Process: manual relay** (Nathan, 24 September 2026).
 
@@ -7,14 +7,14 @@
 - The manager never starts implementation or review work itself (no subagents or remote-session tools for that work).
 - Implementation and review sessions may use any tools, subagents or wake-ups they need.
 
-The full procedure is in [manager workflow](../planning/manager-workflow.md). Nathan remains product and account owner. Feature work stays paused; P06.1 is not dispatched.
+The full procedure is in [manager workflow](../planning/manager-workflow.md). Nathan remains product and account owner. Nathan resumed P06.1 on 25 September 2026; other feature work stays paused until his recorded direction resumes it.
 
 ## Status — 25 September 2026
 
 **At a glance:**
 
-- **Phase:** P01–P05 are complete at fixture scope. The documentation migration (M01) and the Claude setup (M02) are complete. **Feature work stays paused** until Nathan's recorded direction resumes it.
-- **Next step, per the plan:** App Manager 3 gave Nathan the [P06.1 proposal](../planning/p06-1-chat-provider-proof.md) on 25 September. Nathan accepted inputs 3–5 the same day and is confirming inputs 1 and 2 from the Stream dashboard. His decision to resume is pending; nothing is dispatched. See "Next actions".
+- **Phase:** P01–P05 are complete at fixture scope. The documentation migration (M01) and the Claude setup (M02) are complete. **Nathan resumed P06.1 on 25 September 2026:** *"resume P06.1, yes to reconfiguring the test app"*. Other feature work stays paused until his recorded direction resumes it.
+- **Current work item: P06.1**, the chat-provider permissions and economics proof. Its [brief](../planning/p06-1-chat-provider-proof.md) holds the proposal, Nathan's answers, the Stream dashboard baseline and the session plan. App Manager 3 commissioned P06.1-I1 on 25 September; Nathan runs it and relays the report. See "Next actions".
 - **Manager:** App Manager 3 is active on session branch `claude/stoic-carson-66gdig`. It started in the `Glow app` environment from the [start prompt](../ephemeral/2026-09-25-next-manager-start-prompt.md), which a later manager also uses.
 - **Setup script:** verified. Nathan's 25 September paste has taken effect; see below.
 - **Mistakes:** the [manager mistakes log](manager-mistakes.md) records every manager mistake (Nathan, 25 September). Read it at the start, and add your own when they are found.
@@ -47,9 +47,11 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
   | Review | extra high | high | extra high | adequate | Manager |
   | M02-C1 | extra high | extra high | extra high | adequate | both |
   | Delta review | extra high | extra high, ultracode flagged | extra high, no ultracode | adequate | both |
+  | P06.1-I1 | extra high | extra high | pending | pending | pending |
 
   - The delta review had the first ultracode flag: P(`single_session`) was 0.43. The manager did not recommend ultracode; one session sufficed.
-  - The pre-registered comparison comes after 10 relayed sessions; this is 4 of 10.
+  - P06.1-I1's shape reading was single_session at P 0.53, just above the 0.5 rule, so no ultracode; the runner-up was new_silent_guard at 0.31.
+  - The pre-registered comparison comes after 10 relayed sessions; 4 of 10 have outcomes.
 - **CI on main.** Main's application code last changed with PR18 (`2b6c7df`); every later merge is Markdown only and passed through the documentation exemption. On 25 September App Manager 2's branch push run [36081899675](https://github.com/amthorn78/glow-dating-app/actions/runs/36081899675) ran every application job on `b8ca009`'s tree: all six jobs passed, and the gate log says `Application checks passed`.
 - **CI reliability.** Three intermittent rendered failures of one kind have occurred: a form submit that does not advance. The manager's GitHub integration cannot re-run Actions jobs (403), so Nathan re-runs them when needed.
 - **Branches.** Every remote branch except one is fully merged into `main`. That includes App Manager 2's branch `claude/fervent-darwin-idyko3`, the M02 session branches `claude/ecstatic-goodall-qajdh4`, `claude/eager-goodall-1zjgey` and `claude/vigilant-einstein-i95w78`, and the earlier `app-builder-1/*`, `app-planner-1/*` and `docs/*` branches.
@@ -67,13 +69,13 @@ Follow the plan: PF01's sequence and D09, and the [initiation](../planning/claud
    - Run the Setup-script ownership check above. It should print 0 in any session started after Nathan's paste; if it does not, tell Nathan before continuing.
    - If anything differs, tell Nathan exactly which setting to fix. Never print values.
 2. **Verify the repository and the record.** Check `main`, open PRs and the worktree. Reconcile Implementation Control and the Work Register, as PF00's "Start here" requires.
-3. **P06.1 proposal: delivered on 25 September, awaiting Nathan.** Feature work stays paused until Nathan's recorded direction resumes it.
-   - The [proposal](../planning/p06-1-chat-provider-proof.md) reconciles P02.1, P05.3, A04 and A08 with PF01's P06 section and step 1 of the [Claude handoff's live-verification sequence](claude-code-handoff.md#bounded-live-verification-sequence--after-setup-and-owner-inputs).
-   - It asks Nathan for five owner inputs, from that handoff's prioritized inputs 2 and 3: the plan; the test application and its region; the budget; the secret handling; and the chat history after an unmatch or block.
-   - **Answers so far:** Nathan accepted the recommendations for inputs 3–5 on 25 September; they are recorded in the proposal. For inputs 1 and 2 he is running the read-only [Stream dashboard discovery](../ephemeral/2026-09-25-p06-1-stream-discovery-prompt.md) in Claude in Chrome.
-   - When he relays its results, record the non-secret facts in the proposal, and get his explicit decision to resume and his permission for the proof to reconfigure application 1729640. Then sync Notion.
-   - If he resumes P06.1, add its brief to the same file, write its prompt in `docs/ephemeral/` with both reasoning levels, and follow the [manager workflow](../planning/manager-workflow.md).
-4. **Recorded follow-ups: presented with the proposal on 25 September; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction:
+3. **P06.1, the current work item (resumed by Nathan on 25 September).** Its [brief](../planning/p06-1-chat-provider-proof.md) holds the proposal, Nathan's answers and permission, the Stream dashboard baseline and the session plan.
+   - **P06.1-I1 is commissioned** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): the sandbox harness, enforcement of Stream's checks, channel-type lockdown, the authorized path and the bypass matrix. Nathan runs it at extra high and relays the report.
+   - Then, following the [manager workflow](../planning/manager-workflow.md): verify the report against the pushed branch; integrate it into the manager branch; commission the exact-head code and security review; correct if needed.
+   - Then write P06.1-I2's prompt (revocation and history under Nathan's policy, outage, economics, the architecture document). Its head gets a delta review.
+   - Close: open the PR, pass every Foundation job on its head, wait for Codex's reviews, merge, verify `main`, and record the receipt, the handoff and Notion.
+   - The dashboard showed Stream's authentication and permission checks in relaxed modes. I1 establishes and records the real settings through the API before any client acts.
+4. **Recorded follow-ups: presented with the proposal on 25 September; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction, and only after P06.1's CI and review are clear:
    - the intermittent rendered-test failures, three so far, where a form submit does not advance. Earlier birth-journey diagnostics are on the unmerged branch `app-builder-1/p05-1-birth-diagnostics`;
    - the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp. A script change needs another paste;
    - App Manager 1's stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`.
@@ -88,7 +90,7 @@ App Manager 1 was the first Claude manager. It ran in the environment shared wit
 - `STREAM_API_KEY=qdstwyevnyea`
 - `STREAM_API_SECRET` (secret; name only; never print or record it)
 
-No code reads these yet; P06.1 will. A session's environment is fixed at start, so switching environments requires a new session.
+No application code reads these. P06.1's sandbox harness reads them on the server side only; the app's loader adopts them in P06.2. A session's environment is fixed at start, so switching environments requires a new session.
 
 The application behavior baseline is unchanged since PR14 (`ea39454…`). P01–P05 are complete only at fixture scope; see the [migration receipt](migration-publication.md).
 
