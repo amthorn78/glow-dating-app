@@ -42,6 +42,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-08 | 25 Sep 2026 | accuracy | Two consistency slips in one batch: the brief both granted and excluded `.github/`, and freezing the Claude handoff left two operations pages citing its inventory as current | The Dev Manager (DM-03 E1, E2) |
 | AM3-09 | 25 Sep 2026 | follow-through | Revised PF00 and PF01 several times without updating Notion's operating procedure, which still cited PF00 1.4 and PF01 1.5 | The Dev Manager (Notion operational-guidance note) |
 | AM3-10 | 25 Sep 2026 | accuracy | Applied ADR 0004 in some documents and missed six others that still stated the superseded same-logical-database preference as current | App Manager 3, while writing the HDE contract request |
+| AM3-11 | 25 Sep 2026 | process | Planned the I1 review and the flake diagnosis to run side by side, and in chat offered Nathan a second prompt while he was starting the first, pointing him to an earlier message for it | Nathan |
+| AM3-12 | 25 Sep 2026 | accuracy | Told Nathan the I1 review was running, and later the only task running, when he had not started it | Nathan |
 
 ## App Manager 2
 
@@ -229,3 +231,19 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none known. No session or decision relied on those passages, and P11 has not started.
 - **Correction:** each passage now carries a supersession note or a corrected sentence citing ADR 0004. The State of the App snapshot, dated records and source snapshots keep their history.
 - **Prevention:** this repeats AM3-08's kind of slip: a change made in one home and missed in others. Its prevention is now a checklist item, "Supersession sweep", in step 5 of the manager workflow.
+
+### AM3-11 — Two sessions offered at once (process)
+
+- **What happened:** App Manager 3 planned the I1 review and the flake diagnosis to run side by side, in the handoff, the brief, the flake prompt's header, PR26 and Notion. In chat, after giving Nathan the review prompt, it told him he could also start the flake diagnosis, whose prompt was in an earlier message.
+- **Caught by:** Nathan: *"you MAY NOT give me more than one prompt at a time. Your last message is wholly rejected."* and *"This process needs to be LINEAR."*
+- **Effect:** Nathan rejected the messages. By his account he started no review, so no two sessions ran at once.
+- **Correction:** Nathan's direction is recorded as OD-29. The handoff, the brief, the flake prompt's header, PR26 and Notion now give a linear order: the flake diagnosis first, then the I1 review.
+- **Prevention:** the manager workflow's rule "The process is linear" (OD-29): one prompt per message, pasted in full, for the next task not recorded as complete.
+
+### AM3-12 — A session reported as running when it had not started (accuracy)
+
+- **What happened:** after Nathan wrote *"running it on max"*, App Manager 3 told him the I1 review was running, and later that it was the only task running. Nathan had not started it.
+- **Caught by:** Nathan: *"I have not started any review"*.
+- **Effect:** the claim was in chat only. No record, prompt or Notion page said the review had started.
+- **Correction:** the records give the review as queued after the flake diagnosis.
+- **Prevention:** the same rule, which says a session's status comes only from Nathan's own words or its pushed branch.

@@ -9,7 +9,8 @@
   - the S15 exceptions are confirmed (OD-16);
   - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
   - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
-- Next: Nathan runs the I1 review and the flake diagnosis. They are independent and can run side by side.
+- **The process is linear** (OD-29): one session at a time. The flake diagnosis is running (Nathan started it at max); the I1 review follows once the flake report is verified and recorded.
+- **The Stream secret is settled** (OD-28): Nathan adds the three `STREAM_*` variables for each session that calls Stream, starts it, then deletes them.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
@@ -146,12 +147,12 @@ Facts as the read-only discovery reported them:
   - Nothing is assumed about approval or its terms. The $0 budget stands (OD-12).
 - **Removed from P06.1:** running the restore command. At P06.1's close, Nathan decides whether the development application stays locked down for P06.2, which is likely, or is restored.
 - **Before Nathan runs them:** the Dev Manager reads each live prompt (DM-01 P1).
-- **Rendered-test flake diagnosis** (OD-21; [prompt](../ephemeral/2026-09-25-p06-1-flake-diagnosis-prompt.md)). Nathan directed it now, inside P06.1, because a red occurrence would stop PR26 being verified.
+- **Rendered-test flake diagnosis** (OD-21; [prompt](../ephemeral/2026-09-25-p06-1-flake-diagnosis-prompt.md)). Nathan directed it now, inside P06.1, because a red occurrence would stop PR26 being verified. It is the first session in the linear order (OD-29): Nathan started it on 25 September, at max. The I1 review follows it.
   - The session diagnoses the intermittent failure where a form submit does not advance.
   - It fixes the failure only if it proves the cause, and never by weakening assertions, raising timeouts or adding retries.
   - A passing rerun resolves nothing.
   - If the cause is unrelated to P06.1 and cannot turn PR26's CI red, the fix becomes a focused repair item.
-- **The Stream secret in cloud sessions** (OD-20). Nathan wants the simplest setup that protects the secret, and asked the primary manager to explore it. Its plain-language recommendation goes to him before I2a is written, and his decision is recorded here and in the environment inventory. Until then, the current setup stands. CI needs no Stream secret.
+- **The Stream secret in cloud sessions** (OD-20, decided by OD-28). One `Glow app` environment stays. For each session that calls Stream, Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, starts that one session, then deletes them; the prompt tells him when they are needed. The variables are in the environment now, for the I1 review. The secret is replaced at P06.1's close. CI needs no Stream secret.
 
 ### P06.1-I1 result
 

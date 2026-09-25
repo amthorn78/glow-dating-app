@@ -11,7 +11,7 @@
   - Manager: max.
   - TypeSafe v4: max (score 3.81, P(max) 0.89), with no ultracode flag (P(single session) 0.88).
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
-- **It runs beside the I1 review.** The two sessions share no files, and this one makes no provider call.
+- **It runs alone** (OD-29, the linear process). Nathan started it first, on 25 September, at max; the I1 review follows it. This header line was corrected after the prompt was given; the body Nathan pasted is unchanged.
 - **Deletion condition:** prune after P06.1 closes and the evidence record and brief hold the result.
 
 **Manager:** before giving this prompt to Nathan, replace every `<START_SHA>` with the full SHA of the manager-branch commit that holds this prompt.

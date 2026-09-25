@@ -23,6 +23,11 @@ Nathan's direction, 24 September 2026:
 
 - The manager starts or commissions no new work item until the current item's final head passes every CI job and its exact-head review is clean. New work items include implementation, diagnosis, documentation sweeps and feature preparation.
 - Corrections, re-reviews and the merge close-out belong to the current item.
+- **The process is linear** (Nathan, 25 September 2026; OD-29): *"This process needs to be LINEAR."*
+  - One task and one session at a time, inside the current item too. Never plan or offer two sessions side by side.
+  - Each message to Nathan carries at most one prompt or relay message, pasted in full. Never point him to a prompt in an earlier message.
+  - That prompt is for the next task not recorded as complete. The next one comes only after the current task's report is verified and recorded.
+  - State a session's status only from Nathan's own words or its pushed branch.
 - **A failure that can turn the current item's CI red belongs to the current item too** (Nathan, 25 September 2026; OD-21): *"CI needs to give us a dependable result. Investigate the failure now. If it is caused by this work or prevents this work from being verified, fix it as part of the current item. If it is unrelated, create a focused repair item and treat reliable CI as a prerequisite for accepting the affected work. A passing rerun alone does not resolve an intermittent failure."*
 
 **Dev Manager (Nathan, 25 September 2026).** *"The Dev Manager should act as a second layer of oversight rather than as the primary implementer."* It is a persistent management and review session that the primary manager creates itself and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions, and it watches the documentation chain. It has no scoring. Its [charter](dev-manager.md) holds Nathan's direction, the triggers for consulting it, the relay and the records. The primary manager stays responsible for coordination and for moving work forward.

@@ -10,11 +10,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Manager:** App Manager 3, on `claude/stoic-carson-66gdig`, the head of draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26).
 - **Current item: P06.1**, the chat-provider permissions and economics proof. Resumed on 25 September; other feature work stays paused. Plan, results and decisions: the [brief](../planning/p06-1-chat-provider-proof.md). Runs: the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
-  - **I1 is done** at code head `9ff600f`; push run [36109949498](https://github.com/amthorn78/glow-dating-app/actions/runs/36109949498) passed with `Application checks passed`.
+  - **I1 is done** at code head `9ff600f`; push run [36109949498](https://github.com/amthorn78/glow-dating-app/actions/runs/36109949498) passed all jobs.
   - **S15:** the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) is conditional on the I1 review confirming S15 live. Nathan's principle is in force, and he confirmed its exceptions (OD-16).
-  - **Two sessions are ready for Nathan,** to run side by side:
-    - I1's exact-head review, from revision 3 of its [prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md), with records commit `516bee2`;
-    - the flake diagnosis (OD-21), from its [prompt](../ephemeral/2026-09-25-p06-1-flake-diagnosis-prompt.md).
+  - **Linear order (OD-29):** one session at a time, one prompt per message.
+    - **Running:** the flake diagnosis (OD-21), from its [prompt](../ephemeral/2026-09-25-p06-1-flake-diagnosis-prompt.md) at `8d202fd`. Nathan started it at max.
+    - **Next, after its report is verified and recorded:** I1's exact-head review, revision 3 of its [prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md), records commit `516bee2`. Not started.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-03, Nathan's answers and the dispositions.
 
@@ -22,18 +22,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 3 | Nathan | The report of I1's exact-head review | I2a and I2b wait for the review and any corrections |
-| App Manager 3 | Nathan | The flake diagnosis report | PR26 cannot be accepted while the failure is unexplained (OD-21) |
-| App Manager 3 | Nathan | His decision on the Stream-secret recommendation (OD-20) | The current setup stands; I2a waits |
+| App Manager 3 | Nathan | The flake diagnosis report | Nothing else starts (OD-29); PR26 cannot be accepted while the failure is unexplained (OD-21) |
 | App Manager 3 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
-| App Manager 3 | The Dev Manager, via Nathan | Reads of `9b548de`'s governing changes and of the HDE contract request; a challenge of the Stream-secret recommendation | PR26 cannot merge without the read; I2a waits for the challenge |
+| App Manager 3 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` and of the HDE contract request. The relay messages are not yet sent; each goes as its own step in the linear order | PR26 cannot merge without the reads |
 
 ## Next actions
 
-1. Verify each report on arrival and record it where its prompt says; commission corrections if needed. If the review narrows or closes S15, the choice of the display rule goes back to Nathan.
-2. Write the I2a, I2b and economics discovery prompts, as the brief's "Sessions" section describes. The Dev Manager reads each one before Nathan runs it.
+1. Verify the flake report and record it where its prompt says. Then give Nathan only the next prompt for the next task not recorded as complete, and verify each report the same way. If the review narrows or closes S15, the choice of the display rule goes back to Nathan.
+2. Write the I2a, I2b and economics discovery prompts, as the brief's "Sessions" section describes. The Dev Manager reads each one before Nathan runs it. Live prompts tell Nathan to add the three `STREAM_*` variables first (OD-28).
 3. Close P06.1:
-   - the Dev Manager's reads of governing Markdown changed after `fa4dc5f`: up to `8d202fd` now, then a close-out read of later changes (charter, "A read covers one commit");
+   - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f` (charter, "A read covers one commit");
    - complete the pre-merge checklist in PR26 (workflow step 7);
    - mark the PR ready and wait for Codex;
    - merge and verify `main`;
