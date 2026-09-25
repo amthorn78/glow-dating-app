@@ -13,9 +13,9 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 
 **M02 is merged.** [PR18](https://github.com/amthorn78/glow-dating-app/pull/18) merged on 24 September 2026 at 23:59 UTC as merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff`. That commit has the tree of the exact reviewed head `5e3fb2f`.
 
-- **Records:** the [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md) holds every session's results, both reviews, the CI evidence and the merge receipt. The [M02 brief](../planning/claude-setup-optimization.md) holds the review dispositions and, in its last sections, the queued follow-ups.
+- **Records:** the [M02 evidence record](../testing/evidence/2026-09-24-m02-claude-setup.md) holds every session's results, both reviews, the CI evidence and the merge receipt. The [M02 brief](../planning/claude-setup-optimization.md) holds the review dispositions and, in its last sections, the recorded follow-ups.
 - **Close-out:** the receipt, the fixes for three documentation nits and the pruned M02 prompts landed through documentation-only [PR19](https://github.com/amthorn78/glow-dating-app/pull/19).
-- **Codex review after the merge.** Marking PR18 ready started Codex's automatic review of `5e3fb2f`, and it finished five minutes after the merge. It reported one P2 in the Setup script's linking step, which the manager verified. It does not affect the paste here, and its fix is queued. See the brief.
+- **Codex review after the merge.** Marking PR18 ready started Codex's automatic review of `5e3fb2f`, and it finished five minutes after the merge. It reported one P2 in the Setup script's linking step, which the manager verified. It does not affect the paste here. Its fix is a recorded follow-up; see the brief.
 
 - **Pending owner action: paste the Setup script once.**
   - Nathan pastes `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script, unchanged. It is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`.
@@ -45,21 +45,24 @@ The full procedure is in [manager workflow](../planning/manager-workflow.md). Na
 
 ## Next actions
 
+Follow the plan: PF01's sequence and D09, and the [initiation](../planning/claude-code-initiation.md) assignment, which ends: *"Complete the optimization before proposing whether to resume P06.1."* M02 was that optimization, and it is complete.
+
 1. **Verify the environment (names only).**
    - None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be present.
    - `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with v24.19.0, 11.9.0 and Python 3.12.14.
-   - If Nathan has pasted the Setup script, the ownership check above prints 0.
+   - Run the Setup-script ownership check above. It should print 0 in any session started after Nathan's paste; if it does not, tell Nathan before continuing.
    - If anything differs, tell Nathan exactly which setting to fix. Never print values.
-2. **Verify the repository.** Check `main`, open PRs and the worktree.
-3. **Confirm the Setup-script paste** with Nathan if it is still pending.
-4. **Choose the next work item with Nathan**, one at a time, from the queue in the brief's section "Delta review of `5e3fb2f`, merge and follow-ups". The manager's recommended order:
-   1. the rendered-test diagnosis;
-   2. the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp;
-   3. the stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`, which is ordinary documentation;
-   4. a P06.1 proposal. P06.1 needs Stream access, plan and budget, a secret-injection decision and a chat-history policy. Propose it; don't dispatch it.
+2. **Verify the repository and the record.** Check `main`, open PRs and the worktree. Reconcile Implementation Control and the Work Register, as PF00's "Start here" requires.
+3. **Propose whether to resume P06.1. Propose it; don't dispatch it.** Feature work stays paused until Nathan's recorded direction resumes it.
+   - Reconcile P06.1's prerequisites in the Work Register (P02.1, P05.3, A04 and A08) with PF01's P06 section and step 1 of the [Claude handoff's live-verification sequence](claude-code-handoff.md#bounded-live-verification-sequence--after-setup-and-owner-inputs).
+   - Ask only for the owner inputs the next bounded action needs, from that handoff's prioritized inputs 2 and 3: the Stream account and plan, the test application and region, budget and limits, the secret-injection approach, and the chat-history policy after a block or unmatch.
+   - If Nathan resumes P06.1, write its brief in `docs/planning/` and its prompt in `docs/ephemeral/`, with both reasoning levels, and follow the [manager workflow](../planning/manager-workflow.md).
+4. **Present the recorded follow-ups with that proposal; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction:
+   - the intermittent rendered-test failures, three so far, where a form submit does not advance;
+   - the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp. A script change needs another paste;
+   - App Manager 1's stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`.
 
-   For the chosen item, write its brief in `docs/planning/`, its prompt in `docs/ephemeral/`, and both reasoning levels, then follow the [manager workflow](../planning/manager-workflow.md).
-5. **Notion follow-up.** On 24 September App Manager 1 found that 47 of 62 Work Register rows cite the historical Drive plan as Plan Reference, and that A03 still shows Ready. Reconcile them if the M02 close-out has not; the Notion Implementation Control page records what was done.
+The Notion reconciliation App Manager 1 flagged is done: Plan References point to the repository, A03 is Done and M01 has a row. Implementation Control records it.
 
 ## Environment and history
 
