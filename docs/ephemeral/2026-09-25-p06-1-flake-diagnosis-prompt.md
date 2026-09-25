@@ -82,6 +82,14 @@ One kind of failure has occurred three times: **a form submit that does not adva
   - `playwright.config.ts` sets `retries: 0`, `workers: 1`, `trace: 'off'`, `screenshot: 'off'` and a 10 s expect timeout;
   - the workflow uploads only two layout screenshots, so a failure leaves no trace, no `error-context.md` and no alert text.
 - Neither earlier investigation found a cause. None of the three commits changed mobile code.
+- **Earlier failures of the same shape,** on 23 and 24 September. Each ended on the screen before the submit:
+  - **P04.3's first merged-main run** [35931388280](https://github.com/amthorn78/glow-dating-app/actions/runs/35931388280) failed two inherited cases. The unsaved birth-draft correction waited for `screen-remaining` after submit, and the underage correction waited for `screen-eligibility`.
+  - **P04.3's PR run** [35932123481](https://github.com/amthorn78/glow-dating-app/actions/runs/35932123481) failed a retained underage birth case. Its diagnostics showed an empty birth-date field, a filled place and a visible alert after both inputs had been filled: lost input, not a proven cause. PR9 then changed how the draft owns edits and captures the submit.
+  - Both are in `docs/testing/p04-3-checkpoint.md`.
+  - **P05.1's first merged-main run** [35944199382](https://github.com/amthorn78/glow-dating-app/actions/runs/35944199382) failed `onboarding.spec.ts:120`. That diagnosis found the `ScrollView` focus loss above.
+  - **P05.1's unchanged-application baseline run** [35946182056](https://github.com/amthorn78/glow-dating-app/actions/runs/35946182056) had a separate date-journey failure that ended with an empty date field and a visible validation alert. Its event sequence was not established.
+
+  An input that is empty at submit, followed by a validation alert, recurs across these. That is a lead to test, not a conclusion.
 
 These are leads, not conclusions. Establish the cause from evidence.
 
