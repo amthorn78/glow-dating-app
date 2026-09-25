@@ -1,6 +1,6 @@
 # P06.1 — Chat-provider permissions and economics proof
 
-**Status: proposed, not dispatched.** App Manager 3 gave Nathan this proposal on 25 September 2026. Feature work stays paused until Nathan's recorded direction resumes it. If he resumes P06.1, its persistent brief is added to this file and its prompt goes in `docs/ephemeral/`, following the [manager workflow](manager-workflow.md).
+**Status: proposed, not dispatched.** App Manager 3 gave Nathan this proposal on 25 September 2026. The same day Nathan accepted the recommendations for inputs 3–5; inputs 1 and 2 are being confirmed from the Stream dashboard (see "Answers" below). Feature work stays paused until Nathan's recorded direction resumes it. If he resumes P06.1, its persistent brief is added to this file and its prompt goes in `docs/ephemeral/`, following the [manager workflow](manager-workflow.md).
 
 - **Work ID:** P06.1, "Prove chat-provider permissions and economics" (Work Register: Planned). Governing plan: [PF01](../pf-canon/GAPP-PF01-A-to-Z-Implementation-Plan.md), P06 and A08.
 - **Owner:** Nathan Amthor. **Manager:** App Manager 3.
@@ -47,7 +47,14 @@ None of these is a secret. The API secret stays in the environment settings.
 4. **Secret handling.** Confirmation that the proof may use the three `STREAM_*` values already in the `Glow app` environment, on the server side only. That accepts the recorded risk that any command in those sessions can read the secret ([Claude cloud environments](../continuity/claude-code-handoff.md#claude-cloud-environments)). Staging and production secret storage is decided later, with A04 and P11. *Needed before any live call.*
 5. **Chat history after an unmatch or block** (an A05 policy choice). Recommended: afterwards neither person can send or see the conversation, and the history is kept out of sight only for safety reports, with retention decided later under A05. The alternative is a read-only conversation for both. *Needed before the revocation tests, not to start.*
 
-Nathan's decision and each input are recorded here, with the date, when he answers.
+### Answers
+
+- **Inputs 3–5 (Nathan, 25 September 2026): recommendations accepted.**
+  - Budget: $0. The proof stays inside the plan's free allowance and stops before any step that would upgrade the plan or incur a charge.
+  - Secret handling: the proof may use the three `STREAM_*` values in the `Glow app` environment, on the server side only.
+  - Chat history: after an unmatch or block, neither person can send or see the conversation. The history is kept out of sight only for safety reports, and retention is decided later under A05.
+- **Inputs 1 and 2: being confirmed.** Nathan is running a read-only [Stream dashboard discovery](../ephemeral/2026-09-25-p06-1-stream-discovery-prompt.md) in Claude in Chrome. It also records the application's safety settings, data and configured hooks as the proof's baseline. The part of input 2 that is a permission, not a dashboard fact, still needs Nathan's answer: may the proof create and delete synthetic users and channels and change the application's channel types, roles and permissions?
+- **Decision to resume P06.1:** pending. Nathan gives it when he relays the discovery results.
 
 ## Risks and limits
 
