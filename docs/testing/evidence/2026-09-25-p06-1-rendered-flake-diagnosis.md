@@ -256,3 +256,22 @@ Everything else is unchanged:
 - **Regression test sensitivity.** It failed 10 of 10 before the fix. Under extreme load, the heading's deferred focus could run after the test's two-frame wait, so the test could miss a regression. After the fix it cannot fail through this mechanism, and it passed 20 of 20 under load.
 - **Native not tested.** No native or device check was performed; native focus code is unchanged.
 - **Documentation count.** The rendered suite is now 84 cases. Documents that quote 83 are outside this session's owned paths.
+
+## Manager verification (App Manager 3, 25 September 2026)
+
+Checked against the pushed branch, not the report alone.
+
+- **Branch and scope.** `claude/trusting-mayer-bw6p40` at `a7ab30bbc17d9ce8fef6f41715ac2f0f2bbaa83f` builds on the start SHA `8d202fd`. It holds two commits, `3fe8742` (fix and test) and `a7ab30b` (this record), and changes exactly the three owned paths. `git diff --check` from the start SHA is clean.
+- **Classification.** The trusted `main` policy classifies `8d202fd..a7ab30b` as full scope (`behavior-or-empty`), as expected for a code change.
+- **Code read.** The guard is `enteringText` and its one-line check in `focusText` (`apps/mobile/src/components/ui.tsx`). The regression test is at `apps/mobile/rendered/onboarding.spec.ts:181`. Every `file:line` cited for the start SHA was checked there: `ui.tsx:21-31`, `36` and `46-48`; `onboarding/shell.tsx:13-14`; `onboarding/store.ts:223` ("Enter a real civil date that is not in the future.") and `255` ("Check the civil birth date…").
+- **Re-run.** In a separate worktree at `a7ab30b`, `npm ci --ignore-scripts` and then `npm run check` in `apps/mobile`, both in an `env -i` process: exit 0, 516 of 516 unit tests passed. The manager did not re-run the browser suites; hosted CI is the rendered acceptance.
+- **Integration.** Merged into the manager branch with a merge commit, `8b8b1bdfe5c403686efb44070807dd003a466964`, pushed alone so that hosted CI tests exactly this code.
+- **Hosted CI on `8b8b1bd`:** push run [36169923119](https://github.com/amthorn78/glow-dating-app/actions/runs/36169923119) and PR run [36169930205](https://github.com/amthorn78/glow-dating-app/actions/runs/36169930205) passed all six jobs, and the push run's gate says `Application checks passed`. On the pinned Chromium, the rendered suite passed **84 of 84** in 3.9 minutes, the new regression test included. A passing run alone does not show that the intermittent failure is gone (OD-21); acceptance rests on the proven cause, the before-and-after proof and the fix's review.
+- **Proposals:**
+  - **Failure capture in CI:** recorded as a follow-up in the current handoff, for Nathan to schedule after P06.1. It changes the workflow and the Playwright configuration, so it needs its own full-scope change and review.
+  - **Case count:** no living document states the current rendered case count. The records that say 83 are dated and keep their history.
+  - **Old diagnostics branch:** `app-builder-1/p05-1-birth-diagnostics` is retired after PR26 merges.
+- **Acceptance.** The fix is new code in PR26. OD-21's acceptance needs its own exact-head review of code head `8b8b1bd`, queued after the I1 review (OD-29). Points for that review:
+  - with focus kept in a field, the heading is not focused; the alert text stays in the `role="alert"` live region;
+  - `enteringText` trusts layout boxes to tell a hidden retained screen from a shown one;
+  - the regression test's sensitivity limit under heavy load, noted above.
