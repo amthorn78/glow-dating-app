@@ -18,12 +18,24 @@ export function Page({ children, testID }: PropsWithChildren<{ testID?: string }
   </KeyboardAvoidingView></SafeAreaView>;
 }
 
+const NON_TEXT_INPUT_TYPES = new Set(['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit']);
+
+/** A shown text field that currently has keyboard focus, so a person may be entering text. */
+function enteringText(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement) || element.getClientRects().length === 0) return false;
+  if (element instanceof HTMLInputElement) return !NON_TEXT_INPUT_TYPES.has(element.type);
+  return element instanceof HTMLTextAreaElement || element.isContentEditable;
+}
+
 export function focusText(node: Text | null) {
   if (!node) return;
   if (Platform.OS === 'web') {
     // React Native Web exposes its host element through the ref. Keep DOM-only
     // focus behavior here; native TextProps has no tabIndex in a clean checkout.
     if (typeof HTMLElement !== 'undefined' && node instanceof HTMLElement) {
+      // Callers focus a frame after a screen or message appears. A person may
+      // already be in a field by then; taking focus loses or erases their entry.
+      if (enteringText(document.activeElement)) return;
       node.tabIndex = -1;
       node.focus();
     }

@@ -178,6 +178,44 @@ test('programmatic birth form scrolling preserves input focus and subsequent pri
   await expect(active(page, 'birth-time')).toHaveValue('09:30:00');
 });
 
+test('deferred screen and alert focus leaves a field someone already entered', async ({ page }) => {
+  // Focus and select a field in the task that shows it, before the next animation frame,
+  // as a fast person or input tool can. Screens, stores and focus handling stay real.
+  const focusWhenShown = (shown: string, id: string) => page.evaluate(([selector, testId]) => {
+    const visible = (node: Element) => node.getClientRects().length > 0;
+    const observer = new MutationObserver(() => {
+      const field = Array.from(document.querySelectorAll(`input[data-testid="${testId}"]`)).find(visible);
+      if (!Array.from(document.querySelectorAll(selector)).some(visible) || !(field instanceof HTMLInputElement)) return;
+      observer.disconnect();
+      field.focus();
+      field.select();
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+  }, [shown, id] as const);
+  const settleFrames = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await reachBirth(page);
+  await focusWhenShown('input[data-testid="adult-date"]', 'adult-date');
+  await active(page, 'birth-back').click();
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
+  await settleFrames();
+  await expect(active(page, 'adult-date')).toBeFocused();
+  await page.keyboard.insertText('1992-07-16');
+  await expect(active(page, 'adult-date')).toHaveValue('1992-07-16');
+  await active(page, 'eligibility-submit').click();
+  await expect(active(page, 'screen-birth')).toBeVisible();
+  await active(page, 'birth-date').fill('2027-06-15');
+  await active(page, 'birth-place').fill('Fictional Harbor');
+  await focusWhenShown('[role="alert"]', 'birth-date');
+  await active(page, 'birth-submit').click();
+  await expect(page.getByText(/Check the civil birth date/).filter({ visible: true })).toBeVisible();
+  await settleFrames();
+  await expect(active(page, 'birth-date')).toBeFocused();
+  await page.keyboard.insertText('1992-07-16');
+  await expect(active(page, 'birth-date')).toHaveValue('1992-07-16');
+  await active(page, 'birth-submit').click();
+  await expect(active(page, 'screen-remaining')).toBeVisible();
+});
+
 test('an interrupted private form resumes within its session and clears on account switch', async ({ page }) => {
   await reachBirth(page);
   await active(page, 'birth-place').fill('Private Draft Island');
