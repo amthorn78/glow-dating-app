@@ -2,9 +2,9 @@
 
 **Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
-- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The decision is conditional on the exact-head review confirming S15 live. See "S15: decided".
+- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The display rule, as S15's answer, is conditional on the exact-head review confirming S15 live. The principle is in force regardless, and its carve-outs await Nathan (DM-03 G4). See "S15: decided".
 - The Dev Manager's first reviews, DM-01 and DM-02, are in and considered. This brief applies the accepted changes: I2 is split into I2a and I2b, economics becomes a dashboard discovery, and the harness's checks join CI. See the [review log](../continuity/dev-manager/README.md).
-- Next: the Dev Manager reads the revised I1 review prompt (DM-03); then Nathan runs the review.
+- The Dev Manager read the revised I1 review prompt (DM-03) and approved it with conditions. Revision 3 applies them. Next: Nathan runs the review.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
 
@@ -52,7 +52,7 @@ None of these is a secret. The API secret stays in the environment settings.
 1. **Plan.** The Stream plan of the organization that owns application 1729640: its name, the end date if it is a trial, Maker status if Nathan has applied, and the monthly-active-user and concurrent-connection limits the dashboard shows. *Needed so that the proof stays inside the plan and the economics start from facts.*
 2. **Test application and region.** Confirmation that application 1729640 is the proof's test application, that it holds no real users, and that the proof may create and delete synthetic users and channels and change its channel types, roles and permissions; and the application's region. *Needed because the proof reconfigures the application.*
 3. **Budget.** Recommended: $0. The proof stays inside the plan's free allowance and stops before any step that would upgrade the plan or incur a charge. Nathan may name a cap instead. *Needed before any live call.*
-4. **Secret handling.** Confirmation that the proof may use the three `STREAM_*` values already in the `Glow app` environment, on the server side only. That accepts the recorded risk that any command in those sessions can read the secret ([Claude cloud environments](../continuity/claude-code-handoff.md#claude-cloud-environments)). Staging and production secret storage is decided later, with A04 and P11. *Needed before any live call.*
+4. **Secret handling.** Confirmation that the proof may use the three `STREAM_*` values already in the `Glow app` environment, on the server side only. That accepts the recorded risk that any command in those sessions can read the secret ([Claude cloud environments](../operations/environment-inventory.md#claude-cloud-environments)). Staging and production secret storage is decided later, with A04 and P11. *Needed before any live call.*
 5. **Chat history after an unmatch or block** (an A05 policy choice). Recommended: afterwards neither person can send or see the conversation, and the history is kept out of sight only for safety reports, with retention decided later under A05. The alternative is a read-only conversation for both. *Needed before the revocation tests, not to start.*
 
 ### Answers
@@ -96,7 +96,7 @@ Facts as the read-only discovery reported them:
   It also records the exact configuration that achieved this, and how to restore the defaults.
 - **Owned paths (writable):** `proofs/stream-chat/**` (new: harness, locks, README and offline tests) and `docs/testing/evidence/2026-09-25-p06-1-chat-provider-proof.md` (new; each session adds its section). P06.1-I2b also owns `docs/architecture/chat-provider-permissions.md`, and one new job for the harness's offline checks in `.github/workflows/foundation.yml` (DM-02 B6). That workflow change is full scope, under the CI policy's workflow rule.
 - **Manager-owned paths:** this brief and the rest of `docs/planning/`, `docs/continuity/`, `docs/ephemeral/`, `docs/pf-canon/`, root `AGENTS.md` and `CLAUDE.md`, and Notion.
-- **Exclusions:** every other path, including `apps/`, `services/`, `packages/`, `scripts/`, `.github/`, `Dockerfile`, `.dockerignore`, `.gitignore` and the `.env.example` files. No change to the fixture API or its guards, and no `GLOW_*` variable set. No database, HDE, Railway or production. Nothing in the Stream organization outside application 1729640. No plan, billing, Maker or team change, no key rotation or region change, no webhook or hook, and no push. No real people or personal data.
+- **Exclusions:** every other path, including `apps/`, `services/`, `packages/`, `scripts/`, `.github/` (except the one Foundation job P06.1-I2b owns; DM-03 E1), `Dockerfile`, `.dockerignore`, `.gitignore` and the `.env.example` files. No change to the fixture API or its guards, and no `GLOW_*` variable set. No database, HDE, Railway or production. Nothing in the Stream organization outside application 1729640. No plan, billing, Maker or team change, no key rotation or region change, no webhook or hook, and no push. No real people or personal data.
 - **Dependencies and inputs:** P02.1 and P05.3 are Done. A08 is resolved by this item. A04's P06.1 inputs are supplied: application 1729640 on the Free Chat plan, in US East, with a $0 budget.
 - **Budget guardrails:** per session, at most 20 synthetic users, 30 channels, 10 concurrent connections and 5,000 API calls, counted by the harness. Stop before any step that would upgrade the plan or incur a charge.
 - **Credential rules:**
@@ -173,7 +173,7 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 
 **Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."* The durable record is [ADR 0003](../adr/0003-chat-display-rule.md).
 
-**Conditional on confirmation** (DM-01 P4). The decision rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, the decision returns to Nathan.
+**Conditional on confirmation** (DM-01 P4). The choice of the display rule as S15's answer rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, that choice returns to Nathan. Nathan's principle does not depend on the review: it is in force, with its carve-outs pending (DM-03 G4).
 
 - **The design:** option 1 below, the display rule. The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
 - **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager approved with conditions (DM-02 B1):

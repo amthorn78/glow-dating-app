@@ -63,10 +63,11 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 - a new work item's brief when its choices have architectural or procedural consequences;
 - any decision where the tradeoffs are unclear or several roles' views matter.
 
-**Read before it takes effect** (DM-01 P1, accepted 25 September 2026). These are Dev Manager reads, not code reviews, and Nathan's documentation exemption from CI stays as it is:
+**Read before it takes effect** (DM-01 P1). The authority is Nathan's direction to *"incorporate the Dev Manager into the workflow wherever independent review or approval would materially reduce project risk"* (OD-15). DM-01 question 2 asks him to confirm or withdraw the rule; until he answers, it applies (DM-03 G1). These are Dev Manager reads, not code reviews, and Nathan's documentation exemption from CI stays as it is:
 
 - **Governing Markdown:** `AGENTS.md` or `CLAUDE.md` at any level, `docs/pf-canon/`, the manager workflow, this charter and the CI and review policy. The primary manager batches these per PR. The PR merges only after the review log records a disposition for them.
 - **Prompts that authorize credential use or live provider actions:** read before Nathan runs them.
+- **A read covers one commit** (DM-03 G2). The review log names the commit each read covered. A governing change after that commit needs another read before the PR merges, except a change that only applies a Dev Manager finding's own text or instruction. The primary manager lists those changes in the disposition, and the next consultation or the close-out read confirms them.
 
 **Also:** a periodic process and build review whenever Nathan asks for one, based on a fresh [State of the App](../continuity/state-of-the-app.md).
 
@@ -78,7 +79,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 The Dev Manager runs in its own Claude Code cloud session in the `Glow app` environment. It works from an exact commit of the manager branch and pushes only its own branch, `claude/dev-manager`. A cloud session can receive messages but cannot send any back. So its answers travel through the repository.
 
-1. **Consultation.** The primary manager sends the Dev Manager a self-contained consultation: as the first prompt when it creates the session, then by cross-session message. Each consultation has:
+1. **Consultation.** The primary manager sends the Dev Manager a self-contained consultation: as the first prompt when it creates the session, then by cross-session message. An idle cloud session cannot receive cross-session messages, so the primary manager can instead send a one-time Routine that fires into the Dev Manager's session (the remote-session tools' `create_trigger` with its session ID), as it did for DM-03. Each consultation has:
    - an ID (`DM-NN`) and the question;
    - the exact commit and paths to read;
    - the options considered and the primary manager's recommendation;

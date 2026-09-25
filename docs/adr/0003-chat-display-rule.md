@@ -1,7 +1,11 @@
 # ADR 0003: The chat display rule and "nothing outside Glow"
 
 Date: 2026-09-25
-Status: Accepted by Nathan. Conditional on the exact-head review of P06.1-I1 confirming finding S15 live. The carve-outs below await Nathan's confirmation.
+Status: Accepted by Nathan.
+
+- **The display rule as S15's answer** is conditional on the exact-head review of P06.1-I1 confirming finding S15 live.
+- **The principle** (decision 3) is in force regardless of the review (DM-03 G4).
+- **The carve-outs** (decision 4) await Nathan's confirmation.
 Work item: P06.1 — Prove chat-provider permissions and economics
 
 ## Context

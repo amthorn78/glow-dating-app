@@ -62,7 +62,7 @@ Nathan's direction, 24 September 2026:
    - the run ID whose Foundation gate says `Application checks passed` on the exact head;
    - the exact-head review report for that head;
    - Codex's summary, showing both reviews complete;
-   - the Dev Manager's dispositions in the review log for any governing Markdown the PR carries (DM-01 P1).
+   - the Dev Manager's dispositions in the review log for any governing Markdown the PR carries, with reads that cover its final text (DM-01 P1; a read covers one commit, per the charter).
 
    Then:
    - **Wait for Codex.** Marking a draft ready starts Codex's automatic code and security review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows both reviews completed, and verify each Codex finding like any other review finding.

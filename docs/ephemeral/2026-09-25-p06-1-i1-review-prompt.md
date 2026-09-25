@@ -1,13 +1,17 @@
 # P06.1-I1 review prompt — exact-head code and security review
 
 - **Owner:** App Manager 3. Nathan starts this session manually and relays its report.
-- **Revision 2, 25 September 2026,** written after the Dev Manager's DM-01 and DM-02 reviews:
-  - it names I1's code head;
-  - it makes the live confirmation of S15 required (DM-01 P4);
-  - it says where the result is recorded.
+- **Revision 3, 25 September 2026.**
+  - Revision 2, written after the Dev Manager's DM-01 and DM-02 reviews:
+    - it names I1's code head;
+    - it makes the live confirmation of S15 required (DM-01 P4);
+    - it says where the result is recorded.
+  - Revision 3 adds the Dev Manager's DM-03 conditions R1 to R3 to section 4, and nothing else.
 
   Revision 1 was withdrawn before it ran; don't use it.
-- **Dev Manager read first.** This prompt authorizes live provider actions, so the Dev Manager reads it (DM-03) before Nathan runs it.
+- **Dev Manager read: done.** This prompt authorizes live provider actions.
+  - The Dev Manager read revision 2 at `fa4dc5f` (DM-03) and approved it with conditions: R1 and R2 required, R3 optional.
+  - Revision 3 adds all three. Per DM-03, edits that only add them need no further read.
 - **Durable brief:** [P06.1 brief](../planning/p06-1-chat-provider-proof.md), sections "P06.1-I1 result", "S15: decided" and "Sessions".
   - Decision: [ADR 0003](../adr/0003-chat-display-rule.md).
   - Evidence: [P06.1 evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
@@ -22,7 +26,7 @@
 
 ---
 
-You are the **review session for P06.1-I1** of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 2, from commit `<RECORDS_COMMIT>`.
+You are the **review session for P06.1-I1** of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 3, from commit `<RECORDS_COMMIT>`.
 
 P06.1-I1 was the first implementation session of P06.1, the chat-provider permissions proof: a sandbox harness in `proofs/stream-chat/` and its live results against Nathan's development Stream application 1729640, with synthetic users only.
 
@@ -145,7 +149,10 @@ The S15 run is required. Follow the README's commands and these rules:
 - **Run 2, optional:** at most one more `run --accept-dashboard-user --only <case ids>`, for anything else your review needs.
 - **Limits.** Both runs stay within the brief's per-session guardrails: 20 synthetic users, 30 channels, 10 concurrent connections and 5,000 API calls. The harness counts them. Each run also sets up four users and two channels, and runs the authorized path and the reconnect check.
 - **One place, one at a time.** Run every live command from a single checkout, one after another. Never use parallel agents or separate worktrees for them. The harness's session ledger then counts every call, and no cleanup can touch another run.
-- **Never** run `configure --apply` or `restore --apply`. Use `cleanup --apply` only to remove your own runs' leftovers. Finish with `verify-clean`.
+- **Never** run `configure --apply` or `restore --apply`. Use `cleanup --apply` only to remove your own runs' leftovers.
+- **After the last run,** run `verify-clean` **and** the dry-run `configure` again. Report both outputs. If `configure` reports any difference, do not fix it: report it, and the manager decides.
+- **Stream's system user.** A hard delete makes Stream create a `deleted-user-1729640-…` user. If one remains after `cleanup --apply`, report it and leave it. The manager arranges its removal through a later session.
+- **First live use.** These runs are the first live use of the fixes listed in the evidence record's "Deviations". Report whether cleanup and `verify-clean` behaved as intended.
 - Stop at once if anything suggests a charge, an upgrade or an exceeded limit.
 - **What to report.** The secret and full tokens must never appear in any output. For each run, report:
   - the run prefix, UTC start and end times, cases, results, usage and cleanup result;
@@ -160,7 +167,7 @@ Report the exact commands and results.
 3. The installs from the locks, in clean processes, with the README's commands.
 4. The offline unit tests, Ruff (check and format), mypy and `node --check client/runner.cjs`, with the README's commands.
 5. A secret scan over the whole diff, and over any output your live runs produce.
-6. The live runs.
+6. The live runs, and the final `verify-clean` and dry-run `configure`.
 7. Anything else you judge necessary.
 
 The manager reads hosted CI on the reviewed head, so you need not wait for it.
@@ -169,7 +176,7 @@ The manager reads hosted CI on the reviewed head, so you need not wait for it.
 
 Your final message is the report Nathan relays:
 
-- the prompt revision you received (revision 2, from commit `<RECORDS_COMMIT>`);
+- the prompt revision you received (revision 3, from commit `<RECORDS_COMMIT>`);
 - the head you reviewed (`git rev-parse HEAD`) and both classification outputs;
 - **verdict:** "approve" (the I1 head is a sound base for P06.1-I2a and I2b) or "changes required";
 - **S15:** confirmed, refuted or narrowed. Give the live run's evidence, and the documentation or source evidence. If it was not confirmed live, say why;

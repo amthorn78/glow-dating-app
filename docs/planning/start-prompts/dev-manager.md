@@ -3,6 +3,7 @@
 - **Owner:** App Manager 3, at Nathan's direction of 25 September 2026. The primary manager sends this prompt when it creates a Dev Manager session.
 - **Charter:** [Dev Manager charter](../dev-manager.md). **Review log:** [Dev Manager review log](../../continuity/dev-manager/README.md).
 - **A durable start procedure, not an ephemeral prompt** (DM-01 P9): keep it current for later Dev Manager sessions. When a later session starts, replace the first consultation with that session's own. The prompt the first session received is this file at `3888e8f`.
+- **Before its next use** (DM-03 E3, accepted): make it generic, with a `<CONSULTATION>` block and a `<MANAGER_BRANCH>` placeholder instead of DM-01, DM-02 and the fixed branch.
 
 **Primary manager:** replace `<BASIS_SHA>` with the exact manager-branch commit the session is created from.
 
@@ -108,4 +109,4 @@ If the push fails for a network error, retry up to four times with backoff. If i
 
 ## 6. After these reviews
 
-Stay available. Later consultations arrive as cross-session messages from the primary manager, each with an ID (`DM-03` onwards) and the exact commit to read. For each one, fetch the manager branch and read what it names. Answer in a new report file, in the same format, on the same branch, and push. Keep your independence: challenge the primary manager's framing when it is wrong, and say when a question is Nathan's to decide.
+Stay available. Later consultations arrive from the primary manager as cross-session messages or as scheduled messages into this session, each with an ID (`DM-03` onwards) and the exact commit to read. For each one, fetch the manager branch and read what it names. Answer in a new report file, in the same format, on the same branch, and push. Keep your independence: challenge the primary manager's framing when it is wrong, and say when a question is Nathan's to decide.

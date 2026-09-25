@@ -3,7 +3,7 @@
 **Document identity:** GAPP-PF01 · **Revision:** 1.9 · **Date:** 25 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
-**Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
+**Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
 
@@ -208,7 +208,7 @@ WordPress itself needs a database to boot. If native plugin validation is requir
 
 - **Scope:** the in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share.
 - **Consumers:** the rule binds server and operator consumers too. Provider data a user could write is never forwarded into exports, staff views, push or analytics.
-- **Carve-outs:** legally required disclosures, licence notices and platform-mandated system screens are proposed carve-outs awaiting Nathan's confirmation.
+- **Carve-outs:** legally required disclosures, licence notices and platform-mandated system screens are proposed carve-outs awaiting Nathan's confirmation. Until Nathan confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect.
 
 The first application of the rule is the chat display rule in [ADR 0003](../adr/0003-chat-display-rule.md).
 
@@ -548,9 +548,10 @@ Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature
 
 1.8 — records two directions of Nathan's on 25 September 2026: his S15 decision and principle (section 7), and the Dev Manager (D10), with the matching exception in D09. No product scope, phase acceptance, D08 authority or HDE boundary changes.
 
-1.9 — after the Dev Manager's DM-01 and DM-02 reviews (25 September 2026):
+1.9 — after the Dev Manager's DM-01, DM-02 and DM-03 reviews (25 September 2026):
 
-- Section 7 opens with Nathan's presentation principle as a product-wide rule, with its scope, its reach to server and operator consumers, and proposed carve-outs awaiting his confirmation. The chat display rule moves to ADR 0003.
+- Section 7 opens with Nathan's presentation principle as a product-wide rule, with its scope, its reach to server and operator consumers, and proposed carve-outs awaiting his confirmation. Until he confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect (DM-03 G3). The chat display rule moves to ADR 0003.
 - The header no longer restates status. It points to the new owner-direction register and to the current handoff.
+- The execution model names App Planner 1 and App Builder 1 as historical roles (DM-03 E4).
 
 No product scope, phase acceptance, D08 authority or HDE boundary changes.

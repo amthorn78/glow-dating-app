@@ -36,7 +36,7 @@ npm ci --ignore-scripts --prefix packages/contracts
 
 Install `apps/mobile` before running `packages/contracts`' checks. The contracts corpus test imports mobile source, so it fails until the mobile dependencies are installed. CI uses the same order (DM-02 B10).
 
-Do not dump your environment to diagnose a configuration refusal. The API rejects even empty reserved secret/connection variables by presence. Use a dedicated process environment instead of copying HDE/Railway configuration. The full inventory is in [the handoff](../continuity/claude-code-handoff.md#environment-variable-inventory); the Claude cloud environment's settings are in the [environment inventory](environment-inventory.md).
+Do not dump your environment to diagnose a configuration refusal. The API rejects even empty reserved secret/connection variables by presence. Use a dedicated process environment instead of copying HDE/Railway configuration. The full inventory, and the Claude cloud environment's settings, are in the [environment inventory](environment-inventory.md#environment-variable-inventory).
 
 ## API
 
