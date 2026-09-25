@@ -32,7 +32,7 @@ The foundation passed hosted run 35856228910 for candidate `ca2abecceb1e8c532efd
 **Documentation is exempt (Nathan, 24 September 2026).** A change made only of regular Markdown (`.md`) files is ordinary documentation. It skips the four application jobs and code/security review. This covers every documentation path: `docs/`, READMEs, `AGENTS.md`/`CLAUDE.md`, plans, handoffs, prompts and canon.
 
 - **Exception:** paths under a `.claude/` directory stay full scope (Nathan, 24 September 2026). Claude Code skills, commands, agents and rules can carry shell commands, pre-approved tools and permission modes, as `.claude/settings.json` can.
-- **No application check reads Markdown content.** Ruff 0.16.8 also formats Python code blocks inside Markdown, so the API's ruff configuration excludes `*.md` (`services/api/pyproject.toml`). Otherwise an exempt Markdown change could break a later API job.
+- **No application check reads Markdown content.** Ruff 0.16.8 also formats Python code blocks inside Markdown, so the API's ruff configuration excludes `*.md` (`services/api/pyproject.toml`). Otherwise an exempt Markdown change could break a later API job. The pattern also matches a directory named `*.md`, so ruff skips any Python file inside one. None exists, and adding one is a non-Markdown change, so it runs the full checks and review.
 
 A script or any other non-Markdown file, a workflow, configuration or environment template, a mixed change, executable or symlinked documentation, or an unavailable or empty comparison requires full checks. Documentation paths must not contain scripts. The classifier never reads file contents, so the manager enforces that rule by reading every documentation change it integrates.
 

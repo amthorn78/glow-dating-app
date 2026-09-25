@@ -13,7 +13,7 @@ This is the dedicated environment for every Glow app manager, implementation and
 | Network access | Custom, with "Also include default list of common package managers" checked. Allowed domains: `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com`, `getstream.io` |
 | Setup script | `scripts/bootstrap-toolchain.sh`, pasted unchanged. Installs Node 24.19.0, npm 11.9.0 and CPython 3.12.14, linked in `$HOME/.local/bin`. Paste again whenever the file changes, not only its pins. See [local setup](local-development.md#claude-code-cloud-sessions) |
 | HDE variables | None. `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` and `PORT` belong only to the HDE environment |
-| API credentials | TypeSafe, a **Bearer** credential for `api.typesafe.ai`, added by Nathan on 24 September 2026. Anthropic's proxy attaches it to requests for that host, so it is not an environment variable and commands cannot read it. Only the manager's advisory reasoning-level scorer uses it |
+| API credentials | TypeSafe, a **Bearer** credential for `api.typesafe.ai`, added by Nathan on 24 September 2026. Anthropic's proxy attaches it to requests for that host, so it is not an environment variable and commands cannot read its value. Any process in any session in this environment can still send authenticated requests to `api.typesafe.ai`, including candidate tests and install scripts. By policy only the manager's advisory reasoning-level scorer uses it; nothing enforces that |
 
 ### Stream development application (getstream.io)
 

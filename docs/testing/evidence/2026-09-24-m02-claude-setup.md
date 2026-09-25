@@ -602,3 +602,64 @@ Nathan relayed the M02-C1 report: branch `claude/vigilant-einstein-i95w78`, head
 - This container's own toolchain still has the uid-1000 Node tree from the pre-M02 Setup script, until the final script is pasted after merge.
 
 **Integration.** `git merge --ff-only 9be82285ca70668f427d0adb23ae68ae6b2faa2b` on `claude/fervent-darwin-idyko3`; no manager push had moved the branch since the start SHA. A delta review of the final head against `ccebd1b` follows.
+
+## M02 merge receipt — App Manager 2 (24–25 September 2026)
+
+### Delta review relay
+
+Nathan ran the delta review at the extra-high level on head `5e3fb2f3940486284822f398a39d4f233833eedd` and relayed its report. The report said it changed nothing in the repository or on GitHub.
+
+- **Start gate and classification:** `ccebd1b` is an ancestor, and the only merge base is `07b3b10`. Main's classifier returned `{"full": true, "reason": "behavior-or-empty"}` over 30 paths.
+- **Verdict:** approve for merge. All 13 findings of the `ccebd1b` review are resolved, and all six M02-C1 deviations are acceptable. It raised six new findings, all nits (N1–N6); the brief records their disposition.
+- **Its checks:**
+  - `bash -n`: exit 0. `shellcheck` 0.11.0 gave informational SC2015 notes only.
+  - A fresh clean-environment run exited 0 in 98.7 s. Both trees were root-owned, with 12 and 8 relative links.
+  - Reruns took 0.63 s and 0.60 s, with all 9837 prefix entries unchanged. The wrong Node and Python hashes exited 1 without extracting anything.
+  - Adversarial cases A, B1–B5, C1–C7, D1–D5, E1, E2, F1, F2, G and J1 behaved as intended: refused, or replaced the tree without running the stand-in.
+  - `SIGTERM` to the script or its process group left 0 processes and 0 temporary entries.
+  - The classifier tests passed 13 of 13. Against `ccebd1b`'s classifier the same file gave `FAILED (failures=9)`.
+  - The pin test passed 3 of 3, and three false-pass edits in a `git archive` copy failed as intended.
+  - Pinned ruff 0.16.8 reported 57 files, and `ruff check` passed.
+  - `git diff --check` was clean. The link check found 70 links and 0 broken. The secret scan was clean, and `STREAM_API_SECRET` appears by name only.
+- **Its limits:**
+  - Hosted CI was left to the manager.
+  - `SIGINT`, curl's stall-and-retry path and a real environment Setup run were not exercised.
+  - `.claude` look-alike names were reasoned about only.
+  - In E1, a long temporary path hit the Unix socket path limit, so the rebuilt tree was smaller (2156 entries instead of 4164). The report attributes this to the test setup, not the script.
+
+**Manager check of the relay.** App Manager 2 read each nit's cited lines at `5e3fb2f` and confirmed its premise. It did not re-run the adversarial cases.
+
+- N1: `run()` starts every step with `setsid`.
+- N2: the pin patterns also match inside YAML comments.
+- N3: the inventory row stated usage as if it were a limit.
+- N4: the M02-C1 "Signals" limit states that the import check rejects a partial install.
+- N5: `AGENTS.md` line 13 lacked the `.claude` exception.
+- N6: `extend-exclude = ["*.md"]` is a path glob.
+
+**Corrections to earlier sections.** The earlier sections are left unchanged; these notes correct them.
+
+- The M02-C1 "Signals" limit says an interrupted `make install` "leaves a partial Python tree, which the next run's import check rejects". The delta review found otherwise. A tree without `bin/python3`, the other `*3` links, pip and the man pages passed the fast path as "Python 3.12.14 already installed", although `python3.12 -m venv` still worked. The import check catches a missing standard-library module, not every partial install.
+- The same limit says only that `SIGKILL` cannot be handled. Because each step runs in its own session, a `SIGKILL` sent to the script's process group also leaves the running step alive. The review counted 13 build processes and 5 temporary entries 2 s later; the pre-C1 script left no process running. `SIGHUP` to the group left nothing behind but printed no message.
+
+### Hosted CI on the reviewed head
+
+On `5e3fb2f`, [push run 36071229369](https://github.com/amthorn78/glow-dating-app/actions/runs/36071229369) and [PR run 36071232840](https://github.com/amthorn78/glow-dating-app/actions/runs/36071232840) succeeded on all six jobs. App Manager 2 read them job by job, and every step ran, including "Render and exercise account onboarding". Both gate logs say `Application checks passed`. The head had no other check runs.
+
+### Merge and main verification
+
+- **Merge:** App Manager 2 marked PR18 ready and merged it with a merge commit at 2026-09-24T23:59:26Z, with the expected head pinned to `5e3fb2f3940486284822f398a39d4f233833eedd`.
+- **Merge commit:** `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff`, with parents `07b3b10720ddd333ada807a56595f369263714fe` and `5e3fb2f3940486284822f398a39d4f233833eedd`.
+- **Tree:** `e3032d54b2732abd9a59a9710f6e38652763e3b7`, the reviewed head's tree. `git diff 5e3fb2f origin/main` is empty.
+- **Setup script on main:** `scripts/bootstrap-toolchain.sh` is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`, mode 100755. This is the script Nathan pastes.
+- **Main CI:** [push run 36075413521](https://github.com/amthorn78/glow-dating-app/actions/runs/36075413521) on `2b6c7df` succeeded on all six jobs. The rendered step ran from 00:01:39 to 00:05:25 UTC, and the gate log says `Application checks passed`.
+
+### After the merge
+
+- **The classifier is live.** CI now loads the M02-C1 classifier from `main`. This close-out changes only Markdown, outside any `.claude` directory, and is the first PR that classifier judges.
+- **Pending owner action.** Nathan pastes `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script once, unchanged. Until then, this container's toolchain keeps the uid-1000 Node tree: on 25 September, `find /root/.local/share/glow-app-toolchain ! -user 0 | wc -l` printed 3401. After the paste, the next session's Setup run should bring it to 0.
+- **Reasoning levels.** For the delta review, the manager and TypeSafe both said extra high. TypeSafe's rule also flagged ultracode for the first time, with P(`single_session`) at 0.43. Nathan ran extra high without ultracode. The outcome was adequate and the better call was "both"; the ultracode flag was not tested.
+- **Close-out edits:** N3 and N5 are fixed, N6 is noted in the CI policy, and the N1 and N4 corrections are above. The manager workflow now says the classifier rules are live. The brief and the current handoff record M02 as done, with the queued follow-ups. The M02 prompts and the App Manager 2 start prompt are pruned: their results are in this record and the brief, and Git history keeps their text. A short start prompt for the next manager replaces them.
+- **Notion:**
+  - The 47 Work Register Plan References that pointed to Drive now point to the repository: 46 to PF01, and AP1-DBA-001 to its preserved assignment in `docs/planning/sources/`. A re-query found none left.
+  - A03 is Done, resolved by P01.1.
+  - An M01 row now exists.

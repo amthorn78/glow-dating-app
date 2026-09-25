@@ -1,5 +1,7 @@
 # M02 — Claude setup and workflow optimization
 
+**Status: done.** M02 merged on 24 September 2026 through [PR18](https://github.com/amthorn78/glow-dating-app/pull/18). The merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff` has the tree of the reviewed head `5e3fb2f`. The review disposition and the queued follow-ups are in "Delta review of `5e3fb2f`, merge and follow-ups" below; the merge receipt is in the evidence record.
+
 Owner: Nathan Amthor. Managers: App Manager 1 (first Claude manager, 24 September 2026), handing over to App Manager 2. Starting main: `07b3b10720ddd333ada807a56595f369263714fe` (PR16), tree `fda515b624c4916dbb7d037beec8e276a62b2e3b`. Assignment: [initiation](claude-code-initiation.md) — review, then carry out the smallest useful app-only setup/instruction/workflow optimization. Feature work stays paused; P06.1 is not dispatched.
 
 **Process:** manual relay ([manager workflow](manager-workflow.md)). The manager writes prompts. Nathan runs each implementation or review session himself and relays findings. The manager never starts that work itself, and implementation sessions may use any tools they need.
@@ -185,6 +187,29 @@ Nathan ran the review session at the extra-high level on head `ccebd1bf5eb23155f
 6. **Final checks:** relative links in changed Markdown, `git diff --check`, and trusted-base classification (full scope).
 
 **Review plan:** after integration, a delta review of the final head against `ccebd1b` that also confirms each finding is resolved. Then all six Foundation jobs on the final head, merge, verification of main, a receipt, and the one-time Setup-script paste.
+
+## Delta review of `5e3fb2f`, merge and follow-ups (24–25 September 2026)
+
+Nathan ran the delta review at the extra-high level on head `5e3fb2f3940486284822f398a39d4f233833eedd`.
+
+- **Verdict:** approve for merge. All 13 findings of the `ccebd1b` review are resolved, and all six implementer deviations are acceptable. The six new findings are nits; none blocks.
+- **Merge:** after 6/6 on the head's push and PR runs, App Manager 2 merged PR18 with a merge commit pinned to the reviewed head. The receipt is in the evidence record.
+
+| Nit | Finding | Disposition |
+|---|---|---|
+| N1 | Each step runs in its own session (`setsid`), so a `SIGKILL` sent to the script's process group leaves the running step alive. A signal between the fork and `setsid()` is missed | Recorded as a limit in the evidence record. The code change is queued as follow-up hardening |
+| N2 | The pin test also counts pins inside YAML comments | Queued as follow-up hardening: strip comments before matching and counting |
+| N3 | The inventory's TypeSafe row overstated containment | Fixed in the close-out |
+| N4 | The M02-C1 limits said the next run's import check rejects a partial Python install. A tree missing `bin/python3`, pip and the man pages passes it | Corrected in the evidence record. An optional completion stamp is queued as follow-up hardening |
+| N5 | One `AGENTS.md` bullet lacked the `.claude` exception | Fixed in the close-out |
+| N6 | `extend-exclude = ["*.md"]` also skips Python inside a directory named `*.md` | Recorded in the CI policy; adding such a file is full scope anyway. Narrowing the pattern is queued as follow-up hardening |
+
+**Queued work items.** One runs at a time, and Nathan chooses the order. The manager recommends this one:
+
+1. **Rendered-test diagnosis.** Intermittent rendered failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
+2. **Setup-script and pin-test hardening:** N1, N2, N6 and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
+3. **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
+4. **P06.1 proposal:** propose, don't dispatch.
 
 ## Review and merge gates
 
