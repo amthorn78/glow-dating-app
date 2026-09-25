@@ -107,6 +107,7 @@ You may confirm S15, and anything else your review needs, with the harness's liv
 
 - **Before any run,** run `verify-clean` and the dry-run `configure`. The expected result is no proof users, no channels, one other user (the dashboard user) and "differences before: []". If the application holds anything else, for example a `deleted-user-…` user, a leftover proof user or any channel, or the configuration differs, do no live run and report.
 - **At most two runs**, each `run --accept-dashboard-user --only <case ids>`, within the brief's per-session guardrails: 20 synthetic users, 30 channels, 10 concurrent connections and 5,000 API calls. The harness counts them. Each run also sets up four users and two channels, and runs the authorized path and the reconnect check.
+- **One place, one at a time.** Run every live command from a single checkout, one after another, never from parallel agents or separate worktrees. Then the harness's session ledger counts every call, and no cleanup can touch another run.
 - **Never** run `configure --apply` or `restore --apply`. Use `cleanup --apply` only to remove your own runs' leftovers. Finish with `verify-clean`.
 - Stop at once if anything suggests a charge, an upgrade or an exceeded limit.
 - The secret and full tokens must never appear in any output. Report the run prefix, the UTC start and end times, the cases, the results, the usage and the cleanup result.
