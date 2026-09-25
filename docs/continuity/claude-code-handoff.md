@@ -2,7 +2,7 @@
 
 Prepared by App Planner 1 for Nathan Amthor, 24 September 2026. Repository: private [`amthorn78/glow-dating-app`](https://github.com/amthorn78/glow-dating-app), default branch `main`. The [publication receipt](migration-publication.md) supplies the verified migration merge, tree and check identities without making this document embed its own future commit hash. Verify current remote state before using the packet. This brief, the initiation prompt and all required documentation are repository Markdown.
 
-**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Feature work is still paused. The next step is a manager proposal on whether to resume P06.1. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
+**Status, 25 September 2026:** the first assignment this packet describes, the review and the bounded Claude setup optimization, is complete as M02 (merged through PR18). Nathan resumed P06.1 on 25 September; its [brief](../planning/p06-1-chat-provider-proof.md) holds his answers to the owner inputs and the Stream dashboard baseline. Other feature work stays paused. Current routing is in the [current handoff](current-handoff.md). The facts below about Stream and the owner inputs still apply.
 
 ## Objective, current phase and limits
 
@@ -158,7 +158,7 @@ These names are **denylist entries**, not supported connections. They must be ab
 | `HDE_API_URL`, `HD_API_BASE_URL`, `GLOW_HDE_API_URL` | Legacy/current HDE endpoint metadata; no secret value assumed | Never set; no live adapter |
 | `HDE_API_TOKEN`, `HD_API_KEY`, `GEO_API_KEY`, `GLOW_HDE_API_TOKEN` | HDE/geodata credentials; secret | Never set; last name also reserved above |
 
-Every `GUNICORN_*` name is rejected by the artifact entrypoint, unknown `GLOW_*` names by the API, and unapproved `EXPO_PUBLIC_*` names by mobile config/API. `EXPO_PUBLIC_STREAM_SECRET`, `EXPO_PUBLIC_HDE_API_TOKEN` and `EXPO_PUBLIC_UNKNOWN` occur only as negative-test examples; they are never supported configuration. No code reads a Stream API key, app ID, region, channel type, token URL or webhook URL. Since 24 September the `Glow app` cloud environment provides `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` for Nathan's development Stream application; see [environment inventory](../operations/environment-inventory.md#stream-development-application-getstreamio). Wiring them into a loader is P06.1 work.
+Every `GUNICORN_*` name is rejected by the artifact entrypoint, unknown `GLOW_*` names by the API, and unapproved `EXPO_PUBLIC_*` names by mobile config/API. `EXPO_PUBLIC_STREAM_SECRET`, `EXPO_PUBLIC_HDE_API_TOKEN` and `EXPO_PUBLIC_UNKNOWN` occur only as negative-test examples; they are never supported configuration. No code reads a Stream API key, app ID, region, channel type, token URL or webhook URL. Since 24 September the `Glow app` cloud environment provides `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` for Nathan's development Stream application; see [environment inventory](../operations/environment-inventory.md#stream-development-application-getstreamio). P06.1's sandbox harness in `proofs/stream-chat/` reads them on the server side only; wiring them into the app's loader belongs to P06.2, after the proof.
 
 ### Tooling variables explicitly used by the repository
 
@@ -206,7 +206,7 @@ The workflow's platform `github.token` is handled by checkout with `persist-cred
 | Stream application API key | Client-safe identifier; not sufficient to authenticate a user | Development app: `STREAM_API_KEY=qdstwyevnyea` in the `Glow app` environment; not yet read by code; pure webhook argument is `api_key` |
 | Stream API secret | Server-only signing/administration secret | Development app: `STREAM_API_SECRET` in the `Glow app` environment (value never recorded); maps to the future slot `GLOW_CHAT_API_SECRET`; pure webhook argument `secret`; no live loader |
 | Per-user Stream token | Sensitive bearer credential delivered to that authenticated user's client | No endpoint/storage/refresh path exists; never a bundled environment value |
-| Stream app identity, region, environment and account plan | Nonsecret operational configuration | Development app `STREAM_APP_ID=1729640` (Nathan, 24 September 2026); region and plan not yet verified |
+| Stream app identity, region, environment and account plan | Nonsecret operational configuration | Development app `STREAM_APP_ID=1729640` (Nathan, 24 September 2026): region US East, Development mode, Free Chat plan, per Nathan's dashboard lookup of 25 September 2026 recorded in the [P06.1 brief](../planning/p06-1-chat-provider-proof.md) |
 | Channel type and role/grant configuration | Security policy | A08 proof outstanding; don't copy permissive demo defaults |
 | Public HTTPS callback URL and event selection, if used | Endpoint/configuration; signature secret stays server-side | No callback route or URL variable exists; P11 durable inbox required for effects |
 
