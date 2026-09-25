@@ -29,7 +29,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM2-08 | 25 Sep 2026 | process | Handed over a work queue of its own instead of the plan's next step, the P06.1 proposal | Nathan |
 | AM2-09 | 25 Sep 2026 | process | The next-manager start prompt left PF00, PF01 and the Claude handoff out of the required reading | App Manager 2, while fixing AM2-08 |
 | AM2-10 | 25 Sep 2026 | process | Tried to run the Setup script by hand in the manager session instead of handing over to a new session | Tool permission guard, then Nathan |
-| AM2-11 | 25 Sep 2026 | execution | Two Notion slips: a bare `.md` filename became a broken link, and an update's match text omitted link markup | App Manager 2's readbacks |
+| AM2-11 | 25 Sep 2026 | execution | Three Notion slips: a bare `.md` filename became a broken link, an update's match text omitted link markup, and a status block called current policy "history" | App Manager 2's readbacks |
 
 ## App Manager 2
 
@@ -117,6 +117,10 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **What happened:**
   - A Work Register "Next Action" contained a bare `.md` filename, which Notion turned into a broken link.
   - An Implementation Control update failed, because its match text omitted a link's markup.
+  - The new current-status block at the top of Implementation Control ended "The sections below are history", but the operating procedure right below it is current policy.
 - **Caught by:** App Manager 2's readbacks.
-- **Effect:** none lasting. Both were fixed the same hour.
-- **Prevention:** avoid bare `name.md` in Notion text, and match link markup exactly as fetched.
+- **Effect:** none lasting. All three were fixed within the hour.
+- **Prevention:**
+  - Avoid bare `name.md` in Notion text.
+  - Match link markup exactly as fetched.
+  - Read the surrounding sections before writing a statement about them.
