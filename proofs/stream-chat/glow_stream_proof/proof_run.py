@@ -41,11 +41,15 @@ PREFIX_ROOT = "p061i1-"
 TOKEN_TTL_SECONDS = 900
 TASK_POLL_ATTEMPTS = 30
 TASK_POLL_INTERVAL_SECONDS = 2
+# At the end of a run, a journalled change whose restore fails is tried again
+# after 10 s and 20 s (for example after a burst of 429s).
+RESTORE_ATTEMPTS = 3
+RESTORE_RETRY_SECONDS = 10
 # API calls kept back for the end of the run. The worst case, with every delete
 # task polled TASK_POLL_ATTEMPTS times, is about 115 server calls: up to 5 poll
 # and group deletes, 3 deletes with their task polls (93), 3 user listings, the
 # verify-clean reads (7), the journal restores (6) and the final configuration
-# read (2). tests/test_finish.py measures it against a fake server.
+# read (2). tests/test_cleanup.py measures it against a fake server.
 CLEANUP_RESERVE = 130
 # The most one case can use before the next reserve check.
 CASE_CALL_MARGIN = 30
@@ -60,7 +64,13 @@ DASHBOARD_USER_CREATED_MINUTE = "2026-09-24T13:07"
 
 
 class RunStopped(RuntimeError):
-    """The run stopped on a stop condition; the reason is reported."""
+    """The run stopped on a stop condition; the reason is reported.
+
+    ``case_result`` holds what the case in progress had already observed, so
+    that the matrix records it instead of losing it.
+    """
+
+    case_result: CaseResult | None = None
 
 
 @dataclass
@@ -70,6 +80,10 @@ class TemporaryChange:
     description: str
     restore: Callable[[], str]
     note: str = ""
+    # Set when the restore was made but could not be verified.
+    unverified: str | None = None
+    # What re-reads showed (key names only), for the record.
+    reread: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -191,43 +205,48 @@ def _utc_minute(value: Any) -> str | None:
     return None
 
 
-def override_removal_problems(
-    channel: Mapping[str, Any] | None, override: Mapping[str, Any]
-) -> tuple[list[str], list[str]]:
-    """What a re-read of AB shows after an override was removed.
+OverrideState = str  # "set", "clear" or "unknown"
 
-    Returns the differences, and the overridden keys the re-read cannot show.
-    An empty ``config_overrides`` shows every key removed; otherwise the
-    channel's effective ``config`` must hold the production value of each key.
+
+def override_state(channel: Mapping[str, Any] | None, key: str, value: Any) -> OverrideState:
+    """Whether a re-read of AB shows the override ``key: value`` in effect.
+
+    ``config_overrides``, when the response carries it, decides. Otherwise the
+    channel's effective ``config`` must show the key: the overridden value
+    means "set", any other value "clear". A response that shows neither is
+    "unknown".
     """
     if not isinstance(channel, Mapping):
-        return ["AB could not be re-read"], []
-    problems: list[str] = []
-    unreadable: list[str] = []
-    has_overrides = "config_overrides" in channel
-    if channel.get("config_overrides"):
-        problems.append(f"config_overrides still set: {sorted(channel['config_overrides'])}")
+        return "unknown"
+    overrides = channel.get("config_overrides")
+    if isinstance(overrides, Mapping) and key in overrides:
+        return "set" if overrides[key] == value else "clear"
     raw_config = channel.get("config")
     config: Mapping[str, Any] = raw_config if isinstance(raw_config, Mapping) else {}
-    for key, value in override.items():
-        if key == "grants":
-            grants = config.get("grants")
-            if isinstance(grants, Mapping):
-                for role, added in value.items():
-                    production = set(MATCH_MEMBER_GRANTS) if role == "channel_member" else set()
-                    extra = (set(added) - production) & set(grants.get(role) or [])
-                    if extra:
-                        problems.append(f"{role} still has {sorted(extra)}")
-            elif not has_overrides:
-                unreadable.append(key)
-            continue
-        want = configuration.MATCH_FEATURES.get(key)
-        if key in config:
-            if config[key] != want:
-                problems.append(f"{key} is {config[key]!r}, want {want!r}")
-        elif not has_overrides:
-            unreadable.append(key)
-    return problems, unreadable
+    if key == "grants":
+        grants = config.get("grants")
+        if isinstance(grants, Mapping) and isinstance(value, Mapping):
+            for role, added in value.items():
+                production = set(MATCH_MEMBER_GRANTS) if role == "channel_member" else set()
+                if (set(added) - production) & set(grants.get(role) or []):
+                    return "set"
+            return "clear"
+    elif key in config:
+        return "set" if config[key] == value else "clear"
+    return "clear" if isinstance(overrides, Mapping) else "unknown"
+
+
+def channel_shape(channel: Mapping[str, Any] | None) -> dict[str, Any]:
+    """The key names of a channel re-read (no values), to record the response's shape."""
+    if not isinstance(channel, Mapping):
+        return {"read": False}
+    config = channel.get("config")
+    return {
+        "read": True,
+        "keys": sorted(str(k) for k in channel),
+        "config_keys": sorted(str(k) for k in config) if isinstance(config, Mapping) else None,
+        "has_config_overrides": "config_overrides" in channel,
+    }
 
 
 def _request_line(record: Mapping[str, Any] | None, ctx: Mapping[str, str]) -> str:
@@ -309,6 +328,10 @@ class ProofRun:
         self.stops: list[str] = []
         self._pending_stop: str | None = None
         self.post_run_problems: list[str] = []
+        # Restores that were made but that no re-read or probe could verify.
+        self.unverified_restores: list[str] = []
+        # Polls and user groups present at preflight; only later ones are this run's.
+        self.preexisting: dict[str, Any] = {}
 
     # -- helpers ----------------------------------------------------------------
 
@@ -399,7 +422,25 @@ class ProofRun:
         change.note = note
         if change in self.journal:
             self.journal.remove(change)
+        if change.unverified is not None:
+            self.unverified_restores.append(
+                self.redactor.text(_generic(change.unverified, self.ctx))
+            )
         return note
+
+    def _keep_case(self, exc: RunStopped, row: CaseResult | None, why: str) -> None:
+        """Attach what a case had observed to the stop, so that its row is not lost.
+
+        A FAIL stays a FAIL: the bypass was observed. Anything else becomes
+        INCONCLUSIVE, because the case did not finish.
+        """
+        if row is None:
+            return
+        row.detail["run_stopped"] = self._text(exc)
+        if row.verdict != matrix.FAIL:
+            row.verdict = matrix.INCONCLUSIVE
+            row.reason = why
+        exc.case_result = row
 
     def _defer_stop(self, reason: str) -> None:
         """Stop the run once the current case's row is recorded."""
@@ -419,10 +460,25 @@ class ProofRun:
         return f"undo {undo.method} {done.status}"
 
     def _channel_override_change(self, override: Mapping[str, Any]) -> TemporaryChange:
-        return TemporaryChange(
-            f"config_overrides {sorted(override)} on AB",
-            lambda: self._remove_channel_override(override),
+        change = TemporaryChange(f"config_overrides {sorted(override)} on AB", lambda: "")
+        change.restore = lambda: self._remove_channel_override(change, override)
+        return change
+
+    def _set_channel_override(
+        self, change: TemporaryChange, override: Mapping[str, Any]
+    ) -> ApiResult:
+        """Set AB's override, then re-read AB: which keys does a re-read show as set?
+
+        Only a key the re-read shows while it is set can later prove its removal.
+        """
+        path = f"/channels/{T}/{self.ctx['AB']}"
+        on = self.api.raw("PATCH", path, body={"set": {"config_overrides": dict(override)}})
+        channel = self._server_channel(self.ctx["AB_cid"])
+        change.reread["while_set"] = channel_shape(channel)
+        change.reread["shown_while_set"] = sorted(
+            k for k, v in override.items() if override_state(channel, k, v) == "set"
         )
+        return on
 
     def _server_channel(self, cid: str) -> Mapping[str, Any] | None:
         result = self.api.raw(
@@ -434,24 +490,62 @@ class ProofRun:
         channel = channels[0].get("channel") if isinstance(channels[0], dict) else None
         return channel if isinstance(channel, dict) else None
 
-    def _remove_channel_override(self, override: Mapping[str, Any]) -> str:
-        """Remove AB's overrides, then re-read AB and verify the removal."""
+    def _remove_channel_override(self, change: TemporaryChange, override: Mapping[str, Any]) -> str:
+        """Remove AB's overrides, then verify the removal as far as a re-read can.
+
+        A key the re-read showed while set must now read "clear"; if it still
+        reads "set", the run stops. The ``read-channel-members`` grant, if the
+        re-read did not show it, is checked by behaviour: B's members query must
+        be refused again. Any other key the re-read cannot show is recorded as
+        not verified (the PATCH was accepted), rather than stopping the run.
+        """
         path = f"/channels/{T}/{self.ctx['AB']}"
         off = self.api.raw("PATCH", path, body={"set": {"config_overrides": {}}})
         if not off.ok:
             raise RunStopped(
                 f"removing AB's config_overrides got {off.status} code {off.code}: {off.message}"
             )
-        problems, unreadable = override_removal_problems(
-            self._server_channel(self.ctx["AB_cid"]), override
-        )
-        checked = "re-read"
-        if unreadable == ["grants"] and "read-channel-members" in (
-            override.get("grants", {}).get("channel_member") or []
-        ):
-            # The re-read does not show grants: B's members query must be refused again.
+        channel = self._server_channel(self.ctx["AB_cid"])
+        change.reread["after_removal"] = channel_shape(channel)
+        shown = set(change.reread.get("shown_while_set") or [])
+        problems: list[str] = []
+        unverified: list[str] = []
+        checked: list[str] = []
+        for key, value in override.items():
+            state = override_state(channel, key, value) if key in shown else "unknown"
+            if state == "set":
+                problems.append(f"{key} still reads as overridden")
+            elif state == "clear":
+                checked.append(f"{key} re-read clear")
+            elif key == "grants" and "read-channel-members" in (value.get("channel_member") or []):
+                probe = self._members_probe_after_removal()
+                if probe is None:
+                    unverified.append("grants (B's session had ended)")
+                elif probe.outcome != "permission":
+                    problems.append(f"B's members query afterwards got {_observed(probe)}")
+                else:
+                    checked.append(f"B's members query refused again ({_observed(probe)})")
+            else:
+                unverified.append(key)
+        if problems:
+            raise RunStopped(f"AB's override removal not verified: {'; '.join(problems)}")
+        note = f"override removed ({off.status}"
+        note += f"; {', '.join(checked)}" if checked else ""
+        if unverified:
+            change.unverified = (
+                f"AB's override removal: PATCH {off.status} accepted, but the re-read does "
+                f"not show {unverified}"
+            )
+            note += f"; not verified: {unverified}"
+        return note + ")"
+
+    def _members_probe_after_removal(self) -> Answer | None:
+        session = self.sessions.get("B")
+        if session is None:
+            return None
+        try:
             probe = self._send(
-                self.sessions["B"],
+                session,
                 "call",
                 target="channel",
                 method="queryMembers",
@@ -459,15 +553,9 @@ class ProofRun:
                 type=T,
                 id=self.ctx["AB"],
             )
-            answer = _http_answer(probe)
-            if answer.outcome != "permission":
-                problems.append(f"B's members query afterwards got {_observed(answer)}")
-            checked = f"re-read; B's members query refused again ({_observed(answer)})"
-        elif unreadable:
-            problems.append(f"the re-read of AB does not show {unreadable}")
-        if problems:
-            raise RunStopped(f"AB's override removal not verified: {'; '.join(problems)}")
-        return f"override removed ({off.status}; {checked})"
+        except ClientSessionEnded:
+            return None
+        return _http_answer(probe)
 
     def _type_features_change(self, features: Mapping[str, Any]) -> TemporaryChange:
         return TemporaryChange(
@@ -529,7 +617,20 @@ class ProofRun:
                 "application holds data this run did not create: "
                 + "; ".join(foreign_users + [f"channel {c}" for c in foreign_channels])
             )
-        return {"dashboard_users_present": len(dashboard), "configuration_problems": problems}
+        # Polls and user groups are listed now, so that the end of the run can tell
+        # its own leftovers from anything already there. Only counts are shown.
+        self.preexisting = list_polls_and_groups(self.api)
+        return {
+            "dashboard_users_present": len(dashboard),
+            "configuration_problems": problems,
+            **{
+                f"{key}_before_run": len(items) if items is not None else "not verified"
+                for key, items in (
+                    ("polls", self.preexisting.get("remaining_polls")),
+                    ("user_groups", self.preexisting.get("remaining_user_groups")),
+                )
+            },
+        }
 
     # -- setup -----------------------------------------------------------------
 
@@ -850,16 +951,16 @@ class ProofRun:
             except GuardrailStop:
                 raise
             except RunStopped as exc:
-                # Record the case, then stop: a failed restore ends the run.
-                self.case_results.append(
-                    self._result(
-                        case,
-                        "-",
-                        f"run stopped: {self._text(exc)}",
-                        "-",
-                        matrix.Verdict(matrix.INCONCLUSIVE, "the run stopped during this case"),
-                    )
+                # Record the case, with what it had observed, then stop: a failed
+                # restore ends the run.
+                row = exc.case_result or self._result(
+                    case,
+                    "-",
+                    f"run stopped: {self._text(exc)}",
+                    "-",
+                    matrix.Verdict(matrix.INCONCLUSIVE, "the run stopped during this case"),
                 )
+                self.case_results.append(row)
                 if progress is not None:
                     progress()
                 raise
@@ -966,7 +1067,6 @@ class ProofRun:
         if not case.feature_override and not case.type_override:
             return self._evaluate_case(case)
         assert case.step is not None
-        path = f"/channels/{T}/{self.ctx['AB']}"
         if case.feature_override:
             override = dict(case.feature_override)
             change = self._channel_override_change(override)
@@ -976,18 +1076,24 @@ class ProofRun:
             change = self._type_features_change(override)
             scope = f"type {T}"
         # The journal entry exists before the enabling request is sent.
-        with self._temporary(change):
-            if case.feature_override:
-                on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})
-            else:
-                on = self._type_features_on(override)
-            result = self._evaluate_case(case)
+        result: CaseResult | None = None
+        try:
+            with self._temporary(change):
+                if case.feature_override:
+                    on = self._set_channel_override(change, override)
+                else:
+                    on = self._type_features_on(override)
+                result = self._evaluate_case(case)
+        except RunStopped as exc:
+            self._keep_case(exc, result, "the restore failed before the production phase")
+            raise
         production = _http_answer(self._step(case.step))
         result.detail["feature_override"] = {
             "scope": scope,
             "features": override,
             "set_status": on.status,
             "restored": change.note,
+            "reread": change.reread or None,
         }
         result.detail["production_config_observed"] = _observed(production)
         result.observed = (
@@ -1376,11 +1482,23 @@ class ProofRun:
             # entry exists before guest creation is enabled.
             self.ledger.reserve("users")
             change = self._guest_creation_change()
-            with self._temporary(change):
-                on = self._set_guest_creation_disabled(False)
-                time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
-                guest = self._session("guest", None, max_api_calls=30)
-                creply = self._send(guest, "guest", max_calls=3, user=user)
+            try:
+                with self._temporary(change):
+                    on = self._set_guest_creation_disabled(False)
+                    time.sleep(TYPE_CHANGE_SETTLE_SECONDS)
+                    guest = self._session("guest", None, max_api_calls=30)
+                    creply = self._send(guest, "guest", max_calls=3, user=user)
+            except RunStopped as exc:
+                row = self._result(
+                    case,
+                    _request_line(post or reply.last_request, self.ctx),
+                    _observed(answer),
+                    "control not completed",
+                    matrix.Verdict(matrix.INCONCLUSIVE, "the control's restore failed"),
+                    {"stream_message": _answer_message(answer, reply)},
+                )
+                self._keep_case(exc, row, "the control's restore failed")
+                raise
             cpost = self._guest_post(creply)
             post_status = cpost.get("status") if cpost else None
             control_ok = isinstance(post_status, int) and 200 <= post_status < 300
@@ -1467,7 +1585,12 @@ class ProofRun:
             connect = self._send(session, "anonymous", max_calls=3)
             self.connect_replies["anonymous"] = connect
             self.notes.append(f"anonymous connect: {_observed(_ws_answer(connect))}")
-        connected = _ws_answer(self.connect_replies["anonymous"])
+        connect_reply = self.connect_replies.get("anonymous")
+        connected = (
+            _ws_answer(connect_reply)
+            if connect_reply is not None
+            else Answer("no-response", None, None, None, "the anonymous connect did not answer")
+        )
         if connected.outcome != "success":
             # A failed anonymous connect makes the SDK rethrow it for every probe
             # without sending a request, so nothing could be judged.
@@ -1519,79 +1642,63 @@ class ProofRun:
         permission layer, the server's identical vote succeeds; then polls go off
         again (verified) and A's vote is repeated under the production config."""
         change = self._type_features_change({"polls": True})
-        vote_args: list[Any] = []
-        reply: Reply | None = None
-        control_ok, control_desc = False, "no control"
-        setup_note = ""
+        state: dict[str, Any] = {
+            "reply": None,
+            "vote_args": [],
+            "control_ok": False,
+            "control_desc": "no control",
+            "setup_note": "",
+            "on": None,
+        }
         # The journal entry exists before polls are enabled.
-        with self._temporary(change):
-            on = self._type_features_on({"polls": True})
-            poll = self.api.raw(
-                "POST",
-                "/polls",
-                body={
-                    "name": "server poll",
-                    "options": [{"text": "yes"}],
-                    "user_id": self.ctx["B"],
-                },
+        try:
+            with self._temporary(change):
+                self._poll_vote_phase(state)
+        except RunStopped as exc:
+            voted = _http_answer(state["reply"]) if state["reply"] is not None else None
+            succeeded = voted is not None and voted.outcome == "success"
+            row = self._result(
+                case,
+                _request_line(voted.record, self.ctx) if voted else "-",
+                f"polls on: {_observed(voted)}" if voted else "not set up",
+                "control not completed",
+                matrix.Verdict(
+                    matrix.FAIL if succeeded else matrix.INCONCLUSIVE,
+                    "the client's vote succeeded"
+                    if succeeded
+                    else "the restore failed before the production phase",
+                ),
             )
-            poll_id = _dig(poll.body, "poll.id")
-            options = _dig(poll.body, "poll.options")
-            option_id = (
-                options[0].get("id")
-                if isinstance(options, list) and options and isinstance(options[0], dict)
-                else None
-            )
-            if poll.ok and poll_id:
-                self.polls.append((str(poll_id), self.ctx["B"]))
-            msg = self.api.raw(
-                "POST",
-                f"/channels/{T}/{self.ctx['AB']}/message",
-                body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
-            )
-            message_id = _dig(msg.body, "message.id")
-            setup_note = (
-                f"polls on ({on.status}); poll {poll.status}; poll message {msg.status} / "
-                f"code {msg.code} ({msg.message})"
-            )
-            if poll.ok and msg.ok and message_id:
-                vote_args = [message_id, poll_id, {"option_id": option_id}]
-                reply = self._send(
-                    self.sessions["A"],
-                    "call",
-                    target="client",
-                    method="castPollVote",
-                    args=vote_args,
-                )
-                record = _http_answer(reply).record
-                if record is not None:
-                    body = matrix.deep_merge(record.get("body"), {"user_id": self.ctx["A"]})
-                    path = "/" + str(record.get("path")).lstrip("/")
-                    result = self.api.raw("POST", path, body=body)
-                    control_ok = result.ok
-                    control_desc = f"server replay POST -> {result.status}"
+            self._keep_case(exc, row, "the restore failed before the production phase")
+            raise
+        reply: Reply | None = state["reply"]
+        on: ApiResult = state["on"]
         if reply is None:
             return self._result(
                 case,
                 "-",
                 "not set up",
-                f"{setup_note}; {change.note}",
+                f"{state['setup_note']}; {change.note}",
                 matrix.Verdict(matrix.INCONCLUSIVE, "no poll message could be created in AB"),
             )
         production = _http_answer(
             self._send(
-                self.sessions["A"], "call", target="client", method="castPollVote", args=vote_args
+                self.sessions["A"],
+                "call",
+                target="client",
+                method="castPollVote",
+                args=state["vote_args"],
             )
         )
         answer = _http_answer(reply)
-        verdict = matrix.refused_verdict(answer.outcome, control_ok)
+        verdict = matrix.refused_verdict(answer.outcome, state["control_ok"])
         if production.outcome == "success":
             verdict = matrix.Verdict(matrix.FAIL, "succeeded under the production configuration")
         return self._result(
             case,
             _request_line(answer.record, self.ctx),
             f"polls on: {_observed(answer)}; polls off (production): {_observed(production)}",
-            control_desc,
+            state["control_desc"],
             verdict,
             {
                 "stream_message": _answer_message(answer, reply),
@@ -1606,6 +1713,53 @@ class ProofRun:
                 },
             },
         )
+
+    def _poll_vote_phase(self, state: dict[str, Any]) -> None:
+        """With polls on: B's poll message, A's vote and the server's identical vote."""
+        on = self._type_features_on({"polls": True})
+        state["on"] = on
+        poll = self.api.raw(
+            "POST",
+            "/polls",
+            body={"name": "server poll", "options": [{"text": "yes"}], "user_id": self.ctx["B"]},
+        )
+        poll_id = _dig(poll.body, "poll.id")
+        options = _dig(poll.body, "poll.options")
+        option_id = (
+            options[0].get("id")
+            if isinstance(options, list) and options and isinstance(options[0], dict)
+            else None
+        )
+        if poll.ok and poll_id:
+            self.polls.append((str(poll_id), self.ctx["B"]))
+        msg = self.api.raw(
+            "POST",
+            f"/channels/{T}/{self.ctx['AB']}/message",
+            body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
+        )
+        message_id = _dig(msg.body, "message.id")
+        state["setup_note"] = (
+            f"polls on ({on.status}); poll {poll.status}; poll message {msg.status} / "
+            f"code {msg.code} ({msg.message})"
+        )
+        if not (poll.ok and msg.ok and message_id):
+            return
+        state["vote_args"] = [message_id, poll_id, {"option_id": option_id}]
+        reply = self._send(
+            self.sessions["A"],
+            "call",
+            target="client",
+            method="castPollVote",
+            args=state["vote_args"],
+        )
+        state["reply"] = reply
+        record = _http_answer(reply).record
+        if record is not None:
+            body = matrix.deep_merge(record.get("body"), {"user_id": self.ctx["A"]})
+            path = "/" + str(record.get("path")).lstrip("/")
+            result = self.api.raw("POST", path, body=body)
+            state["control_ok"] = result.ok
+            state["control_desc"] = f"server replay POST -> {result.status}"
 
     def _b_member_views(self, marker: str) -> dict[str, Any]:
         """Whether B can read ``marker`` from A's membership, by each read B has.
@@ -1648,12 +1802,23 @@ class ProofRun:
         }
 
     def _unset_member_note(self) -> str:
-        undone = self.api.raw(
-            "PATCH",
-            f"/channels/{T}/{self.ctx['AB']}/member",
-            body={"unset": ["glow_note"]},
-            params={"user_id": self.ctx["A"]},
-        )
+        """Unset A's member field. It runs in ``finally`` blocks, so it never raises
+        over an exception already in flight, except a guardrail stop of its own."""
+        try:
+            undone = self.api.raw(
+                "PATCH",
+                f"/channels/{T}/{self.ctx['AB']}/member",
+                body={"unset": ["glow_note"]},
+                params={"user_id": self.ctx["A"]},
+            )
+        except GuardrailStop as exc:
+            self.stops.append(f"S15: unsetting A's member field: {self._text(exc)}")
+            raise
+        except Exception as exc:
+            self._defer_stop(
+                f"S15: unsetting A's member field raised {type(exc).__name__}: {self._text(exc)}"
+            )
+            return "error"
         if not undone.ok:
             self._defer_stop(
                 f"S15: unsetting A's member field got {undone.status} code {undone.code}: "
@@ -1672,7 +1837,6 @@ class ProofRun:
         flat = self.prefix.replace("-", "")
         marker = f"memberfree{flat}"
         self.ctx["member_marker"] = marker
-        path = f"/channels/{T}/{self.ctx['AB']}"
         self._events("B", wait_ms=0)
         reply = self._send(
             self.sessions["A"],
@@ -1691,31 +1855,34 @@ class ProofRun:
         # Control: grant read-channel-members on AB (the first configuration) and
         # repeat A's identical write; B's same reads must now find it. The journal
         # entry exists before the grant is set.
-        marker2 = f"memberctl{flat}"
         grant = {"grants": {"channel_member": ["read-channel-members"]}}
         change = self._channel_override_change(grant)
-        granted: dict[str, Any] = {}
-        control_answer: Answer | None = None
+        control: dict[str, Any] = {}
         try:
-            with self._temporary(change):
-                on = self.api.raw("PATCH", path, body={"set": {"config_overrides": grant}})
-                self._events("B", wait_ms=0)
-                creply = self._send(
-                    self.sessions["A"],
-                    "call",
-                    target="channel",
-                    method="updateMemberPartial",
-                    args=[{"set": {"glow_note": marker2}}],
-                    type=T,
-                    id=self.ctx["AB"],
+            self._member_control(change, grant, f"memberctl{flat}", control)
+        except RunStopped as exc:
+            leaks = self._member_leaks(production)
+            row = self._result(
+                case,
+                _request_line(answer.record, self.ctx),
+                _observed(answer),
+                "control not completed",
+                matrix.Verdict(
+                    matrix.FAIL,
+                    "response disclosed: " + ", ".join(f"B read it via {n}" for n in leaks),
                 )
-                control_answer = _http_answer(creply)
-                granted = self._b_member_views(marker2)
-        finally:
-            unset_second = self._unset_member_note()
+                if leaks
+                else matrix.Verdict(matrix.INCONCLUSIVE, "the control's restore failed"),
+                {"production_b_views": production, "override_reread": change.reread},
+            )
+            self._keep_case(exc, row, "the control's restore failed")
+            raise
+        on: ApiResult = control["on"]
+        control_answer: Answer = control["answer"]
+        granted: dict[str, Any] = control["views"]
         leaks = self._member_leaks(production)
         found = self._member_leaks(granted)
-        control_ok = on.ok and control_answer is not None and control_answer.outcome == "success"
+        control_ok = on.ok and control_answer.outcome == "success"
         verdict = matrix.no_leak_verdict(
             answer.outcome, [f"B read it via {n}" for n in leaks], control_ok, bool(found)
         )
@@ -1730,12 +1897,41 @@ class ProofRun:
             _request_line(answer.record, self.ctx),
             _observed(answer),
             f"with read-channel-members granted on AB ({on.status}): A's write "
-            f"{_observed(control_answer) if control_answer else 'not sent'}; B found it via "
-            f"{found or 'nothing'}; {change.note}; member field unset "
-            f"({unset_first}, {unset_second})",
+            f"{_observed(control_answer)}; B found it via {found or 'nothing'}; {change.note}; "
+            f"member field unset ({unset_first}, {control['unset']})",
             verdict,
-            {"production_b_views": production, "granted_b_views": granted},
+            {
+                "production_b_views": production,
+                "granted_b_views": granted,
+                "override_reread": change.reread,
+            },
         )
+
+    def _member_control(
+        self,
+        change: TemporaryChange,
+        grant: Mapping[str, Any],
+        marker: str,
+        out: dict[str, Any],
+    ) -> None:
+        """S15's control, with the grant journalled; A's member field is always unset."""
+        try:
+            with self._temporary(change):
+                out["on"] = self._set_channel_override(change, grant)
+                self._events("B", wait_ms=0)
+                creply = self._send(
+                    self.sessions["A"],
+                    "call",
+                    target="channel",
+                    method="updateMemberPartial",
+                    args=[{"set": {"glow_note": marker}}],
+                    type=T,
+                    id=self.ctx["AB"],
+                )
+                out["answer"] = _http_answer(creply)
+                out["views"] = self._b_member_views(marker)
+        finally:
+            out["unset"] = self._unset_member_note()
 
     def _server_user(self, user_id: str) -> dict[str, Any]:
         result = self.api.require(
@@ -2143,8 +2339,19 @@ class ProofRun:
                 for u in snapshot["users"].get("users", [])
                 if str(u.get("id")).startswith(f"deleted-user-{self.credentials.app_id}-")
             ),
-            **list_polls_and_groups(self.api),
+            **self._new_polls_and_groups(),
         }
+
+    def _new_polls_and_groups(self) -> dict[str, Any]:
+        """Polls and user groups present now that were not there at preflight."""
+        listed = list_polls_and_groups(self.api)
+        for key in ("polls", "user_groups"):
+            now = listed.get(f"remaining_{key}")
+            before = self.preexisting.get(f"remaining_{key}")
+            if now is not None and before is not None:
+                listed[f"remaining_{key}"] = [i for i in now if i not in set(before)]
+                listed[f"{key}_present_before_run"] = len(before)
+        return listed
 
     def finish(self, *, cleanup: bool, skipped_because: str | None = None) -> list[str]:
         """End every run: restore journalled changes, clean up, verify the configuration.
@@ -2155,10 +2362,23 @@ class ProofRun:
         """
         problems: list[str] = []
         for change in list(reversed(self.journal)):
-            try:
-                self._restore(change)
-            except (RunStopped, GuardrailStop, Exception) as exc:
-                problems.append(f"temporary change not restored: {self._text(exc)}")
+            failure: BaseException | None = None
+            for attempt in range(RESTORE_ATTEMPTS):
+                if attempt:
+                    time.sleep(RESTORE_RETRY_SECONDS * attempt)
+                try:
+                    self._restore(change)
+                except GuardrailStop as exc:
+                    failure = exc
+                    if "stopping at once" not in str(exc):
+                        break  # the API-call budget: trying again cannot help
+                except Exception as exc:
+                    failure = exc
+                else:
+                    failure = None
+                    break
+            if failure is not None:
+                problems.append(f"temporary change not restored: {self._text(failure)}")
         if cleanup:
             problems += cleanup_problems(self.cleanup())
         else:
@@ -2172,6 +2392,7 @@ class ProofRun:
             problems.append(f"configuration not verified after the run: {self._text(exc)}")
         else:
             problems += [f"configuration differs after the run: {d}" for d in differences]
+        problems += [f"temporary change not verified: {u}" for u in self.unverified_restores]
         self.post_run_problems = problems
         return problems
 
@@ -2185,6 +2406,7 @@ class ProofRun:
             "notes": self.notes,
             "stops": self.stops,
             "journal_not_restored": [c.description for c in self.journal],
+            "unverified_restores": self.unverified_restores,
             "post_run_problems": self.post_run_problems,
             "cleanup": self.cleanup_result,
             "usage": self.ledger.summary(),

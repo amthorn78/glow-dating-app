@@ -150,6 +150,13 @@ class ConfigurationTest(unittest.TestCase):
         )
         self.assertTrue(any(p.startswith("messaging grants for user") for p in problems))
         self.assertIn(f"{conf.MATCH_TYPE} still exists", problems)
+        # The review's nit: the fields restore_plan sends for each default type.
+        drift = snapshot()
+        drift["channel_types"]["channel_types"]["team"]["max_message_length"] = 1
+        self.assertEqual(
+            conf.verify_restored(drift, record, match_type_deleted=False),
+            ["team.max_message_length is 1, want 5000"],
+        )
 
     def test_baseline_record_holds_no_user_data(self) -> None:
         record = conf.baseline_record(snapshot())

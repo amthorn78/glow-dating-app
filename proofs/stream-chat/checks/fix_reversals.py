@@ -73,9 +73,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                '        connected = _ws_answer(self.connect_replies["anonymous"])\n        if connected.outcome != "success":\n',
-                '        connected = _ws_answer(self.connect_replies["anonymous"])\n        if False:\n',
-            )
+                '            else Answer("no-response", None, None, None, "the anonymous connect did not answer")\n        )\n        if connected.outcome != "success":\n',
+                '            else Answer("no-response", None, None, None, "the anonymous connect did not answer")\n        )\n        if False:\n',
+            ),
         ],
         [
             "tests.test_answers.RequestUnderTestInCasesTest.test_g3_is_inconclusive_unless_the_anonymous_connect_succeeded"
@@ -100,9 +100,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "            except RunStopped as exc:\n                # Record the case, then stop",
-                "            except ZeroDivisionError as exc:\n                # Record the case, then stop",
-            )
+                "            except RunStopped as exc:\n                # Record the case, with what it had observed, then stop",
+                "            except ZeroDivisionError as exc:\n                # Record the case, with what it had observed, then stop",
+            ),
         ],
         ["tests.test_temporary_changes.TypeFeatureRestoreTest.test_failed_restore_stops_the_run"],
     ),
@@ -111,15 +111,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "        with self._temporary(change):\n            if case.feature_override:\n"
-                '                on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})\n'
-                "            else:\n                on = self._type_features_on(override)\n"
-                "            result = self._evaluate_case(case)\n",
-                "        if case.feature_override:\n"
-                '            on = self.api.raw("PATCH", path, body={"set": {"config_overrides": override}})\n'
-                "        else:\n            on = self._type_features_on(override)\n"
-                "        with self._temporary(change):\n            result = self._evaluate_case(case)\n",
-            )
+                "            with self._temporary(change):\n                if case.feature_override:\n                    on = self._set_channel_override(change, override)\n                else:\n                    on = self._type_features_on(override)\n                result = self._evaluate_case(case)\n",
+                "            if case.feature_override:\n                on = self._set_channel_override(change, override)\n            else:\n                on = self._type_features_on(override)\n            with self._temporary(change):\n                result = self._evaluate_case(case)\n",
+            ),
         ],
         [
             "tests.test_temporary_changes.TypeFeatureRestoreTest.test_journal_entry_exists_before_the_enabling_request"
@@ -130,16 +124,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "            with self._temporary(change):\n                on = self._set_guest_creation_disabled(False)\n"
-                "                time.sleep(TYPE_CHANGE_SETTLE_SECONDS)\n"
-                '                guest = self._session("guest", None, max_api_calls=30)\n'
-                '                creply = self._send(guest, "guest", max_calls=3, user=user)\n',
-                "            on = self._set_guest_creation_disabled(False)\n"
-                "            time.sleep(TYPE_CHANGE_SETTLE_SECONDS)\n"
-                '            guest = self._session("guest", None, max_api_calls=30)\n'
-                "            with self._temporary(change):\n"
-                '                creply = self._send(guest, "guest", max_calls=3, user=user)\n',
-            )
+                '                with self._temporary(change):\n                    on = self._set_guest_creation_disabled(False)\n                    time.sleep(TYPE_CHANGE_SETTLE_SECONDS)\n                    guest = self._session("guest", None, max_api_calls=30)\n                    creply = self._send(guest, "guest", max_calls=3, user=user)\n',
+                '                on = self._set_guest_creation_disabled(False)\n                time.sleep(TYPE_CHANGE_SETTLE_SECONDS)\n                guest = self._session("guest", None, max_api_calls=30)\n                with self._temporary(change):\n                    creply = self._send(guest, "guest", max_calls=3, user=user)\n',
+            ),
         ],
         [
             "tests.test_temporary_changes.TypeFeatureRestoreTest.test_guest_creation_is_restored_after_an_interrupt_before_the_control"
@@ -163,9 +150,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 C,
-                "        problems = run.finish(cleanup=cleanup_needed)\n",
+                "        problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)\n",
                 "        problems: list[str] = []\n        run.cleanup() if cleanup_needed else run.close_sessions()\n",
-            )
+            ),
         ],
         [
             "tests.test_cli.CommandTest.test_configuration_difference_after_the_run_exits_non_zero",
@@ -364,13 +351,12 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                '        problems, unreadable = override_removal_problems(\n            self._server_channel(self.ctx["AB_cid"]), override\n        )\n',
-                "        problems: list[str] = []\n        unreadable: list[str] = []\n",
-            )
+                '            state = override_state(channel, key, value) if key in shown else "unknown"\n',
+                '            state = "clear"\n',
+            ),
         ],
         [
-            "tests.test_temporary_changes.ChannelOverrideRemovalTest.test_removal_that_did_not_apply_stops_the_run",
-            "tests.test_temporary_changes.ChannelOverrideRemovalTest.test_removal_is_re_read",
+            "tests.test_temporary_changes.ChannelOverrideRemovalTest.test_removal_that_did_not_apply_stops_the_run"
         ],
     ),
     (
@@ -497,7 +483,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "nit 13 verify-clean lists polls and groups",
-        [(P, "            **list_polls_and_groups(self.api),\n", "")],
+        [
+            (P, "            **self._new_polls_and_groups(),\n", ""),
+        ],
         ["tests.test_cleanup.ClientCreatedDataTest.test_verify_clean_lists_polls_and_user_groups"],
     ),
     (
@@ -539,6 +527,108 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             "tests.test_procedures.NotEffectiveTest.test_unread_refusal_without_its_controls_is_inconclusive"
         ],
+    ),
+    (
+        "review 1: a re-read proves a removal only if it showed the override",
+        [
+            (
+                P,
+                '        shown = set(change.reread.get("shown_while_set") or [])\n',
+                "        shown = set(override)\n",
+            ),
+        ],
+        [
+            "tests.test_temporary_changes.OverrideReReadShapeTest.test_re_read_that_never_shows_the_override_is_recorded_not_verified"
+        ],
+    ),
+    (
+        "review 1: an ended B session leaves the grant unverified",
+        [
+            (
+                P,
+                "        except ClientSessionEnded:\n            return None\n        return _http_answer(probe)\n",
+                "        except ZeroDivisionError:\n            return None\n        return _http_answer(probe)\n",
+            ),
+        ],
+        [
+            "tests.test_temporary_changes.OverrideReReadShapeTest.test_grant_unverifiable_when_bs_session_has_ended"
+        ],
+    ),
+    (
+        "review 2: a failed restore keeps the observed row",
+        [
+            (
+                P,
+                '        if row is None:\n            return\n        row.detail["run_stopped"]',
+                '        return\n        row.detail["run_stopped"]',
+            ),
+        ],
+        [
+            "tests.test_temporary_changes.KeptRowTest",
+            "tests.test_temporary_changes.TypeFeatureRestoreTest.test_failed_restore_stops_the_run",
+        ],
+    ),
+    (
+        "review 3: S15's unset never hides a guardrail stop",
+        [
+            (
+                P,
+                "        except Exception as exc:\n            self._defer_stop(\n                f\"S15: unsetting A's member field raised",
+                "        except ZeroDivisionError as exc:\n            self._defer_stop(\n                f\"S15: unsetting A's member field raised",
+            ),
+        ],
+        ["tests.test_temporary_changes.GuardedUnsetTest"],
+    ),
+    (
+        "review 4: polls and groups present at preflight are not leftovers",
+        [
+            (
+                P,
+                "            if now is not None and before is not None:\n",
+                "            if False:\n",
+            ),
+        ],
+        ["tests.test_cleanup.PreexistingPollsAndGroupsTest"],
+    ),
+    (
+        "review 5: journalled restores are retried",
+        [
+            (P, "RESTORE_ATTEMPTS = 3\n", "RESTORE_ATTEMPTS = 1\n"),
+        ],
+        ["tests.test_temporary_changes.FinishRetryTest.test_restore_is_retried"],
+    ),
+    (
+        "review nit: an unanswered anonymous connect is not a KeyError",
+        [
+            (
+                P,
+                '        connect_reply = self.connect_replies.get("anonymous")\n',
+                '        connect_reply = self.connect_replies["anonymous"]\n',
+            ),
+        ],
+        ["tests.test_answers.AnonymousConnectWithoutAnswerTest"],
+    ),
+    (
+        "review nit: verify_restored checks automod and message length",
+        [
+            (
+                "glow_stream_proof/configuration.py",
+                '        for key in ("automod", "automod_behavior", "max_message_length"):\n',
+                "        for key in ():\n",
+            ),
+        ],
+        ["tests.test_configuration.ConfigurationTest.test_verify_restored"],
+    ),
+    (
+        "review nit: runner reports ws-api only for Stream's frame",
+        [
+            (
+                "client/error-info.cjs",
+                "parsed.isWSFailure === false ? 'ws-api' : 'ws-failure'",
+                "parsed.isWSFailure ? 'ws-failure' : 'ws-api'",
+            ),
+        ],
+        ["tests.test_runner.ErrorInfoTest"],
     ),
 ]
 

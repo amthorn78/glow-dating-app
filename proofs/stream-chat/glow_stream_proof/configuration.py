@@ -319,6 +319,10 @@ def verify_restored(
         if cfg is None:
             problems.append(f"default type {name} missing")
             continue
+        features = record["channel_types"][name]["features"]
+        for key in ("automod", "automod_behavior", "max_message_length"):
+            if cfg.get(key) != features.get(key):
+                problems.append(f"{name}.{key} is {cfg.get(key)!r}, want {features.get(key)!r}")
         want_grants = record["channel_types"][name]["grants"]
         have_grants = cfg.get("grants", {})
         for role in sorted(set(want_grants) | set(have_grants)):

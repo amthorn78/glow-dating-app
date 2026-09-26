@@ -191,7 +191,7 @@ class CommandTest(unittest.TestCase):
                 return ApiResult(method, path, 201, None, None, {})
             name = path.rsplit("/", 1)[-1]
             if method == "PUT" and name in configuration.DEFAULT_TYPES:
-                types.setdefault(name, _type(name))["grants"] = body["grants"]
+                types.setdefault(name, _type(name)).update(body)
                 return ApiResult(method, path, 201, None, None, {})
             return None
 

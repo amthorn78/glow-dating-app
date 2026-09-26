@@ -11,6 +11,7 @@ from glow_stream_proof.proof_run import TemporaryChange, cleanup_problems
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import UsageLedger
 from tests.fakes import FakeSession, NoSettle, error, make_run, ok, record, set_up
+from tests.test_preflight import dashboard_user
 
 CLEAN: dict[str, Any] = {
     "errors": [],
@@ -102,6 +103,15 @@ class CleanupReserveTest(unittest.TestCase):
         server.task_status = "running"
         artifact = f"deleted-user-{run.credentials.app_id}-abc"
 
+        def refuse_guest_restore(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "PATCH" and path == "/api/v2/app":
+                return error(method, path, 500, -1)  # every restore attempt fails
+            return None
+
+        server.handlers.append(refuse_guest_restore)
+
         def artifact_user(
             method: str, path: str, body: Any, params: dict[str, str] | None
         ) -> ApiResult | None:
@@ -161,6 +171,30 @@ class ClientCreatedDataTest(unittest.TestCase):
         problems = cleanup_problems({**CLEAN, **out})
         self.assertIn("remaining_polls: ['left-poll']", problems)
         self.assertIn("remaining_user_groups: not verified: HTTP 400 code 4", problems)
+
+
+class PreexistingPollsAndGroupsTest(unittest.TestCase):
+    """The review's point 4: only polls and groups that appeared during the run count."""
+
+    def test_only_new_ones_are_leftovers(self) -> None:
+        run, server = make_run()
+        polls = [{"id": "older-poll"}]
+
+        def listing(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query":
+                return ok(method, path, {"polls": list(polls)}, 201)
+            return None
+
+        server.handlers.append(listing)
+        server.users["owner"] = dashboard_user("owner")
+        result = run.preflight()
+        self.assertEqual(result["polls_before_run"], 1)
+        polls.append({"id": "run-poll"})
+        out = run.verify_clean()
+        self.assertEqual(out["remaining_polls"], ["run-poll"])
+        self.assertEqual(out["polls_present_before_run"], 1)
 
 
 if __name__ == "__main__":

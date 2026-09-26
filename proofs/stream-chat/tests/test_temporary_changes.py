@@ -9,16 +9,17 @@ import unittest
 from typing import Any
 
 import tests  # noqa: F401
-from glow_stream_proof import configuration
-from glow_stream_proof.client_bridge import Reply
+from glow_stream_proof import configuration, matrix
+from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import (
     RunStopped,
     TemporaryChange,
-    override_removal_problems,
+    channel_shape,
+    override_state,
 )
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import GuardrailStop
-from tests.fakes import FakeSession, NoSettle, error, make_run, set_up
+from tests.fakes import FakeSession, NoSettle, error, make_run, record, set_up
 
 MATCH_PATH = f"/api/v2/chat/channeltypes/{configuration.MATCH_TYPE}"
 
@@ -45,7 +46,11 @@ class TypeFeatureRestoreTest(unittest.TestCase):
                 run.run_matrix({"S12", "S13"})
         ids = [c.case_id for c in run.case_results]
         self.assertEqual(ids, ["S12"])  # S13 never ran
-        self.assertIn("run stopped", run.case_results[0].observed)
+        row = run.case_results[0]
+        self.assertEqual(row.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(row.reason, "the restore failed before the production phase")
+        self.assertEqual(row.observed, "403 / code 17")  # what the case observed is kept
+        self.assertIn("could not restore glow-match features", row.detail["run_stopped"])
         self.assertTrue(any("restore failed" in s for s in run.stops))
         self.assertEqual(len(run.journal), 1)  # still owed; finish() tries again
 
@@ -146,7 +151,7 @@ class ChannelOverrideRemovalTest(unittest.TestCase):
             server.handlers.append(keep_override)
             with self.assertRaises(RunStopped) as stopped:
                 run.run_matrix({"S2", "S3a"})
-        self.assertIn("replies is True", str(stopped.exception))
+        self.assertIn("replies still reads as overridden", str(stopped.exception))
         self.assertEqual([c.case_id for c in run.case_results], ["S2"])
 
     def test_removal_refused_stops_the_run(self) -> None:
@@ -177,25 +182,93 @@ class ChannelOverrideRemovalTest(unittest.TestCase):
             for c in server.calls
             if c[1] == "/api/v2/chat/channels" and c[2].get("filter_conditions")
         ]
-        self.assertEqual(len(reads), 1)
+        self.assertEqual(len(reads), 2)  # while set, and after the removal
         self.assertIn("re-read", run.case_results[0].detail["feature_override"]["restored"])
         self.assertEqual(server.overrides[run.ctx["AB"]], {})
 
-    def test_override_removal_problems(self) -> None:
-        replies = {"replies": True}
-        grant = {"grants": {"channel_member": ["read-channel-members"]}}
-        self.assertEqual(override_removal_problems({"config_overrides": {}}, replies), ([], []))
+    def test_override_state(self) -> None:
+        replies = ("replies", True)
+        grant = ("grants", {"channel_member": ["read-channel-members"]})
+        self.assertEqual(override_state({"config_overrides": {"replies": True}}, *replies), "set")
+        self.assertEqual(override_state({"config_overrides": {}}, *replies), "clear")
+        self.assertEqual(override_state({"config": {"replies": True}}, *replies), "set")
+        self.assertEqual(override_state({"config": {"replies": False}}, *replies), "clear")
+        self.assertEqual(override_state({"config": {}}, *replies), "unknown")
+        self.assertEqual(override_state(None, *replies), "unknown")
+        members = {"channel_member": ["read-channel", "read-channel-members"]}
+        self.assertEqual(override_state({"config": {"grants": members}}, *grant), "set")
+        plain = {"channel_member": ["read-channel"]}
+        self.assertEqual(override_state({"config": {"grants": plain}}, *grant), "clear")
+        self.assertEqual(override_state({"config": {}}, *grant), "unknown")
+        shape = channel_shape({"cid": "x", "config": {"replies": False}})
         self.assertEqual(
-            override_removal_problems({"config": {"replies": False}}, replies), ([], [])
+            shape,
+            {
+                "read": True,
+                "keys": ["cid", "config"],
+                "config_keys": ["replies"],
+                "has_config_overrides": False,
+            },
         )
-        problems, _ = override_removal_problems({"config": {"replies": True}}, replies)
-        self.assertEqual(problems, ["replies is True, want False"])
-        self.assertEqual(override_removal_problems({"config": {}}, replies), ([], ["replies"]))
-        member_grants = {"channel_member": ["read-channel", "read-channel-members"]}
-        problems, _ = override_removal_problems({"config": {"grants": member_grants}}, grant)
-        self.assertEqual(problems, ["channel_member still has ['read-channel-members']"])
-        self.assertEqual(override_removal_problems({"config": {}}, grant), ([], ["grants"]))
-        self.assertEqual(override_removal_problems(None, grant)[0], ["AB could not be re-read"])
+
+
+class OverrideReReadShapeTest(unittest.TestCase):
+    """The I1 review's point 1: a re-read proves a removal only if it showed the override."""
+
+    def test_re_read_that_never_shows_the_override_is_recorded_not_verified(self) -> None:
+        run, server = make_run()
+        server.merge_overrides = False  # the re-read shows the type's values only
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"S2", "S3a"})  # the run goes on
+            problems = run.finish(cleanup=False)
+        self.assertEqual([c.case_id for c in run.case_results], ["S2", "S3a"])
+        restored = run.case_results[0].detail["feature_override"]
+        self.assertIn("not verified: ['replies']", restored["restored"])
+        self.assertEqual(restored["reread"]["shown_while_set"], [])
+        self.assertTrue(restored["reread"]["while_set"]["read"])
+        self.assertEqual(len(run.unverified_restores), 1)
+        self.assertTrue(any(p.startswith("temporary change not verified") for p in problems))
+
+    def test_grant_not_shown_is_checked_by_b_being_refused_again(self) -> None:
+        run, server = make_run()
+        server.config_has_grants = False
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"S15"})
+        case = run.case_results[0]
+        self.assertIn("B's members query refused again", case.control)
+        self.assertEqual(run.unverified_restores, [])
+
+    def test_grant_still_in_effect_stops_the_run(self) -> None:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "queryMembers":
+                return Reply(True, {}, None, [record(200, {"members": []})], api_calls=1)
+            return None
+
+        run, server = make_run(behaviours={"B": b})
+        server.config_has_grants = False
+        with NoSettle():
+            set_up(run)
+            with self.assertRaises(RunStopped):
+                run.run_matrix({"S15"})
+
+    def test_grant_unverifiable_when_bs_session_has_ended(self) -> None:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "queryMembers":
+                raise ClientSessionEnded("client B ended: no reply within 60s")
+            return None
+
+        run, server = make_run(behaviours={"B": b})
+        server.config_has_grants = False
+        grant = {"grants": {"channel_member": ["read-channel-members"]}}
+        with NoSettle():
+            set_up(run)
+            change = run._channel_override_change(grant)
+            with run._temporary(change):
+                run._set_channel_override(change, grant)
+        self.assertIn("B's session had ended", change.note)
+        self.assertEqual(len(run.unverified_restores), 1)
 
 
 class UndoCheckTest(unittest.TestCase):
@@ -272,6 +345,133 @@ class FinishTest(unittest.TestCase):
             problems = run.finish(cleanup=False)
         self.assertTrue(any(p.startswith("temporary change not restored") for p in problems))
         self.assertEqual(run.results()["journal_not_restored"], ["stuck change"])
+
+
+class KeptRowTest(unittest.TestCase):
+    """The review's point 2: a failed restore keeps what the case had observed."""
+
+    def test_fail_observed_before_a_failed_restore_stays_fail(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sendEvent":
+                return Reply(True, {}, None, [record(201, {"event": {}})], api_calls=1)
+            return None
+
+        run, server = make_run(behaviours={"A": a})
+
+        def refuse_restore(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if is_restore_put(method, path, body, "custom_events"):
+                return error(method, path, 500, -1, "internal")
+            return None
+
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(refuse_restore)
+            with self.assertRaises(RunStopped):
+                run.run_matrix({"S12"})
+        row = run.case_results[0]
+        self.assertEqual(row.verdict, matrix.FAIL)
+        self.assertIn("run_stopped", row.detail)
+
+    def test_s15_leak_observed_before_a_failed_control_restore_stays_fail(self) -> None:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "query":
+                body = {"members": [{"glow_note": "memberfreep061i1simulated"}]}
+                return Reply(True, {}, None, [record(201, body)], api_calls=1)
+            return None
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "updateMemberPartial":
+                return Reply(True, {}, None, [record(200, {})], api_calls=1)
+            return None
+
+        run, server = make_run(behaviours={"A": a, "B": b})
+
+        def refuse_removal(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            overrides = ((body or {}).get("set") or {}).get("config_overrides")
+            if method == "PATCH" and overrides == {}:
+                return error(method, path, 500, -1)
+            return None
+
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(refuse_removal)
+            with self.assertRaises(RunStopped):
+                run.run_matrix({"S15"})
+        row = run.case_results[0]
+        self.assertEqual(row.verdict, matrix.FAIL)
+        self.assertIn("B read it via channel_query", row.reason)
+        self.assertTrue(row.detail["production_b_views"]["channel_query_has_marker"])
+
+
+class GuardedUnsetTest(unittest.TestCase):
+    """The review's point 3: S15's unset never hides a guardrail stop in flight."""
+
+    def test_guardrail_stop_survives_a_failing_unset(self) -> None:
+        writes: list[int] = []
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "updateMemberPartial":
+                writes.append(1)
+                if len(writes) == 2:  # the control's write
+                    raise GuardrailStop("client A: HTTP 429; stopping at once")
+                return Reply(True, {}, None, [record(200, {})], api_calls=1)
+            return None
+
+        run, server = make_run(behaviours={"A": a})
+
+        def broken_unset(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "PATCH" and path.endswith("/member") and (body or {}).get("unset"):
+                raise RuntimeError("connection reset")
+            return None
+
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(broken_unset)
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"S15", "S16"})
+        self.assertEqual(run.case_results, [])
+        self.assertTrue(any("unsetting A's member field raised" in s for s in run.stops))
+
+
+class FinishRetryTest(unittest.TestCase):
+    """The review's point 5: the end of the run tries a failed restore again."""
+
+    def test_restore_is_retried(self) -> None:
+        run, _server = make_run()
+        attempts: list[int] = []
+
+        def flaky() -> str:
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise RunStopped("HTTP 500")
+            return "restored"
+
+        run.journal.append(TemporaryChange("flaky change", flaky))
+        with NoSettle():
+            problems = run.finish(cleanup=False)
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(run.journal, [])
+        self.assertEqual(problems, [])
+
+    def test_budget_stop_is_not_retried(self) -> None:
+        run, _server = make_run()
+        attempts: list[int] = []
+
+        def budget() -> str:
+            attempts.append(1)
+            raise GuardrailStop("guardrail: api_calls would reach 5001 in this session")
+
+        run.journal.append(TemporaryChange("budget change", budget))
+        with NoSettle():
+            problems = run.finish(cleanup=False)
+        self.assertEqual(len(attempts), 1)
+        self.assertTrue(any("not restored" in p for p in problems))
 
 
 if __name__ == "__main__":

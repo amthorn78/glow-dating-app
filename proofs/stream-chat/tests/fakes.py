@@ -61,6 +61,10 @@ class FakeServer:
     sent: int = 0
     # Called with (channel id, message id) for every server-side send.
     on_send: Callable[[str, str], None] | None = None
+    # How a channel re-read looks: whether its config shows the channel's
+    # overrides, and whether it carries grants at all.
+    merge_overrides: bool = True
+    config_has_grants: bool = True
 
     def __post_init__(self) -> None:
         self.sdk = SimpleNamespace(
@@ -112,13 +116,16 @@ class FakeServer:
     def effective_channel(self, channel_id: str) -> dict[str, Any]:
         config = {k: v for k, v in configuration.MATCH_FEATURES.items() if k != "commands"}
         grants = {"channel_member": list(configuration.MATCH_MEMBER_GRANTS)}
-        for key, value in self.overrides.get(channel_id, {}).items():
+        for key, value in (
+            self.overrides.get(channel_id, {}).items() if self.merge_overrides else ()
+        ):
             if key == "grants":
                 for role, extra in value.items():
                     grants[role] = sorted(set(grants.get(role, [])) | set(extra))
             else:
                 config[key] = value
-        config["grants"] = grants
+        if self.config_has_grants:
+            config["grants"] = grants
         return {"cid": f"{configuration.MATCH_TYPE}:{channel_id}", "config": config}
 
     def raw(
@@ -358,9 +365,18 @@ class NoSettle:
     """Context manager: remove the harness's settle waits for a test."""
 
     def __enter__(self) -> None:
-        self._saved = (proof_run.TYPE_CHANGE_SETTLE_SECONDS, proof_run.TASK_POLL_INTERVAL_SECONDS)
+        self._saved = (
+            proof_run.TYPE_CHANGE_SETTLE_SECONDS,
+            proof_run.TASK_POLL_INTERVAL_SECONDS,
+            proof_run.RESTORE_RETRY_SECONDS,
+        )
         proof_run.TYPE_CHANGE_SETTLE_SECONDS = 0
         proof_run.TASK_POLL_INTERVAL_SECONDS = 0
+        proof_run.RESTORE_RETRY_SECONDS = 0
 
     def __exit__(self, *_exc: object) -> None:
-        proof_run.TYPE_CHANGE_SETTLE_SECONDS, proof_run.TASK_POLL_INTERVAL_SECONDS = self._saved
+        (
+            proof_run.TYPE_CHANGE_SETTLE_SECONDS,
+            proof_run.TASK_POLL_INTERVAL_SECONDS,
+            proof_run.RESTORE_RETRY_SECONDS,
+        ) = self._saved

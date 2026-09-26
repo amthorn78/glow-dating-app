@@ -9,7 +9,7 @@ from typing import Any
 
 import tests  # noqa: F401
 from glow_stream_proof import matrix
-from glow_stream_proof.client_bridge import Reply
+from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import CaseResult, ProofRun, _http_answer, _ws_answer
 from tests.fakes import (
     FakeSession,
@@ -179,6 +179,25 @@ class RequestUnderTestInCasesTest(unittest.TestCase):
         case = case_of(run, "RT2")
         self.assertEqual(case.verdict, matrix.HOLDS)
         self.assertIn("refused (feature)", case.reason)
+
+
+class AnonymousConnectWithoutAnswerTest(unittest.TestCase):
+    """The review's nit: an anonymous connect that never answered is not a KeyError."""
+
+    def test_later_probes_are_inconclusive(self) -> None:
+        def anon(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "anonymous":
+                raise ClientSessionEnded("client anonymous ended: no reply within 60s")
+            return None
+
+        run, _server = make_run(behaviours={"anonymous": anon})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"G3-read-ab", "G3-users"})
+        first, second = run.case_results
+        self.assertIn("client session ended", first.reason)
+        self.assertEqual(second.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("the anonymous connect did not answer", second.observed)
 
 
 if __name__ == "__main__":
