@@ -57,6 +57,7 @@ G = "glow_stream_proof/guard.py"
 CF = "glow_stream_proof/configuration.py"
 RP = "glow_stream_proof/report.py"
 RL = "client/request-log.cjs"
+RN = "client/runner.cjs"
 TGU = "tests.test_guard."
 TCS = "tests.test_client_session."
 TRS = "tests.test_configuration.RecordedSettingsTest."
@@ -2619,6 +2620,35 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             )
         ],
         ["tests.test_cleanup.ClientCreatedDataTest.test_verify_clean_lists_polls_and_user_groups"],
+    ),
+    # P06.1-I2a, run 1: C1's reply matching ended the session at the first live channel
+    # command, whose channel ID had replaced the command's own ID.
+    (
+        "I2a live: a channel's ID never replaces the command's own ID",
+        [
+            (
+                B,
+                '        command = {**fields, "id": self._next_id, "op": op, "max_calls": max_calls}\n',
+                '        command = {"id": self._next_id, "op": op, "max_calls": max_calls, **params}\n',
+            )
+        ],
+        [
+            "tests.test_runner.ChannelCommandSessionTest.test_a_channel_command_keeps_its_own_id_end_to_end"
+        ],
+    ),
+    (
+        "I2a live: the runner opens the channel named by channel_id",
+        [
+            (
+                RN,
+                "          : client.channel(cmd.type, cmd.channel_id);\n",
+                "          : client.channel(cmd.type, cmd.id);\n",
+            )
+        ],
+        [
+            "tests.test_runner.RunnerTest.test_a_channel_command_names_its_channel_as_channel_id",
+            "tests.test_runner.ChannelCommandSessionTest.test_a_channel_command_keeps_its_own_id_end_to_end",
+        ],
     ),
     # The independent review's point 7 (P06.1-I2a): interruptions.
     (

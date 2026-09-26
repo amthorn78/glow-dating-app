@@ -268,7 +268,14 @@ class ClientSession:
         if opens_connection:
             self._ledger.connection_opened()
         self._next_id += 1
-        command = {"id": self._next_id, "op": op, "max_calls": max_calls, **params}
+        # A channel's ID travels as ``channel_id``, and the command's own ID, which the
+        # runner echoes in its reply, is set last, so no parameter can overwrite it
+        # (P06.1-I2a: at its first live use, C1's reply matching ended the session at
+        # the first channel command, whose ``id`` had replaced the command's).
+        fields = dict(params)
+        if "id" in fields:
+            fields["channel_id"] = fields.pop("id")
+        command = {**fields, "id": self._next_id, "op": op, "max_calls": max_calls}
         try:
             assert self._proc.stdin is not None
             self._proc.stdin.write(json.dumps(command) + "\n")

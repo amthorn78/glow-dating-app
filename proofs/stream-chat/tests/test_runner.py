@@ -10,7 +10,9 @@ import unittest
 from typing import Any
 
 import tests  # noqa: F401
-from glow_stream_proof.client_bridge import RUNNER
+from glow_stream_proof.client_bridge import RUNNER, ClientSession
+from glow_stream_proof.redaction import Redactor
+from glow_stream_proof.usage import UsageLedger
 
 
 def run_runner(*commands: dict[str, Any]) -> list[dict[str, Any]]:
@@ -87,6 +89,59 @@ class RunnerTest(unittest.TestCase):
     def test_every_reply_carries_its_command_id(self) -> None:
         replies = run_runner({"id": 7, "op": "ping"}, {"id": 8, "op": "nope"})
         self.assertEqual([r["id"] for r in replies], [7, 8, 99])
+
+    def test_a_channel_command_names_its_channel_as_channel_id(self) -> None:
+        """P06.1-I2a: found by run 1's first live channel command. The channel is
+        ``channel_id``; ``id`` stays the command's own. A development token is made
+        locally, and the channel method fails before any request."""
+        replies = run_runner(
+            {"id": 1, "op": "set_rest_user", "user_id": "u", "token_source": "dev", "max_calls": 0},
+            {
+                "id": 2,
+                "op": "call",
+                "target": "channel",
+                "method": "_checkInitialized",
+                "args": [],
+                "type": "glow-match",
+                "channel_id": "proof-channel",
+                "max_calls": 0,
+            },
+        )
+        reply = replies[1]
+        self.assertEqual(reply["id"], 2)
+        self.assertIn("glow-match:proof-channel", reply["error"]["message"])
+        self.assertEqual(reply["requests"], [])
+
+
+class ChannelCommandSessionTest(unittest.TestCase):
+    """P06.1-I2a: run 1 ended at A's first channel command, "reply id '<AB>' does not
+    match command id 2": the channel's ``id`` had replaced the command's, and C1's reply
+    matching (never run live before) ended the session. The real runner, offline."""
+
+    def test_a_channel_command_keeps_its_own_id_end_to_end(self) -> None:
+        env = {
+            "PATH": os.environ.get("PATH", "/usr/bin"),
+            "PROOF_API_KEY": "offlinetestkey",
+            "PROOF_MAX_API_CALLS": "5",
+        }
+        session = ClientSession("t", env, UsageLedger(), Redactor(), timeout_seconds=30)
+        try:
+            session.send("set_rest_user", max_calls=0, user_id="u", token_source="dev")
+            reply = session.send(
+                "call",
+                max_calls=0,
+                target="channel",
+                method="_checkInitialized",
+                args=[],
+                type="glow-match",
+                id="proof-channel",
+            )
+        finally:
+            session.close()
+        self.assertIsNone(session.ended)
+        self.assertFalse(reply.ok)
+        assert reply.error is not None
+        self.assertIn("glow-match:proof-channel", str(reply.error.get("message")))
 
 
 REQUEST_LOG_CASES = r"""

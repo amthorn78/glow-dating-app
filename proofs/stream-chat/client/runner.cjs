@@ -255,9 +255,10 @@ async function handle(cmd) {
       let target;
       if (cmd.target === 'client') target = client;
       else if (cmd.target === 'channel') {
+        // The channel's ID is channel_id; cmd.id is the command's own ID (P06.1-I2a).
         target = cmd.channel_data
-          ? client.channel(cmd.type, cmd.id, cmd.channel_data)
-          : client.channel(cmd.type, cmd.id);
+          ? client.channel(cmd.type, cmd.channel_id, cmd.channel_data)
+          : client.channel(cmd.type, cmd.channel_id);
       } else throw new Error(`unknown target ${cmd.target}`);
       const fn = target[cmd.method];
       if (typeof fn !== 'function') throw new Error(`no SDK method ${cmd.target}.${cmd.method}`);

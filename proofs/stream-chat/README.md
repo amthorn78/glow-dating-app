@@ -17,7 +17,7 @@ This is proof tooling, not application code. It is outside the application runti
 | `glow_stream_proof/` | Server side (Python, Stream's server SDK `getstream`): configuration, the app-side send path, the bypass matrix, orchestration, usage guardrails, redaction |
 | `glow_stream_proof/mechanisms.py` | P06.1-I2a: the revocation, suspension and deletion mechanisms, one case each |
 | `glow_stream_proof/i2a.py` | P06.1-I2a: token expiry, the outage injection, the S15 mapping, pin and archive, invites, the existence oracle and G2's server-created guest |
-| `client/runner.cjs` | Client side (Node, Stream's client SDK `stream-chat`): one process per client session, driven over stdin/stdout. Every reply carries its command's `id` |
+| `client/runner.cjs` | Client side (Node, Stream's client SDK `stream-chat`): one process per client session, driven over stdin/stdout. Every reply carries its command's `id`; a channel command names its channel in `channel_id` (corrected in P06.1-I2a: until then a channel's `id` replaced the command's, so C1's reply matching, at its first live use in I2a's run 1, ended the session at the first channel command) |
 | `client/error-info.cjs` | How the runner reports a failed command, and whether the error is Stream's answer |
 | `client/request-log.cjs` | The runner's record of every request the SDK sends, between commands too, reported in the next reply (P06.1-I2a) |
 | `baseline/application-1729640-2026-09-25.json` | The application's configuration before the proof changed it (settings, grants, channel types). No users or data. Used by `restore` |
