@@ -3,6 +3,8 @@
 import unittest
 from typing import Any
 
+import jwt
+
 import tests  # noqa: F401
 from glow_stream_proof import matrix
 from glow_stream_proof.client_bridge import Reply
@@ -83,7 +85,7 @@ class CheckRedactionTest(unittest.TestCase):
 
     def test_check_evidence_is_redacted(self) -> None:
         run, _ = make_run()
-        token = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieCJ9.c2lnbmF0dXJl"
+        token = jwt.encode({"user_id": "x"}, "synthetic-offline-secret", "HS256")
         run._check("X1", "a check", True, f"got {token}")
         self.assertNotIn(token, run.checks[0].evidence)
         self.assertIn("<redacted-jwt>", run.checks[0].evidence)
