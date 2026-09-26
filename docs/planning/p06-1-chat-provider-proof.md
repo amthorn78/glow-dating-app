@@ -2,14 +2,14 @@
 
 **Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
-- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The display rule, as S15's answer, is conditional on the exact-head review confirming S15 live. The principle is in force regardless (DM-03 G4), and Nathan confirmed its exceptions (OD-16). See "S15: decided".
+- It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The exact-head review confirmed S15 live on 25 September, so the display rule stands as S15's answer. The principle is in force (DM-03 G4), and Nathan confirmed its exceptions (OD-16). See "S15: decided".
 - The Dev Manager's first reviews, DM-01 and DM-02, are in and considered. This brief applies the accepted changes: I2 is split into I2a and I2b, economics becomes a dashboard discovery, and the harness's checks join CI. See the [review log](../continuity/dev-manager/README.md).
 - The Dev Manager read the revised I1 review prompt (DM-03) and approved it with conditions. Revision 3 applies them.
 - **Nathan's answers of 25 September** (OD-16 to OD-24) change this item in three ways:
   - the S15 exceptions are confirmed (OD-16);
   - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
   - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
-- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is running: Nathan started it on 25 September, at max. The exact-head review of the fix follows it.
+- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is done: S15 is confirmed, and the verdict is "changes required". Next is the exact-head review of the fix, then the correction pass P06.1-C1 and its review. I2a waits for them.
 - **The Stream secret is settled** (OD-28): Nathan adds the three `STREAM_*` variables for each session that calls Stream, starts it, then deletes them.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
@@ -129,14 +129,17 @@ Facts as the read-only discovery reported them:
 
 - **P06.1-I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)): enforce and record the checks; lock down every channel type and create the proof's type; prove the authorized path; run the bypass matrix; clean up. Done on 25 September; see "P06.1-I1 result".
 - **Review of I1** ([prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)): the exact-head code and security review of I1's code head `9ff600f`. It **must** confirm S15 live, because a design decision rests on it (DM-01 P4). It may make one further small live run and changes no configuration. The Dev Manager reads the prompt before Nathan runs it (DM-03).
+  - **Result (25 September; Nathan ran it at max):** changes required. S15 is confirmed live, and no configuration closes it. Two blocking findings must be fixed before I2a runs live on the harness: a verdict can come from an SDK error instead of Stream's answer, and a failed restore of a temporary change does not stop the run. Findings 3 to 9 go into the same correction pass. No recorded I1 result changes. See the evidence record, "Exact-head review of I1".
 - **P06.1-I2a, revocation and safety** (live, budgeted; DM-02 B2):
   - **Revocation under Nathan's history policy, by named mechanism:** member removal, a channel-level ban, per-user `revoke_tokens_issued_before`, and hide or freeze. For each, state which of these it ends: REST reads, an **already-open WebSocket subscription**, token reuse and the S15 write. Messages stay retained for safety reports.
   - **Suspension and deletion:** what a hard user delete does to messages and to member custom data needed as safety evidence. This conflicts with Nathan's history policy unless the design says otherwise, so record it plainly.
   - **Tokens and devices:** token expiry, reconnection and cross-device use, with two clients per user.
   - **Send versus revocation, on the provider side only:** a server send attempted after revocation is refused. The database-level ordering is P11's DB06; claim nothing more.
   - **Outage as fault injection:** point the server's Stream client at an unreachable endpoint; the app send path must refuse with no partial state. No real outage is claimed.
-  - **The S15 mapping:** which fields a member can set; what the other member receives; whether the server can clear or overwrite member custom data; whether member removal deletes it. The harness checks that the three `member_custom_on_*` settings stay off.
-  - **Reruns:** G2 and S10 with the corrected harness; the existence-oracle comparison (existing against non-existent IDs); the fixes not yet exercised live.
+  - **The S15 mapping:** which fields a member can set; what the other member receives, and in which event types, with the SDK's local events excluded (finding 4); whether the server can clear or overwrite member custom data; whether member removal deletes it. The harness checks that the three `member_custom_on_*` settings stay off.
+  - **Reruns:** the existence-oracle comparison (existing against non-existent IDs), and the fixes not yet exercised live.
+  - **G2 and S10, with new setups** (the I1 review's finding 6). G2's guest is created on the server side (`ServerApi.create_guest`) and connects by its ID only, because the lockdown refuses the connect `setGuestUser` makes. S10 needs a new setup, because its type-level toggle did not reach the channel in time.
+  - **Endpoints the I1 matrix never tried** (finding 9). Content in front of the other member: `updateAIState`, `partialUpdateMember` on the other member, `pin` and `archive`, invites, leaving with a message, and a ban or shadow ban. Reads outside the match: `sync`, replies, reactions and messages by ID, `queryReactions`, `getThread` and `queryMessageHistory`.
   - **Budget:** the prompt sets its own run plan against the 20-user cap and keeps one run in reserve for a rerun.
 - **P06.1-I2b, other products, documentation and CI** (live but small):
   - Video and Feeds: what a user token can do, and a lockdown by configuration only. No media session, no push, nothing that could incur a charge.
@@ -153,7 +156,12 @@ Facts as the read-only discovery reported them:
   - A passing rerun resolves nothing.
   - If the cause is unrelated to P06.1 and cannot turn PR26's CI red, the fix becomes a focused repair item.
   - **Result (25 September; branch `claude/trusting-mayer-bw6p40`, head `a7ab30b`):** cause class (a), a defect in the app's code. On web, `focusText` moved focus to the screen heading or the error alert one frame after they appeared; when a test had just focused a field, the entry that followed was erased, so the submit stayed put with an alert. The fix leaves focus in a shown text field that already has it, with a regression test. Route: fixed inside P06.1. The manager verified the report and integrated it at `8b8b1bd`; see the [evidence record](../testing/evidence/2026-09-25-p06-1-rendered-flake-diagnosis.md), "Manager verification".
-- **Review of the flake fix** (queued after the I1 review; OD-29). The fix is new code in PR26, so it needs its own exact-head review of code head `8b8b1bd` before OD-21's acceptance. It is not live and needs no Stream variables.
+- **Review of the flake fix** (next; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-flake-fix-review-prompt.md)). The fix is new code in PR26, so it needs its own exact-head review of code head `8b8b1bd` before OD-21's acceptance. It is not live and needs no Stream variables.
+- **P06.1-C1, the I1 correction pass** (after the flake fix's review; OD-29).
+  - One implementation session fixes the I1 review's findings 1 to 8 in the harness, and the nits within its scope, with a reason for any it leaves. It corrects the records that findings 4 and 8 name.
+  - Its prompt says whether it makes a live run. If it does, the Dev Manager reads the prompt first, and Nathan adds the Stream variables (OD-28).
+  - Its own exact-head review follows. I2a starts only after that review is clean.
+  - Finding 9 and finding 6's new setups belong to I2a.
 - **The Stream secret in cloud sessions** (OD-20, decided by OD-28). One `Glow app` environment stays. For each session that calls Stream, Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, starts that one session, then deletes them; the prompt tells him when they are needed. They were present when the I1 review started, the first session that calls Stream under OD-28. The secret is replaced at P06.1's close. CI needs no Stream secret.
 
 ### P06.1-I1 result
@@ -191,7 +199,13 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
 
 **Decision (Nathan, 25 September 2026):** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."* The durable record is [ADR 0003](../adr/0003-chat-display-rule.md).
 
-**Conditional on confirmation** (DM-01 P4). The choice of the display rule as S15's answer rests on I1's own live evidence. The exact-head review must confirm S15 live. If the review narrows S15, or finds a configuration that closes it, that choice returns to Nathan. Nathan's principle does not depend on the review: it is in force (DM-03 G4), and its exceptions are confirmed (OD-16).
+**Confirmed live** (DM-01 P4). The choice of the display rule as S15's answer rested on I1's own live evidence, so the exact-head review had to confirm S15 live. It did, on 25 September, and found no configuration that closes S15. So the display rule stands as S15's answer.
+
+- **The live result.** Under the locked configuration, A's write got `200`, and B's ordinary channel query carried A's text inside the members list. B's members endpoint was refused (`403`, code 17). The control showed that B's reads could find the text.
+- **One correction.** The realtime `member.updated` path is not established. The harness counted a local SDK event as B's, so it could not show which event carried the text (the review's finding 4). The channel query alone confirms S15. I2a maps the event types.
+- **Nathan's principle** does not depend on the review: it is in force (DM-03 G4), and its exceptions are confirmed (OD-16).
+
+See the evidence record, "Exact-head review of I1".
 
 - **The design:** option 1 below, the display rule. The app never displays Stream user or member data. Every name, photo and profile field comes from Glow's API, and the app ignores member custom data and `member.updated` events.
 - **The principle.** Nathan's second sentence reaches beyond S15. It is a product rule for every provider and every surface. The manager's working reading, which the Dev Manager approved with conditions (DM-02 B1):
@@ -221,7 +235,7 @@ The analysis Nathan decided on is kept below as the record.
 **The finding.**
 
 - A member's client can write up to 5 KB of free text as custom data on its own membership of its match channel. The call is `updateMemberPartial`, `PATCH /channels/glow-match/{id}/member`, and Stream answered `200`.
-- The other member's client receives that text in its ordinary channel query and in a realtime `member.updated` event.
+- The other member's client receives that text in its ordinary channel query and in a realtime `member.updated` event. (The I1 review later found the event path unproven; the channel query alone confirms S15. See "Confirmed live" above.)
 - No Stream permission governs the write. Removing `read-channel-members` hid only the separate members endpoint.
 - PF01: *"Provider inability to enforce safety is a design blocker, not a future polish item."* So the design or the provider changes before P06.2. The exact-head review also checks whether configuration can close S15 after all.
 
@@ -253,7 +267,7 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 
 1. **S15:** decided by Nathan on 25 September 2026: the display rule, with the principle recorded under "S15: decided".
 2. **Video and Feeds: yes, within P06.1.** PF01 puts voice, video and public feeds outside the initial release, so the app will not display them. A modified client could still use them with its user token, for example to ring the other member, or to run calls billed to Glow's Stream organization. I2b records what a user token can do there and locks it down through configuration. It opens no media session, sets up no push and does nothing that could incur a charge.
-3. **Guest reach (G2) and the poll vote (S10): yes.** I2a reruns them with the corrected harness and a fresh budget, together with the other fixes not yet exercised live.
+3. **Guest reach (G2) and the poll vote (S10): yes.** I2a reruns them with a fresh budget, together with the other fixes not yet exercised live. The I1 review showed that both need new setups (finding 6); see I2a under "Sessions".
 4. **Unguessable IDs: yes, a P06.2 requirement.** Stream user IDs are random and opaque, never derived from Glow's account IDs, names or emails, and never shown to other users. I2a records whether a refusal for an existing ID differs from one for an ID that does not exist.
 
 ### Reasoning levels

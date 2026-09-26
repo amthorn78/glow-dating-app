@@ -44,6 +44,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-10 | 25 Sep 2026 | accuracy | Applied ADR 0004 in some documents and missed six others that still stated the superseded same-logical-database preference as current | App Manager 3, while writing the HDE contract request |
 | AM3-11 | 25 Sep 2026 | process | Planned the I1 review and the flake diagnosis to run side by side, and in chat offered Nathan a second prompt while he was starting the first, pointing him to an earlier message for it | Nathan |
 | AM3-12 | 25 Sep 2026 | accuracy | Told Nathan the I1 review was running, and later the only task running, when he had not started it | Nathan |
+| AM3-13 | 26 Sep 2026 | accuracy | Recorded in ADR 0003's Context and the brief, as established, that the other member receives S15's text in `member.updated` events; I1's harness could not show which event carried it | The exact-head review of I1 (finding 4) |
 
 ## App Manager 2
 
@@ -247,3 +248,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** the claim was in chat only. No record, prompt or Notion page said the review had started.
 - **Correction:** the records give the review as queued after the flake diagnosis.
 - **Prevention:** the same rule, which says a session's status comes only from Nathan's own words or its pushed branch.
+
+### AM3-13 — An implementer's claim recorded as established (accuracy)
+
+- **What happened:** App Manager 3 copied I1's statement that the other member receives S15's text *"in realtime `member.updated` events"* into ADR 0003's Context and the brief's "S15: decided", as an established result. The harness could not establish it. B's own channel query raised a local `channels.queried` event carrying the queried state, and the harness searched every recorded event, so its events view found the marker whenever the query did. The manager's verification of I1 read the S15 procedure and did not catch this.
+- **Caught by:** the exact-head review of I1, finding 4.
+- **Effect:** none on the decision. S15 stands on the channel-query path alone, which the review confirmed live. The display rule already ignores `member.updated` events.
+- **Correction:** ADR 0003's Context and the brief now give the event path as unproven and point to I2a, which maps the event types. The evidence record's own lines are corrected in the correction pass, P06.1-C1, with the harness fix.
+- **Prevention:** when a record cites a live result as the basis of a decision, name the view or check that produced it, and give an implementer's claim as the implementer's until a review confirms it.

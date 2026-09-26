@@ -524,3 +524,338 @@ App Manager 3 checked the relayed report against the pushed branch. The manager 
   - The implementer's branch push, run [36091267791](https://github.com/amthorn78/glow-dating-app/actions/runs/36091267791), 03:39–03:46 UTC: all six jobs passed.
   - The manager branch's push, run [36109949498](https://github.com/amthorn78/glow-dating-app/actions/runs/36109949498), 07:53–07:58 UTC: all six jobs passed, and the gate log says `Application checks passed`.
   - No Foundation job runs the harness's own tests. The offline re-run above covers them.
+
+### Exact-head review of I1 (25 September 2026)
+
+Nathan ran the review session at max, from revision 3 of the [review prompt](../../ephemeral/2026-09-25-p06-1-i1-review-prompt.md) (records commit `516bee2`), and relayed its report. The session committed and pushed nothing. Its two live runs were on 25 September, between 19:33 and 19:38 UTC.
+
+- **Verdict: changes required.** Two blocking findings must be fixed before P06.1-I2a runs live on this harness; findings 3 to 9 should be fixed in the same correction pass.
+- **S15: confirmed live** on the exact head, and no configuration closes it. That meets ADR 0003's condition (DM-01 P4).
+- **No finding changes a recorded I1 result.**
+
+#### The report, as relayed
+
+The session's note before its report, verbatim:
+
+> The second-opinion pass reports several new items. Before including any of them, I'll verify its key SDK claims myself. (1) `setGuestUser` does `POST /guest` then `connectUser`. (2) A failed anonymous connect leaves `wsPromise` rejected, so later queries rethrow that error with no HTTP request. (3) `sendEvent`/`markRead` can fail locally, or no-op, without sending anything.
+>
+> Confirmed both second-opinion issues are real (failed anonymous connect blocks wsPromise, affecting query calls; sendEvent/markRead can fail silently), but neither impacted any recorded test result since requests were actually sent and answered in every run. I've merged the verified findings and dropped two claims that didn't hold up.
+
+##### Verdict: changes required
+
+**S15 is confirmed live on the exact head, and no configuration closes it.** This meets ADR 0003's condition (DM-01 P4) for choosing the display rule. No finding changes a recorded I1 result, and both of my live runs went cleanly.
+
+Two defects must be fixed before P06.1-I2a runs live on this harness (findings 1 and 2):
+- the harness can record a pass for a request Stream never refused;
+- a failed restore of a temporary setting change does not stop the run.
+
+Findings 3–9 should be fixed in the same correction pass. They cover the stop condition, validity checks, I2a's plan and coverage, and records that the S15 decision cites.
+
+##### Identity and gates
+
+- **Prompt:** revision 3, from commit `516bee262068229d44aacbab4c3f9cd77722b4e1`.
+- **Head reviewed:** `git rev-parse HEAD` printed `9ff600fea99cd17e6410b773a618281cc1a79b6b` (detached).
+  - `git merge-base --all origin/main HEAD` printed one line, `0f45e648099b415217938c25d7369164c0101def`.
+  - The ancestor check printed "records build on the head".
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` present. All three `STREAM_*` variables set. Tools are in `/root/.local/bin`: node v24.19.0, npm 11.9.0, Python 3.12.14.
+- **Classification:** the trusted policy from `origin/main` (`0f45e64`) was extracted to a temp directory outside the tree and run with `python3 -I … --merge-base`. Both runs exited 0.
+  - `main → 9ff600f`: `{"full": true, "reason": "behavior-or-empty", "paths": [...]}`, 37 paths: the evidence record and 36 files under `proofs/stream-chat/`.
+  - `9ff600f → 516bee2`: `{"full": false, "reason": "ordinary-docs-only", "paths": [...]}`, 29 Markdown paths.
+- **Context, not reviewed:** the manager branch has moved on to `32bb2b5`, including non-Markdown files (`apps/mobile/rendered/onboarding.spec.ts`, `apps/mobile/src/components/ui.tsx`). This review does not cover them.
+
+The report listed every path in both classification outputs; the manager's re-run below reproduced the same counts.
+
+##### S15: confirmed
+
+**Live** (run 1, below). Under the locked configuration I verified before and after the run:
+- `glow-match` members hold `read-channel` only; every other role, and the `.app` grants of `user`, `guest` and `anonymous`, are empty;
+- all three `member_custom_on_*` settings are `false`.
+
+| | A's write (`updateMemberPartial`, `PATCH /channels/glow-match/{AB}/member`) | B: channel query | B: `GET /members` | B: events |
+|---|---|---|---|---|
+| Locked configuration | **200** | 201, **marker present** | 403 / code 17, absent | `channels.queried`, `member.updated`: marker present (see finding 4) |
+| Control: `read-channel-members` granted on AB (override set 200, removed 200) | **200** | 201, present | 200, present | `channel.updated`, `channels.queried`, `member.updated`: present |
+
+The verdict row (FAIL: B read it via channel query and events) is identical to I1's final run.
+
+**Documentation and source.** This is Stream's current documentation, gathered in this session by a research sub-agent (no API calls), plus the installed SDKs.
+- **No permission governs it.** The [permissions reference](https://getstream.io/chat/docs/python/permissions-reference/) lists AddOwnChannelMembership, RemoveOwnChannelMembership, UpdateChannelMembers, ReadChannelMembers, BanChannelMember and MuteChannel. None governs updating one's own membership, pinning or archiving.
+- **Caveat:** that reference is not exhaustive. Stream names its ListPermissions API as the authoritative list, and I did not call it (section 4 does not allow it).
+- **Live, the write needs no grant beyond `read-channel`,** which was A's only grant. `read-channel` cannot be removed without ending reads.
+- **The channel query path needs no extra grant.** [Get Channel](https://getstream.io/chat/docs/python/get-channel/): with ReadChannel, "By default the response contains the channel, its configuration, and its members."
+- **Nothing member-related to set:**
+  - [channel features](https://getstream.io/chat/docs/python/channel-features/): nothing member-related;
+  - [channel-level settings](https://getstream.io/chat/docs/python/channel-level-settings/), "the complete list": nothing member-related either; grant modifiers can only revoke an action, and there is none to revoke.
+- **The `member_custom_on_*` settings only add exposure.** They copy member custom data into messages, typing events and mentions (REST spec). They do not affect query members or `member.updated`, and they are off.
+- **`channel_hide_members_only`** is undocumented and not returned by `GET /app`, so it is absent from the baseline. Its effect is unknown; a question for Stream support.
+- **`member.updated`** goes to "clients watching the channel" ([events](https://getstream.io/chat/docs/javascript/event-object/)). The REST spec defines its `member` as a full `ChannelMemberResponse` including `custom`.
+- **Nothing closes S15 at the provider level while the chat stays usable:**
+  - disabling the channel ends all client reads and writes;
+  - a webhook revert acts after delivery;
+  - the recipient asking for `members.limit: 0` and ignoring events is display-side only, consistent with the display rule;
+  - blocking hides the channel.
+
+**The procedure.**
+- **Sound:**
+  - the marker is unique per run and phase;
+  - the channel-query and members-query views are Stream's responses to B's own requests;
+  - the control shows B's reads can find the data;
+  - the field is unset after each phase, and AB is hard-deleted.
+- **Unsound:** the events view (finding 4). The realtime `member.updated` path that the records name is plausible from the spec, but neither I1's runs nor mine establish it. The channel-query path alone confirms S15, so this corrects the record without narrowing the exposure.
+
+##### Findings, most severe first
+
+**1. Blocking: some verdicts are taken from an SDK error, not from Stream's answer to the request under test.**
+- **Where:** `proof_run.py:68-76` (`_status_code` prefers `reply.error`), `:986-999`, `:1039` (G1), `:1092-1105` (G3), `:1425-1450` (RT2/RT3). Found by the second-opinion pass; I verified it in the SDK source.
+- **G1:** `setGuestUser` sends `POST /guest`, then connects (SDK `index.node.js:15467-15479`).
+  - Suppose a client's `POST /guest` returns 201 and creates a guest, and the lockdown then refuses the guest's connect with 403/17. My run 2 control showed exactly this shape: "POST /guest 201; guest connect 403 / code 17".
+  - The case then records **HOLDS** while `client_guest_user_exists_after` is true. The case exists to catch exactly this regression.
+- **G3:** a failed `connectAnonymousUser` leaves `wsPromise` rejected (SDK `:14731-14755`, `:14816-14833`).
+  - `channel.query`, `queryChannels` and `queryUsers` all await it (`:10748`, `:15965`, `:15768`), so the probes rethrow the connect's 403 or 401 without sending anything.
+  - The probes then record HOLDS with Request "-". `_proc_anonymous` only notes the connect result.
+- **RT2/RT3:**
+  - `sendEvent` and `markAsReadRequest` throw locally in `_checkInitialized()` (`:9743`, `:10492`). That becomes outcome "other" and then HOLDS "refused (other)".
+  - `markAsReadRequest` also returns `null` without a request when read events are off (`:10493`). That becomes HOLDS (accepted, not applied).
+- **Recorded results are unaffected.** In I1's final run and my run 2, G1's own `POST /guest` got 403/17 ("guest user creation is disabled for this application"), the anonymous connect succeeded, and RT2/RT3 sent real requests.
+- **Fix:**
+  - take the status and code from this command's own recorded HTTP response, and treat "no response recorded" as INCONCLUSIVE;
+  - make G1 FAIL whenever `_guest_created(reply)` is not `None`;
+  - mark G3 INCONCLUSIVE unless the anonymous connect succeeded.
+
+**2. Blocking: a failed restore of a temporary change does not stop the run, and some enables sit outside their `try`.**
+- **Where:**
+  - `run_matrix` catches `RunStopped` as a generic `Exception` and continues (`proof_run.py:533-542`);
+  - `RunStopped` is raised by `_type_features_restore` (`:495-508`) and by the guest-creation restore (`:1013-1018`);
+  - type-level enables happen before their `try` (`:644`, `:1138`);
+  - the guest enable, 3 s sleep and session start happen before their `try` (`:1006-1009`);
+  - nothing re-verifies the configuration at the end of the run, and `cli.py:188` exits 0.
+- **Scenario:** say S12's or S10's restore `PUT` fails, or the re-read still shows the feature on, or guest creation does not read back as disabled.
+  - The run records a "harness error" row and carries on. Cleanup never restores type features or app settings.
+  - `glow-match` is left with `custom_events` or `polls` on, or the application with guest creation enabled. Only the next preflight or `configure` dry run would reveal it.
+  - A `RunStopped` raised in a `finally` also replaces an in-flight `GuardrailStop`, so a charge signal could be swallowed.
+  - A timeout or Ctrl-C between the enabling request and the `try` skips the restore entirely.
+- **Fix:**
+  - re-raise `RunStopped` as `GuardrailStop` is re-raised;
+  - open each `try` before the enabling request;
+  - keep a journal of temporary changes, and restore and verify them in `cmd_run`'s `finally`;
+  - end every run with `configuration.verify()`, exiting non-zero on any difference.
+
+**3. Should fix: preflight accepts any number of dashboard-flagged administrators.**
+- **Where:** `proof_run.py:215-227`.
+- **Scenario:** with `--accept-dashboard-user`, every user with role `admin` and `custom.dashboard_user` true is accepted. The count is returned but never compared with 1, and nothing pins the user Nathan confirmed.
+  - A second dashboard user, or any server-created user with that flag, is accepted silently. That is wider than Nathan's direction.
+  - Evidence line 91 ("accepts exactly that dashboard user") and README line 103 ("the one … user") overstate the code.
+- **Fix:** stop unless exactly one such user exists. Optionally also check its `created_at` (24 September 13:07 UTC, already in the evidence); this records no identifier.
+
+**4. Should fix: S15's events view cannot show which event carried the marker.**
+- **Where:** `proof_run.py:1237`, `:1243-1244`, with `client/runner.cjs:140-143`.
+- **Scenario:** `channel.query()` raises a local `channels.queried` event carrying the full queried state (SDK `:10747`, `:10823-10829`), and the runner records every event.
+  - B's query runs before the events are collected, so `events_have_marker` is always true once the query carries the marker.
+  - The evidence (lines 26 and 352-354), ADR 0003's Context and the brief's "S15: decided" state that B received the text in `member.updated` events. That part is unproven.
+- **Fix:** exclude the SDK's local event types (for example `channels.queried`, `capabilities.changed`, `connection.changed`, `message.read_locally`) and report which event type carried the marker. Then correct the records.
+
+**5. Should fix: replies are not matched to commands.**
+- **Where:** `client_bridge.py:128-164`. `send()` never compares `raw["id"]` with the command's id.
+- **Scenario:** after a 60 s timeout the session stays in use, and the late reply is read as the next command's reply.
+  - Later cases are then judged on the previous request. Their server replay targets the previous case's failing record, so a HOLDS can land on the wrong request.
+  - A second line already buffered in the text reader is also invisible to `select()`, so a desynchronized session can time out spuriously.
+  - No timeout occurred in the recorded runs.
+- **Fix:** check the reply id. On a mismatch or timeout, kill the session and mark the affected cases INCONCLUSIVE.
+
+**6. Should fix: the plan to rerun G2 (guest reach) and S10 (poll vote) in I2a will fail as written.**
+- **Where:** `proof_run.py:981-982`, `:1031-1033`, `:1080-1090`; `tests/test_run_simulation.py:135-145`.
+- **G2:** the control's guest session is created by `setGuestUser({id, name})`, which connects with the guest's profile.
+  - The lockdown refuses that connect, so every G2 case records "not run". My run 2 confirmed this with the corrected harness.
+  - The simulation's fake guest connects successfully, which masks it. The evidence's "the offline simulation test covers them" (line 480) and the brief's "Reruns: G2 and S10 with the corrected harness" are not achievable.
+- **S10:** its procedure is unchanged, and its type-level toggle did not reach AB within 3 s in I1's run.
+- **Fix, in I2a's prompt:**
+  - G2: create the guest server-side with the unused `ServerApi.create_guest` (`server_api.py:144-160`) and connect with `{id}` only;
+  - S10: design a new setup.
+
+**7. Should fix: the leak terms for G2/G3 `read-ab` and `message` cover message text only.**
+- **Where:** `matrix.py:332-337`, used at `proof_run.py:1106-1107` and `:1121-1123`.
+- **Scenario:** a guest or anonymous 2xx that returned AB's channel object, members, names or message ids, but no text, would record HOLDS (filtered, not refused). Recorded G3 results were refusals, so they are unaffected.
+- **Fix:**
+  - `read-ab`: add `{AB}`, `{A}`, `{B}`, `{A_name}`, `{B_name}`, `{m_a}` and `{m_b}`;
+  - `message`: add `{m_x}`, `{X}` and `{XD}`.
+
+**8. Should fix: claims in the records that the code or results do not support.**
+- **Evidence line 17** says every out-of-design action got "403 … and the positive control succeeded each time". Its own rows contradict that: 9 INCONCLUSIVE, S15 got 200, RT3 got 201, and the filtered cases got 200.
+- **"From Stream's permission layer" also overreads code 17.**
+  - Stream documents 403 "Not Allowed" for disabled and frozen channels.
+  - Code 17 was also observed for "polls not enabled", "guest user creation is disabled" and "channel role can only be updated server side".
+  - Attribution rests on the controls.
+- **The HOLDS legend** (lines 217-221) does not cover RT1 (no refusal at all), RT2 (400/18) or RT3 (201).
+- **Line 144** and README line 137 say temporary changes were "reversed and verified". Channel-override removals are never re-read, and finding 2 applies.
+- **Line 359**, "the live permission list has no such action", has no recorded source: no I1 commit ever reads `/permissions`.
+- **Line 474** says results are written "on any error". That does not hold for a KeyboardInterrupt (`cli.py:170-185`); the per-case progress file does exist.
+- **The G3-channels action text** "empty filter" (`matrix.py:334`) is stale. I1's final run used a type filter, and the code now filters on A's membership.
+- **The `Limits` section is missing:**
+  - the client is isolated by its environment only, running under the same user;
+  - verify-clean cannot see soft-deleted channels;
+  - charge detection does not cover typed SDK calls;
+  - the endpoints in finding 9 were never tried.
+
+**9. Should fix, in I2a's scope: client-reachable endpoints the matrix never tried.** Line numbers are in `stream-chat` 9.53.0.
+- **Content or effect in front of B:**
+  - `channel.updateAIState(…, {ai_message})` (`:10411`) sends `ai_indicator.update` with free text. Stream calls these custom events but does not say whether `custom_events` gates them.
+  - The deprecated `channel.partialUpdateMember(B, …)` writes to B's membership (`PATCH …/member/{user_id}`, `:9842`).
+  - `pin()` and `archive()` (`:10327`, `:10285`) set `pinned` or `archived` on A's own membership, which the spec says reaches B.
+  - Invites: `inviteMembers` (`:10196`), and `acceptInvite` or `rejectInvite` with a system `message` (`:10120`, `:10130`).
+  - A leaving AB with a message.
+  - `banUser` or `shadowBan` of B in AB (`:10847`, `:10904`).
+- **Reading outside the match:**
+  - `client.sync([XD_cid], …)` (`:17391`);
+  - `getReplies`, `getReactions` and `getMessagesById` on XD (`:10617`, `:10658`, `:10673`);
+  - `queryReactions` (`:16053`), `getThread` (`:17129`) and `queryMessageHistory` (`:18214`) on XD's message.
+- **Required cases still weaker than required:** G2 and S10 never ran, and R7a is inconclusive.
+
+**Nits**
+1. RT2/RT3 look for the marker only in the named event types and the first window (`proof_run.py:1427-1434`).
+2. `AUTH_CODES` includes code 2, which Stream documents as an API-key error, not a token refusal (`matrix.py:32`).
+3. The `?user_id={X}` and `{B}` suffixes are hard-coded (`:911`, `:970`) rather than read from the recorded parameters. The SDK does send them.
+4. Undo and override-removal results are never checked (`:611-614`, `:640-641`, `:713-714`, `:1283-1284`).
+5. Cleanup is one unguarded sequence, and its task statuses are not asserted. `cmd_run` exits 0 whatever cleanup finds (`cli.py:188`).
+6. The charge-signal check misses typed SDK calls such as `upsert_users` and `send_message` (`server_api.py:124-126`).
+7. The unused runner op `request` passes `{params}` as POST's `config`, which overwrites the SDK's `api_key` and `user_id` (`runner.cjs:278-283`).
+8. `cmd_baseline` writes the raw snapshot to `.work/`, including every user (the dashboard user's identifier and name fields too) and the full app object (`cli.py:86-88`). Redaction matches exact key names only.
+9. `configuration.verify` checks neither `permission_version` nor the three `member_custom_on_*` settings (`configuration.py:207-244`).
+10. `restore --apply` does not re-read and verify (`cli.py:232-240`).
+11. Nothing asserts that `stream-chat` loads the same `isomorphic-ws` module the runner replaces (`runner.cjs:47-55`).
+12. `CLEANUP_RESERVE` (60 calls) is below cleanup's worst case of about 100 calls (`proof_run.py:33`).
+13. A poll or user group a client creates in a FAIL case is never cleaned up, and verify-clean lists neither.
+14. verify-clean cannot see soft-deleted channels, and C13's control soft-deletes AB before cleanup.
+15. `_check` stores its evidence text unredacted (`:164-166`, `:452`). A token-shaped string would make later writes fail and lose the results; it would not leak.
+16. E5 and S14 judge only the stored state (`connect_me_role` is recorded but unused). T4-rest-unread records HOLDS on a refusal without its controls (`:955-956`).
+17. Cleanup hard-deletes the application-wide `deleted-user-1729640-…` user. That is safe here only because preflight guarantees no other data.
+
+##### Areas reviewed with no findings
+
+- **Credential loading:** refuses when an HDE variable is present (checked by name), pins application 1729640 and keeps the secret out of `repr`.
+- **Client isolation:** the client environment is built from an allowlist and refuses the secret's name or value; the runner exits 3 if the name is present. The only subprocess is `node client/runner.cjs`.
+- **Output paths:**
+  - every print is redacted and leak-checked, and every `.work` file is leak-checked;
+  - the WebSocket URL (which carries the token) is never recorded, the SDK logger is a no-op, and insights are off;
+  - `access_token` is redacted by key and by pattern;
+  - `getstream` logs only a message name at WARNING level or above;
+  - Node keeps tokens on one line, so the line-by-line redactor holds.
+- **Tokens:** 900 s tokens (905 s with the SDK's 5 s back-dating). The authorized path passed 18 of 18 checks in both my runs.
+- **Configuration:**
+  - `apply_plan` and `verify` match the README and the evidence;
+  - the live state today matches the evidence: only `guest_user_creation_disabled` differs from the baseline, and every recorded feature and command of the default types is unchanged;
+  - so the restore plan's inputs would return the recorded settings. Fields the baseline does not record were not compared.
+  - The emptied admin role affects only client-side sessions of admin, moderator or global roles; server-side calls bypass permission checks.
+- **Matrix logic:**
+  - the feature-phase cases S2, S5, S6, S7 and S12 are sound, because the control runs under the same override;
+  - the T4 identity checks are sound: `me.id` comes from the handshake, and the SDK sends the claimed `user_id` on REST calls;
+  - the claim that commits after `ed162e1` changed only the four fixes, the text and the simulation is accurate.
+- **Dependencies:**
+  - locks: 30 and 35 pins, every one with SHA-256 hashes, and no index or editable directives;
+  - npm: 51 packages from `registry.npmjs.org` with SHA-512 integrity; only `stream-chat` has an install script (a Husky `postinstall`), which `--ignore-scripts` skips; no nested packages;
+  - `ws` 8.21.3 and `https-proxy-agent` 5.0.1 are pinned;
+  - nothing weakens TLS; `allowServerSideConnect` only silences an SDK warning;
+  - `stream-chat` 9.53.0 is npm's `latest` (published 15 September 2026).
+- **Scope:**
+  - only `proofs/stream-chat/**` and the evidence record changed;
+  - no application runtime, CI, configuration, `.env.example`, `.claude/` or `GLOW_*` change;
+  - every file is new with mode 100644, and there are no symlinks.
+
+##### Checks run
+
+1. **`git diff --check origin/main...HEAD`:** no output, exit 0.
+2. **Classifications:** both as above.
+3. **Installs** (in `env -i`, with the proxy and CA variables passed by reference):
+   - `python3.12 -m venv .venv` → Python 3.12.14;
+   - `pip install --require-hashes -r requirements-dev.lock` → 35 packages installed, including `getstream` 6.1.0, Ruff 0.16.8 and mypy 2.3.1;
+   - `pip check` → "No broken requirements found.";
+   - `npm ci --ignore-scripts` → "added 51 packages, and audited 52 packages", "found 0 vulnerabilities".
+4. **Offline checks:**
+   - unittest: "Ran 49 tests", "OK";
+   - `ruff check .`: "All checks passed!";
+   - `ruff format --check .`: "25 files already formatted";
+   - `mypy`: "Success: no issues found in 25 source files";
+   - `node --check client/runner.cjs`: exit 0.
+5. **Secret scan:**
+   - the whole diff (476,116 bytes): the secret 0 times, JWT-shaped strings 0, the API key 0; no email addresses, key shapes or TLS-weakening settings;
+   - every identifier-like string in the evidence, baseline and README is synthetic or already known;
+   - every live output and `.work` file: the secret, its first 16 characters, JWTs, payload-and-signature fragments and the API key all 0.
+6. **Live runs:** below.
+7. **Also:**
+   - read the relevant SDK sources;
+   - compared the live state with the baseline;
+   - diffed the harness from `ed162e1` to `9ff600f`;
+   - checked the engines against `scripts/bootstrap-toolchain.sh`.
+
+##### Live runs (25 September 2026, UTC; one checkout, one command at a time)
+
+- **Before any run:**
+  - `verify-clean` (19:33:30): "proof users remaining: []", "channels remaining: []", "other users present: 1".
+  - Dry-run `configure` (19:33:38): "differences before: []".
+  - Counts: 1 dashboard administrator, 0 `deleted-user` users.
+- **Run 1:** `run --accept-dashboard-user --only S15`, prefix `p061i1-0925193403`, 19:34:03 to 19:34:35, exit 0.
+  - Authorized path 18 of 18 PASS; S15 FAIL (above).
+  - Usage: 4 users, 2 channels, 47 API calls (35 server, 12 client), a peak of 3 connections.
+  - Cleanup: channels and users deleted (201, tasks completed), 1 `deleted-user` artifact deleted, nothing remaining.
+- **Run 2:** `run --accept-dashboard-user --only G1-create,G2-read-ab,G2-channels,G2-users,G2-message,G3-read-ab,G3-channels,G3-users,G3-message,R9`, prefix `p061i1-0925193620`, 19:36:20 to 19:36:53, exit 0.
+  - Authorized path 18 of 18 PASS.
+  - G1-create HOLDS: A's `POST /guest` got 403/17. In the control, guest creation was enabled for about 5 s, `POST /guest` got 201, the guest connect got 403/17, and creation was disabled again and verified.
+  - G2 × 4 INCONCLUSIVE ("not run: no guest session").
+  - G3-read-ab HOLDS (403/17). G3-channels HOLDS (403/70). G3-users HOLDS, filtered (200). G3-message HOLDS (403/17).
+  - R9 HOLDS: 403/17, "not allowed to perform action ReadChannel", with the server replay getting 200.
+  - Usage: 5 users, 2 channels, 52 API calls (36 server, 16 client), a peak of 4 connections.
+  - Cleanup: the Stream-prefixed guest was deleted by the ID Stream returned; 1 artifact deleted; nothing remaining.
+- **After the last run:**
+  - `verify-clean` (19:37:21): `[]`, `[]`, 1.
+  - Dry-run `configure` (19:37:23): "differences before: []".
+  - Before and after compared field by field (app settings, client-role grants, all six channel types including `updated_at`): identical.
+- **First live use of the fixes:** the four post-run fixes (cleanup's run-prefix matching and guest-ID capture, the G1 `POST /guest` judgement, the R9 server replay, and the membership filter for the guest and anonymous channel probes) all worked. Cleanup and `verify-clean` behaved as intended.
+- **Session totals:** 9 of 20 users, 4 of 30 channels, 119 of 5,000 API calls, a peak of 4 of 10 connections. Nothing suggested a charge.
+
+##### Limits
+
+- **Permissions list:** I did not call the ListPermissions API; section 4 does not allow it.
+- **Case coverage:** of the 85 cases, I re-ran 11 live (S15 and the ten in run 2). The rest I checked by code path, because I1's `.work` output is not in the repository.
+- **Not verified:** `member.updated` content (finding 4); the restore plan, which I did not execute; channel-type fields the baseline does not record.
+- **Dashboard user's fields:** checked only by proxy. I did not read that user's details, per Nathan's direction.
+- **Sub-agents:** the documentation research was done by a sub-agent. A second, read-only sub-agent did an independent code pass; I verified every item I took from it. Neither made any Stream call.
+- **Hosted CI:** not checked, as the prompt allows.
+- **Instrumentation:** I ran the dry-run `configure` through a wrapper (identical Stream calls) that saved channel types and app settings, with no user data, to my scratchpad. The harness itself was started through a launcher with an allowlisted environment, so no value appeared in a process argument.
+- **Temporary in-run changes:** both runs made the harness's own temporary changes (AB's override in run 1; the guest-creation toggle in run 2). Each was restored and verified, and the final configuration is identical.
+- **Repository:** nothing committed or pushed; only ignored files were created.
+
+#### Manager verification of the review (App Manager 3, 26 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head and the SDK source. The manager makes no call to Stream, so the live runs above are the session's record.
+
+- **Identity.** The manager re-ran both classifications with the trusted `main` policy (`0f45e64`), outside the tree, with `python3 -I` and `--merge-base`:
+  - `main → 9ff600f`: full scope (`behavior-or-empty`), 37 paths;
+  - `9ff600f → 516bee2`: `ordinary-docs-only`, 29 paths.
+
+  `0f45e64` is the only merge base, and `516bee2` builds on `9ff600f`.
+- **SDK claims,** in `stream-chat` 9.53.0's `dist/cjs/index.node.js` (20,040 lines), from the manager's offline install from the lock:
+  - `setGuestUser` posts `/guest` and then calls `connectUser` (15467–15479);
+  - `connectAnonymousUser` returns `_setupConnection()`, which is `openConnection`. That binds `wsPromise` to the connect through `_bindWsPromise`, so a failed connect rejects it (14711, 14731–14755, 14762, 14816–14833);
+  - `channel.query`, `queryUsers` and `queryChannels` each await `wsPromise` first (10748, 15768, 15965);
+  - `sendEvent` and `markAsReadRequest` call `_checkInitialized()`, which throws on a client for a channel not yet initialized (9743, 10492). `markAsReadRequest` returns `null` without a request when read events are off (10493–10495);
+  - `channel.query` dispatches a local `channels.queried` event with the queried state (10823–10829).
+- **Harness claims at `9ff600f`:**
+  - **Finding 1:** `_status_code` uses the reply's own status and code before any recorded response (`proof_run.py:68-76`). G1's verdict is `refused_verdict(outcome, control_ok)` whatever `exists_after` says (`:994-999`, `:1039`). `_proc_anonymous` notes the connect result and probes anyway (`:1092-1099`). `_payload_case` turns a local throw into a refusal, and a `null` into an accepted request (`:1422-1450`).
+  - **Finding 2:** `RunStopped` and `GuardrailStop` are separate `RuntimeError` subclasses (`proof_run.py:40`, `usage.py:34`). `run_matrix` re-raises only `GuardrailStop` and records anything else as a harness-error row (`:533-542`). The type-feature enable comes before its `try` (`:644`), as do the guest enable, the sleep and the session start (`:1006-1009`). `cmd_run` returns 0 whenever no stop reason was set, whatever cleanup reports (`cli.py:170-188`).
+  - **Finding 3:** preflight counts dashboard-flagged administrators but never compares the count with 1 (`:215-227`).
+  - **Finding 4:** `events_have_marker` searches every event B's runner recorded, after B's own query (`:1237-1244`). The runner records every event except `health.check` (`runner.cjs:140-143`).
+  - **Finding 5:** `send()` never compares the reply's `id` with the command's (`client_bridge.py:128-164`).
+  - **Finding 6:** `ServerApi.create_guest` exists (`server_api.py:144-160`), and nothing in the harness calls it. The simulation's fake guest connects successfully (`test_run_simulation.py:135-145`). G2 records "not run" without a guest session (`proof_run.py:1080-1090`).
+  - **Finding 7:** the `read-ab` and `message` leak terms are message text only (`matrix.py:332-337`).
+  - **Finding 8:** each evidence and README line it cites says what the review quotes.
+  - **Nits 2, 9 and 12** as stated (`matrix.py:32`, `configuration.py:207-244`, `proof_run.py:33`).
+- **Not checked by the manager:** the live runs and the documentation research. The session's before-and-after checks show the application as it was before the runs.
+- **What this review covers:** code head `9ff600f` only. The flake fix at `8b8b1bd` needs its own exact-head review.
+
+#### Disposition
+
+- **S15 is confirmed live.** ADR 0003's condition is met, so the display rule stands as S15's answer. The realtime `member.updated` path is not established (finding 4); the channel query alone carries the text. The manager corrected ADR 0003's Context and the brief's "S15: decided" on 26 September. This record's lines 26 and 352–354 are corrected in the correction pass, with finding 4's fix.
+- **Verdict: changes required.** I1's code head is not yet a sound base for I2a.
+- **The correction pass, P06.1-C1.** One implementation session fixes findings 1 to 8 and the nits within its scope, and corrects the records findings 4 and 8 name; any nit it leaves gets a reason. Its own exact-head review follows. In the linear order (OD-29), it comes after the flake fix's review.
+- **Into I2a's prompt:** finding 6's new G2 and S10 setups, and finding 9's endpoints.
+- **For Stream support,** if Nathan chooses to ask: whether client writes to member custom data can be disabled (already recorded), and what the undocumented `channel_hide_members_only` does.
+- **No recorded I1 result changes.**

@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Status: Accepted by Nathan.
 
-- **The display rule as S15's answer** is conditional on the exact-head review of P06.1-I1 confirming finding S15 live.
+- **The display rule as S15's answer** stands. It was conditional on the exact-head review of P06.1-I1 confirming finding S15 live, and the review confirmed it on 25 September 2026, finding no configuration that closes it ([evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md), "Exact-head review of I1").
 - **The principle** (decision 3) is in force regardless of the review (DM-03 G4).
 - **The exceptions** (decision 4) are confirmed by Nathan (OD-16, 25 September 2026).
 Work item: P06.1 — Prove chat-provider permissions and economics
@@ -12,7 +12,8 @@ Work item: P06.1 — Prove chat-provider permissions and economics
 
 P06.1-I1 proved Stream Chat's permission model against Nathan's development application 1729640; the [P06.1 evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md) has the details. One bypass remained that configuration did not close:
 
-- **S15.** A member's client can write up to 5 KB of free text as custom data on its own membership of its match channel (`updateMemberPartial`). The other member's client receives it in its ordinary channel query and in realtime `member.updated` events.
+- **S15.** A member's client can write up to 5 KB of free text as custom data on its own membership of its match channel (`updateMemberPartial`). The other member's client receives it in its ordinary channel query, inside the members list.
+- Stream's documentation says realtime `member.updated` events carry member custom data to clients watching the channel. Neither I1's runs nor the exact-head review established that path, because the harness could not tell which event carried the text (the review's finding 4). P06.1-I2a maps the event types.
 - No Stream permission governs that write. Removing `read-channel-members` hid only the separate members endpoint.
 
 PF01 section 7 treats a provider's inability to enforce safety as a design blocker, so the design or the provider had to change before P06.2. The options put to Nathan are in the [P06.1 brief](../planning/p06-1-chat-provider-proof.md), under "S15: decided":
@@ -67,7 +68,8 @@ Nathan, 25 September 2026: *"I accept your recommendation on S15. There should n
 
 ## Revisit when
 
-- the exact-head review narrows S15 or finds a configuration that closes it;
+- a later run or review narrows S15 or finds a configuration that closes it (the I1 review confirmed S15 on 25 September 2026);
+- Stream support says that the undocumented `channel_hide_members_only` setting keeps member data from other members;
 - P06.1-I2a fails condition (a);
 - Stream adds a setting that disables client writes to member custom data;
 - an exception's basis changes, or a new one is proposed; only Nathan adds to the list.

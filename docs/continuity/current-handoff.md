@@ -10,27 +10,27 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Manager:** App Manager 3, on `claude/stoic-carson-66gdig`, the head of draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26).
 - **Current item: P06.1**, the chat-provider permissions and economics proof. Resumed on 25 September; other feature work stays paused. Plan, results and decisions: the [brief](../planning/p06-1-chat-provider-proof.md). Runs: the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
-  - **I1 is done** at code head `9ff600f`; push run [36109949498](https://github.com/amthorn78/glow-dating-app/actions/runs/36109949498) passed all jobs.
-  - **S15:** the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) is conditional on the I1 review confirming S15 live. Nathan's principle is in force, and he confirmed its exceptions (OD-16).
+  - **I1 is done** at code head `9ff600f`; push run 36109949498 passed all jobs.
+  - **S15:** the I1 review confirmed it live, so the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands. Nathan's principle is in force, with the exceptions he confirmed (OD-16).
   - **Linear order (OD-29):** one session at a time, one prompt per message.
-    - **Done:** the flake diagnosis (OD-21): a focus race in the app, fixed; verified and integrated at `8b8b1bd`.
-    - **Running:** I1's exact-head review, revision 3 of its [prompt](../ephemeral/2026-09-25-p06-1-i1-review-prompt.md), records commit `516bee2`. Nathan started it at max; he deletes the Stream variables once it has started (OD-28).
-    - **Then:** the exact-head review of the fix at `8b8b1bd`.
+    - **Done:** the flake diagnosis (OD-21), fixed and integrated at `8b8b1bd`. I1's exact-head review: changes required, verified and recorded in the evidence record.
+    - **Next:** the exact-head review of the fix at `8b8b1bd` ([prompt](../ephemeral/2026-09-26-p06-1-flake-fix-review-prompt.md)). Not live; no Stream variables (OD-28).
+    - **Then:** P06.1-C1, the I1 correction pass, and its review. I2a waits for them.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-03, Nathan's answers and the dispositions.
 
-## Waiting checkpoint (25 September 2026)
+## Waiting checkpoint (26 September 2026)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 3 | Nathan | The I1 review report | Nothing else starts (OD-29); I2a and I2b wait for it |
+| App Manager 3 | Nathan | The fix review's report | Nothing else starts (OD-29); C1 and I2a wait for it |
 | App Manager 3 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
 | App Manager 3 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` and of the HDE contract request. The relay messages are not yet sent; each goes as its own step in the linear order | PR26 cannot merge without the reads |
 
 ## Next actions
 
-1. Verify the I1 review report and record it where its prompt says. Then write the fix-review prompt and give it as the one next prompt. If the review narrows or closes S15, the choice of the display rule goes back to Nathan.
-2. Write the I2a, I2b and economics discovery prompts, as the brief's "Sessions" section describes. The Dev Manager reads each one before Nathan runs it. Live prompts tell Nathan to add the three `STREAM_*` variables first (OD-28).
+1. Verify the fix review's report and record it in the flake evidence record. Then write C1's prompt (the brief's "Sessions") and give it as the one next prompt. If C1 makes a live run, the Dev Manager reads the prompt first.
+2. After C1's review is clean, write the I2a, I2b and economics discovery prompts, as the brief's "Sessions" section describes. The Dev Manager reads each one before Nathan runs it. Live prompts tell Nathan to add the three `STREAM_*` variables first (OD-28).
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f` (charter, "A read covers one commit");
    - complete the pre-merge checklist in PR26 (workflow step 7);

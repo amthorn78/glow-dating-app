@@ -21,6 +21,7 @@
   - TypeSafe v4, read for revision 1: extra high, with ultracode flagged.
   - If Nathan runs ultracode, one agent still runs every live command (section 4).
   - **Used: max.** Nathan started this session on 25 September, after the flake diagnosis (OD-29). This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** the manager verified the report and recorded it on 26 September, in the evidence record under "Exact-head review of I1". Verdict: changes required; S15 confirmed live.
 - **Deletion condition:** prune after P06.1 closes and the brief and evidence record hold the accepted review result.
 
 **Manager:** before giving this prompt to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
