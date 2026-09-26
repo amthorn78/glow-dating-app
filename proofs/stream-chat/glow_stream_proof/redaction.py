@@ -23,6 +23,20 @@ JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-
 _SENSITIVE_KEYS = frozenset(
     {"authorization", "access_token", "token", "api_secret", "secret", "stream-auth"}
 )
+# Key names that hold credentials in Stream's app configuration and elsewhere,
+# matched anywhere in the key (for example "sqs_secret", "apn.auth_key",
+# "firebase_credentials", "p12_cert") or as a suffix ("refresh_token").
+_SENSITIVE_PARTS = ("secret", "password", "private_key", "auth_key", "credential", "p12_cert")
+_SENSITIVE_SUFFIXES = ("_token",)
+
+
+def is_sensitive_key(key: str) -> bool:
+    lowered = key.lower()
+    return (
+        lowered in _SENSITIVE_KEYS
+        or any(part in lowered for part in _SENSITIVE_PARTS)
+        or lowered.endswith(_SENSITIVE_SUFFIXES)
+    )
 
 
 class Redactor:
@@ -44,8 +58,10 @@ class Redactor:
             out: dict[str, Any] = {}
             for key, item in obj.items():
                 key_text = self.text(str(key))
-                if key_text.lower() in _SENSITIVE_KEYS and isinstance(item, str) and item:
+                if is_sensitive_key(key_text) and isinstance(item, str) and item:
                     out[key_text] = REDACTED_JWT if JWT_PATTERN.search(item) else REDACTED_SECRET
+                elif is_sensitive_key(key_text) and isinstance(item, Mapping | list) and item:
+                    out[key_text] = REDACTED_SECRET
                 else:
                     out[key_text] = self.value(item)
             return out

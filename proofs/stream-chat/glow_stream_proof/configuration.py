@@ -89,6 +89,15 @@ APP_SETTING_KEYS = (
     "file_upload_config",
     "image_upload_config",
 )
+# Settings the proof requires as they are (the brief: the member_custom_on_*
+# settings copy member custom data into messages, typing events and mentions,
+# so they must stay off).
+REQUIRED_APP_SETTINGS: dict[str, Any] = {
+    "permission_version": "v2",
+    "member_custom_on_typing_events_enabled": False,
+    "member_custom_on_messages_enabled": False,
+    "member_custom_on_mentioned_users_enabled": False,
+}
 CHANNEL_TYPE_FEATURE_KEYS = tuple(k for k in MATCH_FEATURES if k != "commands") + (
     "message_retention",
     "push_level",
@@ -215,6 +224,10 @@ def verify(snapshot: Mapping[str, Any]) -> list[str]:
         problems.append("disable_permissions_checks is not false")
     if app.get("guest_user_creation_disabled") is not True:
         problems.append("guest_user_creation_disabled is not true")
+    for key, want in REQUIRED_APP_SETTINGS.items():
+        have = app.get(key)
+        if have != want or type(have) is not type(want):
+            problems.append(f"{key} is {have!r}, want {want!r}")
     for role in CLIENT_APP_ROLES:
         granted = app.get("grants", {}).get(role, [])
         if granted:
@@ -282,3 +295,41 @@ def restore_plan(record: Mapping[str, Any], *, delete_match_type: bool) -> list[
             ApiRequest("DELETE", f"/api/v2/chat/channeltypes/{MATCH_TYPE}", {}, "delete match type")
         )
     return plan
+
+
+def verify_restored(
+    snapshot: Mapping[str, Any], record: Mapping[str, Any], *, match_type_deleted: bool
+) -> list[str]:
+    """Differences between a re-read snapshot and what :func:`restore_plan` sets."""
+    problems: list[str] = []
+    app = _app(snapshot)
+    types = _types(snapshot)
+    want_guest = record["app_settings"]["guest_user_creation_disabled"]
+    if app.get("guest_user_creation_disabled") != want_guest:
+        problems.append(
+            f"guest_user_creation_disabled is {app.get('guest_user_creation_disabled')!r}, "
+            f"want {want_guest!r}"
+        )
+    for role, want in record["app_grants"].items():
+        have = app.get("grants", {}).get(role, [])
+        if sorted(have) != sorted(want):
+            problems.append(f".app grants for {role} are {sorted(have)}, want {sorted(want)}")
+    for name in DEFAULT_TYPES:
+        cfg = types.get(name)
+        if cfg is None:
+            problems.append(f"default type {name} missing")
+            continue
+        features = record["channel_types"][name]["features"]
+        for key in ("automod", "automod_behavior", "max_message_length"):
+            if cfg.get(key) != features.get(key):
+                problems.append(f"{name}.{key} is {cfg.get(key)!r}, want {features.get(key)!r}")
+        want_grants = record["channel_types"][name]["grants"]
+        have_grants = cfg.get("grants", {})
+        for role in sorted(set(want_grants) | set(have_grants)):
+            have = sorted(have_grants.get(role, []))
+            want = sorted(want_grants.get(role, []))
+            if have != want:
+                problems.append(f"{name} grants for {role} are {have}, want {want}")
+    if match_type_deleted and MATCH_TYPE in types:
+        problems.append(f"{MATCH_TYPE} still exists")
+    return problems

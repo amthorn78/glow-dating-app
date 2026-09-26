@@ -2,7 +2,10 @@
 
 All server HTTP traffic goes through one ``httpx.Client`` owned by the SDK
 client. A request hook reserves one API call in the usage ledger before each
-request is sent, so the guardrail stops a call before it happens. Raw requests
+request is sent, so the guardrail stops a call before it happens. A response
+hook checks every error response for a charge signal, so typed SDK calls
+(``upsert_users``, ``send_message`` and the rest) stop the run as raw requests
+do. Raw requests
 (:meth:`ServerApi.raw`) use the same SDK-authenticated client; they exist so
 that a positive control can replay exactly the method, path and body a client
 sent, and so that JSON ``null`` (which the SDK's typed methods strip) can be
@@ -71,11 +74,16 @@ class ServerApi:
         redactor: Redactor,
         *,
         base_url: str = BASE_URL,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._credentials = credentials
         self._ledger = ledger
         self._redactor = redactor
-        self._http = httpx.Client(timeout=30.0, event_hooks={"request": [self._before_request]})
+        self._http = httpx.Client(
+            timeout=30.0,
+            event_hooks={"request": [self._before_request], "response": [self._after_response]},
+            transport=transport,
+        )
         self.sdk: Any = Stream(
             api_key=credentials.api_key,
             api_secret=credentials.secret(),
@@ -85,6 +93,18 @@ class ServerApi:
 
     def _before_request(self, request: httpx.Request) -> None:
         self._ledger.reserve("api_calls", source="server")
+
+    def _after_response(self, response: httpx.Response) -> None:
+        if response.status_code < 400:
+            return
+        response.read()
+        _, code, message = _parse(response)
+        signal = charge_signal(
+            response.status_code, code, None if message is None else self._redactor.text(message)
+        )
+        if signal is not None:
+            method, path = response.request.method, response.request.url.path
+            raise GuardrailStop(f"server {method} {path}: {signal}; stopping at once")
 
     def close(self) -> None:
         self._http.close()
