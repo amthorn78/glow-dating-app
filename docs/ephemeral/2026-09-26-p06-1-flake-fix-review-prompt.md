@@ -9,6 +9,7 @@
 - **Reasoning level.** Neither reading gates anything, and Nathan picks.
   - Manager: high.
   - TypeSafe v4: high (score 2.04, P(high) 0.96), with no ultracode flag (P(single session) 0.95).
+  - **Used: high.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process).
