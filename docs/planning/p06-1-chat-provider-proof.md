@@ -295,7 +295,7 @@ Separately, Nathan may ask Stream support whether client writes to member custom
 
 ### Reasoning levels
 
-Each prompt's header gives its recommended level. The readings and outcomes are kept only in the Notion page *TypeSafe effort scorer — Glow app usage log* (DM-01 P8). Both rows for this item, P06.1-I1 and the review of I1, are there.
+Each prompt's header gives its recommended level and, from the first prompt after OD-30 (26 September), its recommended model, Opus 5.5 or Fable 5.1. The readings and outcomes are kept only in the Notion page *TypeSafe effort scorer — Glow app usage log* (DM-01 P8), one row per session of this item.
 
 ## Risks and limits
 

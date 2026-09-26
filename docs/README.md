@@ -30,7 +30,7 @@ Each kind of fact has one home. Other documents link to it rather than copy it.
 | Dev Manager consultations, verdicts and dispositions | The [review log](continuity/dev-manager/README.md) |
 | Managers' mistakes | The [mistakes log](continuity/manager-mistakes.md) |
 | The periodic status and State of the App | [A snapshot](continuity/state-of-the-app.md), refreshed only for a periodic review |
-| Reasoning-level readings | The prompt's header and the Notion usage log |
+| Model and reasoning-level readings | The prompt's header and the Notion usage log |
 | Live task state | The Notion Work Register row, which links here |
 | Notion's copy of the operational guidance and the register | Implementation Control and its register page. They match the repository, which wins on any difference; every records batch checks them |
 | History | `docs/continuity/history/` and Git |
