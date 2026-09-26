@@ -239,6 +239,17 @@ class FakeServer:
         self._count("POST", path)
         return ok("POST", path, {"file": "https://cdn.invalid/f"})
 
+    def create_guest(self, user: dict[str, Any]) -> tuple[ApiResult, str | None]:
+        """As ServerApi.create_guest; refused while guest creation is disabled."""
+        self._count("POST", "/guest", {"user": user})
+        self.calls.append(("POST", "/guest", {"user": user}))
+        if self.app.get("guest_user_creation_disabled") is True:
+            return error("POST", "/guest", 403, 17, "guest user creation is disabled"), None
+        stored = f"guest-0000-{user['id']}"
+        self.users[stored] = {"id": stored, "role": "guest", "created_at": 0}
+        token = jwt.encode({"user_id": stored, "iat": 0}, SECRET, "HS256")
+        return ok("POST", "/guest", {"user": {"id": stored, "role": "guest"}}), token
+
 
 # The run's own channel AB and user A: a server replay of a fake client record goes
 # through the guard like a live one, which refuses anything the run did not create.
@@ -418,14 +429,17 @@ class NoSettle:
             proof_run.TYPE_CHANGE_SETTLE_SECONDS,
             proof_run.TASK_POLL_INTERVAL_SECONDS,
             proof_run.RESTORE_RETRY_SECONDS,
+            proof_run.S10_RETRY_SECONDS,
         )
         proof_run.TYPE_CHANGE_SETTLE_SECONDS = 0
         proof_run.TASK_POLL_INTERVAL_SECONDS = 0
         proof_run.RESTORE_RETRY_SECONDS = 0
+        proof_run.S10_RETRY_SECONDS = 0
 
     def __exit__(self, *_exc: object) -> None:
         (
             proof_run.TYPE_CHANGE_SETTLE_SECONDS,
             proof_run.TASK_POLL_INTERVAL_SECONDS,
             proof_run.RESTORE_RETRY_SECONDS,
+            proof_run.S10_RETRY_SECONDS,
         ) = self._saved

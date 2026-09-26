@@ -152,6 +152,7 @@ class MatrixDefinitionTest(unittest.TestCase):
                 "B_name",
                 "X_name",
                 "D_name",
+                "run_start",  # P06.1-I2a: F9-sync
             )
         }
         for case in self.cases:

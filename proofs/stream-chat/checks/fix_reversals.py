@@ -332,7 +332,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             )
         ],
         [
-            "tests.test_run_simulation.SimulationTest.test_guest_reach_is_not_run_when_the_guest_connect_is_refused"
+            # Renamed in P06.1-I2a, which sets G2 up server-side; it still checks that
+            # G1's control's guest has no session because its connect is refused.
+            "tests.test_run_simulation.SimulationTest.test_guest_reach_runs_on_a_guest_created_server_side"
         ],
     ),
     (

@@ -35,13 +35,16 @@ class SimulationTest(unittest.TestCase):
         self.assertEqual(problems, [])
         self.assertEqual(results["stops"], [])
 
-    def test_guest_reach_is_not_run_when_the_guest_connect_is_refused(self) -> None:
-        """Finding 6: as in the live lockdown, setGuestUser's connect is refused.
+    def test_guest_reach_runs_on_a_guest_created_server_side(self) -> None:
+        """Finding 6, as P06.1-I2a sets G2 up.
 
-        G1's control creates the guest (POST /guest 201), but its connect gets
-        403 / 17, so there is no guest session and every G2 case is "not run".
+        As in the live lockdown, setGuestUser's connect is refused: G1's control
+        creates its guest (POST /guest 201), but its connect gets 403 / 17, so it has
+        no session. G2 creates its own guest server-side instead (with guest creation
+        enabled for that moment, journalled and disabled again) and connects it with
+        its ID only.
         """
-        run, _server = make_run()
+        run, server = make_run()
         with NoSettle():
             run.setup()
             run.authorized_path()
@@ -50,10 +53,23 @@ class SimulationTest(unittest.TestCase):
         self.assertIn("POST /guest 201", cases["G1-create"].control)
         self.assertIn("guest connect 403 / code 17", cases["G1-create"].control)
         self.assertNotIn("guest", run.sessions)
+        setup = run.g2_setup
+        assert setup is not None
+        self.assertEqual(setup["server_create"], "403 / code 17")
+        self.assertEqual(setup["with_guest_creation_enabled"]["server_create"], "201")
+        self.assertIn("verified", setup["with_guest_creation_enabled"]["restored"])
+        self.assertEqual(setup["connect"], "ok (succeeded)")
+        self.assertEqual(setup["stored_form"], "guest-<id>-{prefix}-g2")
+        guest = run.sessions["g2"]
+        connects = [p for op, p in guest.sent if op == "connect"]  # type: ignore[attr-defined]
+        self.assertEqual(connects, [{"max_calls": 3, "user": {"id": run.ctx["g2_id"]}}])
+        self.assertIn(run.ctx["g2_id"], run.users)
+        self.assertEqual(run.journal, [])
+        self.assertIs(server.app["guest_user_creation_disabled"], True)
         for suffix in ("read-ab", "channels", "users", "message"):
             case = cases[f"G2-{suffix}"]
-            self.assertEqual(case.observed, "not run: no guest session")
-            self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+            self.assertNotIn("not run", case.observed, suffix)
+            self.assertEqual(case.detail["g2_setup"]["connect"], "ok (succeeded)")
 
 
 if __name__ == "__main__":

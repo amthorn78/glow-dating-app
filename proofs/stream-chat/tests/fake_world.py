@@ -20,7 +20,7 @@ from typing import Any
 
 import jwt
 
-from glow_stream_proof import configuration, mechanisms
+from glow_stream_proof import configuration, i2a, mechanisms
 from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.proof_run import ProofRun
 from tests.fakes import SECRET, FakeServer, FakeSession, error, ok, record, ws_refused
@@ -40,13 +40,18 @@ class FakeClock:
     def sleep(self, seconds: float) -> None:
         self.now += max(0.0, seconds)
 
+    # The modules whose waits the clock takes over.
+    MODULES = (mechanisms, i2a)
+
     def __enter__(self) -> FakeClock:
-        self._saved = getattr(mechanisms, "time")  # noqa: B009
-        setattr(mechanisms, "time", self)  # noqa: B010
+        self._saved = [getattr(m, "time") for m in self.MODULES]  # noqa: B009
+        for module in self.MODULES:
+            setattr(module, "time", self)  # noqa: B010
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        setattr(mechanisms, "time", self._saved)  # noqa: B010
+        for module, saved in zip(self.MODULES, self._saved, strict=True):
+            setattr(module, "time", saved)  # noqa: B010
 
 
 def token_for(user_id: str, now: float, ttl: int = 900) -> str:

@@ -1259,6 +1259,257 @@ def _revocation() -> list[Case]:
     ]
 
 
+def _i2a() -> list[Case]:
+    """P06.1-I2a's other cases (glow_stream_proof.i2a): the existence oracle, the
+    endpoints the I1 matrix never tried (the I1 review's finding 9), the S15 mapping,
+    token expiry and the outage injection."""
+    ab = (T, "{AB}")
+    xd = (T, "{XD}")
+    ab_path = "/channels/" + T + "/{AB}"
+    xd_terms = ("{xd_text}", "{m_x}", "{X}", "{D}", "{XD}")
+    a_token = "A's valid token"
+    cases = [
+        Case(
+            id=f"EO-{kind}",
+            group="existence-oracle",
+            actor="A",
+            token=a_token,
+            action=action,
+            expect="no-oracle",
+            control=Control(kind="custom", note="the existing ID exists (an entitled read)"),
+            procedure=f"oracle:{kind}",
+            phase=21,
+            calls=40,
+        )
+        for kind, action in (
+            ("channel", "read, watch and GET XD against a channel that does not exist"),
+            ("user", "query X, and add X to AB, against a user that does not exist"),
+            ("message", "fetch XD's message against a message that does not exist"),
+        )
+    ]
+    reads = (
+        ("F9-replies", "get the replies to XD's message", "channel", "getReplies", ["{m_x}"]),
+        ("F9-reactions", "get the reactions to XD's message", "channel", "getReactions", ["{m_x}"]),
+        ("F9-by-id", "get XD's message by ID in XD", "channel", "getMessagesById", [["{m_x}"]]),
+        (
+            "F9-query-reactions",
+            "query the reactions to XD's message",
+            "client",
+            "queryReactions",
+            ["{m_x}", {}],
+        ),
+        (
+            "F9-thread",
+            "get the thread of XD's message (the SDK watches it)",
+            "client",
+            "getThread",
+            ["{m_x}"],
+        ),
+    )
+    for case_id, action, target, method, args in reads:
+        cases.append(
+            Case(
+                id=case_id,
+                group="finding-9",
+                actor="A",
+                token=a_token,
+                action=action,
+                expect="refused",
+                step=_call("A", target, method, args, channel=xd if target == "channel" else None),
+                control=Control(kind="session", session="X"),
+                leak_terms=xd_terms,
+                phase=22,
+            )
+        )
+    cases += [
+        Case(
+            id="F9-history",
+            group="finding-9",
+            actor="A",
+            token=a_token,
+            action="query the edit history of XD's message (a server-side API)",
+            expect="refused",
+            step=_call("A", "client", "queryMessageHistory", [{"message_id": "{m_x}"}]),
+            control=_replay(),
+            leak_terms=xd_terms,
+            phase=22,
+        ),
+        Case(
+            id="F9-sync",
+            group="finding-9",
+            actor="A",
+            token=a_token,
+            action="sync XD's events since the run started",
+            expect="no-leak",
+            step=_call("A", "client", "sync", [["{XD_cid}"], "{run_start}"]),
+            control=Control(kind="session", session="X", expect_terms=("{xd_text}",)),
+            leak_terms=xd_terms,
+            phase=22,
+        ),
+        Case(
+            id="F9-ai",
+            group="finding-9",
+            actor="A",
+            token=a_token,
+            action="send an AI state event with free text to AB (updateAIState)",
+            expect="refused",
+            step=_call(
+                "A",
+                "channel",
+                "updateAIState",
+                ["{m_b}", "AI_STATE_THINKING", {"ai_message": "ai free text {prefix}"}],
+                channel=ab,
+            ),
+            control=_replay(body_patch={"event": {"user_id": "{A}"}}),
+            phase=31,
+            type_override={"custom_events": True},
+        ),
+        Case(
+            id="F9-member-other",
+            group="finding-9",
+            actor="A",
+            token=a_token,
+            action="set a custom field on B's membership in AB (partialUpdateMember)",
+            expect="refused",
+            step=_call(
+                "A",
+                "channel",
+                "partialUpdateMember",
+                ["{B}", {"set": {"glow_note": "written by A {prefix}"}}],
+                channel=ab,
+            ),
+            control=_replay(
+                undo=(ServerRequest("PATCH", ab_path + "/member/{B}", {"unset": ["glow_note"]}),)
+            ),
+            phase=31,
+        ),
+        Case(
+            id="S15-map",
+            group="content",
+            actor="A",
+            token=a_token,
+            action="map the member fields A can set on its own membership, what B receives, "
+            "and the server's overwrite and clear",
+            expect="mapping",
+            control=Control(kind="custom", note="the server's replay of each refused write"),
+            procedure="s15-map",
+            phase=32,
+            calls=110,
+        ),
+    ]
+    for flag, name in (("pinned", "pin"), ("archived", "archive")):
+        cases.append(
+            Case(
+                id=f"F9-{name}",
+                group="finding-9",
+                actor="A",
+                token=a_token,
+                action=f"{name} AB for itself (can B read it?)",
+                expect="no-leak",
+                control=Control(kind="custom", note="the server's member read"),
+                procedure=f"own-member-flag:{flag}",
+                leak_terms=(f"{flag}_at",),
+                phase=33,
+                calls=40,
+            )
+        )
+    for kind in ("accept", "reject"):
+        cases.append(
+            Case(
+                id=f"F9-invite-{kind}",
+                group="finding-9",
+                actor="B",
+                token="B's valid token",
+                action=f"{kind} an invite to a channel of A's, with a message",
+                expect="refused",
+                control=Control(kind="custom", note="the server's replay of the same request"),
+                procedure=f"invite:{kind}",
+                phase=34,
+                calls=40,
+            )
+        )
+    cases += [
+        Case(
+            id="TD-expiry",
+            group="tokens-devices",
+            actor="A",
+            token="a second token of A's, valid for 25 s",
+            action="read AB, keep a connection and reconnect after the token expires, "
+            "with A's first device alongside",
+            expect="refused",
+            control=Control(kind="custom", note="the same requests before expiry"),
+            procedure="token-expiry",
+            phase=60,
+            calls=40,
+        ),
+        Case(
+            id="OUT-send",
+            group="outage",
+            actor="app",
+            token="server",
+            action="the app send path with the provider unreachable (a connection error "
+            "injected inside the process)",
+            expect="refuses-without-state",
+            control=Control(kind="custom", note="the same send with the provider reachable"),
+            procedure="outage",
+            phase=61,
+            calls=20,
+        ),
+    ]
+    for case_id, method, shadow in (
+        ("F9-ban", "banUser", False),
+        ("F9-shadowban", "shadowBan", True),
+    ):
+        undo_params = {"target_user_id": "{B}", "type": T, "id": "{AB}"}
+        if shadow:
+            undo_params["shadow"] = "true"
+        cases.append(
+            Case(
+                id=case_id,
+                group="finding-9",
+                actor="A",
+                token=a_token,
+                action=("shadow-ban" if shadow else "ban") + " B in AB, with a reason",
+                expect="refused",
+                step=_call(
+                    "A",
+                    "channel",
+                    method,
+                    ["{B}", {"reason": "ban free text {prefix}"}],
+                    channel=ab,
+                ),
+                control=_replay(
+                    body_patch={"banned_by_id": "{A}"},
+                    undo=(ServerRequest("DELETE", "/moderation/ban", None, undo_params),),
+                ),
+                phase=64,
+            )
+        )
+    cases.append(
+        Case(
+            id="F9-leave",
+            group="finding-9",
+            actor="A",
+            token=a_token,
+            action="leave AB with a message",
+            expect="refused",
+            step=_call(
+                "A",
+                "channel",
+                "removeMembers",
+                [["{A}"], {"text": "leave free text {prefix}"}],
+                channel=ab,
+            ),
+            control=_replay(
+                body_patch={"message": {"user_id": "{A}"}},
+                undo=(ServerRequest("POST", ab_path, {"add_members": ["{A}"]}),),
+            ),
+            phase=65,
+        )
+    )
+    return cases
+
+
 def all_cases() -> list[Case]:
     cases = (
         _tokens_and_access()
@@ -1267,6 +1518,7 @@ def all_cases() -> list[Case]:
         + _content()
         + _escalation()
         + _create_join()
+        + _i2a()
         + _revocation()
     )
     return sorted(cases, key=lambda c: c.phase)

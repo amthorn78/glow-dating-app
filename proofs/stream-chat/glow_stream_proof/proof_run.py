@@ -35,7 +35,7 @@ import httpx
 from getstream.exceptions import StreamTransportException
 from getstream.models import ChannelInput, ChannelMemberRequest, MessageRequest, UserRequest
 
-from . import baseline, configuration, guard, matrix, mechanisms
+from . import baseline, configuration, guard, i2a, matrix, mechanisms
 from .app_send import AppSendService, ProviderUnavailable
 from .client_bridge import ClientSession, ClientSessionEnded, Reply, client_environment
 from .configuration import MATCH_MEMBER_GRANTS, MATCH_TYPE
@@ -65,6 +65,10 @@ CLEANUP_RESERVE = 130
 CASE_CALL_MARGIN = 30
 EVENT_WAIT_MS = 2500
 TYPE_CHANGE_SETTLE_SECONDS = 3
+# S10 (P06.1-I2a, the I1 review's finding 6): the poll message is sent again while
+# Stream answers that polls are not enabled for the channel, up to this many times.
+S10_ATTEMPTS = 10
+S10_RETRY_SECONDS = 3
 DESTRUCTIVE_PHASE = 70
 # From this phase the cases are P06.1-I2a's revocation, suspension and deletion
 # families, on their own users and channels: the I1 sessions are closed first, so
@@ -290,6 +294,7 @@ _TABLE_NAMES = frozenset(
     | {"M1", "M2", "R", "S", "H", "M1_name", "M2_name", "R_name", "S_name", "H_name"}
     # (written out: mechanisms imports this module; tests/test_mechanisms.py checks it)
     | {"CH_remove", "CH_ban", "CH_hide", "CH_freeze", "CH_revoke", "CH_deactivate", "CH_delete"}
+    | {"CH_s10", "CH_in_accept", "CH_in_reject", "g2_id"}
 )
 
 
@@ -370,6 +375,8 @@ class ProofRun:
         # cleanup deletes: the guard's record of what the run owns (P06.1-I2a).
         self.messages: set[str] = set()
         self.artifacts: list[str] = []
+        # How G2's server-created guest was set up (P06.1-I2a); None until it is tried.
+        self.g2_setup: dict[str, Any] | None = None
         # Every server request passes the guard before it is sent (DM-04 finding 1).
         self.api.guard = self._guard_refusal
 
@@ -875,6 +882,9 @@ class ProofRun:
         self.ctx["m_a_text"] = f"authorized message from A {self.prefix}"
         self.ctx["m_b_text"] = f"authorized message from B {self.prefix}"
         self.ctx["xd_text"] = f"xdmarker{self.prefix.replace('-', '')}"
+        # F9-sync asks for XD's events since the run started (P06.1-I2a).
+        started = datetime.fromtimestamp(self.started_ns / 1e9, UTC)
+        self.ctx["run_start"] = started.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
         self.ledger.reserve("users", 4)
         users = [
@@ -1614,8 +1624,32 @@ class ProofRun:
             "realtime-isolation": self._proc_realtime_isolation,
             # P06.1-I2a
             "mechanism": self._proc_mechanism,
+            "oracle": self._proc_i2a_oracle,
+            "s15-map": self._proc_i2a_s15_map,
+            "own-member-flag": self._proc_i2a_own_member_flag,
+            "invite": self._proc_i2a_invite,
+            "token-expiry": self._proc_i2a_token_expiry,
+            "outage": self._proc_i2a_outage,
         }[name]
         return handler(case, arg)
+
+    def _proc_i2a_oracle(self, case: matrix.Case, kind: str) -> CaseResult:
+        return i2a.oracle(self, case, kind)
+
+    def _proc_i2a_s15_map(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.s15_map(self, case, arg)
+
+    def _proc_i2a_own_member_flag(self, case: matrix.Case, flag: str) -> CaseResult:
+        return i2a.own_member_flag(self, case, flag)
+
+    def _proc_i2a_invite(self, case: matrix.Case, kind: str) -> CaseResult:
+        return i2a.invite(self, case, kind)
+
+    def _proc_i2a_token_expiry(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.token_expiry(self, case, arg)
+
+    def _proc_i2a_outage(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.outage(self, case, arg)
 
     def _proc_mechanism(self, case: matrix.Case, key: str) -> CaseResult:
         """A revocation, suspension or deletion mechanism (P06.1-I2a)."""
@@ -2013,16 +2047,26 @@ class ProofRun:
         return {"target": "client", "method": "getMessage", "args": [self.ctx["m_x"]]}, "X"
 
     def _proc_guest_role(self, case: matrix.Case, suffix: str) -> CaseResult:
-        session = self.sessions.get("guest")
+        """G2 (P06.1-I2a, the I1 review's finding 6): the guest is created server-side
+        and connects with its ID only, because the lockdown refuses the connect that
+        setGuestUser makes; G1's control's guest is not used."""
+        if "g2" not in self.sessions and self.g2_setup is None:
+            _session, self.g2_setup = i2a.g2_session(self)
+        session = self.sessions.get("g2")
         if session is None:
             return self._result(
                 case,
                 "-",
                 "not run: no guest session",
                 "-",
-                matrix.Verdict(matrix.INCONCLUSIVE, "the guest control did not create a guest"),
+                matrix.Verdict(
+                    matrix.INCONCLUSIVE, "the server-created guest was not created or connected"
+                ),
+                {"g2_setup": self.g2_setup},
             )
-        return self._probe_case(case, session, suffix)
+        result = self._probe_case(case, session, suffix)
+        result.detail["g2_setup"] = self.redactor.value(self.g2_setup)
+        return result
 
     def _proc_anonymous(self, case: matrix.Case, suffix: str) -> CaseResult:
         session = self.sessions.get("anonymous")
@@ -2184,9 +2228,15 @@ class ProofRun:
         )
 
     def _poll_vote_phase(self, case: matrix.Case, state: dict[str, Any]) -> None:
-        """With polls on: B's poll message, A's vote and the server's identical vote."""
+        """With polls on: B's poll message, A's vote and the server's identical vote.
+
+        P06.1-I2a (the I1 review's finding 6): the poll message goes to a channel of its
+        own, S10, created while polls are on, and is sent again while Stream answers
+        that polls are not enabled for it (the type's change did not reach AB in I1).
+        """
         on = self._type_features_on({"polls": True})
         state["on"] = on
+        channel = self._s10_channel()
         poll = self.api.raw(
             "POST",
             "/polls",
@@ -2201,15 +2251,11 @@ class ProofRun:
         )
         if poll.ok and poll_id:
             self.polls.append((str(poll_id), self.ctx["B"]))
-        msg = self.api.raw(
-            "POST",
-            f"/channels/{T}/{self.ctx['AB']}/message",
-            body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
-        )
+        msg, attempts = self._poll_message(channel, poll_id)
         message_id = _dig(msg.body, "message.id")
         state["setup_note"] = (
-            f"polls on ({on.status}); poll {poll.status}; poll message {msg.status} / "
-            f"code {msg.code} ({msg.message})"
+            f"polls on ({on.status}); channel {{CH_s10}}; poll {poll.status}; poll message "
+            f"{msg.status} / code {msg.code} ({msg.message}) after {attempts} attempt(s)"
         )
         if not (poll.ok and msg.ok and message_id):
             return
@@ -2239,6 +2285,41 @@ class ProofRun:
             result = self.api.raw("POST", path, body=body)
             state["control_ok"] = result.ok
             state["control_desc"] = f"server replay POST -> {result.status}"
+
+    def _s10_channel(self) -> str:
+        """S10's own channel, with A and B, created while polls are on (P06.1-I2a)."""
+        channel = f"{self.prefix}-ch-s10"
+        self.ctx["CH_s10"] = channel
+        self.ledger.reserve("channels")
+        self.channels.append(f"{T}:{channel}")
+        self.api.sdk.chat.get_or_create_channel(
+            type=T,
+            id=channel,
+            data=ChannelInput(
+                created_by_id=self.ctx["B"],
+                members=[
+                    ChannelMemberRequest(user_id=self.ctx["A"]),
+                    ChannelMemberRequest(user_id=self.ctx["B"]),
+                ],
+            ),
+        )
+        return channel
+
+    def _poll_message(self, channel: str, poll_id: Any) -> tuple[ApiResult, int]:
+        """B's poll message, sent again while Stream answers that polls are not enabled
+        for the channel (P06.1-I2a); the last answer and the number of attempts."""
+        attempt = 0
+        while True:
+            attempt += 1
+            msg = self.api.raw(
+                "POST",
+                f"/channels/{T}/{channel}/message",
+                body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
+            )
+            not_yet = msg.status == 403 and "polls not enabled" in (msg.message or "").lower()
+            if msg.ok or not not_yet or attempt >= S10_ATTEMPTS:
+                return msg, attempt
+            time.sleep(S10_RETRY_SECONDS)
 
     def _b_member_views(self, marker: str) -> dict[str, Any]:
         """Whether B can read ``marker`` from A's membership, by each read B has.

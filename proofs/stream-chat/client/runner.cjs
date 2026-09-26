@@ -264,6 +264,12 @@ async function handle(cmd) {
       await fn.apply(target, argsFor(cmd.args));
       return {};
     }
+    case 'get': {
+      // A GET relative to the client's base URL, as a modified client can send one
+      // (P06.1-I2a: the existence oracle's Get Channel). GET only.
+      await client.get(BASE + cmd.path, cmd.params || {});
+      return {};
+    }
     case 'events': {
       await new Promise((r) => setTimeout(r, cmd.wait_ms || 0));
       const out = events.splice(0, events.length);
