@@ -1883,3 +1883,42 @@ In addition to C1's and C2's lists above:
   - the usage ledger is written through a `.partial` file;
   - the early-write failure note is redacted.
 - **Not exercised live:** every fix above, including RT3's control against Stream's real `markRead` answers and a signal met at the end of the run.
+
+### Manager verification of C3 (App Manager 3, 26 September 2026)
+
+App Manager 3 checked the relayed report against the pushed branch. The manager makes no call to Stream, so nothing here was exercised live; the first live use is in I2a.
+
+- **Identity:**
+  - branch `claude/friendly-hypatia-ug6r52`, head `b40acd7f8c4198f8205040ca1bc3119addc6093a`, tree `d4391cb9fbddfb80094f464c093bb498643de147`; code head `a5e2221`;
+  - it builds on the start `e5180ab` in two commits: 19 files, +2,723 and −175. The second commit changes only this record;
+  - every path is owned, and all 52 files under `proofs/stream-chat/` have mode 100644. No dependency file, `.npmrc`, `pyproject.toml` or the committed baseline changed, and `git diff --check` is clean;
+  - the six sections the C3 prompt protects are byte-identical to the start. The five in-place "(corrected in P06.1-C3)" markers are all in C2's own section.
+- **Classification:** the trusted policy from `main` (`0f45e64`), run outside the tree with `python3 -I`, gave full scope (`behavior-or-empty`) for 19 paths, with one merge base.
+- **Offline re-run,** in a scratch worktree at `b40acd7`, in clean processes without any `STREAM_*` variable. Installs got the proxy and CA variables by reference.
+  - `pip install --require-hashes -r requirements-dev.lock`, then `pip check`: "No broken requirements found." `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1.
+  - `npm ci --ignore-scripts`: "found 0 vulnerabilities"; `stream-chat` 9.53.0.
+  - Unit tests: `Ran 252 tests`, `OK`. Ruff check: "All checks passed!". Ruff format: "40 files already formatted". mypy: "Success: no issues found in 39 source files". `node --check` on both `.cjs` files: exit 0.
+  - `checks/fix_reversals.py`: "reversals: 147, not demonstrated: 0", exit 0, in 13 minutes. The manager also read each reversal's failure reason, as AM3-18 requires: every failing test failed on an assertion or on the error its reverted fix causes, three reversals aborted through a Ctrl-C by design, and none failed through a syntax or import error. The checkout was unchanged afterwards.
+- **Secret scan** of the whole diff (259,623 bytes): no JWT-shaped string, email address, private-key block, AWS-style or GitHub key, TLS-weakening setting, environment dump, secret assignment or the application's API key.
+- **Code read,** at `b40acd7`. Each matches the report:
+  - the signal record: `UsageLedger.stop_at_once` (`usage.py` around line 94) and its four raise sites in `server_api.py` and `client_bridge.py`; `stop_signals` (`proof_run.py` around line 369);
+  - the matrix loop's stop after a recorded signal (around line 1117), `finish()`'s cleanup decision (around line 3028) and `cmd_run`'s use of the record (`cli.py` around line 178);
+  - finding 1 (around line 1257), and the production phase's undo on any 2xx (around line 1253);
+  - RT2 and RT3 (around lines 2615 to 2710): the kept row before the control, the control of the same request, its events kept apart, and the verdicts.
+- **Integration:** merged into the manager branch as `8c1a8c08d77052a86cfc70fc38cb830eb641438a`, pushed alone at 16:15 UTC. Against its first parent, the merge brings exactly C3's 19 files; against C3's head it differs only in the manager's three records of `8881339`.
+- **Hosted CI on `8c1a8c0`:** push run [36254790538](https://github.com/amthorn78/glow-dating-app/actions/runs/36254790538) and PR run [36254793755](https://github.com/amthorn78/glow-dating-app/actions/runs/36254793755) passed all six jobs, and the push run's gate says `Application checks passed`. The rendered suite passed 84 of 84 on the pinned Chromium in 3.8 minutes. No Foundation job runs the harness's own tests yet (I2b adds one); the offline re-run above covers them.
+
+#### The decisions C3 left to the manager
+
+All three are accepted:
+
+- **RT3's control is sent only after an `auth` or `permission` refusal.** It costs one client request and one wait, and it is needed only when a refusal must be shown to be attributable.
+- **A charge or limit signal is recorded where its stop is raised,** in the ledger the server client and every client session share, not only where stops are caught. That is stronger than the review asked, and it closes the Ctrl-C path C3's own review found.
+- **E5 and S14 also stop the run when Stream's listing does not include A.** A was created by the run, so its absence means the run cannot know A's role or profile. Stopping is the conservative choice.
+
+C3's limits stand as recorded. Its note that five older tests raise charge-like stops without the new flag goes to the review.
+
+#### Disposition
+
+- **C3 is verified and integrated.** "What P06.1-I2a must know" in C1's, C2's and C3's sections feeds I2a's prompt.
+- **C3's exact-head review is next,** offline and scoped to C3's change, under the bound recorded in the disposition of the C2 review. I2a comes after it.
