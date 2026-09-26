@@ -8,8 +8,9 @@ import jwt
 import tests  # noqa: F401
 from glow_stream_proof import matrix
 from glow_stream_proof.client_bridge import Reply
-from glow_stream_proof.proof_run import CaseResult, ProofRun
+from glow_stream_proof.proof_run import CaseResult, ProofRun, RunStopped
 from glow_stream_proof.server_api import ApiResult
+from glow_stream_proof.usage import GuardrailStop
 from tests.fakes import FakeSession, NoSettle, http_reply, make_run, record, set_up
 
 
@@ -197,10 +198,15 @@ class UnreadControlsTest(unittest.TestCase):
 
 
 class StoredUserUnreadableTest(unittest.TestCase):
-    """P06.1-C2, the C1 review's nit 7: an unreadable stored user is not a result."""
+    """P06.1-C2, the C1 review's nit 7: an unreadable stored user is not a result.
 
-    @staticmethod
-    def run_with_unreadable_first_read(cases: set[str], behaviours: dict[str, Any]) -> ProofRun:
+    Since P06.1-C3 (the C2 review's nit 8) the run also stops once the case's row is
+    recorded, because A's stored state is unknown.
+    """
+
+    def run_with_unreadable_first_read(
+        self, cases: set[str], behaviours: dict[str, Any]
+    ) -> ProofRun:
         run, server = make_run(behaviours=behaviours)
         reads: list[int] = []
 
@@ -222,7 +228,8 @@ class StoredUserUnreadableTest(unittest.TestCase):
         with NoSettle():
             set_up(run)
             server.handlers.append(listing)
-            run.run_matrix(cases)
+            with self.assertRaises(RunStopped):
+                run.run_matrix(cases)
         return run
 
     def test_e5_is_inconclusive_when_as_stored_user_cannot_be_read(self) -> None:
@@ -232,6 +239,9 @@ class StoredUserUnreadableTest(unittest.TestCase):
         self.assertEqual(case.reason, "A's stored user could not be read")
         self.assertFalse(case.detail["stored_user_read"])
         self.assertFalse(any("E5" in n for n in run.notes))  # no role "restored"
+        self.assertIn(
+            "E5: A's stored user could not be read: Stream's listing does not include A", run.stops
+        )
 
     def test_s14_is_inconclusive_when_as_stored_user_cannot_be_read(self) -> None:
         run = self.run_with_unreadable_first_read({"S14"}, {})
@@ -255,6 +265,79 @@ class StoredUserUnreadableTest(unittest.TestCase):
         server.handlers.append(everyone)
         self.assertIsNone(run._server_user("p061i1-simulated-ua"))
         self.assertEqual(run._server_user("someone-else"), {"id": "someone-else", "role": "admin"})
+
+
+class StoredUserReadFailureTest(unittest.TestCase):
+    """P06.1-C3, the C2 review's nit 8: a read of A's stored user that Stream does not
+    answer with 2xx makes E5 or S14 INCONCLUSIVE, and the run stops after its row."""
+
+    @staticmethod
+    def failing_read(
+        method: str, path: str, body: Any, params: dict[str, str] | None
+    ) -> ApiResult | None:
+        if (
+            method == "GET"
+            and path == "/api/v2/users"
+            and '"$eq"' in (params or {}).get("payload", "")
+        ):
+            # What ServerApi.require raises when Stream does not answer with 2xx.
+            raise RuntimeError("server GET /api/v2/users failed: HTTP 500 code -1: internal")
+        return None
+
+    def run_until_stopped(self, cases: set[str]) -> ProofRun:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(self.failing_read)
+            with self.assertRaises(RunStopped):
+                run.run_matrix(cases)
+        return run
+
+    def test_e5(self) -> None:
+        run = self.run_until_stopped({"E1", "E5", "C1"})
+        self.assertEqual([c.case_id for c in run.case_results], ["E1", "E5"])  # C1 never ran
+        case = case_of(run, "E5")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "A's stored user could not be read")
+        self.assertTrue(
+            any(
+                s.startswith("E5: A's stored user could not be read: RuntimeError")
+                for s in run.stops
+            )
+        )
+
+    def test_s14(self) -> None:
+        run = self.run_until_stopped({"S14", "S15"})
+        self.assertEqual([c.case_id for c in run.case_results], ["S14"])  # S15 never ran
+        case = case_of(run, "S14")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "A's stored user could not be read")
+        restore_status = case.detail["restore_status"]
+        self.assertTrue(200 <= restore_status < 300, restore_status)  # A's profile restored
+
+    def test_a_guardrail_stop_on_the_read_is_the_runs_stop(self) -> None:
+        # A charge signal on the read is not a failed read: it stops the run at once,
+        # recorded where it was met (raised as the server client raises it), so
+        # nothing of the run's is deleted.
+        def charge_on_read(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            payload = (params or {}).get("payload", "")
+            if method == "GET" and path == "/api/v2/users" and '"$eq"' in payload:
+                raise run.ledger.stop_at_once(
+                    "server GET /api/v2/users: HTTP 402; stopping at once", rate_limited=False
+                )
+            return None
+
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(charge_on_read)
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"E1", "E5", "C1"})
+        self.assertEqual([c.case_id for c in run.case_results], ["E1", "E5"])
+        self.assertFalse(any("could not be read" in s for s in run.stops))
+        self.assertEqual(run.stop_signals, ["server GET /api/v2/users: HTTP 402; stopping at once"])
 
 
 if __name__ == "__main__":

@@ -832,7 +832,13 @@ def _content() -> list[Case]:
             token="A's valid token",
             action="typing event carrying a free-text field (what B receives)",
             expect="carries-no-free-text",
-            control=Control(kind="custom", note="B connected and watching AB"),
+            # No positive control: no member may send a typing event while typing
+            # events are off, so an authentication or permission refusal is
+            # INCONCLUSIVE (P06.1-C3).
+            control=Control(
+                kind="custom",
+                note="B connected and watching AB; no member may send the same event",
+            ),
             procedure="typing-payload",
             phase=25,
         ),
@@ -843,7 +849,13 @@ def _content() -> list[Case]:
             token="A's valid token",
             action="read event carrying a free-text field (what B receives)",
             expect="carries-no-free-text",
-            control=Control(kind="custom", note="B connected and watching AB"),
+            # The positive control of a refusal: B's own markRead with the same body
+            # (P06.1-C3).
+            control=Control(
+                kind="custom",
+                session="B",
+                note="B connected and watching AB; B's own markRead with the same body",
+            ),
             procedure="read-payload",
             phase=25,
         ),

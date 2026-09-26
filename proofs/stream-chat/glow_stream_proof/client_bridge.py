@@ -254,14 +254,14 @@ class ClientSession:
                 stream_code = code if isinstance(code, int) else None
                 signal = charge_signal(status, stream_code, message)
                 if signal is not None:
-                    raise GuardrailStop(
+                    raise self._ledger.stop_at_once(
                         f"client {self.label}: {signal}; stopping at once",
                         rate_limited=is_rate_limit(status, stream_code),
                     )
         if reply.error is not None:
             signal = charge_signal(reply.status, reply.code, reply.message)
             if signal is not None and reply.error.get("kind") != "budget":
-                raise GuardrailStop(
+                raise self._ledger.stop_at_once(
                     f"client {self.label}: {signal}; stopping at once",
                     rate_limited=is_rate_limit(reply.status, reply.code),
                 )

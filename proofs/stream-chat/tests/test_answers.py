@@ -4,6 +4,7 @@ An SDK error that looks like a refusal, a local throw, or a call that returned
 without sending a request is never a HOLDS.
 """
 
+import dataclasses
 import unittest
 from typing import Any
 
@@ -17,7 +18,9 @@ from glow_stream_proof.proof_run import (
     _http_answer,
     _ws_answer,
 )
+from glow_stream_proof.server_api import ApiResult
 from tests.fakes import (
+    Behaviour,
     FakeSession,
     NoSettle,
     http_reply,
@@ -177,7 +180,9 @@ class RequestUnderTestInCasesTest(unittest.TestCase):
         self.assertEqual(case_of(run, "RT3").verdict, matrix.INCONCLUSIVE)
         self.assertEqual(case_of(run, "RT3").reason, matrix.NO_RESPONSE_REASON)
 
-    def test_rt2_refused_by_stream_with_nothing_delivered_holds(self) -> None:
+    def test_rt2_feature_refusal_is_refused_feature_not_holds(self) -> None:
+        # I1's recorded RT2 (400 code 18, nothing delivered) was HOLDS; since P06.1-C3
+        # the same observation is "REFUSED (feature off; not a permission error)".
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "sendEvent":
                 return http_reply(400, 18)
@@ -185,8 +190,8 @@ class RequestUnderTestInCasesTest(unittest.TestCase):
 
         run = self.run_cases({"RT2"}, {"A": a})
         case = case_of(run, "RT2")
-        self.assertEqual(case.verdict, matrix.HOLDS)
-        self.assertIn("refused (feature)", case.reason)
+        self.assertEqual(case.verdict, matrix.REFUSED_FEATURE)
+        self.assertIn("400 feature error (code 18)", case.reason)
 
 
 class AnonymousConnectWithoutAnswerTest(unittest.TestCase):
@@ -208,22 +213,57 @@ class AnonymousConnectWithoutAnswerTest(unittest.TestCase):
         self.assertIn("the anonymous connect did not answer", second.observed)
 
 
-class PayloadRefusalAttributionTest(unittest.TestCase):
-    """P06.1-C2, finding 3: RT2 and RT3 HOLD on a refusal only when it is attributable."""
+def at_the_sdk_path(reply: Reply, params: dict[str, Any]) -> Reply:
+    """``reply`` with its recorded requests at the path stream-chat 9.53.0 sends RT2's
+    ``sendEvent`` or RT3's ``markRead`` to."""
+    suffix = "read" if params["method"] == "markRead" else "event"
+    path = f"/channels/{params['type']}/{params['id']}/{suffix}"
+    return dataclasses.replace(reply, requests=[{**r, "path": path} for r in reply.requests])
 
-    def payload_case(self, case_id: str, reply: Reply) -> CaseResult:
+
+def b_reads(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+    """B's own markRead, RT3's control, succeeds."""
+    if op == "call" and params.get("method") == "markRead":
+        succeeded = Reply(True, {}, None, [record(201, {"event": {}})], api_calls=1)
+        return at_the_sdk_path(succeeded, params)
+    return None
+
+
+class PayloadRefusalAttributionTest(unittest.TestCase):
+    """RT2 and RT3 count a refusal only as the matrix quality rule allows.
+
+    P06.1-C2, finding 3: an input, not-found or other refusal is INCONCLUSIVE.
+    P06.1-C3, the manager's decision on C2: a feature refusal is REFUSED (feature
+    off), not HOLDS, and an authentication or permission refusal HOLDS only when
+    the same request by a member allowed to make it succeeded: B's own markRead
+    for RT3; RT2 has no such control while typing events are off.
+    """
+
+    def payload_run(self, case_id: str, reply: Reply, b: Behaviour | None = None) -> ProofRun:
         method = "sendEvent" if case_id == "RT2" else "markRead"
 
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == method:
-                return reply
+                return at_the_sdk_path(reply, params)
             return None
 
         run, _server = make_run(behaviours={"A": a})
         with NoSettle():
             set_up(run)
+            session = run.sessions["B"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = b
             run.run_matrix({case_id})
-        return case_of(run, case_id)
+        return run
+
+    def payload_case(self, case_id: str, reply: Reply) -> CaseResult:
+        return case_of(self.payload_run(case_id, reply), case_id)
+
+    @staticmethod
+    def sent(run: ProofRun, label: str, method: str) -> list[dict[str, Any]]:
+        session = run.sessions[label]
+        assert isinstance(session, FakeSession)
+        return [p for op, p in session.sent if op == "call" and p.get("method") == method]
 
     def test_input_not_found_and_other_refusals_are_inconclusive(self) -> None:
         for case_id in ("RT2", "RT3"):
@@ -236,16 +276,89 @@ class PayloadRefusalAttributionTest(unittest.TestCase):
                 self.assertEqual(case.verdict, matrix.INCONCLUSIVE, (case_id, status))
                 self.assertEqual(case.reason, f"refusal not attributable ({outcome})")
 
-    def test_attributable_refusals_hold(self) -> None:
+    def test_feature_refusals_are_refused_feature_not_holds(self) -> None:
         for case_id in ("RT2", "RT3"):
-            for status, code, outcome in (
-                (403, 17, "permission"),
-                (401, 5, "auth"),
-                (400, 18, "feature"),
-            ):
-                case = self.payload_case(case_id, http_reply(status, code))
-                self.assertEqual(case.verdict, matrix.HOLDS, (case_id, status))
-                self.assertIn(f"refused ({outcome})", case.reason)
+            for code in (18, 19):
+                case = self.payload_case(case_id, http_reply(400, code))
+                self.assertEqual(case.verdict, matrix.REFUSED_FEATURE, (case_id, code))
+                self.assertIn(f"400 feature error (code {code})", case.reason)
+
+    def test_rt2_auth_or_permission_refusal_has_no_positive_control(self) -> None:
+        for status, code, outcome in ((403, 17, "permission"), (401, 5, "auth")):
+            run = self.payload_run("RT2", http_reply(status, code))
+            case = case_of(run, "RT2")
+            self.assertEqual(case.verdict, matrix.INCONCLUSIVE, status)
+            self.assertIn(f"{outcome} error, but no positive control", case.reason)
+            self.assertTrue(case.control.endswith("; no positive control"), case.control)
+            self.assertEqual(self.sent(run, "B", "sendEvent"), [])  # no member can send it
+
+    def test_rt3_auth_or_permission_refusal_holds_with_bs_own_request(self) -> None:
+        for status, code, outcome in ((403, 17, "permission"), (401, 5, "auth")):
+            run = self.payload_run("RT3", http_reply(status, code), b_reads)
+            case = case_of(run, "RT3")
+            self.assertEqual(case.verdict, matrix.HOLDS, (status, case.reason))
+            self.assertIn(f"{outcome} error; the same request by B succeeded", case.reason)
+            self.assertIn("B's own identical request: 201 (succeeded)", case.control)
+            # The control is the same request, with the same body, made by B.
+            self.assertEqual(self.sent(run, "B", "markRead"), self.sent(run, "A", "markRead"))
+
+    def test_rt3_refusal_without_a_successful_control_is_inconclusive(self) -> None:
+        # B's own markRead is refused as well (the fakes refuse B's calls).
+        case = self.payload_case("RT3", http_reply(403, 17))
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "permission error, but the positive control did not succeed")
+        self.assertIn("B's own identical request: 403 / code 17", case.control)
+
+    def test_rt3_control_that_was_another_request_is_inconclusive(self) -> None:
+        # The independent review of P06.1-C3: the control counts only if it was the same
+        # request, by method and path, not merely the same SDK call.
+        def b_reads_elsewhere(
+            session: FakeSession, op: str, params: dict[str, Any]
+        ) -> Reply | None:
+            if op == "call" and params.get("method") == "markRead":
+                path = "/channels/glow-match/other/read"
+                return http_reply(201, response={"event": {}}, path=path)
+            return None
+
+        case = case_of(self.payload_run("RT3", http_reply(403, 17), b_reads_elsewhere), "RT3")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(
+            case.reason,
+            "permission error, but the positive control was another request "
+            "(POST /channels/glow-match/other/read)",
+        )
+
+    def test_rt3_controls_own_events_are_not_searched(self) -> None:
+        # B's own markRead raises B's own message.read. Were Stream to echo B's custom
+        # fields in it, the marker would be B's own, not something A put before B.
+        def b_reads_and_echoes(
+            session: FakeSession, op: str, params: dict[str, Any]
+        ) -> Reply | None:
+            if op == "call" and params.get("method") == "markRead":
+                marker = params["args"][0]["glow_text"]
+                echo = {"type": "message.read", "user": {"id": "b"}, "glow_text": marker}
+                session.pending_events.append(echo)
+            return b_reads(session, op, params)
+
+        run = self.payload_run("RT3", http_reply(403, 17), b_reads_and_echoes)
+        case = case_of(run, "RT3")
+        self.assertEqual(case.verdict, matrix.HOLDS, case.reason)
+        self.assertEqual(case.detail["marker_event_types"], [])
+        self.assertEqual(case.detail["control_event_types"], ["message.read"])
+
+    def test_a_refusal_while_b_is_not_listening_is_inconclusive(self) -> None:
+        # The C2 review's nit 4: this C1 rule had no test of its own. Unless B's
+        # listener saw the probe, no refusal shows that nothing reached B.
+        def b_not_listening(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "events":
+                session.pending_events.clear()
+                return Reply(True, {"events": []}, None)
+            return b_reads(session, op, params)
+
+        for case_id, reply in (("RT3", http_reply(403, 17)), ("RT2", http_reply(400, 18))):
+            case = case_of(self.payload_run(case_id, reply, b_not_listening), case_id)
+            self.assertEqual(case.verdict, matrix.INCONCLUSIVE, case_id)
+            self.assertEqual(case.reason, "B's listener did not see the probe")
 
     def test_named_events_after_an_unattributable_refusal_are_inconclusive(self) -> None:
         # Events of the named type arrived, but Stream refused A's request with an
@@ -303,6 +416,50 @@ class ProductionPhaseAnswerTest(unittest.TestCase):
             run.run_matrix({"S2"})
         self.assertEqual(case_of(run, "S2").verdict, matrix.HOLDS)
 
+    def test_a_production_command_with_several_requests(self) -> None:
+        # The independent review of P06.1-C3: S5's production command recorded a 201
+        # and then a 403. The row lists both (it was built before the production
+        # phase), the case is INCONCLUSIVE (the command has no answer), and the 201 is
+        # undone like any client success.
+        calls: list[int] = []
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sendReaction":
+                calls.append(1)
+                path = f"/messages/{params['args'][0]}/reaction"
+                if len(calls) == 1:  # the feature-on phase: refused
+                    return http_reply(403, 17, path=path)
+                error = {"status": 403, "code": 17, "message": "x", "kind": "api"}
+                requests = [
+                    record(201, {"reaction": {}}, path=path),
+                    record(403, {"code": 17}, path=path),
+                ]
+                return Reply(False, None, error, requests, api_calls=2)
+            return None
+
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            session = run.sessions["A"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = a
+            run.run_matrix({"S5"})
+        case = case_of(run, "S5")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, PRODUCTION_NO_RESPONSE_REASON)
+        self.assertEqual(
+            case.detail["requests"],
+            [
+                "client A call sendReaction: POST /messages/{m_b}/reaction -> 201, "
+                "POST /messages/{m_b}/reaction -> 403"
+            ],
+        )
+        undo_path = f"/messages/{run.ctx['m_b']}/reaction/love"
+        undos = [c for c in server.calls if c[0] == "DELETE" and c[1] == undo_path]
+        # The server replay's own undo in the feature-on phase, then the production 201's.
+        self.assertEqual(len(undos), 2)
+        self.assertTrue(case.detail["client_success_undo"].startswith("undo DELETE"))
+
     def test_poll_vote_without_a_production_answer_is_inconclusive(self) -> None:
         run, _server = make_run()
         with NoSettle():
@@ -314,6 +471,98 @@ class ProductionPhaseAnswerTest(unittest.TestCase):
         case = case_of(run, "S10")
         self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
         self.assertEqual(case.reason, PRODUCTION_NO_RESPONSE_REASON)
+
+    @staticmethod
+    def first_call_succeeds_second_throws(method: str, path: str) -> Behaviour:
+        calls: list[int] = []
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == method:
+                calls.append(1)
+                if len(calls) == 1:  # the feature-on (or polls-on) phase: a bypass
+                    return Reply(True, {}, None, [record(201, {}, path=path)], api_calls=1)
+                return local_error("thrown locally")  # the production phase: no answer
+            return None
+
+        return a
+
+    def test_feature_on_fail_survives_a_production_request_without_an_answer(self) -> None:
+        # The C2 review's nit 4: a FAIL seen with the feature on stays a FAIL.
+        run, _server = make_run()
+        with NoSettle():
+            set_up(run)
+            session = run.sessions["A"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = self.first_call_succeeds_second_throws("sendMessage", "/x/message")
+            run.run_matrix({"S2"})
+        case = case_of(run, "S2")
+        self.assertIn("feature off (production): no answer recorded", case.observed)
+        self.assertEqual(case.verdict, matrix.FAIL)
+
+    def test_polls_on_fail_survives_a_production_vote_without_an_answer(self) -> None:
+        run, _server = make_run()
+        with NoSettle():
+            set_up(run)
+            session = run.sessions["A"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = self.first_call_succeeds_second_throws("castPollVote", "/x/vote")
+            run.run_matrix({"S10"})
+        case = case_of(run, "S10")
+        self.assertIn("polls off (production): no answer recorded", case.observed)
+        self.assertEqual(case.verdict, matrix.FAIL)
+
+
+class FeatureOnFailTest(unittest.TestCase):
+    """P06.1-C3, the C2 review's finding 1: an observed FAIL survives a failed enabling
+    request. "Could not enable" applies only when no FAIL was observed."""
+
+    @staticmethod
+    def enable_refused(case_id: str, sdk_method: str | None) -> CaseResult:
+        """``case_id`` with its enabling request answered 500; A's first ``sdk_method``
+        call (the feature-on phase) gets 201 when it is given."""
+        run, server = make_run()
+        calls: list[int] = []
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == sdk_method:
+                calls.append(1)
+                if len(calls) == 1:
+                    return Reply(True, {}, None, [record(201, {})], api_calls=1)
+            return None
+
+        def refuse_enable(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            overrides = ((body or {}).get("set") or {}).get("config_overrides")
+            if (method == "PATCH" and overrides) or (
+                method == "PUT" and (body or {}).get("custom_events") is True
+            ):
+                return ApiResult(method, path, 500, -1, "internal", {})
+            return None
+
+        with NoSettle():
+            set_up(run)
+            session = run.sessions["A"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = a
+            server.handlers.append(refuse_enable)
+            run.run_matrix({case_id})
+        return case_of(run, case_id)
+
+    def test_fail_survives_a_failed_enabling_request(self) -> None:
+        # The review's reproduction (S2): the PATCH enabling replies got 500, and A's
+        # thread reply got 201. The same with a type-level feature (S12).
+        for case_id, sdk_method in (("S2", "sendMessage"), ("S12", "sendEvent")):
+            case = self.enable_refused(case_id, sdk_method)
+            self.assertEqual(case.verdict, matrix.FAIL, (case_id, case.reason))
+            self.assertEqual(case.reason, "the client action succeeded")
+            self.assertEqual(case.detail["feature_override"]["set_status"], 500)
+            self.assertTrue(case.observed.startswith("feature on: 201 (succeeded)"), case.observed)
+
+    def test_without_an_observed_fail_the_case_is_inconclusive(self) -> None:
+        case = self.enable_refused("S2", None)
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "could not enable {'replies': True} (channel AB, 500)")
 
 
 class OneRequestTest(unittest.TestCase):
@@ -341,6 +590,71 @@ class OneRequestTest(unittest.TestCase):
         case = case_of(run, "R1")
         self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
         self.assertEqual(case.request, "-")
+
+    def test_each_request_of_a_command_is_kept_and_a_success_is_undone(self) -> None:
+        # P06.1-C3, the C2 review's nit 5: S3a's edit got 201, then a second request
+        # 403. The row keeps both, and the 201 is undone like any client success.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "updateMessage":
+                path = f"/messages/{params['args'][0]['id']}"
+                first = record(201, {"message": {}}, path=path)
+                second = record(403, {"code": 17}, path=path)
+                error = {"status": 403, "code": 17, "message": "x", "kind": "api"}
+                return Reply(False, None, error, [first, second], api_calls=2)
+            return None
+
+        run, server = make_run(behaviours={"A": a})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"S3a", "S3b"})
+        case = case_of(run, "S3a")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(
+            case.detail["requests"],
+            [
+                "client A call updateMessage: "
+                "POST /messages/{m_a} -> 201, POST /messages/{m_a} -> 403"
+            ],
+        )
+        self.assertEqual(case.detail["client_success_undo"], "undo POST 201")
+        undo = [
+            c
+            for c in server.calls
+            if c[1] == f"/messages/{run.ctx['m_a']}"
+            and ((c[2] or {}).get("message") or {}).get("text") == run.ctx["m_a_text"]
+        ]
+        self.assertEqual(len(undo), 1)
+        # Each row lists only its own case's commands, and none that sent one request.
+        self.assertEqual(
+            case_of(run, "S3b").detail["requests"],
+            [
+                "client A call updateMessage: "
+                "POST /messages/{m_b} -> 201, POST /messages/{m_b} -> 403"
+            ],
+        )
+
+    def test_a_row_without_such_a_command_lists_no_requests(self) -> None:
+        run, _server = make_run()
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"R1"})
+        self.assertNotIn("requests", case_of(run, "R1").detail)
+
+    def test_a_poll_created_among_several_requests_is_deleted_at_cleanup(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "createPoll":
+                created = record(201, {"poll": {"id": "client-poll"}}, path="/polls")
+                refused = record(403, {"code": 17}, path="/polls")
+                error = {"status": 403, "code": 17, "message": "x", "kind": "api"}
+                return Reply(False, None, error, [created, refused], api_calls=2)
+            return None
+
+        run, _server = make_run(behaviours={"A": a})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"S9"})
+        self.assertEqual(case_of(run, "S9").verdict, matrix.INCONCLUSIVE)
+        self.assertIn("client-poll", [poll_id for poll_id, _owner in run.polls])
 
     def test_guest_attempt_with_another_request_has_no_answer(self) -> None:
         def attempt(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:

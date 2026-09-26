@@ -122,11 +122,25 @@ def answering(status: int, code: int) -> str:
     )
 
 
+def answering_without_a_request(status: int, code: int) -> str:
+    """A fake runner whose every command fails with ``status`` / ``code`` and records no
+    request (the check of the runner's error, not of a recorded request, raises)."""
+    return READ + (
+        "for line in sys.stdin:\n" + EXIT + "    cmd = json.loads(line)\n"
+        "    print(json.dumps({'id': cmd['id'], 'ok': False, 'requests': [], 'api_calls': 0,"
+        " 'error': {'kind': 'api', 'status': "
+        + str(status)
+        + ", 'code': "
+        + str(code)
+        + ", 'message': 'no'}}), flush=True)\n"
+    )
+
+
 class ClientRateLimitFlagTest(unittest.TestCase):
     """P06.1-C2, nit 4: a client's charge signal says whether it was a rate limit."""
 
-    def stop_for(self, status: int, code: int) -> GuardrailStop:
-        s = session(answering(status, code), UsageLedger())
+    def stop_for(self, script: str, ledger: UsageLedger | None = None) -> GuardrailStop:
+        s = session(script, ledger or UsageLedger())
         try:
             with self.assertRaises(GuardrailStop) as stopped:
                 s.send("call")
@@ -135,9 +149,23 @@ class ClientRateLimitFlagTest(unittest.TestCase):
         return stopped.exception
 
     def test_flags(self) -> None:
-        self.assertTrue(self.stop_for(429, 9).rate_limited)
-        self.assertFalse(self.stop_for(402, 4).rate_limited)
-        self.assertFalse(self.stop_for(403, 99).rate_limited)
+        self.assertTrue(self.stop_for(answering(429, 9)).rate_limited)
+        self.assertFalse(self.stop_for(answering(402, 4)).rate_limited)
+        self.assertFalse(self.stop_for(answering(403, 99)).rate_limited)
+
+    def test_the_error_only_check_flags_a_rate_limit(self) -> None:
+        # P06.1-C3, the C2 review's nit 4: the second raise site had no test.
+        self.assertTrue(self.stop_for(answering_without_a_request(429, 9)).rate_limited)
+        self.assertFalse(self.stop_for(answering_without_a_request(402, 4)).rate_limited)
+
+    def test_every_client_signal_stops_at_once(self) -> None:
+        # P06.1-C3, finding 2: both raise sites mark the signal (402 is not a rate
+        # limit) and record it in the run's ledger as they raise it.
+        for script in (answering(402, 4), answering_without_a_request(402, 4)):
+            ledger = UsageLedger()
+            stop = self.stop_for(script, ledger)
+            self.assertTrue(stop.at_once)
+            self.assertEqual(ledger.signals, [stop])
 
 
 if __name__ == "__main__":

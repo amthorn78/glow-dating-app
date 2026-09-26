@@ -1,6 +1,6 @@
 # The reversal table quotes source lines exactly, so some exceed the line length.
 # ruff: noqa: E501
-"""P06.1-C1 and P06.1-C2: show that each fix is tested.
+"""P06.1-C1, P06.1-C2 and P06.1-C3: show that each fix is tested.
 
 For each fix, a scratch copy of this directory (outside it, in a temporary
 directory) gets that one fix reverted, and the fix's tests are run: they must
@@ -9,12 +9,20 @@ directory is changed. Run it with the harness's own Python after installing:
 
     .venv/bin/python checks/fix_reversals.py
 
-It prints one line per reversal and exits non-zero if any reversal is not
-demonstrated. A reversal whose tests abort the test process (for example an
-escaping KeyboardInterrupt) counts as failing.
+It prints one line per reversal, with each failing test and the exception its
+failure ended in, and exits non-zero if any reversal is not demonstrated. A
+reversal whose tests abort the test process (for example an escaping
+KeyboardInterrupt) counts as failing, and its line says so.
+
+Since P06.1-C3 a reversal is "not demonstrated" unless each of its patterns
+starts a line and occurs there exactly once (so a pattern with the wrong
+indentation cannot land inside a longer line), and unless every file it edits
+still compiles and imports (``.py``) or passes ``node --check`` (``.cjs``): a
+reverted file that does not load makes its tests fail for the wrong reason.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,14 +31,34 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parent.parent
 PY = str(SRC / ".venv" / "bin" / "python")
+JWT_SHAPE = re.compile(r"eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]*")
+# No bytecode is written in the scratch copy, so a reverted or restored file is never
+# shadowed by a cached copy of its other version (P06.1-C3).
+ENV = {
+    "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+    "HOME": os.environ.get("HOME", "/"),
+    "LANG": "C.UTF-8",
+    "PYTHONDONTWRITEBYTECODE": "1",
+}
 P = "glow_stream_proof/proof_run.py"
 C = "glow_stream_proof/cli.py"
 B = "glow_stream_proof/client_bridge.py"
 S = "glow_stream_proof/server_api.py"
 RD = "glow_stream_proof/redaction.py"
 U = "glow_stream_proof/usage.py"
+FR = "checks/fix_reversals.py"
 TI = "tests.test_interruptions."
 KEPT = TI + "ProceduresKeepWhatTheyObservedTest."
+TA = "tests.test_answers."
+TCC = "tests.test_cli.CommandTest."
+SS = "tests.test_stop_signals."
+RT3_CONTROL_HOLDS = (
+    "            elif (\n"
+    '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
+    "            ):\n"
+)
+SERVER_IMPORT = "from .usage import UsageLedger, charge_signal, is_rate_limit\n"
+SERVER_IMPORT_C2 = "from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit\n"
 
 
 def unobserved(context: str) -> tuple[str, str, str]:
@@ -61,8 +89,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "        answer = _answer_of(post, reply)\n",
-                "        answer = Answer(matrix.classify(reply.status, reply.code), reply.status, reply.code, post)\n",
+                "            answer = _answer_of(post, reply)\n",
+                "            answer = Answer(matrix.classify(reply.status, reply.code), reply.status, reply.code, post)\n",
             ),
             (
                 P,
@@ -159,10 +187,12 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     (
         "F2 end of run: journal, cleanup, verify, exit",
         [
+            # Repaired in P06.1-C3: the 8-space pattern matched inside the 12-space
+            # line and made the file fail to compile.
             (
                 C,
-                "        problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)\n",
-                "        problems: list[str] = []\n        run.cleanup() if cleanup_needed else run.close_sessions()\n",
+                "            problems = run.finish(cleanup=cleanup_needed)\n",
+                "            problems: list[str] = []\n            run.cleanup() if cleanup_needed else run.close_sessions()\n",
             ),
         ],
         [
@@ -305,8 +335,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             ),
             (
                 "glow_stream_proof/matrix.py",
-                '("{xd_text}", "{m_x}", "{X}", "{XD}")',
-                '("{xd_text}",)',
+                '        ("message", "fetch XD\'s message by ID", ("{xd_text}", "{m_x}", "{X}", "{XD}")),\n',
+                '        ("message", "fetch XD\'s message by ID", ("{xd_text}",)),\n',
             ),
         ],
         ["tests.test_procedures.LeakTermsTest"],
@@ -404,8 +434,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 "glow_stream_proof/server_api.py",
-                'event_hooks={"request": [self._before_request], "response": [self._after_response]},',
-                'event_hooks={"request": [self._before_request]},',
+                '            event_hooks={"request": [self._before_request], "response": [self._after_response]},\n',
+                '            event_hooks={"request": [self._before_request]},\n',
             )
         ],
         [
@@ -635,8 +665,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 "client/error-info.cjs",
-                "parsed.isWSFailure === false ? 'ws-api' : 'ws-failure'",
-                "parsed.isWSFailure ? 'ws-failure' : 'ws-api'",
+                "      info.kind = parsed.isWSFailure === false ? 'ws-api' : 'ws-failure';\n",
+                "      info.kind = parsed.isWSFailure ? 'ws-failure' : 'ws-api';\n",
             ),
         ],
         ["tests.test_runner.ErrorInfoTest"],
@@ -740,7 +770,11 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "C2 F1 kept: bad-token REST",
-        [unobserved('"set_user": set_reply.ok}\n        self._observe(')],
+        [
+            unobserved(
+                '        detail = {"token_used": self._describe_bad(kind, token), "set_user": set_reply.ok}\n        self._observe('
+            )
+        ],
         [KEPT + "test_t2_rest_success_survives_as_controls_session_ending"],
     ),
     (
@@ -756,7 +790,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         "C2 F1 kept: T4-rest-xd",
         [
             unobserved(
-                'disclosed = matrix.Verdict(matrix.FAIL, "response disclosed XD\'s message")\n                self._observe('
+                '                disclosed = matrix.Verdict(matrix.FAIL, "response disclosed XD\'s message")\n                self._observe('
             )
         ],
         [KEPT + "test_t4_rest_xd_success_survives_xs_session_ending"],
@@ -774,7 +808,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         "C2 F1 kept: guest and anonymous probes",
         [
             unobserved(
-                'self._observe(\n            self._result(\n                case,\n                _request_line(answer.record, self.ctx),\n                _observed(answer),\n                "control not completed",\n                matrix.no_leak_verdict(outcome, leaks, False, False),'
+                '        self._observe(\n            self._result(\n                case,\n                _request_line(answer.record, self.ctx),\n                _observed(answer),\n                "control not completed",\n                matrix.no_leak_verdict(outcome, leaks, False, False),'
             )
         ],
         [KEPT + "test_g3_leak_survives_the_controls_session_ending"],
@@ -829,7 +863,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         "C2 F1 kept: RT2/RT3 first window",
         [
             unobserved(
-                'self._observe(\n            self._result(\n                case,\n                _request_line(answer.record, self.ctx),\n                _observed(answer),\n                "B\'s listener not yet checked",'
+                '        self._observe(\n            self._result(\n                case,\n                _request_line(answer.record, self.ctx),\n                _observed(answer),\n                "B\'s listener not yet checked",'
             )
         ],
         [KEPT + "test_rt2_marker_in_the_first_window_survives_bs_session_ending"],
@@ -861,10 +895,16 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     (
         "C2 F3 RT2/RT3 hold on attributable refusals only",
         [
+            # Since P06.1-C3 the input, not-found and other refusals end in their own
+            # branch; reverting C2's fix makes that branch HOLD again.
             (
                 P,
-                '        elif outcome in ("auth", "permission", "feature"):\n',
-                "        elif True:\n",
+                "            # A 400 input error, a 404 or an outage says nothing about what a\n"
+                "            # well-formed event delivers to B (P06.1-C2).\n"
+                "            verdict = matrix.Verdict(matrix.INCONCLUSIVE,",
+                "            # A 400 input error, a 404 or an outage says nothing about what a\n"
+                "            # well-formed event delivers to B (P06.1-C2).\n"
+                "            verdict = matrix.Verdict(matrix.HOLDS,",
             )
         ],
         [
@@ -983,7 +1023,13 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "C2 nit 7 E5 with an unreadable stored user",
-        [(P, "        if stored is None:\n", "        if False:\n")],
+        [
+            (
+                P,
+                '        if stored is None:\n            verdict = matrix.Verdict(matrix.INCONCLUSIVE, "A\'s stored user could not be read")\n',
+                '        if False:\n            verdict = matrix.Verdict(matrix.INCONCLUSIVE, "A\'s stored user could not be read")\n',
+            )
+        ],
         [
             "tests.test_procedures.StoredUserUnreadableTest.test_e5_is_inconclusive_when_as_stored_user_cannot_be_read"
         ],
@@ -1014,8 +1060,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 C,
-                "            problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)\n        except KeyboardInterrupt:\n",
-                "            problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)\n        except ZeroDivisionError:\n",
+                "            problems = run.finish(cleanup=cleanup_needed)\n        except KeyboardInterrupt:\n",
+                "            problems = run.finish(cleanup=cleanup_needed)\n        except ZeroDivisionError:\n",
             )
         ],
         ["tests.test_cli.CommandTest.test_second_ctrl_c_inside_finish_keeps_the_results_file"],
@@ -1064,7 +1110,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         "C2 review: E5 keeps a stored-role FAIL before its restore",
         [
             unobserved(
-                'self._observe(\n                self._result(\n                    case,\n                    request,\n                    _observed(answer),\n                    "control not judged",\n                    matrix.Verdict(matrix.FAIL, "the change reached Stream\'s stored state"),'
+                '            self._observe(\n                self._result(\n                    case,\n                    request,\n                    _observed(answer),\n                    "control not judged",\n                    matrix.Verdict(matrix.FAIL, "the change reached Stream\'s stored state"),'
             )
         ],
         [
@@ -1141,21 +1187,629 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         ],
         ["tests.test_cli.CommandTest.test_ctrl_c_during_the_early_write_still_restores"],
     ),
+    # -- P06.1-C3 ------------------------------------------------------------------
+    (
+        "C3 RT2/RT3 a feature refusal is REFUSED (feature off), not HOLDS",
+        [(P, "                matrix.REFUSED_FEATURE,\n", "                matrix.HOLDS,\n")],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_feature_refusals_are_refused_feature_not_holds",
+            TA
+            + "RequestUnderTestInCasesTest.test_rt2_feature_refusal_is_refused_feature_not_holds",
+        ],
+    ),
+    (
+        "C3 RT2 an auth or permission refusal without a positive control is INCONCLUSIVE",
+        [
+            (
+                P,
+                "                verdict = matrix.Verdict(\n"
+                "                    matrix.INCONCLUSIVE,\n"
+                '                    f"{outcome} error, but no positive control:',
+                "                verdict = matrix.Verdict(\n"
+                "                    matrix.HOLDS,\n"
+                '                    f"{outcome} error, but no positive control:',
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt2_auth_or_permission_refusal_has_no_positive_control"
+        ],
+    ),
+    (
+        "C3 RT3 an auth or permission refusal HOLDS only when B's own request succeeded",
+        [(P, RT3_CONTROL_HOLDS, "            elif True:\n")],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_refusal_without_a_successful_control_is_inconclusive"
+        ],
+    ),
+    (
+        "C3 RT3 the control, B's own identical request, is made",
+        [
+            (
+                P,
+                '        if outcome in ("auth", "permission") and control_label is not None:\n',
+                "        if False:\n",
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_auth_or_permission_refusal_holds_with_bs_own_request"
+        ],
+    ),
+    (
+        "C3 RT3 the matrix names B's session as RT3's control",
+        [
+            (
+                "glow_stream_proof/matrix.py",
+                '                session="B",\n                note="B connected and watching AB; B\'s own markRead with the same body",\n',
+                '                note="B connected and watching AB; B\'s own markRead with the same body",\n',
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_auth_or_permission_refusal_holds_with_bs_own_request"
+        ],
+    ),
+    (
+        "C3 RT3 the control's own events are not searched for the marker",
+        [
+            (
+                P,
+                "        windows = after_request + after_probe\n",
+                "        windows = after_request + after_probe + control_events\n",
+            )
+        ],
+        [TA + "PayloadRefusalAttributionTest.test_rt3_controls_own_events_are_not_searched"],
+    ),
+    (
+        "C3 F1 an observed FAIL survives a failed enabling request",
+        [
+            (
+                P,
+                "        if not on.ok and result.verdict != matrix.FAIL:\n",
+                "        if not on.ok:\n",
+            )
+        ],
+        [TA + "FeatureOnFailTest.test_fail_survives_a_failed_enabling_request"],
+    ),
+    (
+        "C3 F2 a restore's charge or limit signal is recorded",
+        [
+            (
+                P,
+                "            self.record_signal(exc)\n            if change.unverified is not None:\n",
+                "            if change.unverified is not None:\n",
+            )
+        ],
+        [
+            SS + "SignalRecordTest.test_a_signal_behind_another_stop_skips_the_cleanup",
+            TCC + "test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup",
+            TCC + "test_rate_limited_restores_at_the_end_skip_the_cleanup",
+        ],
+    ),
+    (
+        "C3 F2 finish() skips the cleanup after a recorded signal",
+        [(P, "        elif self.stop_signals:\n", "        elif False:\n")],
+        [
+            SS + "SignalRecordTest.test_a_signal_behind_another_stop_skips_the_cleanup",
+            TCC + "test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup",
+            TCC + "test_a_signal_as_the_runs_own_stop_skips_the_cleanup",
+            "tests.test_temporary_changes.FinishTest.test_finish_restores_the_journal_and_verifies_the_configuration",
+        ],
+    ),
+    (
+        "C3 F2 cmd_run adds its own stop to the run's record",
+        [(C, "        run.record_signal(exc)\n", "        pass\n")],
+        [TCC + "test_a_signal_as_the_runs_own_stop_skips_the_cleanup"],
+    ),
+    (
+        "C3 F2 a signal met by the cleanup is recorded",
+        [
+            (
+                P,
+                "                self.record_signal(exc)\n                if exc.at_once:\n",
+                "                if exc.at_once:\n",
+            )
+        ],
+        [SS + "SignalRecordTest.test_a_signal_met_during_cleanup_ends_it_and_is_recorded"],
+    ),
+    (
+        "C3 F2 a signal ends the cleanup at once (untested until C3)",
+        [
+            (
+                P,
+                "                if exc.at_once:\n                    break\n",
+                "                if False:\n                    break\n",
+            )
+        ],
+        [SS + "SignalRecordTest.test_a_signal_met_during_cleanup_ends_it_and_is_recorded"],
+    ),
+    (
+        "C3 F2 a signal met by the final configuration read is recorded",
+        [
+            (
+                P,
+                '            self.record_signal(exc)\n            problems.append(f"configuration not verified',
+                '            problems.append(f"configuration not verified',
+            )
+        ],
+        [SS + "SignalRecordTest.test_a_signal_met_by_the_final_configuration_read_is_recorded"],
+    ),
+    (
+        "C3 F2 a rate limit is a charge or limit signal",
+        [
+            (
+                U,
+                "        self.at_once = at_once or rate_limited\n",
+                "        self.at_once = at_once\n",
+            )
+        ],
+        [
+            SS + "SignalRecordTest.test_a_signal_met_during_cleanup_ends_it_and_is_recorded",
+            TCC + "test_rate_limited_restores_at_the_end_skip_the_cleanup",
+        ],
+    ),
+    (
+        "C3 F2 the server's response hook marks and records a signal",
+        [
+            (S, SERVER_IMPORT, SERVER_IMPORT_C2),
+            (
+                S,
+                "            raise self._ledger.stop_at_once(\n"
+                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                "                rate_limited=is_rate_limit(response.status_code, code),\n",
+                "            raise GuardrailStop(\n"
+                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                "                rate_limited=is_rate_limit(response.status_code, code),\n",
+            ),
+        ],
+        ["tests.test_server_api.StopAtOnceFlagTest.test_typed_and_raw_calls_mark_the_signal"],
+    ),
+    (
+        "C3 F2 the server's result check marks and records a signal",
+        [
+            (S, SERVER_IMPORT, SERVER_IMPORT_C2),
+            (
+                S,
+                "            raise self._ledger.stop_at_once(\n"
+                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                "                rate_limited=is_rate_limit(result.status, result.code),\n",
+                "            raise GuardrailStop(\n"
+                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                "                rate_limited=is_rate_limit(result.status, result.code),\n",
+            ),
+        ],
+        ["tests.test_server_api.StopAtOnceFlagTest.test_the_result_check_marks_the_signal"],
+    ),
+    (
+        "C3 F2 a client's recorded request marks and records a signal",
+        [
+            (
+                B,
+                "                    raise self._ledger.stop_at_once(\n"
+                '                        f"client {self.label}: {signal}; stopping at once",\n'
+                "                        rate_limited=is_rate_limit(status, stream_code),\n",
+                "                    raise GuardrailStop(\n"
+                '                        f"client {self.label}: {signal}; stopping at once",\n'
+                "                        rate_limited=is_rate_limit(status, stream_code),\n",
+            )
+        ],
+        [
+            "tests.test_client_session.ClientRateLimitFlagTest.test_every_client_signal_stops_at_once"
+        ],
+    ),
+    (
+        "C3 F2 a client's error marks and records a signal",
+        [
+            (
+                B,
+                "                raise self._ledger.stop_at_once(\n"
+                '                    f"client {self.label}: {signal}; stopping at once",\n'
+                "                    rate_limited=is_rate_limit(reply.status, reply.code),\n",
+                "                raise GuardrailStop(\n"
+                '                    f"client {self.label}: {signal}; stopping at once",\n'
+                "                    rate_limited=is_rate_limit(reply.status, reply.code),\n",
+            )
+        ],
+        [
+            "tests.test_client_session.ClientRateLimitFlagTest.test_every_client_signal_stops_at_once"
+        ],
+    ),
+    (
+        "C3 review: the ledger records a signal as its stop is raised",
+        [(U, "        self.signals.append(stop)\n        return stop\n", "        return stop\n")],
+        [
+            SS + "SignalReplacedInFlightTest",
+            TCC + "test_a_signal_whose_stop_a_ctrl_c_replaced_skips_the_cleanup",
+            "tests.test_server_api.StopAtOnceFlagTest.test_typed_and_raw_calls_mark_the_signal",
+            "tests.test_client_session.ClientRateLimitFlagTest.test_every_client_signal_stops_at_once",
+        ],
+    ),
+    (
+        "C3 review: a recorded signal stops the matrix after its case",
+        [
+            (
+                P,
+                "            if self.stop_signals:\n                # The signal's stop was replaced in flight",
+                "            if False:\n                # The signal's stop was replaced in flight",
+            )
+        ],
+        [
+            SS
+            + "SignalReplacedInFlightTest.test_an_error_that_replaces_the_stop_still_stops_the_run"
+        ],
+    ),
+    (
+        "C3 nit 3 a pattern counts only at a line start",
+        [(FR, '        if i == 0 or text[i - 1] == "\\n":\n', "        if True:\n")],
+        [
+            "tests.test_fix_reversals.FixReversalsTest.test_a_pattern_matches_only_at_a_line_start",
+            "tests.test_fix_reversals.FixReversalsTest.test_every_pattern_starts_a_line_once",
+        ],
+    ),
+    (
+        "C3 nit 3 an edited file that does not load is not demonstrated",
+        [(FR, "    if done.returncode == 0:\n        return None\n", "    return None\n")],
+        [
+            "tests.test_fix_reversals.FixReversalsTest.test_an_edit_that_does_not_compile_or_import_is_reported"
+        ],
+    ),
+    (
+        "C3 nit 4 a feature-on FAIL stays FAIL without a production answer",
+        [
+            (
+                P,
+                '        elif production.outcome == "no-response" and result.verdict not in NOT_A_PASS:\n',
+                '        elif production.outcome == "no-response":\n',
+            )
+        ],
+        [
+            TA
+            + "ProductionPhaseAnswerTest.test_feature_on_fail_survives_a_production_request_without_an_answer"
+        ],
+    ),
+    (
+        "C3 nit 4 a polls-on FAIL stays FAIL without a production answer",
+        [
+            (
+                P,
+                '        elif production.outcome == "no-response" and verdict.label not in NOT_A_PASS:\n',
+                '        elif production.outcome == "no-response":\n',
+            )
+        ],
+        [
+            TA
+            + "ProductionPhaseAnswerTest.test_polls_on_fail_survives_a_production_vote_without_an_answer"
+        ],
+    ),
+    (
+        "C3 nit 4 a guardrail met by the undo after an interruption stops the run",
+        [
+            (
+                P,
+                '            raise\n        except Exception:  # recorded in the row as "not completed"; the interruption goes on\n',
+                '            return\n        except Exception:  # recorded in the row as "not completed"; the interruption goes on\n',
+            )
+        ],
+        [
+            TI
+            + "ReviewScenariosTest.test_a_guardrail_met_by_the_undo_after_an_interruption_stops_the_run"
+        ],
+    ),
+    (
+        "C3 nit 4 a second Ctrl-C keeps the problems finish() found",
+        [(C, "                *run.post_run_problems,\n", "")],
+        [TCC + "test_second_ctrl_c_keeps_the_problems_finish_found"],
+    ),
+    (
+        "C3 nit 4 a second Ctrl-C closes the client processes",
+        [(C, "            run.close_sessions()\n", "            pass\n")],
+        [TCC + "test_second_ctrl_c_closes_the_client_sessions"],
+    ),
+    (
+        "C3 nit 4 a client's error flags a rate limit",
+        [
+            (
+                B,
+                "                    rate_limited=is_rate_limit(reply.status, reply.code),\n",
+                "                    rate_limited=False,\n",
+            )
+        ],
+        [
+            "tests.test_client_session.ClientRateLimitFlagTest.test_the_error_only_check_flags_a_rate_limit"
+        ],
+    ),
+    (
+        "C3 nit 4 RT2/RT3 are INCONCLUSIVE unless B was listening",
+        [(P, "        elif not listening:\n", "        elif False:\n")],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_a_refusal_while_b_is_not_listening_is_inconclusive"
+        ],
+    ),
+    (
+        "C3 nit 5 each request of a command is kept in the row",
+        [
+            (
+                P,
+                "        if self._multiple_requests:\n            # A command of this case recorded",
+                "        if False:\n            # A command of this case recorded",
+            )
+        ],
+        [TA + "OneRequestTest.test_each_request_of_a_command_is_kept_and_a_success_is_undone"],
+    ),
+    (
+        "C3 nit 5 a 2xx among a command's requests is undone",
+        [
+            (
+                P,
+                "        succeeded = any(_succeeded(r) for r in reply.requests)\n",
+                '        succeeded = outcome == "success"\n',
+            )
+        ],
+        [TA + "OneRequestTest.test_each_request_of_a_command_is_kept_and_a_success_is_undone"],
+    ),
+    (
+        "C3 nit 6 B's probe stop is kept in the stops",
+        [
+            (
+                P,
+                "                self.stops.append(\n"
+                "                    f\"B's members query after AB's override removal: {self._text(probe_stop)}\"\n"
+                "                )\n",
+                "",
+            )
+        ],
+        [SS + "ProbeStopKeptTest"],
+    ),
+    (
+        "C3 nit 6 B's probe stop is recorded as a signal",
+        [(P, "                self.record_signal(probe_stop)\n", "                pass\n")],
+        [SS + "ProbeStopKeptTest"],
+    ),
+    (
+        "C3 nit 7 no unset of A's member field after a guardrail stop",
+        [
+            (
+                P,
+                "        except GuardrailStop as exc:\n            self._member_field_kept(",
+                "        except ZeroDivisionError as exc:\n            self._member_field_kept(",
+            )
+        ],
+        [
+            SS + "MemberFieldUnsetTest.test_no_unset_after_a_guardrail_stop_in_bs_reads",
+            SS + "MemberFieldUnsetTest.test_no_unset_after_a_guardrail_stop_in_the_control",
+        ],
+    ),
+    (
+        "C3 nit 8 a failed read of A's stored user stops the run",
+        [
+            (
+                P,
+                "        except Exception as exc:  # Stream did not answer the listing with 2xx\n",
+                "        except ZeroDivisionError as exc:  # Stream did not answer the listing with 2xx\n",
+            )
+        ],
+        ["tests.test_procedures.StoredUserReadFailureTest"],
+    ),
+    (
+        "C3 nit 8 a listing without A stops the run too",
+        [
+            (
+                P,
+                "        if stored is None:\n            self._defer_stop(\n",
+                "        if False:\n            self._defer_stop(\n",
+            )
+        ],
+        ["tests.test_procedures.StoredUserUnreadableTest"],
+    ),
+    (
+        "C3 nit 9 the usage ledger is written through a temporary file",
+        [
+            (
+                U,
+                '        _replace(self.path, json.dumps({"session": asdict(self.session)}, indent=2) + "\\n")\n',
+                '        self.path.write_text(json.dumps({"session": asdict(self.session)}, indent=2) + "\\n")\n',
+            )
+        ],
+        [
+            "tests.test_usage_and_report.UsageTest.test_an_interrupted_save_leaves_the_previous_ledger_whole"
+        ],
+    ),
+    (
+        "C3 nit 10 the early-write failure note is redacted",
+        [
+            (
+                C,
+                '                f"{type(exc).__name__}: {ctx.redactor.text(str(exc))}"\n',
+                '                f"{type(exc).__name__}: {exc}"\n',
+            )
+        ],
+        [TCC + "test_the_early_write_failure_note_is_redacted"],
+    ),
+    (
+        "C3 nit 8 a guardrail stop on the read of A's stored user is not deferred",
+        [
+            (
+                P,
+                "        except GuardrailStop:\n            raise\n        except Exception as exc:  # Stream did not answer the listing with 2xx\n",
+                "        except Exception as exc:  # Stream did not answer the listing with 2xx\n",
+            )
+        ],
+        [
+            "tests.test_procedures.StoredUserReadFailureTest.test_a_guardrail_stop_on_the_read_is_the_runs_stop"
+        ],
+    ),
+    (
+        "C3 RT3 kept: both windows before the control",
+        [
+            unobserved(
+                '            self._observe(\n                self._result(\n                    case,\n                    request,\n                    _observed(answer),\n                    f"B listening (received a probe message): {listening}; control not completed",'
+            )
+        ],
+        [KEPT + "test_rt3_marker_after_the_probe_survives_the_control_ending"],
+    ),
+    (
+        "C3 F2 the client processes are closed when the cleanup is skipped",
+        [
+            (
+                P,
+                "            # run's is deleted (P06.1-C3; until then only the run's own stop counted).\n            self.close_sessions()\n",
+                "            # run's is deleted (P06.1-C3; until then only the run's own stop counted).\n",
+            )
+        ],
+        [
+            TCC + "test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup",
+            TCC + "test_rate_limited_restores_at_the_end_skip_the_cleanup",
+            TCC + "test_a_signal_as_the_runs_own_stop_skips_the_cleanup",
+        ],
+    ),
+    (
+        "C3 nit 5 each case's row lists only its own commands",
+        [
+            (
+                P,
+                "            self._partial = None\n            self._multiple_requests = []\n",
+                "            self._partial = None\n",
+            )
+        ],
+        [TA + "OneRequestTest.test_each_request_of_a_command_is_kept_and_a_success_is_undone"],
+    ),
+    (
+        "C3 review: the production command's requests are listed in the row",
+        [
+            (
+                P,
+                "        if self._multiple_requests:\n            # The row was built before the production phase;",
+                "        if False:\n            # The row was built before the production phase;",
+            )
+        ],
+        [TA + "ProductionPhaseAnswerTest.test_a_production_command_with_several_requests"],
+    ),
+    (
+        "C3 review: a 2xx among the production command's requests is undone",
+        [
+            (
+                P,
+                "        if production_succeeded:\n            self._undo_client_success(case, result)\n",
+                '        if production.outcome == "success":\n            self._undo_client_success(case, result)\n',
+            )
+        ],
+        [TA + "ProductionPhaseAnswerTest.test_a_production_command_with_several_requests"],
+    ),
+    (
+        "C3 review: RT3's control counts only as the same request",
+        [(P, RT3_CONTROL_HOLDS, '            elif control.outcome == "success":\n')],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_control_that_was_another_request_is_inconclusive"
+        ],
+    ),
+    (
+        "C3 review: S15 sends no unset after a recorded signal, whatever is in flight",
+        [
+            (
+                P,
+                "            if self.stop_signals:\n                # A signal was met, though another exception is in flight (for example\n",
+                "            if False:\n                # A signal was met, though another exception is in flight (for example\n",
+            )
+        ],
+        [SS + "MemberFieldUnsetTest.test_no_unset_after_a_signal_whose_stop_is_not_in_flight"],
+    ),
+    (
+        "C3 review: no undo after a recorded signal, whatever is in flight",
+        [
+            (
+                P,
+                "        if self.stop_signals:\n            # A signal was met, though another exception is in flight: nothing more is\n",
+                "        if False:\n            # A signal was met, though another exception is in flight: nothing more is\n",
+            )
+        ],
+        [TI + "ReviewScenariosTest.test_no_undo_after_a_signal_whose_stop_an_error_replaced"],
+    ),
+    (
+        "C3 nit 5 a poll or group created among several requests is tracked",
+        [
+            (
+                P,
+                "        if succeeded:\n            self._track_client_created(reply)\n",
+                '        if succeeded:\n            if outcome == "success":\n                self._track_client_created(reply)\n',
+            )
+        ],
+        [TA + "OneRequestTest.test_a_poll_created_among_several_requests_is_deleted_at_cleanup"],
+    ),
 ]
 
 
-def run_tests(root: Path, tests: list[str]) -> tuple[int, str]:
-    env = {"PATH": os.environ["PATH"], "HOME": os.environ["HOME"], "LANG": "C.UTF-8"}
+def anchored(text: str, old: str) -> list[int]:
+    """Where ``old`` occurs starting at the beginning of a line (P06.1-C3)."""
+    found: list[int] = []
+    start = 0
+    while (i := text.find(old, start)) != -1:
+        if i == 0 or text[i - 1] == "\n":
+            found.append(i)
+        start = i + 1
+    return found
+
+
+def loads(root: Path, path: str) -> str | None:
+    """Why an edited file does not load, or ``None`` when it does (P06.1-C3).
+
+    A ``.py`` file must compile and import; a ``.cjs`` file must pass ``node --check``.
+    """
+    if path.endswith(".py"):
+        module = path.removesuffix(".py").replace("/", ".")
+        code = (
+            "import importlib, pathlib\n"
+            f"compile(pathlib.Path({path!r}).read_text(), {path!r}, 'exec')\n"
+            f"importlib.import_module({module!r})\n"
+        )
+        command = [PY, "-c", code]
+    elif path.endswith(".cjs"):
+        command = ["node", "--check", path]
+    else:
+        return None
+    done = subprocess.run(command, cwd=root, env=ENV, capture_output=True, text=True, timeout=120)
+    if done.returncode == 0:
+        return None
+    lines = [ln.strip() for ln in (done.stderr or done.stdout).splitlines() if ln.strip()]
+    errors = [ln for ln in lines if re.match(r"[\w.]*(Error|Exception)\b", ln)]
+    return (errors or lines or [f"exit code {done.returncode}"])[-1]
+
+
+def failure_reasons(stderr: str) -> list[str]:
+    """Each failing test and the exception its failure ended in (P06.1-C3), and why the
+    test process stopped if it stopped before reporting (for example Ctrl-C).
+
+    JWT-shaped text in a reason (the tests' synthetic tokens) is masked."""
+    reasons: list[str] = []
+    for block in re.split(r"^=+\n", stderr, flags=re.M):
+        lines = block.splitlines()
+        if not lines or not lines[0].startswith(("FAIL: ", "ERROR: ")):
+            continue
+        starts = [i for i, ln in enumerate(lines) if ln.startswith("Traceback")]
+        after = lines[starts[-1] + 1 :] if starts else lines[1:]
+        exception = next((ln for ln in after if ln.strip() and not ln.startswith((" ", "-"))), "?")
+        reasons.append(f"{lines[0].split(' (', 1)[0]}: {exception}")
+    if not re.search(r"^Ran \d+ tests? in ", stderr, flags=re.M):
+        last = [ln.strip() for ln in stderr.splitlines() if ln.strip()]
+        reasons.append("the test process stopped before reporting: " + (last[-1] if last else "?"))
+    return [JWT_SHAPE.sub("<jwt>", r) for r in reasons]
+
+
+def run_tests(root: Path, tests: list[str]) -> tuple[int, str, list[str]]:
     done = subprocess.run(
         [PY, "-m", "unittest", *tests],
         cwd=root,
-        env=env,
+        env=ENV,
         capture_output=True,
         text=True,
         timeout=300,
     )
     tail = [ln for ln in done.stderr.splitlines() if ln.startswith(("Ran ", "OK", "FAILED"))]
-    return done.returncode, " ".join(tail)
+    return done.returncode, " ".join(tail), failure_reasons(done.stderr)
 
 
 def main() -> int:
@@ -1167,28 +1821,35 @@ def main() -> int:
     (root / "node_modules").symlink_to(SRC / "node_modules")
     bad = 0
     for name, edits, tests in R:
-        originals = {}
+        originals: dict[str, str] = {}
+        problem: str | None = None
         for path, old, new in edits:
             f = root / path
-            text = originals.setdefault(path, f.read_text())
             current = f.read_text()
-            if current.count(old) != 1:
-                print(f"SETUP ERROR {name}: pattern found {current.count(old)} times in {path}")
-                bad += 1
+            originals.setdefault(path, current)
+            where = anchored(current, old)
+            if len(where) != 1:
+                problem = f"pattern found {len(where)} times at a line start in {path}"
                 break
-            f.write_text(current.replace(old, new))
-        else:
-            with_fix = None
-            code, tail = run_tests(root, tests)
-            for path, text in originals.items():
-                (root / path).write_text(text)
-            with_fix, tail_ok = run_tests(root, tests)
-            ok = code != 0 and with_fix == 0
-            bad += 0 if ok else 1
-            print(f"{'OK ' if ok else 'BAD'} | {name} | reverted: {tail} | restored: {tail_ok}")
-            continue
+            f.write_text(current[: where[0]] + new + current[where[0] + len(old) :])
+        if problem is None:
+            broken = [f"{p}: {why}" for p in originals if (why := loads(root, p)) is not None]
+            if broken:
+                problem = "the reverted file does not load: " + "; ".join(broken)
+        if problem is None:
+            code, tail, reasons = run_tests(root, tests)
         for path, text in originals.items():
             (root / path).write_text(text)
+        if problem is not None:
+            bad += 1
+            print(f"BAD | {name} | not demonstrated: {problem}")
+            continue
+        with_fix, tail_ok, _ = run_tests(root, tests)
+        ok = code != 0 and with_fix == 0
+        bad += 0 if ok else 1
+        print(f"{'OK ' if ok else 'BAD'} | {name} | reverted: {tail} | restored: {tail_ok}")
+        for reason in reasons:
+            print(f"      - {reason}")
     shutil.rmtree(work)
     print(f"reversals: {len(R)}, not demonstrated: {bad}")
     return 1 if bad else 0

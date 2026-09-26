@@ -156,7 +156,6 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     ctx.say(f"run {prefix} started {started}")
     stop_reason = None
     cleanup_needed = False
-    skipped_because: str | None = None
 
     def progress() -> None:
         write_json(f"run-{prefix}-progress.json", run.results(), ctx.secrets)
@@ -173,9 +172,10 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
         stop_reason = f"stopped: {ctx.redactor.text(str(exc))}"
     except GuardrailStop as exc:
         stop_reason = f"guardrail: {ctx.redactor.text(str(exc))}"
-        if cleanup_needed and "stopping at once" in str(exc):
-            cleanup_needed = False
-            skipped_because = "a charge or limit signal stopped the run at once"
+        # A charge or limit signal joins the run's record; finish() skips the
+        # cleanup after any signal in it, wherever it was met (P06.1-C3: until then
+        # only this stop's own type counted).
+        run.record_signal(exc)
     except KeyboardInterrupt:
         stop_reason = "interrupted (Ctrl-C)"
     except Exception as exc:  # recorded, never hidden; cleanup still runs
@@ -196,13 +196,14 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
             write_json(f"run-{prefix}.json", early, ctx.secrets)
         except (Exception, KeyboardInterrupt) as exc:  # never in the way of the restores below
             run.notes.append(
-                f"results not written before the end of the run: {type(exc).__name__}: {exc}"
+                "results not written before the end of the run: "
+                f"{type(exc).__name__}: {ctx.redactor.text(str(exc))}"
             )
         # Every run ends here: journalled temporary changes are restored and
-        # verified, the run's data is cleaned up, and the configuration is
-        # verified, whatever stopped the run.
+        # verified, the run's data is cleaned up (not after a charge or limit
+        # signal), and the configuration is verified, whatever stopped the run.
         try:
-            problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)
+            problems = run.finish(cleanup=cleanup_needed)
         except KeyboardInterrupt:
             # A second Ctrl-C: the end of the run stops here, except closing the
             # client processes; what is known is written below.
