@@ -49,6 +49,7 @@ USER_ID_KEYS = frozenset(
         "user_id",
         "user_ids",
         "target_user_id",
+        "target_id",
         "target_ids",
         "banned_by_id",
         "unbanned_by_id",
@@ -309,6 +310,11 @@ def _reason(
     if family == "polls":
         if len(parts) >= 2 and not scope.owns_poll(parts[1]):
             return "a poll this run did not record"
+        if len(parts) == 1 and verb in ("PUT", "PATCH"):
+            # A poll update names its poll in the body (P06.1-I2a; the independent review).
+            poll = body.get("id") if isinstance(body, Mapping) else None
+            if not isinstance(poll, str) or not scope.owns_poll(poll):
+                return "a poll this run did not record"
         return _unowned(users, channels, scope)
     if family == "usergroups":
         if len(parts) >= 2 and not scope.owns_group(parts[1]):

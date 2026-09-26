@@ -75,7 +75,18 @@ class World:
     # Stream; the cleanup must not depend on it).
     refuse_unknown_users: bool = True
     server_send_refused_when_frozen: bool = False
+    # A connect as a hard-deleted user creates it again (unknown for Stream).
+    connect_recreates_deleted: bool = False
+    # Sessions whose events arrive one collection late (a slow delivery; the
+    # independent review, point 2).
+    late: set[str] = field(default_factory=set)
+    # Local events a session's SDK raises in the window after the mechanism (a closed
+    # or recovered connection), added when the after-probe's message is sent.
+    after_window_local: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    # The same, added when a member is removed (the window of the mechanism itself).
+    apply_window_local: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     # State
+    held: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     frozen: set[str] = field(default_factory=set)
     hidden: dict[str, set[str]] = field(default_factory=dict)
     banned: dict[str, set[str]] = field(default_factory=dict)
@@ -141,7 +152,11 @@ class World:
                 continue
             session = self.run.sessions.get(label)
             if isinstance(session, FakeSession):
-                session.pending_events.append(json.loads(json.dumps(event)))
+                copied = json.loads(json.dumps(event))
+                if label in self.late:
+                    self.held.setdefault(label, []).append(copied)
+                else:
+                    session.pending_events.append(copied)
 
     def receives(self, label: str, uid: str, channel_id: str) -> bool:
         if uid in self.deleted or uid in self.deactivated:
@@ -297,6 +312,12 @@ class World:
             return ok(method, path, {"channel": {"cid": cid}}, 200)
         if method == "POST" and not rest:
             members = self.server.members.setdefault(channel_id, [])
+            for label, local in (
+                self.apply_window_local.items() if body.get("remove_members") else ()
+            ):
+                session = self.run.sessions.get(label)
+                if isinstance(session, FakeSession):
+                    session.pending_events.extend(json.loads(json.dumps(local)))
             for uid in body.get("remove_members") or []:
                 if uid in members:
                     members.remove(uid)
@@ -333,6 +354,11 @@ class World:
             for hider in list(self.hidden.get(channel_id, set())):
                 self.hidden[channel_id].discard(hider)  # a new message shows it again
             self.deliver(channel_id, {"type": "message.new", "cid": cid, "message": stored})
+            if str(message.get("text", "")).startswith("after probe"):
+                for label, local in self.after_window_local.items():
+                    session = self.run.sessions.get(label)
+                    if isinstance(session, FakeSession):
+                        session.pending_events.extend(json.loads(json.dumps(local)))
             return ok(method, path, {"message": stored})
         if rest == ["hide"] and method == "POST":
             uid = str(body.get("user_id"))
@@ -354,10 +380,17 @@ class World:
         if uid is None:
             return None
         if op == "connect":
+            if uid in self.deleted and self.connect_recreates_deleted:
+                self.deleted.discard(uid)
+                self.server.users[uid] = {"id": uid, "role": "user", "created_at": time.time_ns()}
             refused = self.auth_error(label, uid)
             if refused is not None:
                 return ws_refused(refused.status or 401, refused.code or 5)
             return Reply(True, {"me": {"id": uid, "role": "user"}}, None)
+        if op == "events" and label in self.late:
+            # What was held back at the previous collection arrives now.
+            events, session.pending_events = session.pending_events, self.held.pop(label, [])
+            return Reply(True, {"events": events}, None)
         if op != "call":
             return None
         method = params.get("method")

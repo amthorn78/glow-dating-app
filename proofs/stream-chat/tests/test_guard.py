@@ -98,6 +98,8 @@ def user_calls(user: str, channel: str = AB) -> list[tuple[str, str, Any, dict[s
         ("PATCH", f"/channels/{ch_type}/{ch_id}/member/{user}", {"set": {"x": 1}}, {}),
         ("POST", "/api/v2/users/block", {"blocked_user_id": user, "user_id": A}, {}),
         ("POST", "/api/v2/guest", {"user": {"id": user}}, {}),
+        # The muted user is the target (P06.1-I2a; the independent review).
+        ("POST", "/api/v2/moderation/mute", {"target_id": user, "user_id": A}, {}),
     ]
 
 
@@ -234,6 +236,14 @@ class RefusalTest(unittest.TestCase):
         )
         self.assertIsNone(refusal("DELETE", "/polls/poll-recorded", None, {"user_id": A}))
         self.assertIn("a poll this run did not record", str(refusal("DELETE", "/polls/other")))
+        # A poll update names its poll in the body.
+        update = {"name": "x", "user_id": A}
+        self.assertIsNone(refusal("PUT", "/api/v2/polls", {"id": "poll-recorded", **update}))
+        for body in ({"id": "other", **update}, update):
+            self.assertIn(
+                "a poll this run did not record", str(refusal("PUT", "/api/v2/polls", body))
+            )
+        self.assertIsNone(refusal("POST", "/polls", {"name": "server poll", "user_id": A}))
         self.assertIsNone(refusal("DELETE", "/api/v2/usergroups/group-recorded"))
         self.assertIn(
             "a user group this run did not record", str(refusal("DELETE", "/api/v2/usergroups/g"))

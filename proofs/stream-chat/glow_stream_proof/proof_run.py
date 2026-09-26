@@ -74,6 +74,10 @@ DESTRUCTIVE_PHASE = 70
 # families, on their own users and channels: the I1 sessions are closed first, so
 # that the families' sessions stay within the connection guardrail.
 FAMILY_PHASE = 100
+# A case before the families runs only while the setup tokens (A, B, X and D) have
+# at least this long left, so that no refusal it judges is a token's own expiry
+# (P06.1-I2a; the independent review, a nit). The longest such case takes about 40 s.
+CASE_TOKEN_MARGIN_SECONDS = 120
 T = MATCH_TYPE
 # Nathan's confirmed dashboard administrator user was created at this minute
 # (UTC), as recorded in the P06.1 evidence. Preflight compares only the minute;
@@ -190,6 +194,13 @@ def _ws_answer(reply: Reply) -> Answer:
         code = code if isinstance(code, int) else None
         return Answer(matrix.classify(status, code), status, code, None)
     return Answer("no-response", None, None, None, _local_note(reply))
+
+
+def seconds_left(token: str | None) -> float | None:
+    """How long ``token`` has before its ``exp`` claim; ``None`` without one."""
+    claims = describe_token(token).get("claims") if token else None
+    exp = claims.get("exp") if isinstance(claims, dict) else None
+    return exp - time.time() if isinstance(exp, int) else None
 
 
 def _observed(answer: Answer) -> str:
@@ -631,9 +642,10 @@ class ProofRun:
     def _interrupted_row(self, case: matrix.Case, exc: BaseException) -> CaseResult:
         """The row of a case that ``exc`` ended before it finished.
 
-        It keeps what the case had observed: a FAIL stays a FAIL, and anything
-        else becomes INCONCLUSIVE with the interruption as its reason. A row the
-        case built itself for a failed restore (:meth:`_keep_case`) is used as it is.
+        It keeps what the case had observed: a FAIL stays a FAIL (and so does a
+        DOES NOT MEET), and anything else becomes INCONCLUSIVE with the
+        interruption as its reason. A row the case built itself for a failed
+        restore (:meth:`_keep_case`) is used as it is.
         """
         kept = exc.case_result if isinstance(exc, RunStopped) else None
         if kept is not None:
@@ -649,7 +661,7 @@ class ProofRun:
         row.detail["interrupted"] = f"{type(exc).__name__}: {text}"
         if isinstance(exc, RunStopped):
             row.detail["run_stopped"] = text
-        if row.verdict != matrix.FAIL:
+        if row.verdict not in matrix.KEPT_WHEN_INTERRUPTED:
             row.verdict = matrix.INCONCLUSIVE
             row.reason = f"interrupted before the case finished: {reason}"
         return row
@@ -1085,7 +1097,27 @@ class ProofRun:
     def _events(self, key: str, wait_ms: int = EVENT_WAIT_MS) -> list[dict[str, Any]]:
         return self._events_split(key, wait_ms)[0]
 
+    def _setup_tokens_expiring(self) -> str | None:
+        """The setup tokens with less than CASE_TOKEN_MARGIN_SECONDS left, if any."""
+        short = [
+            f"{key} {int(left)} s left"
+            for key in ("A", "B", "X", "D")
+            if (left := seconds_left(self._tokens.get(key))) is not None
+            and left < CASE_TOKEN_MARGIN_SECONDS
+        ]
+        return ", ".join(short) or None
+
     def reconnect_check(self) -> None:
+        short = self._setup_tokens_expiring()
+        if short:
+            # Not made: a refused reconnection could be the token's own expiry.
+            self._check(
+                "AP11",
+                "client A disconnects, reconnects over the WebSocket and receives the next message",
+                False,
+                f"not made: the setup tokens are close to their expiry ({short})",
+            )
+            return
         try:
             self._reconnect_check()
         except (GuardrailStop, RunStopped):
@@ -1174,6 +1206,23 @@ class ProofRun:
                 self.reconnect_check()
                 reconnected = True
             if only and case.id not in only:
+                continue
+            short = self._setup_tokens_expiring() if case.phase < FAMILY_PHASE else None
+            if short:
+                self.case_results.append(
+                    self._result(
+                        case,
+                        "-",
+                        f"not run: the setup tokens are close to their expiry ({short})",
+                        "-",
+                        matrix.Verdict(
+                            matrix.INCONCLUSIVE,
+                            "not run: a refusal could have been a token's own expiry",
+                        ),
+                    )
+                )
+                if progress is not None:
+                    progress()
                 continue
             if case.phase >= FAMILY_PHASE and not families:
                 # The I1 sessions are not used again (P06.1-I2a).
@@ -2182,7 +2231,9 @@ class ProofRun:
                 "-",
                 "not set up",
                 f"{state['setup_note']}; {change.note}",
-                matrix.Verdict(matrix.INCONCLUSIVE, "no poll message could be created in AB"),
+                matrix.Verdict(
+                    matrix.INCONCLUSIVE, "no poll message could be created in S10's channel"
+                ),
             )
         answer = _http_answer(reply)
         verdict = matrix.refused_verdict(answer.outcome, state["control_ok"])

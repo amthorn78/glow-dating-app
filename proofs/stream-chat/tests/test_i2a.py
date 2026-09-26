@@ -10,19 +10,25 @@ import json
 import unittest
 from typing import Any
 
+import jwt
+
 import tests  # noqa: F401
 from glow_stream_proof import i2a, matrix, proof_run
 from glow_stream_proof.app_send import ProviderUnavailable
-from glow_stream_proof.client_bridge import Reply
+from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import CaseResult, ProofRun
+from glow_stream_proof.usage import GuardrailStop
+from tests.fake_world import FakeClock, token_for
 from tests.fakes import (
     AB,
     PREFIX,
+    SECRET,
     FakeServer,
     FakeSession,
     NoSettle,
     error,
     http_reply,
+    local_error,
     make_run,
     ok,
     record,
@@ -56,8 +62,18 @@ def calls_to(method: str) -> Any:
 
 
 class TokenExpiryTest(unittest.TestCase):
-    def expiry(self, reads: list[Reply], reconnect: Reply) -> CaseResult:
+    def expiry(
+        self,
+        reads: list[Reply],
+        reconnect: Reply,
+        *,
+        slow_watch_s: float = 0,
+        token: Any = None,
+    ) -> CaseResult:
+        """TD-expiry on a fake clock: the case's token is issued at the clock's time and
+        its wait for the expiry costs nothing."""
         connects: list[int] = []
+        clock = FakeClock()
 
         def device(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "connect":
@@ -68,17 +84,25 @@ class TokenExpiryTest(unittest.TestCase):
             if op == "call" and params.get("method") == "query":
                 return reads.pop(0)
             if op == "call" and params.get("method") == "watch":
+                clock.sleep(slow_watch_s)
                 return http_reply(201)
             return None
 
-        run, _ = matrix_run({"TD-expiry"}, {"A-expiring": device})
+        run, server = make_run(behaviours={"A-expiring": device})
+        with NoSettle(), clock:
+            set_up(run)
+            server.user_token = token or (  # type: ignore[method-assign]
+                lambda uid, ttl: token_for(uid, clock.time(), ttl)
+            )
+            run.run_matrix({"TD-expiry"})
         return only(run, "TD-expiry")
 
     def test_the_expired_token_is_refused(self) -> None:
         case = self.expiry([http_reply(201), http_reply(401, 40)], ws_refused(401, 40))
         self.assertEqual(case.verdict, matrix.HOLDS)
         self.assertEqual(case.detail["after_expiry"]["reconnect"], "401 / code 40")
-        self.assertEqual(case.detail["expiry"]["lifetime_s"], i2a.EXPIRY_TTL_SECONDS)
+        # The server SDK back-dates iat by 5 s.
+        self.assertEqual(case.detail["expiry"]["exp_minus_iat_s"], i2a.EXPIRY_TTL_SECONDS + 5)
         self.assertIn("first device read", case.observed)
 
     def test_a_read_or_a_reconnect_after_expiry_is_a_fail(self) -> None:
@@ -100,8 +124,29 @@ class TokenExpiryTest(unittest.TestCase):
         self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
         self.assertIn("not attributable", case.reason)
 
+    def test_controls_that_finish_too_close_to_the_expiry_are_inconclusive(self) -> None:
+        # The independent review, a nit: the token's lifetime is 25 s; the watch takes 23.
+        case = self.expiry(
+            [http_reply(201), http_reply(401, 40)], ws_refused(401, 40), slow_watch_s=23
+        )
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("within 3 s of the token's expiry", case.reason)
+        self.assertLess(case.detail["before_expiry"]["read_done_s_before_exp"], 3)
+
+    def test_a_token_without_an_expiry_is_inconclusive(self) -> None:
+        def no_exp(uid: str, ttl: int) -> str:
+            return jwt.encode({"user_id": uid, "iat": 0}, SECRET, "HS256")
+
+        case = self.expiry(
+            [http_reply(201), http_reply(401, 40)], ws_refused(401, 40), token=no_exp
+        )
+        self.assertEqual(
+            (case.verdict, case.reason), (matrix.INCONCLUSIVE, "the token carries no expiry claim")
+        )
+
     def test_the_second_devices_session_is_closed(self) -> None:
-        run, _ = matrix_run({"TD-expiry"})
+        with FakeClock():  # the wait for the expiry costs nothing
+            run, _ = matrix_run({"TD-expiry"})
         self.assertNotIn("A-expiring", run.sessions)
 
 
@@ -176,6 +221,11 @@ class MemberStore:
         self.refused = refused
         self.server_writes: list[Any] = []
         self.restore_fails: set[str] = set()
+        # How many server reads of the member record succeed; None: every one.
+        self.reads_ok: int | None = None
+        self.reads = 0
+        # Every server write of the member record is refused (a reserved field).
+        self.patch_refused = False
 
     def write(self, fields: dict[str, Any]) -> None:
         for key, value in fields.items():
@@ -212,9 +262,14 @@ class MemberStore:
     def server(self, _server: FakeServer, _run: ProofRun) -> Any:
         def handler(method: str, path: str, body: Any, params: Any) -> Any:
             if path == "/api/v2/chat/members" and AB in str(params):
+                self.reads += 1
+                if self.reads_ok is not None and self.reads > self.reads_ok:
+                    return error(method, path, 500, -1, "internal")
                 return ok(method, path, {"members": [dict(self.member)]}, 200)
             if method == "PATCH" and path.startswith(f"/channels/glow-match/{AB}/member"):
                 self.server_writes.append(body)
+                if self.patch_refused:
+                    return error(method, path, 400, 4, "reserved field")
                 fields = dict((body or {}).get("set") or {})
                 if any(k in self.restore_fails for k in fields):
                     return ok(method, path, {}, 200)  # accepted, never stored
@@ -250,7 +305,10 @@ class S15MapTest(unittest.TestCase):
         self.assertTrue(fields["channel_role"]["applied_by_control"])
         # Every change is put back and verified.
         for name in ("glow_note", "pinned", "archived", "channel_role"):
+            self.assertTrue(fields[name]["restored"].startswith("PATCH 200"), name)
             self.assertTrue(fields[name]["restored"].endswith("verified True"), name)
+        # A write accepted but not stored needs nothing put back; the record is verified.
+        self.assertEqual(fields["banned"]["restored"], "nothing to put back; verified True")
         self.assertEqual(store.member.get("channel_role"), "channel_member")
         self.assertIsNone(store.member.get("pinned_at"))
         self.assertNotIn("glow_note", store.member)
@@ -268,7 +326,71 @@ class S15MapTest(unittest.TestCase):
             raises=proof_run.RunStopped,
         )
         self.assertEqual([c.case_id for c in run.case_results], ["S15-map"])
-        self.assertTrue(any("member field pinned was not restored" in s for s in run.stops))
+        self.assertTrue(any("A's member record in AB is not as it was" in s for s in run.stops))
+        self.assertIn("verified False", only(run, "S15-map").detail["fields"]["pinned"]["restored"])
+
+    def test_nothing_is_put_back_for_a_field_that_was_never_changed(self) -> None:
+        # A write accepted but ignored needs no restore, which Stream might refuse; the
+        # record is still verified, and the run goes on.
+        store = MemberStore(applied=set(), refused=set())
+        store.patch_refused = True
+        run, _ = matrix_run(
+            {"S15-map", "F9-pin"}, after_setup={"A": store.client}, handler=store.server
+        )
+        self.assertEqual([c.case_id for c in run.case_results], ["S15-map", "F9-pin"])
+        self.assertEqual(run.stops, [])
+        self.assertEqual(len(store.server_writes), 2)  # only the server's overwrite and clear
+        fields = only(run, "S15-map").detail["fields"]
+        self.assertEqual(fields["is_moderator"]["restored"], "nothing to put back; verified True")
+
+    def test_a_record_that_cannot_be_read_after_restoring_stops_the_run(self) -> None:
+        store = MemberStore(applied={"glow_note"}, refused=set())
+        store.reads_ok = 2  # the original record and the read after A's write
+        run, _ = matrix_run(
+            {"S15-map", "F9-pin"},
+            after_setup={"A": store.client},
+            handler=store.server,
+            raises=proof_run.RunStopped,
+        )
+        self.assertEqual([c.case_id for c in run.case_results], ["S15-map"])
+        self.assertTrue(any("could not be read after restoring" in s for s in run.stops))
+
+    def test_a_field_the_control_set_is_restored_when_bs_session_ends(self) -> None:
+        # The independent review's point 1: the control's replay set channel_role, then
+        # B's session ended before the field was done; the field is still put back.
+        store = MemberStore(applied=set(), refused={"channel_role"})
+
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "events" and store.member.get("channel_role") == "channel_moderator":
+                raise ClientSessionEnded("client B ended: no reply within 60s")
+            return None
+
+        run, case = self.mapped(store, b)
+        self.assertEqual(store.member.get("channel_role"), "channel_member")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("ClientSessionEnded", case.detail["interrupted"])
+        entry = case.detail["fields"]["channel_role"]
+        self.assertTrue(entry["applied_by_control"])
+        self.assertTrue(entry["restored"].endswith("verified True"))
+        self.assertEqual(run.stops, [])
+
+    def test_nothing_is_sent_to_restore_after_a_guardrail_stop(self) -> None:
+        store = MemberStore(applied={"glow_note"}, refused=set())
+
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "query":
+                raise GuardrailStop("per-session budget reached: api_calls")
+            return None
+
+        run, _ = matrix_run(
+            {"S15-map"},
+            after_setup={"A": store.client, "B": b},
+            handler=store.server,
+            raises=GuardrailStop,
+        )
+        self.assertEqual(store.server_writes, [])  # no restore was sent
+        entry = only(run, "S15-map").detail["fields"]["glow_note"]
+        self.assertTrue(entry["restored"].startswith("not sent: a guardrail stopped the run"))
 
     def test_what_b_receives_is_recorded(self) -> None:
         store = MemberStore(applied={"glow_note"}, refused=set())
@@ -296,10 +418,81 @@ class OwnMemberFlagTest(unittest.TestCase):
         )
         return only(run, case_id)
 
+    @staticmethod
+    def b_reads(members: list[dict[str, Any]]) -> Any:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "query":
+                return http_reply(201, response={"members": members})
+            return None
+
+        return b
+
     def test_stored_and_not_shown_to_b_is_filtered(self) -> None:
-        case = self.flag(MemberStore(applied={"pinned"}, refused=set()))
+        store = MemberStore(applied={"pinned"}, refused=set())
+        case = self.flag(store, self.b_reads([{"user_id": A_ID}]))
         self.assertEqual(case.verdict, matrix.HOLDS_FILTERED)
         self.assertTrue(case.detail["restored"].endswith("verified True"))
+        self.assertIsNone(store.member.get("pinned_at"))
+
+    def test_a_b_read_without_as_member_record_is_inconclusive(self) -> None:
+        # The independent review's point 5: a read that could not show the flag.
+        case = self.flag(MemberStore(applied={"pinned"}, refused=set()), self.b_reads([]))
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("did not return A's member record", case.reason)
+
+    def test_a_refused_b_read_is_inconclusive(self) -> None:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "query":
+                return http_reply(403, 17)
+            return None
+
+        case = self.flag(MemberStore(applied={"pinned"}, refused=set()), b)
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_a_stored_record_that_cannot_be_read_is_inconclusive(self) -> None:
+        store = MemberStore(applied={"pinned"}, refused=set())
+        store.reads_ok = 1  # only the original record
+        run, _ = matrix_run(
+            {"F9-pin"},
+            after_setup={"A": store.client, "B": self.b_reads([{"user_id": A_ID}])},
+            handler=store.server,
+            raises=proof_run.RunStopped,
+        )
+        case = only(run, "F9-pin")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "A's member record could not be read after the write")
+        self.assertTrue(any("could not be read after restoring" in s for s in run.stops))
+
+    def test_a_leak_stays_a_fail_when_the_control_is_interrupted(self) -> None:
+        # The independent review's point 7: the row keeps the FAIL and the restore's note.
+        store = MemberStore(applied=set(), refused={"pinned"})
+        leaked = self.b_reads([{"user_id": A_ID, "pinned_at": "2026-09-26T00:00:00Z"}])
+
+        def server(fake: FakeServer, run: ProofRun) -> Any:
+            inner = store.server(fake, run)
+
+            def handler(method: str, path: str, body: Any, params: Any) -> Any:
+                if method == "PATCH" and path.endswith(f"/member/{A_ID}"):
+                    raise RuntimeError("the control could not be sent")
+                return inner(method, path, body, params)
+
+            return handler
+
+        run, _ = matrix_run(
+            {"F9-pin"}, after_setup={"A": store.client, "B": leaked}, handler=server
+        )
+        case = only(run, "F9-pin")
+        self.assertEqual(case.verdict, matrix.FAIL)
+        self.assertIn("RuntimeError", case.detail["interrupted"])
+        self.assertTrue(case.detail["restored"].endswith("verified True"))
+
+    def test_an_unreadable_record_writes_nothing(self) -> None:
+        store = MemberStore(applied={"pinned"}, refused=set())
+        store.reads_ok = 0
+        case = self.flag(store)
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("nothing was written", case.reason)
+        self.assertIsNone(store.member.get("pinned_at"))
 
     def test_shown_to_b_is_a_fail(self) -> None:
         store = MemberStore(applied={"archived"}, refused=set())
@@ -389,6 +582,59 @@ class OracleTest(unittest.TestCase):
         run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
         self.assertEqual(only(run, "EO-message").verdict, matrix.HOLDS)
 
+    def test_identical_input_errors_are_inconclusive(self) -> None:
+        # The independent review, point 6: an input error may come before any
+        # existence check, so identical ones show nothing.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                return http_reply(400, 4)
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
+        case = only(run, "EO-message")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("identical input errors", case.reason)
+
+    def test_a_pair_without_an_answer_is_inconclusive(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                return local_error()
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
+        case = only(run, "EO-message")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("not attributable", case.reason)
+
+    def test_identical_404s_hold(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                return http_reply(404, 16)
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
+        self.assertEqual(only(run, "EO-message").verdict, matrix.HOLDS)
+
+    def test_an_oracle_seen_before_an_interruption_stays_a_fail(self) -> None:
+        # The independent review, point 7: the query pair differs; the run is then
+        # stopped in the watch pair.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            method = params.get("method")
+            if (
+                op == "call"
+                and method == "query"
+                and params.get("id", "").endswith("-none-channel")
+            ):
+                return http_reply(404, 16)
+            if op == "call" and method == "watch":
+                raise GuardrailStop("per-session budget reached: api_calls")
+            return None
+
+        run, _ = matrix_run({"EO-channel"}, after_setup={"A": a}, raises=GuardrailStop)
+        case = only(run, "EO-channel")
+        self.assertEqual(case.verdict, matrix.FAIL)
+        self.assertIn("an existence oracle: query", case.reason)
+
     def test_a_missing_channel_that_a_probe_created_is_counted_and_cleaned_up(self) -> None:
         def created(_server: FakeServer, run: ProofRun) -> Any:
             def handler(method: str, path: str, body: Any, params: Any) -> Any:
@@ -465,6 +711,27 @@ class G2SetupTest(unittest.TestCase):
         self.assertIn("verified", run.g2_setup["with_guest_creation_enabled"]["restored"])  # type: ignore[index]
         self.assertEqual(run.journal, [])
         self.assertEqual(run.ledger.run.users, 4)
+
+    def test_any_refusal_is_tried_again_with_guest_creation_enabled(self) -> None:
+        # Stream does not document which status it gives (the independent review, a nit).
+        run, server = make_run()
+        original = server.create_guest
+
+        def refuse_with_400(user: dict[str, Any]) -> Any:
+            if server.app.get("guest_user_creation_disabled") is True:
+                server._count("POST", "/guest", {"user": user})
+                return error("POST", "/guest", 400, 4, "guest user creation is disabled"), None
+            return original(user)
+
+        server.create_guest = refuse_with_400  # type: ignore[method-assign]
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"G2-read-ab"})
+        setup = run.g2_setup or {}
+        self.assertEqual(setup["server_create"], "400 / code 4")
+        self.assertEqual(setup["with_guest_creation_enabled"]["server_create"], "201")
+        self.assertIn("verified", setup["with_guest_creation_enabled"]["restored"])
+        self.assertEqual(run.journal, [])
 
     def test_a_guest_whose_connect_is_refused_is_not_run(self) -> None:
         def g2(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:

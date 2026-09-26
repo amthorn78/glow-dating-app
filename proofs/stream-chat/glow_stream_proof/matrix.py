@@ -211,6 +211,12 @@ HOLDS_IGNORED = "HOLDS (accepted, not applied)"
 REFUSED_FEATURE = "REFUSED (feature off; not a permission error)"
 FAIL = "FAIL"
 INCONCLUSIVE = "INCONCLUSIVE"
+# P06.1-I2a: a revocation mechanism judged against the history policy (mechanisms.py).
+MEETS = "MEETS the history policy"
+FALLS_SHORT = "DOES NOT MEET the history policy"
+# What an interrupted case keeps: the failure was observed (the independent review of
+# P06.1-I2a, point 7). Anything else becomes INCONCLUSIVE.
+KEPT_WHEN_INTERRUPTED = frozenset({FAIL, FALLS_SHORT})
 
 
 NO_RESPONSE_REASON = "no answer from Stream was recorded for the request under test"

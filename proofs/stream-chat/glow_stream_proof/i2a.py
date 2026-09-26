@@ -18,7 +18,8 @@ from __future__ import annotations
 import json
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from typing import Any
 
 import httpx
@@ -136,7 +137,9 @@ def token_expiry(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResul
     HOLDS when the expired token's REST read and its reconnection both get an
     authentication or permission error after the same requests succeeded before
     expiry; FAIL when either succeeds after expiry. The open connection's delivery
-    after expiry, and the first device's access, are recorded as observations.
+    after expiry, and the first device's access, are recorded as observations. The
+    controls count only when they finished at least ``EXPIRY_MARGIN_SECONDS`` before
+    the token's ``exp`` (the independent review of P06.1-I2a, a nit).
     """
     a, ab = run.ctx["A"], run.ctx["AB"]
     token = run.api.user_token(a, EXPIRY_TTL_SECONDS)
@@ -144,9 +147,10 @@ def token_expiry(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResul
     exp = claims.get("exp")
     label = "A-expiring"
     # Never a key named like a credential ("token", "*_token"): the redactor hides it.
+    # exp - iat is the lifetime plus the 5 s the server SDK back-dates iat by.
     detail: dict[str, Any] = {
         "expiry": {
-            "lifetime_s": exp - claims["iat"]
+            "exp_minus_iat_s": exp - claims["iat"]
             if isinstance(exp, int) and isinstance(claims.get("iat"), int)
             else None
         }
@@ -156,11 +160,13 @@ def token_expiry(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResul
         connected = pr._ws_answer(run._send(session, "connect", max_calls=3, user={"id": a}))
         watched = pr._http_answer(_call(run, label, "channel", "watch", [], ab))
         before = pr._http_answer(_call(run, label, "channel", "query", [matrix.READ_OPTIONS], ab))
+        before_done = time.time()
         before_probe = _probe(run, (label, "A"), "before expiry")
         detail["before_expiry"] = {
             "connect": pr._observed(connected),
             "watch": pr._observed(watched),
             "read": pr._observed(before),
+            "read_done_s_before_exp": round(exp - before_done, 1) if isinstance(exp, int) else None,
             "probe": before_probe,
         }
         run._observe(
@@ -195,8 +201,15 @@ def token_expiry(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResul
         "first_device_read": pr._observed(first_device),
         "open_connection_received": kept_open,
     }
-    if connected.outcome != "success" or before.outcome != "success":
+    if not isinstance(exp, int):
+        verdict = matrix.Verdict(matrix.INCONCLUSIVE, "the token carries no expiry claim")
+    elif connected.outcome != "success" or before.outcome != "success":
         verdict = matrix.Verdict(matrix.INCONCLUSIVE, "the controls before expiry did not succeed")
+    elif exp - before_done < EXPIRY_MARGIN_SECONDS:
+        verdict = matrix.Verdict(
+            matrix.INCONCLUSIVE,
+            f"the controls finished within {EXPIRY_MARGIN_SECONDS} s of the token's expiry",
+        )
     elif after.outcome == "success" or reconnect.outcome == "success":
         still = [
             n
@@ -357,6 +370,8 @@ def outage(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResult:
 
 # -- the S15 mapping -------------------------------------------------------------------------
 
+FLAG_FIELDS = frozenset({"pinned", "archived"})
+
 
 def s15_fields(flat: str) -> tuple[tuple[str, Any], ...]:
     return (
@@ -372,114 +387,294 @@ def s15_fields(flat: str) -> tuple[tuple[str, Any], ...]:
     )
 
 
+# Every field the S15 mapping writes: a restore is verified against all of them.
+MAPPED_FIELDS = tuple(field for field, _ in s15_fields(""))
+
+
 def _applied(field: str, before: Any, after: Any, value: Any) -> bool:
-    if field in ("pinned", "archived"):
+    if field in FLAG_FIELDS:
         return after is not None and before is None
     return bool(after == value and before != value)
 
 
-def s15_map(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResult:
-    """For each member field: A's own write, what the server stores, what B receives;
-    a refused write is replayed by the server (its control); every change is restored.
-    Then the server overwrites and clears A's custom data. It records, never judges."""
-    a, ab = run.ctx["A"], run.ctx["AB"]
-    flat = run.prefix.replace("-", "")
+def _same(field: str, now: Any, was: Any) -> bool:
+    """Whether a stored member field has its original value again; an unset flag or
+    boolean may read as absent or as false."""
+    if field in FLAG_FIELDS:
+        return (now is None) == (was is None)
+    if was is None:
+        return now is None or (field in BOOLEAN_MEMBER_FIELDS and now is False)
+    return bool(now == was)
+
+
+@contextmanager
+def restoring_member(
+    run: pr.ProofRun,
+    case: matrix.Case,
+    channel_id: str,
+    user_id: str,
+    fields: tuple[str, ...],
+    original: Mapping[str, Any],
+    entry: dict[str, Any],
+) -> Iterator[None]:
+    """Put ``fields`` of the member back as in ``original`` when the block ends, however it
+    ends, once a write in it may have changed them (``entry["written"]``), and verify every
+    mapped field (P06.1-I2a; the independent review, point 1).
+
+    As for S15's unset (P06.1-C3): after a guardrail stop, or once a charge or limit signal
+    is recorded, nothing more is sent; the fields stay as they are and cleanup deletes A
+    with AB. A restore that fails, or a record that does not read back as it was, stops
+    the run once the case's row is recorded.
+    """
+    try:
+        yield
+    except GuardrailStop as exc:
+        if entry.get("written"):
+            _restore_not_sent(run, entry, f"a guardrail stopped the run ({run._text(exc)})")
+        raise
+    except BaseException:
+        if entry.get("written"):
+            if run.stop_signals:
+                why = f"a charge or limit signal was met ({run.stop_signals[0]})"
+                _restore_not_sent(run, entry, why)
+            else:
+                entry["restored"] = _restore_quietly(
+                    run, case, channel_id, user_id, fields, original
+                )
+        raise
+    if entry.get("written"):
+        entry["restored"] = restore_member(run, case, channel_id, user_id, fields, original)
+
+
+def _restore_not_sent(run: pr.ProofRun, entry: dict[str, Any], why: str) -> None:
+    note = f"not sent: {why}; cleanup (after a charge or limit signal, cleanup --apply) deletes A"
+    entry["restored"] = note
+    run.notes.append(f"A's member fields were not restored: {note}")
+
+
+def _restore_quietly(
+    run: pr.ProofRun,
+    case: matrix.Case,
+    channel_id: str,
+    user_id: str,
+    fields: tuple[str, ...],
+    original: Mapping[str, Any],
+) -> str:
+    """The restore while another exception is in flight: it never raises over it, except a
+    guardrail stop of its own, which becomes the run's stop."""
+    try:
+        return restore_member(run, case, channel_id, user_id, fields, original)
+    except GuardrailStop as exc:
+        run.stops.append(f"{case.id}: restoring A's member fields: {run._text(exc)}")
+        raise
+    except Exception as exc:
+        run._defer_stop(
+            f"{case.id}: restoring A's member fields raised {type(exc).__name__}: {run._text(exc)}"
+        )
+        return "error"
+
+
+def restore_member(
+    run: pr.ProofRun,
+    case: matrix.Case,
+    channel_id: str,
+    user_id: str,
+    fields: tuple[str, ...],
+    original: Mapping[str, Any],
+) -> str:
+    """Set ``fields`` back as in ``original`` where the member's record differs (all of
+    them when it cannot be read), read it again and compare every mapped field with
+    ``original``. A record that is not as it was, or cannot be read, stops the run once
+    the case's row is recorded (it acts on the run's own member of the run's own
+    channel). Nothing is sent for a field that already reads as it was, so a write
+    Stream accepted but ignored needs no restore it might refuse."""
+    current = server_member(run, channel_id, user_id)
+    changed = [
+        f
+        for f in fields
+        if current is None or not _same(f, member_value(current, f), member_value(original, f))
+    ]
+    if not changed:
+        now: Mapping[str, Any] | None = current
+        sent = "nothing to put back"
+    else:
+        set_back: dict[str, Any] = {}
+        unset: list[str] = []
+        for field in changed:
+            was = member_value(original, field)
+            if field in FLAG_FIELDS:
+                set_back[field] = was is not None
+            elif was is None and field in BOOLEAN_MEMBER_FIELDS:
+                set_back[field] = False
+            elif was is None:
+                unset.append(field)
+            else:
+                set_back[field] = was
+        body: dict[str, Any] = {}
+        if set_back:
+            body["set"] = set_back
+        if unset:
+            body["unset"] = unset
+        done = run.api.raw(
+            "PATCH", f"/channels/{T}/{channel_id}/member", body=body, params={"user_id": user_id}
+        )
+        sent = f"PATCH {_short(done)}"
+        now = server_member(run, channel_id, user_id)
+    if now is None:
+        run._defer_stop(
+            f"{case.id}: A's member record could not be read after restoring {list(fields)} "
+            f"({sent})"
+        )
+        return f"{sent}; not verified: the record could not be read"
+    differ = [
+        f for f in MAPPED_FIELDS if not _same(f, member_value(now, f), member_value(original, f))
+    ]
+    if differ:
+        run._defer_stop(
+            f"{case.id}: A's member record in AB is not as it was ({sent}); differing {differ}"
+        )
+        return f"{sent}; verified False (differing {differ})"
+    return f"{sent}; verified True"
+
+
+def _map_field(
+    run: pr.ProofRun,
+    case: matrix.Case,
+    ab: str,
+    a: str,
+    field: str,
+    value: Any,
+    original: Mapping[str, Any],
+    entry: dict[str, Any],
+) -> None:
+    """One field of the S15 mapping, recorded in ``entry``; A's record is put back and
+    verified when the field ends, however it ends (:func:`restoring_member`)."""
     path = f"/channels/{T}/{ab}/member"
-    table: dict[str, Any] = {}
-    detail: dict[str, Any] = {"fields": table}
-    for field, value in s15_fields(flat):
-        run._events("B", wait_ms=0)
-        original = server_member(run, ab, a)
+    with restoring_member(run, case, ab, a, (field,), original, entry):
         was = member_value(original, field)
+        run._events("B", wait_ms=0)
         answer = pr._http_answer(
             _call(run, "A", "channel", "updateMemberPartial", [{"set": {field: value}}], ab)
         )
+        entry["member_write"] = pr._observed(answer)
+        entry["written"] = answer.outcome not in (*REFUSALS, "feature", "input", "not-found")
         stored = server_member(run, ab, a)
-        applied = _applied(field, was, member_value(stored, field), value)
-        entry: dict[str, Any] = {"member_write": pr._observed(answer), "applied": applied}
+        entry["stored_read"] = stored is not None
+        entry["applied"] = stored is not None and _applied(
+            field, was, member_value(stored, field), value
+        )
         if answer.outcome in REFUSALS:
+            entry["written"] = True  # the control's replay may change it
             replay = run.api.raw("PATCH", path, body={"set": {field: value}}, params={"user_id": a})
             entry["server_control"] = _short(replay)
             stored = server_member(run, ab, a)
-            entry["applied_by_control"] = _applied(field, was, member_value(stored, field), value)
+            entry["applied_by_control"] = stored is not None and _applied(
+                field, was, member_value(stored, field), value
+            )
         events, local = run._events_split("B")
         entry["b_event_types"] = sorted({str(e.get("type")) for e in events})
         entry["b_local_event_types_dropped"] = local
         if field == "glow_note":
             entry["b_events_carry_value"] = bool(matrix.find_terms(events, [str(value)]))
-        if applied:
+        if entry["applied"]:
             view = pr._responses(_call(run, "B", "channel", "query", [matrix.READ_OPTIONS], ab))
             shown = [member_value(m, field) for m in member_entries(view, a)]
             entry["b_query_shows_it"] = any(
-                v is not None and (field in ("pinned", "archived") or v == value) for v in shown
+                v is not None and (field in FLAG_FIELDS or v == value) for v in shown
             )
-        if applied or entry.get("applied_by_control"):
-            entry["restored"] = _restore_member_field(run, case, ab, a, field, was)
-        table[field] = entry
+
+
+def s15_map(run: pr.ProofRun, case: matrix.Case, _arg: str) -> pr.CaseResult:
+    """For each member field: A's own write, what the server stores, what B receives;
+    a refused write is replayed by the server (its control); every write that may have
+    changed A's record is undone and the record verified. Then the server overwrites and
+    clears A's custom data. It records, never judges."""
+    a, ab = run.ctx["A"], run.ctx["AB"]
+    flat = run.prefix.replace("-", "")
+    path = f"/channels/{T}/{ab}/member"
+    table: dict[str, Any] = {}
+    detail: dict[str, Any] = {"fields": table}
+    request = "PATCH /channels/glow-match/{AB}/member (A's own membership)"
+    original = server_member(run, ab, a)
+    if original is None:
+        return run._result(
+            case,
+            request,
+            "not run: A's member record in AB could not be read",
+            "-",
+            matrix.Verdict(
+                matrix.INCONCLUSIVE,
+                "nothing was written: without A's record it could not be restored",
+            ),
+            detail,
+        )
+
+    def observe() -> None:
         run._observe(
             run._result(
                 case,
-                f"PATCH /channels/glow-match/{{AB}}/member ({field})",
+                request,
                 f"mapped {len(table)} fields",
                 "-",
                 matrix.Verdict(matrix.INCONCLUSIVE, "the mapping did not finish"),
                 detail,
             )
         )
+
+    for field, value in s15_fields(flat):
+        # Until Stream's answer shows a refusal, the write may have changed the record.
+        entry: dict[str, Any] = {"written": True}
+        table[field] = entry
+        try:
+            _map_field(run, case, ab, a, field, value, original, entry)
+        finally:
+            observe()  # with the field's restore, however the field ended
     marker = f"serverset{flat}"
-    overwrite = run.api.raw(
-        "PATCH", path, body={"set": {"glow_note": marker}}, params={"user_id": a}
-    )
-    after_set = member_value(server_member(run, ab, a), "glow_note")
-    clear = run.api.raw("PATCH", path, body={"unset": ["glow_note"]}, params={"user_id": a})
-    after_clear = member_value(server_member(run, ab, a), "glow_note")
-    detail["server_overwrite"] = {"answer": _short(overwrite), "stored": after_set == marker}
-    detail["server_clear"] = {"answer": _short(clear), "absent_after": after_clear is None}
+    overwrite_row: dict[str, Any] = {}
+    clear_row: dict[str, Any] = {}
+    detail["server_overwrite"], detail["server_clear"] = overwrite_row, clear_row
+    server_entry: dict[str, Any] = {"written": True}
+    try:
+        with restoring_member(run, case, ab, a, ("glow_note",), original, server_entry):
+            overwrite = run.api.raw(
+                "PATCH", path, body={"set": {"glow_note": marker}}, params={"user_id": a}
+            )
+            overwrite_row["answer"] = _short(overwrite)
+            overwrite_row["stored"] = member_value(server_member(run, ab, a), "glow_note") == marker
+            clear = run.api.raw("PATCH", path, body={"unset": ["glow_note"]}, params={"user_id": a})
+            cleared = server_member(run, ab, a)
+            clear_row["answer"] = _short(clear)
+            clear_row["absent_after"] = (
+                None if cleared is None else member_value(cleared, "glow_note") is None
+            )
+    finally:
+        clear_row["restored"] = server_entry.get("restored")
+        observe()
     detail["member_custom_settings_read_live"] = {
         k: v for k, v in run.settings.items() if k.startswith("member_custom_on_")
     }
-    settable = [f for f, e in table.items() if e["applied"]]
-    refused = [f for f, e in table.items() if e["member_write"].split(" ")[0] in ("401", "403")]
-    ignored = [f for f in table if f not in settable and f not in refused]
+    settable = [f for f, e in table.items() if e.get("applied")]
+    refused = [
+        f for f, e in table.items() if str(e.get("member_write", "")).startswith(("401", "403"))
+    ]
+    ignored = [
+        f
+        for f, e in table.items()
+        if str(e.get("member_write", "")).startswith("2")
+        and e.get("stored_read")
+        and not e.get("applied")
+    ]
+    unknown = [f for f in table if f not in settable + refused + ignored]
     return run._result(
         case,
-        "PATCH /channels/glow-match/{AB}/member (A's own membership)",
+        request,
         f"A set {settable or 'none'}; refused {refused or 'none'}; accepted but not stored "
-        f"{ignored or 'none'}",
+        f"{ignored or 'none'}; not shown {unknown or 'none'}",
         f"server overwrite stored {detail['server_overwrite']['stored']}; server clear "
         f"removed it {detail['server_clear']['absent_after']}",
         matrix.Verdict(RECORDED, "the S15 mapping; see the detail"),
         detail,
     )
-
-
-def _restore_member_field(
-    run: pr.ProofRun, case: matrix.Case, channel_id: str, user_id: str, field: str, was: Any
-) -> str:
-    """Put a member field back and verify it; a restore that fails stops the run after
-    this case (it acts on the run's own member of the run's own channel)."""
-    path = f"/channels/{T}/{channel_id}/member"
-    if field in ("pinned", "archived") or (was is None and field in BOOLEAN_MEMBER_FIELDS):
-        body: dict[str, Any] = {"set": {field: False}}
-    elif was is None:
-        body = {"unset": [field]}
-    else:
-        body = {"set": {field: was}}
-    done = run.api.raw("PATCH", path, body=body, params={"user_id": user_id})
-    now = member_value(server_member(run, channel_id, user_id), field)
-    if field in ("pinned", "archived"):
-        back = now is None
-    elif was is None:
-        back = now in (None, False)
-    else:
-        back = now == was
-    restored = done.ok and back
-    if not restored:
-        run._defer_stop(
-            f"{case.id}: A's member field {field} was not restored: PATCH {_short(done)}; "
-            f"stored {now!r}"
-        )
-    return f"{_short(done)}; verified {restored}"
 
 
 # -- F9: A's own pinned and archived flags -------------------------------------------------
@@ -488,68 +683,117 @@ def _restore_member_field(
 def own_member_flag(run: pr.ProofRun, case: matrix.Case, flag: str) -> pr.CaseResult:
     """A pins or archives AB for itself; can B read it?
 
-    FAIL when B's channel read or events show A's flag; HOLDS (filtered) when A's
-    write is stored and B's reads and events do not show it; HOLDS (accepted, not
-    applied) when the write is accepted but not stored; on an authentication or
-    permission refusal, HOLDS when the server's replay of the same request succeeds.
+    FAIL when B's channel read or events show A's flag. HOLDS (filtered) only when A's
+    write is stored (a 2xx read of A's record shows it) and B's 2xx channel read returned
+    A's member record without the flag, and B's events do not show it. HOLDS (accepted,
+    not applied) only when a 2xx read of A's record shows no flag after an accepted
+    write. On an authentication or permission refusal, HOLDS when the server's replay of
+    the same request succeeds. INCONCLUSIVE otherwise (the independent review, point 5).
+    A write that may have changed A's record is undone and the record verified.
     """
     a, ab = run.ctx["A"], run.ctx["AB"]
-    run._events("B", wait_ms=0)
-    was = member_value(server_member(run, ab, a), flag)
-    reply = _call(run, "A", "channel", "pin" if flag == "pinned" else "archive", [], ab)
-    answer = pr._http_answer(reply)
-    stored = member_value(server_member(run, ab, a), flag)
-    applied = stored is not None and was is None
-    view = pr._responses(_call(run, "B", "channel", "query", [matrix.READ_OPTIONS], ab))
-    events, local = run._events_split("B")
-    leaks = []
-    if any(member_value(m, flag) for m in member_entries(view, a)):
-        leaks.append("B's channel query")
-    carriers = sorted(
-        {
-            str(e.get("type"))
-            for e in events
-            if any(member_value(m, flag) for m in member_entries(e, a))
-        }
-    )
-    if carriers:
-        leaks.append(f"B's events ({', '.join(carriers)})")
-    detail: dict[str, Any] = {
-        "stored": applied,
-        "b_event_types": sorted({str(e.get("type")) for e in events}),
-        "b_local_event_types_dropped": local,
-    }
-    control = "-"
-    control_ok = False
-    if answer.outcome in REFUSALS and answer.record is not None:
-        replay = run.api.raw(
-            "PATCH",
-            "/" + str(answer.record.get("path")).lstrip("/"),
-            body=answer.record.get("body"),
+    detail: dict[str, Any] = {}
+    original = server_member(run, ab, a)
+    if original is None:
+        return run._result(
+            case,
+            "-",
+            "not run: A's member record in AB could not be read",
+            "-",
+            matrix.Verdict(
+                matrix.INCONCLUSIVE,
+                "nothing was written: without A's record it could not be restored",
+            ),
+            detail,
         )
-        control_ok = replay.ok
-        control = f"server replay PATCH -> {_short(replay)}"
-        applied = applied or member_value(server_member(run, ab, a), flag) is not None
-    if applied:
-        detail["restored"] = _restore_member_field(run, case, ab, a, flag, None)
+    was = member_value(original, flag)
+    entry: dict[str, Any] = {"written": True}
+    control, control_ok = "-", False
+    request, observed = "-", "not sent"
+    interim = matrix.Verdict(matrix.INCONCLUSIVE, "the case did not finish")
+    leaks: list[str] = []
+
+    def observe() -> None:
+        detail["restored"] = entry.get("restored")
+        run._observe(run._result(case, request, observed, "control not completed", interim, detail))
+
+    try:
+        with restoring_member(run, case, ab, a, (flag,), original, entry):
+            run._events("B", wait_ms=0)
+            reply = _call(run, "A", "channel", "pin" if flag == "pinned" else "archive", [], ab)
+            answer = pr._http_answer(reply)
+            request, observed = pr._request_line(answer.record, run.ctx), pr._observed(answer)
+            if answer.outcome in ("feature", "input", "not-found"):
+                entry["written"] = False
+            stored = server_member(run, ab, a)
+            shows_flag = stored is not None and member_value(stored, flag) is not None
+            b_reply = _call(run, "B", "channel", "query", [matrix.READ_OPTIONS], ab)
+            b_answer = pr._http_answer(b_reply)
+            b_entries = member_entries(pr._responses(b_reply), a)
+            events, local = run._events_split("B")
+            if any(member_value(m, flag) for m in b_entries):
+                leaks.append("B's channel query")
+            carriers = sorted(
+                {
+                    str(e.get("type"))
+                    for e in events
+                    if any(member_value(m, flag) for m in member_entries(e, a))
+                }
+            )
+            if carriers:
+                leaks.append(f"B's events ({', '.join(carriers)})")
+            detail.update(
+                {
+                    "stored_read": stored is not None,
+                    "stored": shows_flag,
+                    "b_query": pr._observed(b_answer),
+                    "b_query_has_a_member_record": bool(b_entries),
+                    "b_event_types": sorted({str(e.get("type")) for e in events}),
+                    "b_local_event_types_dropped": local,
+                }
+            )
+            if leaks:
+                interim = matrix.Verdict(
+                    matrix.FAIL, f"B reads that A {flag} AB: {', '.join(leaks)}"
+                )
+            observe()
+            if answer.outcome in REFUSALS and answer.record is not None:
+                replay = run.api.raw(
+                    "PATCH",
+                    "/" + str(answer.record.get("path")).lstrip("/"),
+                    body=answer.record.get("body"),
+                )
+                control_ok = replay.ok
+                control = f"server replay PATCH -> {_short(replay)}"
+    finally:
+        observe()  # with the restore's note, however the case ended
     if leaks:
-        verdict = matrix.Verdict(matrix.FAIL, f"B reads that A {flag} AB: {', '.join(leaks)}")
-    elif answer.outcome == "success" and detail["stored"]:
-        verdict = matrix.Verdict(
-            matrix.HOLDS_FILTERED, "stored for A; B's channel read and events do not show it"
-        )
+        verdict = interim
     elif answer.outcome == "success":
-        verdict = matrix.Verdict(matrix.HOLDS_IGNORED, "accepted; not stored")
+        if stored is None:
+            verdict = matrix.Verdict(
+                matrix.INCONCLUSIVE, "A's member record could not be read after the write"
+            )
+        elif was is not None:
+            verdict = matrix.Verdict(
+                matrix.INCONCLUSIVE, "A's record already had the flag before the write"
+            )
+        elif not shows_flag:
+            verdict = matrix.Verdict(matrix.HOLDS_IGNORED, "accepted; A's record shows no flag")
+        elif b_answer.outcome == "success" and b_entries:
+            verdict = matrix.Verdict(
+                matrix.HOLDS_FILTERED,
+                "stored for A; B's channel read returned A's member record without it, and "
+                "B's events do not show it",
+            )
+        else:
+            verdict = matrix.Verdict(
+                matrix.INCONCLUSIVE,
+                "B's channel read did not return A's member record, so it could not show it",
+            )
     else:
         verdict = matrix.refused_verdict(answer.outcome, control_ok)
-    return run._result(
-        case,
-        pr._request_line(answer.record, run.ctx),
-        pr._observed(answer),
-        control,
-        verdict,
-        detail,
-    )
+    return run._result(case, request, observed, control, verdict, detail)
 
 
 # -- F9: invites answered with a message ----------------------------------------------------
@@ -648,18 +892,76 @@ def _normal(answer: pr.Answer, ids: tuple[str, ...]) -> tuple[Any, ...]:
     return answer.status, answer.code, text
 
 
-def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
-    """A's refusal for an existing ID against its refusal for one that does not exist.
+# Outcomes a pair can be judged on: Stream answered, and the answer is classified.
+DETERMINATE = ("success", "auth", "permission", "not-found", "input", "feature")
+# An identical pair shows no oracle only when both answers are refusals for
+# authentication or permission, both are 404, or both succeed with the same shape;
+# identical input or feature errors may come before any existence check.
+NO_ORACLE_WHEN_IDENTICAL = ("success", "auth", "permission", "not-found")
 
-    FAIL (an existence oracle) when any pair's status, code or message (with the IDs
-    replaced) differs; HOLDS when every pair is identical and the control shows the
-    existing ID exists; INCONCLUSIVE otherwise.
+
+def pair_verdict(found: pr.Answer, absent: pr.Answer, ids: tuple[str, ...]) -> tuple[str, str]:
+    """One pair of the existence oracle: FAIL, HOLDS or INCONCLUSIVE, with the reason
+    (the independent review of P06.1-I2a, point 6)."""
+    if found.outcome not in DETERMINATE or absent.outcome not in DETERMINATE:
+        return matrix.INCONCLUSIVE, (
+            f"not attributable: existing {pr._observed(found)}, missing {pr._observed(absent)}"
+        )
+    if _normal(found, ids) != _normal(absent, ids):
+        return matrix.FAIL, f"existing {pr._observed(found)}, missing {pr._observed(absent)}"
+    if found.outcome in NO_ORACLE_WHEN_IDENTICAL:
+        return matrix.HOLDS, f"identical ({pr._observed(found)})"
+    return matrix.INCONCLUSIVE, (
+        f"identical {found.outcome} errors ({pr._observed(found)}): the request may not "
+        "have reached an existence check"
+    )
+
+
+def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
+    """A's answer for an existing ID against its answer for one that does not exist.
+
+    Each pair is judged by :func:`pair_verdict`. FAIL (an existence oracle) when any
+    pair's status, code or message (with the IDs replaced) differs; HOLDS when every
+    pair holds and the control shows the existing ID exists; INCONCLUSIVE otherwise.
+    What each pair shows is kept as the case's row as it is made.
     """
     none = f"{run.prefix}-none"
     pairs: list[tuple[str, pr.Answer, pr.Answer]] = []
     undo: list[str] = []
+    ids: tuple[str, ...] = ()
+    judged: dict[str, dict[str, Any]] = {}
+
+    def observe() -> None:
+        # A pair that differs is a FAIL whatever follows; anything else waits.
+        for name, found, absent in pairs[len(judged) :]:
+            status, why = pair_verdict(found, absent, ids)
+            judged[name] = {
+                "existing": pr._observed(found),
+                "missing": pr._observed(absent),
+                "verdict": status,
+                "why": why,
+            }
+        differ = [f"{n}: {j['why']}" for n, j in judged.items() if j["verdict"] == matrix.FAIL]
+        interim = (
+            matrix.Verdict(matrix.FAIL, "an existence oracle: " + "; ".join(differ))
+            if differ
+            else matrix.Verdict(matrix.INCONCLUSIVE, "the case did not finish")
+        )
+        detail = {"pairs": judged, "undo": undo or None}
+        run._observe(
+            run._result(
+                case,
+                ", ".join(name for name, _, _ in pairs),
+                "; ".join(f"{n}: {j['verdict']}" for n, j in judged.items()),
+                "control not completed",
+                interim,
+                json.loads(pr._generic(json.dumps(detail), run.ctx)),
+            )
+        )
+
     if kind == "channel":
         existing, missing = run.ctx["XD"], f"{none}-channel"
+        ids = (existing, missing)
         for name, method in (("query", "query"), ("watch", "watch")):
             args = [matrix.READ_OPTIONS] if method == "query" else []
             pairs.append(
@@ -669,6 +971,7 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                     pr._http_answer(_call(run, "A", "channel", method, args, missing)),
                 )
             )
+            observe()
         pairs.append(
             (
                 "GET channel",
@@ -684,6 +987,7 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                 ),
             )
         )
+        observe()
         control = pr._http_answer(
             _call(run, "X", "channel", "query", [matrix.READ_OPTIONS], existing)
         )
@@ -693,9 +997,9 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
             run.ledger.reserve("channels")
             run.channels.append(f"{T}:{missing}")
             undo.append("the missing channel was created and is deleted at cleanup")
-        ids: tuple[str, ...] = (existing, missing)
     elif kind == "user":
         existing, missing = run.ctx["X"], f"{none}-user"
+        ids = (existing, missing)
         pairs.append(
             (
                 "queryUsers",
@@ -707,6 +1011,7 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                 ),
             )
         )
+        observe()
         added = pr._http_answer(
             _call(run, "A", "channel", "addMembers", [[existing]], run.ctx["AB"])
         )
@@ -726,6 +1031,7 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                 ),
             )
         )
+        observe()
         try:
             control_user = run._server_user(existing)
         except (GuardrailStop, RunStopped):
@@ -733,9 +1039,9 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
         except Exception:  # Stream did not answer the listing with 2xx
             control_user = None
         control = pr.Answer("success" if control_user else "no-response", None, None, None)
-        ids = (existing, missing)
     else:
         existing, missing = run.ctx["m_x"], f"{none}-message"
+        ids = (existing, missing)
         pairs.append(
             (
                 "getMessage",
@@ -743,37 +1049,30 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                 pr._http_answer(_call(run, "A", "client", "getMessage", [missing])),
             )
         )
+        observe()
         control = pr._http_answer(_call(run, "X", "client", "getMessage", [existing]))
-        ids = (existing, missing)
-    compared: dict[str, Any] = {}
-    differ: list[str] = []
-    for name, found, absent in pairs:
-        same = _normal(found, ids) == _normal(absent, ids)
-        compared[name] = {
-            "existing": pr._observed(found),
-            "missing": pr._observed(absent),
-            "identical": same,
-        }
-        if not same:
-            differ.append(f"{name}: existing {pr._observed(found)}, missing {pr._observed(absent)}")
-    answered = all(f.outcome != "no-response" and m.outcome != "no-response" for _, f, m in pairs)
+    observe()
+    differ = [f"{n}: {j['why']}" for n, j in judged.items() if j["verdict"] == matrix.FAIL]
+    unclear = [f"{n}: {j['why']}" for n, j in judged.items() if j["verdict"] != matrix.HOLDS]
     if differ:
         verdict = matrix.Verdict(matrix.FAIL, "an existence oracle: " + "; ".join(differ))
-    elif answered and control.outcome == "success":
+    elif unclear:
+        verdict = matrix.Verdict(matrix.INCONCLUSIVE, "; ".join(unclear))
+    elif control.outcome != "success":
         verdict = matrix.Verdict(
-            matrix.HOLDS, "the answers for an existing and a missing ID are identical"
+            matrix.INCONCLUSIVE, f"the control did not succeed ({pr._observed(control)})"
         )
     else:
         verdict = matrix.Verdict(
-            matrix.INCONCLUSIVE, "a request had no answer, or the control did not succeed"
+            matrix.HOLDS,
+            "the answers for an existing and a missing ID are identical refusals, 404s or "
+            "successes",
         )
-    detail = {"pairs": compared, "undo": undo or None}
+    detail = {"pairs": judged, "undo": undo or None}
     return run._result(
         case,
         ", ".join(name for name, _, _ in pairs),
-        "; ".join(
-            f"{n}: {'identical' if c['identical'] else 'differ'}" for n, c in compared.items()
-        ),
+        "; ".join(f"{n}: {j['verdict']}" for n, j in judged.items()),
         f"the existing ID exists: {pr._observed(control)}",
         verdict,
         json.loads(pr._generic(json.dumps(detail), run.ctx)),
@@ -786,16 +1085,17 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
 def g2_session(run: pr.ProofRun) -> tuple[ClientSession | None, dict[str, Any]]:
     """A guest created server-side, connected with its ID only (the I1 review's finding 6).
 
-    If the application refuses to create it while guest creation is disabled, the
-    setting is enabled for the moment of the creation, journalled, and disabled again
-    and verified, as G1's control does.
+    If the application refuses to create it while guest creation is disabled (with
+    any status: Stream's documentation does not say which), the setting is enabled for
+    the moment of the creation, journalled, and disabled again and verified, as G1's
+    control does.
     """
     requested = f"{run.prefix}-g2"
     note: dict[str, Any] = {"requested_id": "{prefix}-g2"}
     run.ledger.reserve("users")
     created, token = run.api.create_guest({"id": requested})
     note["server_create"] = _short(created)
-    if created.status == 403:
+    if not created.ok:
         change = run._guest_creation_change()
         with run._temporary(change):
             on = run._set_guest_creation_disabled(False)

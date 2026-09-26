@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -110,7 +111,11 @@ class FakeServer:
 
     @staticmethod
     def _token(user_id: str, expiration: int) -> str:
-        return jwt.encode({"user_id": user_id, "iat": 0, "exp": expiration}, SECRET, "HS256")
+        # As getstream's create_token: iat back-dated by 5 s, exp from now.
+        now = int(time.time())
+        return jwt.encode(
+            {"user_id": user_id, "iat": now - 5, "exp": now + expiration}, SECRET, "HS256"
+        )
 
     # -- raw requests -------------------------------------------------------------
 
@@ -232,7 +237,7 @@ class FakeServer:
         return result
 
     def user_token(self, user_id: str, ttl_seconds: int) -> str:
-        return jwt.encode({"user_id": user_id, "iat": 0, "exp": ttl_seconds}, SECRET, "HS256")
+        return self._token(user_id, ttl_seconds)
 
     def expired_user_token(self, user_id: str) -> str:
         return jwt.encode({"user_id": user_id, "iat": 0, "exp": 1}, SECRET, "HS256")
@@ -395,10 +400,13 @@ def make_run(
     behaviours = behaviours or {}
 
     def fake_session(label: str, token: str | None, **_: Any) -> Any:
-        # A label used again after its session was closed gets a new session.
-        return sessions.setdefault(
-            label, FakeSession(label, behaviours.get(label, default_behaviour), ledger)
-        )
+        # A label used again after its session was closed, or had ended (as a
+        # ClientSession's ``ended``), gets a new session.
+        existing = sessions.get(label)
+        if existing is not None and not getattr(existing, "ended", None):
+            return existing
+        sessions[label] = FakeSession(label, behaviours.get(label, default_behaviour), ledger)
+        return sessions[label]
 
     def deliver(channel_id: str, message_id: str) -> None:
         # Stream delivers a server-sent message to the channel's connected members.

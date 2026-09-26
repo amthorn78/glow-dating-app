@@ -20,18 +20,22 @@ member, four things are recorded before and after it, by the same member:
 * ``rest``: a read of the channel over REST by the member's existing session;
 * ``ws``: whether the member's already-open WebSocket subscription receives the
   channel's events: a server-side channel update and a message from the other
-  member, collected in one window;
+  member, collected in one window per session, the listeners first; a member that
+  missed them while another session received them is collected a second time;
 * ``token_reuse``: a new session with the member's existing token connects and
   reads the channel;
-* ``s15``: the member's own ``updateMemberPartial`` write.
+* ``s15``: the member's own ``updateMemberPartial`` write;
+* ``token_issued_after``, for an account-level mechanism only: a new session with
+  a token issued for the member after the mechanism connects and reads the channel
+  (for the revocation, the token issued past the ``iat`` back-dating).
 
 A dimension is ``ended`` only on Stream's authentication or permission error,
 recorded by status and code, after the same request by the same member succeeded
 before the mechanism (the matrix quality rule), and ``not ended`` when it still
 succeeds. The subscription is ``ended`` only when the member's open connection
 received none of the probe's events while a listener (the other member, when it
-is still entitled) received them in the same window. Anything else is ``not
-shown``.
+is still entitled) received them, and the member's connection did not close or
+recover in a way that could explain the miss. Anything else is ``not shown``.
 
 Also recorded: the event types each member receives when the mechanism is applied
 (the SDK's local events excluded), any system message the provider adds, where
@@ -43,10 +47,10 @@ channel-level mechanisms, whether the affected member's own client can undo it
 (the same request replayed by the server is its control).
 
 The verdict (README, "Verdict rules"): MEETS the history policy when every
-dimension is ended for the member it is applied to (for a freeze, both members),
-its client cannot undo it and the messages are retained; DOES NOT MEET it when a
-dimension is not ended, the client undid it or the messages are gone; otherwise
-INCONCLUSIVE, naming what was not shown.
+dimension of the mechanism is ended for the member it is applied to (for a
+freeze, both members), its client cannot undo it and the messages are retained;
+DOES NOT MEET it when a dimension is not ended, the client undid it or the
+messages are gone; otherwise INCONCLUSIVE, naming what was not shown.
 """
 
 from __future__ import annotations
@@ -73,10 +77,14 @@ ENDED = "ended"
 NOT_ENDED = "not ended"
 NOT_SHOWN = "not shown"
 
-MEETS = "MEETS the history policy"
-FALLS_SHORT = "DOES NOT MEET the history policy"
+MEETS = matrix.MEETS
+FALLS_SHORT = matrix.FALLS_SHORT
 
 DIMENSIONS = ("rest", "ws", "token_reuse", "s15")
+# An account-level mechanism is also judged on a token issued after it (the
+# independent review of P06.1-I2a, point 4): for the revocation, the token issued
+# past the iat back-dating; for deactivation and deletion, one issued at once.
+ACCOUNT_DIMENSIONS = (*DIMENSIONS, "token_issued_after")
 OTHER = "M2"
 # The session labels the families use; the I1 sessions are the others.
 FAMILY_LABELS = ("M1", "M2", "R", "S", "H")
@@ -87,6 +95,13 @@ IAT_BACKDATE_SECONDS = 5
 # that must be accepted: past the back-dating, with a second to spare.
 REVOKE_REISSUE_AFTER_SECONDS = IAT_BACKDATE_SECONDS + 2
 DELETE_TASK_POLLS = 30
+# A family runs only while the shared members' tokens have at least this long left
+# (a family takes about a minute), and a refusal after the mechanism counts as
+# ``ended`` only while the member's own token had at least TOKEN_EXPIRY_MARGIN_SECONDS
+# left, so that no refusal is the token's own expiry (the independent review of
+# P06.1-I2a, a nit).
+FAMILY_TOKEN_MARGIN_SECONDS = 300
+TOKEN_EXPIRY_MARGIN_SECONDS = 60
 
 
 @dataclass(frozen=True)
@@ -137,10 +152,16 @@ def dimension(before: pr.Answer | None, after: pr.Answer | None) -> dict[str, st
 
 
 def ws_dimension(
-    before: bool | None, after: bool | None, listener: bool | None, accepted: bool
+    before: bool | None,
+    after: bool | None,
+    listener: bool | None,
+    accepted: bool,
+    dropped: str | None = None,
 ) -> dict[str, str]:
     """``ended`` only when the open connection received no probe event after the
-    mechanism while a listener received one in the same window."""
+    mechanism while a listener received one in the same window, and the member's
+    connection did not change in a way that could explain the miss (``dropped``: how
+    it closed or recovered; the independent review of P06.1-I2a, point 2)."""
     if not before:
         return {"status": NOT_SHOWN, "why": "the open connection missed the probe before"}
     if after:
@@ -151,7 +172,33 @@ def ws_dimension(
         return {"status": NOT_SHOWN, "why": "no probe was accepted after the mechanism"}
     if not listener:
         return {"status": NOT_SHOWN, "why": "no listener received the probe after the mechanism"}
+    if dropped:
+        return {
+            "status": NOT_SHOWN,
+            "why": f"the connection {dropped} after the mechanism, so the missed probe is "
+            "not attributable to it",
+        }
     return {"status": ENDED, "why": "no probe event arrived; the listener received it"}
+
+
+def merge_windows(first: Mapping[str, Any], second: Mapping[str, Any]) -> dict[str, Any]:
+    """Two collections of one session's events, as one window."""
+    if not second.get("collected"):
+        return {**first, "second_window": second.get("why", "not collected")}
+    return {
+        "collected": True,
+        "events": [*first.get("events", []), *second.get("events", [])],
+        "types": sorted({*first.get("types", []), *second.get("types", [])}),
+        "local_types": sorted({*first.get("local_types", []), *second.get("local_types", [])}),
+        "connection_closed": bool(
+            first.get("connection_closed") or second.get("connection_closed")
+        ),
+        "connection_recovered": bool(
+            first.get("connection_recovered") or second.get("connection_recovered")
+        ),
+        "other_channels": int(first.get("other_channels", 0))
+        + int(second.get("other_channels", 0)),
+    }
 
 
 def token_dimension(
@@ -185,24 +232,26 @@ def policy_verdict(
     judged: Mapping[str, Mapping[str, Mapping[str, str]]],
     undo: matrix.Verdict | None,
     retained: bool | None,
+    dimensions: tuple[str, ...] = DIMENSIONS,
 ) -> matrix.Verdict:
     """The mechanism against the history policy, for the members it acts on.
 
-    ``judged`` maps each judged member (its session label) to its dimensions;
-    ``undo`` is the verdict of the member's own attempt to undo it (``None`` when
-    the mechanism has no client undo); ``retained`` whether the server still holds
-    the channel's messages (``None`` when that could not be read).
+    ``judged`` maps each judged member (its session label) to its dimensions, of
+    which every one in ``dimensions`` is required; ``undo`` is the verdict of the
+    member's own attempt to undo it (``None`` when the mechanism has no client
+    undo); ``retained`` whether the server still holds the channel's messages
+    (``None`` when that could not be read).
     """
     not_ended = [
         f"{dim} for {label}"
         for label, dims in judged.items()
-        for dim in DIMENSIONS
+        for dim in dimensions
         if dims.get(dim, {}).get("status") == NOT_ENDED
     ]
     not_shown = [
         f"{dim} for {label}"
         for label, dims in judged.items()
-        for dim in DIMENSIONS
+        for dim in dimensions
         if dims.get(dim, {}).get("status") not in (ENDED, NOT_ENDED)
     ]
     reasons: list[str] = []
@@ -222,6 +271,11 @@ def policy_verdict(
     if gaps:
         return matrix.Verdict(matrix.INCONCLUSIVE, "not shown: " + ", ".join(gaps))
     ends = "ends REST reads, the open subscription, token reuse and the S15 write"
+    if "token_issued_after" in dimensions:
+        ends = (
+            "ends REST reads, the open subscription, token reuse, the S15 write and a "
+            "token issued after it"
+        )
     undo_text = "; its client cannot undo it" if undo is not None else ""
     return matrix.Verdict(MEETS, f"{ends}{undo_text}; the messages are retained")
 
@@ -325,6 +379,7 @@ class Family:
         if mech.devices == 2:
             self.labels.append(f"{mech.affected}-2")
         self.labels.append(OTHER)
+        self.dimensions = ACCOUNT_DIMENSIONS if mech.scope == "account" else DIMENSIONS
         self.tokens: dict[str, str] = {}
         self.history_text = f"history {mech.key} {run.prefix}"
         self.history_id: str | None = None
@@ -342,6 +397,10 @@ class Family:
         self.message_ids_before: set[str] = set()
         # Whether the applied request named M2 as the acting user.
         self.actor_named = False
+        self.token_seconds_left: dict[str, float | None] = {}
+        # How each session's connection changed after the mechanism: "closed" and
+        # "recovered", from its event windows (the independent review, point 2).
+        self.connection_changes: dict[str, set[str]] = {label: set() for label in self.labels}
 
     # -- helpers --
 
@@ -396,19 +455,27 @@ class Family:
         )
         return copied
 
-    def events(self, wait_ms: int) -> dict[str, dict[str, Any]]:
-        """Each session's events since the last collection: those for this channel (or
-        for no channel), the SDK's local event types, and whether the connection closed."""
+    def events(self, wait_ms: int, labels: list[str] | None = None) -> dict[str, dict[str, Any]]:
+        """Each session's events since the last collection, in the order of ``labels``:
+        those for this channel (or for no channel), the SDK's local event types, and
+        whether the connection closed or recovered. The first session collected waits
+        ``wait_ms``. A session that has ended is not asked; its events are "not
+        collected" (the independent review, point 7)."""
         out: dict[str, dict[str, Any]] = {}
         first = True
-        for label in self.labels:
+        for label in self.labels if labels is None else labels:
             session = self.run.sessions.get(label)
-            if session is None:
-                out[label] = {"collected": False}
+            ended = getattr(session, "ended", None)
+            if session is None or ended:
+                out[label] = {"collected": False, "why": str(ended or "no session")}
                 continue
-            reply = self.run._send(
-                session, "events", max_calls=0, wait_ms=wait_ms if first else 200
-            )
+            try:
+                reply = self.run._send(
+                    session, "events", max_calls=0, wait_ms=wait_ms if first else 200
+                )
+            except ClientSessionEnded as exc:
+                out[label] = {"collected": False, "why": self.run._text(exc)}
+                continue
             first = False
             raw = [e for e in (reply.data or {}).get("events") or [] if isinstance(e, dict)]
             local = [e for e in raw if e.get("type") in matrix.LOCAL_EVENT_TYPES]
@@ -425,6 +492,11 @@ class Family:
                 "local_types": sorted({str(e.get("type")) for e in local}),
                 "connection_closed": any(
                     e.get("type") == "connection.changed" and e.get("online") is False
+                    for e in local
+                ),
+                "connection_recovered": any(
+                    e.get("type") == "connection.recovered"
+                    or (e.get("type") == "connection.changed" and e.get("online") is True)
                     for e in local
                 ),
                 "other_channels": sum(
@@ -452,16 +524,12 @@ class Family:
         message_id = pr._dig(sent.body, "message.id") if sent.ok else None
         if isinstance(message_id, str):
             self.run.messages.add(message_id)
-        seen = self.events(pr.EVENT_WAIT_MS)
-        received: dict[str, Any] = {}
-        for label, got in seen.items():
-            if not got.get("collected"):
-                received[label] = None
-                continue
-            events = got["events"]
-            received[label] = {
+
+        def flags(window: Mapping[str, Any]) -> dict[str, bool]:
+            events = window["events"]
+            return {
                 "channel_update": any(
-                    e.get("type") == "channel.updated" and matrix.find_terms(e, [marker])
+                    e.get("type") == "channel.updated" and bool(matrix.find_terms(e, [marker]))
                     for e in events
                 ),
                 "message": message_id is not None
@@ -469,16 +537,70 @@ class Family:
                     e.get("type") == "message.new" and pr._dig(e, "message.id") == message_id
                     for e in events
                 ),
-                "types": got["types"],
-                "local_types": got["local_types"],
-                "connection_closed": got["connection_closed"],
             }
+
+        # The listeners are collected first and the judged members last, and a member
+        # that missed the probe while another session received it is collected again,
+        # so a late delivery is not taken for an ended subscription (the independent
+        # review, point 2).
+        order = self.window_order()
+        seen = self.events(pr.EVENT_WAIT_MS, order)
+        got = {
+            label: any(flags(w).values()) if (w := seen[label]).get("collected") else None
+            for label in order
+        }
+        second = [label for label in order if got[label] is False] if any(got.values()) else []
+        if second:
+            again = self.events(pr.EVENT_WAIT_MS, second)
+            for label in second:
+                seen[label] = merge_windows(seen[label], again[label])
+        received: dict[str, Any] = {}
+        for label in self.labels:
+            window = seen[label]
+            if not window.get("collected"):
+                received[label] = None
+                continue
+            received[label] = {
+                **flags(window),
+                "types": window["types"],
+                "local_types": window["local_types"],
+                "connection_closed": window["connection_closed"],
+                "connection_recovered": window["connection_recovered"],
+            }
+            if phase == "after":
+                self.note_connection(label, window)
         return {
             "update": f"{update.status}" + (f" / code {update.code}" if update.code else ""),
             "message": f"{sent.status}" + (f" / code {sent.code}" if sent.code else ""),
             "accepted": update.ok or sent.ok,
+            "order": order,
+            "second_window": second,
             "received": received,
         }
+
+    def window_order(self) -> list[str]:
+        """The sessions in the order their events are collected: the listeners (the
+        members the mechanism does not act on) first, the judged members last."""
+        judged = set(self.judged())
+        return [lbl for lbl in self.labels if lbl not in judged] + [
+            lbl for lbl in self.labels if lbl in judged
+        ]
+
+    def note_connection(self, label: str, window: Mapping[str, Any]) -> None:
+        """Record how the session's connection changed in a window after the mechanism."""
+        if window.get("connection_closed"):
+            self.connection_changes[label].add("closed")
+        if window.get("connection_recovered"):
+            self.connection_changes[label].add("recovered")
+
+    def unattributable(self, label: str) -> str | None:
+        """How the member's connection changed after the mechanism, when that could
+        explain a missed probe: any close or recovery for a channel-level mechanism,
+        which is not expected to touch connections; a recovery for an account-level
+        one (closing the member's connections may be the mechanism itself)."""
+        changes = self.connection_changes.get(label, set())
+        relevant = changes if self.mech.scope == "channel" else changes & {"recovered"}
+        return " and ".join(sorted(relevant)) or None
 
     @staticmethod
     def got_probe(received: Any) -> bool | None:
@@ -529,8 +651,28 @@ class Family:
 
     # -- the steps --
 
+    def token_left(self, token: str | None) -> float | None:
+        """How long ``token`` has before its ``exp`` claim, on this module's clock."""
+        claims = describe_token(token).get("claims") if token else None
+        exp = claims.get("exp") if isinstance(claims, dict) else None
+        return exp - time.time() if isinstance(exp, int) else None
+
     def execute(self) -> pr.CaseResult:
         try:
+            short = [
+                f"{key} {int(left)} s left"
+                for key in dict.fromkeys((self.mech.affected, OTHER))
+                if (left := self.token_left(self.run._tokens.get(key))) is not None
+                and left < FAMILY_TOKEN_MARGIN_SECONDS
+            ]
+            if short:
+                return self.observe(
+                    matrix.Verdict(
+                        matrix.INCONCLUSIVE,
+                        "not run: a refusal could have been a token's own expiry",
+                    ),
+                    f"not run: the members' tokens are close to their expiry ({', '.join(short)})",
+                )
             self.setup()
             self.observe(matrix.Verdict(matrix.INCONCLUSIVE, "set up; not yet applied"), "set up")
             self.collect_before()
@@ -551,13 +693,10 @@ class Family:
                 f"applied: {self.detail['apply']['answer']}",
             )
             self.collect_after()
-            self.judge_dimensions()
-            self.observe(
-                matrix.Verdict(matrix.INCONCLUSIVE, "observed; retention and undo not yet made"),
-                self.summary(),
-            )
+            self.step("observed after the mechanism; retention and undo not yet made")
             self.send_checks()
             self.retention()
+            self.step("retention read; the undo not yet made")
             if self.mech.undo is not None:
                 self.undo()
             verdict = self.verdict()
@@ -670,6 +809,11 @@ class Family:
         applied_at = datetime.now(UTC)
         if mech.key == "revoke":
             self.revoked_at = int(time.time())
+        if mech.key == "delete":
+            # The hard delete may remove the channel (a conversation of two or fewer
+            # members): cleanup checks it first, even when the run stops before the
+            # delete's answer or task is known (the independent review, point 8).
+            run.maybe_gone_channels.add(self.cid)
         method, path, body = self.apply_request()
         result = run.api.raw(method, path, body=body)
         if mech.key == "revoke":
@@ -707,7 +851,10 @@ class Family:
             if self.detail["apply"]["task"] == "completed":
                 # Deleted: cleanup must not name it again (a batch delete could refuse it).
                 run.users.remove(affected_id)
-        self.detail["on_apply"] = self.describe_events(self.events(pr.EVENT_WAIT_MS))
+        on_apply = self.events(pr.EVENT_WAIT_MS)
+        for label, window in on_apply.items():
+            self.note_connection(label, window)
+        self.detail["on_apply"] = self.describe_events(on_apply)
         exists, messages, _ = self.server_channel()
         new = [m for m in messages if str(m.get("id")) not in self.message_ids_before]
         self.detail["system_messages"] = [
@@ -726,9 +873,6 @@ class Family:
             # members); cleanup must not name it again.
             run.channels.remove(self.cid)
             self.detail["channel_deleted_by_the_mechanism"] = True
-        elif mech.key == "delete":
-            # It may still go, after this read: cleanup checks it first.
-            run.maybe_gone_channels.add(self.cid)
         return True
 
     def needles(self) -> dict[str, str]:
@@ -739,7 +883,7 @@ class Family:
         out: dict[str, Any] = {}
         for label, got in seen.items():
             if not got.get("collected"):
-                out[label] = "not collected"
+                out[label] = f"not collected ({got.get('why', 'no session')})"
                 continue
             paths = [
                 f"{event.get('type')}: {path}"
@@ -750,6 +894,7 @@ class Family:
                 "types": got["types"],
                 "local_types": got["local_types"],
                 "connection_closed": got["connection_closed"],
+                "connection_recovered": got["connection_recovered"],
                 "names_actor": actor_paths(paths) if self.actor_named else "no actor named",
             }
         return out
@@ -757,6 +902,9 @@ class Family:
     # -- after --
 
     def collect_after(self) -> None:
+        """The same requests by the same members after the mechanism. A session that
+        ends leaves its member's remaining dimensions "not shown"; what is observed is
+        kept as the case's row after each step (the independent review, point 7)."""
         run, mech = self.run, self.mech
         for label in self.labels:
             try:
@@ -766,19 +914,37 @@ class Family:
                 continue
             self.after[label]["rest"] = answer
             self.after[label]["sees_history"] = sees
-            self.after[label]["s15"] = self.s15_write(label, "after")
+            try:
+                self.after[label]["s15"] = self.s15_write(label, "after")
+            except ClientSessionEnded as exc:
+                self.after[label]["s15_error"] = run._text(exc)
+        self.step("REST reads and S15 writes made after the mechanism")
         if mech.key == "hide":
             self.detail["hidden_in_channel_list"] = self.listed(mech.affected)
         for label in self.labels:
             self.after[label]["token_reuse"] = self.reuse(label, self.tokens[label])
+        self.step("token reuse made after the mechanism")
         if mech.key == "revoke":
             self.reissued()
+        elif mech.scope == "account":
+            self.fresh_token()
         probe = self.probes("after")
         for label in self.labels:
             self.after[label]["ws"] = self.got_probe(probe["received"].get(label))
         self.detail["after_probe"] = probe
         if mech.key == "hide":
             self.detail["listed_after_a_new_message"] = self.listed(mech.affected)
+        # How long each member's own token had left when the observations ended.
+        self.token_seconds_left = {
+            label: self.token_left(self.tokens.get(label)) for label in self.labels
+        }
+        self.detail["token_seconds_left_after"] = {
+            label: None if left is None else int(left)
+            for label, left in self.token_seconds_left.items()
+        }
+        self.after_detail()
+
+    def after_detail(self) -> None:
         self.detail["after"] = {
             label: {
                 "rest": pr._observed(self.after[label]["rest"])
@@ -787,9 +953,9 @@ class Family:
                 "sees_history": self.after[label].get("sees_history"),
                 "s15": pr._observed(self.after[label]["s15"])
                 if "s15" in self.after[label]
-                else None,
+                else self.after[label].get("s15_error"),
                 "token_reuse": {
-                    k: pr._observed(v) if v is not None else "not made"
+                    k: v if isinstance(v, str) else pr._observed(v) if v is not None else "not made"
                     for k, v in (self.after[label].get("token_reuse") or {}).items()
                 },
                 "ws_probe_received": self.after[label].get("ws"),
@@ -799,14 +965,21 @@ class Family:
 
     def listed(self, label: str) -> str:
         """Whether the member's channel list includes the channel (a hidden one is left out)."""
-        reply = self.run._send(
-            self.run.sessions[label],
-            "call",
-            max_calls=2,
-            target="client",
-            method="queryChannels",
-            args=[{"cid": self.cid}, [], {"state": False, "watch": False, "presence": False}],
-        )
+        session = self.run.sessions.get(label)
+        ended = getattr(session, "ended", None)
+        if session is None or ended:
+            return f"not shown (the session had ended: {ended or 'no session'})"
+        try:
+            reply = self.run._send(
+                session,
+                "call",
+                max_calls=2,
+                target="client",
+                method="queryChannels",
+                args=[{"cid": self.cid}, [], {"state": False, "watch": False, "presence": False}],
+            )
+        except ClientSessionEnded as exc:
+            return f"not shown ({self.run._text(exc)})"
         answer = pr._http_answer(reply)
         if answer.outcome != "success":
             return f"not shown ({pr._observed(answer)})"
@@ -815,13 +988,25 @@ class Family:
     def reuse(self, label: str, token: str) -> dict[str, Any]:
         """A new session with ``token``: connect, then read the channel; then closed."""
         reuse_label = f"{label}-reuse-{self.mech.key}"
-        session = self.run._session(reuse_label, token, max_api_calls=10)
+        connected: pr.Answer | None = None
+        query: pr.Answer | None = None
         try:
+            session = self.run._session(reuse_label, token, max_api_calls=10)
             con = self.run._send(
                 session, "connect", max_calls=3, user={"id": self.run.ctx[self.member(label)]}
             )
             connected = pr._ws_answer(con)
-            query = None
+            uid = self.run.ctx[self.member(label)]
+            if (
+                self.mech.key == "delete"
+                and self.member(label) == self.mech.affected
+                and connected.outcome == "success"
+            ):
+                # A connect after the hard delete may have created the user again:
+                # recorded, and named at cleanup again (P06.1-I2a).
+                self.detail.setdefault("connected_after_the_delete", []).append(label)
+                if uid not in self.run.users:
+                    self.run.users.append(uid)
             if connected.outcome == "success":
                 query = pr._http_answer(
                     self.run._send(
@@ -835,6 +1020,8 @@ class Family:
                         id=self.channel,
                     )
                 )
+        except ClientSessionEnded as exc:
+            return {"connect": connected, "query": query, "error": self.run._text(exc)}
         finally:
             close_session(self.run, reuse_label)
         return {"connect": connected, "query": query}
@@ -857,32 +1044,103 @@ class Family:
             }
             if name in ("early", "late"):
                 used = self.reuse(f"{self.mech.affected}-{name}", self.tokens[name])
-                entry["connect"] = pr._observed(used["connect"])
+                if name == "late":
+                    self.after[self.mech.affected]["token_issued_after"] = used
+                entry["connect"] = (
+                    pr._observed(used["connect"])
+                    if used["connect"]
+                    else used.get("error", "not made")
+                )
                 entry["read"] = pr._observed(used["query"]) if used["query"] else "not made"
+                if used.get("error"):
+                    entry["error"] = used["error"]
             tokens[name] = entry
         self.detail["tokens_after_revocation"] = tokens
+
+    def fresh_token(self) -> None:
+        """A token issued for the member at once after the mechanism: does a new
+        session with it connect and read the channel?"""
+        run = self.run
+        affected_id = run.ctx[self.mech.affected]
+        self.tokens["new"] = run.api.user_token(affected_id, pr.TOKEN_TTL_SECONDS)
+        used = self.reuse(f"{self.mech.affected}-new", self.tokens["new"])
+        self.after[self.mech.affected]["token_issued_after"] = used
+        self.detail["token_issued_after"] = {
+            "connect": pr._observed(used["connect"])
+            if used["connect"]
+            else used.get("error", "not made"),
+            "read": pr._observed(used["query"]) if used["query"] else "not made",
+        }
 
     def judge_dimensions(self) -> None:
         for label in self.labels:
             before, after = self.before[label], self.after[label]
             connect = pr._ws_answer(self.run.connect_replies[label])
             reuse = after.get("token_reuse") or {}
-            listener = self.listener(label)
+            ws = ws_dimension(
+                before.get("ws"),
+                after.get("ws"),
+                self.listener(label),
+                bool(self.detail.get("after_probe", {}).get("accepted")),
+                self.unattributable(label),
+            )
+            if ws["status"] == ENDED and "closed" in self.connection_changes.get(label, set()):
+                ws["why"] += "; the connection closed after the mechanism"
             self.table[label] = {
                 "rest": dimension(before.get("rest"), after.get("rest")),
-                "ws": ws_dimension(
-                    before.get("ws"),
-                    after.get("ws"),
-                    listener,
-                    bool(self.detail.get("after_probe", {}).get("accepted")),
-                ),
+                "ws": ws,
                 "token_reuse": token_dimension(
                     connect, before.get("rest"), reuse.get("connect"), reuse.get("query")
                 ),
                 "s15": dimension(before.get("s15"), after.get("s15")),
             }
-            if after.get("rest_error"):
-                self.table[label]["rest"] = {"status": NOT_SHOWN, "why": after["rest_error"]}
+            fresh: dict[str, Any] = {}
+            if "token_issued_after" in self.dimensions and self.member(label) == self.mech.affected:
+                fresh = self.after[self.mech.affected].get("token_issued_after") or {}
+                self.table[label]["token_issued_after"] = token_dimension(
+                    connect, before.get("rest"), fresh.get("connect"), fresh.get("query")
+                )
+            left = self.token_seconds_left.get(label)
+            if left is not None and left < TOKEN_EXPIRY_MARGIN_SECONDS:
+                for dim in DIMENSIONS:
+                    if self.table[label][dim]["status"] == ENDED:
+                        self.table[label][dim] = {
+                            "status": NOT_SHOWN,
+                            "why": f"the member's own token had {int(left)} s left: the "
+                            "refusal could be its expiry",
+                        }
+            for dim, why in (
+                ("rest", after.get("rest_error")),
+                ("s15", after.get("s15_error")),
+                ("token_reuse", reuse.get("error")),
+                ("token_issued_after", fresh.get("error")),
+            ):
+                if (
+                    why
+                    and dim in self.table[label]
+                    and self.table[label][dim]["status"] == NOT_SHOWN
+                ):
+                    self.table[label][dim] = {"status": NOT_SHOWN, "why": f"session ended: {why}"}
+
+    def unjudgeable(self) -> str | None:
+        """Why the mechanism's effect cannot be judged: the hard delete's task did not
+        report completion, so what was observed may predate the delete (the
+        independent review of P06.1-I2a, a nit)."""
+        task = self.detail.get("apply", {}).get("task")
+        if self.mech.key == "delete" and task != "completed":
+            return f"the hard delete's task did not report completion ({task})"
+        return None
+
+    def step(self, done: str) -> None:
+        """Judge what has been observed so far and keep it as the case's row, so that
+        an interruption keeps it: DOES NOT MEET once shown (it cannot become MEETS),
+        INCONCLUSIVE otherwise (the independent review, point 7)."""
+        self.after_detail()
+        self.judge_dimensions()
+        verdict = policy_verdict(self.judged(), self.undo_verdict, self.retained, self.dimensions)
+        if verdict.label != FALLS_SHORT or self.unjudgeable():
+            verdict = matrix.Verdict(matrix.INCONCLUSIVE, f"{done}; the case did not finish")
+        self.observe(verdict, self.summary())
 
     def listener(self, label: str) -> bool | None:
         """Whether a member still entitled to the channel received the probe after it."""
@@ -985,10 +1243,23 @@ class Family:
             # client tries to show it.
             method, path, body = self.apply_request()
             again = self.run.api.raw(method, path, body=body)
-            self.detail["hidden_again_before_undo"] = {
+            hidden = {
                 "answer": f"{again.status}" + (f" / code {again.code}" if again.code else ""),
                 "listed": self.listed(label),
             }
+            self.detail["hidden_again_before_undo"] = hidden
+            if not again.ok or hidden["listed"] != "not listed":
+                # A show of a channel that is not hidden would prove nothing (the
+                # independent review of P06.1-I2a, a nit).
+                self.undo_verdict = matrix.Verdict(
+                    matrix.INCONCLUSIVE,
+                    "the channel was not shown hidden again before the member's own show",
+                )
+                self.detail["client_undo"] = {
+                    "request": "not sent",
+                    "verdict": f"{self.undo_verdict.label}: {self.undo_verdict.reason}",
+                }
+                return
         if mech.undo == "rejoin":
             reply = self.call(label, "addMembers", [[self.run.ctx[label]]])
         elif mech.undo == "unban":
@@ -1044,7 +1315,10 @@ class Family:
         return {label: self.table.get(label, {}) for label in labels}
 
     def verdict(self) -> matrix.Verdict:
-        return policy_verdict(self.judged(), self.undo_verdict, self.retained)
+        why = self.unjudgeable()
+        if why is not None:
+            return matrix.Verdict(matrix.INCONCLUSIVE, why)
+        return policy_verdict(self.judged(), self.undo_verdict, self.retained, self.dimensions)
 
     def summary(self) -> str:
         parts = []
@@ -1052,7 +1326,7 @@ class Family:
             dims = self.table.get(label)
             if not dims:
                 continue
-            shown = ", ".join(f"{d} {dims[d]['status']}" for d in DIMENSIONS if d in dims)
+            shown = ", ".join(f"{d} {dims[d]['status']}" for d in self.dimensions if d in dims)
             parts.append(f"{label}: {shown}")
         if self.retained is not None:
             parts.append(f"history retained {self.retained}")

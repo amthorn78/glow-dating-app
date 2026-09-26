@@ -11,6 +11,10 @@ A case family is a group of the matrix (``Case.group``). The fakes answer as the
 live lockdown is expected to; a case that fails in a way that creates data can
 reserve more, and ``CONDITIONAL`` lists those.
 
+The caps are per session, and this checkout's usage ledger (the ignored
+``.work/usage-ledger.json``) holds what earlier live commands of the session used:
+the plan adds it (read only; zero when there is no ledger).
+
 Usage, offline and without any ``STREAM_*`` variable::
 
     python checks/run_plan.py
@@ -35,6 +39,7 @@ from tests.fake_world import family_run  # noqa: E402
 from tests.fakes import NoSettle  # noqa: E402
 
 RESOURCES = ("users", "channels", "peak_connections")
+LEDGER = PROOF_ROOT / ".work" / "usage-ledger.json"
 # What a case can reserve beyond the count, only when it fails in a way that creates
 # data (the fakes do not).
 CONDITIONAL = {
@@ -61,8 +66,18 @@ def measure(only: set[str] | None) -> dict[str, Any]:
     }
 
 
-def plan() -> dict[str, Any]:
+def session_used(ledger: Path | None) -> dict[str, int]:
+    """What earlier live commands of this checkout used of the session's caps, from its
+    usage ledger (never written here); zero when there is none."""
+    stored: dict[str, Any] = {}
+    if ledger is not None and ledger.exists():
+        stored = json.loads(ledger.read_text(encoding="utf-8")).get("session", {})
+    return {key: int(stored.get(key, 0)) for key in ("users", "channels", "api_calls")}
+
+
+def plan(ledger: Path | None = LEDGER) -> dict[str, Any]:
     cases = matrix.all_cases()
+    used = session_used(ledger)
     complete = measure(None)
     # No case: an empty set would mean every case to run_matrix.
     base = measure({"(no case)"})
@@ -75,12 +90,15 @@ def plan() -> dict[str, Any]:
     }
     limits = Limits()
     caps = {"users": limits.users, "channels": limits.channels}
-    fits = {key: complete[key] + reserve[key] <= caps[key] for key in ("users", "channels")}
+    fits = {
+        key: used[key] + complete[key] + reserve[key] <= caps[key] for key in ("users", "channels")
+    }
     fits["peak_connections"] = max(complete["peak_connections"], reserve["peak_connections"]) <= (
         limits.connections
     )
     fits["api_calls"] = (
-        complete["api_calls"] + max(f["api_calls"] for f in families.values()) <= limits.api_calls
+        used["api_calls"] + complete["api_calls"] + max(f["api_calls"] for f in families.values())
+        <= limits.api_calls
     )
     return {
         "complete_set": complete,
@@ -89,6 +107,7 @@ def plan() -> dict[str, Any]:
         "reserve": reserve,
         "largest_family": largest,
         "caps": {**caps, "connections": limits.connections, "api_calls": limits.api_calls},
+        "session_used_before": used,
         "fits": fits,
         "conditional": CONDITIONAL,
         "all_fit": all(fits.values()),

@@ -14,7 +14,7 @@ import unittest
 import tests  # noqa: F401
 from glow_stream_proof.client_bridge import ClientSession, ClientSessionEnded
 from glow_stream_proof.redaction import Redactor
-from glow_stream_proof.usage import GuardrailStop, UsageLedger
+from glow_stream_proof.usage import GuardrailStop, Limits, UsageLedger
 
 READ = "import json, sys\n"
 EXIT = "    if json.loads(line).get('op') == 'exit':\n        break\n"
@@ -266,6 +266,50 @@ class LateRequestsTest(unittest.TestCase):
             s.close()
         self.assertEqual(reply.async_errors, ["unhandledRejection: PROOF_BUDGET"])
         self.assertEqual(ledger.signals, [])
+
+
+RATE_LIMITED_AND_CHARGED = (
+    "{'requests': [{'method': 'GET', 'path': '/x', 'status': 429,"
+    " 'response': {'code': 9, 'message': 'Too many requests'}}], 'api_calls': 1,"
+    " 'background_requests': [{'method': 'POST', 'path': '/channels/delivered', 'status': 402,"
+    " 'response': {'code': 99, 'message': 'no'}, 'background': True}], 'background_api_calls': 1}"
+)
+CHARGED_PAST_THE_BUDGET = (
+    "{'requests': [{'method': 'GET', 'path': '/x', 'status': 402,"
+    " 'response': {'code': 99, 'message': 'no'}}], 'api_calls': 12}"
+)
+
+
+class EverySignalTest(unittest.TestCase):
+    """P06.1-I2a, the independent review's point 3: every signal in a reply is recorded
+    before anything raises, and before the reply's calls are counted."""
+
+    def test_a_charge_behind_a_rate_limit_is_recorded(self) -> None:
+        ledger = UsageLedger()
+        s = session(replying(RATE_LIMITED_AND_CHARGED), ledger)
+        try:
+            with self.assertRaises(GuardrailStop):
+                s.send("ping")
+        finally:
+            s.close()
+        self.assertEqual(len(ledger.signals), 2)
+        # Not only a rate limit: the operator makes no further live call.
+        self.assertFalse(all(stop.only_rate_limit for stop in ledger.signals))
+        self.assertEqual(ledger.run.client_api_calls, 2)
+
+    def test_a_signal_is_not_hidden_by_the_budget(self) -> None:
+        ledger = UsageLedger(limits=Limits(api_calls=11))
+        s = session(replying(CHARGED_PAST_THE_BUDGET), ledger)
+        try:
+            with self.assertRaises(GuardrailStop) as stopped:
+                s.send("ping", max_calls=10)
+        finally:
+            s.close()
+        # The 402 is the stop raised and recorded, not the budget reached on counting.
+        self.assertTrue(stopped.exception.at_once)
+        self.assertIn("HTTP 402", str(stopped.exception))
+        self.assertEqual(ledger.signals, [stopped.exception])
+        self.assertEqual(ledger.run.client_api_calls, 12)  # counted all the same
 
 
 class ClosingSignalTest(unittest.TestCase):

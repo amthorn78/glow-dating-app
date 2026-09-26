@@ -291,12 +291,7 @@ class ClientSession:
             async_errors=[self._redactor.text(_async_text(e)) for e in raw_async],
             background_requests=self._redactor.value(raw.get("background_requests") or []),
         )
-        if reply.api_calls:
-            self._ledger.reserve("api_calls", reply.api_calls, source="client")
         background_calls = int(raw.get("background_api_calls") or 0)
-        if background_calls:
-            # Sent by the SDK between commands; counted like any client call (P06.1-I2a).
-            self._ledger.reserve("api_calls", background_calls, source="client")
         if opens_connection:
             if reply.ok:
                 self._connected = True
@@ -305,6 +300,31 @@ class ClientSession:
         if op == "disconnect" and reply.ok and self._connected:
             self._connected = False
             self._ledger.connection_closed()
+        # Every charge or limit signal in the reply is recorded before anything raises,
+        # and before its calls are counted: a charge must not hide behind a rate limit
+        # met first, nor behind the budget (P06.1-I2a; the independent review, point 3).
+        stops = self._reply_signals(reply, raw_async)
+
+        def tally(amount: int) -> None:
+            if stops:
+                # Already sent: counted without a check that could raise over the signal.
+                self._ledger.count("api_calls", amount, source="client")
+            else:
+                self._ledger.reserve("api_calls", amount, source="client")
+
+        if reply.api_calls:
+            tally(reply.api_calls)
+        if background_calls:
+            # Sent by the SDK between commands; counted like any client call (P06.1-I2a).
+            tally(background_calls)
+        if stops:
+            raise stops[0]
+        return reply
+
+    def _reply_signals(self, reply: Reply, raw_async: Sequence[Any]) -> list[GuardrailStop]:
+        """Record every charge or limit signal in ``reply`` in the run's ledger, in order,
+        and return their stops (P06.1-I2a)."""
+        stops: list[GuardrailStop] = []
         for record in reply.requests:
             status = record.get("status")
             response = record.get("response")
@@ -314,53 +334,62 @@ class ClientSession:
                 stream_code = code if isinstance(code, int) else None
                 signal = charge_signal(status, stream_code, message)
                 if signal is not None:
-                    raise self._ledger.stop_at_once(
-                        f"client {self.label}: {signal}; stopping at once",
-                        rate_limited=is_rate_limit(status, stream_code),
-                        billing=mentions_billing(message if isinstance(message, str) else None),
+                    stops.append(
+                        self._ledger.stop_at_once(
+                            f"client {self.label}: {signal}; stopping at once",
+                            rate_limited=is_rate_limit(status, stream_code),
+                            billing=mentions_billing(message if isinstance(message, str) else None),
+                        )
                     )
-        # A request the SDK sent between commands, an answer that came after its
-        # command replied, and every asynchronous SDK error (P06.1-I2a).
-        late = self._late_signal(reply.background_requests, self._redactor.value(raw_async))
-        if late is not None:
-            raise late
-        if reply.error is not None:
+        # The command's own error, when none of its recorded requests carried a signal
+        # (it usually repeats the answer to one of them).
+        if reply.error is not None and not stops:
             signal = charge_signal(reply.status, reply.code, reply.message)
             if signal is not None and reply.error.get("kind") != "budget":
-                raise self._ledger.stop_at_once(
-                    f"client {self.label}: {signal}; stopping at once",
-                    rate_limited=is_rate_limit(reply.status, reply.code),
-                    billing=mentions_billing(reply.message),
+                stops.append(
+                    self._ledger.stop_at_once(
+                        f"client {self.label}: {signal}; stopping at once",
+                        rate_limited=is_rate_limit(reply.status, reply.code),
+                        billing=mentions_billing(reply.message),
+                    )
                 )
-        return reply
+        # A request the SDK sent between commands, an answer that came after its
+        # command replied, and every asynchronous SDK error (P06.1-I2a).
+        stops += self._late_signals(reply.background_requests, self._redactor.value(raw_async))
+        return stops
 
-    def _late_signal(
+    def _late_signals(
         self, records: Sequence[Mapping[str, Any]], async_errors: Sequence[Any]
-    ) -> GuardrailStop | None:
-        """Record the first charge or limit signal in ``records`` (requests sent between
-        commands, or answered after their command replied) or in ``async_errors``, and
-        return its stop; ``None`` if there is none (P06.1-I2a)."""
+    ) -> list[GuardrailStop]:
+        """Record every charge or limit signal in ``records`` (requests sent between
+        commands, or answered after their command replied) and in ``async_errors``, and
+        return their stops (P06.1-I2a; every one since the independent review, point 3)."""
+        stops: list[GuardrailStop] = []
         for record in records:
             found = record_signal(record)
             if found is not None:
                 where = "a request sent between commands"
                 if record.get("late"):
                     where = "a request answered after its command replied"
-                return self._ledger.stop_at_once(
-                    f"client {self.label}: {found[0]} ({where}); stopping at once",
-                    rate_limited=found[1],
-                    billing=found[2],
+                stops.append(
+                    self._ledger.stop_at_once(
+                        f"client {self.label}: {found[0]} ({where}); stopping at once",
+                        rate_limited=found[1],
+                        billing=found[2],
+                    )
                 )
         for error in async_errors:
             found = async_signal(error) if isinstance(error, Mapping) else None
             if found is not None:
-                return self._ledger.stop_at_once(
-                    f"client {self.label}: {found[0]} (an asynchronous SDK error); "
-                    "stopping at once",
-                    rate_limited=found[1],
-                    billing=found[2],
+                stops.append(
+                    self._ledger.stop_at_once(
+                        f"client {self.label}: {found[0]} (an asynchronous SDK error); "
+                        "stopping at once",
+                        rate_limited=found[1],
+                        billing=found[2],
+                    )
                 )
-        return None
+        return stops
 
     def close(self, *, raise_signal: bool = True) -> None:
         """End the session. The runner's exit reply reports what the SDK sent after the
@@ -426,4 +455,5 @@ class ClientSession:
                 )
             for error in errors:
                 self._note(f"client {self.label} at exit: async error: {_async_text(error)}")
-        return self._late_signal(records, errors)
+        stops = self._late_signals(records, errors)
+        return stops[0] if stops else None

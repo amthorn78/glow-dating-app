@@ -65,6 +65,12 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(ws(True, False, True, False)["status"], mechanisms.NOT_SHOWN)
         self.assertEqual(ws(False, False, True, True)["status"], mechanisms.NOT_SHOWN)
         self.assertEqual(ws(True, None, True, True)["status"], mechanisms.NOT_SHOWN)
+        # A connection that closed or recovered could explain the miss (the independent
+        # review, point 2).
+        dropped = ws(True, False, True, True, "closed and recovered")
+        self.assertEqual(dropped["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("not attributable", dropped["why"])
+        self.assertEqual(ws(True, True, True, True, "closed")["status"], mechanisms.NOT_ENDED)
 
     def test_token_reuse(self) -> None:
         token = mechanisms.token_dimension
@@ -194,6 +200,30 @@ class FamiliesTest(unittest.TestCase):
         )
         self.assertTrue(case.detail["client_undo"]["verdict"].startswith("FAIL"))
 
+    def test_a_hide_that_is_not_made_again_leaves_the_undo_unjudged(self) -> None:
+        run, server, _, clock = family_run()
+        hides: list[int] = []
+
+        def refuse_second_hide(method: str, path: str, body: Any, params: Any) -> Any:
+            if method == "POST" and path.endswith("-ch-hide/hide"):
+                hides.append(1)
+                if len(hides) == 2:
+                    return error(method, path, 500, -1, "internal")
+            return None
+
+        server.handlers.insert(0, refuse_second_hide)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"RV-hide"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-hide")
+        self.assertTrue(case.detail["client_undo"]["verdict"].startswith(matrix.INCONCLUSIVE))
+        self.assertEqual(case.detail["client_undo"]["request"], "not sent")
+        session = run.sessions.get("M1")
+        sent = [p.get("method") for op, p in getattr(session, "sent", []) if op == "call"]
+        self.assertNotIn("show", sent)
+
     def test_a_mechanism_refused_with_the_actor_named_is_applied_without_it(self) -> None:
         run, server, _, clock = family_run()
 
@@ -231,7 +261,13 @@ class FamiliesTest(unittest.TestCase):
         for label in ("R", "R-2"):
             for dim in mechanisms.DIMENSIONS:
                 self.assertEqual(table[label][dim]["status"], mechanisms.ENDED, (label, dim))
-        self.assertEqual(case.verdict, mechanisms.MEETS)
+            # A token issued past the back-dating connects and reads: the revocation
+            # alone does not end the member's access (the independent review, point 4).
+            self.assertEqual(table[label]["token_issued_after"]["status"], mechanisms.NOT_ENDED)
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+        self.assertEqual(
+            case.reason, "does not end token_issued_after for R, token_issued_after for R-2"
+        )
         tokens = case.detail["tokens_after_revocation"]
         # Issued at once, its back-dated iat is before the revocation time: refused.
         self.assertLess(tokens["early"]["iat_minus_revocation_s"], 0)
@@ -246,12 +282,22 @@ class FamiliesTest(unittest.TestCase):
         run, _, _, _ = run_families({"RV-revoke"})
         case = row(run, "RV-revoke")
         self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
-        self.assertEqual(case.reason, "does not end ws for R, ws for R-2")
+        self.assertEqual(
+            case.reason,
+            "does not end ws for R, token_issued_after for R, ws for R-2, "
+            "token_issued_after for R-2",
+        )
 
     def test_deactivation_and_the_hard_delete(self) -> None:
         run, _, _, _ = run_families({"SD-deactivate", "SD-delete"})
         deactivate = row(run, "SD-deactivate")
         self.assertEqual(deactivate.verdict, mechanisms.MEETS)
+        # A token issued after the deactivation is refused too.
+        self.assertEqual(
+            deactivate.detail["table"]["S"]["token_issued_after"]["status"], mechanisms.ENDED
+        )
+        self.assertEqual(deactivate.detail["token_issued_after"]["connect"], "401 / code 5")
+        self.assertIn("a token issued after it", deactivate.reason)
         self.assertEqual(deactivate.detail["retention"]["affected_member_message"]["author"], "{S}")
         delete = row(run, "SD-delete")
         self.assertEqual(delete.verdict, mechanisms.FALLS_SHORT)
@@ -265,6 +311,21 @@ class FamiliesTest(unittest.TestCase):
         # Neither the deleted user nor its deleted channel is named again at cleanup.
         self.assertNotIn(f"{run.prefix}-uh", run.users)
         self.assertNotIn(f"glow-match:{run.prefix}-ch-delete", run.channels)
+
+    def test_a_connect_that_creates_the_deleted_user_again_is_cleaned_up(self) -> None:
+        run, server, _, problems = run_families({"SD-delete"}, connect_recreates_deleted=True)
+        case = row(run, "SD-delete")
+        self.assertEqual(case.detail["connected_after_the_delete"], ["H", "H-new"])
+        h = f"{run.prefix}-uh"
+        self.assertIn(h, run.users)  # named at cleanup again
+        self.assertNotIn(h, server.users)  # and deleted
+        self.assertEqual(problems, [])
+
+    def test_the_policy_requires_every_dimension_of_the_mechanism(self) -> None:
+        ended = {d: {"status": mechanisms.ENDED} for d in mechanisms.DIMENSIONS}
+        verdict = mechanisms.policy_verdict({"S": ended}, None, True, mechanisms.ACCOUNT_DIMENSIONS)
+        self.assertEqual(verdict.label, matrix.INCONCLUSIVE)
+        self.assertEqual(verdict.reason, "not shown: token_issued_after for S")
 
     def test_the_cleanup_names_no_user_or_channel_that_is_gone(self) -> None:
         # The hard delete's task is reported late and the channel is still there when
@@ -288,6 +349,31 @@ class FamiliesTest(unittest.TestCase):
         self.assertNotIn(cid, deleted[-1]["cids"])
         self.assertEqual(out["users_delete"], 201)  # the batch named only existing users
         self.assertEqual(problems, [])
+        # What was observed may predate the delete: not judged.
+        delete = row(run, "SD-delete")
+        self.assertEqual(delete.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(
+            delete.reason, "the hard delete's task did not report completion (running)"
+        )
+
+    def test_a_stop_during_the_hard_deletes_task_leaves_the_channel_checked_first(self) -> None:
+        # The independent review, point 8: the run stops while it waits for the task.
+        run, server, _, clock = family_run()
+
+        def limited(method: str, path: str, body: Any, params: Any) -> Any:
+            if path.startswith("/api/v2/tasks/"):
+                raise run.ledger.stop_at_once(
+                    "server GET: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        server.handlers.insert(0, limited)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"SD-delete"})
+        self.assertIn(f"glow-match:{run.prefix}-ch-delete", run.maybe_gone_channels)
 
     def test_a_channel_the_hard_delete_keeps_is_deleted_by_the_cleanup(self) -> None:
         run, _, _, problems = run_families({"SD-delete"}, hard_delete_removes_conversations=False)
@@ -313,6 +399,108 @@ class FamiliesTest(unittest.TestCase):
         self.assertEqual(ban.verdict, matrix.INCONCLUSIVE)
         self.assertEqual(ban.reason, "Stream did not apply the mechanism (400 / code 4)")
         self.assertNotEqual(row(run, "RV-hide").verdict, matrix.INCONCLUSIVE)
+
+
+CLOSED = {"type": "connection.changed", "online": False}
+RECOVERED = {"type": "connection.recovered"}
+
+
+class WindowTest(unittest.TestCase):
+    """The open subscription's window (the independent review, point 2)."""
+
+    def test_a_late_delivery_is_not_taken_for_an_ended_subscription(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, removed_keeps_events=True, late={"M1"})
+        case = row(run, "RV-remove")
+        probe = case.detail["after_probe"]
+        self.assertEqual(probe["order"], ["M2", "M1"])  # the listener first
+        self.assertEqual(probe["second_window"], ["M1"])
+        self.assertTrue(probe["received"]["M1"]["message"])
+        self.assertEqual(case.detail["table"]["M1"]["ws"]["status"], mechanisms.NOT_ENDED)
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+
+    def test_a_member_that_misses_the_probe_twice_is_ended(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"})
+        case = row(run, "RV-remove")
+        self.assertEqual(case.detail["after_probe"]["second_window"], ["M1"])
+        self.assertEqual(case.detail["table"]["M1"]["ws"]["status"], mechanisms.ENDED)
+
+    def test_a_closed_or_recovered_connection_leaves_a_channel_level_miss_not_shown(
+        self,
+    ) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, after_window_local={"M1": [CLOSED, RECOVERED]})
+        case = row(run, "RV-remove")
+        ws = case.detail["table"]["M1"]["ws"]
+        self.assertEqual(ws["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("closed and recovered", ws["why"])
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_a_close_in_the_mechanisms_own_window_counts_too(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, apply_window_local={"M1": [CLOSED]})
+        case = row(run, "RV-remove")
+        self.assertTrue(case.detail["on_apply"]["M1"]["connection_closed"])
+        self.assertEqual(case.detail["table"]["M1"]["ws"]["status"], mechanisms.NOT_SHOWN)
+
+    def test_an_account_level_close_may_end_the_subscription_a_recovery_may_not(self) -> None:
+        run, _, _, _ = run_families({"SD-deactivate"}, after_window_local={"S": [CLOSED]})
+        ws = row(run, "SD-deactivate").detail["table"]["S"]["ws"]
+        self.assertEqual(ws["status"], mechanisms.ENDED)
+        self.assertIn("the connection closed after the mechanism", ws["why"])
+        run, _, _, _ = run_families(
+            {"SD-deactivate"}, after_window_local={"S": [CLOSED, RECOVERED]}
+        )
+        ws = row(run, "SD-deactivate").detail["table"]["S"]["ws"]
+        self.assertEqual(ws["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("recovered", ws["why"])
+
+
+class TokenLifetimeTest(unittest.TestCase):
+    """No refusal is judged that could be a token's own expiry (the independent review,
+    a nit). The margins are raised past the tokens' 900 s to drive each rule."""
+
+    def setUp(self) -> None:
+        self.saved = (
+            proof_run.CASE_TOKEN_MARGIN_SECONDS,
+            mechanisms.FAMILY_TOKEN_MARGIN_SECONDS,
+            mechanisms.TOKEN_EXPIRY_MARGIN_SECONDS,
+        )
+
+    def tearDown(self) -> None:
+        (
+            proof_run.CASE_TOKEN_MARGIN_SECONDS,
+            mechanisms.FAMILY_TOKEN_MARGIN_SECONDS,
+            mechanisms.TOKEN_EXPIRY_MARGIN_SECONDS,
+        ) = self.saved
+
+    def test_a_case_is_not_run_while_the_setup_tokens_are_close_to_expiry(self) -> None:
+        proof_run.CASE_TOKEN_MARGIN_SECONDS = 10_000
+        run, _, _, _ = run_families({"R1"})
+        case = row(run, "R1")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.request, "-")
+        self.assertIn("not run: the setup tokens are close to their expiry", case.observed)
+        ap11 = next(c for c in run.checks if c.check_id == "AP11")
+        self.assertEqual(ap11.result, "FAIL")
+        self.assertIn("not made", ap11.evidence)
+
+    def test_a_family_is_not_run_while_the_shared_tokens_are_close_to_expiry(self) -> None:
+        mechanisms.FAMILY_TOKEN_MARGIN_SECONDS = 10_000
+        run, _, _, _ = run_families({"RV-remove", "RV-ban"})
+        # M1's and M2's tokens are issued by the first family; the second finds them old.
+        self.assertEqual(row(run, "RV-remove").verdict, mechanisms.MEETS)
+        ban = row(run, "RV-ban")
+        self.assertEqual(ban.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("not run: the members' tokens are close to their expiry", ban.observed)
+        self.assertNotIn("apply", ban.detail)
+
+    def test_a_refusal_near_the_members_own_expiry_is_not_an_ended_dimension(self) -> None:
+        mechanisms.TOKEN_EXPIRY_MARGIN_SECONDS = 10_000
+        run, _, _, _ = run_families({"RV-remove"})
+        case = row(run, "RV-remove")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        rest = case.detail["table"]["M1"]["rest"]
+        self.assertEqual(rest["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("the refusal could be its expiry", rest["why"])
+        self.assertGreater(case.detail["token_seconds_left_after"]["M1"], 800)
 
 
 class BudgetAndSessionsTest(unittest.TestCase):
@@ -418,9 +606,12 @@ class StopsTest(unittest.TestCase):
             problems = run.finish(cleanup=True)
         case = row(run, "RV-remove")
         self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
-        # What the family had observed before the stop is kept in the row.
-        self.assertIn("applied", case.observed)
+        # What the family had observed before the stop is kept in the row: the REST
+        # reads, S15 writes and token reuse made after the mechanism (the independent
+        # review, point 7).
+        self.assertIn("M1: rest ended", case.observed)
         self.assertEqual(case.detail["apply"]["answer"], "201")
+        self.assertEqual(case.detail["table"]["M1"]["token_reuse"]["status"], mechanisms.ENDED)
         self.assertIn("only a rate limit", " ".join(problems))
 
     def test_an_ended_client_session_ends_only_its_case(self) -> None:
@@ -429,9 +620,14 @@ class StopsTest(unittest.TestCase):
         calls = {"n": 0}
 
         def ends(session: Any, op: str, params: dict[str, Any]) -> Any:
+            # As ClientSession: once ended, the session sends nothing more.
+            if getattr(session, "ended", None):
+                raise ClientSessionEnded(f"client M1 was ended earlier; {op} not sent")
             if session.label == "M1" and params.get("method") == "updateMemberPartial":
                 calls["n"] += 1
                 if calls["n"] == 2:  # the write after the mechanism
+                    session.ended = "no reply within 60s"
+                    session.close()  # as ClientSession's end: its connection is closed
                     raise ClientSessionEnded("client M1 ended: no reply within 60s")
             return original(session, op, params)
 
@@ -443,10 +639,48 @@ class StopsTest(unittest.TestCase):
             problems = run.finish(cleanup=True)
         removal = row(run, "RV-remove")
         self.assertEqual(removal.verdict, matrix.INCONCLUSIVE)
+        # M1's session ended at its S15 write: that dimension and its subscription are
+        # not shown; its REST read and token reuse were still judged, and the case was
+        # interrupted at the undo, which needs M1's session (the independent review,
+        # point 7).
+        m1 = removal.detail["table"]["M1"]
+        self.assertEqual(m1["s15"]["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("session ended", m1["s15"]["why"])
+        self.assertEqual(m1["ws"]["status"], mechanisms.NOT_SHOWN)
+        self.assertEqual(m1["rest"]["status"], mechanisms.ENDED)
+        self.assertEqual(m1["token_reuse"]["status"], mechanisms.ENDED)
         self.assertIn("ClientSessionEnded", removal.detail["interrupted"])
-        # The run went on to the next family, and cleaned up.
+        # The family went on past the probe to the retention read.
+        self.assertIn("after_probe", removal.detail)
+        self.assertIn("retention", removal.detail)
+        # The run went on to the next family, with a new M1 session, and cleaned up.
         self.assertNotEqual(row(run, "RV-ban").verdict, matrix.INCONCLUSIVE)
         self.assertEqual(problems, [])
+
+    def test_an_interrupted_family_keeps_what_does_not_meet_the_policy(self) -> None:
+        # The independent review, point 7: M1's read after the ban succeeds (not
+        # ended), then a rate limit stops the run in the probe.
+        def limited(method: str, path: str, body: Any, params: Any) -> Any:
+            text = str((body or {}).get("message", {}).get("text", ""))
+            if method == "POST" and text.startswith("after probe"):
+                raise self.ledger.stop_at_once(
+                    "server POST: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        run, server, _, clock = family_run()
+        self.ledger = run.ledger
+        server.handlers.insert(0, limited)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-ban"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-ban")
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+        self.assertIn("does not end rest for M1", case.reason)
+        self.assertIn("GuardrailStop", case.detail["interrupted"])
 
     def test_the_i1_sessions_close_before_the_families_only_when_one_runs(self) -> None:
         run, _, _, clock = family_run()
