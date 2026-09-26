@@ -51,6 +51,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-17 | 26 Sep 2026 | process | Did not tell Nathan that the manager's own container still held the three `STREAM_*` variables after OD-28 limited them to sessions that call Stream. The manager never read or used them | App Manager 3, checking variable names while verifying C2 |
 | AM3-18 | 26 Sep 2026 | accuracy | Told Nathan, and wrote in Notion, that all 99 of C2's fix reversals were demonstrated, from the script's summary alone; one reversal failed only because its edit broke the file's syntax | The exact-head review of C2, finding 3 |
 | AM3-19 | 26 Sep 2026 | accuracy | The DM-04 consultation told the Dev Manager that the Stream variables were not set for its read, and the records said "No Stream variables"; its container, started before OD-28, holds them, as AM3-17 had found for the manager's own | The Dev Manager, DM-04 finding 10 |
+| AM3-20 | 26 Sep 2026 | accuracy | Told Nathan that TypeSafe "only scores the level and can't pick a model". Its Choice questions can pick one, and the v4 request already asks one | Nathan |
 
 ## App Manager 2
 
@@ -294,3 +295,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none known. The Dev Manager never read, printed or used the values, and its read needed none. The planned rotation of the secret at P06.1's close covers every container started while the variables were set.
 - **Correction:** the consultation's header, the brief, the handoff and Notion now say that none were added for the read, and that the Dev Manager's container holds them.
 - **Prevention:** this repeats AM3-17's lesson, so it is now a checklist item in the manager workflow, step 3 ("Prompt"): a prompt or consultation says which credentials a session holds, not only which it needs, and for a session started while the variables were set it says "none added", never "none present".
+
+### AM3-20 — "TypeSafe can't pick a model" (accuracy)
+
+- **What happened:** reporting OD-30 to Nathan on 26 September, the manager wrote: *"TypeSafe is unchanged: it only scores the level and can't pick a model, so its readings stay comparable with earlier ones."* The first half was a choice: the v4 request stays unchanged. The second half was false. A TypeSafe Choice question picks one of a set of options, and the v4 request already asks one, `shape`. The records made only the narrower statement, that v4's reading names no model.
+- **Caught by:** Nathan: *"typesafe should be able to pick a model. there must be some semantic rules that can help this"*.
+- **Effect:** none on any session. I2a's prompt was given before OD-30, so no prompt lacked a model reading it should have had.
+- **Correction:** the model question m1, a separate TypeSafe request, so v4 stays comparable. Its option criteria are the semantic rules for each model. Its decision rule and the manager's labels for 11 past sessions were saved in the Notion usage log before the first run, and the calibration agreed on all 11. The manager workflow, OD-30 and the usage log now describe both readings.
+- **Prevention:** before telling Nathan that a tool cannot do something, check the tool's documentation. Say what the current setup does, not what the tool cannot do.
