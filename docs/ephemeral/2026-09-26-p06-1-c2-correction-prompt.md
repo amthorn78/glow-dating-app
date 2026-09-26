@@ -10,6 +10,8 @@
 - **Reasoning level.** Neither reading gates anything, and Nathan picks.
   - Manager: high.
   - TypeSafe v4: high (score 2.19, P(high) 0.68, P(extra high) 0.25), with no ultracode flag (P(single session) 0.77).
+  - **Used:** Nathan ran the session on 26 September and has not said at which level. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** the manager verified the branch and integrated it at `63e922f` on 26 September; see the evidence record, "P06.1-C2 corrections" and the manager's verification under it. Finding 3's direction for a `feature` refusal was the manager's mistake (AM3-16), and the manager changed it.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows it, and I2a comes after that review.

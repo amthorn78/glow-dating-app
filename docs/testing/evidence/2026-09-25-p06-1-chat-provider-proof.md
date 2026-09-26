@@ -1268,3 +1268,46 @@ In addition to C1's list above:
 - **Stop and restore rules that changed:** among stop signals, only a rate limit (HTTP 429 or Stream code 9) is retried at the end of the run; an accepted removal that cannot be verified is "not verified" (exit 4 if the run completed), not "not restored"; the client-success undo rule above.
 - **Outputs that changed:** `run-<prefix>.json` is written before the end of the run (`end_of_run: not finished`) and again after it; a second Ctrl-C inside the end of the run exits 2 with "the end of the run was interrupted" (then run `configure` as a dry run and `verify-clean`); `.work` files are written through a `.partial` file; case rows may carry `interrupted` and `client_success_undo` in their detail; recorded `api_key` parameters read `<redacted-secret>`.
 - **Not exercised live:** every fix above, including the `rate_limited` flag on Stream's real 429 and code-9 answers, and the call counts after a charge signal.
+
+### Manager verification of C2 (App Manager 3, 26 September 2026)
+
+App Manager 3 checked the relayed report against the pushed branch. The manager makes no call to Stream, so nothing here was exercised live; the first live use is in I2a.
+
+- **Identity:**
+  - branch `claude/lucid-einstein-79bqmd`, head `ba36311ae86e7c9ded4f6d6c5ae66acdfb517150`, tree `55995bc4da7ed3ae0688fd7c0a21a25f5908beb4`; code head `f1c670b`;
+  - it builds on the start `5fc3bea` in two commits: 18 files, +2,490 and −198. The second commit changes only this record;
+  - every path is owned, and every file has mode 100644. No dependency file, `.npmrc`, `pyproject.toml` or the committed baseline changed, and `git diff --check` is clean;
+  - the four sections the C2 prompt protects are byte-identical to the start. The record carries three in-place "(corrected in P06.1-C2)" markers.
+- **Classification:** the trusted policy from `main` (`0f45e64`), run outside the tree with `python3 -I`, gave full scope (`behavior-or-empty`) for 18 paths, with one merge base.
+- **Offline re-run,** in a scratch worktree at `ba36311`, in clean processes without any `STREAM_*` variable. Installs got the proxy and CA variables by reference.
+  - `pip install --require-hashes -r requirements-dev.lock`, then `pip check`: "No broken requirements found." `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1.
+  - `npm ci --ignore-scripts`: "found 0 vulnerabilities"; `stream-chat` 9.53.0.
+  - Unit tests: `Ran 202 tests`, `OK`. Ruff check: "All checks passed!". Ruff format: "38 files already formatted". mypy: "Success: no issues found in 37 source files". `node --check` on both `.cjs` files: exit 0.
+  - `checks/fix_reversals.py`: "reversals: 99, not demonstrated: 0", exit 0, in 4 minutes 19 seconds. The checkout was unchanged afterwards.
+- **Secret scan** of the whole diff (197,542 bytes): no JWT-shaped string, email address, private-key block, AWS-style key, TLS-weakening setting, environment dump, secret assignment or the application's API key.
+- **Code read,** at `ba36311`. Each matches the report:
+  - the one-request rule in `_http_answer` (`proof_run.py` around line 148);
+  - `_observe`, `_interrupted_row` and `run_matrix`'s branches (around lines 472 to 522 and 1024 to 1066);
+  - the feature-gated production phase (around line 1190) and `_undo_after_interruption` (around line 1286);
+  - T4-rest-unread's controls and totals (around line 1620), and RT2 and RT3's refusal rule (around line 2470);
+  - `finish()`'s retry rule with `is_rate_limit` (around line 2766; `usage.py` around line 147), and the "not verified" removal (around lines 421 and 585 to 627);
+  - E5's kept FAIL and its restore (around line 2388);
+  - the early results write and the second Ctrl-C (`cli.py` around lines 183 to 215), and the `_key` suffix (`redaction.py` around line 35).
+- **Integration:** merged into the manager branch as `63e922fb86f214b99627748cbb53387baa6dd748`, pushed alone at 12:30 UTC. The merge brings exactly C2's 18 files, and its tree is C2's head tree.
+- **Hosted CI on `63e922f`:** push run [36242106508](https://github.com/amthorn78/glow-dating-app/actions/runs/36242106508) and PR run [36242109996](https://github.com/amthorn78/glow-dating-app/actions/runs/36242109996) passed all six jobs, and the push run's gate says `Application checks passed`. The rendered suite passed 84 of 84 on the pinned Chromium in 3.8 minutes. No Foundation job runs the harness's own tests yet (I2b adds one); the offline re-run above covers them.
+
+#### The decisions C2 left to the manager
+
+- **The undo of a client success after an interrupted control: C2's rule stands.** After a guardrail stop or Ctrl-C the undo is not made, and the row says so; after anything else it is made. It follows the README's rule on what may still run after each kind of stop, and Nathan's $0 budget (OD-12): nothing more is sent for the run's own data after a charge or limit signal, and cleanup deletes that data.
+- **RT2 and RT3: a `feature` refusal gets "REFUSED (feature off; not a permission error)", not HOLDS.** The C2 prompt directed HOLDS, and C2 built it so. The manager changes that direction, for three reasons:
+  - the brief's matrix quality rule, and the first paragraph of the README's own "Verdict rules", count a refusal only when it is an authentication or permission error;
+  - the matrix gives every other feature refusal that verdict;
+  - for RT2, only the configuration protects B. I1 showed that, with typing on, typing events carry any custom field the client adds, and no permission governs them (the I1 record's "Findings", item 2). The verdict keeps that visible for P06.2.
+
+  I1's recorded RT2 result stays as recorded. The change goes into the next session that changes the harness, before any live run, with a test and a reversal. The direction was the manager's mistake (AM3-16).
+- **Accepted as C2 chose:** nit 7 extended to S14; T4-rest-unread's FAIL needing both controls and all three totals, like its HOLDS; `is_rate_limit` ignoring the response's wording.
+
+#### Disposition
+
+- **C2 is verified and integrated at `63e922f`.** Its limits stand as recorded, and "What P06.1-I2a must know" feeds I2a's prompt, with C1's list.
+- **C2's exact-head review is next,** offline. I2a comes after it.

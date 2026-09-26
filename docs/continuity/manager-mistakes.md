@@ -47,6 +47,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-13 | 26 Sep 2026 | accuracy | Recorded in ADR 0003's Context and the brief, as established, that the other member receives S15's text in `member.updated` events; I1's harness could not show which event carried it | The exact-head review of I1 (finding 4) |
 | AM3-14 | 26 Sep 2026 | execution | Ran the trusted classifier with a short base SHA; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only` | The classifier itself |
 | AM3-15 | 26 Sep 2026 | accuracy | The handoff's "Branches" section kept saying that every other remote branch was merged into `main` after the I1 and flake session branches were integrated only into PR26 | App Manager 3, checking branches for C1's integration |
+| AM3-16 | 26 Sep 2026 | accuracy | The C2 prompt told the session that RT2 and RT3 HOLD on a `feature` refusal, copying the C1 review's suggested fix without checking it against the brief's matrix quality rule and the harness's own verdict for a feature refusal | C2's own review sub-agent, reported by the C2 session |
+| AM3-17 | 26 Sep 2026 | process | Did not tell Nathan that the manager's own container still held the three `STREAM_*` variables after OD-28 limited them to sessions that call Stream. The manager never read or used them | App Manager 3, checking variable names while verifying C2 |
 
 ## App Manager 2
 
@@ -266,3 +268,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none known. No branch was deleted or retired on the strength of it.
 - **Correction:** the section now names the session branches merged into PR26, C1's included.
 - **Prevention:** an integration batch updates the handoff's "Branches" section in the same commit as the merge's records.
+
+### AM3-16 — A reviewer's suggested rule copied into a prompt unchecked (accuracy)
+
+- **What happened:** C1's exact-head review suggested that RT2 and RT3 give HOLDS only for an `auth`, `permission` or `feature` refusal. App Manager 3 wrote that rule into the C2 prompt, finding 3, as given. It conflicts with the brief's matrix quality rule, under which a refusal counts only when it is an authentication or permission error, and with the harness's own verdict for every other feature refusal, "REFUSED (feature off; not a permission error)". For RT2 it also hides that only the configuration protects B: with typing on, typing events carry any custom field the client adds.
+- **Caught by:** C2's own review sub-agent. The C2 session built the rule as directed and reported the conflict as a decision for the manager.
+- **Effect:** none on any result. No live run has used the rule, and I1's recorded RT2 result stays as recorded.
+- **Correction:** the manager decided that a `feature` refusal in RT2 and RT3 gets "REFUSED (feature off; not a permission error)". The next session that changes the harness makes the change, before any live run, with a test. The C2 review prompt tells the reviewer so.
+- **Prevention:** before writing a reviewer's suggested fix into a prompt, check it against the brief's matrix quality rule and the harness's existing verdicts, and say in the prompt where it departs from either.
