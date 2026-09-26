@@ -34,6 +34,9 @@ def snapshot() -> dict[str, Any]:
                 "disable_auth_checks": False,
                 "disable_permissions_checks": False,
                 "permission_version": "v2",
+                "member_custom_on_typing_events_enabled": False,
+                "member_custom_on_messages_enabled": False,
+                "member_custom_on_mentioned_users_enabled": False,
                 "guest_user_creation_disabled": False,
                 "grants": {
                     "user": ["search-user", "update-user-owner"],

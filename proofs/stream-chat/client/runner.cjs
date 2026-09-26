@@ -14,6 +14,7 @@
  * the protocol. Nothing is logged to stdout except replies.
  */
 
+const path = require('node:path');
 const readline = require('node:readline');
 
 if (process.env.STREAM_API_SECRET !== undefined) {
@@ -55,6 +56,18 @@ require.cache[isoPath] = {
 };
 
 const { StreamChat } = require('stream-chat');
+
+// The proxy subclass only takes effect if stream-chat resolves the same
+// isomorphic-ws module and did not replace the cache entry while loading.
+const isoFromStreamChat = require.resolve('isomorphic-ws', {
+  paths: [path.dirname(require.resolve('stream-chat'))],
+});
+const ISO_WS_SHARED = isoFromStreamChat === isoPath;
+const ISO_WS_PATCHED = !!require.cache[isoPath] && require.cache[isoPath].exports === ProxiedWebSocket;
+if (!ISO_WS_SHARED || !ISO_WS_PATCHED) {
+  process.stderr.write('refused: stream-chat does not load the runner\'s isomorphic-ws WebSocket\n');
+  process.exit(4);
+}
 
 const client = new StreamChat(API_KEY, {
   timeout: 15000,
@@ -168,7 +181,9 @@ function errorInfo(err) {
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object') {
-      info.kind = parsed.isWSFailure ? 'ws-failure' : 'ws-api';
+      // isWSFailure is false only when the SDK built the error from Stream's
+      // own error frame on the WebSocket; anything else is local to the SDK.
+      info.kind = parsed.isWSFailure === false ? 'ws-api' : 'ws-failure';
       info.status = parsed.StatusCode ?? null;
       info.code = parsed.code ?? null;
       info.message = parsed.message ?? text;
@@ -187,6 +202,7 @@ function meSummary(me) {
     id: me.id,
     role: me.role,
     name: me.name ?? null,
+    image: me.image ?? null,
     custom_keys: Object.keys(me).filter(
       (k) =>
         ![
@@ -238,6 +254,11 @@ async function handle(cmd) {
   switch (cmd.op) {
     case 'ping':
       return { pong: true };
+    case 'selfcheck':
+      return {
+        isomorphic_ws_shared: ISO_WS_SHARED,
+        proxied_websocket_installed: ISO_WS_PATCHED,
+      };
     case 'set_rest_user':
       await setRestUser(cmd.user_id, cmd.token_source || 'env', !!cmd.skip_validation);
       return { user_id: cmd.user_id };
@@ -273,13 +294,6 @@ async function handle(cmd) {
       const fn = target[cmd.method];
       if (typeof fn !== 'function') throw new Error(`no SDK method ${cmd.target}.${cmd.method}`);
       await fn.apply(target, argsFor(cmd.args));
-      return {};
-    }
-    case 'request': {
-      const url = BASE + cmd.path;
-      const m = String(cmd.method).toLowerCase();
-      if (m === 'get' || m === 'delete') await client[m](url, cmd.params || {});
-      else await client[m](url, cmd.body || {}, cmd.params ? { params: cmd.params } : undefined);
       return {};
     }
     case 'events': {

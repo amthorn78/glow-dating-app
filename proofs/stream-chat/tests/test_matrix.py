@@ -132,6 +132,7 @@ class MatrixDefinitionTest(unittest.TestCase):
                 "xd_text",
                 "prefix",
                 "A_name",
+                "B_name",
                 "X_name",
                 "D_name",
             )
@@ -169,7 +170,7 @@ class ClassificationTest(unittest.TestCase):
     def test_classify(self) -> None:
         self.assertEqual(matrix.classify(200, None), "success")
         self.assertEqual(matrix.classify(201, None), "success")
-        for code in (2, 5, 40, 41, 42, 43):
+        for code in (5, 40, 41, 42, 43):
             self.assertEqual(matrix.classify(401, code), "auth")
         self.assertEqual(matrix.classify(403, 17), "permission")
         self.assertEqual(matrix.classify(403, 70), "permission")
@@ -178,7 +179,7 @@ class ClassificationTest(unittest.TestCase):
         self.assertEqual(matrix.classify(404, 16), "not-found")
         self.assertEqual(matrix.classify(401, 99), "other")
         self.assertEqual(matrix.classify(403, 60), "other")
-        self.assertEqual(matrix.classify(None, 17), "other")
+        self.assertEqual(matrix.classify(None, 17), "no-response")
 
     def test_refused_verdict_requires_attributable_error_and_control(self) -> None:
         self.assertEqual(matrix.refused_verdict("permission", True).label, matrix.HOLDS)

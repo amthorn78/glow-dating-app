@@ -17,7 +17,7 @@ from typing import Any
 
 from . import baseline, configuration, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
-from .proof_run import PREFIX_ROOT, ProofRun, RunStopped
+from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, list_polls_and_groups
 from .redaction import Redactor
 from .server_api import ServerApi
 from .usage import GuardrailStop, UsageLedger
@@ -85,7 +85,9 @@ def _settings_view(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def cmd_baseline(ctx: Context) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
-    path = write_json(f"snapshot-{_stamp()}.json", snapshot, ctx.secrets)
+    # Written without other users' identifiers, names or custom fields.
+    public = baseline.public_snapshot(snapshot, PREFIX_ROOT)
+    path = write_json(f"snapshot-{_stamp()}.json", public, ctx.secrets)
     ctx.say(f"snapshot written to {path.relative_to(PROOF_ROOT)}")
     ctx.say("settings: " + json.dumps(_settings_view(snapshot)["settings"], sort_keys=True))
     ctx.say(
@@ -133,7 +135,13 @@ def cmd_configure(ctx: Context, apply: bool) -> int:
     return 0 if not problems else 1
 
 
+EXIT_STOPPED = 2
+EXIT_AFTER_RUN_PROBLEMS = 4
+
+
 def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) -> int:
+    """One run. Exit 0 only if it completed, was cleaned up and the configuration
+    verifies; 2 if it stopped; 4 if it completed but a check after it failed."""
     prefix = f"{PREFIX_ROOT}{datetime.now(UTC).strftime('%m%d%H%M%S')}"
     run = ProofRun(
         ctx.credentials,
@@ -161,21 +169,24 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
         progress()
         run.run_matrix(only, progress)
     except RunStopped as exc:
-        stop_reason = f"stopped: {exc}"
+        stop_reason = f"stopped: {ctx.redactor.text(str(exc))}"
     except GuardrailStop as exc:
-        stop_reason = f"guardrail: {exc}"
-        cleanup_needed = "stopping at once" not in str(exc)
+        stop_reason = f"guardrail: {ctx.redactor.text(str(exc))}"
+        cleanup_needed = cleanup_needed and "stopping at once" not in str(exc)
+    except KeyboardInterrupt:
+        stop_reason = "interrupted (Ctrl-C)"
     except Exception as exc:  # recorded, never hidden; cleanup still runs
         stop_reason = f"harness error: {type(exc).__name__}: {ctx.redactor.text(str(exc))}"
     finally:
-        if cleanup_needed:
-            try:
-                result = run.cleanup()
-                ctx.say(f"cleanup: {result}")
-            except Exception as exc:  # reported, never hidden
-                ctx.say(f"cleanup failed: {type(exc).__name__}: {exc}")
-        else:
-            run.close_sessions()
+        # Every run ends here: journalled temporary changes are restored and
+        # verified, the run's data is cleaned up, and the configuration is
+        # verified, whatever stopped the run.
+        problems = run.finish(cleanup=cleanup_needed)
+    ctx.say(f"cleanup: {run.cleanup_result}")
+    for stop in run.stops:
+        ctx.say(f"stop recorded: {stop}")
+    for problem in problems:
+        ctx.say(f"after the run: {problem}")
     ended = datetime.now(UTC).isoformat(timespec="seconds")
     results = run.results()
     results.update({"started": started, "ended": ended, "stop_reason": stop_reason})
@@ -185,7 +196,9 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     ctx.say(markdown)
     ctx.say(f"usage: {json.dumps(ctx.ledger.summary())}")
     ctx.say(f"run {prefix} ended {ended}" + (f"; {stop_reason}" if stop_reason else ""))
-    return 0 if stop_reason is None else 2
+    if stop_reason is not None:
+        return EXIT_STOPPED
+    return EXIT_AFTER_RUN_PROBLEMS if problems else 0
 
 
 def cmd_verify_clean(ctx: Context) -> int:
@@ -194,10 +207,17 @@ def cmd_verify_clean(ctx: Context) -> int:
     # Stream prefixes guest IDs ("guest-<uuid>-<requested id>"), so match anywhere.
     proof_users = [u for u in users if PREFIX_ROOT in u]
     channels = [str(c["channel"]["cid"]) for c in snapshot["channels"].get("channels", [])]
+    listed = list_polls_and_groups(ctx.api)
     ctx.say(f"proof users remaining: {proof_users}")
     ctx.say(f"channels remaining: {channels}")
     ctx.say(f"other users present: {len(users) - len(proof_users)}")
-    return 0 if not proof_users and not channels else 1
+    for key in ("polls", "user_groups"):
+        remaining = listed[f"remaining_{key}"]
+        shown = remaining if remaining is not None else listed[f"{key}_listing"]
+        ctx.say(f"{key} remaining: {shown}")
+    clean = not proof_users and not channels
+    clean = clean and listed["remaining_polls"] == [] and listed["remaining_user_groups"] == []
+    return 0 if clean else 1
 
 
 def cmd_cleanup(ctx: Context, apply: bool) -> int:
@@ -237,7 +257,10 @@ def cmd_restore(ctx: Context, apply: bool, delete_match_type: bool) -> int:
         _print_plan(ctx, plan)
         return 0
     _apply(ctx, plan)
-    return 0
+    after = baseline.read_configuration(ctx.api)
+    problems = configuration.verify_restored(after, record, match_type_deleted=delete_match_type)
+    ctx.say(f"differences from the recorded baseline after restore: {problems}")
+    return 0 if not problems else 1
 
 
 def main(argv: list[str] | None = None) -> int:

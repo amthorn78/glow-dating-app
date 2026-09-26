@@ -79,4 +79,12 @@ def render(results: Mapping[str, Any]) -> str:
     ]
     if results.get("notes"):
         parts += ["", "Notes:"] + [f"- {n}" for n in results["notes"]]
+    if results.get("stops"):
+        parts += ["", "Stops recorded:"] + [f"- {n}" for n in results["stops"]]
+    if results.get("journal_not_restored"):
+        parts += ["", "Temporary changes NOT restored:"] + [
+            f"- {n}" for n in results["journal_not_restored"]
+        ]
+    if results.get("post_run_problems"):
+        parts += ["", "After the run:"] + [f"- {n}" for n in results["post_run_problems"]]
     return "\n".join(parts) + "\n"

@@ -13,6 +13,11 @@ Placeholders such as ``{A}`` or ``{AB}`` are filled from the run context.
 Matrix quality rule (P06.1 brief): a refusal counts only when Stream returns an
 authentication error (HTTP 401) or a permission error (HTTP 403) with Stream's
 code. A 400 or 404, or a refusal that cannot be attributed, does not count.
+
+The status and code are always taken from Stream's recorded answer to the
+request under test, never from an error the SDK raised. A request that has no
+recorded answer (the SDK failed locally, or returned without sending anything)
+is the outcome ``no-response``, which is never a HOLDS.
 """
 
 from __future__ import annotations
@@ -27,11 +32,34 @@ from typing import Any, Literal
 from .configuration import DEFAULT_TYPES, MATCH_TYPE
 
 Expect = Literal["refused", "no-leak", "not-effective", "identity-kept", "carries-no-free-text"]
-Outcome = Literal["success", "auth", "permission", "feature", "not-found", "input", "other"]
+Outcome = Literal[
+    "success", "auth", "permission", "feature", "not-found", "input", "other", "no-response"
+]
 
-AUTH_CODES = frozenset({2, 5, 40, 41, 42, 43})
+# Token refusals. Code 2 is Stream's API-key error, not a token refusal, so it
+# is not attributable to the token under test.
+AUTH_CODES = frozenset({5, 40, 41, 42, 43})
 PERMISSION_CODES = frozenset({17, 70})
 FEATURE_CODES = frozenset({18, 19})
+
+# Events the client SDK dispatches itself rather than receiving from Stream: the
+# "local events" in stream-chat 9.53.0's EVENT_MAP, plus health checks. A
+# client's own query raises ``channels.queried`` with the full queried state, so
+# these are never evidence of what Stream delivered to that client.
+LOCAL_EVENT_TYPES = frozenset(
+    {
+        "health.check",
+        "message.read_locally",
+        "channels.queried",
+        "offline_reactions.queried",
+        "connection.changed",
+        "connection.recovered",
+        "transport.changed",
+        "capabilities.changed",
+        "live_location_sharing.started",
+        "live_location_sharing.stopped",
+    }
+)
 
 PROOF_FILE_B64 = base64.b64encode(b"P06.1 synthetic proof file\n").decode("ascii")
 # A 1x1 transparent PNG.
@@ -44,7 +72,7 @@ PROOF_PNG_B64 = (
 @dataclass(frozen=True)
 class SdkStep:
     session: str
-    op: Literal["call", "request"]
+    op: Literal["call"]
     params: Mapping[str, Any]
     max_calls: int = 3
 
@@ -135,7 +163,7 @@ def deep_merge(base: Any, patch: Mapping[str, Any]) -> Any:
 
 def classify(status: int | None, code: int | None) -> Outcome:
     if status is None:
-        return "other"
+        return "no-response"
     if 200 <= status < 300:
         return "success"
     if status == 401 and code in AUTH_CODES:
@@ -170,7 +198,12 @@ FAIL = "FAIL"
 INCONCLUSIVE = "INCONCLUSIVE"
 
 
+NO_RESPONSE_REASON = "no answer from Stream was recorded for the request under test"
+
+
 def refused_verdict(outcome: Outcome, control_ok: bool | None) -> Verdict:
+    if outcome == "no-response":
+        return Verdict(INCONCLUSIVE, NO_RESPONSE_REASON)
     if outcome == "success":
         return Verdict(FAIL, "the client action succeeded")
     if outcome in ("auth", "permission"):
@@ -189,6 +222,8 @@ def no_leak_verdict(
 ) -> Verdict:
     if leaks:
         return Verdict(FAIL, "response disclosed: " + ", ".join(leaks))
+    if outcome == "no-response":
+        return Verdict(INCONCLUSIVE, NO_RESPONSE_REASON)
     if outcome in ("auth", "permission"):
         if control_ok:
             return Verdict(HOLDS, f"{outcome} error; control succeeded")
@@ -207,6 +242,8 @@ def no_leak_verdict(
 def not_effective_verdict(applied: bool, outcome: Outcome, control_ok: bool | None) -> Verdict:
     if applied:
         return Verdict(FAIL, "the change reached Stream's stored state")
+    if outcome == "no-response":
+        return Verdict(INCONCLUSIVE, NO_RESPONSE_REASON + "; stored state unchanged")
     if outcome in ("auth", "permission"):
         return Verdict(
             HOLDS if control_ok else INCONCLUSIVE,
@@ -329,11 +366,22 @@ def _tokens_and_access() -> list[Case]:
             phase=15,
         ),
     ]
+    read_ab_terms = (
+        "{m_a_text}",
+        "{m_b_text}",
+        "{AB}",
+        "{A}",
+        "{B}",
+        "{A_name}",
+        "{B_name}",
+        "{m_a}",
+        "{m_b}",
+    )
     for suffix, desc, leak in (
-        ("read-ab", "query channel AB", ("{m_a_text}", "{m_b_text}")),
-        ("channels", "query channels with an empty filter", ("{AB}", "{XD}")),
+        ("read-ab", "query channel AB", read_ab_terms),
+        ("channels", "query channels whose members include A", ("{AB}", "{XD}")),
         ("users", "query users", ("{A}", "{B}", "{X}", "{D}")),
-        ("message", "fetch XD's message by ID", ("{xd_text}",)),
+        ("message", "fetch XD's message by ID", ("{xd_text}", "{m_x}", "{X}", "{XD}")),
     ):
         for who, token, proc in (
             ("guest", "guest created by G1's control", "guest-role"),

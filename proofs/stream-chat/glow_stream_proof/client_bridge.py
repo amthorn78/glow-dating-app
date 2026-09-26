@@ -5,16 +5,22 @@ The environment of a client process is built from an explicit allowlist
 API key and that session's own user token. :func:`client_environment` refuses
 to produce an environment that holds ``STREAM_API_SECRET`` or the secret's
 value, and the runner itself refuses to start if the name is present.
+
+Every reply must carry its command's ``id``. A reply that does not match, a
+reply that is not JSON, a timeout or an exited runner ends the session: the
+process is killed and every later command on it raises
+:class:`ClientSessionEnded` without being sent, so no case is judged on another
+command's reply.
 """
 
 from __future__ import annotations
 
 import json
-import selectors
+import queue
 import subprocess
 import threading
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,6 +35,10 @@ CONNECT_OPS = frozenset({"connect", "guest", "anonymous"})
 
 class UnsafeClientEnvironment(RuntimeError):
     """A client environment would have carried the server secret."""
+
+
+class ClientSessionEnded(RuntimeError):
+    """The session was ended (timeout, mismatched reply or exit); nothing more is judged on it."""
 
 
 def client_environment(
@@ -96,6 +106,7 @@ class ClientSession:
         *,
         node: str = "node",
         timeout_seconds: float = 60.0,
+        argv: Sequence[str] | None = None,
     ) -> None:
         self.label = label
         self._ledger = ledger
@@ -103,9 +114,13 @@ class ClientSession:
         self._timeout = timeout_seconds
         self._next_id = 0
         self._connected = False
+        self._ended: str | None = None
         self._stderr: deque[str] = deque(maxlen=50)
+        # Every stdout line is queued by a reader thread as it arrives, so a line
+        # already buffered is never missed and never waits for new pipe data.
+        self._lines: queue.Queue[str | None] = queue.Queue()
         self._proc = subprocess.Popen(
-            [node, str(RUNNER)],
+            list(argv) if argv is not None else [node, str(RUNNER)],
             env=env,
             cwd=str(PROOF_ROOT),
             stdin=subprocess.PIPE,
@@ -116,32 +131,69 @@ class ClientSession:
         )
         self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
         self._stderr_thread.start()
+        self._stdout_thread = threading.Thread(target=self._drain_stdout, daemon=True)
+        self._stdout_thread.start()
 
     def _drain_stderr(self) -> None:
         assert self._proc.stderr is not None
         for line in self._proc.stderr:
             self._stderr.append(self._redactor.text(line.rstrip()))
 
+    def _drain_stdout(self) -> None:
+        assert self._proc.stdout is not None
+        for line in self._proc.stdout:
+            self._lines.put(line)
+        self._lines.put(None)
+
     def stderr_tail(self) -> list[str]:
         return list(self._stderr)
 
+    @property
+    def ended(self) -> str | None:
+        """Why the session was ended, or ``None`` while it is usable."""
+        return self._ended
+
+    def _end(self, reason: str) -> ClientSessionEnded:
+        self._ended = reason
+        if self._proc.poll() is None:
+            self._proc.kill()
+            try:
+                self._proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        if self._connected:
+            self._connected = False
+            self._ledger.connection_closed()
+        return ClientSessionEnded(f"client {self.label} ended: {reason}")
+
     def _read_line(self) -> str:
-        assert self._proc.stdout is not None
-        selector = selectors.DefaultSelector()
-        selector.register(self._proc.stdout, selectors.EVENT_READ)
         try:
-            if not selector.select(self._timeout):
-                raise TimeoutError(f"client {self.label}: no reply within {self._timeout}s")
-        finally:
-            selector.close()
-        line = self._proc.stdout.readline()
-        if not line:
-            raise RuntimeError(
-                f"client {self.label} exited; stderr: {' | '.join(self.stderr_tail())}"
-            )
-        return str(line)
+            line = self._lines.get(timeout=self._timeout)
+        except queue.Empty:
+            raise TimeoutError(f"no reply within {self._timeout}s") from None
+        if line is None:
+            raise EOFError(f"the runner exited; stderr: {' | '.join(self.stderr_tail())}")
+        return line
+
+    def _reply_for(self, command_id: int) -> dict[str, Any]:
+        try:
+            line = self._read_line()
+        except (TimeoutError, EOFError) as exc:
+            raise self._end(self._redactor.text(str(exc))) from None
+        try:
+            raw = json.loads(line)
+        except ValueError:
+            raise self._end("the reply was not JSON") from None
+        reply_id = raw.get("id") if isinstance(raw, dict) else None
+        if reply_id != command_id:
+            raise self._end(f"reply id {reply_id!r} does not match command id {command_id}")
+        return dict(raw)
 
     def send(self, op: str, *, max_calls: int = 10, **params: Any) -> Reply:
+        if self._ended is not None:
+            raise ClientSessionEnded(
+                f"client {self.label} was ended earlier ({self._ended}); {op} not sent"
+            )
         if self._ledger.remaining("api_calls") < max_calls:
             raise GuardrailStop("guardrail: api_calls would be passed; stopping before the call")
         opens_connection = op in CONNECT_OPS
@@ -149,10 +201,17 @@ class ClientSession:
             self._ledger.connection_opened()
         self._next_id += 1
         command = {"id": self._next_id, "op": op, "max_calls": max_calls, **params}
-        assert self._proc.stdin is not None
-        self._proc.stdin.write(json.dumps(command) + "\n")
-        self._proc.stdin.flush()
-        raw = json.loads(self._read_line())
+        try:
+            assert self._proc.stdin is not None
+            self._proc.stdin.write(json.dumps(command) + "\n")
+            self._proc.stdin.flush()
+            raw = self._reply_for(self._next_id)
+        except (ClientSessionEnded, OSError) as exc:
+            if opens_connection:
+                self._ledger.connection_closed()  # the connect never answered
+            if isinstance(exc, OSError):
+                raise self._end(f"could not send the command: {exc}") from None
+            raise
         reply = Reply(
             ok=bool(raw.get("ok")),
             data=self._redactor.value(raw.get("data")),
@@ -188,7 +247,7 @@ class ClientSession:
         return reply
 
     def close(self) -> None:
-        if self._proc.poll() is None:
+        if self._ended is None and self._proc.poll() is None:
             try:
                 assert self._proc.stdin is not None
                 self._proc.stdin.write(json.dumps({"id": 0, "op": "exit"}) + "\n")
