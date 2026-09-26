@@ -25,9 +25,14 @@ _SENSITIVE_KEYS = frozenset(
 )
 # Key names that hold credentials in Stream's app configuration and elsewhere,
 # matched anywhere in the key (for example "sqs_secret", "apn.auth_key",
-# "firebase_credentials", "p12_cert") or as a suffix ("refresh_token").
+# "firebase_credentials", "p12_cert") or as a suffix ("refresh_token", and since
+# P06.1-C2 any "_key": "firebase_server_key", "server_key", "sqs_key", "sns_key",
+# "s3_api_key", the Datadog "api_key" and the RTMP "stream_key" in getstream
+# 6.1.0's app settings model). The harness's own marker fields ("glow_note",
+# "glow_text", "glow_bio", "text") must never match, or redaction would hide a
+# marker from the leak checks (tests/test_redaction.py checks this).
 _SENSITIVE_PARTS = ("secret", "password", "private_key", "auth_key", "credential", "p12_cert")
-_SENSITIVE_SUFFIXES = ("_token",)
+_SENSITIVE_SUFFIXES = ("_token", "_key")
 
 
 def is_sensitive_key(key: str) -> bool:

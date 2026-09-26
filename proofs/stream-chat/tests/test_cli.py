@@ -139,6 +139,69 @@ class CommandTest(unittest.TestCase):
         self.assertIn("users_task", results["cleanup"])
         self.assertEqual(results["post_run_problems"], [])
 
+    def test_second_ctrl_c_inside_finish_keeps_the_results_file(self) -> None:
+        # P06.1-C2, the C1 review's nit 8: the first Ctrl-C stops the matrix with a
+        # temporary change journalled; a second one interrupts finish().
+        def interrupt_twice(run: ProofRun, server: FakeServer) -> None:
+            def interrupted(*_args: Any, **_kwargs: Any) -> None:
+                server.app["guest_user_creation_disabled"] = False
+                run.journal.append(
+                    TemporaryChange("guest user creation enabled", run._disable_guest_creation)
+                )
+                raise KeyboardInterrupt
+
+            def finish_interrupted(**_kwargs: Any) -> list[str]:
+                raise KeyboardInterrupt
+
+            run.run_matrix = interrupted  # type: ignore[method-assign]
+            run.finish = finish_interrupted  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(interrupt_twice), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertEqual(results["stop_reason"], "interrupted (Ctrl-C)")
+        self.assertEqual(results["journal_not_restored"], ["guest user creation enabled"])
+        self.assertTrue(
+            results["post_run_problems"][0].startswith("the end of the run was interrupted")
+        )
+        self.assertNotIn("end_of_run", results)  # the final write replaced the early one
+
+    def test_results_are_written_before_the_end_of_the_run(self) -> None:
+        def record_early_write(run: ProofRun, server: FakeServer) -> None:
+            finish = run.finish
+
+            def finish_after_checking(**kwargs: Any) -> list[str]:
+                early = self.results()
+                self.assertIn("end_of_run", early)
+                self.assertEqual(len(early["cases"]), 1)  # S1's row is already there
+                return finish(**kwargs)
+
+            run.finish = finish_after_checking  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(record_early_write), 0)
+
+    def test_ctrl_c_during_the_early_write_still_restores(self) -> None:
+        writes = vars(cli)["write_json"]  # the fixture's fake
+
+        def interrupt_first_run_write(name: str, data: Any, secrets: Any) -> Any:
+            if name.startswith("run-") and "progress" not in name and "end_of_run" in data:
+                raise KeyboardInterrupt
+            return writes(name, data, secrets)
+
+        def interrupted(run: ProofRun, server: FakeServer) -> None:
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                server.app["guest_user_creation_disabled"] = False
+                run.journal.append(
+                    TemporaryChange("guest user creation enabled", run._disable_guest_creation)
+                )
+                raise KeyboardInterrupt
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        with mock.patch.object(cli, "write_json", interrupt_first_run_write):
+            self.assertEqual(self.run_command(interrupted), cli.EXIT_STOPPED)
+        self.assertIs(self.server.app["guest_user_creation_disabled"], True)
+        self.assertEqual(self.results()["journal_not_restored"], [])
+
     def test_preflight_stop_exits_non_zero_without_cleanup(self) -> None:
         def second_dashboard_user(run: ProofRun, server: FakeServer) -> None:
             server.users["second"] = dashboard_user("second")
@@ -215,6 +278,26 @@ class CommandTest(unittest.TestCase):
         server.handlers.append(leftover_poll)
         self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
         self.assertIn("polls remaining: ['left']", ctx.lines)
+
+
+class AtomicWriteTest(unittest.TestCase):
+    """P06.1-C2: an interrupted write never leaves a results file truncated."""
+
+    def test_a_failed_write_leaves_the_previous_file_whole(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from glow_stream_proof import workdir
+
+        with (
+            tempfile.TemporaryDirectory() as scratch,
+            mock.patch.object(workdir, "WORK_DIR", Path(scratch)),
+        ):
+            workdir.write_json("run-x.json", {"cases": [1]}, [SECRET])
+            with mock.patch.object(Path, "replace", side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    workdir.write_json("run-x.json", {"cases": [1, 2]}, [SECRET])
+            self.assertEqual(json.loads((Path(scratch) / "run-x.json").read_text()), {"cases": [1]})
 
 
 if __name__ == "__main__":

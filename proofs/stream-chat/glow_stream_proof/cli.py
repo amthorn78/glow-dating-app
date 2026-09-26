@@ -181,10 +181,40 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     except Exception as exc:  # recorded, never hidden; cleanup still runs
         stop_reason = f"harness error: {type(exc).__name__}: {ctx.redactor.text(str(exc))}"
     finally:
+        # The results so far are written first, so that nothing observed is lost
+        # if the end of the run is interrupted (P06.1-C2); they are rewritten below.
+        try:
+            early = run.results()
+            early.update(
+                {
+                    "started": started,
+                    "stop_reason": stop_reason,
+                    "end_of_run": "not finished: restores, cleanup and the configuration "
+                    "check had not completed when this was written",
+                }
+            )
+            write_json(f"run-{prefix}.json", early, ctx.secrets)
+        except (Exception, KeyboardInterrupt) as exc:  # never in the way of the restores below
+            run.notes.append(
+                f"results not written before the end of the run: {type(exc).__name__}: {exc}"
+            )
         # Every run ends here: journalled temporary changes are restored and
         # verified, the run's data is cleaned up, and the configuration is
         # verified, whatever stopped the run.
-        problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)
+        try:
+            problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)
+        except KeyboardInterrupt:
+            # A second Ctrl-C: the end of the run stops here, except closing the
+            # client processes; what is known is written below.
+            stop_reason = stop_reason or "interrupted (Ctrl-C)"
+            problems = [
+                "the end of the run was interrupted (Ctrl-C): restores, cleanup and the "
+                "configuration check may be incomplete; run configure (a dry run) and "
+                "verify-clean",
+                *run.post_run_problems,
+            ]
+            run.post_run_problems = problems
+            run.close_sessions()
     ctx.say(f"cleanup: {run.cleanup_result}")
     for stop in run.stops:
         ctx.say(f"stop recorded: {stop}")

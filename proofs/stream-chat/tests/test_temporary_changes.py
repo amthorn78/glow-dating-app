@@ -435,7 +435,9 @@ class GuardedUnsetTest(unittest.TestCase):
             server.handlers.append(broken_unset)
             with self.assertRaises(GuardrailStop):
                 run.run_matrix({"S15", "S16"})
-        self.assertEqual(run.case_results, [])
+        # Since P06.1-C2 the stopped case keeps its row (S16 never ran).
+        self.assertEqual([c.case_id for c in run.case_results], ["S15"])
+        self.assertEqual(run.case_results[0].verdict, matrix.INCONCLUSIVE)
         self.assertTrue(any("unsetting A's member field raised" in s for s in run.stops))
 
 
@@ -472,6 +474,101 @@ class FinishRetryTest(unittest.TestCase):
             problems = run.finish(cleanup=False)
         self.assertEqual(len(attempts), 1)
         self.assertTrue(any("not restored" in p for p in problems))
+
+
+class RateLimitRetryTest(unittest.TestCase):
+    """P06.1-C2, the C1 review's nit 4: among stop signals, only a rate limit is retried."""
+
+    def attempts_for(self, stop: GuardrailStop) -> tuple[int, list[str]]:
+        run, _server = make_run()
+        attempts: list[int] = []
+
+        def stopped() -> str:
+            attempts.append(1)
+            raise stop
+
+        run.journal.append(TemporaryChange("a change", stopped))
+        with NoSettle():
+            problems = run.finish(cleanup=False)
+        return len(attempts), problems
+
+    def test_a_charge_signal_is_not_retried(self) -> None:
+        for message in ("HTTP 402", "Stream error code 99", "response text mentions a charge"):
+            count, problems = self.attempts_for(
+                GuardrailStop(f"server PATCH /x: {message}; stopping at once")
+            )
+            self.assertEqual(count, 1, message)
+            self.assertTrue(any("not restored" in p for p in problems))
+
+    def test_a_rate_limit_is_retried(self) -> None:
+        stop = GuardrailStop("server PATCH /x: HTTP 429; stopping at once", rate_limited=True)
+        count, problems = self.attempts_for(stop)
+        self.assertEqual(count, 3)
+        self.assertTrue(any("not restored" in p for p in problems))
+
+    def test_a_failure_that_is_not_a_stop_signal_is_still_retried(self) -> None:
+        count, _problems = self.attempts_for_error(RunStopped("PUT 500"))
+        self.assertEqual(count, 3)
+
+    def attempts_for_error(self, exc: Exception) -> tuple[int, list[str]]:
+        run, _server = make_run()
+        attempts: list[int] = []
+
+        def failing() -> str:
+            attempts.append(1)
+            raise exc
+
+        run.journal.append(TemporaryChange("a change", failing))
+        with NoSettle():
+            problems = run.finish(cleanup=False)
+        return len(attempts), problems
+
+
+class UnverifiedRemovalTest(unittest.TestCase):
+    """P06.1-C2, the C1 review's nit 9: an accepted removal that could not be verified
+    is reported "not verified", not "not restored"."""
+
+    GRANT = {"grants": {"channel_member": ["read-channel-members"]}}
+
+    def run_with_budget_stopped_probe(self) -> tuple[Any, Any]:
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "queryMembers":
+                raise GuardrailStop(
+                    "guardrail: api_calls would be passed; stopping before the call"
+                )
+            return None
+
+        run, server = make_run(behaviours={"B": b})
+        server.config_has_grants = False  # the re-read cannot show the grant
+        return run, server
+
+    def test_at_the_end_of_the_run(self) -> None:
+        run, server = self.run_with_budget_stopped_probe()
+        with NoSettle():
+            set_up(run)
+            change = run._channel_override_change(self.GRANT)
+            run.journal.append(change)
+            run._set_channel_override(change, self.GRANT)  # then the run was stopped
+            problems = run.finish(cleanup=False)
+        self.assertEqual(server.overrides[run.ctx["AB"]], {})  # the removal was made
+        self.assertEqual(run.journal, [])
+        self.assertFalse(any("not restored" in p for p in problems), problems)
+        verified = [p for p in problems if p.startswith("temporary change not verified")]
+        self.assertEqual(len(verified), 1, problems)
+        self.assertIn("B's members query could not be made", verified[0])
+        self.assertTrue(any(s.startswith("restore made but not verified") for s in run.stops))
+
+    def test_during_a_case(self) -> None:
+        run, server = self.run_with_budget_stopped_probe()
+        with NoSettle():
+            set_up(run)
+            change = run._channel_override_change(self.GRANT)
+            with self.assertRaises(GuardrailStop), run._temporary(change):
+                run._set_channel_override(change, self.GRANT)
+            problems = run.finish(cleanup=False)
+        self.assertEqual(run.journal, [])
+        self.assertFalse(any("not restored" in p for p in problems), problems)
+        self.assertTrue(any(p.startswith("temporary change not verified") for p in problems))
 
 
 if __name__ == "__main__":

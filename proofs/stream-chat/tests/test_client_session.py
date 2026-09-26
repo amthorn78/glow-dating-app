@@ -14,7 +14,7 @@ import unittest
 import tests  # noqa: F401
 from glow_stream_proof.client_bridge import ClientSession, ClientSessionEnded
 from glow_stream_proof.redaction import Redactor
-from glow_stream_proof.usage import UsageLedger
+from glow_stream_proof.usage import GuardrailStop, UsageLedger
 
 READ = "import json, sys\n"
 EXIT = "    if json.loads(line).get('op') == 'exit':\n        break\n"
@@ -102,6 +102,42 @@ class ReplyMatchingTest(unittest.TestCase):
             self.assertIn("exited", str(ended.exception))
         finally:
             s.close()
+
+
+def answering(status: int, code: int) -> str:
+    """A fake runner whose every command records one request answered ``status`` / ``code``."""
+    return READ + (
+        "for line in sys.stdin:\n" + EXIT + "    cmd = json.loads(line)\n"
+        "    request = {'method': 'GET', 'path': '/x', 'status': "
+        + str(status)
+        + ", 'response': {'code': "
+        + str(code)
+        + ", 'message': 'no'}}\n"
+        "    print(json.dumps({'id': cmd['id'], 'ok': False, 'requests': [request],"
+        " 'api_calls': 1, 'error': {'kind': 'api', 'status': "
+        + str(status)
+        + ", 'code': "
+        + str(code)
+        + "}}), flush=True)\n"
+    )
+
+
+class ClientRateLimitFlagTest(unittest.TestCase):
+    """P06.1-C2, nit 4: a client's charge signal says whether it was a rate limit."""
+
+    def stop_for(self, status: int, code: int) -> GuardrailStop:
+        s = session(answering(status, code), UsageLedger())
+        try:
+            with self.assertRaises(GuardrailStop) as stopped:
+                s.send("call")
+        finally:
+            s.close()
+        return stopped.exception
+
+    def test_flags(self) -> None:
+        self.assertTrue(self.stop_for(429, 9).rate_limited)
+        self.assertFalse(self.stop_for(402, 4).rate_limited)
+        self.assertFalse(self.stop_for(403, 99).rate_limited)
 
 
 if __name__ == "__main__":

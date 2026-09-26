@@ -475,7 +475,7 @@ Not run: the repository's Foundation CI jobs. None of them runs this harness's t
 - **Session guardrail.** The brief sets its guardrails per session; the prompt says to count per run. The harness enforces both, keeping a session-wide ledger. That ledger is what ruled out a fifth run.
 - **Configuration changed between runs, from evidence.** Typing events were turned off after the smoke run, and `read-channel-members` was removed after run 2. The final configuration therefore differs from the first one. Each change is recorded above with the observation that caused it.
 - **Temporary setting changes inside runs.** Channel-level feature overrides, the type-level custom-events and polls toggles, and the guest-creation toggle were added for attributable permission-layer evidence and positive controls. Each was reversed in the run; only the type toggles and the guest setting were re-read, not the channel-override removals (corrected in P06.1-C1).
-- **A run's results were lost.** In run `p061i1-0925031802` an exception escaped before the results were written. The harness then wrote a progress file after every case, and the results after any `Exception`, but not after Ctrl-C (`KeyboardInterrupt`), which escaped before they were written (corrected in P06.1-C1; since P06.1-C1 Ctrl-C is handled too).
+- **A run's results were lost.** In run `p061i1-0925031802` an exception escaped before the results were written. The harness then wrote a progress file after every case, and the results after any `Exception`, but not after Ctrl-C (`KeyboardInterrupt`), which escaped before they were written (corrected in P06.1-C1; since P06.1-C1 Ctrl-C is handled too, except a second Ctrl-C inside the end of the run, which still lost the results file until P06.1-C2 (corrected in P06.1-C2)).
 - **Cleanup missed a guest user in the final run.** It was removed by hand and verified, and the harness was fixed. The fixes in commit 5c91e3a and later have **not been exercised live**, because the session's user budget is spent (19 of 20). They are:
   - matching the run prefix anywhere in a user ID;
   - judging G1's control by its `POST /guest` result;
@@ -918,7 +918,7 @@ Finding 6's new G2 and S10 setups, and finding 9, are I2a's work and were not bu
 | 5. Cleanup unguarded, statuses unasserted, exit 0 | Fixed: guarded steps, deletes and task statuses judged, non-zero exit | `proof_run.py:2198`, `:2438`; `cli.py:142` | `tests/test_cleanup.py`; `tests/test_cli.py` |
 | 6. Charge signal misses typed SDK calls | Fixed: an httpx response hook checks every server response | `server_api.py:97` | `tests/test_server_api.py` (on an `httpx.MockTransport`) |
 | 7. Unused runner op `request` | Fixed: removed | `client/runner.cjs:260` (the op list) | `tests/test_runner.py` `test_unused_request_op_is_gone` |
-| 8. `baseline` writes every user; redaction by exact key only | Fixed: the written snapshot keeps only counts and the proof's own IDs, and the settings the proof reads; credential keys are matched by pattern | `baseline.py:46`; `cli.py:86`; `redaction.py:33` | `tests/test_cli.py` `test_baseline_writes_no_other_users_identifier_or_name`; `tests/test_redaction.py` `test_sensitive_keys_are_matched_by_pattern` |
+| 8. `baseline` writes every user; redaction by exact key only | Fixed: the written snapshot keeps only counts and the proof's own IDs, and the settings the proof reads; credential keys are matched by pattern, but not all of them: `firebase_server_key`, `sqs_key`, `sns_key`, `server_key`, `s3_api_key`, the Datadog `api_key` and the RTMP `stream_key` in the app settings model were missed until P06.1-C2 (corrected in P06.1-C2) | `baseline.py:46`; `cli.py:86`; `redaction.py:33` | `tests/test_cli.py` `test_baseline_writes_no_other_users_identifier_or_name`; `tests/test_redaction.py` `test_sensitive_keys_are_matched_by_pattern` |
 | 9. `verify` skips `permission_version` and `member_custom_on_*` | Fixed | `configuration.py:95`, `:227` | `tests/test_configuration.py` `test_verify_checks_permission_version_and_member_custom_settings` |
 | 10. `restore --apply` does not verify | Fixed: re-reads and compares with the recorded baseline, exit 1 on any difference | `cli.py:255`; `configuration.py:300` | `tests/test_cli.py` `test_restore_apply_verifies_what_it_restored`; `tests/test_configuration.py` `test_verify_restored` |
 | 11. Nothing asserts the shared `isomorphic-ws` | Fixed: the runner refuses to start (exit 4) unless stream-chat resolves and keeps the runner's module; a `selfcheck` op reports it | `client/runner.cjs:66`, `:218` | `tests/test_runner.py` `test_stream_chat_uses_the_runners_websocket` |
@@ -926,7 +926,7 @@ Finding 6's new G2 and S10 setups, and finding 9, are I2a's work and were not bu
 | 13. Client-created polls and groups not cleaned up or listed | Fixed: tracked and deleted; verify-clean lists polls and user groups, counting only those absent at preflight | `proof_run.py:1161`, `:2417`, `:2345` | `tests/test_cleanup.py` `ClientCreatedDataTest`, `PreexistingPollsAndGroupsTest`; `tests/test_cli.py` `test_verify_clean_lists_polls_and_user_groups` |
 | 14. verify-clean cannot see soft-deleted channels | **Left.** There is no verified way to list soft-deleted channels offline. The covering control is the hard delete of every recorded channel ID, with its task now required to report `completed` (nit 5). Recorded in the README's limits | — | — |
 | 15. `_check` evidence unredacted | Fixed | `proof_run.py:340` | `tests/test_procedures.py` `CheckRedactionTest` |
-| 16. E5 and S14 judge stored state only; T4-rest-unread HOLDS without its controls | Fixed: the connection's own user object in Stream's handshake counts too; the refusal needs A's and B's own requests to succeed | `proof_run.py:2046`, `:2003`, `:1417` | `tests/test_procedures.py` `NotEffectiveTest` |
+| 16. E5 and S14 judge stored state only; T4-rest-unread HOLDS without its controls | Fixed: the connection's own user object in Stream's handshake counts too; the refusal needs A's and B's own requests to succeed. An accepted claim could still give HOLDS (accepted, not applied) without its controls, and an unreadable stored user made E5 a FAIL, until P06.1-C2 (corrected in P06.1-C2) | `proof_run.py:2046`, `:2003`, `:1417` | `tests/test_procedures.py` `NotEffectiveTest` |
 | 17. Cleanup deletes the application-wide `deleted-user-1729640-…` user | **Left.** It is safe by construction: preflight refuses any user the run did not create except the one dashboard user, and only artifacts created after the run started are deleted. Recorded in the README's limits | — | — |
 
 ### The independent review of these corrections
@@ -1155,3 +1155,116 @@ The session committed nothing, so there is no branch to check. The manager check
 - **C1's code head `e85bba0` is approved.**
 - **The three should-fix findings and the seven nits go to a second offline correction pass, P06.1-C2, before I2a's live runs.** Findings 2 and 3 let a case record HOLDS without an attributable refusal and a successful control, which the brief's matrix quality rule forbids, and finding 1 can turn an observed FAIL into INCONCLUSIVE. Live budget is spent only on a harness whose verdicts are sound.
 - **C2's exact-head review follows,** offline. I2a comes after it.
+
+## P06.1-C2 corrections
+
+The second correction pass on the harness, for the C1 review's findings 1 to 3 and nits 4 to 10. It made no Stream call and ran none of the harness's live commands. The first live use of these fixes, and of C1's, is in P06.1-I2a.
+
+- **Prompt:** revision 1, from commit `5fc3bea2b62e50ad4f4357d55aa47b2d3a6cb67e`.
+- **Branch:** `claude/lucid-einstein-79bqmd`. **Start:** `5fc3bea2b62e50ad4f4357d55aa47b2d3a6cb67e`.
+- **Code head:** `f1c670b0ad7e650043e8bc35de3da4fcc2201d06`. It carries every code change and the records corrected below, and every check below ran on it. The commit that adds this section changes only this record.
+- **Date:** 26 September 2026.
+
+### Environment and start gate
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present (the check printed nothing) |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | None present (the check printed nothing) |
+| `command -v node npm npx python3.12` | `/root/.local/bin/node`, `/root/.local/bin/npm`, `/root/.local/bin/npx`, `/root/.local/bin/python3.12` |
+| Versions | node v24.19.0; npm 11.9.0; Python 3.12.14 |
+| Start gate | `git fetch origin claude/stoic-carson-66gdig`; `git merge --ff-only 5fc3bea…` fast-forwarded; `git rev-parse HEAD` printed `5fc3bea2b62e50ad4f4357d55aa47b2d3a6cb67e`; `git diff --stat e85bba0… HEAD -- proofs/stream-chat/` printed nothing |
+
+The environment was never dumped. There were no connections to Stream, a database, HDE or Railway, and no `playwright install`, `eas` or `migrate`. Installs got the proxy and CA variables by reference.
+
+### Findings 1 to 3 and nits 4 to 10
+
+Paths are under `proofs/stream-chat/`; line numbers are at the code head. Each test named fails with its fix reverted and passes with it (see "Checks", item 5). The suggested fix was used for every item unless the row says otherwise.
+
+| Item | Status | Where | Tests |
+|---|---|---|---|
+| 1. An observed FAIL lost when a later step is interrupted | Fixed. Each case keeps what it has observed so far (`_observe`, `glow_stream_proof/proof_run.py:472`), at every step after which a later step can be interrupted: the client's request before its control (`:1222`), the feature-on phase, bad-token REST and WebSocket, T4-rest-xd, G1, the guest and anonymous probes, S10 (with polls on, and before the production vote), S15 under production, S14 (the connection, then the stored state), E5 (the connection, then the stored role), RT1, and RT2/RT3's first window. Every way a case ends records its row (`run_matrix`, `:1046`; `_interrupted_row`, `:498`): a FAIL stays a FAIL, anything else becomes INCONCLUSIVE, "interrupted before the case finished: …". A client success whose undo is owed is undone after the control and the row records each undo (`:1278`); if the control is interrupted, `_undo_after_interruption` (`:1296`) follows the README's rule on what may still run after each kind of stop (see "Decisions") | `tests/test_interruptions.py`: `ReviewScenariosTest` (the review's three scenarios: S2, S15, and S3a's server replay under a rate limit, under a harness error and under Ctrl-C), `EveryWayACaseEndsTest`, `ProceduresKeepWhatTheyObservedTest` (one test per place that keeps an observation) |
+| 2. T4-rest-unread HOLDS with A's control failed | Fixed. Neither kind of HOLDS without both controls; "HOLDS (accepted, not applied)" also needs all three totals, each from a 2xx answer to the one request (`:1620`, `:1638`). A FAIL on the claim's total equal to B's needs them too. README "Verdict rules", T4-rest-unread | `tests/test_procedures.py` `UnreadControlsTest` (including the review's reproduction) |
+| 3. RT2 and RT3 HOLD on any refusal | Fixed. A refusal HOLDS only for `auth`, `permission` or `feature`; `input`, `not-found` and `other` are INCONCLUSIVE, "refusal not attributable (…)" (`:2476`). Named events count only after an accepted request (`:2472`), so events after a non-attributable refusal are INCONCLUSIVE too. README "Verdict rules", RT2 and RT3 | `tests/test_answers.py` `PayloadRefusalAttributionTest` |
+| Nit 4. Charge-signal restores retried; README undercount | Fixed. A `GuardrailStop` says whether it was a rate limit (`glow_stream_proof/usage.py:42`, `is_rate_limit` `:147`: HTTP 429 or Stream code 9, unless 402 or code 99), set at all four raise sites (`server_api.py:109`, `:151`; `client_bridge.py:259`, `:266`). `finish()` retries a restore only after a rate limit or a failure that is not a stop signal (`proof_run.py:2779`). README's count corrected: at most six calls per journalled change when its restores meet a charge signal or the budget, twelve otherwise, plus two configuration reads | `tests/test_temporary_changes.py` `RateLimitRetryTest`; `tests/test_server_api.py` `RateLimitFlagTest`; `tests/test_client_session.py` `ClientRateLimitFlagTest` |
+| Nit 5. Production phase with no answer keeps HOLDS | Fixed. A feature-gated case (S2, S5, S6, S7, S12) and S10 are INCONCLUSIVE when the production-phase request has no recorded answer, unless already FAIL or INCONCLUSIVE (`:1194`, `:1961`) | `tests/test_answers.py` `ProductionPhaseAnswerTest` |
+| Nit 6. "Last HTTP request" unchecked | Fixed. `_http_answer` gives no answer for a reply with more than one recorded request (`:157`); G1's `POST /guest` must be the one request the command recorded (`_guest_post`, `:1775`). Every caller of `_http_answer` was checked: each judges an SDK call that sends exactly one request (watch, query, queryMembers, markRead, getUnreadCount, castPollVote and the matrix's single calls). G1 still FAILs whenever a guest was created | `tests/test_answers.py` `OneRequestTest` |
+| Nit 7. E5 FAIL on an unreadable stored user | Fixed, and extended to S14, which had the same defect in the other direction (an unreadable user counted as unchanged). `_server_user` returns `None` unless the listing holds that ID (`:2227`); E5 and S14 are then INCONCLUSIVE, "A's stored user could not be read", unless the connection's user object already showed the change (`:2408`, `:2324`) | `tests/test_procedures.py` `StoredUserUnreadableTest` |
+| Nit 8. A second Ctrl-C inside `finish()` loses the results file | Fixed. `cmd_run` writes the results before the end of the run (`glow_stream_proof/cli.py:187`, marked `end_of_run: not finished`), and a second Ctrl-C inside `finish()` is caught (`:206`): the client processes are closed, the results are written with the problem "the end of the run was interrupted", exit 2. `finish()` keeps its problems on the run as it finds them (`proof_run.py:2766`) | `tests/test_cli.py` `CommandTest.test_second_ctrl_c_inside_finish_keeps_the_results_file`, `test_results_are_written_before_the_end_of_the_run`, `test_ctrl_c_during_the_early_write_still_restores` |
+| Nit 9. An accepted, unverified removal reported "not restored" | Fixed. A removal of AB's override whose PATCH was accepted, with no key still reading as overridden, but whose B probe was stopped by a guardrail, is recorded as not verified and leaves the journal (`:605`, `:618`; `_restore` `:423`, `_restored_unverified` `:450`); the stop still propagates. If a key still reads as overridden, the change stays journalled | `tests/test_temporary_changes.py` `UnverifiedRemovalTest`; `tests/test_interruptions.py` `ReviewOfC2Test.test_a_key_still_overridden_keeps_the_change_journalled` |
+| Nit 10. Key-pattern redaction misses credential keys | Fixed. Any key ending in `_key` is redacted (`glow_stream_proof/redaction.py:35`). A walk of `getstream` 6.1.0's `GetApplicationResponse` and every model it contains (57 models, 312 field names) found seven credential names the patterns missed: `firebase_server_key`, `server_key`, `sqs_key`, `sns_key`, `s3_api_key`, the Datadog `api_key` and the RTMP `stream_key`. All are now covered. The Datadog `api_key` means `api_key` is redacted by key everywhere, including the client-safe Stream API key in recorded request parameters; plain-text redaction is unchanged | `tests/test_redaction.py` `test_credential_keys_of_the_app_settings_model_are_redacted`; `test_the_harness_marker_fields_are_never_redacted` |
+
+C1's own tests changed in three places, each to the new rule or to check more: `test_sensitive_keys_are_matched_by_pattern` no longer asserts that `api_key` stays unredacted (nit 10); `GuardedUnsetTest` now expects S15's row after the guardrail stop, where it expected none (finding 1); `test_rt2_local_throw_is_inconclusive` and `test_rt3_null_return_without_a_request_is_inconclusive` also check the reason, because finding 3's rule would otherwise also make them INCONCLUSIVE and hide C1's no-answer rule.
+
+### The independent review of these corrections
+
+A read-only sub-agent reviewed the uncommitted diff adversarially, reproduced each point against the fakes, and made no Stream call. I verified each point and fixed all four:
+
+1. **E5 lost a stored-role FAIL.** E5 kept only its connection's result before reading the stored user, so a restore of A's role that was interrupted turned "admin reached stored state" into INCONCLUSIVE; a restore that raised an exception let the run go on with A holding the role. E5 now keeps the FAIL before its restore, and a restore that raises stops the run after E5's row (`proof_run.py:2398`). Tests: `ReviewOfC2Test.test_e5_…` (two).
+2. **A failing progress write could replace a guardrail stop.** In the new stop branches, a `progress()` that raised (a full disk, a leak refusal) replaced the `GuardrailStop`, so `cmd_run` saw a harness error and ran cleanup after a charge signal. A regression from C1, found before commit. Progress is now written quietly while a stop is in flight (`_progress_quietly`, `:1068`). Tests: `ReviewOfC2Test.test_a_failing_progress_write_never_replaces_a_guardrail_stop`, `test_ctrl_c_is_kept_when_the_progress_write_fails`.
+3. **Nit 9 could drop a change still in place,** with two keys in one override (not reachable with today's single-key overrides). A key that still reads as overridden now wins, and the change stays journalled (`:618`). Test: `ReviewOfC2Test.test_a_key_still_overridden_keeps_the_change_journalled`.
+4. **The early results write was not fully protected.** It now sits wholly inside its `try`, which also catches a Ctrl-C (`cli.py:197`), so the restores still run; every `.work` file is written through a temporary file and renamed (`glow_stream_proof/workdir.py:27`); `finish()` keeps its problems as it finds them. Tests: `CommandTest.test_ctrl_c_during_the_early_write_still_restores`, `AtomicWriteTest`, `ReviewOfC2Test.test_finish_keeps_the_problems_found_before_a_second_ctrl_c`.
+
+It also raised points left as they are, listed under "Decisions" and "Limits".
+
+### Records corrected
+
+In this record, each edited in place and marked "(corrected in P06.1-C2)". No recorded result changed, and the four sections the prompt protects are unchanged byte for byte.
+
+- **I1's "Deviations", "A run's results were lost":** "since P06.1-C1 Ctrl-C is handled too" was not true at C1's head for a second Ctrl-C inside the end of the run (nit 8).
+- **C1's nit 8 row:** "credential keys are matched by pattern" missed seven credential key names (nit 10).
+- **C1's nit 16 row:** "T4-rest-unread HOLDS without its controls — Fixed" held for a refusal only; an accepted claim could still give HOLDS (accepted, not applied) without its controls (finding 2), and an unreadable stored user made E5 a FAIL (nit 7).
+
+In `proofs/stream-chat/README.md`, each rule as the code now applies it, with the changed ones marked: the verdict rules (one request; E5 and S14 unreadable users; interrupted cases; the undo of a client success; feature-gated cases; G1; RT2 and RT3; T4-rest-unread), the end-of-run sequence (restore retries, "not verified", the early and atomic results writes, the second Ctrl-C), the stop and restore rules, and the call counts after a charge signal ("at most two or three calls per journalled change", corrected). The offline checks now list `node --check client/error-info.cjs`.
+
+### Checks
+
+Run from `proofs/stream-chat/` unless noted, at code head `f1c670b`, in clean processes (`env -i`), with no `STREAM_*` variable present.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `git diff --check 5fc3bea… HEAD` (repository root) | No output, exit 0 |
+| 1 | `git diff --name-only 5fc3bea… HEAD` | 18 paths: this record and 17 under `proofs/stream-chat/` (one new file, `tests/test_interruptions.py`). All owned; no dependency file, `.npmrc`, `pyproject.toml` or baseline change; every file mode 100644, no symlink. 2,377 insertions, 198 deletions |
+| 2 | The trusted policy from `origin/main` (`0f45e64`), extracted to a temporary directory outside the tree, run with system Python 3.11.15: `python3 -I change_scope.py --base 5fc3bea… --head f1c670b… --merge-base` | Exit 0; `{"full": true, "reason": "behavior-or-empty", …}`, 18 paths. One merge base, `5fc3bea…`. Full scope, as expected |
+| 3 | From deleted `.venv` and `node_modules`: `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock`; `pip check`; `npm ci --ignore-scripts` (proxy and CA variables by reference) | Python 3.12.14; "No broken requirements found."; `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1; "added 51 packages, and audited 52 packages", "found 0 vulnerabilities"; `stream-chat` 9.53.0, `ws` 8.21.3, `https-proxy-agent` 5.0.1 |
+| 4 | `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t . -v` | At the start (`5fc3bea`): `Ran 142 tests`, `OK`. At the head: `Ran 202 tests`, `OK` |
+| 4 | `.venv/bin/ruff check .` / `.venv/bin/ruff format --check .` | "All checks passed!" / "38 files already formatted" |
+| 4 | `.venv/bin/mypy` | "Success: no issues found in 37 source files" |
+| 4 | `node --check client/runner.cjs`; `node --check client/error-info.cjs` | Exit 0; exit 0 |
+| 5 | `.venv/bin/python checks/fix_reversals.py <scratch dir>` | At the start: "reversals: 51, not demonstrated: 0", exit 0. At the head: "reversals: 99, not demonstrated: 0", exit 0: C1's 51 and 48 for C2, covering findings 1 to 3, nits 4 to 10 and the four review points. Four reversals (C1's two Ctrl-C ones and C2's two for nit 8 and the early write) fail by the Ctrl-C escaping and aborting the test process, which the script counts as failing. The checkout was unchanged afterwards |
+| 6 | Secret scan of `git diff 5fc3bea… f1c670b` (177,517 bytes) | JWT-shaped strings 0; email addresses 0; private-key blocks 0; AWS-style keys 0; the application's API key 0; TLS-weakening settings 0; environment dumps 0; no secret or token assignment in added lines; every long token-like string is a test name |
+
+Not run: any live command, and the repository's Foundation CI (not triggered by this session, and it does not run this harness's tests).
+
+### Decisions, deviations and limits
+
+- **Decisions to confirm.**
+  - **The undo of a client success after an interrupted control** (finding 1's third scenario). Chosen from the README's rule on what may still run after each kind of stop: after a guardrail stop it is not made (a charge or limit signal stops the run at once and deletes none of its data; the budget has no calls left), and after Ctrl-C it is not made; after an ended client session, a failed restore or a harness error it is made. The row says which and why. The change is always to the run's own synthetic data, which cleanup deletes (after a charge signal, `cleanup --apply`). An undo that itself hits a guardrail becomes the run's stop, with the interruption kept in the stops.
+  - **Nit 7 extended to S14,** the same defect in the same helper.
+  - **T4-rest-unread's FAIL needs its evidence too:** a claim total equal to B's is a FAIL only with both controls and all three totals; otherwise INCONCLUSIVE. No HOLDS rule became weaker; this FAIL rule and E5's (nit 7) now give INCONCLUSIVE, not a pass, on missing evidence.
+  - **RT2/RT3 HOLD on a `feature` refusal** (400 code 18 or 19), as the prompt directs; I1's recorded RT2 was one. The review noted that this sits beside the matrix quality rule's "authentication or permission error" and the matrix-wide REFUSED_FEATURE label, and that the refusal branch has no control beyond B's listening probe. Left for the manager.
+  - **`is_rate_limit` ignores the response's wording,** so a 429 that mentions billing is retried; excluding wording would also exclude "rate limit exceeded".
+- **Deviations.** Beyond the ten items: the four review points above; atomic `.work` writes; `node --check client/error-info.cjs` added to the README's offline checks. New file: `tests/test_interruptions.py`.
+- **Limits.**
+  - Nothing here was exercised live; the tests prove the harness's logic against fakes.
+  - Nit 6 makes any reply with more than one recorded request INCONCLUSIVE, so a real 2xx bypass that also sent an extra request would read INCONCLUSIVE, not FAIL, and owes no undo; the observed text shows the request count.
+  - After an interruption, S14's restore of A's name and E5's restore of A's role (when a guardrail stopped it) are left to cleanup, which deletes A.
+  - Existing behaviour, unchanged: T4-ws's HOLDS (accepted, not applied) does not consult its control; after a charge signal, `_temporary`'s restore (by design) and S15's unset of A's member field still send requests.
+  - Redaction by key name hides a value from the leak checks too; the harness's marker fields do not match any credential pattern, and a test keeps it so. Credentials inside URL values are not redacted by key.
+- **No dependency change,** and nothing outside the owned paths.
+
+### What P06.1-I2a must know
+
+In addition to C1's list above:
+
+- **Rules that changed** (README "Verdict rules" states each):
+  - an interrupted case records its row: a FAIL stays a FAIL, anything else is INCONCLUSIVE with the interruption named in `detail.interrupted`;
+  - T4-rest-unread HOLDS only with both controls and all three totals;
+  - RT2 and RT3 HOLD on a refusal only for `auth`, `permission` or `feature`;
+  - a feature-gated case, and S10, is INCONCLUSIVE when its production-phase request has no answer;
+  - a command with more than one recorded request has no answer; G1's `POST /guest` must be the only request;
+  - E5 and S14 are INCONCLUSIVE when A's stored user cannot be read;
+  - a failed restore of A's role in E5 stops the run.
+- **Stop and restore rules that changed:** among stop signals, only a rate limit (HTTP 429 or Stream code 9) is retried at the end of the run; an accepted removal that cannot be verified is "not verified" (exit 4 if the run completed), not "not restored"; the client-success undo rule above.
+- **Outputs that changed:** `run-<prefix>.json` is written before the end of the run (`end_of_run: not finished`) and again after it; a second Ctrl-C inside the end of the run exits 2 with "the end of the run was interrupted" (then run `configure` as a dry run and `verify-clean`); `.work` files are written through a `.partial` file; case rows may carry `interrupted` and `client_success_undo` in their detail; recorded `api_key` parameters read `<redacted-secret>`.
+- **Not exercised live:** every fix above, including the `rate_limited` flag on Stream's real 429 and code-9 answers, and the call counts after a charge signal.

@@ -67,5 +67,49 @@ class TypedCallChargeSignalTest(unittest.TestCase):
             api.close()
 
 
+class RateLimitFlagTest(unittest.TestCase):
+    """P06.1-C2, nit 4: a stop says whether it was a rate limit (HTTP 429 or Stream code 9)."""
+
+    def stop_for(self, status: int, body: dict[str, object]) -> GuardrailStop:
+        api, _seen = api_answering(status, body)
+        try:
+            with self.assertRaises(GuardrailStop) as raw:
+                api.raw("GET", "/api/v2/app")
+            with self.assertRaises(GuardrailStop) as typed:
+                api.sdk.upsert_users(UserRequest(id="u1", role="user"))
+        finally:
+            api.close()
+        self.assertEqual(raw.exception.rate_limited, typed.exception.rate_limited)
+        return raw.exception
+
+    def test_rate_limits(self) -> None:
+        self.assertTrue(
+            self.stop_for(429, {"code": 9, "message": "Too many requests"}).rate_limited
+        )
+        self.assertTrue(self.stop_for(429, {"message": "slow down"}).rate_limited)
+        self.assertTrue(self.stop_for(400, {"code": 9, "message": "rate limited"}).rate_limited)
+
+    def test_the_result_check_flags_a_rate_limit(self) -> None:
+        # The response hook raises first for every live response; the second check
+        # in ServerApi._result must flag a rate limit the same way.
+        api, _seen = api_answering(200, {})
+        try:
+            for status, body, limited in (
+                (429, {"code": 9, "message": "x"}, True),
+                (402, {"code": 9, "message": "x"}, False),
+            ):
+                response = httpx.Response(status, json=body)
+                with self.assertRaises(GuardrailStop) as stopped:
+                    api._result("GET", "/api/v2/app", response)
+                self.assertEqual(stopped.exception.rate_limited, limited, status)
+        finally:
+            api.close()
+
+    def test_charge_signals_are_not_rate_limits(self) -> None:
+        self.assertFalse(self.stop_for(402, {"code": 9, "message": "x"}).rate_limited)
+        self.assertFalse(self.stop_for(403, {"code": 99, "message": "suspended"}).rate_limited)
+        self.assertFalse(self.stop_for(400, {"code": 4, "message": "upgrade"}).rate_limited)
+
+
 if __name__ == "__main__":
     unittest.main()

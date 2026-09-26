@@ -24,16 +24,23 @@ def checked_text(text: str, secrets: Iterable[str]) -> str:
     return text
 
 
+def _replace(path: Path, text: str) -> None:
+    """Write through a temporary file, so an interrupted write never leaves ``path`` truncated."""
+    partial = path.with_name(path.name + ".partial")
+    partial.write_text(text, encoding="utf-8")
+    partial.replace(path)
+
+
 def write_json(name: str, data: Any, secrets: Iterable[str]) -> Path:
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     text = checked_text(json.dumps(data, indent=2, sort_keys=True, default=str) + "\n", secrets)
     path = WORK_DIR / name
-    path.write_text(text, encoding="utf-8")
+    _replace(path, text)
     return path
 
 
 def write_text(name: str, text: str, secrets: Iterable[str]) -> Path:
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     path = WORK_DIR / name
-    path.write_text(checked_text(text, secrets), encoding="utf-8")
+    _replace(path, checked_text(text, secrets))
     return path
