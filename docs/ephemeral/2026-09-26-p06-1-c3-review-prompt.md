@@ -8,6 +8,8 @@
 - **Reasoning level.** Neither reading gates anything, and Nathan picks.
   - Manager: extra high.
   - TypeSafe v4: extra high (score 2.54, P(extra high) 0.50, P(high) 0.48, P(max) 0.02), with no ultracode flag, narrowly (P(single session) 0.53).
+  - **Used: extra high.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** approve, with six nits and one gap outside C3's change, which go into I2a's offline first step; nothing delays I2a. See the evidence record, "Exact-head review of C3".
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). I2a comes after it.

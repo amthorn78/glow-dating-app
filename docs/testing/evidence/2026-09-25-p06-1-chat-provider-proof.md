@@ -1922,3 +1922,215 @@ C3's limits stand as recorded. Its note that five older tests raise charge-like 
 
 - **C3 is verified and integrated.** "What P06.1-I2a must know" in C1's, C2's and C3's sections feeds I2a's prompt.
 - **C3's exact-head review is next,** offline and scoped to C3's change, under the bound recorded in the disposition of the C2 review. I2a comes after it.
+
+### Exact-head review of C3 (26 September 2026)
+
+Nathan ran the review session at extra high, from revision 1 of the [review prompt](../../ephemeral/2026-09-26-p06-1-c3-review-prompt.md) (records commit `841fbad`), and relayed its report. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** The corrected harness is a sound base for I2a's live runs. The RT2 and RT3 change, the C2 review's findings 1 and 2 and nits 3 to 10, and C3's own four review points are confirmed fixed. The reviewer has no disagreement with the manager's decisions.
+- **Six nits remain, and no blocking or should-fix finding.** Only nit 1 could create a false HOLDS, and only in principle; it is not new. The review also names one gap outside C3's change, for I2a's offline first step: a request a client session sends between commands is not checked for a charge or limit signal.
+
+#### The report, as relayed
+
+The session's notes before its report, verbatim:
+
+> Confirmed `disconnectUser` only closes the WebSocket (no HTTP request). Checking reversal progress, then continuing through the procedures.
+>
+> Output is block-buffered to the log, so it will appear at the end. Continuing with S15, E5/S14 and RT2/RT3 code.
+>
+> Reviewed RT2/RT3 logic and the stored-user reads; now checking reversal progress and then the tests C3 added.
+>
+> Reading done for README changes. Checking S10's enabling path against the README's new "could not enable" sentence.
+>
+> Reversals at ~75/147. Reading C3's RT2/RT3 tests to design extra mutations that probe whether each fix's test would catch a different breakage.
+>
+> Reversal run still going. Meanwhile checking the records: the six protected sections against `e5180ab`, and C3's five in-place corrections.
+>
+> 103 of 147 reversals complete with no issues found so far. Meanwhile, I'm testing extra mutations in a scratch copy outside the repo to catch fixes whose tests might pass even if broken differently.
+>
+> Several "caught" results are only from the reversal-table pattern test (my edits touch lines the table quotes). Re-running with that test excluded to see which mutations real behaviour tests catch.
+>
+> The reversal run finished. Reading its full output and checking each failure reason.
+>
+> All 147 reversals check out, with C3's 48 failures matching expectations. I'll now write ad-hoc offline tests in scratch to confirm behavior on surviving mutations and check a RT3 window concern.
+>
+> Now the ad-hoc probes (scratch file outside the repo, no bytecode written):
+>
+> Probes confirm correct handling for the 402 cleanup case, the S15 budget stop, and RT3's control firing only after an auth refusal, with one probe showing a late A-attributed marker landing in RT3's unsearched window still holds. Now checking whether RT3's control (B's markRead) could affect later cases like T4-rest-unread.
+>
+> T4-rest-unread runs before RT3, so B's control `markRead` cannot affect it. Now the scope, mode, `diff --check` and secret-scan checks.
+>
+> Now the secret scan over the whole `git diff HEAD^1 HEAD`.
+>
+> Secret scan is clean (the 130 long strings are test names, two commit SHAs and a separator line). Now checking that C3's edits to existing C1/C2 tests did not weaken any assertion.
+>
+> Scope, modes, dependency files and the records' protected sections all check out. A few remaining README-vs-code checks (report rendering of `stop_signals`, S10 wording).
+>
+> The markdown report omits `stop_signals`—only the JSON includes it, with the "cleanup skipped" issue naming just the first printed signal. I'll now check C3's note on the five older tests that raise charge-like stops without the new flag.
+>
+> The five older tests' assertions don't depend on the new flag, though two raise a "429" stop without `rate_limited`, which production never actually produces—just a minor fidelity nit. Now confirming the checkout is still clean after all the runs.
+>
+> Checkout is clean (only ignored paths). Checking whether any other claim in C2's record section was false at C2's head but left uncorrected.
+>
+> Records corrections look complete. Spot-checking the line numbers C3's record cites at the code head.
+>
+> The per-reversal tally matches C3's record exactly (124 assertion, 20 error, 3 Ctrl-C by design). Next, I'll check whether a client success in both phases of a feature-gated case keeps both undo records in the row.
+>
+> All checks and probes are done; the checkout is untouched. Before writing the report, I'm loading Nathan's reporting skill, since it governs messages that report findings.
+
+The report:
+
+**Verdict: approve.** The corrected harness is a sound base for P06.1-I2a's live runs. There are no blocking or should-fix findings. Six nits remain, and none of them delays I2a under the manager's rule. Only nit 1 touches the three classes, and only in principle.
+
+- **Prompt received:** revision 1, from commit `841fbad1be4d40b56af2aa801f613d76e687cc7e`.
+- **Head reviewed:** `git rev-parse HEAD` printed `8c1a8c08d77052a86cfc70fc38cb830eb641438a`.
+  - `HEAD^2` is `b40acd7f8c4198f8205040ca1bc3119addc6093a`. There is one merge base, `0f45e648099b415217938c25d7369164c0101def`, and the ancestor check printed "records build on the head".
+  - `git diff --stat HEAD^1 HEAD`: 19 files, 2723 insertions, 175 deletions.
+  - Under `proofs/`, the head is identical to C3's code head `a5e2221`.
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY` or `STREAM_API_SECRET` is present. node v24.19.0, npm 11.9.0 and Python 3.12.14, all from `/root/.local/bin`.
+
+**Classifications.** I used the trusted `main` policy (sha256 `dec69a26…`), extracted outside the tree and run with `python3 -I`.
+
+| Run | Output |
+|---|---|
+| `main` → head | `{"full": true, "reason": "behavior-or-empty"}`, 111 paths |
+| `63e922f` → head | `{"full": true, "reason": "behavior-or-empty"}`, 25 paths. The filter for non-Markdown files outside `proofs/stream-chat/` printed nothing |
+| head → `841fbad` | `{"full": false, "reason": "ordinary-docs-only"}`, 5 paths |
+
+##### Findings, most severe first
+
+Paths are under `proofs/stream-chat/`.
+
+**1. Nit. RT3's whole control window goes unsearched, not only B's own events.** `glow_stream_proof/proof_run.py:2651-2653`; README line 160.
+- **Reproduced against the fakes:**
+  - A's `markRead` got 403 / code 17.
+  - An event from another user carrying A's marker arrived only in the window collected after B's control.
+  - Result: HOLDS, with `marker_event_types: []` and `control_event_types: ["message.read"]`.
+- **Why it is only a nit:**
+  - It needs Stream to refuse A's request and still deliver A's marker more than about 5 s later.
+  - At C2's head the same scenario was also HOLDS, because that window was never collected. So C3 adds no new path.
+  - The README says only "B's own `message.read`" is set apart, which is more precise than the code.
+- **Fix:** search the control window too. Leave out only B's own read events: type `message.read` or `notification.mark_read` whose `user.id` is B.
+- **Classes:** it could create a false HOLDS in principle. It is not new, so as a nit it does not delay I2a.
+
+**2. Nit (test gaps). Three C3 fixes still pass all tests when broken another way.** I ran each mutation against the full suite, with `tests/test_fix_reversals.py` removed, because that test fails on any edit to a line its table quotes. My probes confirmed that the head code behaves correctly in all three.
+- (a) At `proof_run.py:2850`, changing `if exc.at_once:` to `if exc.rate_limited:` survives. Only a 429 met during cleanup is tested; a 402 is not. Fix: add a 402 or code-99 case to `SignalRecordTest.test_a_signal_met_during_cleanup_ends_it_and_is_recorded`.
+- (b) At `proof_run.py:2180`, S15 still unsetting A's member field after a budget stop survives. The tests use only charge or rate-limit stops. Fix: add a budget-stop case to `MemberFieldUnsetTest`.
+- (c) At `proof_run.py:2620`, sending RT3's control for every outcome survives. C3's decision to send it only after an `auth` or `permission` refusal is not tested. Fix: assert that B sent no `markRead` after a success, a feature refusal or an input refusal.
+- **Classes:** none today. (a) protects the rule that no request follows a signal, so its test matters for regressions.
+
+**3. Nit (README). The feature-gated rule names S10, but S10 does not follow it.** README line 150.
+- The bullet covers S10's poll vote, but S10 has neither the "could not enable" rule nor the production-phase undo. `_poll_vote_phase` never judges the enabling request's status, and only `_generic_case` undoes.
+- There is no verdict risk: S10 can HOLD only if the server's identical vote succeeds, which fails when polls did not turn on, and S10 never downgrades a FAIL.
+- **Fix:** scope those two sentences to S2, S5, S6, S7 and S12.
+- **Classes:** none.
+
+**4. Nit. The production phase's undo note overwrites the feature-on phase's.** The note is set at `proof_run.py:1374`, called from `:1345` and then `:1271`.
+- **Reproduced:** S5 with a 201 in both phases sent 3 undo DELETEs, but the row shows only "undo DELETE 200".
+- A failed first undo still defers a stop, so nothing is hidden from the run's outcome.
+- This behaviour dates from C2, and C3's any-2xx rule widens where it can occur.
+- **Fix:** append the notes instead of replacing them.
+- **Classes:** none.
+
+**5. Nit, optional. The printed report does not show `stop_signals`.** `glow_stream_proof/report.py:82-89`
+- Only the JSON results carry it. When cleanup was due, the "cleanup skipped: …" problem names the first signal.
+- **Fix:** add a "Charge or limit signals" section to the report.
+- **Classes:** none.
+
+**6. Nit, optional. Older tests raise charge-like stops without the new flag.** This is the point the manager passed to this review.
+- There are five: `tests/test_interruptions.py:280` and `:611`, and `tests/test_temporary_changes.py:114`, `:435` and `:513`.
+- Two of them raise "HTTP 429" without `rate_limited=True`, which production never builds.
+- None of their assertions depends on the flag, so I agree with C3 that they stay valid.
+- **Fix:** build them through `ledger.stop_at_once`.
+- **Classes:** none.
+
+##### The C3 items and C3's own review points
+
+| Item | Confirmed | Reason |
+|---|---|---|
+| RT2/RT3 change | Yes | A `feature` refusal gives REFUSED (feature off) at `:2673`. RT2's `auth` or `permission` refusal is INCONCLUSIVE, "no positive control". RT3 HOLDS only when B's own identical `markRead` succeeded with the same method and generic path (`:2690`), and the tests assert the same body. `input`, `not-found` and `other` stay INCONCLUSIVE. I1's recorded RT2 is unchanged. See nit 1 |
+| F1: observed FAIL survives a failed enabling request | Yes | `:1257` |
+| F2: signal met anywhere stops the cleanup | Yes | All four raise sites record the signal before raising (`server_api.py:107`, `:149`; `client_bridge.py:257`, `:264`). No production path builds a charge stop any other way. After a signal, the only requests are the journal's restores (with their re-read and B's probe) and the configuration re-read; client processes are only closed. `finish()` decides after its restores (`:3028`), and `cmd_run` no longer decides by itself |
+| Nit 3: fix-reversal script | Yes | Patterns are anchored at line starts, and each edited file must compile and import. The F2 end-of-run reversal is repaired and fails with 0 != 4, 0 != 4 and the journal list, as the C2 review found |
+| Nit 4: seven tests | Yes | Each has a test and a reversal that fails on an assertion |
+| Nit 5: several requests per command | Yes | Both phases list every request; a 2xx is undone in generic cases. See nit 4 |
+| Nit 6: B's probe stop | Yes | `:660-666` |
+| Nit 7: S15's unset after a stop | Yes | The unset is not sent after a guardrail stop or once a signal is recorded. See nit 2(b) |
+| Nit 8: unreadable stored user | Yes | Handled by `_stored_user` (`:2364`), at both of S14's read sites and at E5's |
+| Nit 9: ledger written atomically | Yes | `usage.py:92` |
+| Nit 10: early-write note redacted | Yes | `cli.py:200` |
+| C3 review point 1 | Yes | A Ctrl-C or an error that replaces a signal's stop no longer loses it (ledger record, `:1117`) |
+| C3 review point 2 | Yes | The production command's requests are listed and a 2xx is undone |
+| C3 review point 3 | Yes | No undo (`:1405`) and no S15 unset (`:2184`) after a recorded signal |
+| C3 review point 4 | Yes | The control counts only as the same request |
+
+##### Areas reviewed with no findings
+
+- **Focus 1, no request after a signal.** An exception, a second stop, a Ctrl-C or a failed write cannot lose the recorded signal. `cmd_run` and `finish()` both read it, and the run stops after the case. Nothing is sent after it except the journal's restores and the configuration re-read.
+- **Focus 2, no silent pass.** C3 adds no HOLDS path without Stream's attributable refusal and a successful control of the same request. E5 and S14 with an unreadable user are INCONCLUSIVE and the run stops. RT3's control cannot affect T4-rest-unread, which runs earlier (phase 10, against RT3's phase 25).
+- **Focus 3, observed FAILs.** No C3 change downgrades an observed FAIL. RT3's row kept before its control covers both windows.
+- **Records.**
+  - The five in-place corrections are accurate, marked, and all in C2's own section.
+  - The six protected sections are byte-identical across `e5180ab`, the head and `841fbad`.
+  - No recorded result changed.
+  - Apart from nits 1 and 3, the README's rules match the code.
+- **Scope.**
+  - Only `proofs/stream-chat/**` (18 files) and the evidence record changed.
+  - No dependency file, `.npmrc`, `pyproject.toml` or baseline changed.
+  - All 52 files under `proofs/stream-chat/` are mode 100644, with no symlinks.
+- **Credentials.**
+  - The new outputs are generic or redacted: `requests`, `stop_signals` and the early-write note.
+  - The allowlist, redaction and leak checks are unchanged.
+
+##### Checks run
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | No output, exit 0 |
+| Installs (`env -i`; proxy and CA variables by reference) | `pip check`: "No broken requirements found." getstream 6.1.0, Ruff 0.16.8, mypy 2.3.1. `npm ci`: "found 0 vulnerabilities". stream-chat 9.53.0, ws 8.21.3, https-proxy-agent 5.0.1 |
+| Unit tests | `Ran 252 tests`, `OK` |
+| Ruff check / Ruff format / mypy | "All checks passed!" / "40 files already formatted" / "Success: no issues found in 39 source files" |
+| `node --check` on both `.cjs` files | Exit 0; exit 0 |
+| `checks/fix_reversals.py` | "reversals: 147, not demonstrated: 0", exit 0, in about 11.5 minutes. By reversal: 124 failed on an assertion; 20 on the error their reverted fix causes (KeyError, RunStopped, JSONDecodeError and similar); 3 aborted on Ctrl-C by design. None failed through a syntax or import error. All 48 of C3's reversals fail for their stated reason, matching C3's table |
+| Extra mutations (full suite) | 15 run; 3 C3-scope mutations survive (nit 2); the others were caught or were not real behaviour changes |
+| Ad-hoc probes against the fakes | A 402 in cleanup ends it; a budget stop sends no S15 unset; RT3's control is not sent unless the refusal is `auth` or `permission`; nit 1 and nit 4 reproduced |
+| Secret scan of the diff (259,623 bytes) | 0 JWT-shaped strings, emails, private-key blocks, AWS or GitHub keys, TLS-weakening settings, environment dumps or secret assignments. The 130 long strings are test names, two commit SHAs and a separator line |
+| Protected sections (six) | Byte-identical |
+| Repository state | `git status` is empty. Only ignored paths were created; no `.work/` |
+
+##### Limits
+
+- Nothing was run live. Whether B's `markRead` succeeds under the lockdown is for I2a to see; if it is refused, RT3 stays INCONCLUSIVE, which is conservative.
+- I did not read hosted CI, and used no sub-agents.
+- The secret scan could not look for the application's API key, because its variable is absent (OD-28).
+- **Outside C3's change, for I2a's offline first step:** the runner clears its request records at each command (`client/runner.cjs:304`), and an SDK error it did not wait for is only noted (`proof_run.py:407`). So a charge signal on a request the SDK sends between commands would be neither checked nor recorded. With `recoverStateOnReconnect: false` such requests should be rare.
+- I have no disagreement with the manager's decisions.
+- I changed nothing in the repository, on GitHub or in Notion.
+
+**NOTHING NEEDED.** Relay this to App Manager 3.
+
+#### Manager verification of the review (App Manager 3, 26 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head.
+
+- **Classification.** The manager's own runs, with the same trusted policy, gave full scope for 113 paths; full scope for 25 paths, with nothing outside `proofs/stream-chat/`; and `ordinary-docs-only` for 5 paths. The report counts 111 paths for the first run; the classifier lists 113. The result, full scope, is the same.
+- **Findings, at `8c1a8c0`:**
+  - **Nit 1:** the control's events are collected apart (`proof_run.py:2651`), and the marker is searched only in the windows after A's request and after the probe (`:2652`). So nothing in the control window is searched, not only B's own read.
+  - **Nit 2:** the cleanup test's signal is a 429 (`tests/test_stop_signals.py:98-116`); `MemberFieldUnsetTest` (`:241`) stops only on a charge or rate-limit signal; and the one RT3 `markRead` assertion compares B's control with A's request after a refusal (`tests/test_answers.py:303`).
+  - **Nit 3:** `_poll_vote_phase` reports the enabling request's status but never judges it (`proof_run.py:2072` onward).
+  - **Nit 4:** `_undo_client_success` assigns the row's `client_success_undo` (`proof_run.py:1374`), so the production phase's call (`:1271`) replaces the feature-on phase's (`:1345`).
+  - **Nit 5:** the printed report lists the notes, the stops, the changes not restored and the problems after the run, not `stop_signals` (`report.py:80-90`).
+  - **Nit 6:** the five stops are plain `GuardrailStop`s, two of them "HTTP 429".
+  - **The gap under "Limits":** the runner starts each command with `records = []` (`client/runner.cjs:304`), so a request the SDK sends between commands is never reported, and `_send` only notes asynchronous errors (`proof_run.py:403-407`).
+- **Hosted CI on the records commit `841fbad`:** push run [36255249228](https://github.com/amthorn78/glow-dating-app/actions/runs/36255249228) classified it as ordinary documentation, and its gate passed; PR run [36255252552](https://github.com/amthorn78/glow-dating-app/actions/runs/36255252552) passed all six jobs.
+- **Not re-run by the manager:** the session's installs, tests, reversal run, 15 mutations and probes. Its installs, tests and reversal summary match the manager's own run on C3's head.
+
+#### Disposition
+
+- **C3's code head `8c1a8c0` is approved.** No finding is blocking or should-fix, so under the bound in the C2 review's disposition nothing delays I2a.
+- **I2a's offline first step, before any live call,** takes the six nits and the gap:
+  - **required:** nit 1, the one finding that could create a false HOLDS, however unlikely; the gap, so that every request a client session sends, between commands too, and every asynchronous SDK error are checked for a charge or limit signal, which Nathan's $0 budget depends on (OD-12); and nit 2(a), the test of the rule that no request follows a signal;
+  - **fixed, or left with a one-line reason:** nits 2(b), 2(c), 3, 4, 5 and 6.
+
+  Each code fix gets a test that fails without it and a reversal in `checks/fix_reversals.py`. I2a's exact-head review covers them with the rest of I2a.
+- **I2a's prompt is next.** It authorizes credential use and live provider actions, so the Dev Manager reads it before Nathan runs it (DM-04).
