@@ -2608,6 +2608,18 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             + "TokenLifetimeTest.test_a_refusal_near_the_members_own_expiry_is_not_an_ended_dimension"
         ],
     ),
+    # P06.1-I2a, before run 1: the poll listing's first live use got 400 code 4.
+    (
+        "I2a live: a listing not verified keeps Stream's message",
+        [
+            (
+                P,
+                '                f": {result.message}" if result.message else ""\n',
+                '                ""\n',
+            )
+        ],
+        ["tests.test_cleanup.ClientCreatedDataTest.test_verify_clean_lists_polls_and_user_groups"],
+    ),
     # The independent review's point 7 (P06.1-I2a): interruptions.
     (
         "I2a review 7: a family goes on when a member's session has ended",

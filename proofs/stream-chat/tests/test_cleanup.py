@@ -181,7 +181,10 @@ class ClientCreatedDataTest(unittest.TestCase):
         self.assertIsNone(out["remaining_user_groups"])
         problems = cleanup_problems({**CLEAN, **out})
         self.assertIn("remaining_polls: ['left-poll']", problems)
-        self.assertIn("remaining_user_groups: not verified: HTTP 400 code 4", problems)
+        # Stream's message is kept, so the record says why (P06.1-I2a).
+        self.assertIn(
+            "remaining_user_groups: not verified: HTTP 400 code 4: not supported", problems
+        )
 
 
 class PreexistingPollsAndGroupsTest(unittest.TestCase):

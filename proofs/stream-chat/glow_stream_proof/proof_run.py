@@ -3430,7 +3430,11 @@ def list_polls_and_groups(api: ServerApi) -> dict[str, Any]:
             out[f"remaining_{key}"] = [str(i.get("id")) for i in items if isinstance(i, dict)]
         else:
             out[f"remaining_{key}"] = None
-            out[f"{key}_listing"] = f"not verified: HTTP {result.status} code {result.code}"
+            # Stream's own message says why (P06.1-I2a: the poll listing's first live use
+            # got 400 code 4, and the status and code alone did not say why).
+            out[f"{key}_listing"] = f"not verified: HTTP {result.status} code {result.code}" + (
+                f": {result.message}" if result.message else ""
+            )
     return out
 
 
