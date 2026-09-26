@@ -2134,3 +2134,4 @@ The session committed nothing, so there is no branch to check. The manager check
 
   Each code fix gets a test that fails without it and a reversal in `checks/fix_reversals.py`. I2a's exact-head review covers them with the rest of I2a.
 - **I2a's prompt is next.** It authorizes credential use and live provider actions, so the Dev Manager reads it before Nathan runs it (DM-04).
+- **Added after DM-04** (26 September): before its first live call, I2a also adds a guard in code for destructive calls, closing checks that see application-wide settings and DM-04's finding 9(c), and makes an independent review pass over its new code. Revision 2 of its prompt carries them; see the review log, "DM-04".

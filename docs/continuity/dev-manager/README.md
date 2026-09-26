@@ -10,7 +10,7 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 
 | Session | Created | By | Branch | Basis commit | State |
 |---|---|---|---|---|---|
-| Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | DM-01 and DM-02 answered at 09:09 UTC (`0f55891`); DM-03 answered at 09:36 UTC (`23951c4`); Nathan's answers and directions recorded (`574ee0e` to `d945478`); idle since 25 September, 09:52 UTC, and available. DM-04 given to Nathan to carry on 26 September |
+| Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | DM-01 and DM-02 answered at 09:09 UTC (`0f55891`); DM-03 answered at 09:36 UTC (`23951c4`); Nathan's answers and directions recorded (`574ee0e` to `d945478`); DM-04 answered at 17:21 UTC on 26 September (`51deb3d`), integrated at `d0c7ffd`; available. Its container, started before OD-28, holds the three `STREAM_*` variables; it never reads or uses them (DM-04 finding 10, AM3-19) |
 
 ## Consultations
 
@@ -19,7 +19,7 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 | DM-01 | 25 September 2026, 09:00 UTC, as the session's first prompt | Nathan, through App Manager 3 | **Process review:** how the project is managed and implemented | [DM-01 report](reviews/2026-09-25-dm-01-process-review.md) | Charter approved with conditions; record-keeping and handoffs: changes requested; relay, review paths and mistakes log approved with conditions; scorer referred to Nathan | Below |
 | DM-02 | 25 September 2026, 09:00 UTC, as the session's first prompt | Nathan, through App Manager 3 | **Build review:** the state and direction of the application | [DM-02 report](reviews/2026-09-25-dm-02-build-review.md) | S15 reading approved with conditions; I2 scope: changes requested; database last, database placement and WordPress referred to Nathan; the rest approved with conditions | Below |
 | DM-03 | 25 September 2026, 09:32 UTC, by a one-time Routine into the session | App Manager 3 | **Read before effect:** the governing Markdown in the batch at `fa4dc5f`, the DM-01 and DM-02 dispositions, and revision 2 of the P06.1-I1 review prompt | [DM-03 report](reviews/2026-09-25-dm-03-governing-read-and-i1-review-prompt.md) | Governing Markdown, the review prompt and the rest of the batch approved with conditions; the dispositions approved; no new questions for Nathan | Below |
-| DM-04 | 26 September 2026, given to Nathan to carry (OD-25) | App Manager 3 | **Read before effect:** revision 1 of the P06.1-I2a implementation prompt, at `978ba19525f76c9aef9e326f973a739724ee3bb9` ([consultation](../../ephemeral/2026-09-26-dm-04-i2a-prompt-read.md)). It authorizes the Stream secret and live, destructive actions on the run's own data | Pending | Pending | Pending |
+| DM-04 | 26 September 2026, given to Nathan to carry (OD-25) | App Manager 3 | **Read before effect:** revision 1 of the P06.1-I2a implementation prompt, at `978ba19525f76c9aef9e326f973a739724ee3bb9` ([consultation](../../ephemeral/2026-09-26-dm-04-i2a-prompt-read.md)). It authorizes the Stream secret and live, destructive actions on the run's own data | [DM-04 report](reviews/2026-09-26-dm-04-i2a-prompt-read.md) | Approved with conditions: eight conditions for a revision 2 (findings 1 to 8), finding 9 optional; no questions for Nathan | Below |
 
 Both reviews are based on the [status and State of the App](../state-of-the-app.md) of 25 September 2026, at the basis commit above. The consultation text is the Dev Manager start prompt as it stood at that commit (`docs/ephemeral/2026-09-25-dev-manager-start-prompt.md`), with the commit filled in. The prompt now lives at [`docs/planning/start-prompts/dev-manager.md`](../../planning/start-prompts/dev-manager.md). Per Nathan, no new implementation task is created until the Dev Manager has responded and its reviews have been considered.
 
@@ -101,6 +101,31 @@ The close-out read before PR26 merges covers all of them.
 
 It asked no new questions for Nathan.
 
+### DM-04 (App Manager 3, 26 September 2026)
+
+**The read covered** the I2a prompt's blob `7b319ea` at `d50b572`: revision 1, as written at `978ba19`. The consultation named `d50b572`, which holds the same prompt; the review log, the handoff and Notion named `978ba19`.
+
+**Verdict: approved with conditions.** Findings 1 to 8 are conditions for a revision 2 before Nathan runs I2a; finding 9 is optional; there are no questions for Nathan. A revision 2 that applies findings 1 to 8 as written needs no further read (DM-03 G2); any other change to the prompt's sections 3 to 5 would need one.
+
+Before deciding, the manager checked the findings' evidence at `d50b572`. `configuration.verify` compares only authentication, permissions, guest creation, the four required settings and the grants. `_delete_users` lists users without `include_deactivated_users`. `ServerApi` takes an `httpx` transport. CI on `d50b572` passed: push run 36257787443 (ordinary documentation) and PR run 36257790836 (all six jobs).
+
+| Finding | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| 1 A guard in code for destructive calls | Before I2a | **Accepted** | Revision 2, section 3 and section 4's rule "Only the run's own data" |
+| 2 Closing checks that see application-wide settings | Before I2a | **Accepted** | Revision 2, section 3. One fact for the session: the committed baseline records `revoke_tokens_issued_before` (null), `webhook_url` (empty), `event_hooks` (empty) and `custom_action_handler_url` (empty), but has no `before_message_send_hook_url` key, so that field's recorded value is its absence |
+| 3 Outage inside the process | Before I2a | **Accepted** | Revision 2, section 4, item 5; the brief's I2a entry |
+| 4 A rule for each kind of signal | Before I2a | **Accepted** | Revision 2, section 5, "Signals, by kind", and section 8's stop list. The manager's reading of the finding's word "only": a signal that is not only a rate limit, for example one that also carries quota wording, ends live work; section 8 says so |
+| 5 A counted run plan | Before I2a | **Accepted** | Revision 2, section 5, "The run plan", replacing revision 1's fixed 10 users and 15 channels and its line that channel-scoped mechanisms may share users; the brief's I2a entry |
+| 6 Undoing from the client; what each member is shown | Before I2a | **Accepted** | Revision 2, section 4, item 1; the brief's I2a entry |
+| 7 An independent check before the first live call | Before I2a | **Accepted** | Revision 2, section 5, and its report and records |
+| 8 Each live run tied to its commit | Before I2a | **Accepted** | Revision 2, sections 5, 6 and 8 |
+| 9 (a) the server send after revocation as an observation; (b) each token's `iat`; (c) `include_deactivated_users` in cleanup's prefix scan; (d) the live-commands line as an outcome | Soon | **Accepted** | Revision 2, section 4, items 4 and 3; section 3; section 5 |
+| 10 The Stream variables in the Dev Manager's container | Record | **Accepted** | AM3-19. The consultation's header, the brief, the handoff and Notion now say that none were added for the read, and that the Dev Manager's container, started before OD-28, holds them |
+| 11 Notion | Mismatches | **Accepted** | A08's row and the P06.1 row's body brought up to date |
+| 12 The Dev Manager's "all ten" | Its own records | **Noted** | This log already said eight; the note under "Nathan's answers and directions" points to the correction |
+
+**Revision 2's changes,** for the close-out read: the header (the revision, the read, the Stream-variables line); the order of the work; section 2's reading list (DM-04 and this disposition); section 3 (the guard, the closing checks and finding 9(c)); section 4 (findings 3, 6 and 9(a) and 9(b), and the guard in the rule "Only the run's own data"); section 5 (findings 4, 5, 7 and 8, and item 5's wording); sections 6 and 8 (findings 7 and 8, and section 8's stop list for finding 4). Nothing is declined, so nothing goes to Nathan beside the Dev Manager's text (DM-01 P10).
+
 ## Nathan's answers and directions (25 September 2026)
 
 Nathan answered the Dev Manager directly in its session, and the Dev Manager recorded his words and their consequences in five files. They arrived through Nathan's relay message and were integrated in the batch that follows `516bee2`.
@@ -116,7 +141,7 @@ Nathan answered the Dev Manager directly in its session, and the Dev Manager rec
 - **DM-01 question 2** (the Dev Manager read). The read stays in force under OD-15, as DM-03 G1 set out, unless Nathan withdraws it.
 - **DM-01 question 3** (the TypeSafe scorer). It is raised when the pre-registered ten-session comparison ends.
 
-Neither blocks anything, so neither is put to Nathan again now.
+Neither blocks anything, so neither is put to Nathan again now. DM-04 finding 12 corrects the Dev Manager's own files, which said all ten were answered.
 
 | Answer | Question | Register | Disposition | Where applied |
 |---|---|---|---|---|

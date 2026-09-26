@@ -4,7 +4,9 @@
 - **Revision 1, 26 September 2026.**
 - **Why:** the [I2a prompt](2026-09-26-p06-1-i2a-implementation-prompt.md) authorizes credential use and live provider actions, so the Dev Manager reads it before Nathan runs it ([charter](../planning/dev-manager.md), "Read before it takes effect"; DM-01 P1).
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`, and the manager's disposition in the [review log](../continuity/dev-manager/README.md).
-- **No Stream variables:** the read needs none. Nathan adds them only for I2a itself, after this read.
+- **None added for this read:** it needs none, and Nathan adds them only for I2a itself.
+  - **Correction, after the message was given:** its sentence "The Stream variables are not set for this read" was wrong. The Dev Manager's container, started on 25 September while they were set, holds them; it never read or used them (DM-04 finding 10, AM3-19).
+- **Result:** approved with conditions, which revision 2 of the I2a prompt applies; see the [review log](../continuity/dev-manager/README.md), "DM-04".
 - **Deletion condition:** prune after P06.1 closes and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision and revision 1 of the I2a prompt.
