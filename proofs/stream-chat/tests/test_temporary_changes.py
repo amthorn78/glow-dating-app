@@ -157,6 +157,7 @@ class ChannelOverrideRemovalTest(unittest.TestCase):
         ) -> ApiResult | None:
             overrides = ((body or {}).get("set") or {}).get("config_overrides")
             if method == "PATCH" and overrides == {}:
+                server.overrides[run.ctx["AB"]] = {}  # applied, but answered with an error
                 return error(method, path, 500, -1)
             return None
 
