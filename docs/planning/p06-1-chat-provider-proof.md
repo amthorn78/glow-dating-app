@@ -9,7 +9,7 @@
   - the S15 exceptions are confirmed (OD-16);
   - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
   - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
-- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is done: S15 is confirmed, and the verdict is "changes required". The exact-head review of the fix approved it on 26 September, so OD-21's acceptance is met. The correction pass P06.1-C1 is done: verified and integrated at `e85bba0`. Next is its exact-head review, and I2a waits for it.
+- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is done: S15 is confirmed, and the verdict is "changes required". The exact-head review of the fix approved it on 26 September, so OD-21's acceptance is met. The correction pass P06.1-C1 is done: verified and integrated at `e85bba0`. Its exact-head review is running: Nathan started it on 26 September, at extra high. I2a waits for it.
 - **The Stream secret is settled** (OD-28): Nathan adds the three `STREAM_*` variables for each session that calls Stream, starts it, then deletes them.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
@@ -165,7 +165,7 @@ Facts as the read-only discovery reported them:
   - Its own exact-head review follows. I2a starts only after that review is clean.
   - Finding 9 and finding 6's new setups belong to I2a.
   - **Result (26 September; Nathan ran it at extra high; branch `claude/youthful-pasteur-caokpc`, head `9e018c6`):** findings 1 to 8 and 15 of the 17 nits are fixed offline, each with a test that fails without its fix (51 reversals shown). Nits 14 and 17 are left as recorded limits. I1's claims are corrected in place, and the unit tests went from 49 to 142. The manager verified the branch and integrated it at `e85bba0`; see the evidence record, "P06.1-C1 corrections".
-- **Review of C1** (next; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-c1-review-prompt.md)). An offline exact-head review of the merge commit `e85bba0`. It needs no Stream variables and no Dev Manager read.
+- **Review of C1** (running; Nathan started it on 26 September, at extra high; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-c1-review-prompt.md)). An offline exact-head review of the merge commit `e85bba0`. It needs no Stream variables and no Dev Manager read.
 - **The Stream secret in cloud sessions** (OD-20, decided by OD-28). One `Glow app` environment stays. For each session that calls Stream, Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, starts that one session, then deletes them; the prompt tells him when they are needed. They were present when the I1 review started, the first session that calls Stream under OD-28. The secret is replaced at P06.1's close. CI needs no Stream secret.
 
 ### P06.1-I1 result

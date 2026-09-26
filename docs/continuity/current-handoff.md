@@ -13,7 +13,7 @@ This file only routes: the current item, what happens next and who waits on whom
   - **S15:** the I1 review confirmed it live, so the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands. Nathan's principle is in force, with the exceptions he confirmed (OD-16).
   - **Linear order (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`) and its review (approve, so OD-21 is met); C1, the correction pass, integrated at `e85bba0`.
-    - **Next:** C1's exact-head review ([prompt](../ephemeral/2026-09-26-p06-1-c1-review-prompt.md)). Offline (OD-28).
+    - **Running:** C1's exact-head review ([prompt](../ephemeral/2026-09-26-p06-1-c1-review-prompt.md); records `6178f2b`), started by Nathan at extra high. Offline (OD-28).
     - **Then:** I2a. It is live: the Dev Manager reads its prompt first, and Nathan adds the Stream variables.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-03, Nathan's answers and the dispositions.
