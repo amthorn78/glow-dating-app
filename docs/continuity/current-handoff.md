@@ -12,9 +12,9 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Current item: P06.1**, the chat-provider permissions and economics proof. Resumed on 25 September; other feature work stays paused. Plan, results and decisions: the [brief](../planning/p06-1-chat-provider-proof.md). Runs: the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** the I1 review confirmed it live, so the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands. Nathan's principle is in force, with the exceptions he confirmed (OD-16).
   - **Linear order (OD-29):** one session at a time, one prompt per message.
-    - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`) and its review (approve, so OD-21 is met); C1, the correction pass, integrated at `e85bba0`.
-    - **Running:** C1's exact-head review ([prompt](../ephemeral/2026-09-26-p06-1-c1-review-prompt.md); records `6178f2b`), started by Nathan at extra high. Offline (OD-28).
-    - **Then:** I2a. It is live: the Dev Manager reads its prompt first, and Nathan adds the Stream variables.
+    - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`) and its review (approve, so OD-21 is met); C1, the correction pass, integrated at `e85bba0`, and its review (approve, with three should-fix findings and seven nits).
+    - **Next:** C2, the second offline correction pass, for those ten ([prompt](../ephemeral/2026-09-26-p06-1-c2-correction-prompt.md)). Its prompt is written; Nathan starts it.
+    - **Then:** C2's exact-head review, offline; then I2a. It is live: the Dev Manager reads its prompt first, and Nathan adds the Stream variables.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-03, Nathan's answers and the dispositions.
 
@@ -22,13 +22,13 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 3 | Nathan | C1's review report | Nothing else starts (OD-29); I2a waits for it |
+| App Manager 3 | Nathan | C2's report | Nothing else starts (OD-29) |
 | App Manager 3 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
 | App Manager 3 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` and of the HDE contract request. The relay messages are not yet sent; each goes as its own step in the linear order | PR26 cannot merge without the reads |
 
 ## Next actions
 
-1. Verify C1's review report and record it. If it is clean, write I2a's prompt; the Dev Manager's read of it is the next step, then Nathan runs it.
+1. Verify C2's report against its branch, integrate it, read CI, then write its review prompt. After a clean review, write I2a's prompt; the Dev Manager reads it, then Nathan runs it.
 2. Then I2b and the economics discovery, one at a time, as the brief's "Sessions" describes. Live prompts tell Nathan to add the three `STREAM_*` variables first (OD-28).
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f` (charter, "A read covers one commit");

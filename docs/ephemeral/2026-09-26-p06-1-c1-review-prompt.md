@@ -9,6 +9,7 @@
   - Manager: extra high.
   - TypeSafe v4: high (score 2.29, P(high) 0.71, P(extra high) 0.29), with no ultracode flag (P(single session) 0.52).
   - **Used: extra high.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** approve, with three should-fix findings and seven nits, which go to P06.1-C2 before I2a; see the evidence record, "Exact-head review of C1".
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process).

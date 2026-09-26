@@ -1046,3 +1046,112 @@ App Manager 3 checked the relayed report against the pushed branch. The manager 
   - nits 14 and 17 stand as recorded limits;
   - C1's own choices go to the exact-head review: a charge-signal stop still restores and re-reads; a failed undo stops the run; a removal that cannot be proven is "not verified", with exit 4;
   - "What P06.1-I2a must know" feeds I2a's prompt; the brief's "Sessions" points to it.
+
+### Exact-head review of C1 (26 September 2026)
+
+Nathan ran the review session at extra high, from revision 1 of the [review prompt](../../ephemeral/2026-09-26-p06-1-c1-review-prompt.md) (records commit `6178f2b`), and relayed its report. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** The corrected harness is a sound base for I2a's live runs. Findings 1 to 8 of the I1 review, and the 15 nits C1 claims, are confirmed fixed.
+- **Three should-fix findings and seven nits remain.** None changes a recorded result. The reviewer recommends fixing the three before or alongside I2a.
+
+#### The report, as relayed
+
+The session's note before its report, verbatim:
+
+> The adversarial pass is in. Before I use any of its findings I'll reproduce the two that matter most against the harness's own fakes: the T4-rest-unread hold with a failed control, and a FAIL observation being lost when a later step interrupts the case.
+>
+> All four reproductions confirm the candidate findings against the fakes, and the checkout is untouched. One last detail for the report: the path counts of the classification runs.
+
+##### Identity, gates and verdict
+
+**Prompt:** revision 1, from commit `6178f2b229784db90065f3f20cad77b482d3ff8d`.
+
+**Head reviewed:** `git rev-parse HEAD` printed `e85bba0f054908a801b43e6f9d514b04f5fdbf78`. `HEAD^2` is `9e018c67858ccafa5f84dd75bcef51dcc3dfb49a`. `git merge-base --all origin/main HEAD` printed one line, `0f45e648099b415217938c25d7369164c0101def`. The ancestor check printed "records build on the head". `git diff --stat HEAD^1 HEAD` ended "29 files changed, 4674 insertions(+), 591 deletions(-)". The harness at HEAD is byte-identical to C1's code head `be46319`, and `HEAD^2..HEAD` differs only in three Markdown records.
+
+**Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` present. None of `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` present. Tools in `/root/.local/bin`: node v24.19.0, npm 11.9.0, npx 11.9.0, Python 3.12.14.
+
+**Classifications** with the trusted `main` policy, extracted outside the tree and run with `python3 -I … --merge-base`:
+
+| Run | Output |
+|---|---|
+| `main` → `e85bba0` | `{"full": true, "reason": "behavior-or-empty", …}`, 106 paths |
+| `8b8b1bd` → `e85bba0` | `{"full": true, "reason": "behavior-or-empty", …}`, 41 paths; the non-Markdown, non-`proofs/stream-chat/` filter printed nothing |
+| `e85bba0` → `6178f2b` | `{"full": false, "reason": "ordinary-docs-only", …}`, 6 Markdown paths |
+
+**Verdict: approve.** The corrected harness is a sound base for P06.1-I2a's live runs. Findings 1 to 8 and the 15 nits C1 claims are fixed, each with a test that fails without it. I found no path to a HOLDS on a request Stream did not answer, and no path that leaves a temporary change in place with exit 0. Three should-fix findings remain, all inherited or at the edges of what the I1 review asked; none changes a recorded result, and each leaves a visible trace in the row. I recommend fixing them before or alongside I2a.
+
+##### Findings, most severe first
+
+1. **Should fix. A FAIL observed in a case is lost when a later step of that case is interrupted by anything other than a restore failure.** `proof_run.py:951-952` re-raises `GuardrailStop` without a row; `:967-985` build a fresh INCONCLUSIVE row for `ClientSessionEnded` and other exceptions; `_keep_case` at `:431` is wired only to `RunStopped`. Reproduced against the fakes: in S2 the client's thread reply succeeds with replies on, the restore succeeds, then the production request at `:1090` times out. The row reads "INCONCLUSIVE: a client session ended" with observed "not judged", and the bypass is gone. In S15, B reads the marker under production, then B's session ends during the control at `:1862`; the row is INCONCLUSIVE with an empty detail, against README line 151. In `_evaluate_case`, a 429 on the server replay at `:1125` raises before `_undo_client_success` at `:1153`, so the run stops with no row and no undo. Fix: keep the partial row on the run, as `_keep_case` does, and have every `except` branch in `run_matrix` consult it, appending a row before re-raising `GuardrailStop`.
+
+2. **Should fix. T4-rest-unread can record HOLDS (accepted, not applied) with A's own control failed.** `proof_run.py:1405-1426`: `total()` returns `None` for a refused request or a 2xx without `total_unread_count`; `None != 1` and `None == None` then select the HOLDS_IGNORED branch, and `controls_ok` is consulted only in the refusal branch at `:1420`. Reproduced: A's own request refused, B's answered 1, the claim answered 2xx without the field; verdict "HOLDS (accepted, not applied): claim ignored", control "A's own total None; B's own total 1". Fix: require `controls_ok` and three non-`None` totals before any HOLDS_IGNORED; otherwise INCONCLUSIVE. README line 150 should say the success case needs the controls too.
+
+3. **Should fix. RT2 and RT3 record HOLDS on any refusal, including 400 input errors, 404 and 5xx.** `proof_run.py:2094-2098`, documented at README line 147 as "any status". Reproduced: A's typing event answered 400 code 4 gives "HOLDS: refused (input); nothing delivered", and a 503 gives "HOLDS: refused (other)". A malformed request or a Stream outage says nothing about what a well-formed event delivers to B, and the matrix quality rule counts only attributable refusals. This is I1's rule, kept by C1 with the no-response exclusion added, so it is not a regression. Fix: HOLDS only for `auth`, `permission` and `feature` outcomes; `input`, `not-found` and `other` become INCONCLUSIVE "refusal not attributable"; update README line 147.
+
+4. **Nit. After a charge-signal stop, restores are retried three times and the README undercounts the calls.** `finish()` at `proof_run.py:2366-2376` retries a "stopping at once" `GuardrailStop`, including a 402 or billing wording, after 10 s and 20 s. An AB override restore is PATCH, re-read and B's members probe per attempt, so up to 9 calls plus the 2 configuration reads, while README line 166 says "at most two or three calls per journalled change". None of these calls can incur a charge and the ledger still caps them, so the choice is safe. Suggest retrying only on 429 and Stream code 9, and correcting the README.
+
+5. **Nit. A feature-gated case keeps HOLDS when its production-phase request has no recorded answer.** `proof_run.py:1105-1109` and `:1695` react only to a production success. README lines 188 to 191 say the request "must also fail" under production; a local throw or budget refusal there is neither. Suggest INCONCLUSIVE when the production answer is `no-response`.
+
+6. **Nit. The "last HTTP request" rule is unchecked.** `proof_run.py:143-150` and `runner.cjs:304`. I confirmed in stream-chat 9.53.0 that every SDK method the matrix uses sends exactly one request with the runner's options, and that the latent extras such as the code-40 token retry, the delivered-events report and `/hi` are inactive. An SDK bump could add a trailing request. Suggest treating `len(reply.requests) != 1` as no-response; `setGuestUser` already goes through `_guest_post`.
+
+7. **Nit. E5 records FAIL when A's stored user cannot be read.** `proof_run.py:2036`: `_server_user` returns `{}` for an empty listing and `{}.get("role") != "user"` is true. Conservative direction, but wrong. Suggest INCONCLUSIVE on an empty read.
+
+8. **Nit. A second Ctrl-C inside `finish()` loses the results file.** `cli.py:183-198`: `problems` is unbound and `run-<prefix>.json` is never written; only the progress file survives. Documented at `proof_run.py:2359`. Suggest writing `run.results()` before the restores as well.
+
+9. **Nit. A restore whose PATCH succeeded can be reported "not restored".** If the B-session probe at `proof_run.py:521` hits the budget guardrail, `finish()` breaks at `:2374` and records "temporary change not restored" though the override was removed and only unverified. Exit is non-zero either way.
+
+10. **Nit. The key-pattern redaction misses `firebase_server_key`, `sqs_key` and `sns_key`.** `redaction.py:29-30`. No current output path writes the raw app object, since `baseline` now writes only `APP_SETTING_KEYS`, so this is defence in depth.
+
+##### Confirmations, areas without findings, checks and limits
+
+**Findings 1 to 8 of the I1 review, and each nit C1 claims fixed: confirmed.**
+
+- Finding 1: `_answer_of`, `_http_answer` and `_ws_answer` at `proof_run.py:130-170` take status and code from the recorded response only; `Reply.status` and `Reply.code` are used by no verdict. G1 FAILs whenever `_guest_created` is set at `:1520`; G3 is INCONCLUSIVE unless the anonymous connect succeeded at `:1594`; RT2 and RT3 are INCONCLUSIVE on no-response at `:2086`; `error-info.cjs:42` reports `ws-api` only when the SDK's JSON carries `isWSFailure === false`, which the SDK sets only for Stream's own error frame at `index.node.js:11674`. Tests in `test_answers.py` and `ErrorInfoTest`; reversals fail on the verdict labels.
+- Finding 2: journal entry before each enabling request at `:1081`, `:1486`, `:1655`, `:1919`; `_temporary` at `:386` restores on every exit and keeps a `GuardrailStop` in flight; `RunStopped` re-raised at `:953`; `finish()` at `:2356` restores, cleans up and verifies after any stop, error, timeout or Ctrl-C; `cmd_run` returns 0 only with no stop and no problem, and unrestored or unverified changes are problems. `test_temporary_changes.py` and `test_cli.py`.
+- Finding 3: `:603-612` stop unless exactly one dashboard administrator exists and its `created_at` falls in `2026-09-24T13:07` UTC; no identifier is recorded; `_utc_minute` handles nanoseconds, digit strings and ISO with nine fractional digits and returns `None` otherwise, which stops the run. `test_preflight.py`.
+- Finding 4: `LOCAL_EVENT_TYPES` at `matrix.py:49` covers all nine local events stream-chat 9.53.0 declares, plus `health.check`, which the runner already drops; `_events_split` at `:837` and `marker_event_types` at `:1792`. `test_events.py`, including the test that reads the installed SDK's `EVENT_MAP`. The records now say the realtime path is unproven.
+- Finding 5: reader thread and queue at `client_bridge.py:142-146`, id check at `:202`, timeout, EOF, non-JSON and mismatch end the session at `:156`, later sends raise without being sent, `run_matrix` records INCONCLUSIVE at `:967`. `test_client_session.py` with fake runners, including two replies in one write.
+- Finding 6, C1's part: `fakes.py:297-306` refuses the control guest's connect; `test_run_simulation` shows G2 "not run".
+- Finding 7: `matrix.py:369-384`; `LeakTermsTest`, including a channel object without text counted as a leak.
+- Finding 8: every listed claim is corrected in place and marked; the twelve exact markers plus the Ctrl-C variant match the manager's count of 13; the G2 and G3 channels rows changed only their action text; no observed value or verdict changed; the manager's sections are byte-identical to `93781c8`.
+- Nits 1 to 13, 15 and 16: each at the location C1 lists, each with the named test, each reversal failing on the expected assertion or error. Nit 12's measured worst case is 115 calls for a failing guest restore and 112 for a failing override restore, both under the 130 reserve, and my own count of the theoretical worst case is 118.
+- Nits 14 and 17, left: the reasons are sound. There is no listing of soft-deleted channels, and cleanup hard-deletes every recorded channel by ID with the task required to complete. The `deleted-user-…` user is deleted only when created after the run started, and preflight refuses any pre-existing one.
+
+**Areas reviewed with no findings.** The verdict functions in `matrix.py:204-259`; every procedure's control uses Stream's recorded answer; the override re-read rule fails closed, since a key not shown while set is either checked by B's members query being refused again or recorded as not verified with exit 4; restore and cleanup touch only the run's own users, channels, polls and groups, with preflight's poll and group listing excluded; the three new server calls match `getstream` 6.1.0: `POST /api/v2/polls/query` with `filter` and `limit`, `GET /api/v2/usergroups` with `limit`, `POST /api/v2/chat/channels` with `filter_conditions` and `limit`, auth carried on raw requests by the SDK's client defaults; a non-2xx listing is "not verified" and exits 4; the response model has `config` with `grants` but no `config_overrides`, which the harness already tolerates; credentials: the allowlist, the runner's refusal, redaction and leak checks stand, and the new outputs hold counts, key names and proof IDs only; the tests drive the harness's logic against the fakes rather than the fakes' behaviour; scope: only `proofs/stream-chat/**` and the evidence record changed, no dependency file, `pyproject.toml`, `.npmrc` or baseline, every file mode 100644, no symlink.
+
+**Checks run.**
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | No output, exit 0 |
+| The three classifications | As tabled above |
+| `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock`; `pip check`; `npm ci --ignore-scripts` with proxy and CA variables by reference, all in `env -i` | Installed; "No broken requirements found."; getstream 6.1.0, ruff 0.16.8, mypy 2.3.1; "added 51 packages, and audited 52 packages", "found 0 vulnerabilities"; stream-chat 9.53.0, ws 8.21.3, https-proxy-agent 5.0.1 |
+| `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t . -v` | `Ran 142 tests`, `OK` |
+| `.venv/bin/ruff check .` / `.venv/bin/ruff format --check .` | "All checks passed!" / "37 files already formatted" |
+| `.venv/bin/mypy` | "Success: no issues found in 36 source files" |
+| `node --check client/runner.cjs`; `node --check client/error-info.cjs` | Exit 0; exit 0 |
+| `.venv/bin/python checks/fix_reversals.py <scratchpad dir>` | "reversals: 51, not demonstrated: 0", exit 0; the Ctrl-C reversal aborts the test process as C1 said; `git status` clean afterwards |
+| A scratch variant capturing each reversal's failure | All 51 fail on the expected assertion or error type |
+| Secret scan of `git diff HEAD^1 HEAD`, 320,008 bytes | JWT-shaped strings 0, email addresses 0, private-key blocks 0, AWS-style keys 0, TLS-weakening settings 0, environment dumps 0; the only "secret" assignments are two synthetic test constants |
+| Reproductions of findings 1 to 3 and nit 7 against the fakes | As described in the findings |
+| Repository state | `git status --short` empty; only ignored `.venv`, `node_modules` and caches exist; no `.work/` |
+
+**Limits.** No live behaviour was exercised, so Stream's real response shape for the channel re-read, and the poll and user-group listings, remain unseen. Hosted CI was not read; the manager reads it. Two read-only sub-agents helped: one verified SDK request shapes in the installed sources and one made an adversarial pass; I re-verified every item I took from them in the code or by reproduction, and neither made a Stream call. Nothing was committed, pushed or changed on GitHub or in Notion.
+
+#### Manager verification of the review (App Manager 3, 26 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head.
+
+- **Classification.** The manager re-ran all three with the trusted `main` policy and got the same results: 106 paths, full scope; 41 paths, full scope; 6 Markdown paths, `ordinary-docs-only`.
+- **Findings, at `e85bba0`:**
+  - **Finding 1:** `run_matrix` re-raises `GuardrailStop` with no row, and builds a fresh INCONCLUSIVE row for `ClientSessionEnded` and any other exception (`proof_run.py:951-985`). Only `RunStopped` carries the case's partial row (`_keep_case`, `:431`).
+  - **Finding 2:** in T4-rest-unread, a refused or incomplete control makes A's total `None`; `None != b_total` and `claim_total == None` then give HOLDS_IGNORED without `controls_ok` being consulted (`:1405-1426`).
+  - **Finding 3:** RT2 and RT3 end in HOLDS for any refusal outcome, `input`, `not-found` and `other` included (`:2093-2098`).
+  - **Nit 10:** the sensitive-key patterns hold no `server_key`, `sqs_key` or `sns_key` part (`redaction.py:29-30`).
+- **Not re-run by the manager:** the session's installs, tests, reversal runs and reproductions. They match what the manager re-ran for C1's verification.
+
+#### Disposition
+
+- **C1's code head `e85bba0` is approved.**
+- **The three should-fix findings and the seven nits go to a second offline correction pass, P06.1-C2, before I2a's live runs.** Findings 2 and 3 let a case record HOLDS without an attributable refusal and a successful control, which the brief's matrix quality rule forbids, and finding 1 can turn an observed FAIL into INCONCLUSIVE. Live budget is spent only on a harness whose verdicts are sound.
+- **C2's exact-head review follows,** offline. I2a comes after it.
