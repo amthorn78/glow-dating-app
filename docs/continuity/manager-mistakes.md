@@ -49,6 +49,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-15 | 26 Sep 2026 | accuracy | The handoff's "Branches" section kept saying that every other remote branch was merged into `main` after the I1 and flake session branches were integrated only into PR26 | App Manager 3, checking branches for C1's integration |
 | AM3-16 | 26 Sep 2026 | accuracy | The C2 prompt told the session that RT2 and RT3 HOLD on a `feature` refusal, copying the C1 review's suggested fix without checking it against the brief's matrix quality rule and the harness's own verdict for a feature refusal | C2's own review sub-agent, reported by the C2 session |
 | AM3-17 | 26 Sep 2026 | process | Did not tell Nathan that the manager's own container still held the three `STREAM_*` variables after OD-28 limited them to sessions that call Stream. The manager never read or used them | App Manager 3, checking variable names while verifying C2 |
+| AM3-18 | 26 Sep 2026 | accuracy | Told Nathan, and wrote in Notion, that all 99 of C2's fix reversals were demonstrated, from the script's summary alone; one reversal failed only because its edit broke the file's syntax | The exact-head review of C2, finding 3 |
 
 ## App Manager 2
 
@@ -276,3 +277,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none on any result. No live run has used the rule, and I1's recorded RT2 result stays as recorded.
 - **Correction:** the manager decided that a `feature` refusal in RT2 and RT3 gets "REFUSED (feature off; not a permission error)". The next session that changes the harness makes the change, before any live run, with a test. The C2 review prompt tells the reviewer so.
 - **Prevention:** before writing a reviewer's suggested fix into a prompt, check it against the brief's matrix quality rule and the harness's existing verdicts, and say in the prompt where it departs from either.
+
+### AM3-18 — A fix-reversal summary taken at its word (accuracy)
+
+- **What happened:** verifying C2, App Manager 3 ran `checks/fix_reversals.py` and recorded its summary, "reversals: 99, not demonstrated: 0". It told Nathan that all 99 reversals fail without their fix and pass with it, and wrote "99 of 99 fix reversals" in the Work Register. One reversal, C1's "F2 end of run", no longer reverted its fix at C2's head: its pattern matched inside a line C2 had indented further, the edited file did not compile, and the script counted the `SyntaxError` as a failing test. The C1 review had checked each reversal's failure reason; the manager's verification of C2 did not.
+- **Caught by:** the exact-head review of C2, finding 3.
+- **Effect:** none on the harness. The fix that reversal covers is still tested: with a correct reversal its three tests fail. The real count is 98 of 99 demonstrated.
+- **Correction:** the evidence record and the Work Register now give 98 of 99. P06.1-C3 repairs the reversal and makes the script count an edit that does not compile as "not demonstrated".
+- **Prevention:** when verifying a fix-reversal run, check each reversal's failure reason, not only the summary, until the script itself rejects an edit that does not compile.

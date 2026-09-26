@@ -9,6 +9,7 @@
   - Manager: extra high, without ultracode. The change is one bounded diff, and the session may use subagents as it needs.
   - TypeSafe v4: extra high (score 2.70, P(extra high) 0.60, P(high) 0.35, P(max) 0.05), with an ultracode flag: P(single session) 0.40.
   - **Used: extra high,** without ultracode. Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** approve, with two should-fix findings and eight nits, which go to P06.1-C3 before I2a; see the evidence record, "Exact-head review of C2".
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). I2a comes after it.

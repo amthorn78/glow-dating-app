@@ -1311,3 +1311,252 @@ App Manager 3 checked the relayed report against the pushed branch. The manager 
 
 - **C2 is verified and integrated at `63e922f`.** Its limits stand as recorded, and "What P06.1-I2a must know" feeds I2a's prompt, with C1's list.
 - **C2's exact-head review is next,** offline. I2a comes after it.
+
+### Exact-head review of C2 (26 September 2026)
+
+Nathan ran the review session at extra high, from revision 1 of the [review prompt](../../ephemeral/2026-09-26-p06-1-c2-review-prompt.md) (records commit `6a439cf`), and relayed its report. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** The corrected harness is a sound base for I2a's live runs. The C1 review's findings 1 to 3 and nits 4 to 10, and C2's own four review points, are confirmed fixed. The reviewer agrees with both of the manager's decisions on C2.
+- **Two should-fix findings and eight nits remain.** None creates a HOLDS without Stream's refusal, and none changes a recorded result. The reviewer recommends fixing both should-fix findings before any live run, in the session that makes the RT2 and RT3 change.
+
+#### The report, as relayed
+
+The session's notes before its report, verbatim:
+
+> Reading C2's changes to the existing test files now; both reversal runs are still going in the background.
+>
+> Checked the `_key` redaction against both SDKs' response models: no chat response field the matrix reads ends in `_key`. Now checking whether any replay reuses a recorded `api_key` parameter.
+>
+> Both reversal runs are still going. Meanwhile I'm writing extra mutations of my own to find fixes whose tests would still pass if the fix were broken a different way.
+>
+> All 48 of C2's reversals fail on the expected assertion. Checking C1's 51 as well, especially the three whose tests C2 changed.
+>
+> Reversal 8 (C1's "end of run" reversal) now fails with a `SyntaxError`, not an assertion. Checking whether C2's `cli.py` change broke it.
+>
+> Reversal 8 is broken here—its 8-space pattern now falls inside C2's 12-space `try:` block, causing a SyntaxError instead of properly reverting the fix. I'll check whether a corrected reversal still gets caught.
+>
+> `rsync` is missing, so that chain stopped before any edit; the tests ran on the unmodified checkout. Confirming the checkout is untouched, then redoing it with `cp`.
+>
+> The tests still catch reversal 8 when it is done correctly, so only the script's pattern is stale. Both background runs have finished; reading their logs.
+>
+> The official script's summary looked clean (99 reversals, 0 undemonstrated) but reversal 8 actually failed silently with a SyntaxError. Of my 20 extra mutations, 6 slipped through revealing genuine test gaps and 2 hit redundant code; now I'm reviewing the rest of the proof_run.py diff to make sure I haven't missed any hunks.
+>
+> I've now read every hunk of the `proof_run.py` diff. Checking the README's claim that every `.work` file is written atomically.
+>
+> I found that the usage ledger (usage.py:78) skips the atomic write, making the README's "every `.work` file" claim slightly overstated. Next I'll check the records: protected sections, the three corrections, and confirm no results changed.
+>
+> The three in-place corrections are at lines 478, 921 and 929 and each carries the marker. Now comparing the four protected sections byte for byte against `5fc3bea`.
+>
+> The three markers plus one quoted mention match C2's record. Next, verifying nit 10's claim by walking `getstream` 6.1.0's app-settings models myself.
+>
+> Nit 10's walk reproduces exactly: 57 models, 312 field names, and the same seven names missed at C1, all covered now. Next, the secret scan over the whole diff.
+>
+> Scope checks pass: 50 files, all mode 100644, no symlinks/executables, no dependency or baseline changes, and the secret scan found nothing. Next I'll check how a nit 6 row displays when a command records two requests.
+>
+> I found that a 2xx response on the first of two recorded requests leaves no trace in the row—no request info, statuses, or undo. I'm now checking that the SDK calls behind `_http_answer` each send exactly one request in stream-chat 9.53.0.
+>
+> Each of those SDK methods sends one request. Next, checking whether any chat response model the matrix reads could carry a leak term under a `_key` field such as `config_key`.
+>
+> `config_key` appears only in moderation models, not in any chat response the matrix reads, so the `_key` suffix hides nothing today. Next, counting which reversals abort instead of failing normally.
+>
+> Four reversals cancel out to an empty "reverted:" result, but C2's account of "two Ctrl-C reversals from C1" doesn't match—C1 only logged one, so the fourth must be reversal 8's SyntaxError. I'll verify reversal 8 was a genuine demonstration at C1's head commit, `e85bba0`.
+>
+> Confirmed: at `e85bba0` reversal 8 failed on assertions; at this head it fails only through the `SyntaxError`. Now a concrete check that S15 still sends its unset after a charge signal.
+>
+> Confirmed: S15 sends its unset `PATCH` after B's 402. Now demonstrating the `finish()` path: a charge signal met during the end-of-run restore.
+>
+> Confirmed that when the end-of-run restore hits a 402, `finish()` still completes the full cleanup (15 requests, including both hard deletes). I also noticed in `_generic_case` that `if not on.ok` sets INCONCLUSIVE even when the feature-on phase already logged a FAIL, so I'll check if that's C1's code and try to reproduce it.
+>
+> I've confirmed the bug: A's reply succeeds while the enabling PATCH returns 500, yet the row logs INCONCLUSIVE "could not enable" while still showing "201 (succeeded)" — this is C1's unchanged code. Now I'll check the verdict helpers for other ways a FAIL could get downgraded.
+>
+> Confirmed the enable-failure path is the only way to rewrite an observed FAIL, since the other verdict override can't downgrade one. Now gathering exact line numbers for the report.
+>
+> Findings are settled. Final state check: the checkout must be unchanged, with only ignored paths created.
+>
+> Checks are done and the checkout is clean. Before writing the report I'll load Nathan's reporting skill, since it governs messages that report findings.
+
+The report:
+
+**Verdict: approve.** The corrected harness is a sound base for P06.1-I2a's live runs. Two should-fix findings and eight nits remain. None creates a HOLDS without Stream's refusal, and none changes a recorded result. I recommend fixing both should-fix findings in the session that makes the manager's RT2/RT3 change before any live run.
+
+Correction to my interim note: 11 of my 20 extra mutations survived, not 8. Seven expose test gaps and four touch redundant or dead code.
+
+##### Identity
+
+- **Prompt:** revision 1, from commit `6a439cfbf7573f4dd0cc596b06e92d3813308616`.
+- **Head reviewed:** `git rev-parse HEAD` printed `63e922fb86f214b99627748cbb53387baa6dd748`.
+  - `HEAD^2` is `ba36311ae86e7c9ded4f6d6c5ae66acdfb517150`.
+  - There is one merge base, `0f45e648099b415217938c25d7369164c0101def`.
+  - The ancestor check printed "records build on the head".
+  - `git diff --stat HEAD^1 HEAD`: 18 files, 2490 insertions, 198 deletions.
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or the three `STREAM_*` variables is present. node v24.19.0, npm 11.9.0 and Python 3.12.14, all from `/root/.local/bin`.
+- **Classifications:** the trusted `main` policy, extracted outside the tree and run with `python3 -I`; all three exited 0.
+
+| Run | Output |
+|---|---|
+| `main` → head | `{"full": true, "reason": "behavior-or-empty"}`, 109 paths |
+| `e85bba0` → head | `{"full": true, "reason": "behavior-or-empty"}`, 24 paths; the non-Markdown filter outside `proofs/stream-chat/` printed nothing |
+| head → `6a439cf` | `{"full": false, "reason": "ordinary-docs-only"}`, 6 paths |
+
+##### Findings, most severe first
+
+Paths are under `proofs/stream-chat/`.
+
+**1. Should fix. A feature-gated case's observed FAIL becomes INCONCLUSIVE when the enabling request was not 2xx.** `glow_stream_proof/proof_run.py:1187-1189`
+- **Reproduced against the fakes:** in S2, the PATCH enabling replies got 500, and A's thread reply got 201.
+  - The row reads "INCONCLUSIVE: could not enable {'replies': True} (channel AB, 500)".
+  - Its observed text still says "feature on: 201 (succeeded); feature off (production): 403 / code 17".
+  - A client action that must be refused succeeded, whatever the configuration was.
+- This is C1's code, inside the block C2 rewrote. It is the only path I found that rewrites an observed FAIL.
+- **Fix:** `if not on.ok and result.verdict != matrix.FAIL:`, with a test and a reversal.
+
+**2. Should fix. A charge or rate-limit signal first met during the end of the run does not skip cleanup.** `proof_run.py:2774-2794` (`finish()`), and `:417-418` (`_temporary`)
+- **Reproduced:** the run stopped on a failed restore, so `cleanup_needed` stays true. `finish()`'s retry then got HTTP 402.
+  - The 402 is recorded as a problem, and then the full cleanup runs: 15 requests in the fake, including the channel and user hard deletes.
+  - Live, cleanup breaks at its first delete if Stream keeps answering 402, so at least one request follows the signal. If the signal was specific to one endpoint, the whole cleanup runs.
+  - Three rate-limited retries also end in a cleanup.
+- **Variant:** `_temporary` keeps an in-flight budget or connection `GuardrailStop` as the run's stop, even when the restore met a charge signal. `cmd_run`'s "stopping at once" test then misses the signal.
+- This contradicts README line 177, "After such a stop the run deletes none of its users or channels". It is not silent: the exit is 2 and the 402 is printed.
+- **Fix:**
+  - flag the run whenever a charge or limit signal is seen;
+  - have `finish()` skip cleanup, with the problem "cleanup skipped: …";
+  - have `cmd_run` consult the flag.
+
+**3. Nit. C1's reversal "F2 end of run" no longer reverts its fix.** `checks/fix_reversals.py:164`
+- Its 8-space pattern now matches inside C2's 12-space `try:` at `cli.py:205`. The edit produces `SyntaxError: expected 'except' or 'finally' block`, and the script counts that as demonstrated.
+- At `e85bba0` it failed on assertions. With a correct 12-space reversal, its three tests still fail at this head (`0 != 4`, `0 != 4`, and the journal list). So the tests are sound; only the demonstration is broken.
+- The real count is 98 of 99 demonstrated. C2's record misreads it as "C1's two Ctrl-C ones"; C1 had one Ctrl-C reversal.
+- **Fix:**
+  - correct the pattern;
+  - anchor patterns at line starts;
+  - `py_compile` the edited file, counting a syntax or import failure as "not demonstrated";
+  - correct the record's line.
+
+**4. Nit. Test gaps: each of these mutations passes all 202 tests.**
+- Dropping the `NOT_A_PASS` guard (`:1194` or `:1961`): a feature-on or polls-on FAIL becomes INCONCLUSIVE when the production phase has no answer.
+- Swallowing the guardrail that the undo meets after an interruption (`:1326-1332`): the run would go on after a charge signal.
+- `cli.py:212-217`: dropping `*run.post_run_problems`, or dropping `run.close_sessions()`, after a second Ctrl-C.
+- The `rate_limited` flag at the error-only raise site, `client_bridge.py:266`.
+- RT2/RT3 "not listening" for a refused request (`:2470`), a C1 rule.
+- **Fix:** one test each.
+
+**5. Nit. When a command records more than one request, the row drops what each request got.** `proof_run.py:157-159`
+- **Reproduced:** S3a with a 201 edit followed by a 403 gives INCONCLUSIVE, with request "-" and observed "no answer recorded (2 requests recorded; exactly one was expected)". No status appears, and the 201 is not undone.
+- It is only reachable after an SDK change: in 9.53.0, each method I spot-checked sends one request.
+- **Fix:** record each request's method, generic path and status in the row's detail, and owe the undo when any of them got a 2xx.
+
+**6. Nit, latent. A guardrail stop from B's probe is dropped from the record.** `proof_run.py:615-625`
+- When another key of the same override still reads as overridden, the harness raises `RunStopped`, and B's probe `GuardrailStop` appears nowhere, not even in `stops`.
+- Today every override has one key (`matrix.py:585, 644, 662, 680`, and S15's grant), so this cannot happen yet.
+- **Fix:** add the probe's stop to `stops`, and flag it as in finding 2.
+
+**7. Nit. S15 still sends a request after a charge signal.** README line 177 and `proof_run.py:1314-1316`
+- **Reproduced:** B's query answered 402, and S15's `finally` still sent the unset `PATCH …/member`.
+- The README, the undo's own text ("nothing more is sent for the run's own data after a guardrail stop") and the manager's decision rationale all say nothing more is sent. C2's evidence limits do mention it.
+- **Fix:** skip the unset after a guardrail stop (cleanup deletes A anyway), or state it in the README.
+
+**8. Nit. A non-2xx read of A's stored user lets the run go on.** `proof_run.py:2229-2236`
+- Nit 7's fix covers a 2xx listing without A. A non-2xx listing makes `api.require` raise, so the `result.ok` in the loop is dead code live.
+- The row does become INCONCLUSIVE, through the interruption path. But the run goes on without knowing or restoring A's role (E5) or profile (S14).
+- This is the reason C2's review point 1 gave for stopping the run. The verdict impact is low: running later cases with A as admin can only produce a false FAIL.
+- **Fix:** catch the read's failure in E5 and S14, record INCONCLUSIVE, and defer a stop.
+
+**9. Nit. The atomic-write claim overstates.** README line 122, and the evidence record
+- Both say "every `.work` file is written through a temporary file". `usage.py:78` writes the usage ledger directly. An interrupted write fails loudly at the next load.
+- **Fix:** write the ledger through `_replace`, or narrow the claim.
+
+**10. Nit. The early-write failure note is not redacted.** `cli.py:198-200`
+- The note carries `{exc}` as it is, unlike `_progress_quietly`. No exception that can reach it carries a token today, so nothing leaks. If one ever did, the leak check would refuse the final results write.
+- **Fix:** `ctx.redactor.text(str(exc))`.
+
+##### The C1 review's items and C2's own review points
+
+| Item | Confirmed | Reason |
+|---|---|---|
+| F1: an interrupted case keeps its FAIL | Yes | `_observe` is called at every step I traced. `run_matrix` records one row on every exit, and a row cannot reach another case (`_partial` is reset at both ends of each case). All three review scenarios are tested. The undo follows the README's rule, and no undo is sent after a charge signal. See findings 1, 4 and 5 |
+| F2: T4-rest-unread | Yes | `:1635-1657`: HOLDS (accepted, not applied) needs both controls and all three totals |
+| F3: RT2/RT3 | Yes | `:2468-2486`: `input`, `not-found` and `other` are INCONCLUSIVE, and named events count only after an accepted request. The `feature` HOLDS is not reported, per the manager's decision |
+| Nit 4: retry rule and call counts | Yes | Only a rate limit or a failure that is not a stop signal is retried. All four raise sites set the flag; three are tested. The README's counts match mine: 3 calls per attempt, so 6 or 12 per change. The 130-call reserve covers the measured worst case of 115 |
+| Nit 5: production phase needs an answer | Yes | `:1194`, `:1961`. See finding 4 |
+| Nit 6: exactly one request | Yes | `:157`, `:1781`. See finding 5 |
+| Nit 7: unreadable stored user | Yes, for a 2xx listing | See finding 8 |
+| Nit 8: second Ctrl-C | Yes | `cli.py:184-217` |
+| Nit 9: "not verified", not "not restored" | Yes | `:603-625`, `:427-456` |
+| Nit 10: credential keys | Yes | My walk of `getstream` 6.1.0's app model: 57 models and 312 field names. It finds the same seven names missed at C1, all matched now |
+| C2 review points 1, 2 and 4 | Yes | Point 4's "every `.work` file" overstates (finding 9) |
+| C2 review point 3 | Yes, as built | Its side effect is finding 6 |
+
+##### Areas reviewed with no findings
+
+- **Verdicts:** C2 added no HOLDS path; its changes only lower verdicts. The paths that HOLD without a refusal and a control of the same request are the README's documented case rules:
+  - RT1;
+  - RT2/RT3, where B's listening probe is the only control;
+  - T4-ws;
+  - E5 and S14.
+- **Records:**
+  - the three corrections, at evidence lines 478, 921 and 929, are accurate and marked;
+  - no recorded result changed;
+  - the four protected sections are byte-identical across `5fc3bea`, the head and `6a439cf`;
+  - apart from findings 7 and 9, the README's rules match the code.
+- **Credentials:**
+  - the allowlist, the runner's refusal, redaction and the leak checks are unchanged;
+  - every new output is leak-checked or redacted when created, apart from finding 10;
+  - the `_key` suffix hides nothing the matrix reads, because `config_key` and the other `_key` fields are in moderation, push and app models only;
+  - no replay reuses a redacted `api_key`, because only `user_id` is kept.
+- **Scope:**
+  - all 18 changed files are owned;
+  - no dependency file, `pyproject.toml`, `.npmrc` or baseline changed;
+  - all 50 files under `proofs/stream-chat/` have mode 100644, and there are no symlinks.
+
+##### Checks run
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | No output, exit 0 |
+| Installs (`env -i`, README commands) | Python 3.12.14. `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1. `pip check`: "No broken requirements found." `npm ci`: "added 51 packages, and audited 52 packages", "found 0 vulnerabilities". stream-chat 9.53.0, ws 8.21.3, https-proxy-agent 5.0.1 |
+| Unit tests | `Ran 202 tests`, `OK` |
+| Ruff check / Ruff format / mypy | "All checks passed!" / "38 files already formatted" / "Success: no issues found in 37 source files" |
+| `node --check` on both `.cjs` files | Exit 0; exit 0 |
+| `checks/fix_reversals.py` | "reversals: 99, not demonstrated: 0", exit 0, 4 min 21 s |
+| Each reversal's failure reason | 94 fail on the expected assertion or error. 3 abort on Ctrl-C by design. Reversal 8 fails only through the `SyntaxError` (finding 3) |
+| 20 extra mutations | 9 caught. 7 survived as test gaps (finding 4). 4 survived on redundant or dead code |
+| Secret scan of the diff (197,542 bytes) | 0 JWT-shaped strings, emails, private-key blocks, cloud or GitHub keys, TLS-weakening settings, environment dumps or secret assignments. The 53 long strings are test names and two commit SHAs |
+| Reproductions against the fakes | Findings 1, 2, 5 and 7. Reversal 8 at `e85bba0` and at the head |
+| Repository state | `git status` is empty. Only ignored paths were created, and no `.work/` |
+
+##### Limits
+
+- Nothing was exercised live.
+- I did not read hosted CI.
+- The secret scan could not look for the application's API key, because its variable is absent (OD-28).
+- I reviewed the rest of the harness only where C2 changed it. Findings 1 and 2 are C1's code, inside functions C2 changed, and the prompt's focus questions ask about both.
+- I used no sub-agents.
+- **The manager's decisions:** I agree with both.
+  - For the RT2/RT3 change, the session making it should also decide whether an `auth` or `permission` refusal needs a control of the same request. RT3 could use B's own `markRead`. RT2 has no production control, because typing is off.
+- I changed nothing in the repository, on GitHub or in Notion.
+
+**NOTHING NEEDED.** Relay this to App Manager 3.
+
+#### Manager verification of the review (App Manager 3, 26 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head.
+
+- **Classification.** The manager's own run of the three classifications before the review gave the same results: 109 paths, full scope; 24 paths, full scope, with nothing outside `proofs/stream-chat/`; 6 Markdown paths, `ordinary-docs-only`.
+- **Findings, at `63e922f`:**
+  - **Finding 1:** `if not on.ok` makes the verdict INCONCLUSIVE whatever the feature-on phase observed (`proof_run.py:1187-1189`).
+  - **Finding 2:** `cmd_run` skips cleanup only when the run's own stop was a "stopping at once" `GuardrailStop` (`cli.py` around line 176); `finish()` cleans up whenever it is asked to, whatever its restores met.
+  - **Finding 3, reproduced:** on a scratch copy of `cli.py`, the reversal's 8-space pattern matches inside the 12-space line `problems = run.finish(…)`, and the reverted file fails to compile with "expected 'except' or 'finally' block". The manager's verification of C2 quoted the script's summary without checking each reversal's failure reason, and told Nathan that all 99 were demonstrated (AM3-18). The real count is 98 of 99; the fix it reverts is still tested.
+  - **Finding 8:** `_server_user` wraps the read in `api.require`, which raises on a non-2xx answer, so its `result.ok` test cannot be false (`proof_run.py:2229-2236`).
+  - **Finding 9:** `usage.py`'s `save()` writes the ledger directly.
+  - **Finding 10:** the early-write note interpolates the exception unredacted (`cli.py:198-200`).
+- **Not re-run by the manager:** the session's installs, tests, reversal runs, 20 mutations and reproductions of findings 1, 2, 5 and 7. Its installs, tests and reversal summary match the manager's own run on C2's head.
+
+#### Disposition
+
+- **C2's code head `63e922f` is approved.**
+- **A third offline correction pass, P06.1-C3, comes before I2a's live runs.** It makes:
+  - the RT2 and RT3 change the manager decided on C2, with the reviewer's point settled by the brief's matrix quality rule: an `auth` or `permission` refusal gives HOLDS only when a control of the same request, by a member allowed to make it, succeeded. For RT3 that is B's own `markRead` with the same body. For RT2 none exists while typing is off, so such a refusal is INCONCLUSIVE;
+  - findings 1 and 2, and nits 3 to 10.
+
+  Finding 2 is the guard that keeps the run from sending requests after a charge signal, which Nathan's $0 budget depends on (OD-12), and finding 1 can hide an observed FAIL. Both are fixed before live budget is spent.
+- **C3's exact-head review follows,** scoped to C3's change. To bound the rounds: after it, only a blocking finding, or a should-fix finding that could create a false HOLDS, lose an observed FAIL or send a request after a charge signal, delays I2a. Other findings go into I2a's offline first step or the final delta review.
