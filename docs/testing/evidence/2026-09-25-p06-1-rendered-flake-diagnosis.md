@@ -275,3 +275,145 @@ Checked against the pushed branch, not the report alone.
   - with focus kept in a field, the heading is not focused; the alert text stays in the `role="alert"` live region;
   - `enteringText` trusts layout boxes to tell a hidden retained screen from a shown one;
   - the regression test's sensitivity limit under heavy load, noted above.
+
+## Exact-head review of the fix (26 September 2026)
+
+Nathan ran the review session at high, from revision 1 of the [review prompt](../../ephemeral/2026-09-26-p06-1-flake-fix-review-prompt.md) (records commit `b9df3a2`), and relayed its report. The session committed and pushed nothing.
+
+- **Verdict: approve.** The fix is sound, and OD-21's acceptance can rest on it.
+- One documentation finding (should fix), which the manager applied, and two nits.
+
+### The report, as relayed
+
+The session's progress notes before its report, verbatim:
+
+> Start gate and classifications passed as expected; now checking ignored paths and installing dependencies.
+>
+> Tracing how Expo Router's web stack hides retained screens.
+>
+> Reviewing React Native Web's Enter-to-submit behavior for the accessibility question.
+>
+> Running the full rendered suite on the head with the preinstalled Chromium 141 headless shell.
+>
+> Repeat runs (60 cases) are in progress; I've prepared a no-fix worktree and a DOM probe to run after them.
+>
+> Now the regression test without the fix, in the scratch worktree.
+>
+> Probe A confirmed Enter-submit still moves focus to the alert (RNW blurs the field). Probe B was flawed (a stale alert triggered it early); re-running it with new-node detection.
+>
+> Probe B2 confirms it's possible to reach the "alert shown, field keeps focus" state by clicking into a field while a submit is pending. Next, I'll check how sensitive the regression test is to CPU load when the fix isn't applied.
+>
+> All checks are done; loading the reporting guidance before writing the report.
+
+**Verdict: approve.** The fix is sound, and OD-21's acceptance can rest on it. There are no blocking findings. There is one documentation "should fix" and two nits.
+
+- **Prompt:** revision 1, from commit `b9df3a27850e93c832d53c2902a2fc27e0a62696`.
+- **Head reviewed:** `git rev-parse HEAD` printed `8b8b1bdfe5c403686efb44070807dd003a466964`. Its parents are `8051c04` and `a7ab30b`.
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY` or `STREAM_API_SECRET` was present. `node`, `npm`, `npx` and `python3.12` are all in `/root/.local/bin`: v24.19.0, 11.9.0 and Python 3.12.14.
+- **Browser:** the preinstalled headless shell `/opt/pw-browsers/chromium_headless_shell-1194` (Chromium 141.0.7390.37), through an uncommitted scratch config in `apps/mobile/.work/`. It was not the pinned Chrome for Testing 151, so every browser result below is informational only.
+
+#### Start gate and classification
+
+The start gate passed. There is one merge base, `0f45e64…`. The records commit builds on the head. `git diff --stat HEAD^1 HEAD` shows the three expected files, 308 insertions and no deletions.
+
+The same trusted policy file ran all three times: `main:scripts/change_scope.py`, sha256 `dec69a26…`.
+
+| Run | Output |
+|---|---|
+| `main..head` | `{"full": true, "reason": "behavior-or-empty"}`: 90 paths, 37 of them not Markdown |
+| `9ff600f..head` | `{"full": true, "reason": "behavior-or-empty"}`: 54 paths. The only non-Markdown files are `apps/mobile/rendered/onboarding.spec.ts` and `apps/mobile/src/components/ui.tsx` |
+| `head..b9df3a2` | `{"full": false, "reason": "ordinary-docs-only"}`: 10 Markdown paths |
+
+#### The manager's three review points
+
+1. **With focus kept in a field, is the heading left unfocused, and does the alert stay in its live region?**
+   - **Heading:** yes, it is left unfocused. The guard returns before `tabIndex = -1` and `focus()`, so the heading isn't focused and isn't made focusable.
+     - A person can't realistically reach this state. A field on the new screen would have to take focus within about one frame of the screen appearing, which only automation, autofill or input tools can do.
+     - A field on the screen being left doesn't count. That screen gets `display:none`, so focus still moves to the new heading. My probe confirmed this.
+   - **Alert:** yes, it stays in its live region. React Native Web renders it as `<div role="alert">` inside `<div aria-live="polite" data-testid="feedback">`, and the text stays there when focus doesn't move.
+     - A person *can* reach this state. In my probe, clicking submit on the account screen and then clicking into the email field while the fixture call was pending left focus in the field after the fix. Before the fix, focus jumped to the alert.
+     - Enter-to-submit is unchanged. React Native Web blurs a single-line field on Enter (`setTimeout(() => hostNode.blur(), 0)`), so focus still reached the alert (probe A).
+     - I did not test whether a screen reader announces the alert. That rests on standard `role="alert"` semantics.
+2. **Is trusting layout boxes to tell a hidden retained screen from a shown one sound in this app?** Yes.
+   - On web, Expo Router's stack (`expo-router/build/react-navigation/native-stack/views/NativeStackView.js`) hides every unfocused or preloaded route with `display: 'none'` only. It uses no opacity, transform, visibility or animation.
+   - The probe confirmed it. The retained `screen-birth` had a `display:none` ancestor, and its inputs had zero `getClientRects()`. The shown screen's input had one.
+   - One case breaks this: a screen whose `presentation` is `transparentModal` or `containedTransparentModal` leaves the screen beneath it displayed. The app uses no `presentation` option today. A future transparent modal, or a JS stack or tabs navigator, would need this assumption rechecked.
+3. **Is the regression test's limit under heavy load acceptable?** Yes.
+   - It can only produce a false pass, never a false failure, so it adds no flake.
+   - The alert path's focus callback is scheduled during the click's own commit. Only the heading path, whose navigation commits later, can slip past the test's two-frame wait.
+   - With the guard removed and the test pinned to 2 CPUs alongside 3 busy loops, it still failed 10 of 10.
+   - The limit can be removed without a timeout or retry; see nit 3.
+
+#### Findings
+
+| # | Severity | Where | Scenario | Suggested fix |
+|---|---|---|---|---|
+| 1 | Should fix (documentation) | `docs/architecture/onboarding-fixtures.md:60-61` | The note says `ScreenTitle` requests focus on route focus and `Feedback` requests error focus, with no condition. On web the request is now skipped when a shown text field has focus, as in probe B2, where the alert did not take focus. `apps/mobile/README.md:348-349` has the same unconditional wording for interaction feedback, though no interaction route has a text field today. | Add one sentence to each: "On web, the focus request is skipped while a shown text field has focus; the error stays in the `role="alert"` live region." |
+| 2 | Nit | Evidence record, "Behavior change" and its Result/Classification bullets | The record says the guard affects "screen or error focus". It also affects `InteractionFeedback`'s focus on committed (non-error) messages (`src/interactions/controls.tsx:16`), with no effect today. The phrase "a person … can focus a field just as early" holds for the alert path (a pending submit), not the heading path. | Name the third caller and the difference between the two paths. |
+| 3 | Nit, optional | `apps/mobile/rendered/onboarding.spec.ts:181` | Under extreme load, the heading's deferred focus could run after the two-frame wait, so the test would miss a regression. | Hold the app's `focusText` frame callbacks until the field takes focus, as the diagnosis's trigger does. Then assert that at least one callback was held and has run before checking focus. This is deterministic, needs no timeout or retry, and fails loudly if the source-text match ever breaks. |
+
+#### Areas reviewed with no findings
+
+- **Guard correctness on both paths:** `ScreenTitle` through `useFocusEffect`, and `Feedback`. The list of excluded input types is right, as are `textarea` and `isContentEditable`. Leaving out `select` is right, and the app has no `select`. Read-only (busy) fields count as text fields, which is sensible because focus stays where the person put it.
+- **Native:** unchanged. `enteringText` runs only in the web branch and touches DOM globals only when called.
+- **Every caller of `focusText`:** `ScreenTitle`, `Feedback` and `InteractionFeedback`. `ui.tsx:40` is the only `.focus()` in `src`.
+- **No masking anywhere in the diff:** no assertion weakened, no timeout raised, no retry added and no test skipped. The spec diff only adds one test.
+- **Scope:** only the three files changed, all mode `100644`. There is no change to `playwright.config.ts`, the workflow, dependencies or locks.
+- **Evidence record:** its mechanism, its line citations (`ui.tsx:21-28` and `38`, the failure at spec line 201, `profile-preferences.spec.ts:72`) and its counts check out: 22 failures before the fix (10+6+3+3), 82 passes after (10+12+60), 40 regression-test passes, and 84 cases.
+
+#### Checks run
+
+All app commands ran as `env -i HOME="$HOME" PATH="$PATH" LANG=C.UTF-8 …` from `apps/mobile`. `npm ci` also received `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`, passed by reference and never printed.
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | Clean, exit 0 |
+| The three classifications | As in the table above |
+| `npm ci --ignore-scripts` | Exit 0 |
+| `npm run check` | Exit 0: `tsc` and `eslint` clean; **516 of 516** unit tests passed |
+| Full rendered suite on the head | **84 passed** (3.9 min) |
+| `onboarding.spec.ts:181`, `state-corrections.spec.ts:45` and `onboarding.spec.ts:103`, with `--repeat-each=20` | **80 passed**: 20 of the regression test, 20 each of the accepted and unsaved variants, and 20 of the birth journey |
+| Regression test without the fix (scratch worktree at the head, with `ui.tsx` taken from `8d202fd`) | **10 of 10 failed** at line 201, `adult-date` "Received: inactive" |
+| Same, pinned to 2 CPUs with 3 busy loops | **10 of 10 failed** at line 201 |
+| Alert half of the test only, in a scratch copy | Without the fix, **5 of 5 failed** (`birth-date` not focused). On the head, **5 passed** |
+| The diagnosis's trigger (microtask release, all holds) on both cases | Without the fix, **9 of 9 failed**, at the original lines 120, 57 and 51. On the head, **15 of 15 passed** |
+| DOM and focus probe (scratch spec) | Results as described under the review points above |
+
+I removed the scratch worktree and every scratch file from `.work/`. I made no commit, push, PR comment, re-run or Notion change. The checkout sits detached at the head, and `git status` is clean apart from ignored files.
+
+#### Limits
+
+- Every browser result is informational only: Chromium 141 headless shell, not the pinned 151. I did not read hosted CI.
+- No screen reader was run, so whether the alert is announced is inferred from `role="alert"` and `aria-live` semantics.
+- No native or device check was run.
+- I did not measure the claim that the alert path is ordered safely against the test's wait; it comes from React's scheduling of the click's commit.
+- The probes ran once each.
+
+**NOTHING NEEDED.** This report is for relay to App Manager 3.
+
+### Manager verification of the review (App Manager 3, 26 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head and the two libraries it cites. The manager ran no browser, so the browser runs and probes above are the session's record.
+
+- **Classification.** The manager re-ran all three with the same trusted policy file (sha256 `dec69a26…`), outside the tree, with `python3 -I` and `--merge-base`, and got the same results:
+  - `main → 8b8b1bd`: full scope, 90 paths, 37 not Markdown;
+  - `9ff600f → 8b8b1bd`: full scope, 54 paths; the only two that are not Markdown are the fix's code files;
+  - `8b8b1bd → b9df3a2`: `ordinary-docs-only`, 10 paths.
+- **The libraries.** The manager downloaded `expo-router` 57.0.22 and `react-native-web` 0.21.0, the versions in `apps/mobile/package-lock.json`, from npm, and each matched the lock's SHA-512 integrity.
+  - Expo Router's web stack (`build/react-navigation/native-stack/views/NativeStackView.js`, around line 88) displays a route only when it is focused, or when the next route has a transparent presentation, and it is not preloaded. Otherwise the route gets `display: 'none'`. No opacity, transform or visibility is used.
+  - React Native Web's `TextInput` (`dist/exports/TextInput/index.js`, lines 274–291) blurs a single-line field on submit by default, through `setTimeout(() => hostNode.blur(), 0)`.
+- **Repository references at `8b8b1bd`:**
+  - `docs/architecture/onboarding-fixtures.md:60-61` and `apps/mobile/README.md:348-349` describe the focus requests without the new condition;
+  - `InteractionFeedback` (`src/interactions/controls.tsx`, around line 16) calls `focusText` for the active route's committed or error message;
+  - `ui.tsx:40` is the only `.focus()` call in `apps/mobile/src`;
+  - no navigator sets a `presentation` option.
+- **Hosted CI on the same code:** PR run [36209515236](https://github.com/amthorn78/glow-dating-app/actions/runs/36209515236), on `b9df3a2`, passed. Everything after `8b8b1bd` there is Markdown.
+
+### Disposition
+
+- **OD-21's acceptance is met.** It rests on the proven cause, the before-and-after proof, this exact-head review and hosted CI on the pinned Chromium.
+- **Finding 1 (documentation): applied by the manager on 26 September.** The onboarding-fixtures note and the mobile README now say that on web the focus request is skipped while a shown text field has focus, and that an error stays in its `role="alert"` live region. The note also records the layout-box assumption and when to recheck it: a transparent-modal presentation or another navigator.
+- **Nit 2: recorded here as a correction to this record.**
+  - The "Behavior change" paragraph covers `InteractionFeedback` too: its focus on a committed or error message is skipped in the same way. That has no effect today, because no interaction route has a text field.
+  - "A person … can focus a field just as early" (under "Classification and route") holds for the alert path, during a pending submit, not for the heading path.
+- **Nit 3 (optional): left as is.** The reviewer judged the test's limit acceptable: it can only miss a regression, never fail falsely.

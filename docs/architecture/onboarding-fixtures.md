@@ -58,8 +58,14 @@ behavior still require the rendered evidence recorded separately in the checkpoi
 
 The shared `Page` primitive combines safe-area layout, keyboard avoidance and a
 scrollable content container. `ScreenTitle` requests focus on route focus;
-`Feedback` exposes busy/error/status presentation and requests error focus. Fields
-have visible labels and accessibility labels/hints; buttons expose their role and
+`Feedback` exposes busy/error/status presentation and requests error focus. On
+web, both requests are skipped while a shown text field has focus, so an entry
+in progress is kept; an error then stays in its `role="alert"` live region. A
+field counts as shown when it has layout boxes, because Expo Router's web stack
+hides a retained screen with `display: none`. A transparent-modal presentation
+or another navigator would need that rechecked (P06.1 flake fix review, 26
+September 2026).
+Fields have visible labels and accessibility labels/hints; buttons expose their role and
 disabled state; choices expose radio and selected/checked state. Controls use
 minimum heights rather than fixed text boxes, and ordinary React Native text
 scaling is retained. These source-level provisions are not a VoiceOver/TalkBack

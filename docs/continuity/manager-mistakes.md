@@ -45,6 +45,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-11 | 25 Sep 2026 | process | Planned the I1 review and the flake diagnosis to run side by side, and in chat offered Nathan a second prompt while he was starting the first, pointing him to an earlier message for it | Nathan |
 | AM3-12 | 25 Sep 2026 | accuracy | Told Nathan the I1 review was running, and later the only task running, when he had not started it | Nathan |
 | AM3-13 | 26 Sep 2026 | accuracy | Recorded in ADR 0003's Context and the brief, as established, that the other member receives S15's text in `member.updated` events; I1's harness could not show which event carried it | The exact-head review of I1 (finding 4) |
+| AM3-14 | 26 Sep 2026 | execution | Ran the trusted classifier with a short base SHA; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only` | The classifier itself |
 
 ## App Manager 2
 
