@@ -868,3 +868,157 @@ The session committed nothing, so there is no branch to check. The manager check
 - **Into I2a's prompt:** finding 6's new G2 and S10 setups, and finding 9's endpoints.
 - **For Stream support,** if Nathan chooses to ask: whether client writes to member custom data can be disabled (already recorded), and what the undocumented `channel_hide_members_only` does.
 - **No recorded I1 result changes.**
+
+## P06.1-C1 corrections
+
+The correction pass on the I1 harness, for the exact-head review's findings 1 to 8 and its nits. It made no Stream call and ran none of the harness's live commands. The first live use of these fixes is in P06.1-I2a.
+
+- **Prompt:** revision 1, from commit `360ad9e5cedd5084702830b092ca02ba342da686`.
+- **Branch:** `claude/youthful-pasteur-caokpc`. **Start:** `360ad9e5cedd5084702830b092ca02ba342da686`.
+- **Code head:** `be46319bc9e1aafdc747aca7280b2fa06a1793f9`. It carries every code change, and every check below ran on it. The commit that adds this section changes only this record.
+- **Date:** 26 September 2026.
+
+### Environment and start gate
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present (the check printed nothing) |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | None present (the check printed nothing) |
+| `command -v node npm npx python3.12` | `/root/.local/bin/node`, `/root/.local/bin/npm`, `/root/.local/bin/npx`, `/root/.local/bin/python3.12` |
+| Versions | node v24.19.0; npm 11.9.0; Python 3.12.14 |
+| Start gate | `git fetch origin claude/stoic-carson-66gdig`; `git merge --ff-only 360ad9e…` fast-forwarded; `git rev-parse HEAD` printed `360ad9e5cedd5084702830b092ca02ba342da686`; `git diff --stat 9ff600f… HEAD -- proofs/stream-chat/` printed nothing |
+
+The environment was never dumped. There were no connections to Stream, a database, HDE or Railway, and no `playwright install`, `eas` or `migrate`. Installs got the proxy and CA variables by reference.
+
+### Findings 1 to 8
+
+Paths are under `proofs/stream-chat/`. Line numbers are at the code head. Each test below fails with its fix reverted and passes with it (see "Checks", item 5).
+
+| Finding | Status | Where | Tests |
+|---|---|---|---|
+| 1. Verdicts from the request under test | Fixed | `glow_stream_proof/proof_run.py:130` `_answer_of`, `:143` `_http_answer`, `:153` `_ws_answer`; G1 `:1454`, FAIL at `:1520`; G3 `:1588`; RT2/RT3 `:2062`, no-answer rule at `:2086`; `glow_stream_proof/matrix.py:204` (`no-response` is never HOLDS); `client/error-info.cjs:42` (`ws-api` only for Stream's own error frame) | `tests/test_answers.py` (all); `tests/test_runner.py` `ErrorInfoTest` |
+| 2. Restores always made; a failed restore stops the run | Fixed | journal and restore `proof_run.py:387` `_temporary`, `:410` `_restore`; `RunStopped` re-raised `:953`; enabling requests inside the journalled block (`:1059`, `:1454`, `:1639`, `:1910`); end of every run `:2356` `finish` (journal restored with retries, cleanup, `configuration.verify()`); `cli.py:142` `cmd_run` (Ctrl-C `:179`, `finish` `:187`, exit 2 or 4) | `tests/test_temporary_changes.py`; `tests/test_cli.py` (exit codes, Ctrl-C, configuration drift, cleanup problem) |
+| 3. Exactly one dashboard user | Fixed | `proof_run.py:603` (exactly one) and `:608` (created in the recorded minute, 24 September 2026 13:07 UTC; constant `:63`). No identifier is read into the record | `tests/test_preflight.py` |
+| 4. Events view | Fixed | `matrix.py:49` `LOCAL_EVENT_TYPES` (stream-chat 9.53.0's declared local events, plus health checks); `proof_run.py:837` `_events_split`; S15's view records the carrying event type `:1764` | `tests/test_events.py` (including a test that reads the installed SDK's `EVENT_MAP` and checks every declared local event is dropped) |
+| 5. Replies matched to commands | Fixed | `glow_stream_proof/client_bridge.py:202` (id check), `:142` reader thread, `:183`, `:192`; a timeout, mismatch, non-JSON line or exit ends the session (`:156`), and its later commands raise `ClientSessionEnded` without being sent; `proof_run.py:930` records affected cases INCONCLUSIVE | `tests/test_client_session.py` (fake runner scripts: mismatch, timeout, two replies in one write, exit) |
+| 6. Offline simulation like the live lockdown | Fixed (my part) | `tests/fakes.py:297`: the control's `POST /guest` gets 201, then its connect gets 403 / 17 | `tests/test_run_simulation.py` `test_guest_reach_is_not_run_when_the_guest_connect_is_refused` |
+| 7. Leak terms | Fixed | `matrix.py:369` (`read-ab`: AB, A, B, both names, both message IDs, both texts), `:384` (`message`: XD's message ID, X, XD, the text) | `tests/test_procedures.py` `LeakTermsTest` |
+| 8. Records | Corrected | See "Records corrected" | Not applicable |
+
+Finding 6's new G2 and S10 setups, and finding 9, are I2a's work and were not built.
+
+### Nits 1 to 17
+
+| Nit | Status | Where | Tests |
+|---|---|---|---|
+| 1. RT2/RT3 search only named types and the first window | Fixed: every delivered event, of any type, in both windows | `proof_run.py:2062`, `:2073` | `tests/test_events.py` `PayloadWindowsTest` |
+| 2. Code 2 counted as a token refusal | Fixed | `matrix.py:41` | `tests/test_matrix.py` `test_api_key_error_is_not_a_token_refusal` |
+| 3. Hard-coded `?user_id=` suffixes | Fixed: read from the recorded request | `proof_run.py:1444` | `tests/test_procedures.py` `ClaimRequestLineTest` |
+| 4. Undo and override-removal results unchecked | Fixed: every undo is checked, and a failed undo stops the run after its case is recorded (`:452`); removals are status-checked and re-read (`:467`, `:493`, `:211`) | as listed | `tests/test_temporary_changes.py` `UndoCheckTest`, `ChannelOverrideRemovalTest`, `OverrideReReadShapeTest` |
+| 5. Cleanup unguarded, statuses unasserted, exit 0 | Fixed: guarded steps, deletes and task statuses judged, non-zero exit | `proof_run.py:2198`, `:2438`; `cli.py:142` | `tests/test_cleanup.py`; `tests/test_cli.py` |
+| 6. Charge signal misses typed SDK calls | Fixed: an httpx response hook checks every server response | `server_api.py:97` | `tests/test_server_api.py` (on an `httpx.MockTransport`) |
+| 7. Unused runner op `request` | Fixed: removed | `client/runner.cjs:260` (the op list) | `tests/test_runner.py` `test_unused_request_op_is_gone` |
+| 8. `baseline` writes every user; redaction by exact key only | Fixed: the written snapshot keeps only counts and the proof's own IDs, and the settings the proof reads; credential keys are matched by pattern | `baseline.py:46`; `cli.py:86`; `redaction.py:33` | `tests/test_cli.py` `test_baseline_writes_no_other_users_identifier_or_name`; `tests/test_redaction.py` `test_sensitive_keys_are_matched_by_pattern` |
+| 9. `verify` skips `permission_version` and `member_custom_on_*` | Fixed | `configuration.py:95`, `:227` | `tests/test_configuration.py` `test_verify_checks_permission_version_and_member_custom_settings` |
+| 10. `restore --apply` does not verify | Fixed: re-reads and compares with the recorded baseline, exit 1 on any difference | `cli.py:255`; `configuration.py:300` | `tests/test_cli.py` `test_restore_apply_verifies_what_it_restored`; `tests/test_configuration.py` `test_verify_restored` |
+| 11. Nothing asserts the shared `isomorphic-ws` | Fixed: the runner refuses to start (exit 4) unless stream-chat resolves and keeps the runner's module; a `selfcheck` op reports it | `client/runner.cjs:66`, `:218` | `tests/test_runner.py` `test_stream_chat_uses_the_runners_websocket` |
+| 12. `CLEANUP_RESERVE` too low | Fixed: 130, plus a 30-call margin per case; measured worst case 115 | `proof_run.py:53` | `tests/test_cleanup.py` `CleanupReserveTest` |
+| 13. Client-created polls and groups not cleaned up or listed | Fixed: tracked and deleted; verify-clean lists polls and user groups, counting only those absent at preflight | `proof_run.py:1161`, `:2417`, `:2345` | `tests/test_cleanup.py` `ClientCreatedDataTest`, `PreexistingPollsAndGroupsTest`; `tests/test_cli.py` `test_verify_clean_lists_polls_and_user_groups` |
+| 14. verify-clean cannot see soft-deleted channels | **Left.** There is no verified way to list soft-deleted channels offline. The covering control is the hard delete of every recorded channel ID, with its task now required to report `completed` (nit 5). Recorded in the README's limits | — | — |
+| 15. `_check` evidence unredacted | Fixed | `proof_run.py:340` | `tests/test_procedures.py` `CheckRedactionTest` |
+| 16. E5 and S14 judge stored state only; T4-rest-unread HOLDS without its controls | Fixed: the connection's own user object in Stream's handshake counts too; the refusal needs A's and B's own requests to succeed | `proof_run.py:2046`, `:2003`, `:1417` | `tests/test_procedures.py` `NotEffectiveTest` |
+| 17. Cleanup deletes the application-wide `deleted-user-1729640-…` user | **Left.** It is safe by construction: preflight refuses any user the run did not create except the one dashboard user, and only artifacts created after the run started are deleted. Recorded in the README's limits | — | — |
+
+### The independent review of these corrections
+
+A read-only sub-agent reviewed the diff at `db84220` adversarially. It made no Stream call. It found no verdict that can HOLD without Stream's refusal, no weakened rule and no credential change. It raised five points and some nits; I verified each against the code and fixed all of them in `be46319`:
+
+1. **Override-removal re-read.** The check assumed a response shape nobody had observed live. AB is now re-read while the override is set. A later re-read proves a key's removal only if the first showed that key set. A grant the re-read cannot show is checked by B's members query being refused again. Anything else is recorded as not verified, and the run exits 4, instead of stopping. The re-reads' shape (key names only) is kept in the case detail. Tests: `OverrideReReadShapeTest`.
+2. **A failed restore discarded the case's result.** The row now keeps what the case observed: a FAIL stays a FAIL, and anything else becomes INCONCLUSIVE (`proof_run.py:431`). Tests: `KeptRowTest`.
+3. **An unset in S15's `finally` could replace an in-flight guardrail stop.** It no longer raises, except a guardrail stop of its own (`:1804`). Test: `GuardedUnsetTest`.
+4. **Pre-existing polls and groups counted as leftovers.** Preflight lists them; only new ones count. Test: `PreexistingPollsAndGroupsTest`.
+5. **One immediate restore retry.** Now three attempts, 10 s and 20 s apart, except when the call budget is spent (`:46`). Tests: `FinishRetryTest`.
+6. **Nits.**
+   - The runner's error classification moved to `client/error-info.cjs` and is tested offline.
+   - An anonymous connect that never answered is no longer a `KeyError`.
+   - `verify_restored` also checks `automod`, `automod_behavior` and `max_message_length`.
+   - A code comment cited the wrong test file.
+
+### Records corrected
+
+In this record, each edited in place and marked "(corrected in P06.1-C1)". No recorded result changed, and the manager's sections are unchanged byte for byte.
+
+- **Summary, outcome 1:** 65 of 85 cases, not all, held with an attributable refusal and a successful control. The other 20 are listed. Code 17 alone does not prove the permission layer; attribution rests on the controls.
+- **Summary, outcome 3; finding 1's S15 lines (old 352–354); "Taking away read-channel-members":** B's channel query carries S15's text. The realtime path, including `member.updated`, is unproven: the harness counted the SDK's local `channels.queried` event. I2a maps it.
+- **Stop condition (old line 91):** at I1's head the flag accepted any number of dashboard-flagged administrators. It now requires exactly one, with the recorded creation minute.
+- **Temporary changes (old line 144) and the matching deviation:** only the type toggles and the guest setting were re-read. Channel-override removals were not, and a failed restore did not stop the run.
+- **Verdict legend:** RT1, RT2 and RT3 are now covered.
+- **G2-channels and G3-channels action text:** a type filter, not "an empty filter".
+- **Finding 1's "the live permission list has no such action" (old line 359):** it has no recorded source. The claim rests on the documented permissions reference, which is not exhaustive.
+- **Deviations, "results written on any error" (old line 474):** at I1's head this was not true for Ctrl-C.
+- **Deviations, "the offline simulation covers them" (old line 480):** its fake guest connected, which masked G2. The review's run 2 was the fixes' first live use.
+- **Limits:** added the four missing items.
+
+In `proofs/stream-chat/README.md`:
+
+- the dashboard-user sentence (old line 103);
+- the temporary-changes claim (old line 137), now replaced by the journal and verification rules;
+- a new "Verdict rules" section, with each changed rule marked;
+- the end-of-run sequence and exit codes;
+- the charge-signal scope, and what happens after a charge signal;
+- the remedy for a restore that fails;
+- the added limits.
+
+### Checks
+
+Run from `proofs/stream-chat/` unless noted, at code head `be46319`, in clean processes (`env -i`), with no `STREAM_*` variable present.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `git diff --check 360ad9e… HEAD` (repository root) | No output, exit 0 |
+| 1 | `git diff --name-only 360ad9e… HEAD` | 29 paths: this record and 28 under `proofs/stream-chat/`. All owned; no dependency file, no `pyproject.toml` change and no baseline change; every new file mode 100644, no symlink |
+| 2 | The trusted policy from `origin/main` (`0f45e64`), extracted to a temporary directory outside the tree, run with system Python 3.11.15: `python3 -I change_scope.py --base 360ad9e… --head be46319… --merge-base` | Exit 0; `{"full": true, "reason": "behavior-or-empty", …}`, 29 paths. One merge base, `360ad9e…`. Full scope, as expected |
+| 3 | From deleted `.venv` and `node_modules`: `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock`; `pip check`; `npm ci --ignore-scripts` (proxy and CA variables by reference) | Python 3.12.14; "No broken requirements found."; `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1; "added 51 packages, and audited 52 packages", "found 0 vulnerabilities"; `stream-chat` 9.53.0, `ws` 8.21.3, `https-proxy-agent` 5.0.1 |
+| 4 | `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t . -v` | Before: `Ran 49 tests`, `OK` (at `360ad9e`). After: `Ran 142 tests`, `OK` |
+| 4 | `.venv/bin/ruff check .` / `.venv/bin/ruff format --check .` | "All checks passed!" / "37 files already formatted" |
+| 4 | `.venv/bin/mypy` | "Success: no issues found in 36 source files" |
+| 4 | `node --check client/runner.cjs`; `node --check client/error-info.cjs` | Exit 0; exit 0 |
+| 5 | `.venv/bin/python checks/fix_reversals.py`: for each fix, a scratch copy outside the tree gets that fix reverted and the fix's tests run; then the fix is put back and they run again | Exit 0; "reversals: 51, not demonstrated: 0". Every reversal's tests failed, and passed once the fix was restored. It covers every finding and nit fixed above, and the review's points. One reversal (Ctrl-C) fails by the interrupt escaping and aborting the test process, which the script counts as failing |
+| 6 | Secret scan of the whole diff from `360ad9e` (301,502 bytes) | JWT-shaped strings 0; email addresses 0; key or token shapes 0; the application's API key 0; TLS-weakening settings 0; environment dumps 0 |
+
+Not run: any live command, and the repository's Foundation CI (not triggered by this session, and it does not run this harness's tests).
+
+### Deviations and limits
+
+- **Decisions to confirm.**
+  - After a charge-signal stop, the run still restores its journalled changes and re-reads the configuration (a few calls), but deletes none of its users or channels. The prompt required every run to restore and verify, and leaving a temporary change in place would weaken the lockdown.
+  - A failed undo of a control's change stops the run after its case is recorded, because later cases would run on changed state.
+  - A removal the re-read cannot show is recorded as not verified (exit 4), not treated as a stop.
+- **New files beyond the harness modules:**
+  - `client/error-info.cjs`, split out of the runner so that it can be tested;
+  - `tests/fakes.py`, shared fakes;
+  - `checks/fix_reversals.py`, which proves each fix is tested. Its reversal table quotes source lines, so it carries a file-level `ruff: noqa: E501`.
+- **Not tested offline:** Stream's live response shapes. The tests prove the harness's logic against fakes.
+- **Nits 14 and 17 are left,** with the reasons above.
+- **No dependency change,** and nothing outside the owned paths.
+
+### What P06.1-I2a must know
+
+- **Not exercised live:** every fix above. That includes:
+  - the answer-based verdicts;
+  - the journal, restore retries and final `configuration.verify()`;
+  - the one-dashboard-user preflight with its creation-minute check;
+  - reply matching;
+  - the local-event filter;
+  - the typed-call charge hook;
+  - cleanup's judgement;
+  - `restore --apply`'s verification.
+- **New server calls, never run live:**
+  - `POST /api/v2/chat/channels` filtered by `cid` (the override re-reads);
+  - `POST /api/v2/polls/query` and `GET /api/v2/usergroups` (preflight and verify-clean; paths from `getstream` 6.1.0).
+  - If a listing gets no 2xx, or a re-read cannot show an override, the run exits 4 with "not verified", and the case detail keeps the re-read's shape (key names only). Record that shape on the first live use.
+- **Preflight** stops unless exactly one dashboard administrator exists and was created in the minute 24 September 2026 13:07 UTC. If it stops on the creation time, report it; do not bypass it.
+- **Exit codes of `run`:** 0 clean; 2 stopped; 4 completed with a problem or an unverified item after it. The printed "after the run" lines say which.
+- **`member.updated`:** I2a maps the event types with the filtered events view. `marker_event_types` names the event that carried the marker.
+- **G2 and S10** still need the new setups the review describes (finding 6). The simulation now shows G2 as "not run", as the live runs did.
+- **Budget:** the matrix now stops at 160 calls left (130 kept for the end of the run, plus 30), and preflight makes two more calls.
