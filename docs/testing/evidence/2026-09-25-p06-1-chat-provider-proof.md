@@ -1560,3 +1560,326 @@ The session committed nothing, so there is no branch to check. The manager check
 
   Finding 2 is the guard that keeps the run from sending requests after a charge signal, which Nathan's $0 budget depends on (OD-12), and finding 1 can hide an observed FAIL. Both are fixed before live budget is spent.
 - **C3's exact-head review follows,** scoped to C3's change. To bound the rounds: after it, only a blocking finding, or a should-fix finding that could create a false HOLDS, lose an observed FAIL or send a request after a charge signal, delays I2a. Other findings go into I2a's offline first step or the final delta review.
+
+## P06.1-C3 corrections
+
+The third correction pass on the harness. It makes the manager's RT2 and RT3 decision on C2, and fixes the C2 review's findings 1 and 2 and nits 3 to 10. It made no Stream call and ran none of the harness's live commands. The first live use of these fixes, and of C1's and C2's, is in P06.1-I2a.
+
+- **Prompt:** revision 1, from commit `e5180ab40623858ffd00471f0747e948534418e7`.
+- **Branch:** `claude/friendly-hypatia-ug6r52`. **Start:** `e5180ab40623858ffd00471f0747e948534418e7`.
+- **Code head:** `a5e222100e8673d07a533d2eddc04aa21248b02e`. It carries every code change and the records corrected below, and every check below ran on it. The commit that adds this section changes only this record.
+- **Date:** 26 September 2026.
+
+### Environment and start gate
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present (the check printed nothing) |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | None present (the check printed nothing) |
+| `command -v node npm npx python3.12` | `/root/.local/bin/node`, `/root/.local/bin/npm`, `/root/.local/bin/npx`, `/root/.local/bin/python3.12` |
+| Versions | node v24.19.0; npm 11.9.0; Python 3.12.14 |
+| Start gate | `git fetch origin claude/stoic-carson-66gdig`; `git merge --ff-only e5180ab…` fast-forwarded from `0f45e64`; `git rev-parse HEAD` printed `e5180ab40623858ffd00471f0747e948534418e7`; `git diff --stat 63e922f… HEAD -- proofs/stream-chat/` printed nothing |
+
+The environment was never dumped. There were no connections to Stream, a database, HDE or Railway, and no `playwright install`, `eas` or `migrate`. Installs got the proxy and CA variables by reference.
+
+### The RT2 and RT3 change, findings 1 and 2, and nits 3 to 10
+
+Paths are under `proofs/stream-chat/`, and line numbers are at the code head. Each test named fails with its fix reverted and passes with it (see "Checks", item 5). The suggested fix was used for every item unless the row says otherwise.
+
+| Item | Status | Where | Tests |
+|---|---|---|---|
+| RT2 and RT3 (the manager's decision on C2) | Fixed. <br>**Feature refusal:** a 400 feature error (code 18 or 19) is REFUSED (feature off; not a permission error), as for every other case (`glow_stream_proof/proof_run.py:2673`). <br>**Authentication or permission refusal:** HOLDS only when the case's control succeeded and nothing carrying the marker reached B while B was listening (`:2690`). The control is the same request by a member allowed to make it, and its recorded method and path must equal A's (from the independent review, point 4); if they differ, the case is INCONCLUSIVE, "the positive control was another request" (`:2698`). <br>**RT3's control:** B's own `markRead` with the same body (`matrix.py:856`). It is sent after both windows are collected and kept (`:2620`, `:2646`). Its own events are collected apart (`:2651`), recorded by type (`control_event_types`) and never searched for the marker (`:2652`). A control that does not succeed leaves the case INCONCLUSIVE (`:2704`). <br>**RT2:** has none, because no member may send a typing event while typing is off (`matrix.py:840`), so its authentication or permission refusal is INCONCLUSIVE, "no positive control" (`:2682`). <br>`input`, `not-found` and `other` stay INCONCLUSIVE. README "Verdict rules", RT2 and RT3. I1's recorded RT2 stays as recorded | `tests/test_answers.py`: `PayloadRefusalAttributionTest` (six new tests: feature refusals, RT2 without a control, RT3 with B's request, B's request refused, B's request to another path, and the control's own events) and `RequestUnderTestInCasesTest.test_rt2_feature_refusal_is_refused_feature_not_holds`. `tests/test_interruptions.py` `ProceduresKeepWhatTheyObservedTest.test_rt3_marker_after_the_probe_survives_the_control_ending` |
+| 1. A feature-gated case's observed FAIL becomes INCONCLUSIVE when the enabling request was not 2xx | Fixed: `if not on.ok and result.verdict != matrix.FAIL:` (`:1257`) | `tests/test_answers.py` `FeatureOnFailTest`: S2 and S12 with a failed enabling request, and the INCONCLUSIVE case without an observed FAIL |
+| 2. A charge or limit signal first met during the end of the run does not skip cleanup | Fixed, and recorded where it is met, beyond the suggested flag, after the independent review (points 1 and 3). <br>**Where a signal is recorded:** the server client's two checks (`server_api.py:107`, `:149`) and a client session's two (`client_bridge.py:257`, `:264`) raise through `UsageLedger.stop_at_once` (`usage.py:94`). It records the stop in the run's ledger (`usage.py:76`) before it is raised, and marks it `at_once` (`usage.py:53`). So no later exception can lose it: not another stop kept as the run's stop, and not a Ctrl-C or error that replaces it in flight. <br>**The run's record:** `ProofRun.stop_signals` (`proof_run.py:369`) reads that record. `record_signal` (`:386`) adds any at-once stop not raised through the ledger, where the run's own stop (`cli.py:178`), a restore (`:471`), B's probe (nit 6), the cleanup and the final configuration read (`:3041`) meet one. A signal met by the cleanup also ends it at once (`:2850`). <br>**The end of the run:** `finish()` still restores and re-reads the configuration, but after any recorded signal it skips the cleanup and closes the client processes (`:3028`). The problem reads "cleanup skipped: a charge or limit signal stopped the run at once (…); check it, then run cleanup --apply". `cmd_run` passes `finish()` whether cleanup is needed (`cli.py:206`) and no longer decides from its own stop. <br>**After a recorded signal, whatever is in flight:** <br>• the run stops once the case's row is recorded, when the error in flight is one after which the run would go on (`:1117`); <br>• neither the undo of a client success (`:1405`) nor S15's unset (`:2184`) is sent. <br>README "Budget guardrails" and the end-of-run sequence | `tests/test_stop_signals.py`: `SignalRecordTest` (four tests), `SignalReplacedInFlightTest` (two) and `MemberFieldUnsetTest.test_no_unset_after_a_signal_whose_stop_is_not_in_flight`. <br>`tests/test_cli.py` `CommandTest`: the review's reproduction, three rate-limited retries, the run's own stop, a stop replaced by a Ctrl-C, and a budget stop that still cleans up. <br>`tests/test_interruptions.py` `ReviewScenariosTest.test_no_undo_after_a_signal_whose_stop_an_error_replaced`. <br>`tests/test_temporary_changes.py` `FinishTest`. <br>`tests/test_server_api.py` `StopAtOnceFlagTest`. <br>`tests/test_client_session.py` `ClientRateLimitFlagTest.test_every_client_signal_stops_at_once` |
+| Nit 3. C1's reversal "F2 end of run" no longer reverts its fix | Fixed. <br>**The pattern:** now the 12-space line (`checks/fix_reversals.py:188`). <br>**Anchoring:** a pattern counts only where it starts a line, and must occur there exactly once (`anchored`, `:1746`; `main`, `:1831`). At the start, ten of the 99 reversals had a pattern that began inside a longer line. Nine still reverted their fix (the C2 review found their tests failing on the expected assertion or error); "F2 end of run" did not. All ten are now anchored. <br>**Loading:** every edited file must compile and import (`.py`) or pass `node --check` (`.cjs`), or the reversal is "not demonstrated" (`loads`, `:1757`). <br>**Output:** the script prints each failing test with the exception its failure ended in (`failure_reasons`, `:1782`). <br>The record's "C1's two Ctrl-C ones" is corrected below | `tests/test_fix_reversals.py` `FixReversalsTest` (five tests, including every pattern in the table and every test it names) |
+| Nit 4. Seven mutations passed all 202 tests | Fixed: one test each. <br>**`NOT_A_PASS` guard, feature-on:** `ProductionPhaseAnswerTest.test_feature_on_fail_survives_a_production_request_without_an_answer`. <br>**`NOT_A_PASS` guard, polls-on:** `test_polls_on_fail_survives_a_production_vote_without_an_answer`. <br>**The guardrail the undo meets after an interruption:** `ReviewScenariosTest.test_a_guardrail_met_by_the_undo_after_an_interruption_stops_the_run`. <br>**`*run.post_run_problems` after a second Ctrl-C:** `CommandTest.test_second_ctrl_c_keeps_the_problems_finish_found`. <br>**`run.close_sessions()` after a second Ctrl-C:** `test_second_ctrl_c_closes_the_client_sessions`. <br>**`rate_limited` at the error-only raise site:** `ClientRateLimitFlagTest.test_the_error_only_check_flags_a_rate_limit`. <br>**RT2/RT3 "not listening" for a refused request:** `PayloadRefusalAttributionTest.test_a_refusal_while_b_is_not_listening_is_inconclusive`. <br>Each has a reversal | As listed |
+| Nit 5. A command with more than one request loses what each got | Fixed. The case's row lists each such command's requests, with each request's method, generic path and status (`requests`; `_send` `:408`; `_result` `:1144`; reset for each case `:1092`). In a generic case, a 2xx to any of its requests owes the undo, and a poll or user group it created is tracked for cleanup (`:1290`). After the independent review (point 2), the production phase of a feature-gated case lists its command too, and undoes a 2xx among its requests (`:1246`, `:1253`) | `tests/test_answers.py` `OneRequestTest` (three new tests) and `ProductionPhaseAnswerTest.test_a_production_command_with_several_requests` |
+| Nit 6. B's probe stop dropped | Fixed. When a key still reads as overridden, B's probe stop is kept in `stops` and its signal recorded (`:666`) | `tests/test_stop_signals.py` `ProbeStopKeptTest` |
+| Nit 7. S15 sends its unset after a charge signal | Fixed with the first suggested fix. After a guardrail stop, S15 sends no unset of A's member field (`_unsetting_member_field`, `:2170`), and since the independent review (point 3) none after a recorded signal either (`:2184`). The run's notes, and the row's `member_field_unset` once the case has observed something, say so. Cleanup deletes A; after a charge or limit signal that is `cleanup --apply`. After any other interruption the unset is still sent. README S15 and "Limits" | `tests/test_stop_signals.py` `MemberFieldUnsetTest` (four tests) |
+| Nit 8. A non-2xx read of A's stored user lets the run go on | Fixed, and extended. A read that Stream does not answer with 2xx is caught in E5 and S14: the case is INCONCLUSIVE, "A's stored user could not be read", and the run stops once the row is recorded (`_stored_user`, `:2364`). A guardrail stop on the read is not caught; it is the run's stop. A 2xx listing without A now also stops the run, for the same reason: A's stored role or profile is unknown | `tests/test_procedures.py` `StoredUserReadFailureTest` (three tests); `StoredUserUnreadableTest` now expects the stop |
+| Nit 9. The ledger is not written atomically | Fixed with the first suggested fix: the ledger is written through `_replace`, like every `.work` file (`usage.py:92`) | `tests/test_usage_and_report.py` `UsageTest.test_an_interrupted_save_leaves_the_previous_ledger_whole` |
+| Nit 10. The early-write failure note is not redacted | Fixed: `ctx.redactor.text(str(exc))` (`cli.py:200`) | `tests/test_cli.py` `CommandTest.test_the_early_write_failure_note_is_redacted` |
+
+C1's and C2's own tests changed in six places, each to the new rule or to check more:
+- **Replaced for the manager's decision:** `PayloadRefusalAttributionTest.test_attributable_refusals_hold` and `RequestUnderTestInCasesTest.test_rt2_refused_by_stream_with_nothing_delivered_holds` asserted HOLDS on a feature refusal. The tests in the RT2 and RT3 row replace them.
+- **`PayloadRefusalAttributionTest`'s helpers:** they set up B's control and record the path stream-chat sends `markRead` or `sendEvent` to.
+- **`FinishTest`** records the signal and calls `finish(cleanup=True)` (finding 2).
+- **`StoredUserUnreadableTest`** expects the run to stop after the row, and the E5 test checks the stop (nit 8).
+- **`ClientRateLimitFlagTest.test_flags`** uses the helper that now takes a script; its assertions are unchanged.
+- **`GuardedUnsetTest`'s docstring** says which unset it now exercises (the independent review, point 5).
+
+### The independent review of these corrections
+
+A read-only sub-agent reviewed the diff adversarially while it was being written. It reproduced its points against the fakes in scratch copies and made no Stream call. I verified each point.
+
+1. **A Ctrl-C that replaced a signal's stop lost the signal.** E5's own client session met a rate limit on connect, and a Ctrl-C arrived while E5's `finally` closed that session. The run's record was empty, and the cleanup sent both hard deletes. Fixed: the server client and the client sessions record a signal in the run's ledger as they raise its stop (finding 2's row). Tests: `CommandTest.test_a_signal_whose_stop_a_ctrl_c_replaced_skips_the_cleanup`, `SignalReplacedInFlightTest`.
+2. **The production phase of a feature-gated case lost nit 5's detail and undo.** S5's production command recorded a 201 and then a 403. The row listed neither, and the 201 was not undone. Fixed (nit 5's row). Test: `ProductionPhaseAnswerTest.test_a_production_command_with_several_requests`.
+3. **S15's unset and the undo after an interrupted control decided from the exception in flight, not from the run's record** (latent).
+   - When another key still reads as overridden, B's probe after a removal records its signal but raises `RunStopped`, so S15's unset was still sent.
+   - S15's override has one key today, so this could not happen yet. The reviewer found no path to the undo.
+   - Fixed: neither is sent once a signal is recorded (`:2184`, `:1405`).
+   - Tests: `MemberFieldUnsetTest.test_no_unset_after_a_signal_whose_stop_is_not_in_flight` and `ReviewScenariosTest.test_no_undo_after_a_signal_whose_stop_an_error_replaced`.
+4. **RT3's control was not matched to A's request** (optional).
+   - HOLDS rested on the identical step and the one-request rule.
+   - Fixed: the control counts only if its recorded method and path equal A's (`:2690`); otherwise the case is INCONCLUSIVE (`:2698`). The tests' fakes now record the paths stream-chat 9.53.0 sends `markRead` and `sendEvent` to.
+   - Test: `PayloadRefusalAttributionTest.test_rt3_control_that_was_another_request_is_inconclusive`.
+5. **Some of finding 2's reversals show fallbacks, not the production path** (left as they are, recorded here).
+   - Every production charge or limit stop now comes through `UsageLedger.stop_at_once`. So these only add stops raised elsewhere: the `record_signal` calls in `_restore`, `cleanup()`, the final configuration read and `cmd_run`, and `at_once = at_once or rate_limited`. Their reversals are demonstrated with fakes that raise such stops directly.
+   - The production chain is shown by "C3 review: the ledger records a signal as its stop is raised" and the four raise-site reversals.
+   - Five C1 and C2 tests raise charge-like stops without `at_once`. The reviewer listed four; `RateLimitRetryTest.test_a_charge_signal_is_not_retried` is the fifth. None of their assertions depends on the flag.
+   - `GuardedUnsetTest` passed on the production phase's failing unset, not the control's; its docstring now says so.
+
+The reviewer also confirmed, on the tree it reviewed:
+- no new HOLDS path, and no path that downgrades an observed FAIL;
+- no `except Exception` on the run's path that swallows a `GuardrailStop`;
+- RT3's control is the same request. stream-chat 9.53.0's `markRead` sends one `POST …/read`, or nothing without read events and the capability. Mark-delivered requests need `delivery_events`, which the match type turns off;
+- all 144 reversals in the table it reviewed fail when reverted and pass when restored, none through a SyntaxError or ImportError.
+
+### Records corrected
+
+In this record, each claim was already false at C2's head. Each is corrected in place and marked "(corrected in P06.1-C3)". No recorded result changed, and the six sections the prompt protects are unchanged byte for byte.
+
+- **C2's nit 7 row:** `_server_user` returning `None` held for a 2xx listing only. A listing Stream did not answer with 2xx made `ServerApi.require` raise, so the row read "harness error" and the run went on; the fakes' `require` does not raise, which hid it (the C2 review's nit 8).
+- **C2's review point 4:** "every `.work` file is written through a temporary file" did not hold for the usage ledger (nit 9).
+- **C2's "Checks" row 5:** it read "C1's two Ctrl-C ones". C1 had one Ctrl-C reversal. The fourth reversal that ended without a test report was C1's "F2 end of run", which failed only because the edited `cli.py` did not compile, so 98 of the 99 were demonstrated (nit 3).
+- **C2's "Decisions", the undo bullet:** "a charge or limit signal … deletes none of its data" held only for a signal that was the run's own stop (finding 2).
+- **C2's "What P06.1-I2a must know", outputs:** `.work` files were written through a `.partial` file, except the usage ledger (nit 9).
+
+In `proofs/stream-chat/README.md`, each rule as the code now applies it, with the changed ones marked:
+- RT2 and RT3, including the control's method and path;
+- the one-request rule's `requests` detail and its undo, in both phases of a feature-gated case;
+- feature-gated cases whose enabling request failed;
+- E5's and S14's stop on an unreadable stored user;
+- the undo after an interrupted control, and S15's unset, after a recorded signal;
+- the interrupted-case rule after a signal whose stop an error replaced;
+- the end-of-run cleanup rule and `stop_signals`;
+- the charge-signal paragraph: where a signal is recorded, and what the run then sends;
+- the restore and probe-stop paragraphs;
+- the atomic ledger and the redacted early-write note;
+- exit code 4;
+- the `checks/fix_reversals.py` rules;
+- the limits added in P06.1-C3.
+
+### Checks
+
+Run from `proofs/stream-chat/` unless noted, at code head `a5e2221`, in clean processes (`env -i`), with no `STREAM_*` variable present.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `git diff --check e5180ab… a5e2221` (repository root) | No output, exit 0 |
+| 1 | `git diff --name-only e5180ab… a5e2221` | 19 paths: this record and 18 under `proofs/stream-chat/`, two of them new (`tests/test_stop_signals.py`, `tests/test_fix_reversals.py`). All owned. No dependency file, `.npmrc`, `pyproject.toml` or baseline change. All 52 files under `proofs/stream-chat/` have mode 100644; there is no symlink or executable. +2,400 and −175 lines |
+| 2 | The trusted policy from `origin/main` (`0f45e64`), extracted to a directory outside the tree and run with system Python 3.11.15: `python3 -I change_scope.py --base e5180ab… --head a5e2221… --merge-base` | Exit 0; `{"full": true, "reason": "behavior-or-empty", …}`, 19 paths. One merge base, `e5180ab`. Full scope, as expected |
+| 3 | In a new directory, from the unchanged lock files: `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock`; `pip check`; `npm ci --ignore-scripts`. Proxy and CA variables were passed by reference | Python 3.12.14. "No broken requirements found." `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1. npm: "added 51 packages, and audited 52 packages", "found 0 vulnerabilities". `stream-chat` 9.53.0, `ws` 8.21.3, `https-proxy-agent` 5.0.1 |
+| 4 | `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t .`, on a clean export of each commit using that install | At the start (`e5180ab`): `Ran 202 tests`, `OK`. At the code head: `Ran 252 tests`, `OK` |
+| 4 | `.venv/bin/ruff check .` / `.venv/bin/ruff format --check .` | "All checks passed!" / "40 files already formatted" |
+| 4 | `.venv/bin/mypy` | "Success: no issues found in 39 source files" |
+| 4 | `node --check client/runner.cjs`; `node --check client/error-info.cjs` | Exit 0; exit 0 |
+| 5 | `.venv/bin/python checks/fix_reversals.py <scratch dir>` | At the start (`e5180ab`, its own script): "reversals: 99, not demonstrated: 0", exit 0; but C1's "F2 end of run" failed only because the edited `cli.py` did not compile (nit 3), so 98 of the 99 were demonstrated. At the code head: "reversals: 147, not demonstrated: 0", exit 0, in 617 s: C1's 51, C2's 48 and 48 for C3 (the RT2 and RT3 change, findings 1 and 2, nits 3 to 10, and the independent review's points 1 to 4). Every edited file loaded, and no reversal failed through a SyntaxError or an import error. 124 failed on an assertion, and 20 on the error the reverted fix causes, for example a `KeyError` on a missing detail, `RunStopped` where a guardrail stop was expected, or a `JSONDecodeError` on a truncated file. Three failed because a Ctrl-C aborted the test process, by design: C1's "F2 Ctrl-C handled", and C2's "nit 8 second Ctrl-C inside finish()" and "a Ctrl-C during the early write still reaches the restores". "Each fix reversal at the code head" below lists every reversal and how its tests failed. The checkout was unchanged afterwards |
+| 6 | Secret scan of `git diff e5180ab… a5e2221` (204,608 bytes) | JWT-shaped strings 0; email addresses 0; private-key blocks 0; AWS-style keys 0; GitHub or other token formats 0; the application's API key 0; TLS-weakening settings 0; environment dumps 0; no secret or token assignment in added lines. The 53 long token-like strings are 51 test names, one test helper's name and a separator line |
+| – | The six protected sections of this record, compared with `e5180ab` | Byte-identical |
+
+Not run: any live command; hosted CI (this session opened no pull request and triggered nothing).
+
+#### Each fix reversal at the code head
+
+From `checks/fix_reversals.py`'s output at `a5e2221`, in its order. Each reversal failed as listed with its fix reverted and passed with the fix restored. Long reasons are cut at 150 characters, and at most three failing tests are shown per reversal.
+
+| # | Reversal | How its tests failed with the fix reverted |
+|---|---|---|
+| 1 | F1 request under test (generic) | `test_sdk_error_without_a_request_has_no_answer`: AssertionError: 'permission' != 'no-response'; `test_generic_case_uses_the_record_not_the_sdk_error`: AssertionError: 'HOLDS' != 'FAIL'; `test_generic_case_without_a_request_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 2 | F1 G1 | `test_g1_fails_whenever_the_clients_post_guest_created_a_guest`: AssertionError: 'HOLDS' != 'FAIL' |
+| 3 | F1 G3 | `test_g3_is_inconclusive_unless_the_anonymous_connect_succeeded`: AssertionError: 'anonymous connect' not found in 'no answer recorded (error: rethro… |
+| 4 | F1 RT2/RT3 | `test_rt2_local_throw_is_inconclusive`: AssertionError: 'refusal not attributable (no-response)' != 'no answer from Stream was recorded for the reque…; `test_rt3_null_return_without_a_request_is_inconclusive`: AssertionError: 'refusal not attributable (no-response)' != 'no answer from Stream was reco… |
+| 5 | F2 RunStopped re-raised | `test_failed_restore_stops_the_run`: AssertionError: RunStopped not raised |
+| 6 | F2 try before enabling (type/channel) | `test_journal_entry_exists_before_the_enabling_request`: AssertionError: True is not False |
+| 7 | F2 try before enabling (guest) | `test_guest_creation_is_restored_after_an_interrupt_before_the_control`: AssertionError: False is not True |
+| 8 | F2 guardrail in flight kept | `test_restore_failure_does_not_hide_a_guardrail_stop_in_flight`: glow_stream_proof.proof_run.RunStopped: could not restore glow-match features {'cust… |
+| 9 | F2 end of run: journal, cleanup, verify, exit | `test_configuration_difference_after_the_run_exits_non_zero`: AssertionError: 0 != 4; `test_cleanup_problem_exits_non_zero`: AssertionError: 0 != 4; `test_ctrl_c_restores_cleans_up_writes_results_and_exits_non_zero`: AssertionError: Lists differ: ['guest user creation enabled'] != [] |
+| 10 | F2 Ctrl-C handled | the test process stopped before reporting: KeyboardInterrupt |
+| 11 | F3 exactly one | `test_no_dashboard_user_stops_the_run_when_one_is_expected`: IndexError: list index out of range; `test_two_dashboard_users_stop_the_run`: AssertionError: RunStopped not raised |
+| 12 | F3 created_at | `test_another_creation_time_stops_the_run`: AssertionError: RunStopped not raised |
+| 13 | F4 local events dropped | `test_local_query_event_is_not_counted_as_delivered`: AssertionError: True is not false; `test_marker_only_in_a_local_event_is_not_delivered`: AssertionError: 'FAIL' == 'FAIL' |
+| 14 | nit 1 every window | `test_marker_in_another_event_type_in_the_second_window_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 15 | nit 1 every event type | `test_marker_in_another_event_type_in_the_second_window_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 16 | F5 reply id checked | `test_mismatched_reply_ends_the_session`: AssertionError: ClientSessionEnded not raised |
+| 17 | F5 timeout ends session | `test_timeout_ends_the_session_and_releases_the_connection`: RuntimeError: no reply within 0.5s |
+| 18 | F5 buffered line (select reader) | `test_buffered_line_is_read_without_a_timeout`: glow_stream_proof.client_bridge.ClientSessionEnded: client fake ended: no reply within 1.0s |
+| 19 | F6 simulation guest connect refused | `test_guest_reach_is_not_run_when_the_guest_connect_is_refused`: AssertionError: 'guest connect 403 / code 17' not found in 'identical request with g… |
+| 20 | F7 leak terms | `test_channel_object_without_text_is_a_leak`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_terms`: AssertionError: '{AB}' not found in {'{m_a_text}', '{m_b_text}'} |
+| 21 | nit 2 code 2 | `test_api_key_error_is_not_a_token_refusal`: AssertionError: 'auth' != 'other' |
+| 22 | nit 3 user_id from params | `test_no_user_id_is_not_invented`: AssertionError: 'user_id' unexpectedly found in 'POST /channels/glow-match/{XD}/query ?user_id={X}' |
+| 23 | nit 4 undo checked | `test_failed_undo_stops_the_run_after_its_case`: AssertionError: RunStopped not raised |
+| 24 | nit 4 member field unset checked | `test_member_field_unset_is_checked`: AssertionError: RunStopped not raised |
+| 25 | nit 4 removal re-read | `test_removal_that_did_not_apply_stops_the_run`: AssertionError: RunStopped not raised |
+| 26 | nit 4 removal status checked | `test_removal_refused_stops_the_run`: AssertionError: RunStopped not raised |
+| 27 | nit 5 cleanup steps guarded | `test_a_failing_step_does_not_stop_the_others`: RuntimeError: connection reset |
+| 28 | nit 5 task status judged | `test_task_that_does_not_complete_is_a_problem`: AssertionError: "channels_task is 'failed', not 'completed'" not found in [] |
+| 29 | nit 6 typed-call charge signal | `test_typed_calls_stop_on_a_charge_signal`: KeyError: 'duration' |
+| 30 | nit 7 request op removed | `test_unused_request_op_is_gone`: AssertionError: "Both secret and user tokens are not set.[68 chars]lled" != 'unknown op request' |
+| 31 | nit 8 baseline written without users | `test_baseline_writes_no_other_users_identifier_or_name`: AssertionError: 'private-user-id' unexpectedly found in '{"app": {"app": {"id": 1729640, "d… |
+| 32 | nit 8 redaction by pattern | `test_sensitive_keys_are_matched_by_pattern`: AssertionError: 'plain' != '<redacted-secret>' |
+| 33 | nit 9 verify required settings | `test_verify_checks_permission_version_and_member_custom_settings`: AssertionError: False is not true : permission_version |
+| 34 | nit 10 restore verified | `test_restore_apply_verifies_what_it_restored`: AssertionError: 0 != 1 |
+| 35 | nit 11 isomorphic-ws check | `test_stream_chat_uses_the_runners_websocket`: AssertionError: False is not true : {'id': 1, 'ok': False, 'data': None, 'error': {'status': None, 'co… |
+| 36 | nit 12 cleanup reserve | `test_reserve_covers_the_worst_case_end_of_run`: AssertionError: 115 not less than or equal to 60 |
+| 37 | nit 13 client-created data tracked | `test_client_created_poll_and_group_are_deleted`: AssertionError: '/polls/client-poll' not found in {'/polls/p1'} |
+| 38 | nit 13 verify-clean lists polls and groups | `test_verify_clean_lists_polls_and_user_groups`: KeyError: 'remaining_polls' |
+| 39 | nit 15 check evidence redacted | `test_check_evidence_is_redacted`: AssertionError: '<jwt>' unexpectedly found in 'got <jwt>' |
+| 40 | nit 16 E5 connection role | `test_e5_role_carried_by_the_connection_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 41 | nit 16 S14 connection profile | `test_s14_profile_carried_by_the_connection_fails`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 42 | nit 16 T4-rest-unread controls | `test_unread_refusal_without_its_controls_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 43 | review 1: a re-read proves a removal only if it showed the override | `test_re_read_that_never_shows_the_override_is_recorded_not_verified`: AssertionError: "not verified: ['replies']" not found in 'override removed (20… |
+| 44 | review 1: an ended B session leaves the grant unverified | `test_grant_unverifiable_when_bs_session_has_ended`: glow_stream_proof.proof_run.RunStopped: restore failed: config_overrides ['grants'] on AB: Clien… |
+| 45 | review 2: a failed restore keeps the observed row | `test_failed_restore_stops_the_run`: AssertionError: 'interrupted before the case finished: the run stopped during this case' != 'the restore failed … |
+| 46 | review 3: S15's unset never hides a guardrail stop | `test_guardrail_stop_survives_a_failing_unset`: AssertionError: GuardrailStop not raised |
+| 47 | review 4: polls and groups present at preflight are not leftovers | `test_only_new_ones_are_leftovers`: AssertionError: Lists differ: ['older-poll', 'run-poll'] != ['run-poll'] |
+| 48 | review 5: journalled restores are retried | `test_restore_is_retried`: AssertionError: 1 != 3 |
+| 49 | review nit: an unanswered anonymous connect is not a KeyError | `test_later_probes_are_inconclusive`: AssertionError: 'the anonymous connect did not answer' not found in "harness error: KeyError: 'anonymous'" |
+| 50 | review nit: verify_restored checks automod and message length | `test_verify_restored`: AssertionError: Lists differ: [] != ['team.max_message_length is 1, want 5000'] |
+| 51 | review nit: runner reports ws-api only for Stream's frame | `test_kinds`: AssertionError: 'ws-api' != 'ws-failure' |
+| 52 | C2 F1 an interrupted case keeps what it observed | `test_s2_fail_survives_a_timeout_in_the_production_phase`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_s15_leak_survives_bs_session_ending_during_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; and 17 more |
+| 53 | C2 F1 a guardrail stop records the case | `test_guardrail_stop_with_nothing_observed_records_an_inconclusive_row`: AssertionError: []; `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: []; `test_guardrail_stop_survives_a_failing_unset`: AssertionError: Lists differ: [] != ['S15'] |
+| 54 | C2 F1 Ctrl-C records the case | `test_ctrl_c_with_nothing_observed_records_an_inconclusive_row`: AssertionError: []; `test_s3a_undo_is_not_made_after_ctrl_c`: AssertionError: [] |
+| 55 | C2 F1 the owed undo after an interrupted control | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: KeyError: 'client_success_undo'; `test_s3a_client_success_is_undone_after_a_replay_error`: KeyError: 'client_success_undo'; `test_s3a_undo_is_not_made_after_ctrl_c`: KeyError: 'client_success_undo' |
+| 56 | C2 F1 no undo after a guardrail stop | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: False is not true |
+| 57 | C2 F1 the undo after a completed control is recorded | `test_undo_after_a_completed_control_is_recorded`: KeyError: 'client_success_undo' |
+| 58 | C2 F1 kept: the client's request before its control | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_an_observed_refusal_becomes_inconclusive_with_the_interruption_as_reason`: AssertionError: 'not judged: client X ended: no reply within 60s' !=… |
+| 59 | C2 F1 kept: the feature-on phase (S2) | `test_s2_fail_survives_a_timeout_in_the_production_phase`: KeyError: 'feature_override' |
+| 60 | C2 F1 kept: bad-token REST | `test_t2_rest_success_survives_as_controls_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 61 | C2 F1 kept: bad-token WebSocket | `test_t4_ws_connection_as_b_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 62 | C2 F1 kept: T4-rest-xd | `test_t4_rest_xd_success_survives_xs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 63 | C2 F1 kept: G1 | `test_g1_created_guest_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 64 | C2 F1 kept: guest and anonymous probes | `test_g3_leak_survives_the_controls_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 65 | C2 F1 kept: S10 with polls on | `test_s10_vote_success_survives_an_error_in_the_server_replay`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 66 | C2 F1 kept: S10 before the production vote | `test_s10_polls_on_control_survives_the_production_vote_ending`: AssertionError: 'control not completed' != 'server replay POST -> 201' |
+| 67 | C2 F1 kept: S15 under production | `test_s15_leak_survives_bs_session_ending_during_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 68 | C2 F1 kept: S14's connection | `test_s14_profile_on_the_connection_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 69 | C2 F1 kept: S14's stored state | `test_s14_stored_change_survives_an_error_in_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 70 | C2 F1 kept: E5's connection | `test_e5_role_on_the_connection_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 71 | C2 F1 kept: RT2/RT3 first window | `test_rt2_marker_in_the_first_window_survives_bs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 72 | C2 F1 kept: RT1 | `test_rt1_xd_event_survives_xs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 73 | C2 F2 T4-rest-unread needs both controls and all totals | `test_as_own_control_refused_is_inconclusive`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE'; `test_a_missing_total_is_inconclusive`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE'; `test_b_count_with_as_control_failed_is_inconclusive`: AssertionError: 'FAIL' != 'INCONCLUSIVE' |
+| 74 | C2 F3 RT2/RT3 hold on attributable refusals only | `test_input_not_found_and_other_refusals_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 75 | C2 F3 named events count only after an accepted request | `test_named_events_after_an_unattributable_refusal_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 76 | C2 nit 4 only a rate limit is retried | `test_a_charge_signal_is_not_retried`: AssertionError: 3 != 1 : HTTP 402 |
+| 77 | C2 nit 4 what counts as a rate limit | `test_charge_signals_are_not_rate_limits`: AssertionError: True is not false |
+| 78 | C2 nit 4 flag on typed server calls | `test_rate_limits`: AssertionError: False is not true |
+| 79 | C2 nit 4 flag on raw server calls | `test_the_result_check_flags_a_rate_limit`: AssertionError: False != True : 429 |
+| 80 | C2 nit 4 flag on client requests | `test_flags`: AssertionError: False is not true |
+| 81 | C2 nit 5 production phase needs an answer (feature-gated) | `test_feature_gated_case_without_a_production_answer_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 82 | C2 nit 5 production phase needs an answer (S10) | `test_poll_vote_without_a_production_answer_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 83 | C2 nit 6 exactly one request | `test_two_recorded_requests_have_no_answer`: AssertionError: 'permission' != 'no-response'; `test_generic_case_with_two_requests_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 84 | C2 nit 6 G1's one POST /guest | `test_guest_attempt_with_another_request_has_no_answer`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 85 | C2 nit 7 E5 with an unreadable stored user | `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE' |
+| 86 | C2 nit 7 S14 with an unreadable stored user | `test_s14_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE' |
+| 87 | C2 nit 7 the stored user is matched by ID | `test_server_user_matches_the_id`: AssertionError: {'id': 'someone-else', 'role': 'admin'} is not None; `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised |
+| 88 | C2 nit 8 second Ctrl-C inside finish() | the test process stopped before reporting: KeyboardInterrupt |
+| 89 | C2 nit 8 results written before the end of the run | `test_results_are_written_before_the_end_of_the_run`: StopIteration |
+| 90 | C2 nit 9 accepted but unverified is not 'not restored' | `test_at_the_end_of_the_run`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1231 chars]e}})] != []; `test_during_a_case`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1231 chars]e}})] != [] |
+| 91 | C2 nit 9 B's probe stopped by a guardrail leaves the removal unverified | `test_at_the_end_of_the_run`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1087 chars]e}})] != []; `test_during_a_case`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1087 chars]e}})] != [] |
+| 92 | C2 nit 10 credential key names | `test_credential_keys_of_the_app_settings_model_are_redacted`: AssertionError: False is not true : firebase_server_key |
+| 93 | C2 review: E5 keeps a stored-role FAIL before its restore | `test_e5_stored_role_fail_survives_a_rate_limited_restore`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 94 | C2 review: E5's failed restore stops the run | `test_e5_failed_restore_stops_the_run_after_its_row`: AssertionError: RunStopped not raised |
+| 95 | C2 review: a failing progress write never replaces the stop | `test_a_failing_progress_write_never_replaces_a_guardrail_stop`: OSError: disk full; `test_ctrl_c_is_kept_when_the_progress_write_fails`: OSError: disk full |
+| 96 | C2 review: a key still overridden keeps the change journalled | `test_a_key_still_overridden_keeps_the_change_journalled`: glow_stream_proof.usage.GuardrailStop: guardrail: api_calls would be passed; stopping befo… |
+| 97 | C2 review: finish keeps its problems as it finds them | `test_finish_keeps_the_problems_found_before_a_second_ctrl_c`: AssertionError: False is not true |
+| 98 | C2 review: results files are written atomically | `test_a_failed_write_leaves_the_previous_file_whole`: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) |
+| 99 | C2 review: a Ctrl-C during the early write still reaches the restores | the test process stopped before reporting: KeyboardInterrupt |
+| 100 | C3 RT2/RT3 a feature refusal is REFUSED (feature off), not HOLDS | `test_feature_refusals_are_refused_feature_not_holds`: AssertionError: 'HOLDS' != 'REFUSED (feature off; not a permission error)'; `test_rt2_feature_refusal_is_refused_feature_not_holds`: AssertionError: 'HOLDS' != 'REFUSED (feature off; not a permission error)' |
+| 101 | C3 RT2 an auth or permission refusal without a positive control is INCONCLUSIVE | `test_rt2_auth_or_permission_refusal_has_no_positive_control`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 102 | C3 RT3 an auth or permission refusal HOLDS only when B's own request succeeded | `test_rt3_refusal_without_a_successful_control_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 103 | C3 RT3 the control, B's own identical request, is made | `test_rt3_auth_or_permission_refusal_holds_with_bs_own_request`: AssertionError: 'INCONCLUSIVE' != 'HOLDS' |
+| 104 | C3 RT3 the matrix names B's session as RT3's control | `test_rt3_auth_or_permission_refusal_holds_with_bs_own_request`: AssertionError: 'INCONCLUSIVE' != 'HOLDS' |
+| 105 | C3 RT3 the control's own events are not searched for the marker | `test_rt3_controls_own_events_are_not_searched`: AssertionError: 'FAIL' != 'HOLDS' |
+| 106 | C3 F1 an observed FAIL survives a failed enabling request | `test_fail_survives_a_failed_enabling_request`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 107 | C3 F2 a restore's charge or limit signal is recorded | `test_a_signal_behind_another_stop_skips_the_cleanup`: AssertionError: Lists differ: ['/api/v2/chat/channels/delete', '/api/v2/users/delete'] != []; `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {}; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 108 | C3 F2 finish() skips the cleanup after a recorded signal | `test_a_signal_behind_another_stop_skips_the_cleanup`: AssertionError: Lists differ: ['/api/v2/chat/channels/delete', '/api/v2/users/delete'] != []; `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {}; `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {}; and 1 more |
+| 109 | C3 F2 cmd_run adds its own stop to the run's record | `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 110 | C3 F2 a signal met by the cleanup is recorded | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 0 != 1 |
+| 111 | C3 F2 a signal ends the cleanup at once (untested until C3) | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 'users_delete' unexpectedly found in {'errors': ['channels: server POST /… |
+| 112 | C3 F2 a signal met by the final configuration read is recorded | `test_a_signal_met_by_the_final_configuration_read_is_recorded`: AssertionError: 0 != 1 |
+| 113 | C3 F2 a rate limit is a charge or limit signal | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 'users_delete' unexpectedly found in {'errors': ['channels: server POST /…; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 114 | C3 F2 the server's response hook marks and records a signal | `test_typed_and_raw_calls_mark_the_signal`: AssertionError: False is not true : 402 |
+| 115 | C3 F2 the server's result check marks and records a signal | `test_the_result_check_marks_the_signal`: AssertionError: False is not true : 402 |
+| 116 | C3 F2 a client's recorded request marks and records a signal | `test_every_client_signal_stops_at_once`: AssertionError: False is not true |
+| 117 | C3 F2 a client's error marks and records a signal | `test_every_client_signal_stops_at_once`: AssertionError: False is not true |
+| 118 | C3 review: the ledger records a signal as its stop is raised | `test_a_ctrl_c_that_replaces_the_stop_still_skips_the_cleanup`: AssertionError: Lists differ: [] != ['client A-role: HTTP 402; stopping at once']; `test_an_error_that_replaces_the_stop_still_stops_the_run`: AssertionError: RunStopped not raised; `test_a_signal_whose_stop_a_ctrl_c_replaced_skips_the_cleanup`: AssertionError: Lists differ: [] != ['client A-role: HTTP 402; stopping at once']; and 2 more |
+| 119 | C3 review: a recorded signal stops the matrix after its case | `test_an_error_that_replaces_the_stop_still_stops_the_run`: AssertionError: RunStopped not raised |
+| 120 | C3 nit 3 a pattern counts only at a line start | `test_a_pattern_matches_only_at_a_line_start`: AssertionError: Lists differ: [13] != []; `test_every_pattern_starts_a_line_once`: AssertionError: 2 != 1 : ('C2 nit 6 exactly one request', 'glow_stream_proof/proof_run.py') |
+| 121 | C3 nit 3 an edited file that does not load is not demonstrated | `test_an_edit_that_does_not_compile_or_import_is_reported`: AssertionError: unexpectedly None : broken.py |
+| 122 | C3 nit 4 a feature-on FAIL stays FAIL without a production answer | `test_feature_on_fail_survives_a_production_request_without_an_answer`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 123 | C3 nit 4 a polls-on FAIL stays FAIL without a production answer | `test_polls_on_fail_survives_a_production_vote_without_an_answer`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 124 | C3 nit 4 a guardrail met by the undo after an interruption stops the run | `test_a_guardrail_met_by_the_undo_after_an_interruption_stops_the_run`: AssertionError: GuardrailStop not raised |
+| 125 | C3 nit 4 a second Ctrl-C keeps the problems finish() found | `test_second_ctrl_c_keeps_the_problems_finish_found`: AssertionError: 'temporary change not restored: still on' not found in ['the end of the run was… |
+| 126 | C3 nit 4 a second Ctrl-C closes the client processes | `test_second_ctrl_c_closes_the_client_sessions`: AssertionError: {'A': <tests.fakes.FakeSession object …>} != {} |
+| 127 | C3 nit 4 a client's error flags a rate limit | `test_the_error_only_check_flags_a_rate_limit`: AssertionError: False is not true |
+| 128 | C3 nit 4 RT2/RT3 are INCONCLUSIVE unless B was listening | `test_a_refusal_while_b_is_not_listening_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 129 | C3 nit 5 each request of a command is kept in the row | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: KeyError: 'requests' |
+| 130 | C3 nit 5 a 2xx among a command's requests is undone | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: KeyError: 'client_success_undo' |
+| 131 | C3 nit 6 B's probe stop is kept in the stops | `test_a_probe_stop_is_kept_and_its_signal_recorded`: AssertionError: "B's members query after AB's override removal: client B: HTTP 429; stopping at … |
+| 132 | C3 nit 6 B's probe stop is recorded as a signal | `test_a_probe_stop_is_kept_and_its_signal_recorded`: AssertionError: Lists differ: [] != ['client B: HTTP 429; stopping at once'] |
+| 133 | C3 nit 7 no unset of A's member field after a guardrail stop | `test_no_unset_after_a_guardrail_stop_in_bs_reads`: AssertionError: Lists differ: [('PATCH', '/channels/glow-match/p061i1-si[44 chars]']})] != []; `test_no_unset_after_a_guardrail_stop_in_the_control`: AssertionError: 2 != 1 |
+| 134 | C3 nit 8 a failed read of A's stored user stops the run | `test_e5`: AssertionError: RunStopped not raised; `test_s14`: AssertionError: RunStopped not raised |
+| 135 | C3 nit 8 a listing without A stops the run too | `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised; `test_s14_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised |
+| 136 | C3 nit 9 the usage ledger is written through a temporary file | `test_an_interrupted_save_leaves_the_previous_ledger_whole`: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) |
+| 137 | C3 nit 10 the early-write failure note is redacted | `test_the_early_write_failure_note_is_redacted`: AssertionError: 'RuntimeError: refused near <redacted-jwt> and <redacted-secret>' not found in 'resu… |
+| 138 | C3 nit 8 a guardrail stop on the read of A's stored user is not deferred | `test_a_guardrail_stop_on_the_read_is_the_runs_stop`: glow_stream_proof.proof_run.RunStopped: after E5: E5: A's stored user could not be read: Guardr… |
+| 139 | C3 RT3 kept: both windows before the control | `test_rt3_marker_after_the_probe_survives_the_control_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 140 | C3 F2 the client processes are closed when the cleanup is skipped | `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object …>} != {}; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object …>} != {}; `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object …>} != {} |
+| 141 | C3 nit 5 each case's row lists only its own commands | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: AssertionError: Lists differ: ['cli[39 chars]s/{m_a} -> 201, POST /messages/{m_a} -… |
+| 142 | C3 review: the production command's requests are listed in the row | `test_a_production_command_with_several_requests`: KeyError: 'requests' |
+| 143 | C3 review: a 2xx among the production command's requests is undone | `test_a_production_command_with_several_requests`: AssertionError: 1 != 2 |
+| 144 | C3 review: RT3's control counts only as the same request | `test_rt3_control_that_was_another_request_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 145 | C3 review: S15 sends no unset after a recorded signal, whatever is in flight | `test_no_unset_after_a_signal_whose_stop_is_not_in_flight`: AssertionError: Lists differ: [('PATCH', '/channels/glow-match/p061i1-si[44 chars]']})] !… |
+| 146 | C3 review: no undo after a recorded signal, whatever is in flight | `test_no_undo_after_a_signal_whose_stop_an_error_replaced`: AssertionError: 'made after the interruption: undo POST 201' != "not made: a charge or li… |
+| 147 | C3 nit 5 a poll or group created among several requests is tracked | `test_a_poll_created_among_several_requests_is_deleted_at_cleanup`: AssertionError: 'client-poll' not found in [] |
+
+### Decisions, deviations and limits
+
+- **Decisions to confirm.**
+  - **RT3's control is made only when A's request is refused with an authentication or permission error:** only then does the verdict need it. It is one more client request, B's `markRead`, and one more 2.5 s wait for B's events.
+  - **RT3's control must match A's request by method and generic path** (the independent review, point 4). This can only turn a HOLDS into INCONCLUSIVE.
+  - **Finding 2 goes beyond the suggested flag.**
+    - A signal is recorded where it is met, in the ledger the server client and the client sessions share. The independent review showed that a flag set only where stops are caught misses a stop replaced in flight.
+    - The run stops after a case whose error replaced a signal's stop.
+    - The undo of a client success and S15's unset are not sent once a signal is recorded, whatever is in flight.
+  - **A rate limit is a charge or limit signal,** as the README already said. A 429 at the end of the run is still retried, but the cleanup is skipped even if a retry succeeds.
+  - **Nit 7:** the first suggested fix, skipping the unset, not the README-only option.
+  - **Nit 8 extended to a 2xx listing without A:** it stops the run too, because A's stored role or profile is unknown either way.
+  - **Nit 9:** the first suggested fix, the atomic write.
+  - **Nit 5 in the procedures:** a 2xx among several requests is listed in the row but undone only in a generic case, where undo requests are defined. The procedures keep their own restores.
+- **Deviations.**
+  - Beyond the items: the independent review's points 1 to 4.
+  - New files: `tests/test_stop_signals.py` and `tests/test_fix_reversals.py`.
+  - `GuardrailStop` gained `at_once`, and `UsageLedger` gained `signals` and `stop_at_once`.
+- **Limits.**
+  - Nothing here was exercised live; the tests prove the harness's logic against fakes.
+  - Under today's configuration RT2 cannot HOLD. A feature refusal is REFUSED (feature off), and an authentication or permission refusal has no positive control.
+  - The production phase of a feature-gated generic case tracks no poll or user group it created, as before; no such case can create one.
+  - `record_signal` at the run's catch sites now only adds stops that did not come through the ledger (the independent review, point 5).
+  - `ledger.signals` is kept in memory. A later `cleanup` command does not see it; the operator reads the run's `stop_signals` and its "cleanup skipped" problem.
+  - After a charge or limit signal the run still sends requests by design: the restores of journalled changes, with their verification, and the configuration re-read.
+  - Existing behaviour, unchanged: T4-ws's HOLDS (accepted, not applied) does not consult its control.
+- **No dependency change,** and nothing outside the owned paths.
+
+### What P06.1-I2a must know
+
+In addition to C1's and C2's lists above:
+
+- **Rules that changed** (README "Verdict rules" states each):
+  - **RT2 and RT3, feature refusal:** it is now REFUSED (feature off; not a permission error). Under today's configuration RT2's refusal (I1 recorded 400 code 18) therefore reads REFUSED (feature off), not HOLDS. I1's recorded result stays as recorded.
+  - **Authentication or permission refusal:** for RT3 it HOLDS only when B's own identical `markRead` succeeded, with the same method and path. RT2 has no positive control, so it is INCONCLUSIVE.
+  - A feature-gated case's observed FAIL stands when the enabling request fails.
+  - E5 and S14 stop the run when A's stored user cannot be read.
+  - S15 sends no unset of A's member field after a guardrail stop or a recorded signal.
+- **Stop rules that changed:**
+  - A charge or limit signal (HTTP 402 or 429, Stream code 9 or 99, charge wording) met anywhere in the run skips the cleanup. The run still restores and re-reads the configuration.
+  - The problem "cleanup skipped: …" names the signal. Check it, then run `cleanup --apply`.
+  - After a signal, no undo of a client success and no S15 unset is sent.
+  - The run stops after a case in which an error replaced a signal's stop.
+- **Outputs that changed:**
+  - the results carry `stop_signals`;
+  - rows may carry `requests` (a command that recorded more than one request), `control_event_types` (RT2 and RT3) and `member_field_unset` (S15);
+  - the usage ledger is written through a `.partial` file;
+  - the early-write failure note is redacted.
+- **Not exercised live:** every fix above, including RT3's control against Stream's real `markRead` answers and a signal met at the end of the run.
