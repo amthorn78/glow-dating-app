@@ -2146,7 +2146,7 @@ class ProofRun:
             **list_polls_and_groups(self.api),
         }
 
-    def finish(self, *, cleanup: bool) -> list[str]:
+    def finish(self, *, cleanup: bool, skipped_because: str | None = None) -> list[str]:
         """End every run: restore journalled changes, clean up, verify the configuration.
 
         It runs after any stop, error, timeout or Ctrl-C. Nothing here raises
@@ -2162,8 +2162,10 @@ class ProofRun:
         if cleanup:
             problems += cleanup_problems(self.cleanup())
         else:
+            # Nothing to clean up when preflight stopped the run before setup.
             self.close_sessions()
-            problems.append("cleanup skipped (a charge or limit signal stopped the run at once)")
+            if skipped_because is not None:
+                problems.append(f"cleanup skipped: {skipped_because}")
         try:
             differences = configuration.verify(baseline.read_configuration(self.api))
         except (GuardrailStop, Exception) as exc:

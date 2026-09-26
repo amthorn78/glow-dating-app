@@ -156,6 +156,7 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     ctx.say(f"run {prefix} started {started}")
     stop_reason = None
     cleanup_needed = False
+    skipped_because: str | None = None
 
     def progress() -> None:
         write_json(f"run-{prefix}-progress.json", run.results(), ctx.secrets)
@@ -172,7 +173,9 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
         stop_reason = f"stopped: {ctx.redactor.text(str(exc))}"
     except GuardrailStop as exc:
         stop_reason = f"guardrail: {ctx.redactor.text(str(exc))}"
-        cleanup_needed = cleanup_needed and "stopping at once" not in str(exc)
+        if cleanup_needed and "stopping at once" in str(exc):
+            cleanup_needed = False
+            skipped_because = "a charge or limit signal stopped the run at once"
     except KeyboardInterrupt:
         stop_reason = "interrupted (Ctrl-C)"
     except Exception as exc:  # recorded, never hidden; cleanup still runs
@@ -181,7 +184,7 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
         # Every run ends here: journalled temporary changes are restored and
         # verified, the run's data is cleaned up, and the configuration is
         # verified, whatever stopped the run.
-        problems = run.finish(cleanup=cleanup_needed)
+        problems = run.finish(cleanup=cleanup_needed, skipped_because=skipped_because)
     ctx.say(f"cleanup: {run.cleanup_result}")
     for stop in run.stops:
         ctx.say(f"stop recorded: {stop}")

@@ -14,7 +14,7 @@ The first implementation session. It enforced and recorded the application's che
 
 ### Summary
 
-- **Outcome 1, checks enforced: holds.** Authentication and permission checks were already on. Every bad token got `401`: a development token, a wrong-secret token and an expired token. Every client action outside the design got `403` with code 17 or 70 from Stream's permission layer, and the positive control succeeded each time.
+- **Outcome 1, checks enforced: holds.** Authentication and permission checks were already on. Every bad token got `401`: a development token, a wrong-secret token and an expired token. Of the 85 cases in the final matrix, 65 held with an attributable `401` or `403` (code 5, 40, 43, 17 or 70) and a successful positive control. The other 20 are not refusals with a successful control: RT1, RT2 and RT3 held under their own rules (RT1 no refusal at all, RT2 `400` code 18, RT3 `201`); 4 were filtered `200`s and 3 were accepted but not applied; 9 were INCONCLUSIVE; and S15 got `200` (FAIL) (corrected in P06.1-C1). Code 17 is also not proof of the permission layer on its own: Stream documents `403` "Not Allowed" for disabled and frozen channels too, and code 17 was observed for "polls not enabled for this channel", "guest user creation is disabled for this application" and "this channel role can only be updated server side". Attribution rests on the controls (corrected in P06.1-C1).
 - **Outcome 2, authorized path: holds.** All 18 checks PASS:
   - server-issued 900-second tokens;
   - server-created one-to-one channels;
@@ -23,7 +23,7 @@ The first implementation session. It enforced and recorded the application's che
   - disconnect and reconnect.
 - **Outcome 3, no client bypass: does not hold. One design-level bypass remains.**
   - **S15:** a member can write up to 5 KB of free-text custom data on its own membership.
-  - The other member receives it in the ordinary channel query response and in realtime `member.updated` events.
+  - The other member receives it in the ordinary channel query response. Whether it also arrives in realtime events, such as `member.updated`, is unproven: the harness counted the SDK's own local `channels.queried` event, raised by B's query with the queried state, as delivered to B. I2a maps the event types (corrected in P06.1-C1).
   - No Stream permission governs that write. Removing `read-channel-members` blocks only the separate members endpoint.
   - Per the prompt, this line of work stopped here. It is reported as a design blocker under PF01.
   - The first live run found a second channel, typing events carrying free text. Turning typing events off closed it.
@@ -88,7 +88,7 @@ The first read-only snapshot, at 02:51 UTC, showed one user the proof did not cr
 
 The prompt says to stop in that case. The session did so: it made no live change, built and tested the harness offline, and asked Nathan. His answer, about 03:12 UTC, was **"Proceed, leave it (Recommended)"**. The option he chose read: the proof never reads, changes or deletes that user; cleanup deletes only `p061i1-` users; the lockdown also empties the admin role's grants in the five default types and `glow-match`.
 
-The harness therefore accepts exactly that dashboard user, and only with `--accept-dashboard-user`. Its identifier and name fields are not recorded here.
+The harness accepts that dashboard user only with `--accept-dashboard-user`. At I1's head the flag accepted every user with role `admin` and `custom.dashboard_user` true, however many there were. Since P06.1-C1 the run stops unless exactly one such user exists and it was created in the minute recorded above (24 September 2026, 13:07 UTC) (corrected in P06.1-C1). Its identifier and name fields are not recorded here.
 
 ### Application settings before and after
 
@@ -141,7 +141,7 @@ Final `glow-match` configuration (v3), as re-read at 03:32:
 | On | read_events, search |
 | Other | automod disabled; max_message_length 5000; message_retention infinite |
 
-Temporary changes made during runs, each reversed and verified in the same run:
+Temporary changes made during runs, each reversed in the same run. Only the type-level toggles and the guest setting were verified by a re-read. The removal of AB's `config_overrides` was sent but neither its status checked nor AB re-read, and a failed restore would not have stopped the run; the review's finding 2 applies (corrected in P06.1-C1):
 
 - Channel AB's `config_overrides`: replies, reactions or uploads enabled for one case each, then `{}` (runs 2 and final). A `read-channel-members` grant on AB for S15's control (final run).
 - `glow-match` `custom_events` (S12) and `polls` (S10) set true for a few seconds. Each restore was verified by re-reading the type (runs 2 and final for custom events; final run for polls).
@@ -220,6 +220,11 @@ Every case was run from a client process holding only the API key and one user t
 - **INCONCLUSIVE:** the refusal is not attributable, or the control did not succeed.
 - **FAIL:** the action succeeded.
 
+Added in P06.1-C1: the legend above does not cover the realtime rows, which have their own rules (corrected in P06.1-C1).
+
+- **RT1** involves no refusal. HOLDS meant A received AB's event and nothing about XD while X received XD's event.
+- **RT2 and RT3** ask what reaches B. HOLDS meant that nothing carrying the free-text field arrived while B was shown to be listening: RT2's request was refused `400` code 18, and nothing arrived; RT3's was accepted `201`, and B's `message.read` arrived without the field.
+
 For feature-gated cases, "feature on" is the permission-layer phase: the feature was enabled on AB, or on the type for a few seconds. "Feature off" is the production configuration.
 
 #### Tokens
@@ -243,8 +248,8 @@ For feature-gated cases, "feature on" is the permission-layer phase: the feature
 | G1-create | none | API key only | create a guest user client-side (setGuestUser) | refused | POST /guest | 403 / code 17 | identical request with guest creation enabled (200): 403 / code 17; disabled again (200) and verified | INCONCLUSIVE: permission error, but the positive control did not succeed |
 | G2-read-ab | guest | server-issued guest token | query channel AB | no-leak | - | not run: no guest session | - | INCONCLUSIVE: the guest control did not create a guest |
 | G3-read-ab | anonymous | none (anonymous) | query channel AB | no-leak | POST /channels/glow-match/{AB}/query | 403 / code 17 | A: 201 (succeeded); control found target data True | HOLDS: permission error; control succeeded |
-| G2-channels | guest | server-issued guest token | query channels with an empty filter | no-leak | - | not run: no guest session | - | INCONCLUSIVE: the guest control did not create a guest |
-| G3-channels | anonymous | none (anonymous) | query channels with an empty filter | no-leak | POST /channels | 403 / code 70 | A: 403 / code 70; control found target data False | INCONCLUSIVE: permission error, but the positive control did not succeed |
+| G2-channels | guest | server-issued guest token | query channels with a type filter (corrected in P06.1-C1: the harness's text said "an empty filter") | no-leak | - | not run: no guest session | - | INCONCLUSIVE: the guest control did not create a guest |
+| G3-channels | anonymous | none (anonymous) | query channels with a type filter (corrected in P06.1-C1: the harness's text said "an empty filter") | no-leak | POST /channels | 403 / code 70 | A: 403 / code 70; control found target data False | INCONCLUSIVE: permission error, but the positive control did not succeed |
 | G2-users | guest | server-issued guest token | query users | no-leak | - | not run: no guest session | - | INCONCLUSIVE: the guest control did not create a guest |
 | G3-users | anonymous | none (anonymous) | query users | no-leak | GET /users | 200 (succeeded) | server GET /users -> 200; control found target data True | HOLDS (filtered, not refused): succeeded with none of the target data; control found it |
 | G2-message | guest | server-issued guest token | fetch XD's message by ID | no-leak | - | not run: no guest session | - | INCONCLUSIVE: the guest control did not create a guest |
@@ -349,18 +354,17 @@ Verdict counts for 85 cases: HOLDS 68; HOLDS (filtered, not refused) 4; HOLDS (a
 **1. S15: a member's own membership data reaches the other member. FAIL, not closable through configuration; design blocker.**
 
 - A's client sent `PATCH /channels/glow-match/{AB}/member` (`updateMemberPartial`) with `set: {glow_note: "<free text>"}`, and Stream answered `200`.
-- Under the final configuration, where members have `read-channel` only, B received the text in two ways:
-  - in its ordinary channel query (`POST /channels/glow-match/{AB}/query`, 201), inside the members list;
-  - in a realtime `member.updated` event.
+- Under the final configuration, where members have `read-channel` only, B received the text in its ordinary channel query (`POST /channels/glow-match/{AB}/query`, 201), inside the members list.
+- The realtime path is unproven (corrected in P06.1-C1). The events view found the text because the harness recorded the SDK's local `channels.queried` event, raised by B's own query with the queried state, as if Stream had delivered it; it could not show which event, if any, Stream delivered. The recorded verdict row still reads "B read it via channel_query, B read it via events", as the harness wrote it. The channel query alone confirms S15, and I2a maps the event types.
 - Only B's `GET /members` was refused (`403`, code 17).
 - In the control, `read-channel-members` was granted on AB for a moment. B then also found the text through `GET /members`.
 - In run 2, under v2, the same write succeeded.
 - No Stream permission governs a member's update of its own membership:
-  - the live permission list has no such action;
+  - Stream's permissions reference lists no such action. The claim that "the live permission list" has none has no recorded source: no I1 commit reads `/permissions`, and the reference is not exhaustive (corrected in P06.1-C1);
   - with `update-channel-members` removed for every role, the write still succeeded.
 - Stream's [channel members documentation](https://getstream.io/chat/docs/javascript/channel-members/) allows up to 5 KB of member custom data.
 - A member cannot change its own channel role this way. E6 was refused, `403` code 17 "this channel role can only be updated server side".
-- Taking away `read-channel-members` (v3) did not close the channel, because the channel query and events still carry member data.
+- Taking away `read-channel-members` (v3) did not close the channel, because the channel query still carries member data. Whether events carry it is unproven (corrected in P06.1-C1).
 - Per the prompt, this line of work stopped here and is reported as a design blocker. The design or the provider path needs a decision. Possible directions are for the manager, and none was tested:
   - an app that never renders Stream member data;
   - server-side scrubbing of member custom data through webhooks, which would act after the fact;
@@ -470,14 +474,14 @@ Not run: the repository's Foundation CI jobs. None of them runs this harness's t
 - **Stop condition.** A user the proof did not create was present. The session stopped before any change and asked Nathan, and proceeded only on his answer (see "Stop condition").
 - **Session guardrail.** The brief sets its guardrails per session; the prompt says to count per run. The harness enforces both, keeping a session-wide ledger. That ledger is what ruled out a fifth run.
 - **Configuration changed between runs, from evidence.** Typing events were turned off after the smoke run, and `read-channel-members` was removed after run 2. The final configuration therefore differs from the first one. Each change is recorded above with the observation that caused it.
-- **Temporary setting changes inside runs.** Channel-level feature overrides, the type-level custom-events and polls toggles, and the guest-creation toggle were added for attributable permission-layer evidence and positive controls. Each was reversed and verified in the run.
-- **A run's results were lost.** In run `p061i1-0925031802` an exception escaped before the results were written. The harness now writes results after every case and on any error.
+- **Temporary setting changes inside runs.** Channel-level feature overrides, the type-level custom-events and polls toggles, and the guest-creation toggle were added for attributable permission-layer evidence and positive controls. Each was reversed in the run; only the type toggles and the guest setting were re-read, not the channel-override removals (corrected in P06.1-C1).
+- **A run's results were lost.** In run `p061i1-0925031802` an exception escaped before the results were written. The harness then wrote a progress file after every case, and the results after any `Exception`, but not after Ctrl-C (`KeyboardInterrupt`), which escaped before they were written (corrected in P06.1-C1; since P06.1-C1 Ctrl-C is handled too).
 - **Cleanup missed a guest user in the final run.** It was removed by hand and verified, and the harness was fixed. The fixes in commit 5c91e3a and later have **not been exercised live**, because the session's user budget is spent (19 of 20). They are:
   - matching the run prefix anywhere in a user ID;
   - judging G1's control by its `POST /guest` result;
   - a server-replay control for R9;
   - a membership filter for the guest and anonymous channel probes.
-  The offline simulation test covers them.
+  The offline simulation exercised them against fakes only. Its fake guest connected successfully, which masked that the lockdown refuses the connect `setGuestUser` makes, so it could not show that G2 cannot run as written; S10's procedure was unchanged (corrected in P06.1-C1). The exact-head review's run 2 was their first live use.
 - **Extra dependencies.** The client pins `ws` and `https-proxy-agent`, the versions already in `stream-chat`'s dependency tree, so the SDK's WebSocket can use the session proxy. The proxy passed the WebSocket upgrade: connect, events, disconnect and reconnect all worked. Every realtime case is verified, not marked unverified.
 - **Committed baseline record.** `proofs/stream-chat/baseline/application-1729640-2026-09-25.json` records the pre-proof configuration for restoring. It holds no user data.
 
@@ -490,6 +494,11 @@ Not run: the repository's Foundation CI jobs. None of them runs this harness's t
 - The existence signals described above were not tested further.
 - The restore command was not executed.
 - Revocation, history, outage, economics and cross-device behavior belong to P06.1-I2. Real persistence and races belong to P11.
+- Added in P06.1-C1 (corrected in P06.1-C1):
+  - the client processes are isolated by their environment only; they run as the same operating-system user as the server process;
+  - `verify-clean` cannot see soft-deleted channels, and C13's control soft-deletes AB before cleanup;
+  - at I1's head, the charge-signal check missed the typed SDK calls such as `upsert_users` and `send_message` (fixed in P06.1-C1);
+  - the client endpoints in the review's finding 9 were never tried.
 
 ### Open questions for the manager
 

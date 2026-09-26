@@ -139,6 +139,17 @@ class CommandTest(unittest.TestCase):
         self.assertIn("users_task", results["cleanup"])
         self.assertEqual(results["post_run_problems"], [])
 
+    def test_preflight_stop_exits_non_zero_without_cleanup(self) -> None:
+        def second_dashboard_user(run: ProofRun, server: FakeServer) -> None:
+            server.users["second"] = dashboard_user("second")
+
+        self.assertEqual(self.run_command(second_dashboard_user), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertIn("exactly one is accepted", results["stop_reason"])
+        self.assertEqual(results["post_run_problems"], [])
+        self.assertEqual(results["cleanup"], {})
+        self.assertEqual(results["checks"], [])
+
     def test_baseline_writes_no_other_users_identifier_or_name(self) -> None:
         server = FakeServer(UsageLedger())
         server.users["private-user-id"] = {

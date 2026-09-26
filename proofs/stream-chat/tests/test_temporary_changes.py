@@ -249,12 +249,10 @@ class FinishTest(unittest.TestCase):
         change = TemporaryChange("a leftover change", restore)
         run.journal.append(change)
         with NoSettle():
-            problems = run.finish(cleanup=False)
+            problems = run.finish(cleanup=False, skipped_because="a charge signal")
         self.assertEqual(restored, ["x"])
         self.assertEqual(run.journal, [])
-        self.assertEqual(
-            problems, ["cleanup skipped (a charge or limit signal stopped the run at once)"]
-        )
+        self.assertEqual(problems, ["cleanup skipped: a charge signal"])
         server.app["guest_user_creation_disabled"] = False
         with NoSettle():
             problems = run.finish(cleanup=False)
