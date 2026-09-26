@@ -9,13 +9,14 @@ import unittest
 
 import tests  # noqa: F401
 from glow_stream_proof import matrix
+from tests.fake_world import FakeClock
 from tests.fakes import PREFIX, NoSettle, make_run
 
 
 class SimulationTest(unittest.TestCase):
     def test_full_orchestration_against_fakes(self) -> None:
         run, server = make_run()
-        with NoSettle():
+        with NoSettle(), FakeClock():
             run.setup()
             run.authorized_path()
             run.run_matrix()

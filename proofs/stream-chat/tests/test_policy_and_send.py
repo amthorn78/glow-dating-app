@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import tests  # noqa: F401
-from glow_stream_proof.app_send import AppSendService
+from glow_stream_proof.app_send import AppSendService, ProviderUnavailable
 from glow_stream_proof.policy import MatchState
 
 
@@ -71,6 +71,23 @@ class AppSendTest(unittest.TestCase):
         outcome = AppSendService(blocked, sender, "glow-match").send("a", "ab", "hello")
         self.assertEqual(outcome.decision.reason, "blocked")
         self.assertEqual(sender.calls, [])
+
+    def test_an_unreachable_provider_refuses_the_send_and_keeps_nothing(self) -> None:
+        # P06.1-I2a, the outage injection: no answer at all is a refusal, not an error
+        # that escapes, and the app keeps no message ID and no change of state.
+        class Unreachable:
+            def send_as(self, *_args: Any) -> Any:
+                raise ProviderUnavailable("ConnectError: injected outage")
+
+        s = state()
+        before = (dict(s._channels), set(s._blocks))
+        outcome = AppSendService(s, Unreachable(), "glow-match").send("a", "ab", "hello")
+        self.assertTrue(outcome.decision.allowed)
+        self.assertTrue(outcome.stream_called)
+        self.assertIsNone(outcome.message_id)
+        self.assertEqual(outcome.provider_error, "ConnectError: injected outage")
+        self.assertFalse(outcome.sent)
+        self.assertEqual((dict(s._channels), set(s._blocks)), before)
 
 
 if __name__ == "__main__":

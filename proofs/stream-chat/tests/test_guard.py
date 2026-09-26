@@ -94,6 +94,8 @@ def user_calls(user: str, channel: str = AB) -> list[tuple[str, str, Any, dict[s
         ("POST", f"/channels/{ch_type}/{ch_id}", {"remove_members": [user]}, {}),
         ("POST", f"/channels/{ch_type}/{ch_id}", {"add_members": [{"user_id": user}]}, {}),
         ("PATCH", f"/api/v2/chat/channels/{ch_type}/{ch_id}/member", {}, {"user_id": user}),
+        # The deprecated member path names the member in the path (P06.1-I2a, step 2).
+        ("PATCH", f"/channels/{ch_type}/{ch_id}/member/{user}", {"set": {"x": 1}}, {}),
         ("POST", "/api/v2/users/block", {"blocked_user_id": user, "user_id": A}, {}),
         ("POST", "/api/v2/guest", {"user": {"id": user}}, {}),
     ]

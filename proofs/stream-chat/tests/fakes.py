@@ -290,13 +290,34 @@ class FakeSession:
     ``behaviour`` is asked first and may return a reply of its own.
     """
 
-    def __init__(self, label: str, behaviour: Behaviour | None = None) -> None:
+    def __init__(
+        self, label: str, behaviour: Behaviour | None = None, ledger: UsageLedger | None = None
+    ) -> None:
         self.label = label
         self.behaviour = behaviour
         self.pending_events: list[dict[str, Any]] = []
         self.sent: list[tuple[str, dict[str, Any]]] = []
+        # As ClientSession: an open connection is counted in the ledger (P06.1-I2a: the
+        # simulation counts the peak for the run plan).
+        self.ledger = ledger
+        self.connected = False
 
     def send(self, op: str, **params: Any) -> Reply:
+        opens = op in ("connect", "guest", "anonymous") and not self.connected
+        if opens and self.ledger is not None:
+            self.ledger.connection_opened()
+        reply = self._send(op, **params)
+        if opens and self.ledger is not None:
+            if reply.ok:
+                self.connected = True
+            else:
+                self.ledger.connection_closed()
+        if op == "disconnect" and reply.ok and self.connected and self.ledger is not None:
+            self.connected = False
+            self.ledger.connection_closed()
+        return reply
+
+    def _send(self, op: str, **params: Any) -> Reply:
         self.sent.append((op, params))
         if self.behaviour is not None:
             scripted = self.behaviour(self, op, params)
@@ -331,7 +352,9 @@ class FakeSession:
         return http_reply(403, 17)
 
     def close(self, *, raise_signal: bool = True) -> None:
-        pass
+        if self.connected and self.ledger is not None:
+            self.connected = False
+            self.ledger.connection_closed()
 
 
 def make_run(
@@ -339,6 +362,7 @@ def make_run(
     behaviours: dict[str, Behaviour] | None = None,
     *,
     ledger: UsageLedger | None = None,
+    default_behaviour: Behaviour | None = None,
 ) -> tuple[ProofRun, FakeServer]:
     ledger = ledger or (server.ledger if server else UsageLedger())
     server = server or FakeServer(ledger)
@@ -355,7 +379,10 @@ def make_run(
     behaviours = behaviours or {}
 
     def fake_session(label: str, token: str | None, **_: Any) -> Any:
-        return sessions.setdefault(label, FakeSession(label, behaviours.get(label)))
+        # A label used again after its session was closed gets a new session.
+        return sessions.setdefault(
+            label, FakeSession(label, behaviours.get(label, default_behaviour), ledger)
+        )
 
     def deliver(channel_id: str, message_id: str) -> None:
         # Stream delivers a server-sent message to the channel's connected members.

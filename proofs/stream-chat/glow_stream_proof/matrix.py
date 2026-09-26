@@ -31,7 +31,18 @@ from typing import Any, Literal
 
 from .configuration import DEFAULT_TYPES, MATCH_TYPE
 
-Expect = Literal["refused", "no-leak", "not-effective", "identity-kept", "carries-no-free-text"]
+Expect = Literal[
+    "refused",
+    "no-leak",
+    "not-effective",
+    "identity-kept",
+    "carries-no-free-text",
+    # P06.1-I2a
+    "ends-access",
+    "no-oracle",
+    "mapping",
+    "refuses-without-state",
+]
 Outcome = Literal[
     "success", "auth", "permission", "feature", "not-found", "input", "other", "no-response"
 ]
@@ -117,6 +128,10 @@ class Case:
     # Type-level features enabled briefly for features Stream cannot override per
     # channel (custom events, polls); restored and verified right after.
     type_override: Mapping[str, Any] = field(default_factory=dict)
+    # The most API calls the case can use; the run starts it only with that many left
+    # beyond the calls kept for the end of the run (P06.1-I2a: the I2a cases use more
+    # than the 30 an I1 case can).
+    calls: int = 30
 
 
 # -- placeholders ---------------------------------------------------------------
@@ -1212,6 +1227,38 @@ def _create_join() -> list[Case]:
     return cases
 
 
+def _revocation() -> list[Case]:
+    """P06.1-I2a: each mechanism under the history policy, on a channel of its own
+    (glow_stream_proof.mechanisms). Phases from 100 run after the I1 matrix."""
+    control = Control(
+        kind="custom", note="the same requests by the same members before the mechanism"
+    )
+    specs = (
+        ("RV-remove", "revocation", "remove M1 from its channel (M2 named as the acting user)"),
+        ("RV-ban", "revocation", "ban M1 in its channel (M2 named as the banning user)"),
+        ("RV-hide", "revocation", "hide the channel for M1"),
+        ("RV-freeze", "revocation", "freeze the channel (M2 named as the acting user)"),
+        ("RV-revoke", "revocation", "revoke R's tokens issued before now (R has two devices)"),
+        ("SD-deactivate", "suspension-deletion", "deactivate S (messages kept)"),
+        ("SD-delete", "suspension-deletion", "hard-delete H (messages and conversations hard)"),
+    )
+    return [
+        Case(
+            id=case_id,
+            group=group,
+            actor="server",
+            token="server",
+            action=action,
+            expect="ends-access",
+            control=control,
+            procedure=f"mechanism:{case_id.split('-', 1)[1]}",
+            phase=100 + n,
+            calls=120,
+        )
+        for n, (case_id, group, action) in enumerate(specs)
+    ]
+
+
 def all_cases() -> list[Case]:
     cases = (
         _tokens_and_access()
@@ -1220,6 +1267,7 @@ def all_cases() -> list[Case]:
         + _content()
         + _escalation()
         + _create_join()
+        + _revocation()
     )
     return sorted(cases, key=lambda c: c.phase)
 

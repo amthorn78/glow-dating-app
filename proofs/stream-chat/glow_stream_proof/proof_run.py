@@ -31,10 +31,12 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
+from getstream.exceptions import StreamTransportException
 from getstream.models import ChannelInput, ChannelMemberRequest, MessageRequest, UserRequest
 
-from . import baseline, configuration, guard, matrix
-from .app_send import AppSendService
+from . import baseline, configuration, guard, matrix, mechanisms
+from .app_send import AppSendService, ProviderUnavailable
 from .client_bridge import ClientSession, ClientSessionEnded, Reply, client_environment
 from .configuration import MATCH_MEMBER_GRANTS, MATCH_TYPE
 from .credentials import ServerCredentials
@@ -64,6 +66,10 @@ CASE_CALL_MARGIN = 30
 EVENT_WAIT_MS = 2500
 TYPE_CHANGE_SETTLE_SECONDS = 3
 DESTRUCTIVE_PHASE = 70
+# From this phase the cases are P06.1-I2a's revocation, suspension and deletion
+# families, on their own users and channels: the I1 sessions are closed first, so
+# that the families' sessions stay within the connection guardrail.
+FAMILY_PHASE = 100
 T = MATCH_TYPE
 # Nathan's confirmed dashboard administrator user was created at this minute
 # (UTC), as recorded in the P06.1 evidence. Preflight compares only the minute;
@@ -280,6 +286,10 @@ def _generic(text: str, ctx: Mapping[str, str]) -> str:
 
 _TABLE_NAMES = frozenset(
     {"A", "B", "X", "D", "AB", "XD", "m_a", "m_b", "m_x", "m_ctl", "prefix", "guest_id", "ctl_poll"}
+    # P06.1-I2a: the families' users, their names and their channels.
+    | {"M1", "M2", "R", "S", "H", "M1_name", "M2_name", "R_name", "S_name", "H_name"}
+    # (written out: mechanisms imports this module; tests/test_mechanisms.py checks it)
+    | {"CH_remove", "CH_ban", "CH_hide", "CH_freeze", "CH_revoke", "CH_deactivate", "CH_delete"}
 )
 
 
@@ -496,8 +506,13 @@ class ProofRun:
             request.method, matrix.substitute(request.path, self.ctx), body=body, params=params
         )
 
-    def _remaining_ok(self) -> bool:
-        return self.ledger.remaining("api_calls") > CLEANUP_RESERVE + CASE_CALL_MARGIN
+    def _remaining_ok(self, case: matrix.Case | None = None) -> bool:
+        """Whether the case can run and still leave the calls the end of the run needs.
+
+        An I2a case declares how many calls it can use (``Case.calls``, P06.1-I2a).
+        """
+        margin = max(CASE_CALL_MARGIN, case.calls if case is not None else 0)
+        return self.ledger.remaining("api_calls") > CLEANUP_RESERVE + margin
 
     # -- temporary changes and undos ----------------------------------------------
 
@@ -961,14 +976,7 @@ class ProofRun:
     # -- authorized path -----------------------------------------------------------
 
     def send_as(self, channel_type: str, channel_id: str, user_id: str, text: str) -> ApiResult:
-        response = self.api.sdk.chat.send_message(
-            type=channel_type,
-            id=channel_id,
-            message=MessageRequest(text=text, user_id=user_id),
-        )
-        message_id = response.data.message.id
-        self.messages.add(str(message_id))
-        return ApiResult("POST", "send_message", 201, None, None, {"message": {"id": message_id}})
+        return server_send(self.api, self.messages, channel_type, channel_id, user_id, text)
 
     def authorized_path(self) -> None:
         service = AppSendService(self.state, self, T)
@@ -1146,6 +1154,7 @@ class ProofRun:
         self, only: set[str] | None = None, progress: Callable[[], None] | None = None
     ) -> None:
         reconnected = False
+        families = False
         for case in matrix.all_cases():
             if case.phase >= DESTRUCTIVE_PHASE and not reconnected:
                 # The reconnect check needs AB; the destructive cases come after it.
@@ -1153,7 +1162,11 @@ class ProofRun:
                 reconnected = True
             if only and case.id not in only:
                 continue
-            if not self._remaining_ok():
+            if case.phase >= FAMILY_PHASE and not families:
+                # The I1 sessions are not used again (P06.1-I2a).
+                self._close_i1_sessions()
+                families = True
+            if not self._remaining_ok(case):
                 self.notes.append(
                     f"matrix stopped before {case.id}: API-call budget reserved for cleanup"
                 )
@@ -1192,6 +1205,20 @@ class ProofRun:
                 )
         if not reconnected:
             self.reconnect_check()
+
+    def _close_i1_sessions(self) -> None:
+        """Close the I1 matrix's sessions before the I2a families (P06.1-I2a).
+
+        A signal a closing session reports is recorded and raised as the run's stop.
+        """
+        for label in [k for k in self.sessions if not k.startswith(mechanisms.FAMILY_LABELS)]:
+            session = self.sessions.pop(label)
+            session.close()
+        if self.stop_signals:
+            raise RunStopped(
+                f"a charge or limit signal was met as the I1 sessions closed "
+                f"({self.stop_signals[0]})"
+            )
 
     def _progress_quietly(self, progress: Callable[[], None] | None) -> None:
         """Write progress while a stop is in flight; a failed write never replaces the stop."""
@@ -1585,8 +1612,14 @@ class ProofRun:
             "typing-payload": self._proc_typing,
             "read-payload": self._proc_read,
             "realtime-isolation": self._proc_realtime_isolation,
+            # P06.1-I2a
+            "mechanism": self._proc_mechanism,
         }[name]
         return handler(case, arg)
+
+    def _proc_mechanism(self, case: matrix.Case, key: str) -> CaseResult:
+        """A revocation, suspension or deletion mechanism (P06.1-I2a)."""
+        return mechanisms.run_mechanism(self, case, key)
 
     def _bad_token(self, kind: str) -> tuple[str | None, str]:
         a = self.ctx["A"]
@@ -3200,6 +3233,28 @@ class ProofRun:
             "usage": self.ledger.summary(),
             "ws_attempts": self.ws_attempts,
         }
+
+
+def server_send(
+    api: ServerApi, messages: set[str], channel_type: str, channel_id: str, user_id: str, text: str
+) -> ApiResult:
+    """Send ``text`` as ``user_id`` with the server SDK, and record the message's ID.
+
+    A request that got no answer at all (a connection error, which the SDK raises as
+    ``StreamTransportException``) raises :class:`ProviderUnavailable`, so that the app
+    send path refuses the send and keeps nothing of it (P06.1-I2a).
+    """
+    try:
+        response = api.sdk.chat.send_message(
+            type=channel_type,
+            id=channel_id,
+            message=MessageRequest(text=text, user_id=user_id),
+        )
+    except (StreamTransportException, httpx.TransportError) as exc:
+        raise ProviderUnavailable(f"{type(exc).__name__}: {exc}") from exc
+    message_id = response.data.message.id
+    messages.add(str(message_id))
+    return ApiResult("POST", "send_message", 201, None, None, {"message": {"id": message_id}})
 
 
 def list_polls_and_groups(api: ServerApi) -> dict[str, Any]:

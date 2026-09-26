@@ -1,7 +1,7 @@
 import unittest
 
 import tests  # noqa: F401
-from glow_stream_proof import matrix
+from glow_stream_proof import matrix, proof_run
 from glow_stream_proof.configuration import DEFAULT_TYPES
 
 
@@ -104,7 +104,24 @@ class MatrixDefinitionTest(unittest.TestCase):
         for destructive in ("S4a", "S4b", "C12", "C13"):
             for earlier in ("S3a", "S5", "S8", "R6", "C11"):
                 self.assertLess(order.index(earlier), order.index(destructive))
-        self.assertEqual(order[-1], "C13")
+        # C13 deletes AB, so it is the last case that uses it. P06.1-I2a's families come
+        # after it: each runs on users and a channel of its own.
+        on_ab = [c.id for c in self.cases if c.phase < proof_run.FAMILY_PHASE]
+        self.assertEqual(on_ab[-1], "C13")
+        families = [c for c in self.cases if c.phase >= proof_run.FAMILY_PHASE]
+        self.assertEqual(
+            [c.id for c in families],
+            [
+                "RV-remove",
+                "RV-ban",
+                "RV-hide",
+                "RV-freeze",
+                "RV-revoke",
+                "SD-deactivate",
+                "SD-delete",
+            ],
+        )
+        self.assertEqual(order[-len(families) :], [c.id for c in families])
 
     def test_no_case_acts_as_a_privileged_role(self) -> None:
         for case in self.cases:

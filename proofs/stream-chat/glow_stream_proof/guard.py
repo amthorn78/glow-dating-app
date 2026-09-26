@@ -290,6 +290,9 @@ def _reason(
             return _unowned(users, channels, scope) if channels else "no channel named"
         if len(parts) < 3 or parts[1] in _KEYWORDS:
             return "not a kind of request this proof makes"
+        if len(parts) >= 5 and parts[3] == "member":
+            # The deprecated member path: channels/{type}/{id}/member/{user_id} (P06.1-I2a).
+            users = [parts[4], *users]
         return _unowned(users, [f"{parts[1]}:{parts[2]}", *channels], scope)
     if family == "moderation":
         if len(parts) < 2 or parts[1] not in ("ban", "unban", "mute", "unmute"):
