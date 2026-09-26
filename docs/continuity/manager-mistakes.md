@@ -46,6 +46,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-12 | 25 Sep 2026 | accuracy | Told Nathan the I1 review was running, and later the only task running, when he had not started it | Nathan |
 | AM3-13 | 26 Sep 2026 | accuracy | Recorded in ADR 0003's Context and the brief, as established, that the other member receives S15's text in `member.updated` events; I1's harness could not show which event carried it | The exact-head review of I1 (finding 4) |
 | AM3-14 | 26 Sep 2026 | execution | Ran the trusted classifier with a short base SHA; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only` | The classifier itself |
+| AM3-15 | 26 Sep 2026 | accuracy | The handoff's "Branches" section kept saying that every other remote branch was merged into `main` after the I1 and flake session branches were integrated only into PR26 | App Manager 3, checking branches for C1's integration |
 
 ## App Manager 2
 
@@ -257,3 +258,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none on the decision. S15 stands on the channel-query path alone, which the review confirmed live. The display rule already ignores `member.updated` events.
 - **Correction:** ADR 0003's Context and the brief now give the event path as unproven and point to I2a, which maps the event types. The evidence record's own lines are corrected in the correction pass, P06.1-C1, with the harness fix.
 - **Prevention:** when a record cites a live result as the basis of a decision, name the view or check that produced it, and give an implementer's claim as the implementer's until a review confirms it.
+
+### AM3-15 — A stale branch statement in the handoff (accuracy)
+
+- **What happened:** the handoff's "Branches" section said that every remote branch other than those it named was fully merged into `main`. After App Manager 3 integrated the I1 session branch (`claude/compassionate-lamport-531vtk`) and the flake diagnosis branch (`claude/trusting-mayer-bw6p40`) into PR26, both were merged only into PR26, and the line was not updated.
+- **Caught by:** App Manager 3, checking where each remote branch is merged before recording C1's integration.
+- **Effect:** none known. No branch was deleted or retired on the strength of it.
+- **Correction:** the section now names the session branches merged into PR26, C1's included.
+- **Prevention:** an integration batch updates the handoff's "Branches" section in the same commit as the merge's records.

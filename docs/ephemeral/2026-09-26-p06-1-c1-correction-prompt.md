@@ -11,6 +11,7 @@
   - Manager: extra high.
   - TypeSafe v4: high (score 2.20, P(high) 0.67, P(extra high) 0.27), with no ultracode flag (P(single session) 0.91).
   - **Used: extra high.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** the manager verified the branch and integrated it at `e85bba0` on 26 September; see the evidence record, "P06.1-C1 corrections" and the manager's verification under it.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows it.

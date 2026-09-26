@@ -1022,3 +1022,27 @@ Not run: any live command, and the repository's Foundation CI (not triggered by 
 - **`member.updated`:** I2a maps the event types with the filtered events view. `marker_event_types` names the event that carried the marker.
 - **G2 and S10** still need the new setups the review describes (finding 6). The simulation now shows G2 as "not run", as the live runs did.
 - **Budget:** the matrix now stops at 160 calls left (130 kept for the end of the run, plus 30), and preflight makes two more calls.
+
+### Manager verification (App Manager 3, 26 September 2026)
+
+App Manager 3 checked the relayed report against the pushed branch. The manager makes no call to Stream, so nothing here was exercised live; the first live use is in I2a.
+
+- **Identity:**
+  - branch `claude/youthful-pasteur-caokpc`, head `9e018c67858ccafa5f84dd75bcef51dcc3dfb49a`, tree `35ee86cecb5221f972e914c8c0f525c0888fa49b`; code head `be46319`;
+  - it builds on the start `360ad9e` in seven commits: 29 files, +4,674 and −591;
+  - every path is owned, and every file has mode 100644. No dependency file, `.npmrc`, `pyproject.toml` or the committed baseline changed, and `git diff --check` is clean;
+  - the manager's two sections of this record, "Manager verification" and "Exact-head review of I1", are byte-identical to the start. The record carries 13 "(corrected in P06.1-C1)" markers.
+- **Classification:** the trusted policy from `main` (`0f45e64`), run outside the tree with `python3 -I`, gave full scope (`behavior-or-empty`) for 29 paths, with one merge base.
+- **Offline re-run,** in a scratch worktree at `9e018c6`, in clean processes without any `STREAM_*` variable. Installs got the proxy and CA variables by reference.
+  - `pip install --require-hashes -r requirements-dev.lock`, then `pip check`: "No broken requirements found." `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1.
+  - `npm ci --ignore-scripts`: "found 0 vulnerabilities"; `stream-chat` 9.53.0.
+  - Unit tests: `Ran 142 tests`, `OK`. Ruff check: "All checks passed!". Ruff format: "37 files already formatted". mypy: "no issues found in 36 source files". `node --check` on both `.cjs` files: exit 0.
+  - `checks/fix_reversals.py`: "reversals: 51, not demonstrated: 0", exit 0, in about two minutes. The checkout was unchanged afterwards.
+- **Secret scan** of the whole diff (320,008 bytes): no JWT-shaped string, email address, private-key block, AWS-style key, TLS-weakening setting or the application's API key.
+- **Code read:** how a verdict gets Stream's answer (`_answer_of` and `_http_answer`, `proof_run.py` around line 130), the one-dashboard-user preflight (around line 600), and `cmd_run`'s stop handling and `finish()` (`cli.py` around line 140). Each matches the report. The exact-head review reads the whole change.
+- **Integration:** merged into the manager branch as `e85bba0f054908a801b43e6f9d514b04f5fdbf78`, pushed alone at 03:44 UTC. The merge brings exactly C1's 29 files.
+- **Hosted CI on `e85bba0`:** push run [36215753866](https://github.com/amthorn78/glow-dating-app/actions/runs/36215753866) and PR run [36215756463](https://github.com/amthorn78/glow-dating-app/actions/runs/36215756463) passed all six jobs, and the push run's gate says `Application checks passed`. The rendered suite passed 84 of 84 on the pinned Chromium in 3.9 minutes. No Foundation job runs the harness's own tests yet (I2b adds one); the offline re-run above covers them.
+- **Disposition:**
+  - nits 14 and 17 stand as recorded limits;
+  - C1's own choices go to the exact-head review: a charge-signal stop still restores and re-reads; a failed undo stops the run; a removal that cannot be proven is "not verified", with exit 4;
+  - "What P06.1-I2a must know" feeds I2a's prompt; the brief's "Sessions" points to it.
