@@ -54,6 +54,7 @@ class SimulationTest(unittest.TestCase):
         self.assertIn("guest connect 403 / code 17", cases["G1-create"].control)
         self.assertNotIn("guest", run.sessions)
         setup = run.g2_setup
+        self.assertIsNotNone(setup, "G2's server-side setup was not made")
         assert setup is not None
         self.assertEqual(setup["server_create"], "403 / code 17")
         self.assertEqual(setup["with_guest_creation_enabled"]["server_create"], "201")

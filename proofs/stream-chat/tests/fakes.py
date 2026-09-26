@@ -174,9 +174,11 @@ class FakeServer:
             return ok(method, path, {"members": [{"user_id": i} for i in ids]}, 200)
         if path == "/api/v2/chat/channels":
             cid = ((body or {}).get("filter_conditions") or {}).get("cid")
-            if cid:
-                channel = self.effective_channel(str(cid).split(":", 1)[1])
+            channel_id = str(cid).split(":", 1)[-1]
+            if cid and channel_id in self.members:
+                channel = self.effective_channel(channel_id)
                 return ok(method, path, {"channels": [{"channel": channel}]}, 201)
+            # As Stream: a channel that does not exist is not listed (P06.1-I2a).
             return ok(method, path, {"channels": []}, 201)
         if path.startswith("/channels/glow-match/") and method == "PATCH" and "/member" not in path:
             channel_id = path.split("/")[3]
@@ -318,6 +320,9 @@ class FakeSession:
         if opens and self.ledger is not None:
             self.ledger.connection_opened()
         reply = self._send(op, **params)
+        if self.ledger is not None and reply.api_calls:
+            # Counted as ClientSession counts a command's requests.
+            self.ledger.reserve("api_calls", reply.api_calls, source="client")
         if opens and self.ledger is not None:
             if reply.ok:
                 self.connected = True

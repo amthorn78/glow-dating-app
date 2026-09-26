@@ -61,6 +61,12 @@ TGU = "tests.test_guard."
 TCS = "tests.test_client_session."
 TRS = "tests.test_configuration.RecordedSettingsTest."
 TCK = "tests.test_closing_checks.ClosingChecksTest."
+# P06.1-I2a, step 2.
+MX = "glow_stream_proof/mechanisms.py"
+I2 = "glow_stream_proof/i2a.py"
+AS = "glow_stream_proof/app_send.py"
+TMX = "tests.test_mechanisms."
+TI2 = "tests.test_i2a."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -2193,6 +2199,112 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         "I2a signals by kind: a rate limit's stop names its reset",
         [(S, '    return f" (x-ratelimit-reset {reset})" if reset else ""\n', '    return ""\n')],
         ["tests.test_server_api.SignalKindAtTheServerTest.test_the_stop_names_the_reset"],
+    ),
+    # P06.1-I2a, step 2: the new cases' safety rules.
+    (
+        "I2a step 2 guard: a member named in the path",
+        [(G, "            users = [parts[4], *users]\n", "            pass\n")],
+        [TGU + "RefusalTest.test_a_user_the_run_did_not_create_is_refused"],
+    ),
+    (
+        "I2a step 2 outage: the app send path refuses an unreachable provider",
+        [
+            (
+                AS,
+                "        except ProviderUnavailable as exc:\n",
+                "        except ArithmeticError as exc:\n",
+            )
+        ],
+        [
+            "tests.test_policy_and_send.AppSendTest.test_an_unreachable_provider_refuses_the_send_and_keeps_nothing",
+            TI2 + "OutageTest.test_the_send_is_refused_and_nothing_is_kept",
+        ],
+    ),
+    (
+        "I2a step 2 outage: the server send turns a connection error into a refusal",
+        [
+            (
+                P,
+                "    except (StreamTransportException, httpx.TransportError) as exc:\n",
+                "    except ArithmeticError as exc:\n",
+            )
+        ],
+        [TI2 + "OutageTest.test_the_send_is_refused_and_nothing_is_kept"],
+    ),
+    (
+        "I2a step 2 delete: the hard-deleted user is not named at cleanup",
+        [(MX, "                run.users.remove(affected_id)\n", "                pass\n")],
+        [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
+    ),
+    (
+        "I2a step 2 delete: the channel the delete removed is not named at cleanup",
+        [(MX, "            run.channels.remove(self.cid)\n", "            pass\n")],
+        [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
+    ),
+    (
+        "I2a step 2 sessions: the I1 sessions close before the families",
+        [(P, "                self._close_i1_sessions()\n", "                pass\n")],
+        [TMX + "StopsTest.test_the_i1_sessions_close_before_the_families_only_when_one_runs"],
+    ),
+    (
+        "I2a step 2 sessions: a family closes its own sessions",
+        [(MX, "                close_session(self.run, label)\n", "                pass\n")],
+        [TMX + "BudgetAndSessionsTest.test_a_familys_own_sessions_are_closed_at_its_end"],
+    ),
+    (
+        "I2a step 2 budget: a case starts only with the calls it declared",
+        [
+            (
+                P,
+                "        margin = max(CASE_CALL_MARGIN, case.calls if case is not None else 0)\n",
+                "        margin = CASE_CALL_MARGIN\n",
+            )
+        ],
+        [TMX + "BudgetAndSessionsTest.test_a_family_starts_only_with_the_calls_it_declared"],
+    ),
+    (
+        "I2a step 2 rules: a revocation dimension needs a successful control",
+        [
+            (
+                MX,
+                '    if before is None or before.outcome != "success":\n',
+                "    if before is None:\n",
+            )
+        ],
+        [TMX + "RulesTest.test_a_dimension_ends_only_on_an_attributable_refusal_after_a_control"],
+    ),
+    (
+        "I2a step 2 rules: an ended subscription needs a listener that received the probe",
+        [(MX, "    if not listener:\n", "    if False:\n")],
+        [TMX + "RulesTest.test_the_subscription_ends_only_with_a_listener_that_received_it"],
+    ),
+    (
+        "I2a step 2 oracle: a channel a probe created is counted",
+        [(I2, '            run.ledger.reserve("channels")\n', "            pass\n")],
+        [TI2 + "OracleTest.test_a_missing_channel_that_a_probe_created_is_counted_and_cleaned_up"],
+    ),
+    (
+        "I2a step 2 S15 mapping: a member field not restored stops the run",
+        [(I2, "    if not restored:\n", "    if False:\n")],
+        [TI2 + "S15MapTest.test_a_restore_that_fails_stops_the_run_after_the_case"],
+    ),
+    (
+        "I2a step 2 S10: the poll message is sent again until polls reach the channel",
+        [
+            (
+                P,
+                '            not_yet = msg.status == 403 and "polls not enabled" in (msg.message or "").lower()\n',
+                "            not_yet = False\n",
+            )
+        ],
+        [TI2 + "S10SetupTest.test_the_poll_message_is_retried_until_polls_reach_the_channel"],
+    ),
+    (
+        "I2a step 2 G2: the guest is created server-side",
+        [(P, "            _session, self.g2_setup = i2a.g2_session(self)\n", "            pass\n")],
+        [
+            "tests.test_run_simulation.SimulationTest.test_guest_reach_runs_on_a_guest_created_server_side"
+        ],
     ),
 ]
 

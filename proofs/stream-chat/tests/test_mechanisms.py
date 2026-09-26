@@ -259,6 +259,62 @@ class FamiliesTest(unittest.TestCase):
         self.assertNotEqual(row(run, "RV-hide").verdict, matrix.INCONCLUSIVE)
 
 
+class BudgetAndSessionsTest(unittest.TestCase):
+    def test_a_family_starts_only_with_the_calls_it_declared(self) -> None:
+        run, _, _, clock = family_run()
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            # Enough left for an I1 case (30 beyond the 130 kept for the end), not for
+            # a family (120).
+            spent = (
+                run.ledger.limits.api_calls
+                - run.ledger.run.api_calls
+                - (proof_run.CLEANUP_RESERVE + proof_run.CASE_CALL_MARGIN + 10)
+            )
+            run.ledger.reserve("api_calls", spent)
+            run.run_matrix({"R1", "RV-remove"})
+        self.assertEqual([c.case_id for c in run.case_results], ["R1"])
+        self.assertTrue(any("matrix stopped before RV-remove" in n for n in run.notes))
+
+    def test_a_familys_own_sessions_are_closed_at_its_end(self) -> None:
+        run, _, _, clock = family_run()
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"RV-revoke", "SD-delete"})
+            left = set(run.sessions)
+            run.finish(cleanup=True)
+        # The shared M2 stays for the next family; R, its second device, H and every
+        # token-reuse session are closed.
+        self.assertEqual(left, {"M2"})
+        self.assertEqual(run.ledger.open_connections, 0)
+
+    def test_the_server_side_send_is_an_observation_only(self) -> None:
+        verdicts = []
+        for refuse in (False, True):
+            run, server, _, clock = family_run()
+
+            def handler(
+                method: str, path: str, body: Any, params: Any, refuse: bool = refuse
+            ) -> Any:
+                text = str(((body or {}).get("message") or {}).get("text", ""))
+                if refuse and text.startswith("server send as the affected member"):
+                    return error(method, path, 403, 17, "user is not a member")
+                return None
+
+            server.handlers.insert(0, handler)
+            with NoSettle(), clock:
+                run.setup()
+                run.authorized_path()
+                run.run_matrix({"RV-remove"})
+            case = row(run, "RV-remove")
+            verdicts.append((case.verdict, case.reason))
+            expected = "403 / code 17" if refuse else "201"
+            self.assertEqual(case.detail["server_send_as_affected"]["answer"], expected)
+        self.assertEqual(verdicts[0], verdicts[1])
+
+
 class StopsTest(unittest.TestCase):
     ledger: UsageLedger
 
