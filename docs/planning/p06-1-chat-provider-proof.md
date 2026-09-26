@@ -9,7 +9,7 @@
   - the S15 exceptions are confirmed (OD-16);
   - the intermittent rendered-test failure is diagnosed now, inside P06.1 (OD-21);
   - the Stream secret's handling in cloud sessions is settled before I2a (OD-20).
-- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is done: S15 is confirmed, and the verdict is "changes required". The exact-head review of the fix approved it on 26 September, so OD-21's acceptance is met. Next is the correction pass P06.1-C1, then its review. I2a waits for them.
+- **The process is linear** (OD-29): one session at a time. The flake diagnosis is done: the cause was a focus race in the app's own code, fixed inside P06.1 and integrated at `8b8b1bd` (see "Sessions"). The I1 review is done: S15 is confirmed, and the verdict is "changes required". The exact-head review of the fix approved it on 26 September, so OD-21's acceptance is met. The correction pass P06.1-C1 is running: Nathan started it on 26 September, at extra high. Its review follows, and I2a waits for them.
 - **The Stream secret is settled** (OD-28): Nathan adds the three `STREAM_*` variables for each session that calls Stream, starts it, then deletes them.
 
 The brief is in "Brief — P06.1" below. The sections before it are the proposal and Nathan's answers, kept as the record.
@@ -158,7 +158,7 @@ Facts as the read-only discovery reported them:
   - **Result (25 September; branch `claude/trusting-mayer-bw6p40`, head `a7ab30b`):** cause class (a), a defect in the app's code. On web, `focusText` moved focus to the screen heading or the error alert one frame after they appeared; when a test had just focused a field, the entry that followed was erased, so the submit stayed put with an alert. The fix leaves focus in a shown text field that already has it, with a regression test. Route: fixed inside P06.1. The manager verified the report and integrated it at `8b8b1bd`; see the [evidence record](../testing/evidence/2026-09-25-p06-1-rendered-flake-diagnosis.md), "Manager verification".
 - **Review of the flake fix** (done; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-flake-fix-review-prompt.md)). The fix is new code in PR26, so it needed its own exact-head review of code head `8b8b1bd` before OD-21's acceptance. It was not live and needed no Stream variables.
   - **Result (26 September; Nathan ran it at high):** approve, so OD-21's acceptance is met. The manager applied its one documentation finding. Nit 2 is recorded as a correction, and the optional nit 3 is left as is. See the flake evidence record, "Exact-head review of the fix".
-- **P06.1-C1, the I1 correction pass** (next; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-c1-correction-prompt.md)).
+- **P06.1-C1, the I1 correction pass** (running; Nathan started it on 26 September, at extra high; OD-29; [prompt](../ephemeral/2026-09-26-p06-1-c1-correction-prompt.md)).
   - One implementation session fixes the I1 review's findings 1 to 8 in the harness, and the nits within its scope, with a reason for any it leaves. It corrects the records that findings 4 and 8 name.
   - It makes no live run and no Stream call, so it needs no Stream variables and no Dev Manager read. The first live use of its fixes is in I2a.
   - Its own exact-head review follows. I2a starts only after that review is clean.
