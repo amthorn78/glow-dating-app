@@ -2768,3 +2768,53 @@ From `checks/fix_reversals.py`'s output at `7ce93cc`, in its order. Each reversa
   - Stream's code-43 message quotes the application's API key; the redactor does not remove the API key from free text. It is not the secret, but records may prefer it removed.
   - The fakes replace `ClientSession`; a test that drives the real runner (offline) is the only guard on the client protocol.
 - **Session state:** the ledger (this checkout's `.work/usage-ledger.json`) holds 15 users, 20 channels and 698 calls; a new session starts from zero. The application holds no proof data, one other user (the dashboard user) and the configuration verifies ("differences before: []").
+
+### Manager verification of I2a (App Manager 3, 26 September 2026)
+
+App Manager 3 checked the relayed report against the pushed branch. The manager makes no call to Stream. The live results therefore rest on this record and on the code that produced them, and I2a's exact-head review checks both.
+
+- **Identity:**
+  - branch `claude/p06-1-i2a-revocation-safety-wms9ea`, head `761fa289f1dacd13b8d48b78db6b220d07c079e3`, tree `f23c04c735a5de3442bca742828e2c1b9cbc0bf6`; step 1 `f3ef40b`; code head `7ce93cc`; run 1 from `5df522c`;
+  - nine commits on the start `6e67fd6`: 41 files, +9,442 and −246. The last commit changes only this record;
+  - every path is owned: 40 under `proofs/stream-chat/`, 12 of them new, and this record. All 64 files under `proofs/stream-chat/` have mode 100644. No dependency file, lock, `.npmrc`, `pyproject.toml` or the committed baseline changed, and `git diff --check` is clean;
+  - the eight sections the I2a prompt protects are byte-identical to the start. The two in-place "(corrected in P06.1-I2a)" markers are in C1's own section, in the rows of finding 5 and nit 13.
+- **Each live run from a pushed commit.** The branch's push runs show when each commit reached GitHub: `651c2df` at 21:03 UTC, `5df522c` at 21:08 and `7ce93cc` at 21:32. Each was pushed before the live commands this record ties to it: the checks at 21:05, the checks at 21:25 and run 1 at 21:26, and run 2 at 21:50. The push runs on the two run heads passed: [36271890104](https://github.com/amthorn78/glow-dating-app/actions/runs/36271890104) (`5df522c`) and [36273299781](https://github.com/amthorn78/glow-dating-app/actions/runs/36273299781) (`7ce93cc`).
+- **Classification:** the trusted policy from `main` (`0f45e64`), run outside the tree with `python3 -I`, gave full scope (`behavior-or-empty`) for 41 paths, with one merge base.
+- **Offline re-run,** in a scratch export of `7ce93cc`, in clean processes without any `STREAM_*` variable. Installs got the proxy and CA variables by reference.
+  - `pip install --require-hashes -r requirements-dev.lock`, then `pip check`: "No broken requirements found." `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1.
+  - `npm ci --ignore-scripts`, with the pinned npm 11.9.0: "found 0 vulnerabilities"; `stream-chat` 9.53.0; the lock unchanged.
+  - Unit tests: `Ran 393 tests`, `OK`. Ruff check: "All checks passed!". Ruff format: "51 files already formatted". mypy: "Success: no issues found in 49 source files". `node --check` on the three `.cjs` files: exit 0.
+  - `checks/fix_reversals.py`: "reversals: 242, not demonstrated: 0", exit 0, in 13 minutes. The manager read each failure reason, as AM3-18 requires: 206 reversals failed on an assertion and 33 on the error their reverted fix causes (a missing key, the injected stop, a torn write, the live message of the run-1 defect), and three aborted through a Ctrl-C by design. None failed through a syntax, import or name error, and the export was unchanged afterwards.
+- **Secret scan** of the whole diff to the head (666,258 bytes): no JWT-shaped string, email address, private-key block, AWS-style, GitHub or Slack token, TLS-weakening setting, environment dump or secret assignment, and no copy of the development application's API key.
+  - **The API key in four tracked files.** The session's notes, relayed with its report, say the key "was already present in those four tracked files beforehand". They are the documents that record it as a client-safe identifier, not a credential: `docs/continuity/claude-code-handoff.md` ("Client-safe identifier; not sufficient to authenticate a user"), the environment inventory, the P06.1 brief and the archived M02 handoff. I2a changed none of them. The key's only other appearance is inside Stream's own code-43 message, in the session's local `.work` results, which are not committed.
+- **Code read,** at `7ce93cc`:
+  - the run-1 fix (`client_bridge.py` `send`; `client/runner.cjs`): a command's `id` parameter now travels as `channel_id`, and the command's own `id` is set last. The runner reads `cmd.id` only in its replies. Its `call` op opens the channel from `channel_id`, and its `get` op takes the path the Python side built;
+  - the guard's stated scope (`guard.py`) and its call from the server client's request hook (`server_api.py`, `_before_request`), before a request is counted or sent.
+- **The record's counts:** run 2's verdicts add up to its 114 cases (82, 5, 3, 1, 13, 4, 5 and 1).
+- **Integration:** merged into the manager branch as `6a51dae3e0f2b7a69097151fb5e5dcfe4414b61d`, pushed alone at 23:05 UTC. Against its first parent, the merge brings exactly I2a's 41 files. Against I2a's head, it differs only in the manager's records of `b581e42`, `edba0e6` and `82d0dd4`.
+- **Hosted CI on `6a51dae`:** push run [36278363805](https://github.com/amthorn78/glow-dating-app/actions/runs/36278363805) passed all six jobs, and its gate says `Application checks passed`. The rendered suite passed 84 of 84 on the pinned Chromium in 3.3 minutes. PR run [36278366585](https://github.com/amthorn78/glow-dating-app/actions/runs/36278366585): passed all six jobs too, and its gate says `Application checks passed`. No Foundation job runs the harness's own tests yet (I2b adds one); the offline re-run above covers them.
+
+#### The decisions I2a left to the manager
+
+The first two are proposed rules for I2b's runs. The exact-head review assesses them before they take effect, and I2b's prompt fixes them. Every recorded verdict stands as recorded.
+
+- **The disclosure rule (F9-thread and F9-sync).** A term that the request itself carried tells the sender nothing new.
+  - **Proposed rule:** the disclosure scan leaves out terms present in the request's path, query or body, and the row keeps the key names of the response where a term was found.
+  - **Under it:** F9-thread shows nothing either way, because A and X got the same 404 code 16. F9-sync returned none of XD's content. Whether `sync` answers differently for an existing and a missing channel was not tested, so I2b adds a `sync` pair to the existence oracle.
+- **404 code 16 as "ended"** (SD-deactivate, and M1's own member write after RV-remove). The matrix quality rule counts only authentication and permission errors, because a 404 can have other causes.
+  - **Proposed rule:** a 404 code 16 counts as ended only when all three hold: the same request by the same member succeeded before the mechanism; the mechanism removed or disabled what the request needs (the membership after a removal, the user after a deactivation); and Stream's message, kept in the row, says so. Otherwise it stays "not shown".
+  - **Under it:** deactivation would end S's access; its server-side send's message names the deactivation. That is account-wide, not per conversation. Removal would meet the history policy for the removed member if the message of M1's own write confirms the missing membership; run 2 did not keep that message.
+  - **Nothing is claimed yet.** I2b reruns RV-remove and SD-deactivate live under the rule, keeping the messages, and I2b's review confirms the result.
+- **The poll listing.** Server-side Query Polls needs a user, and the proof never uses the dashboard user. I2b reads Stream's API reference for Query Polls. It then either lists polls as each of the run's own users before that user is deleted, or confirms each recorded poll gone by ID. Until one of those shows the polls absent, "not verified" stays in the record and is reported. On its own, it does not stop a run.
+
+**Accepted as done:**
+
+- **`verify-clean` exited 1 before each run,** for the poll listing alone, and the session went on. The prompt expected "no … polls" and said to report anything the harness marks "not verified". Nothing showed a poll, and each run deleted its own polls by recorded ID. I2b's prompt will say that a poll listing "not verified" does not stop a run.
+- **The reserve rerun named all 114 cases.** Run 1 completed none, and the prompt's reserve is "for cases run 1 could not complete", within what the session has left. It fitted: 15 of 20 users and 20 of 30 channels.
+- **M1 and M2 were shared by the four channel-level mechanisms, each on a channel of its own.** The prompt forbids sharing "to meet a number". The count fitted with room to spare, DM-04's own estimate assumed this sharing, and each family's controls show that no earlier mechanism had reached the next channel. DM-04's summary table put the condition more strictly ("no sharing of users or channels between mechanisms"), so the manager puts this reading to the Dev Manager with I2b's prompt.
+
+#### Disposition
+
+- **I2a is verified and integrated** at `6a51dae3e0f2b7a69097151fb5e5dcfe4414b61d`. Its product findings are recorded under "What I2b and P06.2 must know". A design decision that rests on one of them stays conditional until a review confirms it live (DM-01 P4); for removal, that is I2b's rerun and I2b's review.
+- **I2b also carries:** the two rules above once assessed; the existence oracle keeping both normalized messages of each pair; the poll listing; removing the API key from free text in outputs; and the live reruns of RV-remove and SD-deactivate.
+- **I2a's exact-head review is next,** offline and scoped to I2a's change. After it, only certain findings delay I2b: a blocking finding, or a should-fix finding that could create a false HOLDS or a false "ended", lose an observed FAIL or DOES NOT MEET, send a request after a charge or limit signal, or let a change escape the guard. Other findings go into I2b's offline first step.

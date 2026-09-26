@@ -12,7 +12,8 @@
 - **Reasoning level.** Neither reading gates anything, and Nathan picks.
   - Manager: max. The session writes new code for about ten case families and runs it live for the first time, with the secret, including destructive actions on its own data (bans, suspension, hard deletes, token revocation), with one run in reserve. Every earlier review of this harness found defects in its stop handling.
   - TypeSafe v4, read for revision 1: extra high (score 2.98, P(extra high) 0.99), with no ultracode flag (P(single session) 0.56).
-  - **Used: max.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+  - **Used: max, on Opus 5.5.** Nathan started this session on 26 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** live work complete, verified by the manager and integrated at `6a51dae`. Run 1 stopped before any case on a reply-matching defect, fixed offline; the reserve rerun ran all 114 cases. No Stream mechanism meets the history policy on its own. See the evidence record, "P06.1-I2a", and the manager's verification under it.
 - **Dev Manager read: done** (DM-01 P1), because the prompt authorizes credential use and live provider actions. The Dev Manager read revision 1 at `d50b572` (DM-04) and approved it with conditions. Revision 2 applies them as written, so it needs no further read (DM-03 G2); the close-out read confirms the changes.
 - **Stream variables** (OD-28): Nathan adds `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` for application 1729640 to the `Glow app` environment, starts this one session, then deletes them.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows it, and I2b comes after that review.
