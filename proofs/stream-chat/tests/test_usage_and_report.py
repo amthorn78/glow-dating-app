@@ -1,6 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 import tests  # noqa: F401
 from glow_stream_proof import report
@@ -36,6 +38,26 @@ class UsageTest(unittest.TestCase):
             with self.assertRaises(GuardrailStop):
                 second.reserve("users", 2)
             self.assertEqual(second.remaining("users"), 1)
+
+    def test_an_interrupted_save_leaves_the_previous_ledger_whole(self) -> None:
+        # P06.1-C3, the C2 review's nit 9: the ledger is written through a temporary
+        # file, like every .work file, so a save interrupted mid-write loses nothing.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "usage-ledger.json"
+            ledger = UsageLedger.load(path)
+            ledger.reserve("users")
+            real_write = Path.write_text
+
+            def interrupted(target: Path, data: str, *args: Any, **kwargs: Any) -> int:
+                real_write(target, "", *args, **kwargs)  # opened and truncated, then stopped
+                raise KeyboardInterrupt
+
+            with (
+                mock.patch.object(Path, "write_text", interrupted),
+                self.assertRaises(KeyboardInterrupt),
+            ):
+                ledger.reserve("users")
+            self.assertEqual(UsageLedger.load(path).session.users, 1)
 
     def test_unknown_kind(self) -> None:
         with self.assertRaises(ValueError):

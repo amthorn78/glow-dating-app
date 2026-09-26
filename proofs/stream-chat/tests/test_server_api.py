@@ -12,7 +12,7 @@ import tests  # noqa: F401
 from glow_stream_proof.credentials import ServerCredentials
 from glow_stream_proof.redaction import Redactor
 from glow_stream_proof.server_api import ServerApi
-from glow_stream_proof.usage import GuardrailStop, UsageLedger
+from glow_stream_proof.usage import GuardrailStop, Limits, UsageLedger
 
 SECRET = "synthetic-test-secret-for-the-mock-transport"
 
@@ -109,6 +109,54 @@ class RateLimitFlagTest(unittest.TestCase):
         self.assertFalse(self.stop_for(402, {"code": 9, "message": "x"}).rate_limited)
         self.assertFalse(self.stop_for(403, {"code": 99, "message": "suspended"}).rate_limited)
         self.assertFalse(self.stop_for(400, {"code": 4, "message": "upgrade"}).rate_limited)
+
+
+class StopAtOnceFlagTest(unittest.TestCase):
+    """P06.1-C3, finding 2: every charge or limit signal says it stops the run at once,
+    and is recorded in the run's ledger as it is raised, so the run's record holds it
+    wherever it is met, even if its stop is replaced later. A budget guardrail is not."""
+
+    SIGNALS = (
+        (402, {"code": 4, "message": "x"}),
+        (403, {"code": 99, "message": "suspended"}),
+        (400, {"code": 4, "message": "please upgrade your plan"}),
+        (429, {"code": 9, "message": "Too many requests"}),
+    )
+
+    def test_typed_and_raw_calls_mark_the_signal(self) -> None:
+        # The response hook raises for typed and raw calls alike.
+        for status, body in self.SIGNALS:
+            api, _seen = api_answering(status, body)
+            try:
+                with self.assertRaises(GuardrailStop) as typed:
+                    api.sdk.upsert_users(UserRequest(id="u1", role="user"))
+                with self.assertRaises(GuardrailStop) as raw:
+                    api.raw("GET", "/api/v2/app")
+            finally:
+                api.close()
+            self.assertTrue(typed.exception.at_once, status)
+            self.assertTrue(raw.exception.at_once, status)
+            self.assertEqual(api._ledger.signals, [typed.exception, raw.exception], status)
+
+    def test_the_result_check_marks_the_signal(self) -> None:
+        api, _seen = api_answering(200, {})
+        stops: list[GuardrailStop] = []
+        try:
+            for status, body in self.SIGNALS:
+                with self.assertRaises(GuardrailStop) as stopped:
+                    api._result("GET", "/api/v2/app", httpx.Response(status, json=body))
+                self.assertTrue(stopped.exception.at_once, status)
+                stops.append(stopped.exception)
+        finally:
+            api.close()
+        self.assertEqual(api._ledger.signals, stops)
+
+    def test_a_budget_guardrail_is_not_a_signal(self) -> None:
+        ledger = UsageLedger(limits=Limits(api_calls=0))
+        with self.assertRaises(GuardrailStop) as stopped:
+            ledger.reserve("api_calls")
+        self.assertFalse(stopped.exception.at_once)
+        self.assertEqual(ledger.signals, [])
 
 
 if __name__ == "__main__":

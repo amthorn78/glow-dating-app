@@ -312,6 +312,8 @@ class UndoCheckTest(unittest.TestCase):
 
 class FinishTest(unittest.TestCase):
     def test_finish_restores_the_journal_and_verifies_the_configuration(self) -> None:
+        # After a charge signal (since P06.1-C3 from the run's record, not a reason
+        # passed in) the journal is restored and nothing is deleted.
         run, server = make_run()
         restored: list[str] = []
 
@@ -321,11 +323,19 @@ class FinishTest(unittest.TestCase):
 
         change = TemporaryChange("a leftover change", restore)
         run.journal.append(change)
+        run.record_signal(GuardrailStop("client A: HTTP 402; stopping at once", at_once=True))
         with NoSettle():
-            problems = run.finish(cleanup=False, skipped_because="a charge signal")
+            problems = run.finish(cleanup=True)
         self.assertEqual(restored, ["x"])
         self.assertEqual(run.journal, [])
-        self.assertEqual(problems, ["cleanup skipped: a charge signal"])
+        self.assertEqual(
+            problems,
+            [
+                "cleanup skipped: a charge or limit signal stopped the run at once (client A: "
+                "HTTP 402; stopping at once); check it, then run cleanup --apply"
+            ],
+        )
+        self.assertFalse(any(path.endswith("/delete") for _m, path, _b in server.calls))
         server.app["guest_user_creation_disabled"] = False
         with NoSettle():
             problems = run.finish(cleanup=False)
@@ -408,7 +418,12 @@ class KeptRowTest(unittest.TestCase):
 
 
 class GuardedUnsetTest(unittest.TestCase):
-    """The review's point 3: S15's unset never hides a guardrail stop in flight."""
+    """The review's point 3: S15's unset never hides a guardrail stop in flight.
+
+    Since P06.1-C3 no unset is sent after a guardrail stop, so the failing unset here
+    is the production phase's, sent before the control's guardrail stop; its
+    deferred stop must not replace that guardrail stop.
+    """
 
     def test_guardrail_stop_survives_a_failing_unset(self) -> None:
         writes: list[int] = []

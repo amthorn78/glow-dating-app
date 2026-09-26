@@ -17,6 +17,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .workdir import _replace
+
 KINDS = ("users", "channels", "api_calls")
 
 
@@ -34,14 +36,21 @@ GUARDRAILS = Limits()
 class GuardrailStop(RuntimeError):
     """A guardrail would be passed, or a response suggested a charge or a limit.
 
+    ``at_once`` is true when a response suggested a charge, an upgrade or an
+    exceeded limit (:func:`charge_signal`: HTTP 402 or 429, Stream code 9 or
+    99, or charge wording). Such a signal stops the run at once, wherever it is
+    met, and the run then deletes none of its data (P06.1-C3). A budget
+    guardrail is not such a signal.
+
     ``rate_limited`` is true only when the response was a rate limit (HTTP 429
     or Stream code 9; :func:`is_rate_limit`). Only then is a restore at the end
-    of the run tried again after a pause.
+    of the run tried again after a pause. A rate limit also stops the run at once.
     """
 
-    def __init__(self, message: str, *, rate_limited: bool = False) -> None:
+    def __init__(self, message: str, *, rate_limited: bool = False, at_once: bool = False) -> None:
         super().__init__(message)
         self.rate_limited = rate_limited
+        self.at_once = at_once or rate_limited
 
 
 @dataclass
@@ -62,6 +71,9 @@ class UsageLedger:
     session: Counts = field(default_factory=Counts)
     open_connections: int = 0
     path: Path | None = None
+    # Every charge or limit signal met, recorded as its stop is raised
+    # (:meth:`stop_at_once`). Kept in memory only (P06.1-C3).
+    signals: list[GuardrailStop] = field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path | None, limits: Limits = GUARDRAILS) -> UsageLedger:
@@ -75,9 +87,21 @@ class UsageLedger:
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps({"session": asdict(self.session)}, indent=2) + "\n", encoding="utf-8"
-        )
+        # Through a temporary file, as every .work file is written, so an interrupted
+        # save never leaves the ledger truncated (P06.1-C3).
+        _replace(self.path, json.dumps({"session": asdict(self.session)}, indent=2) + "\n")
+
+    def stop_at_once(self, message: str, *, rate_limited: bool) -> GuardrailStop:
+        """Record a charge or limit signal where it is met, and return its stop to raise.
+
+        The server client and every client session of a run share this ledger, so
+        the signal stays recorded even if its stop is replaced in flight (for
+        example by a Ctrl-C while a client session closes), and the end of the run
+        still sees it (P06.1-C3).
+        """
+        stop = GuardrailStop(message, rate_limited=rate_limited, at_once=True)
+        self.signals.append(stop)
+        return stop
 
     def _check(self, kind: str, amount: int) -> None:
         limit = getattr(self.limits, kind)

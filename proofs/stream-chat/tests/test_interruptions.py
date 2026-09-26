@@ -17,7 +17,7 @@ from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import CaseResult, ProofRun, RunStopped
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import GuardrailStop
-from tests.fakes import FakeServer, FakeSession, NoSettle, make_run, record, set_up
+from tests.fakes import FakeServer, FakeSession, NoSettle, http_reply, make_run, record, set_up
 
 Behaviour = Callable[[FakeSession, str, dict[str, Any]], Reply | None]
 ENDED = "client {} ended: no reply within 60s"
@@ -194,6 +194,75 @@ class ReviewScenariosTest(unittest.TestCase):
         row = only(run, "S3a")
         self.assertEqual(row.verdict, matrix.FAIL)
         self.assertTrue(row.detail["client_success_undo"].startswith("not made: interrupted"))
+        self.assertEqual(self._undo_posts(server, run), [])
+
+    def test_a_guardrail_met_by_the_undo_after_an_interruption_stops_the_run(self) -> None:
+        # P06.1-C3, the C2 review's nit 4: the server replay fails (not a stop), so the
+        # undo is made, and the undo meets a rate limit. The run stops there, with the
+        # replay's failure kept in the stops; it does not go on after the signal.
+        def install(server: FakeServer, run: ProofRun) -> Any:
+            def handler(
+                method: str, path: str, body: Any, params: dict[str, str] | None
+            ) -> ApiResult | None:
+                if method == "POST" and path.startswith("/messages/"):
+                    if "text" not in ((body or {}).get("message") or {}):
+                        raise RuntimeError("connection reset")  # the server replay
+                    raise GuardrailStop(  # the undo, which carries the text
+                        "server POST /messages/x: HTTP 429; stopping at once", rate_limited=True
+                    )
+                return None
+
+            return handler
+
+        run, _server = matrix_run(
+            {"S3a", "S3b"},
+            after_setup={"A": self._a_edits_its_message},
+            handler=install,
+            raises=GuardrailStop,
+        )
+        self.assertEqual([c.case_id for c in run.case_results], ["S3a"])
+        row = only(run, "S3a")
+        self.assertEqual(row.verdict, matrix.FAIL)
+        self.assertTrue(
+            row.detail["client_success_undo"].startswith("not completed: GuardrailStop")
+        )
+        self.assertTrue(
+            any(s.startswith("S3a: in flight when the undo hit a guardrail") for s in run.stops)
+        )
+
+    def test_no_undo_after_a_signal_whose_stop_an_error_replaced(self) -> None:
+        # The independent review of P06.1-C3 (latent: no control has such a path
+        # today). The server replay meets a charge signal, recorded where it is met,
+        # and an ordinary error replaces its stop in flight. Nothing more is sent for
+        # the run's own data, and the run stops after the case.
+        def install(server: FakeServer, run: ProofRun) -> Any:
+            def handler(
+                method: str, path: str, body: Any, params: dict[str, str] | None
+            ) -> ApiResult | None:
+                message = (body or {}).get("message") or {}
+                if method == "POST" and path.startswith("/messages/") and "text" not in message:
+                    run.ledger.stop_at_once(
+                        f"server POST {path}: HTTP 402; stopping at once", rate_limited=False
+                    )
+                    raise RuntimeError("an error replaced the stop in flight")
+                return None
+
+            return handler
+
+        run, server = matrix_run(
+            {"S3a", "S3b"},
+            after_setup={"A": self._a_edits_its_message},
+            handler=install,
+            raises=RunStopped,
+        )
+        self.assertEqual([c.case_id for c in run.case_results], ["S3a"])
+        row = only(run, "S3a")
+        self.assertEqual(row.verdict, matrix.FAIL)
+        self.assertEqual(
+            row.detail["client_success_undo"],
+            "not made: a charge or limit signal was met (server POST /messages/{m_a}: HTTP "
+            "402; stopping at once); cleanup --apply deletes the run's users and channels",
+        )
         self.assertEqual(self._undo_posts(server, run), [])
 
     def test_undo_after_a_completed_control_is_recorded(self) -> None:
@@ -470,6 +539,32 @@ class ProceduresKeepWhatTheyObservedTest(unittest.TestCase):
         run, _ = matrix_run({"RT2"}, after_setup={"A": a, "B": b})
         row = self.assert_kept_fail(run, "RT2")
         self.assertEqual(row.detail["marker_event_types"], ["typing.start"])
+
+    def test_rt3_marker_after_the_probe_survives_the_control_ending(self) -> None:
+        # P06.1-C3: A's markRead is refused, the marker reaches B after the probe, and
+        # B's session ends during the control (B's own markRead): the FAIL is kept.
+        marker = "readfreep061i1simulated"
+        windows: list[int] = []
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "markRead":
+                return http_reply(403, 17)
+            return None
+
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "events":
+                windows.append(1)
+                if len(windows) == 3:  # after the probe, with the probe's own message
+                    events = [*session.pending_events, {"type": "channel.updated", "x": marker}]
+                    session.pending_events = []
+                    return Reply(True, {"events": events}, None)
+            if op == "call" and params.get("method") == "markRead":
+                raise ended("B")
+            return None
+
+        run, _ = matrix_run({"RT3"}, after_setup={"A": a, "B": b})
+        row = self.assert_kept_fail(run, "RT3")
+        self.assertEqual(row.detail["marker_event_types"], ["channel.updated"])
 
 
 class ReviewOfC2Test(unittest.TestCase):
