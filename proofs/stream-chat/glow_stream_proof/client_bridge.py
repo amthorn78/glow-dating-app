@@ -161,10 +161,24 @@ class ClientSession:
                 self._proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 pass
+        self._close_pipes()
         if self._connected:
             self._connected = False
             self._ledger.connection_closed()
         return ClientSessionEnded(f"client {self.label} ended: {reason}")
+
+    def _close_pipes(self) -> None:
+        for pipe in (self._proc.stdin,):
+            try:
+                if pipe is not None:
+                    pipe.close()
+            except OSError:
+                pass
+        for thread in (self._stdout_thread, self._stderr_thread):
+            thread.join(timeout=5)
+        for pipe in (self._proc.stdout, self._proc.stderr):
+            if pipe is not None:
+                pipe.close()
 
     def _read_line(self) -> str:
         try:
@@ -256,6 +270,11 @@ class ClientSession:
             except (OSError, subprocess.TimeoutExpired):
                 self._proc.kill()
                 self._proc.wait(timeout=5)
+        if self._ended is None:
+            if self._proc.poll() is None:
+                self._proc.kill()
+                self._proc.wait(timeout=5)
+            self._close_pipes()
         if self._connected:
             self._connected = False
             self._ledger.connection_closed()

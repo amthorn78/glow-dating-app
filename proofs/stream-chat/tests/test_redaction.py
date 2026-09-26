@@ -53,6 +53,27 @@ class RedactionTest(unittest.TestCase):
         self.assertEqual(find_leaks(f"x {SECRET}", [SECRET]), ["contains a known secret"])
         self.assertEqual(find_leaks(f"x {token}", [SECRET]), ["contains a JWT-shaped value"])
 
+    def test_sensitive_keys_are_matched_by_pattern(self) -> None:
+        # Nit 8: credential-bearing keys in app configuration, not only exact names.
+        body = {
+            "sqs_secret": "plain",
+            "push": {"apn": {"auth_key": "-----key-----"}, "firebase_credentials": {"k": "v"}},
+            "refresh_token": "opaque",
+            "db_password": "pw",
+            "revoke_tokens_issued_before": "2026-09-25T00:00:00Z",
+            "api_key": "abcdefghijkl",
+            "id": "u1",
+        }
+        out = Redactor().value(body)
+        self.assertEqual(out["sqs_secret"], REDACTED_SECRET)
+        self.assertEqual(out["push"]["apn"]["auth_key"], REDACTED_SECRET)
+        self.assertEqual(out["push"]["firebase_credentials"], REDACTED_SECRET)
+        self.assertEqual(out["refresh_token"], REDACTED_SECRET)
+        self.assertEqual(out["db_password"], REDACTED_SECRET)
+        self.assertEqual(out["revoke_tokens_issued_before"], "2026-09-25T00:00:00Z")
+        self.assertEqual(out["api_key"], "abcdefghijkl")
+        self.assertEqual(out["id"], "u1")
+
     def test_api_key_is_not_redacted(self) -> None:
         # The API key is client-safe and may appear in evidence.
         self.assertEqual(Redactor([SECRET]).text("api_key=abcdefghijkl"), "api_key=abcdefghijkl")

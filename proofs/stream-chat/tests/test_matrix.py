@@ -181,6 +181,11 @@ class ClassificationTest(unittest.TestCase):
         self.assertEqual(matrix.classify(403, 60), "other")
         self.assertEqual(matrix.classify(None, 17), "no-response")
 
+    def test_api_key_error_is_not_a_token_refusal(self) -> None:
+        # Nit 2: Stream's code 2 is an API-key error, not attributable to the token.
+        self.assertEqual(matrix.classify(401, 2), "other")
+        self.assertEqual(matrix.refused_verdict("other", True).label, matrix.INCONCLUSIVE)
+
     def test_refused_verdict_requires_attributable_error_and_control(self) -> None:
         self.assertEqual(matrix.refused_verdict("permission", True).label, matrix.HOLDS)
         self.assertEqual(matrix.refused_verdict("auth", True).label, matrix.HOLDS)

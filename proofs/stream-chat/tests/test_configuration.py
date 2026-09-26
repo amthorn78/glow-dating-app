@@ -123,6 +123,34 @@ class ConfigurationTest(unittest.TestCase):
         drift["app"]["app"]["disable_auth_checks"] = True
         self.assertIn("disable_auth_checks is not false", conf.verify(drift))
 
+    def test_verify_checks_permission_version_and_member_custom_settings(self) -> None:
+        # Nit 9, and the brief: the member_custom_on_* settings stay off.
+        for key, bad in (
+            ("permission_version", "v1"),
+            ("member_custom_on_typing_events_enabled", True),
+            ("member_custom_on_messages_enabled", True),
+            ("member_custom_on_mentioned_users_enabled", True),
+        ):
+            drift = configured(snapshot())
+            drift["app"]["app"][key] = bad
+            self.assertTrue(any(p.startswith(key) for p in conf.verify(drift)), key)
+            missing = configured(snapshot())
+            del missing["app"]["app"][key]
+            self.assertTrue(any(p.startswith(key) for p in conf.verify(missing)), key)
+
+    def test_verify_restored(self) -> None:
+        # Nit 10: what restore --apply re-reads is compared with the recorded baseline.
+        record = conf.baseline_record(snapshot())
+        self.assertEqual(conf.verify_restored(snapshot(), record, match_type_deleted=False), [])
+        locked = configured(snapshot())
+        problems = conf.verify_restored(locked, record, match_type_deleted=True)
+        self.assertIn("guest_user_creation_disabled is True, want False", problems)
+        self.assertIn(
+            ".app grants for user are [], want ['search-user', 'update-user-owner']", problems
+        )
+        self.assertTrue(any(p.startswith("messaging grants for user") for p in problems))
+        self.assertIn(f"{conf.MATCH_TYPE} still exists", problems)
+
     def test_baseline_record_holds_no_user_data(self) -> None:
         record = conf.baseline_record(snapshot())
         self.assertNotIn("users", record)
