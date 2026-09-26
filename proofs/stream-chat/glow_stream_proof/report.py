@@ -81,6 +81,9 @@ def render(results: Mapping[str, Any]) -> str:
         parts += ["", "Notes:"] + [f"- {n}" for n in results["notes"]]
     if results.get("stops"):
         parts += ["", "Stops recorded:"] + [f"- {n}" for n in results["stops"]]
+    if results.get("stop_signals"):
+        # Every charge or limit signal met (P06.1-I2a; the C3 review's nit 5).
+        parts += ["", "Charge or limit signals:"] + [f"- {n}" for n in results["stop_signals"]]
     if results.get("journal_not_restored"):
         parts += ["", "Temporary changes NOT restored:"] + [
             f"- {n}" for n in results["journal_not_restored"]

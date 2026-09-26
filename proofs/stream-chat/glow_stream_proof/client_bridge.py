@@ -11,6 +11,13 @@ reply that is not JSON, a timeout or an exited runner ends the session: the
 process is killed and every later command on it raises
 :class:`ClientSessionEnded` without being sent, so no case is judged on another
 command's reply.
+
+Every request the client sends is checked for a charge or limit signal: the
+command's own, a request the SDK sent between commands (the runner reports it
+in the next reply, or in its exit reply when the session closes), and every
+asynchronous SDK error (P06.1-I2a). A signal is recorded in the run's ledger as
+its stop is raised (:meth:`UsageLedger.stop_at_once`). One found as the session
+closes is recorded, and raised only when no other exception is in flight.
 """
 
 from __future__ import annotations
@@ -18,14 +25,15 @@ from __future__ import annotations
 import json
 import queue
 import subprocess
+import sys
 import threading
 from collections import deque
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from .redaction import Redactor
-from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
+from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit, mentions_billing
 from .workdir import PROOF_ROOT
 
 RUNNER = PROOF_ROOT / "client" / "runner.cjs"
@@ -59,6 +67,46 @@ def client_environment(
     return env
 
 
+def _async_text(error: Any) -> str:
+    """An asynchronous error's text (the runner sends a structured entry since P06.1-I2a)."""
+    if isinstance(error, Mapping):
+        return str(error.get("text"))
+    return str(error)
+
+
+def record_signal(record: Mapping[str, Any]) -> tuple[str, bool, bool] | None:
+    """A charge or limit signal in Stream's answer to one recorded request, whether it
+    was a rate limit, and whether its wording mentions billing; ``None`` if none."""
+    status = record.get("status")
+    response = record.get("response")
+    code = response.get("code") if isinstance(response, dict) else None
+    message = response.get("message") if isinstance(response, dict) else None
+    if not isinstance(status, int) or status < 400:
+        return None
+    stream_code = code if isinstance(code, int) else None
+    text = message if isinstance(message, str) else None
+    signal = charge_signal(status, stream_code, text)
+    if signal is None:
+        return None
+    return signal, is_rate_limit(status, stream_code), mentions_billing(text)
+
+
+def async_signal(error: Mapping[str, Any]) -> tuple[str, bool, bool] | None:
+    """A charge or limit signal in an asynchronous SDK error, as for the command's own
+    error: its status, Stream code and wording, except a request the runner refused
+    before sending it (P06.1-I2a)."""
+    if error.get("kind") == "budget":
+        return None
+    status = error.get("status") if isinstance(error.get("status"), int) else None
+    code = error.get("code") if isinstance(error.get("code"), int) else None
+    message = error.get("message") if isinstance(error.get("message"), str) else None
+    text = message or str(error.get("text") or "")
+    signal = charge_signal(status, code, text)
+    if signal is None:
+        return None
+    return signal, is_rate_limit(status, code), mentions_billing(text)
+
+
 @dataclass
 class Reply:
     ok: bool
@@ -68,6 +116,9 @@ class Reply:
     api_calls: int = 0
     ws_attempts: int = 0
     async_errors: list[str] = field(default_factory=list)
+    # Requests the SDK sent between commands, and a command's requests answered only
+    # after it replied, reported once answered (P06.1-I2a).
+    background_requests: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def status(self) -> int | None:
@@ -107,11 +158,14 @@ class ClientSession:
         node: str = "node",
         timeout_seconds: float = 60.0,
         argv: Sequence[str] | None = None,
+        note: Callable[[str], None] | None = None,
     ) -> None:
         self.label = label
         self._ledger = ledger
         self._redactor = redactor
         self._timeout = timeout_seconds
+        # Where what the exit reply shows is noted (P06.1-I2a).
+        self._note = note
         self._next_id = 0
         self._connected = False
         self._ended: str | None = None
@@ -226,6 +280,7 @@ class ClientSession:
             if isinstance(exc, OSError):
                 raise self._end(f"could not send the command: {exc}") from None
             raise
+        raw_async = raw.get("async_errors") or []
         reply = Reply(
             ok=bool(raw.get("ok")),
             data=self._redactor.value(raw.get("data")),
@@ -233,10 +288,15 @@ class ClientSession:
             requests=self._redactor.value(raw.get("requests") or []),
             api_calls=int(raw.get("api_calls") or 0),
             ws_attempts=int(raw.get("ws_attempts") or 0),
-            async_errors=[self._redactor.text(str(e)) for e in raw.get("async_errors") or []],
+            async_errors=[self._redactor.text(_async_text(e)) for e in raw_async],
+            background_requests=self._redactor.value(raw.get("background_requests") or []),
         )
         if reply.api_calls:
             self._ledger.reserve("api_calls", reply.api_calls, source="client")
+        background_calls = int(raw.get("background_api_calls") or 0)
+        if background_calls:
+            # Sent by the SDK between commands; counted like any client call (P06.1-I2a).
+            self._ledger.reserve("api_calls", background_calls, source="client")
         if opens_connection:
             if reply.ok:
                 self._connected = True
@@ -257,23 +317,67 @@ class ClientSession:
                     raise self._ledger.stop_at_once(
                         f"client {self.label}: {signal}; stopping at once",
                         rate_limited=is_rate_limit(status, stream_code),
+                        billing=mentions_billing(message if isinstance(message, str) else None),
                     )
+        # A request the SDK sent between commands, an answer that came after its
+        # command replied, and every asynchronous SDK error (P06.1-I2a).
+        late = self._late_signal(reply.background_requests, self._redactor.value(raw_async))
+        if late is not None:
+            raise late
         if reply.error is not None:
             signal = charge_signal(reply.status, reply.code, reply.message)
             if signal is not None and reply.error.get("kind") != "budget":
                 raise self._ledger.stop_at_once(
                     f"client {self.label}: {signal}; stopping at once",
                     rate_limited=is_rate_limit(reply.status, reply.code),
+                    billing=mentions_billing(reply.message),
                 )
         return reply
 
-    def close(self) -> None:
+    def _late_signal(
+        self, records: Sequence[Mapping[str, Any]], async_errors: Sequence[Any]
+    ) -> GuardrailStop | None:
+        """Record the first charge or limit signal in ``records`` (requests sent between
+        commands, or answered after their command replied) or in ``async_errors``, and
+        return its stop; ``None`` if there is none (P06.1-I2a)."""
+        for record in records:
+            found = record_signal(record)
+            if found is not None:
+                where = "a request sent between commands"
+                if record.get("late"):
+                    where = "a request answered after its command replied"
+                return self._ledger.stop_at_once(
+                    f"client {self.label}: {found[0]} ({where}); stopping at once",
+                    rate_limited=found[1],
+                    billing=found[2],
+                )
+        for error in async_errors:
+            found = async_signal(error) if isinstance(error, Mapping) else None
+            if found is not None:
+                return self._ledger.stop_at_once(
+                    f"client {self.label}: {found[0]} (an asynchronous SDK error); "
+                    "stopping at once",
+                    rate_limited=found[1],
+                    billing=found[2],
+                )
+        return None
+
+    def close(self, *, raise_signal: bool = True) -> None:
+        """End the session. The runner's exit reply reports what the SDK sent after the
+        last command and every asynchronous error still unreported; they are counted,
+        noted and checked for a charge or limit signal (P06.1-I2a). A signal is always
+        recorded in the run's ledger; its stop is raised only when ``raise_signal`` and
+        no other exception is in flight (for example in a ``finally``), so it never
+        replaces one. The end of the run closes its sessions with ``raise_signal=False``.
+        """
+        exited = False
         if self._ended is None and self._proc.poll() is None:
             try:
                 assert self._proc.stdin is not None
                 self._proc.stdin.write(json.dumps({"id": 0, "op": "exit"}) + "\n")
                 self._proc.stdin.flush()
                 self._proc.wait(timeout=15)
+                exited = True
             except (OSError, subprocess.TimeoutExpired):
                 self._proc.kill()
                 self._proc.wait(timeout=5)
@@ -285,3 +389,41 @@ class ClientSession:
         if self._connected:
             self._connected = False
             self._ledger.connection_closed()
+        stop = self._exit_signal() if exited else None
+        if stop is not None and raise_signal and sys.exc_info()[1] is None:
+            raise stop
+
+    def _exit_signal(self) -> GuardrailStop | None:
+        """What the exit reply reports: counted, noted, and its first signal recorded."""
+        exit_reply: dict[str, Any] | None = None
+        while True:
+            try:
+                line = self._lines.get_nowait()
+            except queue.Empty:
+                break
+            if line is None:
+                continue
+            try:
+                raw = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(raw, dict) and raw.get("id") == 0:
+                exit_reply = raw
+        if exit_reply is None:
+            return None
+        calls = int(exit_reply.get("background_api_calls") or 0)
+        if calls:
+            # Already sent; counted without a check that could raise here.
+            self._ledger.count("api_calls", calls, source="client")
+        records = self._redactor.value(exit_reply.get("background_requests") or [])
+        errors = self._redactor.value(exit_reply.get("async_errors") or [])
+        if self._note is not None:
+            for record in records:
+                status = record.get("status")
+                self._note(
+                    f"client {self.label} at exit: {record.get('method')} {record.get('path')} "
+                    f"-> {status if isinstance(status, int) else 'no response'}"
+                )
+            for error in errors:
+                self._note(f"client {self.label} at exit: async error: {_async_text(error)}")
+        return self._late_signal(records, errors)

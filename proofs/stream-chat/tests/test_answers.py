@@ -20,6 +20,8 @@ from glow_stream_proof.proof_run import (
 )
 from glow_stream_proof.server_api import ApiResult
 from tests.fakes import (
+    AB,
+    PREFIX,
     Behaviour,
     FakeSession,
     NoSettle,
@@ -336,7 +338,9 @@ class PayloadRefusalAttributionTest(unittest.TestCase):
         ) -> Reply | None:
             if op == "call" and params.get("method") == "markRead":
                 marker = params["args"][0]["glow_text"]
-                echo = {"type": "message.read", "user": {"id": "b"}, "glow_text": marker}
+                # B's own read event: its user is B (P06.1-I2a: only these are left out).
+                own = {"id": f"{PREFIX}-ub"}
+                echo = {"type": "message.read", "user": own, "glow_text": marker}
                 session.pending_events.append(echo)
             return b_reads(session, op, params)
 
@@ -345,6 +349,44 @@ class PayloadRefusalAttributionTest(unittest.TestCase):
         self.assertEqual(case.verdict, matrix.HOLDS, case.reason)
         self.assertEqual(case.detail["marker_event_types"], [])
         self.assertEqual(case.detail["control_event_types"], ["message.read"])
+
+    def rt3_with_a_control_window_event(self, event: dict[str, Any]) -> CaseResult:
+        """A's markRead is refused; B's own succeeds, and ``event``, carrying A's marker,
+        arrives only in the window collected after B's control."""
+
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "markRead":
+                session.pending_events.append(
+                    {**event, "glow_text": params["args"][0]["glow_text"]}
+                )
+            return b_reads(session, op, params)
+
+        return case_of(self.payload_run("RT3", http_reply(403, 17), b), "RT3")
+
+    def test_rt3_control_window_is_searched_but_for_bs_own_read_events(self) -> None:
+        # P06.1-I2a, the C3 review's nit 1 (its reproduction first): only B's own read
+        # events are left out of the control window's search.
+        a_id, b_id = {"id": f"{PREFIX}-ua"}, {"id": f"{PREFIX}-ub"}
+        another_user = self.rt3_with_a_control_window_event({"type": "message.read", "user": a_id})
+        self.assertEqual(another_user.verdict, matrix.FAIL, another_user.reason)
+        self.assertEqual(another_user.detail["marker_event_types"], ["message.read"])
+        bs_other_type = self.rt3_with_a_control_window_event(
+            {"type": "channel.updated", "user": b_id}
+        )
+        self.assertEqual(bs_other_type.verdict, matrix.FAIL, bs_other_type.reason)
+        for kind in ("message.read", "notification.mark_read"):
+            bs_own = self.rt3_with_a_control_window_event({"type": kind, "user": b_id})
+            self.assertEqual(bs_own.verdict, matrix.HOLDS, (kind, bs_own.reason))
+
+    def test_rt3_control_is_sent_only_after_an_auth_or_permission_refusal(self) -> None:
+        # P06.1-I2a, the C3 review's nit 2(c): C3's decision had no test of its own.
+        for reply in (
+            http_reply(201, response={"event": {}}),
+            http_reply(400, 18),
+            http_reply(400, 4),
+        ):
+            run = self.payload_run("RT3", reply, b_reads)
+            self.assertEqual(self.sent(run, "B", "markRead"), [], reply.requests[0]["status"])
 
     def test_a_refusal_while_b_is_not_listening_is_inconclusive(self) -> None:
         # The C2 review's nit 4: this C1 rule had no test of its own. Unless B's
@@ -458,7 +500,36 @@ class ProductionPhaseAnswerTest(unittest.TestCase):
         undos = [c for c in server.calls if c[0] == "DELETE" and c[1] == undo_path]
         # The server replay's own undo in the feature-on phase, then the production 201's.
         self.assertEqual(len(undos), 2)
-        self.assertTrue(case.detail["client_success_undo"].startswith("undo DELETE"))
+        # Only the production phase's client success was undone, and its note says so
+        # (P06.1-I2a: a phase's undo note is labelled and never written over).
+        self.assertEqual(case.detail["client_success_undo"], "production: undo DELETE 200")
+
+    def test_both_phases_undo_notes_are_kept(self) -> None:
+        # P06.1-I2a, the C3 review's nit 4: S5's reaction succeeds in both phases. Three
+        # undo DELETEs are sent: the control replay's own, and one for each phase's
+        # client success; the row keeps both client-success notes.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sendReaction":
+                path = f"/messages/{params['args'][0]}/reaction"
+                return Reply(
+                    True, {}, None, [record(201, {"reaction": {}}, path=path)], api_calls=1
+                )
+            return None
+
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            session = run.sessions["A"]
+            assert isinstance(session, FakeSession)
+            session.behaviour = a
+            run.run_matrix({"S5"})
+        case = case_of(run, "S5")
+        self.assertEqual(case.verdict, matrix.FAIL)
+        self.assertEqual(
+            case.detail["client_success_undo"], "undo DELETE 200; production: undo DELETE 200"
+        )
+        undo_path = f"/messages/{run.ctx['m_b']}/reaction/love"
+        self.assertEqual(len([c for c in server.calls if c[:2] == ("DELETE", undo_path)]), 3)
 
     def test_poll_vote_without_a_production_answer_is_inconclusive(self) -> None:
         run, _server = make_run()
@@ -493,7 +564,9 @@ class ProductionPhaseAnswerTest(unittest.TestCase):
             set_up(run)
             session = run.sessions["A"]
             assert isinstance(session, FakeSession)
-            session.behaviour = self.first_call_succeeds_second_throws("sendMessage", "/x/message")
+            session.behaviour = self.first_call_succeeds_second_throws(
+                "sendMessage", f"/channels/glow-match/{AB}/message"
+            )
             run.run_matrix({"S2"})
         case = case_of(run, "S2")
         self.assertIn("feature off (production): no answer recorded", case.observed)
@@ -505,7 +578,9 @@ class ProductionPhaseAnswerTest(unittest.TestCase):
             set_up(run)
             session = run.sessions["A"]
             assert isinstance(session, FakeSession)
-            session.behaviour = self.first_call_succeeds_second_throws("castPollVote", "/x/vote")
+            session.behaviour = self.first_call_succeeds_second_throws(
+                "castPollVote", "/messages/m-poll/polls/p1/vote"
+            )
             run.run_matrix({"S10"})
         case = case_of(run, "S10")
         self.assertIn("polls off (production): no answer recorded", case.observed)

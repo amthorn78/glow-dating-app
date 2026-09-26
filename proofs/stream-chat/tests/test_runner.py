@@ -89,5 +89,90 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual([r["id"] for r in replies], [7, 8, 99])
 
 
+REQUEST_LOG_CASES = r"""
+const { RequestLog, rateLimitOf } = require('./client/request-log.cjs');
+const log = new RequestLog();
+const between = log.start({ path: '/between', status: null });
+log.beginCommand();
+const own = log.start({ path: '/own', status: null });
+const late = log.start({ path: '/late', status: null });
+log.finish(own, 201, {});
+const commandRequests = log.endCommand().map((r) => r.path);
+const beforeAnswers = log.takeKept(false);
+log.finish(between, 402, { code: 4, message: 'no' });
+const headers = { 'x-ratelimit-reset': '1790', 'x-ratelimit-limit': '60', authorization: 'held' };
+log.finish(late, 429, { code: 9 }, rateLimitOf(429, headers));
+const afterAnswers = log.takeKept(false);
+log.start({ path: '/never-answered', status: null });
+const atExit = log.takeKept(true);
+const out = {
+  commandRequests, beforeAnswers, afterAnswers, atExit,
+  rateLimit429: rateLimitOf(429, headers), rateLimit200: rateLimitOf(200, headers),
+};
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+class RequestLogTest(unittest.TestCase):
+    """P06.1-I2a, the C3 review's gap: a request the SDK sends between commands, and a
+    command's request answered only after the command replied, are kept and reported
+    in a later reply, so that every answer is checked for a charge or limit signal."""
+
+    def test_every_request_is_reported_once_answered(self) -> None:
+        done = subprocess.run(
+            ["node", "-e", REQUEST_LOG_CASES],
+            env={"PATH": os.environ.get("PATH", "/usr/bin")},
+            cwd=RUNNER.parent.parent,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        out = json.loads(done.stdout)
+        self.assertEqual(out["commandRequests"], ["/own", "/late"])
+        # Nothing answered yet: nothing to report, but the call made between commands
+        # is counted.
+        self.assertEqual(out["beforeAnswers"]["background_requests"], [])
+        self.assertEqual(out["beforeAnswers"]["background_api_calls"], 1)
+        after = out["afterAnswers"]["background_requests"]
+        self.assertEqual(
+            [(r["path"], r["status"]) for r in after], [("/between", 402), ("/late", 429)]
+        )
+        self.assertTrue(after[0]["background"])
+        self.assertTrue(after[1]["late"])
+        self.assertEqual(out["afterAnswers"]["background_api_calls"], 0)  # "late" was counted
+        exit_report = out["atExit"]["background_requests"]
+        self.assertEqual(
+            [(r["path"], r["status"]) for r in exit_report], [("/never-answered", None)]
+        )
+        self.assertEqual(out["atExit"]["background_api_calls"], 1)
+
+    def test_only_a_rate_limits_own_headers_are_kept(self) -> None:
+        done = subprocess.run(
+            ["node", "-e", REQUEST_LOG_CASES],
+            env={"PATH": os.environ.get("PATH", "/usr/bin")},
+            cwd=RUNNER.parent.parent,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        out = json.loads(done.stdout)
+        self.assertEqual(out["rateLimit429"], {"limit": "60", "remaining": None, "reset": "1790"})
+        self.assertIsNone(out["rateLimit200"])
+        self.assertEqual(
+            out["afterAnswers"]["background_requests"][1]["ratelimit"]["reset"], "1790"
+        )
+
+
+class RunnerReportsTest(unittest.TestCase):
+    def test_replies_and_the_exit_reply_carry_what_was_sent_outside_commands(self) -> None:
+        ping, exit_reply = run_runner({"id": 1, "op": "ping"})
+        self.assertEqual((ping["background_requests"], ping["background_api_calls"]), ([], 0))
+        self.assertEqual(ping["async_errors"], [])
+        self.assertEqual(exit_reply["id"], 99)
+        self.assertEqual(exit_reply["background_requests"], [])
+        self.assertEqual(exit_reply["background_api_calls"], 0)
+        self.assertEqual(exit_reply["async_errors"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

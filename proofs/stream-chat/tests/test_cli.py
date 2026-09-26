@@ -127,9 +127,7 @@ class CommandTest(unittest.TestCase):
         def interrupt(run: ProofRun, server: FakeServer) -> None:
             def interrupted(*_args: Any, **_kwargs: Any) -> None:
                 server.app["guest_user_creation_disabled"] = False
-                run.journal.append(
-                    TemporaryChange("guest user creation enabled", run._disable_guest_creation)
-                )
+                run.journal.append(run._guest_creation_change())
                 raise KeyboardInterrupt
 
             run.run_matrix = interrupted  # type: ignore[method-assign]
@@ -148,9 +146,7 @@ class CommandTest(unittest.TestCase):
         def interrupt_twice(run: ProofRun, server: FakeServer) -> None:
             def interrupted(*_args: Any, **_kwargs: Any) -> None:
                 server.app["guest_user_creation_disabled"] = False
-                run.journal.append(
-                    TemporaryChange("guest user creation enabled", run._disable_guest_creation)
-                )
+                run.journal.append(run._guest_creation_change())
                 raise KeyboardInterrupt
 
             def finish_interrupted(**_kwargs: Any) -> list[str]:
@@ -193,9 +189,7 @@ class CommandTest(unittest.TestCase):
         def interrupted(run: ProofRun, server: FakeServer) -> None:
             def matrix(*_args: Any, **_kwargs: Any) -> None:
                 server.app["guest_user_creation_disabled"] = False
-                run.journal.append(
-                    TemporaryChange("guest user creation enabled", run._disable_guest_creation)
-                )
+                run.journal.append(run._guest_creation_change())
                 raise KeyboardInterrupt
 
             run.run_matrix = matrix  # type: ignore[method-assign]
@@ -332,7 +326,7 @@ class CommandTest(unittest.TestCase):
         interrupted: list[int] = []
         real_close = FakeSession.close
 
-        def close(session: FakeSession) -> None:
+        def close(session: FakeSession, **_kwargs: Any) -> None:
             if session.label == "A-role" and not interrupted:
                 interrupted.append(1)
                 raise KeyboardInterrupt

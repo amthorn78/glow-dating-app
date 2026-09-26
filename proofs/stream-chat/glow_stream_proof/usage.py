@@ -45,12 +45,30 @@ class GuardrailStop(RuntimeError):
     ``rate_limited`` is true only when the response was a rate limit (HTTP 429
     or Stream code 9; :func:`is_rate_limit`). Only then is a restore at the end
     of the run tried again after a pause. A rate limit also stops the run at once.
+
+    ``billing`` is true when the response's wording mentions billing, payment, an
+    upgrade, an overage, a charge, a quota or a plan limit
+    (:func:`mentions_billing`). A rate limit with such wording is not only a rate
+    limit: it is handled as a charge signal (P06.1-I2a).
     """
 
-    def __init__(self, message: str, *, rate_limited: bool = False, at_once: bool = False) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        rate_limited: bool = False,
+        at_once: bool = False,
+        billing: bool = False,
+    ) -> None:
         super().__init__(message)
         self.rate_limited = rate_limited
         self.at_once = at_once or rate_limited
+        self.billing = billing
+
+    @property
+    def only_rate_limit(self) -> bool:
+        """A rate limit and nothing more: HTTP 429 or Stream code 9, without billing wording."""
+        return self.rate_limited and not self.billing
 
 
 @dataclass
@@ -91,7 +109,9 @@ class UsageLedger:
         # save never leaves the ledger truncated (P06.1-C3).
         _replace(self.path, json.dumps({"session": asdict(self.session)}, indent=2) + "\n")
 
-    def stop_at_once(self, message: str, *, rate_limited: bool) -> GuardrailStop:
+    def stop_at_once(
+        self, message: str, *, rate_limited: bool, billing: bool = False
+    ) -> GuardrailStop:
         """Record a charge or limit signal where it is met, and return its stop to raise.
 
         The server client and every client session of a run share this ledger, so
@@ -99,7 +119,7 @@ class UsageLedger:
         example by a Ctrl-C while a client session closes), and the end of the run
         still sees it (P06.1-C3).
         """
-        stop = GuardrailStop(message, rate_limited=rate_limited, at_once=True)
+        stop = GuardrailStop(message, rate_limited=rate_limited, at_once=True, billing=billing)
         self.signals.append(stop)
         return stop
 
@@ -117,6 +137,23 @@ class UsageLedger:
         if kind not in KINDS:
             raise ValueError(f"unknown usage kind {kind!r}")
         self._check(kind, amount)
+        for counts in (self.run, self.session):
+            setattr(counts, kind, getattr(counts, kind) + amount)
+            if kind == "api_calls":
+                attr = "server_api_calls" if source == "server" else "client_api_calls"
+                setattr(counts, attr, getattr(counts, attr) + amount)
+        self.save()
+
+    def count(self, kind: str, amount: int, *, source: str = "server") -> None:
+        """Count what was already used, without the check that would stop the run.
+
+        For requests a client session reports only as it closes (P06.1-I2a): they
+        were sent, so they are counted, and raising while the session closes would
+        replace whatever is in flight. A later reservation stops the run if the
+        guardrail is passed.
+        """
+        if kind not in KINDS:
+            raise ValueError(f"unknown usage kind {kind!r}")
         for counts in (self.run, self.session):
             setattr(counts, kind, getattr(counts, kind) + amount)
             if kind == "api_calls":
@@ -163,6 +200,17 @@ _CHARGE_WORDS = re.compile(
     r"upgrade|billing|payment|overage|charge|quota|plan limit|limit exceeded|exceeded",
     re.IGNORECASE,
 )
+# The charge words without "exceeded", which a rate limit's own message may say.
+_BILLING_WORDS = re.compile(
+    r"upgrade|billing|payment|overage|charge|quota|plan limit", re.IGNORECASE
+)
+
+
+def mentions_billing(message: str | None) -> bool:
+    """Whether a response's wording mentions billing, an upgrade or a quota (P06.1-I2a)."""
+    return bool(message and _BILLING_WORDS.search(message))
+
+
 # Stream codes: 9 rate limit, 99 application suspended.
 _CHARGE_CODES = frozenset({9, 99})
 _CHARGE_STATUSES = frozenset({402, 429})

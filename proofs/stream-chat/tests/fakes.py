@@ -23,7 +23,8 @@ from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.credentials import ServerCredentials
 from glow_stream_proof.proof_run import ProofRun
 from glow_stream_proof.redaction import Redactor
-from glow_stream_proof.server_api import ApiResult
+from glow_stream_proof.server_api import ApiResult, Guard
+from glow_stream_proof.stops import GuardRefused
 from glow_stream_proof.usage import UsageLedger
 from tests.test_configuration import configured, snapshot
 
@@ -65,6 +66,8 @@ class FakeServer:
     # overrides, and whether it carries grants at all.
     merge_overrides: bool = True
     config_has_grants: bool = True
+    # As on ServerApi: asked before every request is counted or sent (P06.1-I2a).
+    guard: Guard | None = None
 
     def __post_init__(self) -> None:
         self.sdk = SimpleNamespace(
@@ -77,20 +80,29 @@ class FakeServer:
 
     # -- the typed SDK calls the harness makes ------------------------------------
 
-    def _count(self) -> None:
+    def _count(
+        self, method: str = "GET", path: str = "", body: Any = None, params: Any = None
+    ) -> None:
+        if self.guard is not None:
+            refused = self.guard(method, path, body, dict(params or {}))
+            if refused is not None:
+                raise GuardRefused(refused)
         self.ledger.reserve("api_calls")
 
     def _upsert(self, *users: Any) -> None:
-        self._count()
+        self._count("POST", "/api/v2/users", {"users": {u.id: {"id": u.id} for u in users}})
         for u in users:
             self.users[u.id] = {"id": u.id, "role": u.role, "name": u.name, "created_at": 0}
 
     def _channel(self, type: str, id: str, data: Any) -> None:
-        self._count()
+        members = [{"user_id": m.user_id} for m in data.members]
+        body = {"data": {"created_by_id": data.created_by_id, "members": members}}
+        self._count("POST", f"/api/v2/chat/channels/{type}/{id}/query", body)
         self.members[id] = [m.user_id for m in data.members]
 
     def _send_message(self, type: str, id: str, message: Any) -> Any:
-        self._count()
+        body = {"message": {"text": message.text, "user_id": message.user_id}}
+        self._count("POST", f"/api/v2/chat/channels/{type}/{id}/message", body)
         self.sent += 1
         if self.on_send is not None:
             self.on_send(id, f"m-{self.sent}")
@@ -131,7 +143,7 @@ class FakeServer:
     def raw(
         self, method: str, path: str, *, body: Any = None, params: dict[str, str] | None = None
     ) -> ApiResult:
-        self._count()
+        self._count(method, path, body, params)
         self.calls.append((method, path, body))
         for handler in self.handlers:
             result = handler(method, path, body, params)
@@ -147,7 +159,14 @@ class FakeServer:
             payload = json.loads((params or {}).get("payload", "{}"))
             cond = payload.get("filter_conditions", {}).get("id", {})
             wanted = cond.get("$in") or ([cond["$eq"]] if "$eq" in cond else None)
-            users = [u for uid, u in self.users.items() if wanted is None or uid in wanted]
+            # As Stream's listing: deactivated users only when asked for (P06.1-I2a).
+            deactivated = payload.get("include_deactivated_users") is True
+            users = [
+                u
+                for uid, u in self.users.items()
+                if (wanted is None or uid in wanted)
+                and (deactivated or not u.get("deactivated_at"))
+            ]
             return ok(method, path, {"users": users}, 200)
         if path == "/api/v2/chat/members":
             payload = json.loads((params or {}).get("payload", "{}"))
@@ -217,11 +236,14 @@ class FakeServer:
         return jwt.encode({"user_id": user_id, "iat": 0, "exp": 1}, SECRET, "HS256")
 
     def raw_multipart(self, path: str, **_kwargs: Any) -> ApiResult:
-        self._count()
+        self._count("POST", path)
         return ok("POST", path, {"file": "https://cdn.invalid/f"})
 
 
-QUERY_PATH = "/channels/glow-match/x/query"
+# The run's own channel AB and user A: a server replay of a fake client record goes
+# through the guard like a live one, which refuses anything the run did not create.
+AB = f"{PREFIX}-ch-ab"
+QUERY_PATH = f"/channels/glow-match/{AB}/query"
 
 
 def record(
@@ -230,8 +252,8 @@ def record(
     return {
         "method": method,
         "path": path,
-        "params": {"user_id": "u", "api_key": "k"},
-        "body": {"data": {"members": ["a"]}},
+        "params": {"user_id": f"{PREFIX}-ua", "api_key": "k"},
+        "body": {"data": {"members": [f"{PREFIX}-ua"]}},
         "status": status,
         "response": response,
     }
@@ -308,7 +330,7 @@ class FakeSession:
             return Reply(True, {}, None, [record(201, {"channels": []})], api_calls=1)
         return http_reply(403, 17)
 
-    def close(self) -> None:
+    def close(self, *, raise_signal: bool = True) -> None:
         pass
 
 

@@ -9,14 +9,17 @@
  *
  * Protocol: one JSON command per stdin line, one JSON reply per stdout line.
  * Every HTTP request the Stream client sends is counted and recorded (method,
- * path, query parameters without credentials, body, status, response body).
- * Headers are never recorded, so the token never leaves this process through
- * the protocol. Nothing is logged to stdout except replies.
+ * path, query parameters without credentials, body, status, response body),
+ * including a request the SDK sends between commands, which the next reply
+ * reports (client/request-log.cjs; P06.1-I2a). Headers are never recorded, except
+ * a rate limit's own x-ratelimit-* headers on a 429, so the token never leaves
+ * this process through the protocol. Nothing is logged to stdout except replies.
  */
 
 const path = require('node:path');
 const readline = require('node:readline');
 const { errorInfo } = require('./error-info.cjs');
+const { RequestLog, rateLimitOf } = require('./request-log.cjs');
 
 if (process.env.STREAM_API_SECRET !== undefined) {
   process.stderr.write('refused: STREAM_API_SECRET is present in the client environment\n');
@@ -82,7 +85,7 @@ const BASE = client.baseURL;
 let totalCalls = 0;
 let commandCalls = 0;
 let commandMax = 10;
-let records = [];
+const log = new RequestLog();
 const events = [];
 
 function stripParams(params) {
@@ -113,22 +116,23 @@ function bodyOf(data) {
 }
 
 client.axiosInstance.interceptors.request.use((config) => {
-  if (commandCalls >= commandMax || totalCalls >= PROCESS_MAX_CALLS) {
+  // A command's own cap applies only while a command is in flight; the process
+  // cap always does (P06.1-I2a).
+  if ((log.inCommand && commandCalls >= commandMax) || totalCalls >= PROCESS_MAX_CALLS) {
     const err = new Error('PROOF_BUDGET: request refused before sending (budget reached)');
     err.proofBudget = true;
     throw err;
   }
-  commandCalls += 1;
+  if (log.inCommand) commandCalls += 1;
   totalCalls += 1;
-  const record = {
+  const record = log.start({
     method: String(config.method || 'get').toUpperCase(),
     path: relPath(config.url),
     params: stripParams(config.params),
     body: bodyOf(config.data),
     status: null,
     response: null,
-  };
-  records.push(record);
+  });
   config.__proofRecord = record;
   return config;
 });
@@ -136,16 +140,19 @@ client.axiosInstance.interceptors.response.use(
   (response) => {
     const record = response.config && response.config.__proofRecord;
     if (record) {
-      record.status = response.status;
-      record.response = response.data;
+      log.finish(record, response.status, response.data, rateLimitOf(response.status, response.headers));
     }
     return response;
   },
   (error) => {
     const record = error && error.config && error.config.__proofRecord;
-    if (record && error.response) {
-      record.status = error.response.status;
-      record.response = error.response.data;
+    if (record) {
+      const answer = error.response;
+      if (answer) {
+        log.finish(record, answer.status, answer.data, rateLimitOf(answer.status, answer.headers));
+      } else {
+        log.finish(record);
+      }
     }
     return Promise.reject(error);
   },
@@ -268,16 +275,23 @@ async function handle(cmd) {
 }
 
 // The SDK can reject promises it does not await (for example on channels it
-// invalidated at disconnect). Record them instead of letting Node exit.
+// invalidated at disconnect). Record them instead of letting Node exit, with
+// Stream's status and code when the error carries them, so that the harness checks
+// them for a charge or limit signal like any other answer (P06.1-I2a).
 const asyncErrors = [];
-process.on('unhandledRejection', (reason) => {
+function asyncError(origin, reason) {
+  const info = errorInfo(reason);
   const text = reason && reason.message ? String(reason.message) : String(reason);
-  asyncErrors.push(`unhandledRejection: ${text}`.slice(0, 300));
-});
-process.on('uncaughtException', (err) => {
-  const text = err && err.message ? String(err.message) : String(err);
-  asyncErrors.push(`uncaughtException: ${text}`.slice(0, 300));
-});
+  asyncErrors.push({
+    text: `${origin}: ${text}`.slice(0, 300),
+    kind: info.kind,
+    status: typeof info.status === 'number' ? info.status : null,
+    code: typeof info.code === 'number' ? info.code : null,
+    message: info.message === null || info.message === undefined ? null : String(info.message).slice(0, 300),
+  });
+}
+process.on('unhandledRejection', (reason) => asyncError('unhandledRejection', reason));
+process.on('uncaughtException', (err) => asyncError('uncaughtException', err));
 
 const rl = readline.createInterface({ input: process.stdin });
 let chain = Promise.resolve();
@@ -296,12 +310,22 @@ rl.on('line', (line) => {
       } catch (_e) {
         // ignore
       }
-      process.stdout.write(JSON.stringify({ id: cmd.id, ok: true, api_calls_total: totalCalls, ws_attempts: wsAttempts }) + '\n');
+      // Everything still kept, answered or not, and every asynchronous error, so
+      // that closing the session checks them too (P06.1-I2a).
+      const exitReply = {
+        id: cmd.id,
+        ok: true,
+        api_calls_total: totalCalls,
+        ws_attempts: wsAttempts,
+        ...log.takeKept(true),
+        async_errors: asyncErrors.splice(0, asyncErrors.length),
+      };
+      process.stdout.write(JSON.stringify(exitReply) + '\n');
       process.exit(0);
     }
     commandCalls = 0;
     commandMax = Number.isInteger(cmd.max_calls) ? cmd.max_calls : 10;
-    records = [];
+    log.beginCommand();
     const wsBefore = wsAttempts;
     let reply;
     try {
@@ -310,10 +334,11 @@ rl.on('line', (line) => {
     } catch (err) {
       reply = { id: cmd.id, ok: false, data: null, error: errorInfo(err) };
     }
-    reply.requests = records;
+    reply.requests = log.endCommand();
     reply.api_calls = commandCalls;
     reply.api_calls_total = totalCalls;
     reply.ws_attempts = wsAttempts - wsBefore;
+    Object.assign(reply, log.takeKept(false));
     reply.async_errors = asyncErrors.splice(0, asyncErrors.length);
     process.stdout.write(JSON.stringify(reply) + '\n');
   });

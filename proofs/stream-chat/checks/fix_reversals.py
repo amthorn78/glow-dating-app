@@ -52,13 +52,23 @@ KEPT = TI + "ProceduresKeepWhatTheyObservedTest."
 TA = "tests.test_answers."
 TCC = "tests.test_cli.CommandTest."
 SS = "tests.test_stop_signals."
+# P06.1-I2a.
+G = "glow_stream_proof/guard.py"
+CF = "glow_stream_proof/configuration.py"
+RP = "glow_stream_proof/report.py"
+RL = "client/request-log.cjs"
+TGU = "tests.test_guard."
+TCS = "tests.test_client_session."
+TRS = "tests.test_configuration.RecordedSettingsTest."
+TCK = "tests.test_closing_checks.ClosingChecksTest."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
     "            ):\n"
 )
-SERVER_IMPORT = "from .usage import UsageLedger, charge_signal, is_rate_limit\n"
-SERVER_IMPORT_C2 = "from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit\n"
+# Updated in P06.1-I2a: the import also names mentions_billing.
+SERVER_IMPORT = "from .usage import UsageLedger, charge_signal, is_rate_limit, mentions_billing\n"
+SERVER_IMPORT_C2 = "from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit, mentions_billing\n"
 
 
 def unobserved(context: str) -> tuple[str, str, str]:
@@ -748,7 +758,11 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                '        finally:\n            row.detail["client_success_undo"] = self.redactor.text(", ".join(notes))\n',
+                # Updated in P06.1-I2a: a phase's undo note is added to the earlier one.
+                "        finally:\n"
+                '            done = (f"{phase}: " if phase else "") + ", ".join(notes)\n'
+                '            note = f"{earlier}; {done}" if earlier else done\n'
+                '            row.detail["client_success_undo"] = self.redactor.text(note)\n',
                 "        finally:\n            pass\n",
             )
         ],
@@ -1357,11 +1371,12 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             (S, SERVER_IMPORT, SERVER_IMPORT_C2),
             (
                 S,
+                # Updated in P06.1-I2a: the message names a rate limit's reset.
                 "            raise self._ledger.stop_at_once(\n"
-                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                '                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",\n'
                 "                rate_limited=is_rate_limit(response.status_code, code),\n",
                 "            raise GuardrailStop(\n"
-                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                '                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",\n'
                 "                rate_limited=is_rate_limit(response.status_code, code),\n",
             ),
         ],
@@ -1373,11 +1388,12 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             (S, SERVER_IMPORT, SERVER_IMPORT_C2),
             (
                 S,
+                # Updated in P06.1-I2a: the message names a rate limit's reset.
                 "            raise self._ledger.stop_at_once(\n"
-                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                '                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",\n'
                 "                rate_limited=is_rate_limit(result.status, result.code),\n",
                 "            raise GuardrailStop(\n"
-                '                f"server {method} {path}: {signal}; stopping at once",\n'
+                '                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",\n'
                 "                rate_limited=is_rate_limit(result.status, result.code),\n",
             ),
         ],
@@ -1656,8 +1672,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "            # run's is deleted (P06.1-C3; until then only the run's own stop counted).\n            self.close_sessions()\n",
-                "            # run's is deleted (P06.1-C3; until then only the run's own stop counted).\n",
+                # Updated in P06.1-I2a: the sessions now close before the cleanup is decided.
+                "        # signal among it skips the cleanup like any other (P06.1-I2a).\n        self.close_sessions()\n",
+                "        # signal among it skips the cleanup like any other (P06.1-I2a).\n",
             )
         ],
         [
@@ -1693,8 +1710,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 P,
-                "        if production_succeeded:\n            self._undo_client_success(case, result)\n",
-                '        if production.outcome == "success":\n            self._undo_client_success(case, result)\n',
+                # Updated in P06.1-I2a: the production phase's undo is labelled.
+                '        if production_succeeded:\n            self._undo_client_success(case, result, "production")\n',
+                '        if production.outcome == "success":\n            self._undo_client_success(case, result, "production")\n',
             )
         ],
         [TA + "ProductionPhaseAnswerTest.test_a_production_command_with_several_requests"],
@@ -1739,6 +1757,440 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             )
         ],
         [TA + "OneRequestTest.test_a_poll_created_among_several_requests_is_deleted_at_cleanup"],
+    ),
+    # -- P06.1-I2a, step 1: the C3 review's items, the guard and the closing checks --
+    (
+        "I2a guard: a user the run did not create is refused",
+        [(G, "    if any(not scope.owns_user(u) for u in users):\n", "    if False:\n")],
+        [
+            TGU + "RefusalTest.test_a_user_the_run_did_not_create_is_refused",
+            TGU + "ServerHookTest.test_a_refused_request_is_neither_sent_nor_counted",
+        ],
+    ),
+    (
+        "I2a guard: a channel the run did not create is refused",
+        [(G, "    if any(not scope.owns_channel(c) for c in channels):\n", "    if False:\n")],
+        [
+            TGU + "RefusalTest.test_a_channel_the_run_did_not_create_is_refused",
+            TGU + "GuardedRunTest.test_a_refusal_in_a_case_stops_the_run_after_its_row",
+        ],
+    ),
+    (
+        "I2a guard: an application setting outside the journal is refused",
+        [(G, "    if not keys <= scope.journalled_app_settings():\n", "    if False:\n")],
+        [
+            TGU + "RefusalTest.test_application_changes_outside_the_journal_are_refused",
+            TGU + "GuardedRunTest.test_the_run_is_the_guards_scope",
+        ],
+    ),
+    (
+        "I2a guard: a match-type toggle outside the journal is refused",
+        [
+            (
+                G,
+                "    if not fixed_ok or not toggled <= scope.journalled_type_features():\n",
+                "    if False:\n",
+            )
+        ],
+        [TGU + "RefusalTest.test_match_type_changes_outside_the_journal_are_refused"],
+    ),
+    (
+        "I2a guard: any other kind of change is refused",
+        [(G, '    return "not a kind of request this proof makes"\n', "    return None\n")],
+        [TGU + "RefusalTest.test_other_kinds_of_change_are_refused"],
+    ),
+    (
+        "I2a guard: a message delete needs a message the run recorded",
+        [
+            (
+                G,
+                '        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):\n',
+                "        if False:\n",
+            )
+        ],
+        [TGU + "RefusalTest.test_a_message_poll_or_group_must_be_the_runs"],
+    ),
+    (
+        "I2a guard: the server client asks the guard before sending",
+        [
+            (
+                S,
+                "        if self.guard is not None:\n            # Before anything is counted or sent (DM-04 finding 1).\n",
+                "        if False:\n            # Before anything is counted or sent (DM-04 finding 1).\n",
+            )
+        ],
+        [TGU + "ServerHookTest.test_a_refused_request_is_neither_sent_nor_counted"],
+    ),
+    (
+        "I2a guard: the run installs the guard with itself as the scope",
+        [(P, "        self.api.guard = self._guard_refusal\n", "        pass\n")],
+        [
+            TGU + "GuardedRunTest.test_the_run_is_the_guards_scope",
+            TGU + "GuardedRunTest.test_a_refusal_in_a_case_stops_the_run_after_its_row",
+        ],
+    ),
+    (
+        "I2a guard: cleanup --apply is guarded by the prefix",
+        [
+            (
+                C,
+                "    ctx.api.guard = lambda method, path, body, params: guard.refusal(\n"
+                "        method, path, body, params, scope\n    )\n",
+                "    pass\n",
+            )
+        ],
+        [TGU + "CleanupCommandTest.test_cleanup_apply_is_guarded_by_the_prefix"],
+    ),
+    (
+        "I2a guard: the deleted-user artifact the cleanup creates is recorded",
+        [
+            (
+                P,
+                "        self.artifacts.extend(a for a in artifacts if a not in self.artifacts)\n",
+                "        pass\n",
+            )
+        ],
+        [TGU + "GuardedRunTest.test_the_artifact_the_runs_cleanup_creates_may_be_deleted"],
+    ),
+    (
+        "I2a closing checks: verify compares every recorded setting",
+        [
+            (
+                CF,
+                "    problems += recorded_differences(app, recorded_app_settings() if recorded is None else recorded)\n",
+                "",
+            )
+        ],
+        [
+            TRS + "test_an_application_wide_token_revocation_is_a_difference",
+            TRS + "test_every_hook_is_a_difference",
+            TRS + "test_every_recorded_setting_is_compared_except_guest_creation",
+            TCK + "test_preflight_sees_an_application_wide_token_revocation",
+            TCK + "test_the_end_of_the_run_sees_a_hook",
+            TCK + "test_the_dry_run_configure_sees_them",
+        ],
+    ),
+    (
+        "I2a closing checks: an unrecorded setting must be absent or empty",
+        [(CF, "        elif have is not _ABSENT and not _empty(have):\n", "        elif False:\n")],
+        [
+            TRS + "test_a_setting_the_baseline_did_not_record_may_be_absent_or_empty",
+            TRS + "test_every_hook_is_a_difference",
+        ],
+    ),
+    (
+        "I2a gap: the runner keeps a request sent outside a command",
+        [
+            (
+                RL,
+                "      this.kept.push(record);\n    }\n    return record;\n",
+                "    }\n    return record;\n",
+            )
+        ],
+        ["tests.test_runner.RequestLogTest.test_every_request_is_reported_once_answered"],
+    ),
+    (
+        "I2a gap: the runner keeps a command's request answered after its reply",
+        [
+            (
+                RL,
+                "        record.late = true;\n        this.kept.push(record);\n",
+                "        record.late = true;\n",
+            )
+        ],
+        ["tests.test_runner.RequestLogTest.test_every_request_is_reported_once_answered"],
+    ),
+    (
+        "I2a gap: a reply's requests outside its command are checked",
+        [
+            (
+                B,
+                "        late = self._late_signal(reply.background_requests, self._redactor.value(raw_async))\n",
+                "        late = None\n",
+            )
+        ],
+        [
+            TCS + "LateRequestsTest.test_a_request_sent_between_commands",
+            TCS + "LateRequestsTest.test_an_answer_that_came_after_its_command_replied",
+            TCS + "LateRequestsTest.test_an_asynchronous_sdk_error",
+        ],
+    ),
+    (
+        "I2a gap: an asynchronous SDK error is checked",
+        [(B, "        for error in async_errors:\n", "        for error in ():\n")],
+        [
+            TCS + "LateRequestsTest.test_an_asynchronous_sdk_error",
+            TCS + "ClosingSignalTest.test_the_end_of_the_run_closes_without_raising",
+        ],
+    ),
+    (
+        "I2a gap: the runner's own refusal is not a signal",
+        [(B, '    if error.get("kind") == "budget":\n        return None\n', "")],
+        [TCS + "LateRequestsTest.test_a_request_the_runner_refused_is_not_a_signal"],
+    ),
+    (
+        "I2a gap: calls sent between commands are counted",
+        [
+            (
+                B,
+                "        if background_calls:\n"
+                "            # Sent by the SDK between commands; counted like any client call (P06.1-I2a).\n"
+                '            self._ledger.reserve("api_calls", background_calls, source="client")\n',
+                "",
+            )
+        ],
+        [TCS + "LateRequestsTest.test_a_request_sent_between_commands"],
+    ),
+    (
+        "I2a gap: closing a session checks its exit reply",
+        [(B, "        stop = self._exit_signal() if exited else None\n", "        stop = None\n")],
+        [
+            TCS
+            + "ClosingSignalTest.test_a_signal_at_exit_is_raised_when_nothing_else_is_in_flight",
+            TCS + "ClosingSignalTest.test_a_signal_at_exit_never_replaces_an_exception_in_flight",
+            TCS + "ClosingSignalTest.test_the_end_of_the_run_closes_without_raising",
+        ],
+    ),
+    (
+        "I2a gap: a signal at exit is raised only when nothing else is in flight",
+        [
+            (
+                B,
+                "        if stop is not None and raise_signal and sys.exc_info()[1] is None:\n",
+                "        if stop is not None and raise_signal:\n",
+            )
+        ],
+        [TCS + "ClosingSignalTest.test_a_signal_at_exit_never_replaces_an_exception_in_flight"],
+    ),
+    (
+        "I2a gap: the end of the run closes its sessions without raising",
+        [(P, "            session.close(raise_signal=False)\n", "            session.close()\n")],
+        [
+            SS
+            + "ClosingSessionSignalTest.test_a_signal_a_session_reports_as_it_closes_skips_the_cleanup"
+        ],
+    ),
+    (
+        "I2a gap: the sessions close before the cleanup is decided",
+        [
+            (
+                P,
+                "        # signal among it skips the cleanup like any other (P06.1-I2a).\n        self.close_sessions()\n",
+                "        # signal among it skips the cleanup like any other (P06.1-I2a).\n",
+            )
+        ],
+        [
+            SS
+            + "ClosingSessionSignalTest.test_a_signal_a_session_reports_as_it_closes_skips_the_cleanup"
+        ],
+    ),
+    (
+        "I2a gap: the cleanup checks again once the sessions are closed",
+        [
+            (
+                P,
+                "        if self.stop_signals:\n            # A session reported a charge or limit signal as it closed: nothing is\n",
+                "        if False:\n            # A session reported a charge or limit signal as it closed: nothing is\n",
+            )
+        ],
+        [
+            SS
+            + "ClosingSessionSignalTest.test_the_cleanup_checks_again_once_the_sessions_are_closed"
+        ],
+    ),
+    (
+        "I2a nit 1: RT3's control window is searched",
+        [
+            (
+                P,
+                "        searched = self._searched_control_events(control_events, control_label)\n",
+                "        searched: list[dict[str, Any]] = []\n",
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_control_window_is_searched_but_for_bs_own_read_events"
+        ],
+    ),
+    (
+        "I2a nit 1: only read events are left out of the control window",
+        [
+            (
+                P,
+                '                e.get("type") in ("message.read", "notification.mark_read")\n'
+                '                and _dig(e, "user.id") == own_id\n',
+                '                _dig(e, "user.id") == own_id\n',
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_control_window_is_searched_but_for_bs_own_read_events"
+        ],
+    ),
+    (
+        "I2a nit 1: only the control member's own read events are left out",
+        [(P, '                and _dig(e, "user.id") == own_id\n', "                and True\n")],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_control_window_is_searched_but_for_bs_own_read_events"
+        ],
+    ),
+    (
+        "I2a nit 2(a): a charge signal met by the cleanup ends it (402 and code 99)",
+        [
+            (
+                P,
+                "                if exc.at_once:\n                    break\n",
+                "                if exc.rate_limited:\n                    break\n",
+            )
+        ],
+        [SS + "SignalRecordTest.test_a_charge_signal_met_during_cleanup_ends_it_too"],
+    ),
+    (
+        "I2a nit 2(b): S15 sends no unset after a budget stop",
+        [
+            (
+                P,
+                "        except GuardrailStop as exc:\n"
+                '            self._member_field_kept(out, key, f"a guardrail stopped the run ({self._text(exc)})")\n'
+                "            raise\n",
+                "        except GuardrailStop as exc:\n"
+                "            if exc.at_once:\n"
+                '                self._member_field_kept(out, key, f"a guardrail stopped the run ({self._text(exc)})")\n'
+                "            else:\n"
+                "                out[key] = self._unset_member_note()\n"
+                "            raise\n",
+            )
+        ],
+        [SS + "MemberFieldUnsetTest.test_no_unset_after_a_budget_stop_in_bs_reads"],
+    ),
+    (
+        "I2a nit 2(c): RT3's control only after an authentication or permission refusal",
+        [
+            (
+                P,
+                '        if outcome in ("auth", "permission") and control_label is not None:\n',
+                "        if control_label is not None:\n",
+            )
+        ],
+        [
+            TA
+            + "PayloadRefusalAttributionTest.test_rt3_control_is_sent_only_after_an_auth_or_permission_refusal"
+        ],
+    ),
+    (
+        "I2a nit 4: a phase's undo note is kept beside the earlier one",
+        [
+            (
+                P,
+                '            note = f"{earlier}; {done}" if earlier else done\n',
+                "            note = done\n",
+            )
+        ],
+        [TA + "ProductionPhaseAnswerTest.test_both_phases_undo_notes_are_kept"],
+    ),
+    (
+        "I2a nit 5: the printed report lists the charge or limit signals",
+        [(RP, '    if results.get("stop_signals"):\n', "    if False:\n")],
+        [
+            "tests.test_usage_and_report.ReportTest.test_the_report_lists_every_charge_or_limit_signal"
+        ],
+    ),
+    (
+        "I2a DM-04 9(c): the cleanup's prefix scan includes deactivated users",
+        [
+            (
+                P,
+                "        listed = self.api.get(\n"
+                '            "/api/v2/users",\n'
+                "            params={\n"
+                '                "payload": json.dumps(\n'
+                '                    {"filter_conditions": {}, "limit": 100, "include_deactivated_users": True}\n',
+                "        listed = self.api.get(\n"
+                '            "/api/v2/users",\n'
+                "            params={\n"
+                '                "payload": json.dumps(\n'
+                '                    {"filter_conditions": {}, "limit": 100}\n',
+            )
+        ],
+        [
+            "tests.test_cleanup.GuardedCleanupTest.test_a_deactivated_user_with_the_prefix_is_found_and_deleted"
+        ],
+    ),
+    (
+        "I2a signals by kind: only a rate limit without billing wording is only a rate limit",
+        [
+            (
+                P,
+                "        if self.ledger.signals and all(s.only_rate_limit for s in self.ledger.signals):\n",
+                "        if self.ledger.signals and all(s.rate_limited for s in self.ledger.signals):\n",
+            )
+        ],
+        [SS + "SignalKindTest.test_anything_else_is_a_charge_signal"],
+    ),
+    (
+        "I2a signals by kind: billing wording in the server's response hook",
+        [
+            (
+                S,
+                "                billing=mentions_billing(message),\n",
+                "                billing=False,\n",
+            )
+        ],
+        [
+            "tests.test_server_api.SignalKindAtTheServerTest.test_a_rate_limit_with_quota_wording_is_a_charge_signal"
+        ],
+    ),
+    (
+        "I2a signals by kind: billing wording in the server's result check",
+        [
+            (
+                S,
+                "                billing=mentions_billing(result.message),\n",
+                "                billing=False,\n",
+            )
+        ],
+        [
+            "tests.test_server_api.SignalKindAtTheServerTest.test_a_rate_limit_with_quota_wording_is_a_charge_signal"
+        ],
+    ),
+    (
+        "I2a signals by kind: billing wording in a client's recorded request",
+        [
+            (
+                B,
+                "                        billing=mentions_billing(message if isinstance(message, str) else None),\n",
+                "                        billing=False,\n",
+            )
+        ],
+        [TCS + "ClientSignalKindTest.test_record_and_error_sites"],
+    ),
+    (
+        "I2a signals by kind: billing wording in a client's error",
+        [
+            (
+                B,
+                "                    billing=mentions_billing(reply.message),\n",
+                "                    billing=False,\n",
+            )
+        ],
+        [TCS + "ClientSignalKindTest.test_record_and_error_sites"],
+    ),
+    (
+        "I2a signals by kind: billing wording in an asynchronous SDK error",
+        [
+            (
+                B,
+                "    return signal, is_rate_limit(status, code), mentions_billing(text)\n",
+                "    return signal, is_rate_limit(status, code), False\n",
+            )
+        ],
+        [TCS + "LateRequestsTest.test_an_asynchronous_sdk_error"],
+    ),
+    (
+        "I2a signals by kind: a rate limit's stop names its reset",
+        [(S, '    return f" (x-ratelimit-reset {reset})" if reset else ""\n', '    return ""\n')],
+        ["tests.test_server_api.SignalKindAtTheServerTest.test_the_stop_names_the_reset"],
     ),
 ]
 

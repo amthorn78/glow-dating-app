@@ -16,8 +16,18 @@ from glow_stream_proof import matrix
 from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import CaseResult, ProofRun, RunStopped
 from glow_stream_proof.server_api import ApiResult
-from glow_stream_proof.usage import GuardrailStop
-from tests.fakes import FakeServer, FakeSession, NoSettle, http_reply, make_run, record, set_up
+from glow_stream_proof.usage import GuardrailStop, UsageLedger
+from tests.fakes import (
+    AB,
+    QUERY_PATH,
+    FakeServer,
+    FakeSession,
+    NoSettle,
+    http_reply,
+    make_run,
+    record,
+    set_up,
+)
 
 Behaviour = Callable[[FakeSession, str, dict[str, Any]], Reply | None]
 ENDED = "client {} ended: no reply within 60s"
@@ -27,7 +37,7 @@ def ended(label: str) -> ClientSessionEnded:
     return ClientSessionEnded(ENDED.format(label))
 
 
-def success(body: Any = None, path: str = "/channels/glow-match/x/query") -> Reply:
+def success(body: Any = None, path: str = QUERY_PATH) -> Reply:
     return Reply(True, {}, None, [record(201, body or {}, path=path)], api_calls=1)
 
 
@@ -44,9 +54,10 @@ def matrix_run(
     after_setup: dict[str, Behaviour] | None = None,
     handler: Callable[[FakeServer, ProofRun], Any] | None = None,
     raises: type[BaseException] | None = None,
+    ledger: UsageLedger | None = None,
 ) -> tuple[ProofRun, FakeServer]:
     """Set up, then run ``cases``; ``after_setup`` behaviours apply to the matrix only."""
-    run, server = make_run(behaviours=behaviours)
+    run, server = make_run(behaviours=behaviours, ledger=ledger)
     with NoSettle():
         set_up(run)
         for label, behaviour in (after_setup or {}).items():
@@ -75,7 +86,8 @@ class ReviewScenariosTest(unittest.TestCase):
             if op == "call" and params.get("method") == "sendMessage":
                 calls.append(1)
                 if len(calls) == 1:
-                    return success({"message": {"id": "m-reply"}}, "/channels/glow-match/x/message")
+                    path = f"/channels/glow-match/{AB}/message"
+                    return success({"message": {"id": "m-reply"}}, path)
                 raise ended("A")
             return None
 
@@ -102,7 +114,7 @@ class ReviewScenariosTest(unittest.TestCase):
 
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "updateMemberPartial":
-                return success({}, "/channels/glow-match/x/member")
+                return success({}, f"/channels/glow-match/{AB}/member")
             return None
 
         run, _server = matrix_run({"S15"}, after_setup={"A": a, "B": b})
@@ -275,12 +287,20 @@ class ReviewScenariosTest(unittest.TestCase):
 
 class EveryWayACaseEndsTest(unittest.TestCase):
     def test_guardrail_stop_with_nothing_observed_records_an_inconclusive_row(self) -> None:
+        # Raised as production raises it, through the run's ledger (P06.1-I2a; the C3
+        # review's nit 6).
+        ledger = UsageLedger()
+
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "watch":
-                raise GuardrailStop("client A: HTTP 402; stopping at once")
+                raise ledger.stop_at_once(
+                    "client A: HTTP 402; stopping at once", rate_limited=False
+                )
             return None
 
-        run, _server = matrix_run({"R1", "R2"}, after_setup={"A": a}, raises=GuardrailStop)
+        run, _server = matrix_run(
+            {"R1", "R2"}, after_setup={"A": a}, raises=GuardrailStop, ledger=ledger
+        )
         row = only(run, "R1")
         self.assertEqual(row.verdict, matrix.INCONCLUSIVE)
         self.assertEqual(row.reason, "the run stopped at a guardrail during this case")
@@ -523,7 +543,7 @@ class ProceduresKeepWhatTheyObservedTest(unittest.TestCase):
 
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "sendEvent":
-                return success({"event": {}}, "/channels/glow-match/x/event")
+                return success({"event": {}}, f"/channels/glow-match/{AB}/event")
             return None
 
         def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
@@ -606,15 +626,19 @@ class ReviewOfC2Test(unittest.TestCase):
         self.assertTrue(any("E5: restoring A's role raised" in s for s in run.stops))
 
     def test_a_failing_progress_write_never_replaces_a_guardrail_stop(self) -> None:
+        ledger = UsageLedger()  # the stop is raised through it (P06.1-I2a; nit 6)
+
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "watch":
-                raise GuardrailStop("client A: HTTP 402; stopping at once")
+                raise ledger.stop_at_once(
+                    "client A: HTTP 402; stopping at once", rate_limited=False
+                )
             return None
 
         def failing_progress() -> None:
             raise OSError("disk full")
 
-        run, _server = make_run()
+        run, _server = make_run(ledger=ledger)
         with NoSettle():
             set_up(run)
             session = run.sessions["A"]

@@ -1,0 +1,333 @@
+"""One guard for every server call that changes users, channels, members or the app.
+
+DM-04 finding 1 (P06.1-I2a). Every server request passes :func:`refusal` before
+it is sent: the server client calls it from its request hook, so the SDK's
+typed calls cannot bypass it (:mod:`glow_stream_proof.server_api`). A request
+that bans, deactivates, deletes, revokes tokens, hides, freezes, removes a
+member, or updates a user or member is refused when:
+
+* it targets a user ID or a channel the run did not create: neither one the run
+  recorded nor one whose ID contains the run's prefix; or
+* it is a ``PATCH /api/v2/app`` other than a journalled temporary setting (guest
+  user creation is the only one).
+
+The guard goes further in the same direction. Every other request that changes
+something must be of a kind the proof makes, with the same checks on every user
+and channel it names; a channel type may change only in a journalled temporary
+``glow-match`` toggle; and a request of any other kind is refused (for example
+a batch channel update, a retention policy or a role). A message may be deleted
+only if the run recorded it. Reads (GET and HEAD, and the POST queries in
+:data:`READ_POSTS`) are never refused.
+
+A refusal names the request's shape and the reason, never an identifier the run
+did not create.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol
+
+from .configuration import MATCH_FEATURES, MATCH_TYPE
+
+MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+# POST requests that only read.
+READ_POSTS = frozenset(
+    {
+        ("channels",),
+        ("polls", "query"),
+        ("messages", "history"),
+        ("threads",),
+        ("sync",),
+        ("unread_batch",),
+    }
+)
+# Keys whose values are user IDs (a string, or a list of strings or member objects).
+USER_ID_KEYS = frozenset(
+    {
+        "user_id",
+        "user_ids",
+        "target_user_id",
+        "target_ids",
+        "banned_by_id",
+        "unbanned_by_id",
+        "created_by_id",
+        "blocked_user_id",
+        "member_ids",
+        "members",
+        "add_members",
+        "remove_members",
+        "invites",
+        "add_moderators",
+        "demote_moderators",
+        "assign_roles",
+        "new_channel_owner_id",
+        "new_call_owner_id",
+        "created_by",
+    }
+)
+# Keys whose object value is a user (its "id" is a user ID).
+USER_OBJECT_KEYS = frozenset({"user", "banned_by", "unbanned_by", "created_by"})
+# Keys whose values are channel CIDs ("type:id").
+CHANNEL_KEYS = frozenset({"channel_cid", "channel_cids", "cid", "cids"})
+# The fixed part of a glow-match type update, sent with its production values.
+FIXED_TYPE_KEYS = ("automod", "automod_behavior", "max_message_length")
+_USER_ACTIONS = frozenset(
+    {"delete", "deactivate", "reactivate", "restore", "block", "unblock", "live_locations"}
+)
+_KEYWORDS = frozenset(
+    {
+        "app",
+        "guest",
+        "users",
+        "channels",
+        "channeltypes",
+        "moderation",
+        "messages",
+        "polls",
+        "usergroups",
+        "threads",
+        "query",
+        "member",
+        "members",
+        "message",
+        "event",
+        "read",
+        "unread",
+        "hide",
+        "show",
+        "truncate",
+        "file",
+        "image",
+        "ban",
+        "unban",
+        "mute",
+        "unmute",
+        "channel",
+        "reaction",
+        "reactions",
+        "replies",
+        "vote",
+        "options",
+        "batch",
+        "history",
+        "undelete",
+        "action",
+        *_USER_ACTIONS,
+    }
+)
+
+
+class Scope(Protocol):
+    """What the run created, and which temporary settings its journal holds."""
+
+    def owns_user(self, user_id: str) -> bool: ...
+
+    def owns_channel(self, channel: str) -> bool: ...
+
+    def owns_message(self, message_id: str) -> bool: ...
+
+    def owns_poll(self, poll_id: str) -> bool: ...
+
+    def owns_group(self, group_id: str) -> bool: ...
+
+    def journalled_app_settings(self) -> frozenset[str]: ...
+
+    def journalled_type_features(self) -> frozenset[str]: ...
+
+
+@dataclass
+class PrefixScope:
+    """Ownership by prefix alone: what ``cleanup --apply`` may delete.
+
+    Its journal is empty, so it refuses every application setting change.
+    """
+
+    prefix: str
+    users: set[str] = field(default_factory=set)
+    channels: set[str] = field(default_factory=set)
+
+    def owns_user(self, user_id: str) -> bool:
+        return user_id in self.users or self.prefix in user_id
+
+    def owns_channel(self, channel: str) -> bool:
+        return channel in self.channels or self.prefix in channel_id(channel)
+
+    def owns_message(self, message_id: str) -> bool:
+        return False
+
+    def owns_poll(self, poll_id: str) -> bool:
+        return False
+
+    def owns_group(self, group_id: str) -> bool:
+        return False
+
+    def journalled_app_settings(self) -> frozenset[str]:
+        return frozenset()
+
+    def journalled_type_features(self) -> frozenset[str]:
+        return frozenset()
+
+
+def channel_id(channel: str) -> str:
+    """The channel ID of a CID ("type:id") or of a bare ID."""
+    return channel.split(":", 1)[1] if ":" in channel else channel
+
+
+def parts_of(path: str) -> list[str]:
+    """The path's segments after ``/api/v2/chat/`` or ``/api/v2/`` (v1 paths have neither)."""
+    text = path.split("?", 1)[0].strip("/")
+    for prefix in ("api/v2/chat/", "api/v2/"):
+        if text.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    return [segment for segment in text.split("/") if segment]
+
+
+def shape(parts: list[str]) -> str:
+    """The path with every identifier replaced, for a refusal's message."""
+    if parts[:1] == ["channels"] and len(parts) >= 3 and parts[1] not in _KEYWORDS:
+        return "/".join(["channels", "{type}", "{id}", *(_generic(parts[3:]))])
+    return "/".join(_generic(parts)) or "/"
+
+
+def _generic(parts: Iterable[str]) -> list[str]:
+    return [p if p in _KEYWORDS else "{id}" for p in parts]
+
+
+def _strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list | tuple):
+        return [v for v in value if isinstance(v, str)]
+    return []
+
+
+def user_ids(obj: Any) -> list[str]:
+    """Every user ID a request body or its parameters name."""
+    found: list[str] = []
+    if isinstance(obj, Mapping):
+        for key, value in obj.items():
+            if key == "users" and isinstance(value, Mapping):
+                found += [str(k) for k in value]
+            elif key in USER_ID_KEYS:
+                found += _strings(value)
+            if key in USER_OBJECT_KEYS and isinstance(value, Mapping):
+                found += _strings(value.get("id"))
+            if key == "users" and isinstance(value, list):
+                found += [
+                    str(item["id"])
+                    for item in value
+                    if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+                ]
+            found += user_ids(value)
+    elif isinstance(obj, list | tuple):
+        for item in obj:
+            found += user_ids(item)
+    return found
+
+
+def channel_refs(obj: Any) -> list[str]:
+    """Every channel CID a request body or its parameters name."""
+    found: list[str] = []
+    if isinstance(obj, Mapping):
+        for key, value in obj.items():
+            if key in CHANNEL_KEYS:
+                found += _strings(value)
+            found += channel_refs(value)
+    elif isinstance(obj, list | tuple):
+        for item in obj:
+            found += channel_refs(item)
+    return found
+
+
+def _unowned(users: Iterable[str], channels: Iterable[str], scope: Scope) -> str | None:
+    if any(not scope.owns_user(u) for u in users):
+        return "a user ID this run did not create"
+    if any(not scope.owns_channel(c) for c in channels):
+        return "a channel this run did not create"
+    return None
+
+
+def refusal(
+    method: str, path: str, body: Any, params: Mapping[str, str] | None, scope: Scope
+) -> str | None:
+    """Why the guard refuses this server request, or ``None`` if it may be sent."""
+    verb = method.upper()
+    if verb not in MUTATING:
+        return None
+    parts = parts_of(path)
+    if verb == "POST" and tuple(parts) in READ_POSTS:
+        return None
+    params = dict(params or {})
+    reason = _reason(verb, parts, body, params, scope)
+    if reason is None:
+        return None
+    return f"guard refused {verb} {shape(parts)}: {reason}"
+
+
+def _reason(
+    verb: str, parts: list[str], body: Any, params: Mapping[str, str], scope: Scope
+) -> str | None:
+    family = parts[0] if parts else ""
+    users = user_ids(body) + user_ids(params)
+    channels = channel_refs(body) + channel_refs(params)
+    if family == "app":
+        return _app(verb, parts, body, scope)
+    if family == "channeltypes":
+        return _channel_type(verb, parts, body, scope)
+    if family == "users":
+        if len(parts) >= 2 and parts[1] not in _USER_ACTIONS:
+            users = [parts[1], *users]  # users/{user_id}/...
+        if not users:
+            return "no user named"
+        return _unowned(users, channels, scope)
+    if family == "guest":
+        return _unowned(users, channels, scope) if users else "no user named"
+    if family == "channels":
+        if len(parts) == 2 and parts[1] == "delete":
+            return _unowned(users, channels, scope) if channels else "no channel named"
+        if len(parts) < 3 or parts[1] in _KEYWORDS:
+            return "not a kind of request this proof makes"
+        return _unowned(users, [f"{parts[1]}:{parts[2]}", *channels], scope)
+    if family == "moderation":
+        if len(parts) < 2 or parts[1] not in ("ban", "unban", "mute", "unmute"):
+            return "not a kind of request this proof makes"
+        for source in (body, params):
+            if isinstance(source, Mapping) and isinstance(source.get("type"), str):
+                if isinstance(source.get("id"), str):
+                    channels.append(f"{source['type']}:{source['id']}")
+        return _unowned(users, channels, scope) if users else "no user named"
+    if family == "messages":
+        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):
+            return "a message this run did not record"
+        return _unowned(users, channels, scope)
+    if family == "polls":
+        if len(parts) >= 2 and not scope.owns_poll(parts[1]):
+            return "a poll this run did not record"
+        return _unowned(users, channels, scope)
+    if family == "usergroups":
+        if len(parts) >= 2 and not scope.owns_group(parts[1]):
+            return "a user group this run did not record"
+        return _unowned(users, channels, scope)
+    return "not a kind of request this proof makes"
+
+
+def _app(verb: str, parts: list[str], body: Any, scope: Scope) -> str | None:
+    keys = set(body) if isinstance(body, Mapping) else set()
+    if verb != "PATCH" or len(parts) != 1 or not keys:
+        return "not a journalled temporary setting"
+    if not keys <= scope.journalled_app_settings():
+        return "not a journalled temporary setting"
+    return None
+
+
+def _channel_type(verb: str, parts: list[str], body: Any, scope: Scope) -> str | None:
+    if verb != "PUT" or parts[1:] != [MATCH_TYPE] or not isinstance(body, Mapping):
+        return "not a journalled temporary toggle of the match type"
+    fixed_ok = all(body.get(k, MATCH_FEATURES[k]) == MATCH_FEATURES[k] for k in FIXED_TYPE_KEYS)
+    toggled = set(body) - set(FIXED_TYPE_KEYS)
+    if not fixed_ok or not toggled <= scope.journalled_type_features():
+        return "not a journalled temporary toggle of the match type"
+    return None
