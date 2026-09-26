@@ -715,6 +715,8 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                 "POST", f"/channels/{T}/{run.ctx['AB']}", body={"remove_members": [existing]}
             )
             undo.append(f"X was added to AB; removed again ({_short(done)})")
+            if not done.ok:
+                run._defer_stop(f"{case.id}: removing X from AB again got {_short(done)}")
         pairs.append(
             (
                 "addMembers",

@@ -184,6 +184,39 @@ class FamiliesTest(unittest.TestCase):
         self.assertEqual(case.detail["hidden_in_channel_list"], "not listed")
         self.assertEqual(case.detail["listed_after_a_new_message"], "listed")
 
+    def test_the_hide_is_made_again_before_the_members_own_show(self) -> None:
+        run, _, _, _ = run_families({"RV-hide"})
+        case = row(run, "RV-hide")
+        # The probe's message showed the channel again; it is hidden again first.
+        self.assertEqual(case.detail["listed_after_a_new_message"], "listed")
+        self.assertEqual(
+            case.detail["hidden_again_before_undo"], {"answer": "201", "listed": "not listed"}
+        )
+        self.assertTrue(case.detail["client_undo"]["verdict"].startswith("FAIL"))
+
+    def test_a_mechanism_refused_with_the_actor_named_is_applied_without_it(self) -> None:
+        run, server, _, clock = family_run()
+
+        def refuse_actor(method: str, path: str, body: Any, params: Any) -> Any:
+            if body and "remove_members" in body and "user_id" in body:
+                return error(method, path, 403, 17, "user may not remove members")
+            return None
+
+        server.handlers.insert(0, refuse_actor)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"RV-remove"})
+        case = row(run, "RV-remove")
+        apply = case.detail["apply"]
+        self.assertEqual(
+            apply["refused_with_the_actor_named"], "403 / code 17: user may not remove members"
+        )
+        self.assertIsNone(apply["actor_named"])
+        self.assertEqual(apply["body"], {"remove_members": ["{M1}"]})
+        self.assertEqual(case.detail["on_apply"]["M2"]["names_actor"], "no actor named")
+        self.assertEqual(case.verdict, mechanisms.MEETS)
+
     def test_a_freeze_is_judged_for_both_members(self) -> None:
         run, _, _, _ = run_families({"RV-freeze"})
         case = row(run, "RV-freeze")
@@ -232,6 +265,29 @@ class FamiliesTest(unittest.TestCase):
         # Neither the deleted user nor its deleted channel is named again at cleanup.
         self.assertNotIn(f"{run.prefix}-uh", run.users)
         self.assertNotIn(f"glow-match:{run.prefix}-ch-delete", run.channels)
+
+    def test_the_cleanup_names_no_user_or_channel_that_is_gone(self) -> None:
+        # The hard delete's task is reported late and the channel is still there when
+        # the run looks; both are gone by the cleanup (P06.1-I2a).
+        run, server, world, clock = family_run({"hard_delete_removes_conversations": False})
+        server.task_status = "running"
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"SD-delete"})
+            h, cid = f"{run.prefix}-uh", f"glow-match:{run.prefix}-ch-delete"
+            self.assertIn(h, run.users)  # the task never reported completion
+            self.assertIn(cid, run.maybe_gone_channels)
+            server.members.pop(f"{run.prefix}-ch-delete")  # the conversation goes later
+            server.task_status = "completed"
+            problems = run.finish(cleanup=True)
+        out = run.cleanup_result
+        self.assertEqual(out["recorded_users_already_gone"], 1)
+        self.assertEqual(out["channels_already_gone"], ["glow-match:{CH_delete}"])
+        deleted = [b for m, p, b in server.calls if p == "/api/v2/chat/channels/delete"]
+        self.assertNotIn(cid, deleted[-1]["cids"])
+        self.assertEqual(out["users_delete"], 201)  # the batch named only existing users
+        self.assertEqual(problems, [])
 
     def test_a_channel_the_hard_delete_keeps_is_deleted_by_the_cleanup(self) -> None:
         run, _, _, problems = run_families({"SD-delete"}, hard_delete_removes_conversations=False)

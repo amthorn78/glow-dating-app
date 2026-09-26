@@ -340,6 +340,8 @@ class Family:
         self.own_sessions: list[str] = []
         self.revoked_at = 0
         self.message_ids_before: set[str] = set()
+        # Whether the applied request named M2 as the acting user.
+        self.actor_named = False
 
     # -- helpers --
 
@@ -623,50 +625,65 @@ class Family:
 
     # -- apply --
 
+    def apply_request(self, actor: bool = True) -> tuple[str, str, dict[str, Any]]:
+        """The server request that applies the mechanism: method, path and body.
+
+        With ``actor``, the removal, the ban and the freeze name M2 as the acting user.
+        """
+        run, mech = self.run, self.mech
+        affected_id, other_id = run.ctx[mech.affected], run.ctx[OTHER]
+        acting = {"user_id": other_id} if actor and mech.actor else {}
+        if mech.key == "remove":
+            path = f"/channels/{T}/{self.channel}"
+            return "POST", path, {"remove_members": [affected_id], **acting}
+        if mech.key == "ban":
+            body: dict[str, Any] = {"target_user_id": affected_id, "channel_cid": self.cid}
+            if actor and mech.actor:
+                body["banned_by_id"] = other_id
+            return "POST", "/api/v2/moderation/ban", body
+        if mech.key == "hide":
+            path = f"/channels/{T}/{self.channel}/hide"
+            return "POST", path, {"user_id": affected_id, "clear_history": False}
+        if mech.key == "freeze":
+            return "PATCH", f"/channels/{T}/{self.channel}", {"set": {"frozen": True}, **acting}
+        if mech.key == "revoke":
+            stamp = datetime.fromtimestamp(self.revoked_at, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            users = [{"id": affected_id, "set": {"revoke_tokens_issued_before": stamp}}]
+            return "PATCH", "/api/v2/users", {"users": users}
+        if mech.key == "deactivate":
+            path = f"/api/v2/users/{affected_id}/deactivate"
+            return "POST", path, {"mark_messages_deleted": False}
+        # A hard user delete requires hard messages and conversations (Stream's users
+        # documentation); the options are sent explicitly and recorded.
+        body = {
+            "user_ids": [affected_id],
+            "user": "hard",
+            "messages": "hard",
+            "conversations": "hard",
+        }
+        return "POST", "/api/v2/users/delete", body
+
     def apply(self) -> bool:
         """Apply the mechanism server-side; whether Stream accepted it."""
         run, mech = self.run, self.mech
-        affected_id, other_id = run.ctx[mech.affected], run.ctx[OTHER]
+        affected_id = run.ctx[mech.affected]
         applied_at = datetime.now(UTC)
-        result: Any
-        body: dict[str, Any]
-        if mech.key == "remove":
-            body = {"remove_members": [affected_id], "user_id": other_id}
-            result = run.api.raw("POST", f"/channels/{T}/{self.channel}", body=body)
-        elif mech.key == "ban":
-            body = {
-                "target_user_id": affected_id,
-                "banned_by_id": other_id,
-                "channel_cid": self.cid,
-            }
-            result = run.api.raw("POST", "/api/v2/moderation/ban", body=body)
-        elif mech.key == "hide":
-            body = {"user_id": affected_id, "clear_history": False}
-            result = run.api.raw("POST", f"/channels/{T}/{self.channel}/hide", body=body)
-        elif mech.key == "freeze":
-            body = {"set": {"frozen": True}, "user_id": other_id}
-            result = run.api.raw("PATCH", f"/channels/{T}/{self.channel}", body=body)
-        elif mech.key == "revoke":
-            revoke_at = int(time.time())
-            self.revoked_at = revoke_at
-            stamp = datetime.fromtimestamp(revoke_at, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-            body = {"users": [{"id": affected_id, "set": {"revoke_tokens_issued_before": stamp}}]}
-            result = run.api.raw("PATCH", "/api/v2/users", body=body)
+        if mech.key == "revoke":
+            self.revoked_at = int(time.time())
+        method, path, body = self.apply_request()
+        result = run.api.raw(method, path, body=body)
+        if mech.key == "revoke":
             # Issued at once: its iat (back-dated 5 s) falls before the revocation time.
             self.tokens["early"] = run.api.user_token(affected_id, pr.TOKEN_TTL_SECONDS)
-        elif mech.key == "deactivate":
-            body = {"mark_messages_deleted": False}
-            result = run.api.raw("POST", f"/api/v2/users/{affected_id}/deactivate", body=body)
-        else:  # delete
-            # A hard user delete requires hard messages and conversations (Stream's users
-            # documentation); the options are sent explicitly and recorded.
-            body = {
-                "user_ids": [affected_id],
-                "user": "hard",
-                "messages": "hard",
-                "conversations": "hard",
-            }
-            result = run.api.raw("POST", "/api/v2/users/delete", body=body)
+        self.actor_named = mech.actor
+        refused_with_actor = None
+        if mech.actor and result.status == 403:
+            # Refused with M2 named as the acting user: applied again without it, and
+            # both answers are recorded.
+            refused_with_actor = f"{result.status} / code {result.code}: {result.message}"
+            method, path, body = self.apply_request(actor=False)
+            result = run.api.raw(method, path, body=body)
+            self.actor_named = False
         self.request = f"{result.method} {self.generic(result.path)}"
         self.detail["apply"] = {
             "request": self.request,
@@ -674,7 +691,10 @@ class Family:
             "answer": f"{result.status}" + (f" / code {result.code}" if result.code else ""),
             "answer_keys": sorted(result.body) if isinstance(result.body, dict) else None,
             "at": applied_at.strftime("%H:%M:%S"),
-            "actor_named": "{M2}" if mech.actor else None,
+            "actor_named": "{M2}" if self.actor_named else None,
+            "refused_with_the_actor_named": self.generic(refused_with_actor)
+            if refused_with_actor
+            else None,
         }
         if not result.ok:
             self.detail["apply"]["message"] = self.generic(result.message or "")
@@ -706,6 +726,9 @@ class Family:
             # members); cleanup must not name it again.
             run.channels.remove(self.cid)
             self.detail["channel_deleted_by_the_mechanism"] = True
+        elif mech.key == "delete":
+            # It may still go, after this read: cleanup checks it first.
+            run.maybe_gone_channels.add(self.cid)
         return True
 
     def needles(self) -> dict[str, str]:
@@ -727,7 +750,7 @@ class Family:
                 "types": got["types"],
                 "local_types": got["local_types"],
                 "connection_closed": got["connection_closed"],
-                "names_actor": actor_paths(paths) if self.mech.actor else "no actor named",
+                "names_actor": actor_paths(paths) if self.actor_named else "no actor named",
             }
         return out
 
@@ -956,6 +979,16 @@ class Family:
         replay of the same request is the control (and undoes it)."""
         mech = self.mech
         label = mech.affected
+        if mech.key == "hide":
+            # The probe's message showed the channel again (Stream's documentation: a
+            # new message ends the hide), so it is hidden again before the member's own
+            # client tries to show it.
+            method, path, body = self.apply_request()
+            again = self.run.api.raw(method, path, body=body)
+            self.detail["hidden_again_before_undo"] = {
+                "answer": f"{again.status}" + (f" / code {again.code}" if again.code else ""),
+                "listed": self.listed(label),
+            }
         if mech.undo == "rejoin":
             reply = self.call(label, "addMembers", [[self.run.ctx[label]]])
         elif mech.undo == "unban":
@@ -975,18 +1008,18 @@ class Family:
                 for k, v in (record.get("params") or {}).items()
                 if k not in ("api_key", "user_id", "connection_id")
             }
-            body = record.get("body")
+            replay_body = record.get("body")
             if mech.undo == "show":
-                body = {"user_id": self.run.ctx[label]}
-            method = str(record.get("method"))
+                replay_body = {"user_id": self.run.ctx[label]}
+            replay_method = str(record.get("method"))
             replay = self.run.api.raw(
-                method,
+                replay_method,
                 path,
-                body=None if method in ("GET", "DELETE") else body,
+                body=None if replay_method in ("GET", "DELETE") else replay_body,
                 params=params or None,
             )
             control_ok = replay.ok
-            control = f"server replay {method} -> {replay.status}" + (
+            control = f"server replay {replay_method} -> {replay.status}" + (
                 f" / code {replay.code}" if replay.code else ""
             )
         self.undo_verdict = matrix.refused_verdict(answer.outcome, control_ok)

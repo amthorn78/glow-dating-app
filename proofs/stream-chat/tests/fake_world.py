@@ -71,6 +71,9 @@ class World:
     revoked_connection_open: bool = True
     client_can_show: bool = True
     hard_delete_removes_conversations: bool = True
+    # A batch user delete naming a user that does not exist is refused (unknown for
+    # Stream; the cleanup must not depend on it).
+    refuse_unknown_users: bool = True
     server_send_refused_when_frozen: bool = False
     # State
     frozen: set[str] = field(default_factory=set)
@@ -235,6 +238,9 @@ class World:
                 self.server.users[parts[1]]["deactivated_at"] = "2026-09-26T00:00:00Z"
             return ok(method, path, {"user": {"id": parts[1]}})
         if parts == ["users", "delete"] and method == "POST":
+            unknown = [u for u in body.get("user_ids") or [] if u not in self.server.users]
+            if unknown and self.refuse_unknown_users:
+                return error(method, path, 400, 4, "users do not exist")
             for uid in body.get("user_ids") or []:
                 self.delete_user(str(uid), body)
             return ok(method, path, {"task_id": "t-delete"})

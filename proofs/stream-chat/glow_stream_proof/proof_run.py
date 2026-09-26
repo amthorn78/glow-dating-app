@@ -377,6 +377,9 @@ class ProofRun:
         self.artifacts: list[str] = []
         # How G2's server-created guest was set up (P06.1-I2a); None until it is tried.
         self.g2_setup: dict[str, Any] | None = None
+        # Channels a hard user delete may remove on its own (SD-delete): cleanup checks
+        # that each still exists before naming it (P06.1-I2a).
+        self.maybe_gone_channels: set[str] = set()
         # Every server request passes the guard before it is sent (DM-04 finding 1).
         self.api.guard = self._guard_refusal
 
@@ -3103,6 +3106,20 @@ class ProofRun:
 
     def _delete_channels(self, out: dict[str, Any]) -> None:
         cids = sorted(set(self.channels))
+        for cid in sorted(self.maybe_gone_channels & set(cids)):
+            # A channel a hard user delete may have removed after the run last looked
+            # (P06.1-I2a): named only if it still exists. Only such channels are read
+            # first; a soft-deleted channel (C13's control) is not listed, but must
+            # still be named to be hard-deleted.
+            listed = self.api.raw(
+                "POST",
+                "/api/v2/chat/channels",
+                body={"filter_conditions": {"cid": cid}, "limit": 1},
+            )
+            channels = listed.body.get("channels") if isinstance(listed.body, dict) else None
+            if listed.ok and channels == []:
+                cids.remove(cid)
+                out.setdefault("channels_already_gone", []).append(_generic(cid, self.ctx))
         if cids:
             res = self.api.raw(
                 "POST", "/api/v2/chat/channels/delete", body={"cids": cids, "hard_delete": True}
@@ -3122,14 +3139,21 @@ class ProofRun:
                     {"filter_conditions": {}, "limit": 100, "include_deactivated_users": True}
                 )
             },
-        ).body
-        found = [
-            str(u.get("id"))
-            for u in (listed.get("users", []) if isinstance(listed, dict) else [])
-            if self.prefix in str(u.get("id"))
-        ]
+        )
+        entries = listed.body.get("users") if isinstance(listed.body, dict) else None
+        entries = [u for u in entries if isinstance(u, dict)] if isinstance(entries, list) else []
+        found = [str(u.get("id")) for u in entries if self.prefix in str(u.get("id"))]
         out["users_found_by_prefix_not_recorded"] = len(set(found) - set(self.users))
-        users = sorted(set(self.users) | set(found))
+        recorded = set(self.users)
+        if listed.ok and len(entries) < 100:
+            # A recorded user that a complete listing does not show no longer exists
+            # (SD-delete's hard delete); the delete does not name it again, since a
+            # batch delete naming a user that is gone could be refused (P06.1-I2a).
+            gone = recorded - {str(u.get("id")) for u in entries}
+            if gone:
+                out["recorded_users_already_gone"] = len(gone)
+            recorded -= gone
+        users = sorted(recorded | set(found))
         if users:
             res = self.api.raw(
                 "POST",
