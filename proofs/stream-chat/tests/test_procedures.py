@@ -9,6 +9,7 @@ import tests  # noqa: F401
 from glow_stream_proof import matrix
 from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.proof_run import CaseResult, ProofRun
+from glow_stream_proof.server_api import ApiResult
 from tests.fakes import FakeSession, NoSettle, http_reply, make_run, record, set_up
 
 
@@ -146,6 +147,114 @@ class NotEffectiveTest(unittest.TestCase):
         behaviours = {"A": own, "B": own, "claim-unread": claimer}
         case = case_of(run_cases({"T4-rest-unread"}, behaviours), "T4-rest-unread")
         self.assertEqual(case.verdict, matrix.HOLDS)
+
+
+def unread(total: int | None, status: int = 200) -> Reply:
+    body: dict[str, Any] = {} if total is None else {"total_unread_count": total}
+    if status >= 300:
+        return http_reply(status, 17, path="/unread")
+    return Reply(True, {}, None, [record(status, body, path="/unread")], api_calls=1)
+
+
+class UnreadControlsTest(unittest.TestCase):
+    """P06.1-C2, finding 2: T4-rest-unread HOLDS only with both controls and all totals."""
+
+    def unread_case(self, a: Reply, b: Reply, claim: Reply) -> CaseResult:
+        def answering(reply: Reply) -> Any:
+            def behaviour(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+                if op == "call" and params.get("method") == "getUnreadCount":
+                    return reply
+                return None
+
+            return behaviour
+
+        behaviours = {"A": answering(a), "B": answering(b), "claim-unread": answering(claim)}
+        return case_of(run_cases({"T4-rest-unread"}, behaviours), "T4-rest-unread")
+
+    def test_as_own_control_refused_is_inconclusive(self) -> None:
+        # The review's reproduction: A's own request refused, B's answered 1, and the
+        # claim answered 2xx without the field.
+        case = self.unread_case(unread(None, 403), unread(1), unread(None))
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.control, "A's own total None; B's own total 1")
+
+    def test_a_missing_total_is_inconclusive(self) -> None:
+        # Both controls answered 2xx, but A's carried no total, and nor did the claim.
+        case = self.unread_case(unread(None), unread(1), unread(None))
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_b_count_with_as_control_failed_is_inconclusive(self) -> None:
+        case = self.unread_case(unread(None, 403), unread(1), unread(1))
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_claim_ignored_with_both_controls_holds(self) -> None:
+        case = self.unread_case(unread(0), unread(1), unread(0))
+        self.assertEqual(case.verdict, matrix.HOLDS_IGNORED)
+
+    def test_bs_count_returned_fails(self) -> None:
+        case = self.unread_case(unread(0), unread(1), unread(1))
+        self.assertEqual(case.verdict, matrix.FAIL)
+
+
+class StoredUserUnreadableTest(unittest.TestCase):
+    """P06.1-C2, the C1 review's nit 7: an unreadable stored user is not a result."""
+
+    @staticmethod
+    def run_with_unreadable_first_read(cases: set[str], behaviours: dict[str, Any]) -> ProofRun:
+        run, server = make_run(behaviours=behaviours)
+        reads: list[int] = []
+
+        def listing(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if (
+                method == "GET"
+                and path == "/api/v2/users"
+                and '"$eq"' in (params or {}).get("payload", "")
+            ):
+                reads.append(1)
+                if len(reads) == 1:  # the read of A's stored user after the connect
+                    return ApiResult(method, path, 200, None, None, {"users": []})
+                user = {"id": run.ctx["A"], "role": "user", "name": "renamed on connect by A"}
+                return ApiResult(method, path, 200, None, None, {"users": [user]})
+            return None
+
+        with NoSettle():
+            set_up(run)
+            server.handlers.append(listing)
+            run.run_matrix(cases)
+        return run
+
+    def test_e5_is_inconclusive_when_as_stored_user_cannot_be_read(self) -> None:
+        run = self.run_with_unreadable_first_read({"E1", "E5"}, {})
+        case = case_of(run, "E5")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "A's stored user could not be read")
+        self.assertFalse(case.detail["stored_user_read"])
+        self.assertFalse(any("E5" in n for n in run.notes))  # no role "restored"
+
+    def test_s14_is_inconclusive_when_as_stored_user_cannot_be_read(self) -> None:
+        run = self.run_with_unreadable_first_read({"S14"}, {})
+        case = case_of(run, "S14")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, "A's stored user could not be read")
+
+    def test_server_user_matches_the_id(self) -> None:
+        run, server = make_run()
+        server.users["someone-else"] = {"id": "someone-else", "role": "admin"}
+
+        def everyone(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "GET" and path == "/api/v2/users":
+                return ApiResult(
+                    method, path, 200, None, None, {"users": list(server.users.values())}
+                )
+            return None
+
+        server.handlers.append(everyone)
+        self.assertIsNone(run._server_user("p061i1-simulated-ua"))
+        self.assertEqual(run._server_user("someone-else"), {"id": "someone-else", "role": "admin"})
 
 
 if __name__ == "__main__":

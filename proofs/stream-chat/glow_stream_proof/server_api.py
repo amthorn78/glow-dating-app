@@ -28,7 +28,7 @@ from getstream import Stream
 
 from .credentials import ServerCredentials
 from .redaction import Redactor
-from .usage import GuardrailStop, UsageLedger, charge_signal
+from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
 
 BASE_URL = "https://chat.stream-io-api.com/"
 
@@ -104,7 +104,10 @@ class ServerApi:
         )
         if signal is not None:
             method, path = response.request.method, response.request.url.path
-            raise GuardrailStop(f"server {method} {path}: {signal}; stopping at once")
+            raise GuardrailStop(
+                f"server {method} {path}: {signal}; stopping at once",
+                rate_limited=is_rate_limit(response.status_code, code),
+            )
 
     def close(self) -> None:
         self._http.close()
@@ -143,7 +146,10 @@ class ServerApi:
         )
         signal = charge_signal(result.status, result.code, result.message)
         if signal is not None:
-            raise GuardrailStop(f"server {method} {path}: {signal}; stopping at once")
+            raise GuardrailStop(
+                f"server {method} {path}: {signal}; stopping at once",
+                rate_limited=is_rate_limit(result.status, result.code),
+            )
         return result
 
     def raw_multipart(

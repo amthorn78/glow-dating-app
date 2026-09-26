@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .redaction import Redactor
-from .usage import GuardrailStop, UsageLedger, charge_signal
+from .usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
 from .workdir import PROOF_ROOT
 
 RUNNER = PROOF_ROOT / "client" / "runner.cjs"
@@ -251,13 +251,20 @@ class ClientSession:
             code = response.get("code") if isinstance(response, dict) else None
             message = response.get("message") if isinstance(response, dict) else None
             if isinstance(status, int) and status >= 400:
-                signal = charge_signal(status, code if isinstance(code, int) else None, message)
+                stream_code = code if isinstance(code, int) else None
+                signal = charge_signal(status, stream_code, message)
                 if signal is not None:
-                    raise GuardrailStop(f"client {self.label}: {signal}; stopping at once")
+                    raise GuardrailStop(
+                        f"client {self.label}: {signal}; stopping at once",
+                        rate_limited=is_rate_limit(status, stream_code),
+                    )
         if reply.error is not None:
             signal = charge_signal(reply.status, reply.code, reply.message)
             if signal is not None and reply.error.get("kind") != "budget":
-                raise GuardrailStop(f"client {self.label}: {signal}; stopping at once")
+                raise GuardrailStop(
+                    f"client {self.label}: {signal}; stopping at once",
+                    rate_limited=is_rate_limit(reply.status, reply.code),
+                )
         return reply
 
     def close(self) -> None:

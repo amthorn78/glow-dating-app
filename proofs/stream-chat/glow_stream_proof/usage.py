@@ -32,7 +32,16 @@ GUARDRAILS = Limits()
 
 
 class GuardrailStop(RuntimeError):
-    """A guardrail would be passed, or a response suggested a charge or a limit."""
+    """A guardrail would be passed, or a response suggested a charge or a limit.
+
+    ``rate_limited`` is true only when the response was a rate limit (HTTP 429
+    or Stream code 9; :func:`is_rate_limit`). Only then is a restore at the end
+    of the run tried again after a pause.
+    """
+
+    def __init__(self, message: str, *, rate_limited: bool = False) -> None:
+        super().__init__(message)
+        self.rate_limited = rate_limited
 
 
 @dataclass
@@ -133,6 +142,15 @@ _CHARGE_WORDS = re.compile(
 # Stream codes: 9 rate limit, 99 application suspended.
 _CHARGE_CODES = frozenset({9, 99})
 _CHARGE_STATUSES = frozenset({402, 429})
+
+
+def is_rate_limit(status: int | None, code: int | None) -> bool:
+    """HTTP 429 or Stream code 9, unless the status is 402 or the code 99.
+
+    The response's wording is not consulted: a rate limit's own message may say
+    "exceeded", which the charge-signal wording also matches.
+    """
+    return (status == 429 or code == 9) and status != 402 and code != 99
 
 
 def charge_signal(status: int | None, code: int | None, message: str | None) -> str | None:

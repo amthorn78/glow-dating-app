@@ -19,7 +19,7 @@ This is proof tooling, not application code. It is outside the application runti
 | `client/error-info.cjs` | How the runner reports a failed command, and whether the error is Stream's answer |
 | `baseline/application-1729640-2026-09-25.json` | The application's configuration before the proof changed it (settings, grants, channel types). No users or data. Used by `restore` |
 | `tests/` | Offline unit tests. They use no network and no `STREAM_*` variable; `tests/fakes.py` holds the fake server and client sessions |
-| `checks/fix_reversals.py` | Shows that each P06.1-C1 fix is tested (see "Checks (offline)") |
+| `checks/fix_reversals.py` | Shows that each P06.1-C1 and P06.1-C2 fix is tested (see "Checks (offline)") |
 | `requirements*.in`, `requirements*.lock` | Python dependencies, hash-pinned |
 | `package.json`, `package-lock.json`, `.npmrc` | JavaScript dependencies, exact versions |
 | `.work/` | Ignored local output: snapshots, run results, the session usage ledger |
@@ -82,13 +82,14 @@ env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest disco
 .venv/bin/ruff format --check .
 .venv/bin/mypy
 node --check client/runner.cjs
+node --check client/error-info.cjs
 ```
 
 Install first: some tests start `client/runner.cjs` offline (with a placeholder API key and no connect) and read the installed `stream-chat` source, so they need `node_modules`.
 
 The tests run in a clean environment. They assert that no `STREAM_*` variable is present, and they disable outbound sockets; the server client in `test_server_api` runs on an `httpx.MockTransport`. `test_run_simulation` drives the whole orchestration against fakes (`tests/fakes.py`); it does not test Stream.
 
-`checks/fix_reversals.py` shows that each P06.1-C1 fix is tested: in a scratch copy it reverts one fix at a time and runs that fix's tests, which must fail, then restores the fix and runs them again, which must pass. It changes nothing in this directory:
+`checks/fix_reversals.py` shows that each P06.1-C1 and P06.1-C2 fix is tested: in a scratch copy it reverts one fix at a time and runs that fix's tests, which must fail, then restores the fix and runs them again, which must pass. It changes nothing in this directory:
 
 ```bash
 .venv/bin/python checks/fix_reversals.py
@@ -114,11 +115,13 @@ Every command reads `STREAM_*` from the server process's own environment. Comman
 2. Setup. Creates synthetic users A, B, X and D (role `user`) with run-prefixed IDs, and issues each a 900-second token. Creates match channels AB and XD with exactly two members each.
 3. The authorized path, then the bypass matrix, then the reconnect check, then the destructive cases.
 4. Finish, whatever stopped the run (a stop condition, a guardrail, an error, a timeout or Ctrl-C):
-   - every temporary change still in the journal is restored and verified (see below). A restore that fails is tried again after 10 s and 20 s, except when the API-call budget is spent;
+   - every temporary change still in the journal is restored and verified (see below). A restore that fails is tried again after 10 s and 20 s when the failure was a rate limit (HTTP 429 or Stream code 9) or not a stop signal at all (for example a 5xx, or a re-read that still shows the change). After any other stop signal (a charge signal, or the API-call budget) it is not tried again (changed in P06.1-C2: until then every charge signal was retried). A restore that was made and accepted, but whose verification could not be made, leaves the journal and is reported **not verified**, not "not restored" (P06.1-C2);
    - cleanup, unless a charge or limit signal stopped the run at once. It hard-deletes the run's polls and user groups (including any a client managed to create), its channels and its users, including any user whose ID contains the run prefix (Stream prefixes guest IDs), and the `deleted-user-1729640-…` system user Stream creates during that delete. Each step is guarded, so a failure is recorded and the next step still runs. It then confirms that no proof user or channel remains, and no poll or user group that was not already there at preflight (preflight lists them; only counts are shown);
    - the configuration is re-read and compared with the target (`configuration.verify()`).
 
-It prints the redacted results table and writes `.work/run-<prefix>.json` and `.md`, with progress after every case. The results also list every stop recorded, any temporary change not restored or not verified, and every problem found after the run. When a restore fails in the middle of a case, the case's row keeps what it had observed: a FAIL stays a FAIL, and anything else becomes INCONCLUSIVE, because the case did not finish.
+It prints the redacted results table and writes `.work/run-<prefix>.json` and `.md`, with progress after every case. The results also list every stop recorded, any temporary change not restored or not verified, and every problem found after the run. `run-<prefix>.json` is first written before the end of the run starts (marked `end_of_run: not finished`) and rewritten when it ends, so a second Ctrl-C inside the end of the run loses nothing observed (every `.work` file is written through a temporary file and then renamed, so an interrupted write leaves the previous file whole); that Ctrl-C stops the end of the run, closes the client processes, writes the results with the problem "the end of the run was interrupted" and exits 2 (P06.1-C2).
+
+A case interrupted before it finished (a guardrail stop, a failed restore, an ended client session, any other exception or Ctrl-C) still records its row, with what it had observed: a FAIL stays a FAIL, and anything else becomes INCONCLUSIVE with the interruption as its reason (P06.1-C2; until then only a failed restore kept the row). See "Interrupted cases" under "Verdict rules".
 
 Exit codes of `run`: `0` only if the run completed, every temporary change was restored and verified, cleanup was complete (every delete task `completed`, nothing left) and the configuration verifies; `2` if the run stopped (the output says why, and lists anything found after the run); `4` if it completed but a check after it failed or could not be made.
 
@@ -126,28 +129,36 @@ If the output reports a temporary change not restored, `configure` (a dry run) s
 
 ## Verdict rules
 
-The matrix quality rule is unchanged: a refusal counts only when Stream returns its authentication or permission error, and every negative case pairs with a positive control. P06.1-C1 made these rules explicit and stricter; none is weaker than at I1's head.
+The matrix quality rule is unchanged: a refusal counts only when Stream returns its authentication or permission error, and every negative case pairs with a positive control. P06.1-C1 made these rules explicit and stricter, and P06.1-C2 stricter again; no HOLDS rule is weaker than at I1's head. Two FAIL rules now need their evidence (P06.1-C2): E5 with an unreadable stored user, and T4-rest-unread without both controls, are INCONCLUSIVE instead of FAIL, which is still not a pass.
 
-- **Stream's answer, not the SDK's error** (new in P06.1-C1). The status and code are those of Stream's recorded response to the request under test: the last HTTP request the command sent. The SDK's own error is never used. A command that sent no request, or whose request has no recorded response (a local SDK throw, or a call that returned without sending), is **INCONCLUSIVE**, never HOLDS. A positive control counts only if Stream's recorded answer to it was 2xx.
+- **Stream's answer, not the SDK's error** (new in P06.1-C1). The status and code are those of Stream's recorded response to the request under test: the one HTTP request the command sent. The SDK's own error is never used. A command that sent no request, or whose request has no recorded response (a local SDK throw, or a call that returned without sending), is **INCONCLUSIVE**, never HOLDS. Every command judged this way must send exactly one request; a reply with more than one recorded request has no answer either (P06.1-C2). A positive control counts only if Stream's recorded answer to it was 2xx.
 - **WebSocket connects.** Success is the handshake Stream sent. A refusal counts only when the SDK built the error from Stream's own error frame; any other connect failure has no recorded answer.
 - **Token refusals** are 401 with Stream code 5, 40, 41, 42 or 43. Code 2 is Stream's API-key error, so it is not attributable to the token (changed in P06.1-C1). Permission refusals are 403 with code 17 or 70.
 - **HOLDS:** an attributable 401 or 403 and a successful control.
 - **HOLDS (filtered, not refused):** 2xx without any of the case's leak terms, while the control found them. The guest and anonymous `read-ab` terms include AB's ID, A's and B's IDs and names, and both message IDs as well as their text; the `message` terms include XD's message ID, X's ID and XD's ID (widened in P06.1-C1).
-- **HOLDS (accepted, not applied):** 2xx, but the claim or change had no effect. For E5 and S14 both the stored user and the connection's own user object in Stream's handshake must be unchanged (P06.1-C1); a change in either is a FAIL.
+- **HOLDS (accepted, not applied):** 2xx, but the claim or change had no effect. For E5 and S14 both the stored user and the connection's own user object in Stream's handshake must be unchanged (P06.1-C1); a change in either is a FAIL. If A's stored user cannot be read (Stream's listing does not include it), the case is INCONCLUSIVE, "A's stored user could not be read", unless the connection's user object already showed the change, which is a FAIL (P06.1-C2; until then an unreadable E5 user counted as a changed role, a FAIL, and an unreadable S14 user as unchanged).
 - **REFUSED (feature off; not a permission error):** a 400 feature error (code 18 or 19).
-- **INCONCLUSIVE:** no recorded answer, a refusal that is not attributable, a control that did not succeed, or a client session ended by a timeout or a mismatched reply.
+- **INCONCLUSIVE:** no recorded answer, a refusal that is not attributable, a control that did not succeed, a client session ended by a timeout or a mismatched reply, or a case interrupted before it finished without an observed FAIL.
 - **FAIL:** the action succeeded, or a response disclosed a leak term.
 
 Cases with their own rule:
 
-- **G1:** judged on the client's own `POST /guest`. It FAILs whenever that request created a guest, whatever the connect `setGuestUser` makes afterwards did (P06.1-C1).
+- **Interrupted cases** (P06.1-C2). Every way a case can end records its row: a guardrail stop, a failed restore, an ended client session, any other exception or Ctrl-C. The row keeps what the case had observed before the interruption (its request, Stream's answer and any evidence); a FAIL stays a FAIL, and anything else becomes INCONCLUSIVE, "interrupted before the case finished: …". The detail names the interruption. With nothing observed yet, the row is INCONCLUSIVE with the interruption as its reason. A guardrail stop, a failed restore and Ctrl-C then stop the run; after an ended client session or a harness error the run goes on. A progress file that cannot be written while a stop is in flight is noted and never replaces the stop.
+- **A client success that must be undone** (P06.1-C2). When a client action that must be refused succeeds, the case's undo requests reverse it after the control, and the row records each undo's status. If the control is interrupted first, the undo follows the rule for what may still run after each kind of stop: after a guardrail stop it is not made (a charge or limit signal stops the run at once and deletes none of its data; the API-call budget has no calls left), and after Ctrl-C it is not made; after anything else (an ended client session, a failed restore, a harness error) it is made. The row says which, and why. The change is always to the run's own synthetic users, channels, messages, polls or groups, which cleanup deletes (after a charge or limit signal, `cleanup --apply`).
+- **Feature-gated cases** (S2, S5, S6, S7, S12, and S10's poll vote). The feature-on phase is judged as above. The same request is then sent under the production configuration, where it must also fail: a success there is a FAIL, and a request with no recorded answer is INCONCLUSIVE, "no answer from Stream was recorded for the request under the production configuration", unless the feature-on phase already showed a FAIL (P06.1-C2).
+
+- **G1:** judged on the client's own `POST /guest`, which must be the one HTTP request the command recorded (P06.1-C2). It FAILs whenever that request created a guest, whatever the connect `setGuestUser` makes afterwards did (P06.1-C1).
 - **G2:** the guest from G1's control must be able to connect; under the lockdown its connect is refused, so G2 is "not run". I2a sets G2 up differently.
 - **G3:** INCONCLUSIVE unless the anonymous connect succeeded, because the SDK otherwise rethrows the connect's error for every probe without sending anything (P06.1-C1).
 - **RT1** (no refusal involved): HOLDS when A received AB's event and nothing about XD while X received XD's event; FAIL if any event A received carries XD's ID or text.
-- **RT2 and RT3** ask what reaches B. FAIL if any event Stream delivered to B, of any type, in any window collected (after A's request and after the probe), carries the marker. Otherwise INCONCLUSIVE if A's request has no recorded answer or B's listener did not see the probe message; HOLDS if the named events arrived without the marker; HOLDS (accepted, not applied) if Stream accepted the request and nothing arrived; HOLDS if Stream refused it (any status) and nothing arrived (P06.1-C1: every window and every event type is searched).
+- **RT2 and RT3** ask what reaches B. FAIL if any event Stream delivered to B, of any type, in any window collected (after A's request and after the probe), carries the marker (P06.1-C1: every window and every event type is searched). Otherwise:
+  - INCONCLUSIVE if A's request has no recorded answer, or B's listener did not see the probe message;
+  - if Stream accepted the request: HOLDS if the named events arrived without the marker, and HOLDS (accepted, not applied) if none arrived;
+  - if Stream refused it with an attributable error (`auth`, `permission` or `feature`: 401 with a token code, 403 with code 17 or 70, 400 with code 18 or 19): HOLDS, as nothing carrying the marker reached B while B was listening;
+  - if Stream refused it any other way (`input`, `not-found` or `other`: a 400 input error, a 404, a 5xx): INCONCLUSIVE, "refusal not attributable". A malformed request or an outage says nothing about what a well-formed event delivers (changed in P06.1-C2: until then any refusal, and any named event after a refusal, was HOLDS).
 - **Events** count only when Stream delivered them. The SDK's local events (`channels.queried`, `capabilities.changed`, `connection.changed`, `message.read_locally` and the rest of stream-chat 9.53.0's local list, plus health checks) are dropped, and the event type that carried a marker is recorded (P06.1-C1).
 - **T4-ws:** Stream authenticating the connection as the token's user, not the claimed one, is HOLDS (accepted, not applied).
-- **T4-rest-unread:** a refusal HOLDS only if A's and B's own identical requests succeeded (P06.1-C1).
+- **T4-rest-unread:** neither kind of HOLDS unless A's and B's own identical requests succeeded (the controls). A refusal of the claim HOLDS only with both controls (P06.1-C1). An accepted claim needs both controls and all three unread totals (A's, B's and the claim's, each from a 2xx answer) and A's and B's totals must differ: the claim's total equal to A's is HOLDS (accepted, not applied), equal to B's is a FAIL, anything else INCONCLUSIVE. Without both controls or all three totals the case is INCONCLUSIVE (P06.1-C2; until then a failed control or a missing total could give HOLDS (accepted, not applied) or a FAIL).
 - **S15:** FAIL if B reads the marker by any of its reads; the result names each read, and for events the event type.
 
 ## Budget guardrails
@@ -163,7 +174,9 @@ Per session, the harness counts synthetic users, channels, concurrent connection
 
 Server calls are counted before they are sent. Client calls are capped per command inside the runner. The count persists in the ignored `.work/usage-ledger.json`, so it covers every run of one checkout; a fresh clone starts at zero.
 
-A response that suggests a charge, an upgrade or an exceeded limit stops the run at once: HTTP 402 or 429, Stream code 9 or 99, or wording about billing, quotas or upgrades. The check covers every server response, including the typed SDK calls such as `upsert_users` and `send_message` (P06.1-C1), and every client request. After such a stop the run deletes none of its users or channels, but it still restores any temporary change in its journal and re-reads the configuration: at most two or three calls per journalled change and two reads. A restore left undone would leave the application less locked down than recorded.
+A response that suggests a charge, an upgrade or an exceeded limit stops the run at once: HTTP 402 or 429, Stream code 9 or 99, or wording about billing, quotas or upgrades. The check covers every server response, including the typed SDK calls such as `upsert_users` and `send_message` (P06.1-C1), and every client request. After such a stop the run deletes none of its users or channels, sends no undo of a client success, but it still restores any temporary change in its journal and re-reads the configuration. A restore left undone would leave the application less locked down than recorded.
+
+The calls this costs (corrected in P06.1-C2: the README said "at most two or three calls per journalled change"). One restore attempt is at most three calls: the restoring `PUT` or `PATCH`, a re-read and, for AB's `read-channel-members` grant, B's members query. A journalled change gets one attempt when its case ends and, if that fails, one at the end of the run. The end of the run tries twice more, 10 s and 20 s apart, only when that attempt's own failure was a rate limit (HTTP 429 or Stream code 9) or not a stop signal (a 5xx, or a re-read that still shows the change). So a journalled change costs at most six calls when its restores are refused with a charge signal or stopped by the budget, and at most twelve otherwise. Then two reads of the configuration.
 
 The matrix stops early enough to keep 130 API calls for the end of the run, plus 30 for the case in progress. The measured worst case for the end of the run, with every delete task polled 30 times and a journalled restore failing all three attempts, is 115 calls (`tests/test_cleanup.py`).
 
@@ -190,9 +203,9 @@ Each change is written to the run's journal before its enabling request is sent.
 - the type's features and the app's guest setting are re-read and must show the production values;
 - AB is re-read while its override is set, and again after the removal. A re-read proves the removal of a key only if it showed that key as overridden while it was set; the key must then read clear. If the re-read did not show the `read-channel-members` grant, B's members query must be refused again. Any other key the re-read cannot show is recorded as **not verified** (the removal request was accepted), and the run exits non-zero at its end. The re-reads' shape (key names only, no values) is kept in the case's detail, because Stream's response shape for this read has not yet been seen live.
 
-A restore that fails, or that reads back wrong, stops the run. If a guardrail stop was already in flight, both are recorded and the guardrail stays the run's stop. Anything still in the journal is restored at the end of the run, after a timeout or Ctrl-C too.
+A restore that fails, or that reads back wrong, stops the run. If a guardrail stop was already in flight, both are recorded and the guardrail stays the run's stop. Anything still in the journal is restored at the end of the run, after a timeout or Ctrl-C too. A removal of AB's override that Stream accepted, but that could not be verified (for example, B's members query was stopped by a guardrail, while no key still reads as overridden), is not "not restored": it leaves the journal, is recorded as not verified, and the run exits non-zero (P06.1-C2).
 
-The undo requests that reverse a control's change (message text, roles, memberships, channel data, uploads, A's member field) are checked too. A failed undo stops the run once its case is recorded.
+The undo requests that reverse a control's change (message text, roles, memberships, channel data, uploads, A's member field) are checked too. A failed undo stops the run once its case is recorded. So does a failed restore of A's role in E5, when the role reached Stream's stored state (P06.1-C2: until then an exception there was recorded as a harness error and the run went on with A holding the role). The undo of a client success follows "A client success that must be undone" under "Verdict rules".
 
 The run's own users, channels, polls and user groups are deleted.
 
@@ -225,3 +238,9 @@ Side effect: the admin role's grants in the default types and in `glow-match` ar
 - The poll and user-group listings (`POST /api/v2/polls/query`, `GET /api/v2/usergroups`, paths from `getstream` 6.1.0) and the channel re-read used to verify override removals (`POST /api/v2/chat/channels` filtered by `cid`) have not yet been run live. A listing Stream does not answer with 2xx is reported as not verified, and so is an override removal the re-read cannot show; either makes the run exit non-zero.
 - The standalone `verify-clean` command has no preflight to compare with, so it reports every poll and user group present.
 - Cleanup also hard-deletes the application-wide `deleted-user-1729640-…` user when it was created after the run started. That is safe here only because preflight guarantees the application holds no other data.
+
+Added in P06.1-C2:
+
+- Redaction by key name hides a value from every check that reads the redacted data, the leak checks included. The harness's own marker fields (`glow_note`, `glow_text`, `glow_bio`, `text`) do not match a credential pattern, and a test keeps it so; a new case must not put a marker under a key ending in `_key`, `_token` or holding `secret`, `password` or `credential`. Since P06.1-C2 any key ending in `_key` is redacted, so the client-safe API key in recorded request parameters (`api_key`) is redacted too.
+- Credentials embedded in URL values (for example a webhook or queue URL) are not redacted by key name. No output path writes the raw application object; `baseline` writes only the settings the proof reads.
+- After a guardrail stop or Ctrl-C during a case's control, a client success is not undone (see "Verdict rules"). The same holds for the restores inside S14 and E5 of A's own name and role: after an interruption they are left to cleanup, which deletes A.

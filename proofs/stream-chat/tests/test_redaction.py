@@ -10,6 +10,7 @@ from glow_stream_proof.redaction import (
     Redactor,
     describe_token,
     find_leaks,
+    is_sensitive_key,
     token_lifetime_seconds,
 )
 
@@ -61,7 +62,6 @@ class RedactionTest(unittest.TestCase):
             "refresh_token": "opaque",
             "db_password": "pw",
             "revoke_tokens_issued_before": "2026-09-25T00:00:00Z",
-            "api_key": "abcdefghijkl",
             "id": "u1",
         }
         out = Redactor().value(body)
@@ -71,8 +71,43 @@ class RedactionTest(unittest.TestCase):
         self.assertEqual(out["refresh_token"], REDACTED_SECRET)
         self.assertEqual(out["db_password"], REDACTED_SECRET)
         self.assertEqual(out["revoke_tokens_issued_before"], "2026-09-25T00:00:00Z")
-        self.assertEqual(out["api_key"], "abcdefghijkl")
         self.assertEqual(out["id"], "u1")
+
+    def test_credential_keys_of_the_app_settings_model_are_redacted(self) -> None:
+        # P06.1-C2, the C1 review's nit 10: every credential key name in getstream
+        # 6.1.0's app settings model (GetApplicationResponse and the models it
+        # contains), including the three the review names. The Datadog "api_key"
+        # is a credential, so "api_key" is redacted by key too; the client-safe
+        # Stream API key in plain text is not (test_api_key_is_not_redacted).
+        names = (
+            "firebase_server_key",
+            "sqs_key",
+            "sns_key",
+            "server_key",
+            "s3_api_key",
+            "api_key",
+            "stream_key",
+            "apn_auth_key",
+            "apn_p12_cert",
+            "credentials_json",
+            "gcs_credentials",
+            "huawei_app_secret",
+            "xiaomi_app_secret",
+            "s3_secret",
+            "sqs_secret",
+            "sns_secret",
+            "secret",
+        )
+        for name in names:
+            self.assertTrue(is_sensitive_key(name), name)
+            self.assertEqual(Redactor().value({name: "value"})[name], REDACTED_SECRET, name)
+        for name in ("key_id", "apn_key_id", "filterable_custom_keys", "custom_keys", "id"):
+            self.assertFalse(is_sensitive_key(name), name)
+
+    def test_the_harness_marker_fields_are_never_redacted(self) -> None:
+        # A marker under a redacted key would be hidden from the leak checks.
+        for name in ("glow_note", "glow_text", "glow_bio", "text", "name", "image"):
+            self.assertFalse(is_sensitive_key(name), name)
 
     def test_api_key_is_not_redacted(self) -> None:
         # The API key is client-safe and may appear in evidence.

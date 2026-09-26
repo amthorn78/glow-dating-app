@@ -61,6 +61,11 @@ T = MATCH_TYPE
 # (UTC), as recorded in the P06.1 evidence. Preflight compares only the minute;
 # no identifier is read into the record.
 DASHBOARD_USER_CREATED_MINUTE = "2026-09-24T13:07"
+# A verdict the production phase keeps as it is when its request has no answer.
+NOT_A_PASS = (matrix.FAIL, matrix.INCONCLUSIVE)
+PRODUCTION_NO_RESPONSE_REASON = (
+    "no answer from Stream was recorded for the request under the production configuration"
+)
 
 
 class RunStopped(RuntimeError):
@@ -141,12 +146,17 @@ def _answer_of(record: dict[str, Any] | None, reply: Reply) -> Answer:
 
 
 def _http_answer(reply: Reply) -> Answer:
-    """The request under test is the last HTTP request the command sent.
+    """The request under test is the one HTTP request the command sent.
 
-    Every SDK call in the matrix sends one request. The SDK's own error
+    Every SDK call judged here sends exactly one request. A reply with any
+    other number of recorded requests has no answer (P06.1-C2): with more than
+    one, the last need not be the request under test. The SDK's own error
     (``reply.error``) is never used: a local throw, or a call that returned
     without a request, has no recorded answer.
     """
+    if len(reply.requests) > 1:
+        note = f"{len(reply.requests)} requests recorded; exactly one was expected"
+        return Answer("no-response", None, None, None, note)
     return _answer_of(reply.last_request, reply)
 
 
@@ -332,6 +342,9 @@ class ProofRun:
         self.unverified_restores: list[str] = []
         # Polls and user groups present at preflight; only later ones are this run's.
         self.preexisting: dict[str, Any] = {}
+        # What the case in progress has observed so far (:meth:`_observe`), so that
+        # an interruption of a later step does not lose it.
+        self._partial: CaseResult | None = None
 
     # -- helpers ----------------------------------------------------------------
 
@@ -411,7 +424,15 @@ class ProofRun:
         try:
             note = change.restore()
         except (RunStopped, GuardrailStop) as exc:
-            self.stops.append(f"restore failed: {change.description}: {self._text(exc)}")
+            if change.unverified is not None:
+                # The restore was made and accepted; only its verification could
+                # not be made. It is "not verified", not "not restored" (P06.1-C2).
+                self._restored_unverified(change)
+                self.stops.append(
+                    f"restore made but not verified: {change.description}: {self._text(exc)}"
+                )
+            else:
+                self.stops.append(f"restore failed: {change.description}: {self._text(exc)}")
             raise
         except Exception as exc:
             message = (
@@ -420,13 +441,19 @@ class ProofRun:
             self.stops.append(message)
             raise RunStopped(message) from exc
         change.note = note
+        if change.unverified is not None:
+            self._restored_unverified(change)
         if change in self.journal:
             self.journal.remove(change)
-        if change.unverified is not None:
-            self.unverified_restores.append(
-                self.redactor.text(_generic(change.unverified, self.ctx))
-            )
         return note
+
+    def _restored_unverified(self, change: TemporaryChange) -> None:
+        """Take ``change`` off the journal as restored, and record it as not verified."""
+        if change in self.journal:
+            self.journal.remove(change)
+        self.unverified_restores.append(
+            self.redactor.text(_generic(str(change.unverified), self.ctx))
+        )
 
     def _keep_case(self, exc: RunStopped, row: CaseResult | None, why: str) -> None:
         """Attach what a case had observed to the stop, so that its row is not lost.
@@ -441,6 +468,58 @@ class ProofRun:
             row.verdict = matrix.INCONCLUSIVE
             row.reason = why
         exc.case_result = row
+
+    def _observe(self, row: CaseResult) -> CaseResult:
+        """Keep ``row`` as what the case in progress has observed so far.
+
+        If a later step of the case is interrupted (a guardrail stop, a failed
+        restore, an ended client session, any other exception or Ctrl-C), the
+        matrix records this row instead of losing it (:meth:`_interrupted_row`).
+        """
+        self._partial = row
+        return row
+
+    @staticmethod
+    def _interruption(exc: BaseException) -> tuple[str, str]:
+        """How ``exc`` is shown when no step had been observed: (observed prefix, reason)."""
+        if isinstance(exc, GuardrailStop):
+            return "not judged: guardrail", "the run stopped at a guardrail during this case"
+        if isinstance(exc, RunStopped):
+            return "run stopped", "the run stopped during this case"
+        if isinstance(exc, ClientSessionEnded):
+            return (
+                "not judged",
+                "a client session ended (timeout, mismatched reply or exit)",
+            )
+        if isinstance(exc, Exception):
+            return f"harness error: {type(exc).__name__}", "harness error"
+        return "not judged: interrupted", "the run was interrupted (Ctrl-C) during this case"
+
+    def _interrupted_row(self, case: matrix.Case, exc: BaseException) -> CaseResult:
+        """The row of a case that ``exc`` ended before it finished.
+
+        It keeps what the case had observed: a FAIL stays a FAIL, and anything
+        else becomes INCONCLUSIVE with the interruption as its reason. A row the
+        case built itself for a failed restore (:meth:`_keep_case`) is used as it is.
+        """
+        kept = exc.case_result if isinstance(exc, RunStopped) else None
+        if kept is not None:
+            return kept
+        prefix, reason = self._interruption(exc)
+        text = self._text(exc) if str(exc) else type(exc).__name__
+        row = self._partial
+        self._partial = None
+        if row is None:
+            return self._result(
+                case, "-", f"{prefix}: {text}", "-", matrix.Verdict(matrix.INCONCLUSIVE, reason)
+            )
+        row.detail["interrupted"] = f"{type(exc).__name__}: {text}"
+        if isinstance(exc, RunStopped):
+            row.detail["run_stopped"] = text
+        if row.verdict != matrix.FAIL:
+            row.verdict = matrix.INCONCLUSIVE
+            row.reason = f"interrupted before the case finished: {reason}"
+        return row
 
     def _defer_stop(self, reason: str) -> None:
         """Stop the run once the current case's row is recorded."""
@@ -511,6 +590,7 @@ class ProofRun:
         problems: list[str] = []
         unverified: list[str] = []
         checked: list[str] = []
+        probe_stop: GuardrailStop | None = None
         for key, value in override.items():
             state = override_state(channel, key, value) if key in shown else "unknown"
             if state == "set":
@@ -518,7 +598,12 @@ class ProofRun:
             elif state == "clear":
                 checked.append(f"{key} re-read clear")
             elif key == "grants" and "read-channel-members" in (value.get("channel_member") or []):
-                probe = self._members_probe_after_removal()
+                try:
+                    probe = self._members_probe_after_removal()
+                except GuardrailStop as exc:
+                    # The removal was accepted; only B's probe could not be made.
+                    probe_stop = exc
+                    continue
                 if probe is None:
                     unverified.append("grants (B's session had ended)")
                 elif probe.outcome != "permission":
@@ -528,7 +613,16 @@ class ProofRun:
             else:
                 unverified.append(key)
         if problems:
+            # The change stays journalled: a key still reads as overridden.
             raise RunStopped(f"AB's override removal not verified: {'; '.join(problems)}")
+        if probe_stop is not None:
+            # Nothing reads as still overridden; only B's probe could not be made, so
+            # the removal is "not verified", not "not restored" (P06.1-C2).
+            change.unverified = (
+                f"AB's override removal: PATCH {off.status} accepted, but B's members "
+                f"query could not be made: {self._text(probe_stop)}"
+            )
+            raise probe_stop
         note = f"override removed ({off.status}"
         note += f"; {', '.join(checked)}" if checked else ""
         if unverified:
@@ -943,46 +1037,26 @@ class ProofRun:
                     f"matrix stopped before {case.id}: API-call budget reserved for cleanup"
                 )
                 break
+            self._partial = None
             try:
                 if case.procedure is not None:
                     result = self._procedure(case)
                 else:
                     result = self._generic_case(case)
-            except GuardrailStop:
+            except (GuardrailStop, RunStopped) as exc:
+                # Record the case, with what it had observed, then stop: a
+                # guardrail or a failed restore ends the run.
+                self.case_results.append(self._interrupted_row(case, exc))
+                self._progress_quietly(progress)
                 raise
-            except RunStopped as exc:
-                # Record the case, with what it had observed, then stop: a failed
-                # restore ends the run.
-                row = exc.case_result or self._result(
-                    case,
-                    "-",
-                    f"run stopped: {self._text(exc)}",
-                    "-",
-                    matrix.Verdict(matrix.INCONCLUSIVE, "the run stopped during this case"),
-                )
-                self.case_results.append(row)
-                if progress is not None:
-                    progress()
+            except Exception as exc:  # an ended client session or a harness error
+                # Recorded as it happened, never hidden; the run goes on.
+                result = self._interrupted_row(case, exc)
+            except BaseException as exc:  # Ctrl-C: record the case, then stop
+                self.case_results.append(self._interrupted_row(case, exc))
+                self._progress_quietly(progress)
                 raise
-            except ClientSessionEnded as exc:
-                result = self._result(
-                    case,
-                    "-",
-                    f"not judged: {self._text(exc)}",
-                    "-",
-                    matrix.Verdict(
-                        matrix.INCONCLUSIVE,
-                        "a client session ended (timeout, mismatched reply or exit)",
-                    ),
-                )
-            except Exception as exc:  # recorded as it happened, never hidden
-                result = self._result(
-                    case,
-                    "-",
-                    f"harness error: {type(exc).__name__}: {self._text(exc)}",
-                    "-",
-                    matrix.Verdict(matrix.INCONCLUSIVE, "harness error"),
-                )
+            self._partial = None
             self.case_results.append(result)
             if progress is not None:
                 progress()
@@ -990,6 +1064,15 @@ class ProofRun:
                 raise RunStopped(f"after {case.id}: {self._pending_stop}")
         if not reconnected:
             self.reconnect_check()
+
+    def _progress_quietly(self, progress: Callable[[], None] | None) -> None:
+        """Write progress while a stop is in flight; a failed write never replaces the stop."""
+        if progress is None:
+            return
+        try:
+            progress()
+        except Exception as exc:
+            self.notes.append(f"progress not written: {type(exc).__name__}: {self._text(exc)}")
 
     def _result(
         self,
@@ -1087,7 +1170,8 @@ class ProofRun:
         except RunStopped as exc:
             self._keep_case(exc, result, "the restore failed before the production phase")
             raise
-        production = _http_answer(self._step(case.step))
+        # ``result`` is the row _evaluate_case kept as observed, so what the
+        # feature-on phase showed survives an interrupted production phase (P06.1-C2).
         result.detail["feature_override"] = {
             "scope": scope,
             "features": override,
@@ -1095,6 +1179,7 @@ class ProofRun:
             "restored": change.note,
             "reread": change.reread or None,
         }
+        production = _http_answer(self._step(case.step))
         result.detail["production_config_observed"] = _observed(production)
         result.observed = (
             f"feature on: {result.observed}; feature off (production): {_observed(production)}"
@@ -1105,7 +1190,12 @@ class ProofRun:
         if production.outcome == "success":
             result.verdict = matrix.FAIL
             result.reason = "succeeded under the production configuration"
-            self._undo_client_success(case)
+            self._undo_client_success(case, result)
+        elif production.outcome == "no-response" and result.verdict not in NOT_A_PASS:
+            # The request must also fail under the production configuration; with
+            # no recorded answer that is not shown (P06.1-C2).
+            result.verdict = matrix.INCONCLUSIVE
+            result.reason = PRODUCTION_NO_RESPONSE_REASON
         return result
 
     def _evaluate_case(self, case: matrix.Case) -> CaseResult:
@@ -1117,46 +1207,134 @@ class ProofRun:
         leaks = matrix.find_terms(
             _responses(reply) + [reply.data], matrix.substitute(list(case.leak_terms), self.ctx)
         )
+        detail: dict[str, Any] = {"stream_message": _answer_message(answer, reply)}
+        if case.expect == "no-leak":
+            detail["learned"] = self._learned(reply)
+        # A client success on a case that must be refused is undone once the
+        # control has run (the control's replay repeats the same change).
+        undo_owed = outcome == "success" and case.expect == "refused"
+        if outcome == "success":
+            self._track_client_created(reply)
+            if undo_owed:
+                detail["client_success_note"] = "client action succeeded; see verdict"
+        # What the client's request alone shows, kept if the control is
+        # interrupted (P06.1-C2): a success or a leak is already a FAIL.
+        row = self._observe(
+            self._result(
+                case,
+                request,
+                _observed(answer),
+                "control not completed",
+                self._case_verdict(case, outcome, leaks, False, False),
+                detail,
+            )
+        )
         control_ok: bool
         control_desc: str
         control_body: Any = None
         control = case.control
-        if control.kind == "server-replay":
-            control_ok, control_desc, control_body = self._replay(case, answer)
-        elif control.kind == "session":
-            assert control.session is not None
-            creply = self._step(case.step, control.session)
-            canswer = _http_answer(creply)
-            control_ok = canswer.outcome == "success"
-            control_body = _responses(creply)
-            control_desc = f"{control.session}: {_observed(canswer)}"
-        elif control.kind == "server-upload":
-            control_ok, control_desc = self._upload_control(case)
-        else:
-            control_ok, control_desc = False, "no control"
+        try:
+            if control.kind == "server-replay":
+                control_ok, control_desc, control_body = self._replay(case, answer)
+            elif control.kind == "session":
+                assert control.session is not None
+                creply = self._step(case.step, control.session)
+                canswer = _http_answer(creply)
+                control_ok = canswer.outcome == "success"
+                control_body = _responses(creply)
+                control_desc = f"{control.session}: {_observed(canswer)}"
+            elif control.kind == "server-upload":
+                control_ok, control_desc = self._upload_control(case)
+            else:
+                control_ok, control_desc = False, "no control"
+        except BaseException as exc:
+            if undo_owed:
+                self._undo_after_interruption(case, exc, row)
+            raise
         self.control_ok[case.id] = control_ok
-        detail: dict[str, Any] = {"stream_message": _answer_message(answer, reply)}
+        found = False
         if case.expect == "no-leak":
             terms = matrix.substitute(list(control.expect_terms), self.ctx)
             found = bool(terms) and len(matrix.find_terms(control_body, terms)) == len(terms)
-            detail["learned"] = self._learned(reply)
-            verdict = matrix.no_leak_verdict(outcome, leaks, control_ok, found)
             control_desc += f"; control found target data {found}"
-        else:
-            verdict = matrix.refused_verdict(outcome, control_ok)
-            if leaks:
-                verdict = matrix.Verdict(matrix.FAIL, "response disclosed: " + ", ".join(leaks))
-        if outcome == "success":
-            self._track_client_created(reply)
-            if case.expect == "refused":
-                detail["client_success_note"] = "client action succeeded; see verdict"
-                self._undo_client_success(case)
-        return self._result(case, request, _observed(answer), control_desc, verdict, detail)
+        verdict = self._case_verdict(case, outcome, leaks, control_ok, found)
+        result = self._observe(
+            self._result(case, request, _observed(answer), control_desc, verdict, detail)
+        )
+        if undo_owed:
+            self._undo_client_success(case, result)
+        return result
 
-    def _undo_client_success(self, case: matrix.Case) -> None:
-        # A bypass that changed state is reversed with the case's own undo requests.
-        for undo in case.control.undo:
-            self._undo(undo, case.id)
+    @staticmethod
+    def _case_verdict(
+        case: matrix.Case, outcome: matrix.Outcome, leaks: list[str], control_ok: bool, found: bool
+    ) -> matrix.Verdict:
+        if case.expect == "no-leak":
+            return matrix.no_leak_verdict(outcome, leaks, control_ok, found)
+        if leaks:
+            return matrix.Verdict(matrix.FAIL, "response disclosed: " + ", ".join(leaks))
+        return matrix.refused_verdict(outcome, control_ok)
+
+    def _undo_client_success(self, case: matrix.Case, row: CaseResult) -> None:
+        """Reverse a bypass that changed state with the case's own undo requests.
+
+        The row records each undo's status, or that it was not completed and why.
+        """
+        if not case.control.undo:
+            row.detail["client_success_undo"] = "none defined"
+            return
+        notes: list[str] = []
+        try:
+            for undo in case.control.undo:
+                notes.append(self._undo(undo, case.id))
+        except BaseException as exc:
+            notes.append(f"not completed: {type(exc).__name__}: {self._text(exc)}")
+            raise
+        finally:
+            row.detail["client_success_undo"] = self.redactor.text(", ".join(notes))
+
+    def _undo_after_interruption(
+        self, case: matrix.Case, exc: BaseException, row: CaseResult
+    ) -> None:
+        """A client success whose undo was owed when ``exc`` interrupted its control.
+
+        It follows the README's rule on what may still run after each kind of
+        stop. After a guardrail stop (a charge or limit signal stops the run at
+        once and deletes none of its data; a budget stop has no calls left) or
+        Ctrl-C, the undo is not made, and the row says so. After anything else
+        (an ended client session, a failed restore or a harness error) the run
+        still sends requests, so the undo is made. Either way the change is to
+        the run's own synthetic data, which cleanup deletes.
+        """
+        if not case.control.undo:
+            row.detail["client_success_undo"] = "none defined"
+            return
+        if isinstance(exc, GuardrailStop):
+            row.detail["client_success_undo"] = (
+                f"not made: a guardrail stopped the run ({self._text(exc)}); nothing more is "
+                "sent for the run's own data after a guardrail stop, and cleanup (after a "
+                "charge or limit signal, cleanup --apply) deletes the run's users and channels"
+            )
+            return
+        if not isinstance(exc, Exception):
+            row.detail["client_success_undo"] = (
+                "not made: interrupted (Ctrl-C); cleanup deletes the run's users and channels"
+            )
+            return
+        try:
+            self._undo_client_success(case, row)
+        except GuardrailStop:
+            # The charge signal becomes the run's stop; the interruption is kept.
+            self.stops.append(
+                f"{case.id}: in flight when the undo hit a guardrail: "
+                f"{type(exc).__name__}: {self._text(exc)}"
+            )
+            raise
+        except Exception:  # recorded in the row as "not completed"; the interruption goes on
+            return
+        row.detail["client_success_undo"] = "made after the interruption: " + str(
+            row.detail["client_success_undo"]
+        )
 
     def _track_client_created(self, reply: Reply) -> None:
         """A poll or user group a client managed to create is deleted at cleanup."""
@@ -1269,12 +1447,22 @@ class ProofRun:
             reply = self._send(session, "call", max_calls=2, **self._query_ab_step())
         finally:
             session.close()
+        answer = _http_answer(reply)
+        detail = {"token_used": self._describe_bad(kind, token), "set_user": set_reply.ok}
+        self._observe(
+            self._result(
+                case,
+                _request_line(answer.record, self.ctx),
+                _observed(answer),
+                "control not completed",
+                matrix.refused_verdict(answer.outcome, False),
+                detail,
+            )
+        )
         control = _http_answer(
             self._send(self.sessions["A"], "call", max_calls=2, **self._query_ab_step())
         )
-        answer = _http_answer(reply)
         verdict = matrix.refused_verdict(answer.outcome, control.outcome == "success")
-        detail = {"token_used": self._describe_bad(kind, token), "set_user": set_reply.ok}
         return self._result(
             case,
             _request_line(answer.record, self.ctx),
@@ -1311,33 +1499,36 @@ class ProofRun:
                 token_source=source,
                 skip_validation=(kind == "T4"),
             )
+            answer = _ws_answer(reply)
+            me = ((reply.data or {}).get("me") or {}) if reply.ok else {}
+            connected_as = me.get("id") if isinstance(me, dict) else None
+            detail = {
+                "token_used": self._describe_bad(kind, token)
+                if kind != "T4"
+                else "A's valid token",
+                "error_kind": (reply.error or {}).get("kind"),
+                "error_message": reply.message,
+                "connected_as": _generic(str(connected_as), self.ctx) if connected_as else None,
+                "ws_attempts": reply.ws_attempts,
+            }
+            # What the connect showed, kept if the disconnect is interrupted.
+            self._observe(
+                self._result(
+                    case,
+                    "WebSocket /connect",
+                    _observed(answer),
+                    "control not judged",
+                    self._token_ws_verdict(kind, answer, connected_as, False),
+                    detail,
+                )
+            )
             if reply.ok:
                 self._send(session, "disconnect", max_calls=2)
         finally:
             session.close()
-        answer = _ws_answer(reply)
         control_answer = _ws_answer(control_reply) if control_reply else None
         control_ok = control_answer is not None and control_answer.outcome == "success"
-        verdict = matrix.refused_verdict(answer.outcome, control_ok)
-        me = ((reply.data or {}).get("me") or {}) if reply.ok else {}
-        connected_as = me.get("id") if isinstance(me, dict) else None
-        if kind == "T4" and answer.outcome == "success":
-            if connected_as == self.ctx["A"]:
-                verdict = matrix.Verdict(
-                    matrix.HOLDS_IGNORED,
-                    "claim ignored: Stream authenticated the connection as A (the token's user)",
-                )
-            elif connected_as == self.ctx["B"]:
-                verdict = matrix.Verdict(matrix.FAIL, "connected as B with A's token")
-            else:
-                verdict = matrix.Verdict(matrix.INCONCLUSIVE, "connected identity unknown")
-        detail = {
-            "token_used": self._describe_bad(kind, token) if kind != "T4" else "A's valid token",
-            "error_kind": (reply.error or {}).get("kind"),
-            "error_message": reply.message,
-            "connected_as": _generic(str(connected_as), self.ctx) if connected_as else None,
-            "ws_attempts": reply.ws_attempts,
-        }
+        verdict = self._token_ws_verdict(kind, answer, connected_as, control_ok)
         return self._result(
             case,
             "WebSocket /connect",
@@ -1346,6 +1537,20 @@ class ProofRun:
             verdict,
             detail,
         )
+
+    def _token_ws_verdict(
+        self, kind: str, answer: Answer, connected_as: Any, control_ok: bool
+    ) -> matrix.Verdict:
+        if kind == "T4" and answer.outcome == "success":
+            if connected_as == self.ctx["A"]:
+                return matrix.Verdict(
+                    matrix.HOLDS_IGNORED,
+                    "claim ignored: Stream authenticated the connection as A (the token's user)",
+                )
+            if connected_as == self.ctx["B"]:
+                return matrix.Verdict(matrix.FAIL, "connected as B with A's token")
+            return matrix.Verdict(matrix.INCONCLUSIVE, "connected identity unknown")
+        return matrix.refused_verdict(answer.outcome, control_ok)
 
     def _proc_token_claim(self, case: matrix.Case, kind: str) -> CaseResult:
         session = self._session(f"claim-{kind}", self._tokens["A"], max_api_calls=10)
@@ -1361,12 +1566,22 @@ class ProofRun:
                 )
                 step = dict(self._query_ab_step(), id=self.ctx["XD"])
                 reply = self._send(session, "call", max_calls=2, **step)
-                control = _http_answer(self._send(self.sessions["X"], "call", max_calls=2, **step))
                 answer = _http_answer(reply)
-                verdict = matrix.refused_verdict(answer.outcome, control.outcome == "success")
                 leaks = matrix.find_terms(_responses(reply), [self.ctx["xd_text"]])
+                disclosed = matrix.Verdict(matrix.FAIL, "response disclosed XD's message")
+                self._observe(
+                    self._result(
+                        case,
+                        self._claim_request_line(answer.record),
+                        _observed(answer),
+                        "control not completed",
+                        disclosed if leaks else matrix.refused_verdict(answer.outcome, False),
+                    )
+                )
+                control = _http_answer(self._send(self.sessions["X"], "call", max_calls=2, **step))
+                verdict = matrix.refused_verdict(answer.outcome, control.outcome == "success")
                 if leaks:
-                    verdict = matrix.Verdict(matrix.FAIL, "response disclosed XD's message")
+                    verdict = disclosed
                 return self._result(
                     case,
                     self._claim_request_line(answer.record),
@@ -1402,13 +1617,13 @@ class ProofRun:
         finally:
             session.close()
 
-        def total(r: Reply) -> Any:
-            responses = _responses(r)
-            return (
-                responses[-1].get("total_unread_count")
-                if responses and isinstance(responses[-1], dict)
-                else None
-            )
+        def total(r: Reply) -> int | None:
+            """The unread total in Stream's 2xx answer to the one request, if it has one."""
+            answer = _http_answer(r)
+            response = answer.record.get("response") if answer.record else None
+            value = response.get("total_unread_count") if isinstance(response, dict) else None
+            ok = answer.outcome == "success" and isinstance(value, int)
+            return value if ok and not isinstance(value, bool) else None
 
         a_total, b_total, claim_total = total(own_a), total(own_b), total(reply)
         answer = _http_answer(reply)
@@ -1419,6 +1634,14 @@ class ProofRun:
         )
         if outcome in ("auth", "permission", "no-response"):
             verdict = matrix.refused_verdict(outcome, controls_ok)
+        elif outcome == "success" and (
+            not controls_ok or a_total is None or b_total is None or claim_total is None
+        ):
+            # Neither kind of HOLDS without both controls and all three totals (P06.1-C2).
+            verdict = matrix.Verdict(
+                matrix.INCONCLUSIVE,
+                "the controls did not both succeed with a total, or the claim's answer has none",
+            )
         elif outcome == "success" and a_total != b_total:
             if claim_total == a_total:
                 verdict = matrix.Verdict(
@@ -1458,21 +1681,34 @@ class ProofRun:
         session = self._session("guest-attempt", None, max_api_calls=10)
         try:
             reply = self._send(session, "guest", max_calls=3, user=user)
+            # The request under test is the client's POST /guest. setGuestUser then
+            # also connects; that connect is not what G1 tests.
+            post = self._guest_post(reply)
+            answer = _answer_of(post, reply)
+            # Stream stores guests as "guest-<uuid>-<requested id>"; read the ID it returned.
+            created_id = self._guest_created(reply)
+            exists_after = created_id is not None
+            if exists_after:
+                self.users.append(str(created_id))
+            else:
+                self.ledger.release("users")  # refused: no user was created
+            # What the attempt showed, kept if a later step is interrupted.
+            self._observe(
+                self._result(
+                    case,
+                    _request_line(post or reply.last_request, self.ctx),
+                    _observed(answer),
+                    "control not completed",
+                    matrix.Verdict(matrix.FAIL, "the client's POST /guest created a guest user")
+                    if exists_after
+                    else matrix.refused_verdict(answer.outcome, False),
+                    {"client_guest_user_exists_after": exists_after},
+                )
+            )
             if reply.ok:
                 self._send(session, "disconnect", max_calls=2)
         finally:
             session.close()
-        # The request under test is the client's POST /guest. setGuestUser then
-        # also connects; that connect is not what G1 tests.
-        post = self._guest_post(reply)
-        answer = _answer_of(post, reply)
-        # Stream stores guests as "guest-<uuid>-<requested id>"; read the ID it returned.
-        created_id = self._guest_created(reply)
-        exists_after = created_id is not None
-        if exists_after:
-            self.users.append(str(created_id))
-        else:
-            self.ledger.release("users")  # refused: no user was created
         control_ok = False
         control_desc = "not run (the client's POST /guest was not refused)"
         guest_role = None
@@ -1537,7 +1773,14 @@ class ProofRun:
 
     @staticmethod
     def _guest_post(reply: Reply) -> dict[str, Any] | None:
-        return next((r for r in reply.requests if r.get("path") == "/guest"), None)
+        """The client's POST /guest, when it is the one HTTP request the command sent.
+
+        ``setGuestUser`` sends POST /guest and then connects over the WebSocket.
+        Any other number of recorded requests has no answer (P06.1-C2).
+        """
+        if len(reply.requests) != 1 or reply.requests[0].get("path") != "/guest":
+            return None
+        return reply.requests[0]
 
     @staticmethod
     def _guest_created(reply: Reply) -> str | None:
@@ -1611,6 +1854,16 @@ class ProofRun:
         leaks = matrix.find_terms(
             _responses(reply), matrix.substitute(list(case.leak_terms), self.ctx)
         )
+        self._observe(
+            self._result(
+                case,
+                _request_line(answer.record, self.ctx),
+                _observed(answer),
+                "control not completed",
+                matrix.no_leak_verdict(outcome, leaks, False, False),
+                {"learned": self._learned(reply), "stream_message": _answer_message(answer, reply)},
+            )
+        )
         if control_session is not None:
             control = self._send(self.sessions[control_session], "call", max_calls=2, **step)
             canswer = _http_answer(control)
@@ -1653,7 +1906,7 @@ class ProofRun:
         # The journal entry exists before polls are enabled.
         try:
             with self._temporary(change):
-                self._poll_vote_phase(state)
+                self._poll_vote_phase(case, state)
         except RunStopped as exc:
             voted = _http_answer(state["reply"]) if state["reply"] is not None else None
             succeeded = voted is not None and voted.outcome == "success"
@@ -1681,6 +1934,19 @@ class ProofRun:
                 f"{state['setup_note']}; {change.note}",
                 matrix.Verdict(matrix.INCONCLUSIVE, "no poll message could be created in AB"),
             )
+        answer = _http_answer(reply)
+        verdict = matrix.refused_verdict(answer.outcome, state["control_ok"])
+        # What the polls-on phase observed, kept if the production vote is interrupted.
+        self._observe(
+            self._result(
+                case,
+                _request_line(answer.record, self.ctx),
+                f"polls on: {_observed(answer)}",
+                state["control_desc"],
+                verdict,
+                {"stream_message": _answer_message(answer, reply)},
+            )
+        )
         production = _http_answer(
             self._send(
                 self.sessions["A"],
@@ -1690,10 +1956,10 @@ class ProofRun:
                 args=state["vote_args"],
             )
         )
-        answer = _http_answer(reply)
-        verdict = matrix.refused_verdict(answer.outcome, state["control_ok"])
         if production.outcome == "success":
             verdict = matrix.Verdict(matrix.FAIL, "succeeded under the production configuration")
+        elif production.outcome == "no-response" and verdict.label not in NOT_A_PASS:
+            verdict = matrix.Verdict(matrix.INCONCLUSIVE, PRODUCTION_NO_RESPONSE_REASON)
         return self._result(
             case,
             _request_line(answer.record, self.ctx),
@@ -1714,7 +1980,7 @@ class ProofRun:
             },
         )
 
-    def _poll_vote_phase(self, state: dict[str, Any]) -> None:
+    def _poll_vote_phase(self, case: matrix.Case, state: dict[str, Any]) -> None:
         """With polls on: B's poll message, A's vote and the server's identical vote."""
         on = self._type_features_on({"polls": True})
         state["on"] = on
@@ -1753,7 +2019,17 @@ class ProofRun:
             args=state["vote_args"],
         )
         state["reply"] = reply
-        record = _http_answer(reply).record
+        voted = _http_answer(reply)
+        self._observe(
+            self._result(
+                case,
+                _request_line(voted.record, self.ctx),
+                f"polls on: {_observed(voted)}",
+                "control not completed",
+                matrix.refused_verdict(voted.outcome, False),
+            )
+        )
+        record = voted.record
         if record is not None:
             body = matrix.deep_merge(record.get("body"), {"user_id": self.ctx["A"]})
             path = "/" + str(record.get("path")).lstrip("/")
@@ -1850,6 +2126,21 @@ class ProofRun:
         answer = _http_answer(reply)
         try:
             production = self._b_member_views(marker)
+            # What B's reads under production showed, kept if the unset or the
+            # control is interrupted (P06.1-C2).
+            seen = self._member_leaks(production)
+            self._observe(
+                self._result(
+                    case,
+                    _request_line(answer.record, self.ctx),
+                    _observed(answer),
+                    "control not completed",
+                    matrix.no_leak_verdict(
+                        answer.outcome, [f"B read it via {n}" for n in seen], False, False
+                    ),
+                    {"production_b_views": production},
+                )
+            )
         finally:
             unset_first = self._unset_member_note()
         # Control: grant read-channel-members on AB (the first configuration) and
@@ -1933,16 +2224,19 @@ class ProofRun:
         finally:
             out["unset"] = self._unset_member_note()
 
-    def _server_user(self, user_id: str) -> dict[str, Any]:
+    def _server_user(self, user_id: str) -> dict[str, Any] | None:
+        """The stored user, or ``None`` when Stream's listing does not include it (P06.1-C2)."""
         result = self.api.require(
             self.api.get(
                 "/api/v2/users",
                 params={"payload": json.dumps({"filter_conditions": {"id": {"$eq": user_id}}})},
             )
         )
-        users = result.body.get("users") or [{}]
-        user = users[0]
-        return user if isinstance(user, dict) else {}
+        users = result.body.get("users") if isinstance(result.body, dict) else None
+        for user in users if result.ok and isinstance(users, list) else []:
+            if isinstance(user, dict) and user.get("id") == user_id:
+                return user
+        return None
 
     def _proc_profile_on_connect(self, case: matrix.Case, _arg: str) -> CaseResult:
         fields = {
@@ -1950,24 +2244,40 @@ class ProofRun:
             "image": "https://example.invalid/a.png",
             "glow_bio": "connect free text",
         }
+        request = "WebSocket /connect (user object with name, image, custom field)"
+        carried = matrix.Verdict(
+            matrix.FAIL, "the connection's user object carried the new profile fields"
+        )
         session = self._session("A-profile", self._tokens["A"], max_api_calls=10)
         try:
             reply = self._send(
                 session, "connect", max_calls=3, user={"id": self.ctx["A"], **fields}
             )
+            answer = _ws_answer(reply)
+            # What Stream answered in the handshake: the connection's own user object.
+            me = ((reply.data or {}).get("me") or {}) if answer.outcome == "success" else {}
+            me_applied = isinstance(me, dict) and (
+                me.get("name") == fields["name"]
+                or me.get("image") == fields["image"]
+                or "glow_bio" in (me.get("custom_keys") or [])
+            )
+            unjudged = matrix.Verdict(matrix.INCONCLUSIVE, "stored state not yet read")
+            self._observe(
+                self._result(
+                    case,
+                    request,
+                    _observed(answer),
+                    "control not completed",
+                    carried if me_applied else unjudged,
+                    {"connection_carried_new_fields": me_applied},
+                )
+            )
             if reply.ok:
                 self._send(session, "disconnect", max_calls=2)
         finally:
             session.close()
-        answer = _ws_answer(reply)
-        # What Stream answered in the handshake: the connection's own user object.
-        me = ((reply.data or {}).get("me") or {}) if answer.outcome == "success" else {}
-        me_applied = isinstance(me, dict) and (
-            me.get("name") == fields["name"]
-            or me.get("image") == fields["image"]
-            or "glow_bio" in (me.get("custom_keys") or [])
-        )
-        stored = self._server_user(self.ctx["A"])
+        read = self._server_user(self.ctx["A"])
+        stored = read or {}
         custom = stored.get("custom") or {}
         stored_applied = (
             stored.get("name") == fields["name"]
@@ -1975,13 +2285,24 @@ class ProofRun:
             or custom.get("glow_bio") == fields["glow_bio"]
             or stored.get("glow_bio") == fields["glow_bio"]
         )
+        if stored_applied:
+            self._observe(
+                self._result(
+                    case,
+                    request,
+                    _observed(answer),
+                    "control not completed",
+                    matrix.Verdict(matrix.FAIL, "the change reached Stream's stored state"),
+                    {"connection_carried_new_fields": me_applied},
+                )
+            )
         control = self.api.raw(
             "PATCH",
             "/users",
             body={"users": [{"id": self.ctx["A"], "set": {"name": fields["name"]}}]},
         )
-        after = self._server_user(self.ctx["A"]) if control.ok else {}
-        control_ok = control.ok and after.get("name") == fields["name"]
+        after = self._server_user(self.ctx["A"]) if control.ok else None
+        control_ok = control.ok and after is not None and after.get("name") == fields["name"]
         restore = self.api.raw(
             "PATCH",
             "/users",
@@ -2000,17 +2321,19 @@ class ProofRun:
         if stored_applied:
             self.notes.append("S14: profile fields set on connect reached stored state; restored")
         verdict = matrix.not_effective_verdict(stored_applied, answer.outcome, control_ok)
+        if read is None:
+            # Unchanged stored state cannot be shown without reading it (P06.1-C2).
+            verdict = matrix.Verdict(matrix.INCONCLUSIVE, "A's stored user could not be read")
         if me_applied and not stored_applied:
-            verdict = matrix.Verdict(
-                matrix.FAIL, "the connection's user object carried the new profile fields"
-            )
+            verdict = carried
         return self._result(
             case,
-            "WebSocket /connect (user object with name, image, custom field)",
+            request,
             _observed(answer),
             f"server PATCH /users -> {control.status}; name applied {control_ok}",
             verdict,
             {
+                "stored_user_read": read is not None,
                 "stored_name_is_original": stored.get("name") == self.ctx["A_name"],
                 "stored_has_image": bool(stored.get("image")),
                 "stored_custom_keys": sorted(custom.keys()),
@@ -2020,41 +2343,83 @@ class ProofRun:
         )
 
     def _proc_role_on_connect(self, case: matrix.Case, _arg: str) -> CaseResult:
+        request = "WebSocket /connect (user object with role admin)"
         session = self._session("A-role", self._tokens["A"], max_api_calls=10)
         try:
             reply = self._send(
                 session, "connect", max_calls=3, user={"id": self.ctx["A"], "role": "admin"}
             )
+            answer = _ws_answer(reply)
+            me = ((reply.data or {}).get("me") or {}) if answer.outcome == "success" else {}
+            connect_me_role = me.get("role") if isinstance(me, dict) else None
+            self._observe(
+                self._result(
+                    case,
+                    request,
+                    _observed(answer),
+                    "control not judged",
+                    matrix.Verdict(
+                        matrix.FAIL, f"the connection's user object carried role {connect_me_role}"
+                    )
+                    if connect_me_role not in (None, "user")
+                    else matrix.Verdict(matrix.INCONCLUSIVE, "stored state not yet read"),
+                    {"connect_me_role": connect_me_role},
+                )
+            )
             if reply.ok:
                 self._send(session, "disconnect", max_calls=2)
         finally:
             session.close()
-        answer = _ws_answer(reply)
-        me = ((reply.data or {}).get("me") or {}) if answer.outcome == "success" else {}
-        connect_me_role = me.get("role") if isinstance(me, dict) else None
         stored = self._server_user(self.ctx["A"])
-        stored_applied = stored.get("role") != "user"
+        # An unreadable stored user is not a changed role (P06.1-C2, nit 7).
+        stored_applied = stored is not None and stored.get("role") != "user"
         if stored_applied:
-            restored = self.api.raw(
-                "PATCH", "/users", body={"users": [{"id": self.ctx["A"], "set": {"role": "user"}}]}
+            assert stored is not None
+            # The stored role is already a FAIL; keep it if the restore is interrupted.
+            self._observe(
+                self._result(
+                    case,
+                    request,
+                    _observed(answer),
+                    "control not judged",
+                    matrix.Verdict(matrix.FAIL, "the change reached Stream's stored state"),
+                    {"stored_role": stored.get("role"), "connect_me_role": connect_me_role},
+                )
             )
-            if not restored.ok:
-                self._defer_stop(f"E5: restoring A's role got {restored.status}")
-            self.notes.append("E5: role on connect reached stored state; restored to user")
+            try:
+                restored = self.api.raw(
+                    "PATCH",
+                    "/users",
+                    body={"users": [{"id": self.ctx["A"], "set": {"role": "user"}}]},
+                )
+            except GuardrailStop:
+                raise
+            except Exception as exc:
+                # Later cases must not run with A holding another role.
+                self._defer_stop(
+                    f"E5: restoring A's role raised {type(exc).__name__}: {self._text(exc)}"
+                )
+            else:
+                if not restored.ok:
+                    self._defer_stop(f"E5: restoring A's role got {restored.status}")
+            self.notes.append("E5: role on connect reached stored state; restore attempted")
         control_ok = self.control_ok.get("E1", False)
         verdict = matrix.not_effective_verdict(stored_applied, answer.outcome, control_ok)
+        if stored is None:
+            verdict = matrix.Verdict(matrix.INCONCLUSIVE, "A's stored user could not be read")
         if connect_me_role not in (None, "user") and not stored_applied:
             verdict = matrix.Verdict(
                 matrix.FAIL, f"the connection's user object carried role {connect_me_role}"
             )
         return self._result(
             case,
-            "WebSocket /connect (user object with role admin)",
+            request,
             _observed(answer),
             f"E1 server replay succeeded: {control_ok}",
             verdict,
             {
-                "stored_role": stored.get("role"),
+                "stored_user_read": stored is not None,
+                "stored_role": stored.get("role") if stored is not None else None,
                 "connect_me_role": connect_me_role,
             },
         )
@@ -2067,6 +2432,23 @@ class ProofRun:
         reply = self._send(self.sessions["A"], "call", max_calls=2, **step)
         answer = _http_answer(reply)
         after_request, local_first = self._events_split("B")
+        # A marker in the first window is already a FAIL; keep it if the probe or
+        # the second window is interrupted (P06.1-C2).
+        first = sorted(
+            {str(e.get("type")) for e in after_request if matrix.find_terms(e, [marker])}
+        )
+        self._observe(
+            self._result(
+                case,
+                _request_line(answer.record, self.ctx),
+                _observed(answer),
+                "B's listener not yet checked",
+                matrix.Verdict(matrix.FAIL, f"B received the free-text field in {', '.join(first)}")
+                if first
+                else matrix.Verdict(matrix.INCONCLUSIVE, "the probe window was not collected"),
+                {"marker_event_types": first},
+            )
+        )
         service = AppSendService(self.state, self, T)
         probe = service.send(self.ctx["A"], self.ctx["AB"], f"listener probe {self.prefix}")
         after_probe, local_second = self._events_split("B")
@@ -2087,15 +2469,21 @@ class ProofRun:
             verdict = matrix.Verdict(matrix.INCONCLUSIVE, matrix.NO_RESPONSE_REASON)
         elif not listening:
             verdict = matrix.Verdict(matrix.INCONCLUSIVE, "B's listener did not see the probe")
-        elif events:
+        elif outcome == "success" and events:
             verdict = matrix.Verdict(matrix.HOLDS, "delivered without the free-text field")
         elif outcome == "success":
             verdict = matrix.Verdict(matrix.HOLDS_IGNORED, "accepted; B received no such event")
-        else:
-            # This case asks what reaches B: nothing did, and Stream refused the request.
+        elif outcome in ("auth", "permission", "feature"):
+            # This case asks what reaches B: nothing carrying the field did, and
+            # Stream refused the request with an attributable error.
             verdict = matrix.Verdict(
-                matrix.HOLDS, f"refused ({outcome}); nothing delivered to B, who was listening"
+                matrix.HOLDS,
+                f"refused ({outcome}); nothing carrying the field reached B, who was listening",
             )
+        else:
+            # A 400 input error, a 404 or an outage says nothing about what a
+            # well-formed event delivers to B (P06.1-C2).
+            verdict = matrix.Verdict(matrix.INCONCLUSIVE, f"refusal not attributable ({outcome})")
         return self._result(
             case,
             _request_line(answer.record, self.ctx),
@@ -2151,13 +2539,26 @@ class ProofRun:
         ab = service.send(self.ctx["B"], self.ctx["AB"], f"rt ab {self.prefix}")
         xd = service.send(self.ctx["D"], self.ctx["XD"], f"rt xd {self.ctx['xd_text']}")
         a_events = self._events("A")
-        x_events = self._events("X", wait_ms=0)
         a_got_ab = any(_dig(e, "message.id") == ab.message_id for e in a_events)
         leaks = [
             str(e.get("type"))
             for e in a_events
             if matrix.find_terms(e, [self.ctx["XD"], self.ctx["xd_text"]])
         ]
+        # A's events already decide a FAIL; keep it if X's events are interrupted.
+        self._observe(
+            self._result(
+                case,
+                "WebSocket events",
+                f"A: {len(a_events)} events, AB message.new {a_got_ab}",
+                "X's events not collected",
+                matrix.Verdict(matrix.FAIL, "A received XD events: " + ", ".join(leaks))
+                if leaks
+                else matrix.Verdict(matrix.INCONCLUSIVE, "X's events not collected"),
+                {"a_event_types": sorted({str(e.get("type")) for e in a_events})},
+            )
+        )
+        x_events = self._events("X", wait_ms=0)
         x_got_xd = any(_dig(e, "message.id") == xd.message_id for e in x_events)
         if leaks:
             verdict = matrix.Verdict(matrix.FAIL, "A received XD events: " + ", ".join(leaks))
@@ -2360,7 +2761,9 @@ class ProofRun:
         except a second Ctrl-C; every problem is returned and kept in
         :attr:`post_run_problems`.
         """
+        # Kept on the run as they are found, so that a second Ctrl-C loses none.
         problems: list[str] = []
+        self.post_run_problems = problems
         for change in list(reversed(self.journal)):
             failure: BaseException | None = None
             for attempt in range(RESTORE_ATTEMPTS):
@@ -2370,10 +2773,18 @@ class ProofRun:
                     self._restore(change)
                 except GuardrailStop as exc:
                     failure = exc
-                    if "stopping at once" not in str(exc):
-                        break  # the API-call budget: trying again cannot help
+                    if change not in self.journal:
+                        failure = None  # made, but not verified (P06.1-C2)
+                        break
+                    if not exc.rate_limited:
+                        # A charge signal or the API-call budget: trying again cannot
+                        # help. Only a rate limit is tried again (P06.1-C2).
+                        break
                 except Exception as exc:
                     failure = exc
+                    if change not in self.journal:
+                        failure = None
+                        break
                 else:
                     failure = None
                     break
