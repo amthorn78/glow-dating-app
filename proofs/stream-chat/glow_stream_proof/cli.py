@@ -15,16 +15,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import baseline, configuration, report
+from . import baseline, configuration, guard, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
 from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, list_polls_and_groups
 from .redaction import Redactor
 from .server_api import ServerApi
+from .stops import GuardRefused
 from .usage import GuardrailStop, UsageLedger
 from .workdir import PROOF_ROOT, WORK_DIR, checked_text, write_json, write_text
 
 LEDGER = WORK_DIR / "usage-ledger.json"
-BASELINE_RECORD = PROOF_ROOT / "baseline" / "application-1729640-2026-09-25.json"
+BASELINE_RECORD = configuration.BASELINE_RECORD
 
 
 def _stamp() -> str:
@@ -268,6 +269,11 @@ def cmd_cleanup(ctx: Context, apply: bool) -> int:
     if not apply:
         ctx.say("dry run; pass --apply to hard-delete them")
         return 0
+    # Only what carries the proof's prefix may be deleted (P06.1-I2a; DM-04 finding 1).
+    scope = guard.PrefixScope(PREFIX_ROOT)
+    ctx.api.guard = lambda method, path, body, params: guard.refusal(
+        method, path, body, params, scope
+    )
     if cids:
         res = ctx.api.raw(
             "POST", "/api/v2/chat/channels/delete", body={"cids": cids, "hard_delete": True}
@@ -339,6 +345,9 @@ def main(argv: list[str] | None = None) -> int:
     except GuardrailStop as exc:
         print(f"guardrail stop: {exc}", file=sys.stderr)
         return 3
+    except GuardRefused as exc:  # outside a run: cleanup --apply (P06.1-I2a)
+        print(f"stopped: {exc}", file=sys.stderr)
+        return 2
     finally:
         ctx.close()
     return 1

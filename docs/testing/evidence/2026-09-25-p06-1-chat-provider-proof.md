@@ -900,7 +900,7 @@ Paths are under `proofs/stream-chat/`. Line numbers are at the code head. Each t
 | 2. Restores always made; a failed restore stops the run | Fixed | journal and restore `proof_run.py:387` `_temporary`, `:410` `_restore`; `RunStopped` re-raised `:953`; enabling requests inside the journalled block (`:1059`, `:1454`, `:1639`, `:1910`); end of every run `:2356` `finish` (journal restored with retries, cleanup, `configuration.verify()`); `cli.py:142` `cmd_run` (Ctrl-C `:179`, `finish` `:187`, exit 2 or 4) | `tests/test_temporary_changes.py`; `tests/test_cli.py` (exit codes, Ctrl-C, configuration drift, cleanup problem) |
 | 3. Exactly one dashboard user | Fixed | `proof_run.py:603` (exactly one) and `:608` (created in the recorded minute, 24 September 2026 13:07 UTC; constant `:63`). No identifier is read into the record | `tests/test_preflight.py` |
 | 4. Events view | Fixed | `matrix.py:49` `LOCAL_EVENT_TYPES` (stream-chat 9.53.0's declared local events, plus health checks); `proof_run.py:837` `_events_split`; S15's view records the carrying event type `:1764` | `tests/test_events.py` (including a test that reads the installed SDK's `EVENT_MAP` and checks every declared local event is dropped) |
-| 5. Replies matched to commands | Fixed | `glow_stream_proof/client_bridge.py:202` (id check), `:142` reader thread, `:183`, `:192`; a timeout, mismatch, non-JSON line or exit ends the session (`:156`), and its later commands raise `ClientSessionEnded` without being sent; `proof_run.py:930` records affected cases INCONCLUSIVE | `tests/test_client_session.py` (fake runner scripts: mismatch, timeout, two replies in one write, exit) |
+| 5. Replies matched to commands | Fixed | `glow_stream_proof/client_bridge.py:202` (id check), `:142` reader thread, `:183`, `:192`; a timeout, mismatch, non-JSON line or exit ends the session (`:156`), and its later commands raise `ClientSessionEnded` without being sent; `proof_run.py:930` records affected cases INCONCLUSIVE. (Corrected in P06.1-I2a: at its first live use, I2a's run 1, the check ended the session at the first channel command, because each command was built as `{"id": <command id>, …, **params}` and a channel command's `id` parameter, the channel, replaced the command's own; fixed in `7ce93cc`, see "P06.1-I2a") | `tests/test_client_session.py` (fake runner scripts: mismatch, timeout, two replies in one write, exit) |
 | 6. Offline simulation like the live lockdown | Fixed (my part) | `tests/fakes.py:297`: the control's `POST /guest` gets 201, then its connect gets 403 / 17 | `tests/test_run_simulation.py` `test_guest_reach_is_not_run_when_the_guest_connect_is_refused` |
 | 7. Leak terms | Fixed | `matrix.py:369` (`read-ab`: AB, A, B, both names, both message IDs, both texts), `:384` (`message`: XD's message ID, X, XD, the text) | `tests/test_procedures.py` `LeakTermsTest` |
 | 8. Records | Corrected | See "Records corrected" | Not applicable |
@@ -923,7 +923,7 @@ Finding 6's new G2 and S10 setups, and finding 9, are I2a's work and were not bu
 | 10. `restore --apply` does not verify | Fixed: re-reads and compares with the recorded baseline, exit 1 on any difference | `cli.py:255`; `configuration.py:300` | `tests/test_cli.py` `test_restore_apply_verifies_what_it_restored`; `tests/test_configuration.py` `test_verify_restored` |
 | 11. Nothing asserts the shared `isomorphic-ws` | Fixed: the runner refuses to start (exit 4) unless stream-chat resolves and keeps the runner's module; a `selfcheck` op reports it | `client/runner.cjs:66`, `:218` | `tests/test_runner.py` `test_stream_chat_uses_the_runners_websocket` |
 | 12. `CLEANUP_RESERVE` too low | Fixed: 130, plus a 30-call margin per case; measured worst case 115 | `proof_run.py:53` | `tests/test_cleanup.py` `CleanupReserveTest` |
-| 13. Client-created polls and groups not cleaned up or listed | Fixed: tracked and deleted; verify-clean lists polls and user groups, counting only those absent at preflight | `proof_run.py:1161`, `:2417`, `:2345` | `tests/test_cleanup.py` `ClientCreatedDataTest`, `PreexistingPollsAndGroupsTest`; `tests/test_cli.py` `test_verify_clean_lists_polls_and_user_groups` |
+| 13. Client-created polls and groups not cleaned up or listed | Fixed: tracked and deleted; verify-clean lists polls and user groups, counting only those absent at preflight. (Corrected in P06.1-I2a: at its first live use Stream refused the poll listing, HTTP 400 code 4, "either user or user_id must be provided when using server side auth", so polls are reported not verified; user groups are listed) | `proof_run.py:1161`, `:2417`, `:2345` | `tests/test_cleanup.py` `ClientCreatedDataTest`, `PreexistingPollsAndGroupsTest`; `tests/test_cli.py` `test_verify_clean_lists_polls_and_user_groups` |
 | 14. verify-clean cannot see soft-deleted channels | **Left.** There is no verified way to list soft-deleted channels offline. The covering control is the hard delete of every recorded channel ID, with its task now required to report `completed` (nit 5). Recorded in the README's limits | — | — |
 | 15. `_check` evidence unredacted | Fixed | `proof_run.py:340` | `tests/test_procedures.py` `CheckRedactionTest` |
 | 16. E5 and S14 judge stored state only; T4-rest-unread HOLDS without its controls | Fixed: the connection's own user object in Stream's handshake counts too; the refusal needs A's and B's own requests to succeed. An accepted claim could still give HOLDS (accepted, not applied) without its controls, and an unreadable stored user made E5 a FAIL, until P06.1-C2 (corrected in P06.1-C2) | `proof_run.py:2046`, `:2003`, `:1417` | `tests/test_procedures.py` `NotEffectiveTest` |
@@ -2135,3 +2135,636 @@ The session committed nothing, so there is no branch to check. The manager check
   Each code fix gets a test that fails without it and a reversal in `checks/fix_reversals.py`. I2a's exact-head review covers them with the rest of I2a.
 - **I2a's prompt is next.** It authorizes credential use and live provider actions, so the Dev Manager reads it before Nathan runs it (DM-04).
 - **Added after DM-04** (26 September): before its first live call, I2a also adds a guard in code for destructive calls, closing checks that see application-wide settings and DM-04's finding 9(c), and makes an independent review pass over its new code. Revision 2 of its prompt carries them; see the review log, "DM-04".
+
+## P06.1-I2a
+
+The first slice of I2a: revocation and safety. Step 1 fixed the C3 review's items, the guard (DM-04 finding 1) and the closing checks (DM-04 finding 2) offline, in a commit of its own, before any Stream call. Step 2 added the I2a cases and their verdict rules offline. An independent check then read the whole change before the first live call, and its findings were fixed. The live runs used application 1729640 only, from committed and pushed heads at which the offline checks and every fix reversal passed.
+
+- **Prompt:** revision 2, from commit `6e67fd680e97db046290dcaa14331085f0560dfd` (`docs/ephemeral/2026-09-26-p06-1-i2a-implementation-prompt.md`).
+- **Branch:** `claude/p06-1-i2a-revocation-safety-wms9ea`. **Start:** `6e67fd680e97db046290dcaa14331085f0560dfd`.
+- **Step 1 commit:** `f3ef40b837253a6eedfd7ae12c11bda8172cc135`.
+- **Code head:** `7ce93cc6ea7d197a5d952f55ea414ff41cdcd581`, the head of the reserve rerun (run 2). Run 1 ran from `5df522cf2edd3fad8275898e363ce23490109de1`. Every check below ran on the code head. The commit that adds this section changes only this record; it was not exercised live.
+- **Date:** 26 September 2026.
+
+### Environment
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | None present (names only were checked; the launcher also refuses to start if one is present) |
+| `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` | Present (names only). They reached the server process through its environment only, by an allowlisting launcher that puts no value on a command line, in a file or in any output; offline checks ran in `env -i` processes without them |
+| Versions | node v24.19.0; npm 11.9.0; Python 3.12.14 |
+
+The environment was never dumped. There were no connections to a database, HDE, Railway or any provider other than Stream; on Stream, only application 1729640. No `playwright install`, `eas` or `migrate`; no `configure --apply` or `restore --apply`; no change outside application 1729640, to the plan, billing, Maker, the team, the keys or the region; no webhook, hook or push; no real people or personal data. Besides Stream's API, the only outbound requests were the package installs (PyPI and the npm registry, through the proxy, with the proxy and CA variables passed by reference), Stream's documentation pages (getstream.io) and GitHub pushes of this branch.
+
+### Step 1: the C3 review's items, the guard and the closing checks
+
+Commit `f3ef40b837253a6eedfd7ae12c11bda8172cc135`, on its own, before any step 2 change. No Stream call was made before it. Paths are under `proofs/stream-chat/`; line numbers are at the code head. Each test named fails with its fix reverted and passes with it (see "Checks", item 5).
+
+| Item | What was done, and where | Tests |
+|---|---|---|
+| Nit 1 (required). RT3's whole control window went unsearched | Fixed with the suggested fix. The control window is searched for the marker too, leaving out only the control member's own read events: type `message.read` or `notification.mark_read` whose `user.id` is B (`_searched_control_events`, `proof_run.py:2990`; used at `:2908`). README "Verdict rules", the RT2 and RT3 bullet, says so | `tests/test_answers.py` `PayloadRefusalAttributionTest.test_rt3_control_window_is_searched_but_for_bs_own_read_events` |
+| The gap (required). A request the SDK sends between commands, and an asynchronous SDK error, were neither checked nor recorded | Fixed. **The runner** keeps every request a command did not finish and every one the SDK sends between commands (`client/request-log.cjs`; `RequestLog`), and reports them in the next reply or in its exit reply (`background_requests`, `background_api_calls`), with a rate limit's own `x-ratelimit-*` headers and no other header. Asynchronous errors carry Stream's status and code (`client/runner.cjs`, `asyncError`). **The harness** checks each for a charge or limit signal like any client request, records it in the ledger and stops at once (`client_bridge.py`, `_late_signals`, `:368`; `_late_signal` at step 1, renamed when the independent review's point 3 made it record every signal); calls sent between commands are counted. **As a session closes**, its exit reply is read and checked too (`_exit_signal`, `:432`); the signal is recorded always and raised only when nothing else is in flight (`:429`). **The end of the run** closes the sessions before it decides the cleanup (`proof_run.py:3349`), so a signal a closing session reports skips it | `tests/test_client_session.py` `LateRequestsTest` (four tests) and `ClosingSignalTest` (three); `tests/test_runner.py` `RequestLogTest` (two) and `RunnerReportsTest`; `tests/test_stop_signals.py` `ClosingSessionSignalTest` (two) |
+| Nit 2(a) (required). A 402 or code 99 met during the cleanup | Test added: a 402 met by the channel delete ends the cleanup; the user delete is never sent (`proof_run.py:3140`) | `tests/test_stop_signals.py` `SignalRecordTest.test_a_charge_signal_met_during_cleanup_ends_it_too` |
+| Nit 2(b). S15's unset after a budget stop | Test added | `tests/test_stop_signals.py` `MemberFieldUnsetTest.test_no_unset_after_a_budget_stop_in_bs_reads` |
+| Nit 2(c). RT3's control only after an authentication or permission refusal | Test added: B sends no `markRead` after a success, a feature refusal or an input refusal | `tests/test_answers.py` `PayloadRefusalAttributionTest.test_rt3_control_is_sent_only_after_an_auth_or_permission_refusal` |
+| Nit 3. The README's feature-gated rule named S10 | Fixed: the two sentences name S2, S5, S6, S7 and S12, and a sentence says what S10 does instead (README "Verdict rules") | — (README) |
+| Nit 4. The production phase's undo note overwrote the feature-on phase's | Fixed: the notes are appended, the second labelled `production:` (`_undo_client_success`, `proof_run.py:1542`) | `tests/test_answers.py` `ProductionPhaseAnswerTest.test_both_phases_undo_notes_are_kept` |
+| Nit 5. The printed report did not show `stop_signals` | Fixed: a "Charge or limit signals" section (`report.py:86`) | `tests/test_usage_and_report.py` `ReportTest.test_the_report_lists_every_charge_or_limit_signal` |
+| Nit 6. Older tests raised charge-like stops without the flag | Fixed: the five stops are built through `ledger.stop_at_once` | The five tests, unchanged in what they assert |
+| DM-04 9(c). The cleanup's prefix scan left out deactivated users | Fixed: `include_deactivated_users` in `_delete_users` (`proof_run.py:3190`) and in the artifact scan | `tests/test_cleanup.py` `GuardedCleanupTest.test_a_deactivated_user_with_the_prefix_is_found_and_deleted` |
+| The guard (DM-04 finding 1) | Fixed. One guard (`guard.py`, `refusal`, `:254`) runs in the server client's request hook, before a request is counted or sent (`server_api.py`, `_before_request`, `:127`), so typed SDK calls pass it too. During a run the run is its scope (`proof_run.py:402`); `cleanup --apply` is scoped to the proof's prefix (`cli.py:273`). It refuses a change that names a user or channel the run did not create, any `PATCH /api/v2/app` other than a journalled temporary setting, a channel-type change other than a journalled `glow-match` toggle, a delete of a message the run did not record, a change to a poll or group it did not record, and any other kind of change the proof does not make. A refusal names the request's shape, never an identifier, and stops the run after the case's row | `tests/test_guard.py` (15 tests, with the real `ServerApi` on an `httpx.MockTransport` for the hook) |
+| The closing checks (DM-04 finding 2) | Fixed. `configuration.verify` compares every application setting the committed baseline records with its recorded value, except guest creation (`recorded_differences`, `configuration.py:245`), so preflight, the end of the run and the dry-run `configure` see an application-wide `revoke_tokens_issued_before`, `webhook_url`, `event_hooks`, `custom_action_handler_url` or a `before_message_send_hook_url` (absent in the baseline, so it must stay absent or empty) | `tests/test_configuration.py` `RecordedSettingsTest` (five tests); `tests/test_closing_checks.py` (three) |
+| Signals by kind (DM-04 finding 4) | Fixed. A stop records whether its wording mentions billing (`usage.py`, `mentions_billing`, `:209`), and `only_rate_limit` (`:69`); the "cleanup skipped" problem says what to do by kind (`proof_run.py`, `signal_instruction`, `:454`), and a rate limit's stop names its reset. README "Budget guardrails", "Signals, by kind" | `tests/test_stop_signals.py` `SignalKindTest` (three tests), `tests/test_server_api.py` `SignalKindAtTheServerTest`, `tests/test_client_session.py` `ClientSignalKindTest` |
+
+### Step 2: the I2a cases and their verdict rules
+
+The rules were written, committed and pushed before any live run of these cases; the README section "P06.1-I2a cases" (under "Verdict rules") is their full statement, and the module docstrings of `glow_stream_proof/mechanisms.py` and `glow_stream_proof/i2a.py` repeat them. In short:
+
+- **The mechanisms** (`RV-remove`, `RV-ban`, `RV-hide`, `RV-freeze`, `RV-revoke`, `SD-deactivate`, `SD-delete`), one case each, on a channel of its own, applied server-side through the guard. For each member, before and after, by the same member: `rest` (a REST read of the channel), `ws` (whether the already-open subscription receives a server channel update and M2's message), `token_reuse` (a new session with the member's existing token connects and reads), `s15` (the member's own member write), and for the account-level mechanisms `token_issued_after`. A dimension is `ended` only on Stream's authentication or permission error after the same request by the same member succeeded before (the matrix quality rule); the subscription is `ended` only when a listener received the probe and the member did not, in two windows, with no connection change that could explain it. **MEETS the history policy** only when every dimension is `ended` for the member acted on (both members for the freeze), its own client cannot undo it (the server's replay is the control) and the channel's first message is retained; **DOES NOT MEET** when a dimension is `not ended`, the client undid it or the messages are gone; INCONCLUSIVE otherwise.
+- **Recorded for each mechanism**, not judged: the event types each member receives, system messages, where M2 (the acting user, named for the removal, the ban and the freeze) appears, the app send path's refusal without a Stream call (check `AP12-<mechanism>`, judged), and Stream's answer to a server-side send on the affected member's behalf (an observation only: server-side calls bypass Stream's permission checks).
+- **Tokens and devices:** R has two devices; `revoke_tokens_issued_before` is per user; a token issued at once after it has a back-dated `iat` and is refused by design; one issued 7 s later is `token_issued_after`. TD-expiry: a second device of A with a 25 s token, before and after its expiry.
+- **OUT-send**: the outage is injected in-process only (an `httpx` transport that raises `ConnectError`); no real outage is claimed.
+- **S15-map** (RECORDED, a mapping) and **F9-pin/F9-archive**, **F9-invite-accept/-reject**, the finding-9 reads and generic cases, and the **existence oracle** (`EO-channel`, `EO-user`, `EO-message`).
+- **G2 and S10** have new setups: G2's guest is created server-side and connects by ID; S10's poll message goes to a channel of its own, created while polls are on.
+- **The history policy is Nathan's OD-12**; whether a mechanism meets it when applied to both members is derived from the member it is applied to (by symmetry); only the freeze is judged for both.
+- **Interpretation to flag** (the prompt's section 8): the four channel-level mechanisms share the synthetic users M1 and M2, each on a separate channel of its own, following revision 1 of the I2a prompt ("Channel-scoped mechanisms can share users on separate channels; user-scoped ones ... need their own users") and DM-04 finding 5's count basis. Each family's controls, made before its mechanism, show that no earlier family reached its channel.
+
+### Stream behaviour, from Stream's documentation
+
+Read on 26 September 2026 by two read-only research sub-agents, which fetched only getstream.io pages and made no Stream call. Each quotation that a design choice rests on was re-checked verbatim. "Not documented" means not found on the pages listed.
+
+| Topic | What the documentation says | Used for |
+|---|---|---|
+| Member removal | `removeMembers` removes users; an optional message object makes client SDKs show a system message; no automatic system message. Events: `member.removed` to watchers, `notification.removed_from_channel` to the removed user's other clients. Whether a removed watcher keeps receiving events, and whether member custom data survives removal: not documented | RV-remove; the S15 mapping's removal question |
+| Channel ban | `channel_cid` makes a ban channel-scoped ("the user will still be able to use the rest of the app"); `banned_by_id` is optional; banned users "cannot post". Reading, events and own-membership writes of a banned member: not documented. `user.banned` goes to the banned user's clients; the webhook form carries `created_by` | RV-ban; naming M2 as `banned_by_id` |
+| Token revocation | `revoke_tokens_issued_before` on the user (a partial update), reversible with null; tokens with `iat` before it fail; tokens without `iat` are invalid. Effect on an open WebSocket: not documented | RV-revoke; the `iat` record |
+| Hide | Removes the channel from query channels "until a new message is added"; only members can hide; `channel.show()` from the client undoes it; `channel.hidden` and `channel.visible` go to the user's clients. Reading a hidden channel by ID: not documented | RV-hide; hiding again before the member's own `show` |
+| Freeze | Prevents new messages and reactions; reading stays allowed; `UpdateChannelFrozen` and `UseFrozenChannel` permissions; server-side calls are not permission-checked | RV-freeze |
+| Deactivation | The user "will not be allowed to perform API requests / connect"; data retained; reversible; `mark_messages_deleted` soft-deletes messages. The documentation does not use "suspend" | SD-deactivate, as Stream's suspension mechanism |
+| Hard delete | With `user: hard`, `messages` and `conversations` must also be `hard` (omitted means promoted; `conversations: soft` is an error); a conversation is a channel of two or fewer members that includes the user. Asynchronous, with a task | SD-delete's options; cleanup's handling of a channel the delete removes |
+| Token expiry | Code 40 is "token expired"; with a static token "the connection fails once that token expires"; whether the server closes an open WebSocket at expiry: not documented | TD-expiry |
+| System messages | Created only on request (a message object on member changes or a channel update, or a `system` message) | The system-message record of each mechanism |
+| Custom and AI events | `ai_indicator.*` are custom events; custom events need the `custom_events` feature and the `SendCustomEvent` permission | F9-ai, feature-gated like S12 |
+| Member partial update | "Only custom data and channel roles are eligible for modification"; pinned and archived use the same update | The S15 mapping; F9-pin and F9-archive |
+| Invites | `acceptInvite` may carry a message that posts a system message; a message on reject is not documented | F9-invite-accept and F9-invite-reject |
+| Leaving | Needs the `Leave Own Channel` permission | F9-leave |
+| Reads | `queryReactions` needs read permission client-side; `queryMessageHistory` is server-side only and Enterprise only; `sync`: not documented | The finding-9 reads |
+| Get Channel | `GET /channels/{type}/{id}`: 404 when the channel does not exist, 403 without `ReadChannel` ("a 404 is the expected negative answer") | EO-channel's GET probe |
+| Guests | Server-side `createGuest` returns `user` and `access_token`; whether `guest_user_creation_disabled` also blocks server-side creation: not documented | G2's new setup |
+| Polls | No channel-level override for polls; propagation of a type change: not documented | S10's new setup |
+| Error codes | 4 input, 5 authentication, 9 rate limit, 16 does not exist, 17 not allowed, 18 event not supported, 19 feature disabled, 40 token expired, 43 signature invalid, 70 no access to channels, 99 app suspended | The classification the matrix already uses |
+
+Pages relied on (Markdown forms of the pages at the same paths): chat/docs/javascript: channel-members, event-object, creating-channels, query-channels, query-members, channel-update, channel-management, hiding-channels, freezing-channels, disabling-channels, permissions-reference, moderation, silent-messages, send-message, tokens-and-authentication, channel-features, pinning-channels, archiving-channels, channel-invites, threads, send-reaction, pending-messages, polls-api, authless-users; chat/docs/python: channel-members, event-object, webhook-events, hiding-channels, freezing-channels, chat-permission-policies, moderation, silent-messages, ai-message-streaming, audit-logs, get-channel, channel-invites, archiving-channels; chat/docs/node: channel-members, channel-features, channel-level-settings, chat-permission-policies, webhook-events, ai-message-streaming, get-channel, channel-invites; chat/docs/go-golang/pinning-channels; chat/docs/dotnet-csharp: channel-members, channel-invites; moderation/docs/node and python: content-moderation/flag-mute-ban, integrations/stream-chat; docs/platform: authentication, users, gdpr, async-operations, permissions, webhooks, api-error-codes, backend-sdks; and the legacy chat/docs/sdk/android/v5/client/moderation-tools (marked "no longer actively maintained"). The REST reference at getstream.github.io/protocol was not read.
+
+The installed SDK sources were read for every request shape: stream-chat 9.53.0 (`dist/cjs/index.node.js`: `hide`, `show`, `banUser`, `unbanUser`, `shadowBan`, `acceptInvite`, `rejectInvite`, `addMembers`, `removeMembers`, `pin`, `archive`, `updateAIState`, `partialUpdateMember`, `updateMemberPartial`, `getReplies`, `getReactions`, `getMessagesById`, `queryReactions`, `getThread` (which watches by default), `queryMessageHistory`, `sync`), and getstream 6.1.0 (`create_token` sets `iat` to now minus 5 s; typed calls wrap `httpx.RequestError` in `StreamTransportException`; the request models for update channel, ban, deactivate, delete users, member partial update, hide and create guest).
+
+### The independent check before the first live call
+
+A fresh reader (a read-only sub-agent of this session, given no conclusions of mine) reviewed the complete step 1 and step 2 change at `5b2403d` before any live call: the guard, the stop paths, the cleanup of every new state and the verdict rules. It made no change, no network or live call, and read no environment value. It ran the unit tests (359, OK), `ruff`, `mypy`, `node --check` and `checks/run_plan.py` (fits) in clean processes, and wrote offline probes against the fakes. It found 2 blocking findings, 7 more to fix before the live run, and 7 nits; it found no gap in the guard. Every finding was fixed before the first live call, each with a test that fails when the fix is reverted (`checks/fix_reversals.py`, entries named "I2a review …"). Paths are under `proofs/stream-chat/`; line numbers are at `7ce93cc`.
+
+| # | Finding | Fix | Where | Tests |
+|---|---|---|---|---|
+| 1 (blocking) | The S15 mapping's restore could be skipped: a field was put back only when a re-read showed the change, outside any `try/finally`, so a write the server's control applied, or one interrupted (B's session ending), was left in place (A left `channel_moderator` or banned in AB) and the run went on. F9-pin and F9-archive had the same gap | A's member record is read before anything is written (nothing is written if it cannot be read). Every write that may have changed it is put back when its field ends, however it ends (`restoring_member`), and the whole record is read again and compared with the original in every mapped field (`restore_member`); a record that cannot be read or does not match stops the run after the case. Nothing is sent after a guardrail stop or a recorded signal. A field that already reads as it was is not written again, so a write Stream accepted but ignored needs no restore it might refuse (found in this session's own pass over the fix) | `i2a.py` `restoring_member` :411, `restore_member` :477, `_map_field` :540, `own_member_flag` :683 | `tests/test_i2a.py` `S15MapTest` (seven tests), `OwnMemberFlagTest` (nine) |
+| 2 (blocking) | The subscription dimension could be `ended` falsely: the member judged was collected first with a 2.5 s wait and the listener after it, so a late delivery to the member counted as a miss; a dropped or recovered connection was ignored | The listeners are collected first and the judged members last; a member that missed the probe while another session received it is collected a second time; a `connection.changed` or `connection.recovered` in the member's windows after the mechanism makes a miss `not shown` (any close or recovery for a channel-level mechanism; a recovery for an account-level one, where a close may be the mechanism itself, and the row says so) | `mechanisms.py` `probes` :511, `window_order` :581, `unattributable` :596, `ws_dimension` :154 | `tests/test_mechanisms.py` `WindowTest` (five), `RulesTest.test_the_subscription_ends_only_with_a_listener_that_received_it` |
+| 3 | Only the first charge or limit signal in a client reply was recorded, so a 402 behind a 429 could be reported as "only a rate limit"; the calls were counted before the checks, so the budget could raise first | Every signal in a reply (its requests, the command's error, requests sent between commands, asynchronous errors) is recorded before anything raises; the reply's calls are counted after the checks, without a check that could raise over a signal | `client_bridge.py` `send` :260, `_reply_signals` :331, `_late_signals` :368 | `tests/test_client_session.py` `EverySignalTest` (two) |
+| 4 | RV-revoke could MEET the policy while a token issued after the revocation still read the conversation | A dimension `token_issued_after` for the account-level mechanisms: the revocation's token issued past the `iat` back-dating, and for deactivation and deletion a token issued at once. It is required for MEETS | `mechanisms.py` `ACCOUNT_DIMENSIONS` :87, `fresh_token` :1060, `judge_dimensions` :1075, `policy_verdict` :231 | `FamiliesTest.test_token_revocation_on_two_devices`, `test_deactivation_and_the_hard_delete`, `test_the_policy_requires_every_dimension_of_the_mechanism` |
+| 5 | F9-pin and F9-archive could HOLD with no positive control for B's read (B's query refused, or without A's member entry), or HOLD "accepted, not applied" from a failed read | HOLDS (filtered) only with a 2xx server read showing the flag and B's 2xx read returning A's member record without it; HOLDS (accepted, not applied) only from a 2xx read of A's record; INCONCLUSIVE otherwise | `i2a.py` `own_member_flag` :683 | `OwnMemberFlagTest` |
+| 6 | The existence oracle held on identical non-attributable answers (two 500s, two 400s) | Each pair is judged: not attributable (no answer, a local error, an unclassified status) is INCONCLUSIVE; different is FAIL; identical is HOLDS only for authentication or permission refusals, 404s or successes; identical input or feature errors are INCONCLUSIVE | `i2a.py` `pair_verdict` :903, `oracle` :920 | `OracleTest` (eight) |
+| 7 | An interruption could lose an observed FAIL or a family's evidence: EO and F9-pin/archive kept no partial row; a family's `events()` and `reuse()` raised for a member whose session had ended; a family's DOES NOT MEET became INCONCLUSIVE if a session's close raised afterwards | The oracle keeps its row after each pair, pin and archive after the leak check and after the restore, the S15 mapping after each field; a family judges and keeps its row after each step (its DOES NOT MEET is kept as a FAIL is: `matrix.KEPT_WHEN_INTERRUPTED`); an ended session's remaining dimensions are `not shown`, naming the end, and the family goes on | `mechanisms.py` `step` :1134, `events` :458, `collect_after` :904, `reuse` :988; `proof_run.py` `_interrupted_row` :642; `matrix.py` :219 | `StopsTest.test_an_ended_client_session_ends_only_its_case`, `StopsTest.test_an_interrupted_family_keeps_what_does_not_meet_the_policy`, `StopsTest.test_a_rate_limit_in_a_probe_keeps_what_was_observed`, `OracleTest.test_an_oracle_seen_before_an_interruption_stays_a_fail`, `S15MapTest.test_a_field_the_control_set_is_restored_when_bs_session_ends`, `OwnMemberFlagTest.test_a_leak_stays_a_fail_when_the_control_is_interrupted` |
+| 8 | SD-delete's channel was recorded as possibly gone only after the task wait, so a run stopped during the wait named it in the cleanup's batch | Recorded before the delete is sent | `mechanisms.py` `apply` :816 | `FamiliesTest.test_a_stop_during_the_hard_deletes_task_leaves_the_channel_checked_first` |
+| 9 | After a rate limit the reserve rerun was not actually available: `cleanup --apply` does not delete a `deleted-user-1729640-…` user, and preflight refuses a run while one exists | README amended, as the prompt requires the user to be reported and left: then no further run can start, the reserve is not available, and live work ends | README "Signals, by kind" | — (README) |
+| Nit | The hide's undo was judged even when the server's re-hide failed | The member's `show` is sent only once the channel is hidden again (2xx and not listed); otherwise the undo is INCONCLUSIVE | `mechanisms.py` `undo` :1235 | `FamiliesTest.test_a_hide_that_is_not_made_again_leaves_the_undo_unjudged` |
+| Nit | A hard delete whose task did not complete was judged as applied | The family is INCONCLUSIVE whatever it observed | `mechanisms.py` `unjudgeable` :1125 | `FamiliesTest.test_the_cleanup_names_no_user_or_channel_that_is_gone` |
+| Nit | A connect as H after the delete may create H again | Recorded (`connected_after_the_delete`), and H is named at cleanup again | `mechanisms.py` `reuse` :988 | `FamiliesTest.test_a_connect_that_creates_the_deleted_user_again_is_cleaned_up` |
+| Nit | The run plan ignored the session's counts in `.work/usage-ledger.json` | Added, read only (`session_used_before`) | `checks/run_plan.py` `session_used` :69 | `tests/test_run_plan.py` `test_what_the_session_already_used_is_counted` |
+| Nit | The guard did not check a poll update's poll in its body (`PUT /api/v2/polls`), nor a mute's `target_id` | Both checked | `guard.py` :313 and `USER_ID_KEYS` :52 | `tests/test_guard.py` `RefusalTest` |
+| Nit | Stale S10 text ("created in AB") | Names S10's channel | `proof_run.py` :2235 | — |
+| Nit | A 401 code 40 from a member's own 900 s token expiring naturally would count as `ended` | A family runs only while M1's and M2's tokens have at least 300 s left; a dimension is `ended` only while the member's own token had at least 60 s left at the end of the observations (each token's seconds left are recorded); a case before the families runs only while A's, B's, X's and D's tokens have at least 120 s left, and AP11 is not made otherwise | `mechanisms.py` `execute` :660, `judge_dimensions` :1075; `proof_run.py` `_setup_tokens_expiring` :1100, `run_matrix` :1210 | `tests/test_mechanisms.py` `TokenLifetimeTest` (three) |
+
+Two further changes came from this session's own pass over the fixes: TD-expiry's controls count only when they finished at least 3 s before the token's `exp`, and a token without `exp` is INCONCLUSIVE (`i2a.py` `token_expiry` :133; `TokenExpiryTest`); G2's server-side guest creation is tried again with guest creation enabled after any refusal, not only a 403, because Stream does not document the status (`i2a.py` `g2_session` :1085; `G2SetupTest.test_any_refusal_is_tried_again_with_guest_creation_enabled`). The fake server now issues tokens as `getstream`'s `create_token` does (`iat` back-dated 5 s, `exp` from now), so the fakes exercise the token-lifetime rules.
+
+### The run plan's count
+
+Counted offline before any live call (`checks/run_plan.py`, the complete set and each case family on its own against the fakes, through the same usage ledger), and again at `7ce93cc` with the same result:
+
+| | Users | Channels | Peak connections | API calls (fakes) |
+|---|---|---|---|---|
+| The complete set (114 cases) | 11 | 18 | 6 | 605 |
+| The base setup | 4 | 2 | 3 | 33 |
+| The largest family, as a rerun (the reserve) | 7 (revocation; suspension and deletion) | 8 (creating and joining) | 5 (guest and anonymous; revocation) | 180 |
+| Run 1 plus the reserve, against the caps | 18 of 20 | 26 of 30 | 6 of 10 | 785 of 5,000 |
+
+It fitted, so run 1 could use the complete set's count. `EO-channel` can reserve one more channel if a probe creates the missing one; none did. After run 1 the session's ledger held 4 users, 2 channels and 57 calls; the reserve rerun of all 114 cases then fitted what was left (15 of 20 users, 20 of 30 channels), and used exactly the counted 11 users, 18 channels and a peak of 6 connections. The fakes' call count is not the live one (629 live in run 2).
+
+### Live runs (26 September 2026, UTC; one checkout, one command at a time)
+
+Every live command ran through a session launcher that starts `.venv/bin/python -m glow_stream_proof …` with an allowlisted environment (the path, home, proxy and CA variables, and the three `STREAM_*` variables), refuses `configure` with any option, `restore`, `cleanup` without `--apply`, and any other command, and refuses to start if an HDE variable is present. Each output was scanned before it was read: no output held the secret or a JWT-shaped string.
+
+**Before run 1**, at `651c2df`:
+
+- `verify-clean` (21:05:28–21:05:31), exit 1: "proof users remaining: []", "channels remaining: []", "other users present: 1", "user_groups remaining: []", and "polls remaining: not verified: HTTP 400 code 4". The poll listing's first live use (C2's `POST /api/v2/polls/query`) was refused, so no poll could be shown absent; everything else was as expected.
+- Dry-run `configure` (21:07:00–21:07:02), exit 0: "differences before: []".
+
+The record kept only the status and code, so commit `5df522c` keeps Stream's message for a listing that is not verified (offline, with a test and a reversal). Then, at `5df522c`:
+
+- `verify-clean` (21:25:25–21:25:28), exit 1: as before, now with Stream's reason: "polls remaining: not verified: HTTP 400 code 4: QueryPolls failed with error: \"either user or user_id must be provided when using server side auth.\"". Server-side Query Polls needs a user; the only user that is not the proof's is the dashboard user, which the proof never uses, and whether a `user_id` narrows the listing to that user's polls is not documented. So the listing was not fixed in I2a (see "What I2b and P06.2 must know"). Earlier runs deleted the polls they created (DELETE 200, recorded above), and nothing points to a leftover poll, but none could be shown absent. I went on, reporting it here as the prompt asks ("report anything the harness marks 'not verified'").
+- Dry-run `configure` (21:25:59–21:26:02), exit 0: "differences before: []", the same plan as at 21:07.
+
+**Run 1**, from `5df522c`: `run --accept-dashboard-user`, prefix `p061i1-0926212611`, 21:26:11 to 21:26:20 (the launcher: 21:26:09 to 21:26:21), **exit 2**.
+
+- Preflight: `{'dashboard_users_present': 1, 'configuration_problems': [], 'polls_before_run': 'not verified', 'user_groups_before_run': 0}`. The one-dashboard-user check with its creation minute passed at its first live use.
+- Authorized path: AP1, AP2 (lifetimes, `exp` minus `iat`, 905 s: 900 s plus the SDK's 5 s back-dating), AP3-AB and AP3-XD PASS.
+- **Stopped** before any case: "harness error: ClientSessionEnded: client A ended: reply id '{AB}' does not match command id 2". C1's reply matching, at its first live use, ended A's session at its first channel command. The cause is in "The defect run 1 found" below.
+- Stop signals: none. Stops: none. Journal: nothing to restore.
+- Usage: 4 users, 2 channels, 33 API calls (33 server, 0 client), a peak of 1 connection; the session's ledger then held 57 API calls (the four read-only checks before the run used 24).
+- Cleanup: channels deleted (201, task completed); users deleted (201, task completed); the `deleted-user-1729640-…` user the delete created was found and deleted (201, task completed); no proof user, channel or `deleted-user` user remaining; user groups `[]`; polls not verified (the same 400 code 4).
+- After the run: one problem, "remaining_polls: not verified: HTTP 400 code 4: QueryPolls failed with error: …". The final configuration check passed.
+
+#### The defect run 1 found
+
+`ClientSession.send` built each command as `{"id": <command id>, "op": …, "max_calls": …, **params}`. A channel command's parameters carry the channel as `id` (for example `type="glow-match", id="{AB}"`), which replaced the command's own `id`. The runner (`client/runner.cjs`) opened the channel with `cmd.id` and echoed `cmd.id` in its reply, so the reply's `id` was the channel's. Before C1 nothing compared the two, so I1's live runs worked. C1 added reply matching (`572c69d`), and no live run happened between C1 and I2a's run 1, where A's first channel command ended the session. The offline suite never saw it: the fakes replace `ClientSession`, and the tests that drive the real runner sent no channel command.
+
+Fixed offline (`7ce93cc`): the channel travels as `channel_id`, and the command's `id` is set last, so no parameter can replace it (`client_bridge.py` `send` :277; `client/runner.cjs` :260). Two tests drive the real runner offline, with a development token made locally and a channel method that fails before any request: `tests/test_runner.py` `RunnerTest.test_a_channel_command_names_its_channel_as_channel_id` and `ChannelCommandSessionTest.test_a_channel_command_keeps_its_own_id_end_to_end`. With the Python side reverted, the second fails with the live message, "reply id 'proof-channel' does not match command id 2". An audit of every command the Python side sends found no other field the runner reads differently.
+
+The prompt's rule for this case (section 5): "Fix harness errors offline, against the fakes, never by trying a live run"; and "Reserve: at most one rerun, `run --accept-dashboard-user --only <case ids>`, for cases run 1 could not complete. It must fit what the session has left." Run 1 completed no case, so the reserve rerun names all 114. It fits what the session had left: with the ledger's 4 users, 2 channels and 57 API calls, the complete set brings the session to 15 of 20 users, 20 of 30 channels, a peak of 6 of 10 connections, and about 662 of 5,000 API calls on the fakes (`checks/run_plan.py`, `session_used_before`). After it, no live run remains.
+
+**Before the reserve rerun**, at `7ce93cc` (the offline checks passed and all 242 fix reversals were demonstrated at this commit, pushed):
+
+- `verify-clean` (21:50:38–21:50:40), exit 1: the same as at 21:25 (no proof user or channel, one other user, no user group; polls not verified, with the same message).
+- Dry-run `configure` (21:50:40–21:50:43), exit 0: "differences before: []", the same plan.
+
+**The reserve rerun (run 2)**, from `7ce93cc`: `run --accept-dashboard-user --only <all 114 case IDs, in the matrix's order>`, prefix `p061i1-0926215052`, 21:50:52 to 21:55:46 (the launcher: 21:50:51 to 21:55:47), **exit 4** (completed; one problem after it, the poll listing).
+
+- Preflight: one dashboard user, no configuration problem, polls not verified, no user group.
+- Authorized path: all 25 checks PASS: AP1 to AP10 (17 checks), AP11 (disconnect, reconnect, watch and the next message received) and AP12 for each mechanism (the app send path refuses both members' sends after it, with no Stream call: the API-call count unchanged across the two sends).
+- Cases: all 114 recorded. 82 HOLDS, 5 HOLDS (filtered, not refused), 3 HOLDS (accepted, not applied), 1 REFUSED (feature off; not a permission error), 13 FAIL, 4 INCONCLUSIVE, 5 DOES NOT MEET the history policy, and 1 RECORDED (a mapping). Every row is in "Results by topic" below.
+- Stops: none. Stop signals: none. Every journalled temporary change (the channel-level feature overrides of S2, S5, S6, S7 and S15, the type-level toggles of S10, S12 and F9-ai, and guest creation for G1's control and G2's setup) was restored and verified; nothing was left unrestored or unverified.
+- Usage (the run): 11 users, 18 channels, 629 API calls (353 server, 276 client), a peak of 6 connections, 41 connection attempts. The session's ledger afterwards: 15 of 20 users, 20 of 30 channels, 698 of 5,000 API calls, a peak of 6 of 10 connections.
+- Notes the run recorded: client A's SDK sent `POST /channels/glow-match/{AB}/query` twice between commands (201), and M2's twice in `{CH_freeze}` (201), with M1's once more reported in its exit reply; M1 had one asynchronous error, "PROOF_BUDGET: request refused before sending (budget reached)", a request its SDK started during an `events` wait, refused before it was sent. Each was checked for a charge or limit signal (none) and counted.
+- Cleanup: 2 polls deleted by recorded ID (200, 200); 1 user group deleted (200); channels deleted (201, task completed); users deleted (201, task completed), with no user found by prefix that was not recorded; the `deleted-user-1729640-…` user the delete created found and deleted (201, task completed); no proof user, channel or `deleted-user` user remaining; user groups `[]`; polls not verified.
+- After the run: "remaining_polls: not verified: HTTP 400 code 4: QueryPolls failed with error: …", the only problem. The final configuration check passed.
+
+**After the last run**, at `7ce93cc`:
+
+- `verify-clean` (22:00:21–22:00:24), exit 1: "proof users remaining: []", "channels remaining: []", "other users present: 1", "user_groups remaining: []", "polls remaining: not verified: HTTP 400 code 4: QueryPolls failed with error: \"either user or user_id must be provided when using server side auth.\"".
+- Dry-run `configure` (22:00:24–22:00:26), exit 0: "differences before: []", the same plan as before every run. There was nothing to decide.
+
+Session totals: 15 of 20 users, 20 of 30 channels, 698 of 5,000 API calls, a peak of 6 of 10 connections. Nothing suggested a charge; no rate limit was met. The reserve is spent: no further run is available in this session.
+
+**Commits after the last run, not exercised live:** the commit that adds this section, which changes only this record.
+
+### Results by topic (run 2, `p061i1-0926215052`, from `7ce93cc`)
+
+`{A}`, `{M1}`, `{CH_remove}` and the other braces stand for the run's synthetic identifiers. Every verdict below is the harness's, under the rules committed before the run; where my reading of a row differs from its recorded verdict, the row says so and why, and the verdict stands as recorded.
+
+#### Revocation, suspension and deletion
+
+For the member each mechanism acts on (M1 on the channel-level mechanisms; R and its second device R-2; S; H). "Ended" is Stream's authentication or permission error after the same request by the same member succeeded before; each family's controls before its mechanism succeeded for both members, so no earlier family had reached its channel.
+
+| Case | Applied (server, through the guard) | REST read | Open subscription | Token reuse | Own member write (S15) | Token issued after | Member's own undo | History retained | Verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| RV-remove | `POST /channels/glow-match/{CH_remove}` `remove_members: [{M1}]`, `user_id: {M2}` → 201 | ended (403 / 17) | ended (missed in both windows; M2 received it) | ended (connected; read 403 / 17) | not shown (404 / 16) | – | HOLDS (`addMembers` 403 / 17; server replay 201) | yes | **INCONCLUSIVE**: not shown, s15 for M1 |
+| RV-ban | `POST /api/v2/moderation/ban` `target_user_id: {M1}`, `channel_cid`, `banned_by_id: {M2}` → 201 | not ended (201) | not ended | not ended (read 201) | not ended (200) | – | HOLDS (`unbanUser` 403 / 17; replay `DELETE` 200) | yes | **DOES NOT MEET** |
+| RV-hide | `POST /channels/glow-match/{CH_hide}/hide` `user_id: {M1}` → 201 | not ended | not ended | not ended | not ended | – | **FAIL**: M1's `show` 201 (after the server hid it again: 201, "not listed") | yes | **DOES NOT MEET**, and the member's own client undid it |
+| RV-freeze | `PATCH /channels/glow-match/{CH_freeze}` `frozen: true`, `user_id: {M2}` → 200 | not ended, for M1 and M2 | not ended, both | not ended, both | not ended, both | – | HOLDS (`updatePartial` 403 / 17; replay 200) | yes | **DOES NOT MEET** |
+| RV-revoke | `PATCH /api/v2/users`, R's `revoke_tokens_issued_before` = 21:54:51Z → 200 | ended, R and R-2 (401 / 40) | ended, both (missed in both windows) | ended, both (connect 401 / 40) | ended, both (401 / 40) | **not ended**: issued 7 s after, `iat` 2 s after the revocation time; connect ok, read 201 | – | yes | **DOES NOT MEET** |
+| SD-deactivate | `POST /api/v2/users/{S}/deactivate` `mark_messages_deleted: false` → 201 | not shown (404 / 16) | ended (missed in both windows) | not shown (connect 404 / 16) | not shown (404 / 16) | not shown (connect 404 / 16) | – | yes; S's own message kept, not deleted | **INCONCLUSIVE** |
+| SD-delete | `POST /api/v2/users/delete` `user`, `messages`, `conversations` all `hard` → 201, task completed | not shown (404 / 16) | not shown (the channel was gone, so no probe could be sent) | ended (connected; read 403 / 17) | not shown (404 / 16) | ended (connected; read 403 / 17) | – | **no**: the delete removed the channel and its messages | **DOES NOT MEET**: the messages are not retained |
+
+**Which mechanism meets the policy:** none, on its own. What each shows:
+
+- **Removal** ends M1's REST read, its open subscription and reuse of its token; its own member write then got 404 code 16 ("does not exist"), which the rule does not count as a refusal, so the case is INCONCLUSIVE, not MEETS. M1's client cannot rejoin. M1's member custom data was not kept across removal and re-adding (`member_custom_after_readd`: absent).
+- **A channel ban** ends none of the four: M1 still reads the channel and its history, still receives its events, still writes its own membership, and a new session with its token reads it. It stops M1 posting: the server-side send on M1's behalf was refused 403 code 17, "Your account is currently banned from chat."
+- **Hide** only hides the channel from M1's channel list (not listed after it; listed again after a new message, as Stream documents), and M1's own client can show it again.
+- **Freeze** stops new messages and reactions (Stream's documentation) but ends none of the four for either member.
+- **Per-user revocation** ends every token issued before it: REST, WebSocket and S15 for both of R's devices, and the open subscriptions. A token issued at once (its `iat` back-dated 5 s by the server SDK, 5 s before the revocation time) was refused (connect 401 code 40), as designed; one issued 7 s later connected and read the channel. So revocation alone does not keep R out; the app's token issuance has to (P06.2).
+- **Deactivation** answers every request and connect of S with 404 code 16 (the server-side send on S's behalf: "the user {S} was deactivated"), and S's open subscription stopped receiving; S's data is kept. Stream answers "does not exist", not an authentication or permission error, so under the rule the dimensions are "not shown" and the case INCONCLUSIVE.
+- **The hard delete** removes the conversation (a channel of two members), so the history the policy keeps for safety reports is gone. After it, a connect with H's old token, and one with a token issued after the delete, both **succeeded**, which re-creates H (`connected_after_the_delete`: `H`, `H-new`); the channel read was then refused 403 code 17. The cleanup deleted H again.
+
+**What each member was shown** (event types, the SDK's local events excluded; where M2 appears, member lists left out):
+
+- Removal: M1 received `channel.kicked`, `channel.updated`, `member.removed`, `notification.mark_read` and `notification.removed_from_channel`; M2 received `channel.updated` and `member.removed`. M2 appears as the acting user in `channel.updated` (`user.id` and `user.name`), in both members' events.
+- Ban: both received `user.banned`, naming M2 in `created_by.id` and `created_by.name`.
+- Hide: M1 received `channel.hidden` and `notification.mark_read`; M2 nothing.
+- Freeze: both received `channel.updated`; M2 appears only as the channel's creator (`channel.created_by`), not as the acting user.
+- Revocation: nothing to any member.
+- Deactivation: S received `user.deactivated`.
+- Hard delete: H received `channel.deleted` and `user.deleted`; M2 `channel.deleted`.
+- No mechanism added a system message.
+
+**Send versus revocation:** `AP12-<mechanism>` PASSED for all seven: after the app recorded the unmatch or block, its send path refused both members' sends without calling Stream. Stream's answers to the server-side send on the affected member's behalf (an observation only): 201 after removal, hide, freeze and revocation; 403 code 17 after the ban; 404 code 16 after deactivation ("the user {S} was deactivated") and after the hard delete (the channel was gone).
+
+**The subscription's window:** the second window (the independent review, point 2) was used live: after the removal M1 missed the probe in its first window and again in its second, as did R and R-2 after the revocation and S after deactivation, while the listener received it. No connection closed or recovered in any family's windows, so no subscription dimension was made "not shown" by that rule.
+
+**Tokens:** each member's token had between 795 and 885 s left when its observations ended, well past the 60 s margin.
+
+#### Tokens and devices, send, and outage
+
+- **TD-expiry: HOLDS.** A second device of A with a 25 s token (`exp` minus `iat` 30 s, the SDK's back-dating included): before expiry it connected, watched and read (the read finished 23.8 s before `exp`); after expiry its read and its reconnect both got 401 code 40. Observations: its already-open connection **still received** the probe after the token expired, and A's first device still read AB.
+- **OUT-send: HOLDS** (the outage injected in-process only: an `httpx` transport raising `ConnectError`, no address used). The app send path refused with the provider's connection error, kept no message ID, left the match state and the run's message record unchanged; a server-side read found no such message; the transport saw exactly one request; the same send with the provider reachable succeeded. No real outage is claimed.
+
+#### The S15 mapping, pin and archive
+
+- **S15: FAIL**, as in I1: A's member custom data (`glow_note`) reached B through B's channel query and B's `member.updated` events (and, with `read-channel-members` granted on AB, through B's members query too). The local-event filter (C1) was used: `channels.queried` was dropped, and the marker came in `member.updated`.
+- **S15-map: RECORDED.** Of A's own member writes: `glow_note`, `pinned` and `archived` were accepted and stored, and B saw each (`member.updated`, and B's channel query); `notifications_muted`, `channel_role`, `is_moderator`, `banned`, `shadow_banned` and `invited` were refused 403 code 17. The server's replay of the refused ones: `channel_role` 200 and stored (so only the server can set it); the other five 403 code 17 **even server-side**. Every change was put back and the whole record verified (for example `channel_role`: "PATCH 200; verified True"; the refused fields: "nothing to put back; verified True"). The server's overwrite of A's `glow_note` was stored, and its clear removed it. The three `member_custom_on_*` settings read false.
+- **F9-pin and F9-archive: FAIL.** A pinned (archived) AB for itself; the flag was stored, and B read it in its channel query (A's member record carries it) and in `member.updated`. A's record was put back and verified.
+
+#### The finding-9 endpoints
+
+| Case | A's request | A's answer | Control | Verdict | My reading |
+|---|---|---|---|---|---|
+| F9-replies | `GET /messages/{m_x}/replies` | 400 code 19: "Channel glow-match:{XD} does not support replies" | X: 400 code 19 | **FAIL**: response disclosed `{XD}` | A real disclosure: from a message ID alone, a non-member learns the message's channel (before any permission check; replies are off) |
+| F9-reactions | `GET /messages/{m_x}/reactions` | 400 code 19: "… does not support reactions", naming `{XD}` | X: 400 code 19 | **FAIL**: response disclosed `{XD}` | The same disclosure |
+| F9-by-id | `GET /channels/glow-match/{XD}/messages` | 403 code 17 (ReadChannel) | X: 200 | HOLDS | – |
+| F9-query-reactions | `POST /messages/{m_x}/reactions` (`queryReactions`) | 403 code 17 | X: 201 | HOLDS | – |
+| F9-thread | `GET /threads/{m_x}` | 404 code 16: "Thread with id \"{m_x}\" doesn't exist" | X: 404 code 16 | **FAIL**: response disclosed `{m_x}` | **Not a disclosure**: the only term found is the message ID A itself sent in the path; A and X got the same 404, which is not attributable. By the rule's purpose this reads INCONCLUSIVE |
+| F9-history | `POST /messages/history` | 403 code 17: "this endpoint can only be called server side" | server replay 403 code 17: "this endpoint needs a feature flag, contact support to get it enabled" | INCONCLUSIVE | Enterprise only, as documented |
+| F9-sync | `POST /sync` for XD's cid | 201; learned no channel, no message, no user | X: 201, found XD's data | **FAIL**: response disclosed `{XD}` | **Not shown to be a disclosure**: the only term found is XD's channel ID, which A's own request named; the row does not keep the response, so where it appeared is not recorded (getstream's `SyncResponse` has `inaccessible_cids`, which would echo it). Nothing of XD's was learned. By the rule's purpose this reads HOLDS (filtered, not refused) |
+| F9-ai | `POST /channels/glow-match/{AB}/event` (`updateAIState` with `ai_message` free text) | 201, with custom events on and under the production configuration | server replay 201 | **FAIL**: succeeded under the production configuration | A member can send free text to the other as an AI-indicator event even with custom events off |
+| F9-member-other | `PATCH /channels/glow-match/{AB}/member/{B}` (`glow_note` on B's membership) | 200 | server replay 200; undo 200 | **FAIL**: the client action succeeded | A's write to B's member record was accepted; whether Stream stored it was not read |
+| F9-ban, F9-shadowban | `POST /moderation/ban`: A bans (shadow-bans) B in AB | 403 code 17 (BanChannelMember) | server replay 201; undo `DELETE` 200 | HOLDS | – |
+| F9-leave | `POST /channels/glow-match/{AB}`: A leaves AB with a message | 403 code 17 (RemoveOwnChannelMembership) | server replay 201; undo 201 | HOLDS | – |
+| F9-invite-accept, F9-invite-reject | B, invited to a channel of A's, accepts (rejects) with a message | 201 | – | **FAIL**: the text reached A in `channel.updated` and `message.new` and is stored in the channel | Invites answered with a message are a free-text path to the other member |
+
+The two rows whose recorded FAIL I read otherwise (F9-thread and F9-sync) follow the disclosure rule as written before the run: a response that contains a target term is a disclosure, including a term the request itself carried. I did not change the rule after seeing the results: that would be a rule changed after the run, in the direction that removes FAILs. It is for the manager to decide, with I2b ("What I2b and P06.2 must know").
+
+#### The existence oracle
+
+- **EO-message: FAIL.** `getMessage` for XD's existing message got 403 code 17; for a message ID that does not exist, 404 code 16. A non-member can tell whether a message ID exists.
+- **EO-channel: FAIL.** The documented Get Channel (`GET /channels/glow-match/{id}` through the runner's `get` op) got 403 code 17 for XD and 404 code 16 for a channel that does not exist: a channel-existence oracle (Stream documents the 404). A's `query` and `watch` got 403 code 17 for both; the pairs were judged different on Stream's message text, with the IDs replaced. The row keeps only status and code, so what differed in the text is not recorded; the query and watch pairs' FAIL rests on the harness's comparison alone. The GET pair's FAIL stands on status and code.
+- **EO-user: HOLDS.** `queryUsers` returned 200 for both IDs, with the same keys and size, and adding either user to AB got 403 code 17.
+- No probe created the missing channel.
+
+#### G2 and S10 (new setups, first live runs)
+
+- **G2:** Stream refused the server-side guest creation while guest creation was disabled (403 code 17); guest creation was enabled for that moment (200), the guest created (201) and creation disabled again and verified. Stream stored the guest as `guest-<id>-{prefix}-g2`, role `guest`, and it connected by its ID with role `guest`. G2-read-ab HOLDS (403 code 17: role `guest` may not ReadChannel), G2-channels HOLDS (403 code 70), G2-users HOLDS (filtered, not refused), G2-message HOLDS (403 code 17). I1 could not run G2.
+- **S10: HOLDS.** With polls on for the type, the server's poll message in S10's own channel was accepted, and A's vote was refused 403 code 17 (CastVote) with polls on and again under the production configuration; the server's identical vote succeeded. Polls were turned off again and verified.
+
+#### The I1 matrix, rerun
+
+Of the 85 I1 cases, 76 have the verdict I1's final run recorded, and 9 changed, each for a reason recorded before the run:
+
+- **G1-create, G3-channels and R9:** INCONCLUSIVE in I1 (their controls did not succeed) → HOLDS, their controls now succeeding (C1's control fixes; the I1 review's runs had already shown these three).
+- **G2-read-ab, G2-channels, G2-users and G2-message:** not run in I1 → HOLDS, HOLDS, HOLDS (filtered), HOLDS (G2's new setup).
+- **S10:** INCONCLUSIVE → HOLDS (S10's new setup).
+- **RT2:** HOLDS in I1 → REFUSED (feature off; not a permission error), 400 code 18, by the manager's decision on C2, as C3's record anticipated.
+
+S15 is FAIL, as in I1. R7a is INCONCLUSIVE, as in I1 (400 code 4, "There are no searchable channels"). T4-ws, T4-rest-unread and E5 are HOLDS (accepted, not applied), as in I1. RT3 HOLDS: A's `markRead` was delivered to B as `message.read` without the free-text field, so its control was not needed.
+
+### First live use of the earlier fixes
+
+For each item on the three "What P06.1-I2a must know" lists (C1's, C2's and C3's), what the live runs showed. "Not exercised" means neither run reached it; it stays untested live.
+
+**C1's list:**
+
+- **The answer-based verdicts:** used throughout run 2; every verdict names Stream's status and code.
+- **The journal, restore retries and the final `configuration.verify()`:** every journalled change was restored and verified at its case's end (nothing reached the end of the run); the final configuration check passed after both runs. Restore retries were not needed: not exercised.
+- **The one-dashboard-user preflight with its creation-minute check:** passed in both runs ("dashboard_users_present": 1).
+- **Reply matching: failed at its first live use** (run 1): a channel command's `id` replaced the command's own, so the check ended the session at the first channel command. Fixed in `7ce93cc` ("The defect run 1 found"); run 2 then used it for every client command without a mismatch.
+- **The local-event filter:** used; S15's marker came in `member.updated`, with `channels.queried` dropped.
+- **The typed-call charge hook:** the typed calls (`upsert_users`, `get_or_create_channel`, `send_message`) ran live; no charge signal came, so the hook's stop was not exercised.
+- **Cleanup's judgement:** used after both runs; its only problem was the poll listing.
+- **`restore --apply`'s verification:** not exercised (the prompt forbids `restore --apply`).
+- **New server calls:**
+  - `POST /api/v2/chat/channels` filtered by `cid` (the override re-reads): answered 2xx. While a channel-level override was set, the channel read showed it as the value in `config` (`has_config_overrides` false: no `config_overrides` key), so each override's key was "shown while set" (S2 `replies`, S5 `reactions`, S6 and S7 `uploads`, S15 `grants`), and each read clear after its removal. Key names recorded: the channel's `blocked`, `cid`, `config`, `created_at`, `created_by`, `custom`, `disabled`, `frozen`, `hidden`, `id`, `last_message_at`, `member_count`, `own_capabilities`, `type`, `updated_at`; `config` held the type's feature keys (`grants` too while the S15 grant was set).
+  - `GET /api/v2/usergroups`: 200 with `user_groups` (empty before and after the runs).
+  - `POST /api/v2/polls/query`: **400 code 4**, "QueryPolls failed with error: \"either user or user_id must be provided when using server side auth.\"" Polls are "not verified" at preflight, after the run and in `verify-clean`, and each run exited 4 for it.
+- **Preflight's stop on the creation time:** not triggered.
+- **Exit codes of `run`:** run 1 exited 2 (stopped), run 2 exited 4 (completed, a problem after it); the printed "after the run" line named it.
+- **`member.updated`:** `marker_event_types` named `member.updated` in S15.
+- **G2 and S10:** both ran with their new setups and HOLD ("G2 and S10").
+- **Budget:** the matrix never came near its stop (629 calls in run 2).
+
+**C2's list:**
+
+- **An interrupted case records its row:** no case was interrupted in run 2; run 1 stopped outside the matrix. Not exercised.
+- **T4-rest-unread** HOLDS (accepted, not applied), with both controls and all three totals (A's own total 0, B's own total 1).
+- **RT2 and RT3 on a refusal:** superseded by C3's rule (below).
+- **A feature-gated case, and S10, without a production answer:** every production request was answered. Not exercised.
+- **One request per command; G1's `POST /guest` the only request:** G1-create HOLDS; no command in run 2 recorded more than one request.
+- **E5 and S14 with an unreadable stored user:** A's stored user was read (E5: stored role `user`). Not exercised.
+- **A failed restore of A's role in E5:** not triggered.
+- **Stop and restore rules** (a rate limit retried at the end of the run; an accepted removal that cannot be verified is "not verified"): no signal and no unverifiable removal. Not exercised.
+- **Outputs:** `run-<prefix>.json` was written before the end of each run and again after it; `run-<prefix>-progress.json` after every case; `client_success_undo` appears in rows (F9-member-other: "undo PATCH 200"; F9-ai: "none defined", an event cannot be undone); no second Ctrl-C.
+- **The `rate_limited` flag on Stream's real 429 and code-9 answers, and call counts after a charge signal:** not exercised (none came).
+
+**C3's list:**
+
+- **RT2, feature refusal:** RT2 read REFUSED (feature off; not a permission error), 400 code 18.
+- **RT3's control against Stream's real `markRead`:** not exercised: A's `markRead` succeeded and reached B without the free-text field, so RT3 HOLDS on that branch and needs no control.
+- **A feature-gated case's FAIL when the enabling request fails:** every enabling request was answered 2xx. Not exercised.
+- **E5 and S14's stop:** not triggered.
+- **S15's unset after a guardrail stop or a signal:** not triggered; S15's unset was sent (its control reads "member field unset (200, 200)").
+- **Stop rules (a signal anywhere skips the cleanup; no undo or unset after a signal):** no signal. Not exercised.
+- **Outputs:** the results carry `stop_signals` (empty); no row carries `requests` (no command recorded more than one request) or `member_field_unset` (S15's unset was sent).
+
+**Step 1's own items, first live use:** the guard ran on every server request of both runs and refused none of the runs' own; `cleanup --apply` was not needed. The runner reported requests the SDK sent between commands, and one asynchronous error, and the harness checked and counted them. The closing checks compared every recorded application setting before and after each run, with no difference. The signal-by-kind rules were not exercised.
+
+**The answer shapes of the new I2a server calls** (key names only): the ban `duration`; the member removal and the freeze `channel`, `duration`, `members`; the hide `duration`; the per-user revocation `duration`, `membership_deletion_task_id`, `users`; the deactivation `duration`, `user`; the hard delete `duration`, `task_id`. The server-side guest creation (`POST /guest`): the harness read `user.id`, `user.role` and `access_token` (never printed or written); other keys were not recorded. The member read (`GET /api/v2/chat/members`) answered with `members`; the runner's GET (`GET /channels/glow-match/{id}`) answered 403 code 17 or 404 code 16.
+
+### Records corrected
+
+In this record, each claim was false at C1's head and is corrected in place, marked "(corrected in P06.1-I2a)"; the protected sections are unchanged byte for byte:
+
+- **C1's finding 5 row** ("Replies matched to commands", Fixed): at its first live use the check ended the session at the first channel command, because a channel command's `id` replaced the command's own.
+- **C1's nit 13 row** ("verify-clean lists polls and user groups"): at its first live use Stream refused the poll listing (400 code 4, a user is needed server-side), so polls are reported not verified.
+
+In `proofs/stream-chat/README.md` (committed with the code; the listing and runner corrections before run 2): the runner's row in "Layout" (a channel command's `channel_id`, "corrected in P06.1-I2a"); the limits bullet on the listings (the poll listing's first live use); and every rule of step 2 and of the independent check's fixes.
+
+### Checks
+
+Run from `proofs/stream-chat/` unless noted, at the code head `7ce93cc` (the head of the reserve rerun), in clean processes (`env -i`) with no `STREAM_*` variable, except the live commands.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `git diff --check 6e67fd6… 7ce93cc…` (repository root) | No output, exit 0 |
+| 1 | `git diff --name-only 6e67fd6… 7ce93cc…` | 40 paths, all under `proofs/stream-chat/` (all owned): 28 changed, 12 new (`checks/run_plan.py`, `client/request-log.cjs`, `glow_stream_proof/guard.py`, `i2a.py`, `mechanisms.py`, `stops.py`, and `tests/fake_world.py`, `test_closing_checks.py`, `test_guard.py`, `test_i2a.py`, `test_mechanisms.py`, `test_run_plan.py`). No dependency file, lock, `package*.json`, `.npmrc`, `pyproject.toml` or baseline change. All 64 files under `proofs/stream-chat/` have mode 100644; no symlink or executable. +8,807 and −244 lines. The commit adding this section changes only this record |
+| 2 | The trusted policy from `origin/main` (`0f45e64`), extracted to a directory outside the tree and run with system Python 3.11.15: `python3 -I change_scope.py --base 6e67fd6… --head 7ce93cc… --merge-base` | Exit 0; `{"full": true, "reason": "behavior-or-empty", …}`, 40 paths. One merge base, `6e67fd6`. Full scope, as expected |
+| 3 | In a new directory, from the unchanged lock files: `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock`; `pip check`; `npm ci --ignore-scripts`; proxy and CA variables passed by reference | Exit 0; "No broken requirements found."; npm "found 0 vulnerabilities". `getstream` 6.1.0, Ruff 0.16.8, mypy 2.3.1, `stream-chat` 9.53.0. The lock and dependency files are unchanged from `6e67fd6` to `7ce93cc` |
+| 4 | `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t .`, on a clean export of each commit using that install | At the start (`6e67fd6`): `Ran 252 tests`, `OK`. At step 1's commit (`f3ef40b`): `Ran 301 tests`, `OK`. At the code head: `Ran 393 tests`, `OK` |
+| 4 | `ruff check .` / `ruff format --check .` / `mypy` at the code head | "All checks passed!" / "51 files already formatted" / "Success: no issues found in 49 source files" |
+| 4 | `node --check` on `client/runner.cjs`, `client/error-info.cjs` and `client/request-log.cjs` | Exit 0, each |
+| 5 | `.venv/bin/python checks/fix_reversals.py <scratch dir>` | At the start (`6e67fd6`, its own script): "reversals: 147, not demonstrated: 0". At step 1's commit: "reversals: 186, not demonstrated: 0". At the code head: **"reversals: 242, not demonstrated: 0"**, exit 0: C1's 51, C2's 48, C3's 48, and 95 for I2a (39 at step 1; 56 for step 2, the independent check's findings and the two fixes made during live work). Every edited file loaded, and no reversal failed through a syntax or import error. 206 failed on an assertion, and 33 on the error the reverted fix causes (for example a `KeyError` on a missing detail, `ClientSessionEnded` with the live message "reply id 'proof-channel' does not match command id 2", or the injected stop propagating); three by a Ctrl-C that aborts the test process, by design (C1's "F2 Ctrl-C handled", C2's "nit 8 second Ctrl-C inside finish()" and "a Ctrl-C during the early write still reaches the restores"). I read each failure reason; the table below lists them. The same run passed at `651c2df` (239) and `5df522c` (240) before each live step |
+| 6 | Secret scan of `git diff 6e67fd6… 7ce93cc…` (537,053 bytes) and of every kept output (the runs' `.work` files and the live commands' outputs, 19 files) | The diff: the application secret 0; the API key 0; JWT-shaped strings 0; email addresses 0; private-key blocks 0; AWS-style keys 0; GitHub or other token formats 0; TLS-weakening settings 0; environment dumps 0. The outputs: the secret 0 and JWT-shaped strings 0; the application's API key appears twice, in run 2's local results (`.work`, ignored and never committed), inside Stream's own error message for T2-ws's wrong-signature token ("… created using the secret for API key …"); it is not quoted here |
+| 7 | The live commands (section "Live runs") | Before each run: `verify-clean` and the dry-run `configure`; after the last: both again. Every output scanned before it was read |
+| – | The eight protected sections of this record, compared with `6e67fd6` | Byte-identical |
+
+Not run: hosted CI (this session opened no pull request and triggered nothing); `configure --apply`, `restore --apply` and `cleanup --apply` (no run left anything to clean).
+
+#### Each fix reversal at the code head
+
+From `checks/fix_reversals.py`'s output at `7ce93cc`, in its order. Each reversal failed as listed with its fix reverted and passed with the fix restored. Long reasons are cut at 150 characters, and at most three failing tests are shown per reversal.
+
+| # | Reversal | How its tests failed with the fix reverted |
+|---|---|---|
+| 1 | F1 request under test (generic) | `test_sdk_error_without_a_request_has_no_answer`: AssertionError: 'permission' != 'no-response'; `test_generic_case_uses_the_record_not_the_sdk_error`: AssertionError: 'HOLDS' != 'FAIL'; `test_generic_case_without_a_request_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 2 | F1 G1 | `test_g1_fails_whenever_the_clients_post_guest_created_a_guest`: AssertionError: 'HOLDS' != 'FAIL' |
+| 3 | F1 G3 | `test_g3_is_inconclusive_unless_the_anonymous_connect_succeeded`: AssertionError: 'anonymous connect' not found in 'no answer recorded (error: rethrown connect error)' |
+| 4 | F1 RT2/RT3 | `test_rt2_local_throw_is_inconclusive`: AssertionError: 'refusal not attributable (no-response)' != 'no answer from Stream was recorded for the request under test'; `test_rt3_null_return_without_a_request_is_inconclusive`: AssertionError: 'refusal not attributable (no-response)' != 'no answer from Stream was recorded for the request under test' |
+| 5 | F2 RunStopped re-raised | `test_failed_restore_stops_the_run`: AssertionError: RunStopped not raised |
+| 6 | F2 try before enabling (type/channel) | `test_journal_entry_exists_before_the_enabling_request`: glow_stream_proof.stops.GuardRefused: guard refused PUT channeltypes/{id}: not a journalled temporary toggle of the match type |
+| 7 | F2 try before enabling (guest) | `test_guest_creation_is_restored_after_an_interrupt_before_the_control`: glow_stream_proof.stops.GuardRefused: guard refused PATCH app: not a journalled temporary setting |
+| 8 | F2 guardrail in flight kept | `test_restore_failure_does_not_hide_a_guardrail_stop_in_flight`: glow_stream_proof.stops.RunStopped: could not restore glow-match features {'custom_events': False}: PUT 500, re-read 200, differing {'custom_events': … |
+| 9 | F2 end of run: journal, cleanup, verify, exit | `test_configuration_difference_after_the_run_exits_non_zero`: AssertionError: 0 != 4; `test_cleanup_problem_exits_non_zero`: AssertionError: 0 != 4; `test_ctrl_c_restores_cleans_up_writes_results_and_exits_non_zero`: AssertionError: Lists differ: ['guest user creation enabled'] != [] |
+| 10 | F2 Ctrl-C handled | the test process stopped before reporting: KeyboardInterrupt |
+| 11 | F3 exactly one | `test_no_dashboard_user_stops_the_run_when_one_is_expected`: IndexError: list index out of range; `test_two_dashboard_users_stop_the_run`: AssertionError: RunStopped not raised |
+| 12 | F3 created_at | `test_another_creation_time_stops_the_run`: AssertionError: RunStopped not raised |
+| 13 | F4 local events dropped | `test_local_query_event_is_not_counted_as_delivered`: AssertionError: True is not false; `test_marker_only_in_a_local_event_is_not_delivered`: AssertionError: 'FAIL' == 'FAIL' |
+| 14 | nit 1 every window | `test_marker_in_another_event_type_in_the_second_window_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 15 | nit 1 every event type | `test_marker_in_another_event_type_in_the_second_window_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 16 | F5 reply id checked | `test_mismatched_reply_ends_the_session`: AssertionError: ClientSessionEnded not raised |
+| 17 | F5 timeout ends session | `test_timeout_ends_the_session_and_releases_the_connection`: RuntimeError: no reply within 0.5s |
+| 18 | F5 buffered line (select reader) | `test_buffered_line_is_read_without_a_timeout`: glow_stream_proof.client_bridge.ClientSessionEnded: client fake ended: no reply within 1.0s |
+| 19 | F6 simulation guest connect refused | `test_guest_reach_runs_on_a_guest_created_server_side`: AssertionError: 'guest connect 403 / code 17' not found in 'identical request with guest creation enabled (201): POST /guest 201; guest connect ok (su… |
+| 20 | F7 leak terms | `test_channel_object_without_text_is_a_leak`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_terms`: AssertionError: '{AB}' not found in {'{m_b_text}', '{m_a_text}'} |
+| 21 | nit 2 code 2 | `test_api_key_error_is_not_a_token_refusal`: AssertionError: 'auth' != 'other' |
+| 22 | nit 3 user_id from params | `test_no_user_id_is_not_invented`: AssertionError: 'user_id' unexpectedly found in 'POST /channels/glow-match/{XD}/query ?user_id={X}' |
+| 23 | nit 4 undo checked | `test_failed_undo_stops_the_run_after_its_case`: AssertionError: RunStopped not raised |
+| 24 | nit 4 member field unset checked | `test_member_field_unset_is_checked`: AssertionError: RunStopped not raised |
+| 25 | nit 4 removal re-read | `test_removal_that_did_not_apply_stops_the_run`: AssertionError: RunStopped not raised |
+| 26 | nit 4 removal status checked | `test_removal_refused_stops_the_run`: AssertionError: RunStopped not raised |
+| 27 | nit 5 cleanup steps guarded | `test_a_failing_step_does_not_stop_the_others`: RuntimeError: connection reset |
+| 28 | nit 5 task status judged | `test_task_that_does_not_complete_is_a_problem`: AssertionError: "channels_task is 'failed', not 'completed'" not found in [] |
+| 29 | nit 6 typed-call charge signal | `test_typed_calls_stop_on_a_charge_signal`: KeyError: 'duration' |
+| 30 | nit 7 request op removed | `test_unused_request_op_is_gone`: AssertionError: "Both secret and user tokens are not set.[68 chars]lled" != 'unknown op request' |
+| 31 | nit 8 baseline written without users | `test_baseline_writes_no_other_users_identifier_or_name`: AssertionError: 'private-user-id' unexpectedly found in '{"app": {"app": {"allow_multi_user_devices": false, "custom_action_handler_url": "", "disable… |
+| 32 | nit 8 redaction by pattern | `test_sensitive_keys_are_matched_by_pattern`: AssertionError: 'plain' != '<redacted-secret>' |
+| 33 | nit 9 verify required settings | `test_verify_checks_permission_version_and_member_custom_settings`: AssertionError: False is not true : permission_version |
+| 34 | nit 10 restore verified | `test_restore_apply_verifies_what_it_restored`: AssertionError: 0 != 1 |
+| 35 | nit 11 isomorphic-ws check | `test_stream_chat_uses_the_runners_websocket`: AssertionError: False is not true : {'id': 1, 'ok': False, 'data': None, 'error': {'status': None, 'code': None, 'message': 'unknown op selfcheck', 'k… |
+| 36 | nit 12 cleanup reserve | `test_reserve_covers_the_worst_case_end_of_run`: AssertionError: 115 not less than or equal to 60 |
+| 37 | nit 13 client-created data tracked | `test_client_created_poll_and_group_are_deleted`: AssertionError: '/polls/client-poll' not found in {'/polls/p1'} |
+| 38 | nit 13 verify-clean lists polls and groups | `test_verify_clean_lists_polls_and_user_groups`: KeyError: 'remaining_polls' |
+| 39 | nit 15 check evidence redacted | `test_check_evidence_is_redacted`: AssertionError: '<jwt>' unexpectedly found in 'got <jwt>' |
+| 40 | nit 16 E5 connection role | `test_e5_role_carried_by_the_connection_fails`: AssertionError: 'HOLDS (accepted, not applied)' != 'FAIL' |
+| 41 | nit 16 S14 connection profile | `test_s14_profile_carried_by_the_connection_fails`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 42 | nit 16 T4-rest-unread controls | `test_unread_refusal_without_its_controls_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 43 | review 1: a re-read proves a removal only if it showed the override | `test_re_read_that_never_shows_the_override_is_recorded_not_verified`: AssertionError: "not verified: ['replies']" not found in 'override removed (200; replies re-read clear)' |
+| 44 | review 1: an ended B session leaves the grant unverified | `test_grant_unverifiable_when_bs_session_has_ended`: glow_stream_proof.stops.RunStopped: restore failed: config_overrides ['grants'] on AB: ClientSessionEnded: client B ended: no reply within 60s |
+| 45 | review 2: a failed restore keeps the observed row | `test_failed_restore_stops_the_run`: AssertionError: 'interrupted before the case finished: the run stopped during this case' != 'the restore failed before the production phase' |
+| 46 | review 3: S15's unset never hides a guardrail stop | `test_guardrail_stop_survives_a_failing_unset`: AssertionError: GuardrailStop not raised |
+| 47 | review 4: polls and groups present at preflight are not leftovers | `test_only_new_ones_are_leftovers`: AssertionError: Lists differ: ['older-poll', 'run-poll'] != ['run-poll'] |
+| 48 | review 5: journalled restores are retried | `test_restore_is_retried`: AssertionError: 1 != 3 |
+| 49 | review nit: an unanswered anonymous connect is not a KeyError | `test_later_probes_are_inconclusive`: AssertionError: 'the anonymous connect did not answer' not found in "harness error: KeyError: 'anonymous'" |
+| 50 | review nit: verify_restored checks automod and message length | `test_verify_restored`: AssertionError: Lists differ: [] != ['team.max_message_length is 1, want 5000'] |
+| 51 | review nit: runner reports ws-api only for Stream's frame | `test_kinds`: AssertionError: 'ws-api' != 'ws-failure' |
+| 52 | C2 F1 an interrupted case keeps what it observed | `test_s2_fail_survives_a_timeout_in_the_production_phase`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_s15_leak_survives_bs_session_ending_during_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; and 17 more |
+| 53 | C2 F1 a guardrail stop records the case | `test_guardrail_stop_with_nothing_observed_records_an_inconclusive_row`: AssertionError: []; `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: []; `test_guardrail_stop_survives_a_failing_unset`: AssertionError: Lists differ: [] != ['S15'] |
+| 54 | C2 F1 Ctrl-C records the case | `test_ctrl_c_with_nothing_observed_records_an_inconclusive_row`: AssertionError: []; `test_s3a_undo_is_not_made_after_ctrl_c`: AssertionError: [] |
+| 55 | C2 F1 the owed undo after an interrupted control | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: KeyError: 'client_success_undo'; `test_s3a_client_success_is_undone_after_a_replay_error`: KeyError: 'client_success_undo'; `test_s3a_undo_is_not_made_after_ctrl_c`: KeyError: 'client_success_undo' |
+| 56 | C2 F1 no undo after a guardrail stop | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: False is not true |
+| 57 | C2 F1 the undo after a completed control is recorded | `test_undo_after_a_completed_control_is_recorded`: KeyError: 'client_success_undo' |
+| 58 | C2 F1 kept: the client's request before its control | `test_s3a_fail_is_recorded_when_the_replay_hits_a_rate_limit`: AssertionError: 'INCONCLUSIVE' != 'FAIL'; `test_an_observed_refusal_becomes_inconclusive_with_the_interruption_as_reason`: AssertionError: 'not judged: client X ended: no reply within 60s' != '403 / code 17' |
+| 59 | C2 F1 kept: the feature-on phase (S2) | `test_s2_fail_survives_a_timeout_in_the_production_phase`: KeyError: 'feature_override' |
+| 60 | C2 F1 kept: bad-token REST | `test_t2_rest_success_survives_as_controls_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 61 | C2 F1 kept: bad-token WebSocket | `test_t4_ws_connection_as_b_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 62 | C2 F1 kept: T4-rest-xd | `test_t4_rest_xd_success_survives_xs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 63 | C2 F1 kept: G1 | `test_g1_created_guest_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 64 | C2 F1 kept: guest and anonymous probes | `test_g3_leak_survives_the_controls_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 65 | C2 F1 kept: S10 with polls on | `test_s10_vote_success_survives_an_error_in_the_server_replay`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 66 | C2 F1 kept: S10 before the production vote | `test_s10_polls_on_control_survives_the_production_vote_ending`: AssertionError: 'control not completed' != 'server replay POST -> 201' |
+| 67 | C2 F1 kept: S15 under production | `test_s15_leak_survives_bs_session_ending_during_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 68 | C2 F1 kept: S14's connection | `test_s14_profile_on_the_connection_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 69 | C2 F1 kept: S14's stored state | `test_s14_stored_change_survives_an_error_in_the_control`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 70 | C2 F1 kept: E5's connection | `test_e5_role_on_the_connection_survives_a_failed_disconnect`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 71 | C2 F1 kept: RT2/RT3 first window | `test_rt2_marker_in_the_first_window_survives_bs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 72 | C2 F1 kept: RT1 | `test_rt1_xd_event_survives_xs_session_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 73 | C2 F2 T4-rest-unread needs both controls and all totals | `test_as_own_control_refused_is_inconclusive`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE'; `test_a_missing_total_is_inconclusive`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE'; `test_b_count_with_as_control_failed_is_inconclusive`: AssertionError: 'FAIL' != 'INCONCLUSIVE' |
+| 74 | C2 F3 RT2/RT3 hold on attributable refusals only | `test_input_not_found_and_other_refusals_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 75 | C2 F3 named events count only after an accepted request | `test_named_events_after_an_unattributable_refusal_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 76 | C2 nit 4 only a rate limit is retried | `test_a_charge_signal_is_not_retried`: AssertionError: 3 != 1 : HTTP 402 |
+| 77 | C2 nit 4 what counts as a rate limit | `test_charge_signals_are_not_rate_limits`: AssertionError: True is not false |
+| 78 | C2 nit 4 flag on typed server calls | `test_rate_limits`: AssertionError: False is not true |
+| 79 | C2 nit 4 flag on raw server calls | `test_the_result_check_flags_a_rate_limit`: AssertionError: False != True : 429 |
+| 80 | C2 nit 4 flag on client requests | `test_flags`: AssertionError: False is not true |
+| 81 | C2 nit 5 production phase needs an answer (feature-gated) | `test_feature_gated_case_without_a_production_answer_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 82 | C2 nit 5 production phase needs an answer (S10) | `test_poll_vote_without_a_production_answer_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 83 | C2 nit 6 exactly one request | `test_two_recorded_requests_have_no_answer`: AssertionError: 'permission' != 'no-response'; `test_generic_case_with_two_requests_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 84 | C2 nit 6 G1's one POST /guest | `test_guest_attempt_with_another_request_has_no_answer`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 85 | C2 nit 7 E5 with an unreadable stored user | `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE' |
+| 86 | C2 nit 7 S14 with an unreadable stored user | `test_s14_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE' |
+| 87 | C2 nit 7 the stored user is matched by ID | `test_server_user_matches_the_id`: AssertionError: {'id': 'someone-else', 'role': 'admin'} is not None; `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised |
+| 88 | C2 nit 8 second Ctrl-C inside finish() | the test process stopped before reporting: KeyboardInterrupt |
+| 89 | C2 nit 8 results written before the end of the run | `test_results_are_written_before_the_end_of_the_run`: StopIteration |
+| 90 | C2 nit 9 accepted but unverified is not 'not restored' | `test_at_the_end_of_the_run`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1284 chars]t())] != []; `test_during_a_case`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1284 chars]t())] != [] |
+| 91 | C2 nit 9 B's probe stopped by a guardrail leaves the removal unverified | `test_at_the_end_of_the_run`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1140 chars]t())] != []; `test_during_a_case`: AssertionError: Lists differ: [TemporaryChange(description="config_overr[1140 chars]t())] != [] |
+| 92 | C2 nit 10 credential key names | `test_credential_keys_of_the_app_settings_model_are_redacted`: AssertionError: False is not true : firebase_server_key |
+| 93 | C2 review: E5 keeps a stored-role FAIL before its restore | `test_e5_stored_role_fail_survives_a_rate_limited_restore`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 94 | C2 review: E5's failed restore stops the run | `test_e5_failed_restore_stops_the_run_after_its_row`: AssertionError: RunStopped not raised |
+| 95 | C2 review: a failing progress write never replaces the stop | `test_a_failing_progress_write_never_replaces_a_guardrail_stop`: OSError: disk full; `test_ctrl_c_is_kept_when_the_progress_write_fails`: OSError: disk full |
+| 96 | C2 review: a key still overridden keeps the change journalled | `test_a_key_still_overridden_keeps_the_change_journalled`: glow_stream_proof.usage.GuardrailStop: guardrail: api_calls would be passed; stopping before the call |
+| 97 | C2 review: finish keeps its problems as it finds them | `test_finish_keeps_the_problems_found_before_a_second_ctrl_c`: AssertionError: False is not true |
+| 98 | C2 review: results files are written atomically | `test_a_failed_write_leaves_the_previous_file_whole`: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) |
+| 99 | C2 review: a Ctrl-C during the early write still reaches the restores | the test process stopped before reporting: KeyboardInterrupt |
+| 100 | C3 RT2/RT3 a feature refusal is REFUSED (feature off), not HOLDS | `test_feature_refusals_are_refused_feature_not_holds`: AssertionError: 'HOLDS' != 'REFUSED (feature off; not a permission error)'; `test_rt2_feature_refusal_is_refused_feature_not_holds`: AssertionError: 'HOLDS' != 'REFUSED (feature off; not a permission error)' |
+| 101 | C3 RT2 an auth or permission refusal without a positive control is INCONCLUSIVE | `test_rt2_auth_or_permission_refusal_has_no_positive_control`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 102 | C3 RT3 an auth or permission refusal HOLDS only when B's own request succeeded | `test_rt3_refusal_without_a_successful_control_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 103 | C3 RT3 the control, B's own identical request, is made | `test_rt3_auth_or_permission_refusal_holds_with_bs_own_request`: AssertionError: 'INCONCLUSIVE' != 'HOLDS' |
+| 104 | C3 RT3 the matrix names B's session as RT3's control | `test_rt3_auth_or_permission_refusal_holds_with_bs_own_request`: AssertionError: 'INCONCLUSIVE' != 'HOLDS' |
+| 105 | C3 RT3 the control's own events are not searched for the marker | `test_rt3_controls_own_events_are_not_searched`: AssertionError: 'FAIL' != 'HOLDS' |
+| 106 | C3 F1 an observed FAIL survives a failed enabling request | `test_fail_survives_a_failed_enabling_request`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 107 | C3 F2 a restore's charge or limit signal is recorded | `test_a_signal_behind_another_stop_skips_the_cleanup`: AssertionError: Lists differ: ['/api/v2/chat/channels/delete', '/api/v2/users/delete'] != []; `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {}; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 108 | C3 F2 finish() skips the cleanup after a recorded signal | `test_a_signal_behind_another_stop_skips_the_cleanup`: AssertionError: {'errors': ['not started: server PUT /api/[57 chars]ce']} != {}; `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'errors': ['not started: server PUT /x: HTTP 402; stopping at once']} != {}; `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'errors': ['not started: client A: HTTP 402; stopping at once']} != {}; and 1 more |
+| 109 | C3 F2 cmd_run adds its own stop to the run's record | `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 110 | C3 F2 a signal met by the cleanup is recorded | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 0 != 1 |
+| 111 | C3 F2 a signal ends the cleanup at once (untested until C3) | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 'users_delete' unexpectedly found in {'errors': ['channels: server POST /api/v2/chat/channels/delete: HTTP 429; stopping at once'], 'u… |
+| 112 | C3 F2 a signal met by the final configuration read is recorded | `test_a_signal_met_by_the_final_configuration_read_is_recorded`: AssertionError: 0 != 1 |
+| 113 | C3 F2 a rate limit is a charge or limit signal | `test_a_signal_met_during_cleanup_ends_it_and_is_recorded`: AssertionError: 'users_delete' unexpectedly found in {'errors': ['channels: server POST /api/v2/chat/channels/delete: HTTP 429; stopping at once'], 'u…; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'errors': [], 'channels_delete': 201, 'ch[407 chars]': 0} != {} |
+| 114 | C3 F2 the server's response hook marks and records a signal | `test_typed_and_raw_calls_mark_the_signal`: AssertionError: False is not true : 402 |
+| 115 | C3 F2 the server's result check marks and records a signal | `test_the_result_check_marks_the_signal`: AssertionError: False is not true : 402 |
+| 116 | C3 F2 a client's recorded request marks and records a signal | `test_every_client_signal_stops_at_once`: AssertionError: False is not true |
+| 117 | C3 F2 a client's error marks and records a signal | `test_every_client_signal_stops_at_once`: AssertionError: False is not true |
+| 118 | C3 review: the ledger records a signal as its stop is raised | `test_a_ctrl_c_that_replaces_the_stop_still_skips_the_cleanup`: AssertionError: Lists differ: [] != ['client A-role: HTTP 402; stopping at once']; `test_an_error_that_replaces_the_stop_still_stops_the_run`: AssertionError: RunStopped not raised; `test_a_signal_whose_stop_a_ctrl_c_replaced_skips_the_cleanup`: AssertionError: Lists differ: [] != ['client A-role: HTTP 402; stopping at once']; and 2 more |
+| 119 | C3 review: a recorded signal stops the matrix after its case | `test_an_error_that_replaces_the_stop_still_stops_the_run`: AssertionError: RunStopped not raised |
+| 120 | C3 nit 3 a pattern counts only at a line start | `test_a_pattern_matches_only_at_a_line_start`: AssertionError: Lists differ: [13] != []; `test_every_pattern_starts_a_line_once`: AssertionError: 2 != 1 : ('C2 nit 6 exactly one request', 'glow_stream_proof/proof_run.py') |
+| 121 | C3 nit 3 an edited file that does not load is not demonstrated | `test_an_edit_that_does_not_compile_or_import_is_reported`: AssertionError: unexpectedly None : broken.py |
+| 122 | C3 nit 4 a feature-on FAIL stays FAIL without a production answer | `test_feature_on_fail_survives_a_production_request_without_an_answer`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 123 | C3 nit 4 a polls-on FAIL stays FAIL without a production answer | `test_polls_on_fail_survives_a_production_vote_without_an_answer`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 124 | C3 nit 4 a guardrail met by the undo after an interruption stops the run | `test_a_guardrail_met_by_the_undo_after_an_interruption_stops_the_run`: AssertionError: GuardrailStop not raised |
+| 125 | C3 nit 4 a second Ctrl-C keeps the problems finish() found | `test_second_ctrl_c_keeps_the_problems_finish_found`: AssertionError: 'temporary change not restored: still on' not found in ['the end of the run was interrupted (Ctrl-C): restores, cleanup and the config… |
+| 126 | C3 nit 4 a second Ctrl-C closes the client processes | `test_second_ctrl_c_closes_the_client_sessions`: AssertionError: {'A': <tests.fakes.FakeSession object at 0[124 chars]890>} != {} |
+| 127 | C3 nit 4 a client's error flags a rate limit | `test_the_error_only_check_flags_a_rate_limit`: AssertionError: False is not true |
+| 128 | C3 nit 4 RT2/RT3 are INCONCLUSIVE unless B was listening | `test_a_refusal_while_b_is_not_listening_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 129 | C3 nit 5 each request of a command is kept in the row | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: KeyError: 'requests' |
+| 130 | C3 nit 5 a 2xx among a command's requests is undone | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: KeyError: 'client_success_undo' |
+| 131 | C3 nit 6 B's probe stop is kept in the stops | `test_a_probe_stop_is_kept_and_its_signal_recorded`: AssertionError: "B's members query after AB's override removal: client B: HTTP 429; stopping at once" not found in ["restore failed: config_overrides … |
+| 132 | C3 nit 6 B's probe stop is recorded as a signal | `test_a_probe_stop_is_kept_and_its_signal_recorded`: AssertionError: Lists differ: [] != ['client B: HTTP 429; stopping at once'] |
+| 133 | C3 nit 7 no unset of A's member field after a guardrail stop | `test_no_unset_after_a_guardrail_stop_in_bs_reads`: AssertionError: Lists differ: [('PATCH', '/channels/glow-match/p061i1-si[44 chars]']})] != []; `test_no_unset_after_a_guardrail_stop_in_the_control`: AssertionError: 2 != 1 |
+| 134 | C3 nit 8 a failed read of A's stored user stops the run | `test_e5`: AssertionError: RunStopped not raised; `test_s14`: AssertionError: RunStopped not raised |
+| 135 | C3 nit 8 a listing without A stops the run too | `test_e5_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised; `test_s14_is_inconclusive_when_as_stored_user_cannot_be_read`: AssertionError: RunStopped not raised |
+| 136 | C3 nit 9 the usage ledger is written through a temporary file | `test_an_interrupted_save_leaves_the_previous_ledger_whole`: json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) |
+| 137 | C3 nit 10 the early-write failure note is redacted | `test_the_early_write_failure_note_is_redacted`: AssertionError: 'RuntimeError: refused near <redacted-jwt> and <redacted-secret>' not found in 'results not written before the end of the run: Runtime… |
+| 138 | C3 nit 8 a guardrail stop on the read of A's stored user is not deferred | `test_a_guardrail_stop_on_the_read_is_the_runs_stop`: glow_stream_proof.stops.RunStopped: after E5: E5: A's stored user could not be read: GuardrailStop: server GET /api/v2/users: HTTP 402; stopping at on… |
+| 139 | C3 RT3 kept: both windows before the control | `test_rt3_marker_after_the_probe_survives_the_control_ending`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 140 | C3 F2 the client processes are closed when the cleanup is skipped | `test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object at 0[124 chars]7d0>} != {}; `test_rate_limited_restores_at_the_end_skip_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object at 0[124 chars]8c0>} != {}; `test_a_signal_as_the_runs_own_stop_skips_the_cleanup`: AssertionError: {'A': <tests.fakes.FakeSession object at 0[124 chars]7b0>} != {} |
+| 141 | C3 nit 5 each case's row lists only its own commands | `test_each_request_of_a_command_is_kept_and_a_success_is_undone`: AssertionError: Lists differ: ['cli[39 chars]s/{m_a} -> 201, POST /messages/{m_a} -> 403', [83 chars]403'] != ['cli[39 chars]s/{m_b} -> 201, POST /mes… |
+| 142 | C3 review: the production command's requests are listed in the row | `test_a_production_command_with_several_requests`: KeyError: 'requests' |
+| 143 | C3 review: a 2xx among the production command's requests is undone | `test_a_production_command_with_several_requests`: AssertionError: 1 != 2 |
+| 144 | C3 review: RT3's control counts only as the same request | `test_rt3_control_that_was_another_request_is_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 145 | C3 review: S15 sends no unset after a recorded signal, whatever is in flight | `test_no_unset_after_a_signal_whose_stop_is_not_in_flight`: AssertionError: Lists differ: [('PATCH', '/channels/glow-match/p061i1-si[44 chars]']})] != [] |
+| 146 | C3 review: no undo after a recorded signal, whatever is in flight | `test_no_undo_after_a_signal_whose_stop_an_error_replaced`: AssertionError: 'made after the interruption: undo POST 201' != "not made: a charge or limit signal was m[110 chars]nels" |
+| 147 | C3 nit 5 a poll or group created among several requests is tracked | `test_a_poll_created_among_several_requests_is_deleted_at_cleanup`: AssertionError: 'client-poll' not found in [] |
+| 148 | I2a guard: a user the run did not create is refused | `test_a_user_the_run_did_not_create_is_refused`: AssertionError: unexpectedly None : ('POST', '/api/v2/users/delete'); `test_a_refused_request_is_neither_sent_nor_counted`: AssertionError: GuardRefused not raised |
+| 149 | I2a guard: a channel the run did not create is refused | `test_a_channel_the_run_did_not_create_is_refused`: AssertionError: unexpectedly None : ('DELETE', '/api/v2/chat/channels/messaging/someone-elses-channel'); `test_a_refusal_in_a_case_stops_the_run_after_its_row`: AssertionError: GuardRefused not raised |
+| 150 | I2a guard: an application setting outside the journal is refused | `test_application_changes_outside_the_journal_are_refused`: AssertionError: unexpectedly None : ('PATCH', '/api/v2/app', {'revoke_tokens_issued_before': '2026-09-26T12:00:00Z'}); `test_the_run_is_the_guards_scope`: AssertionError: GuardRefused not raised |
+| 151 | I2a guard: a match-type toggle outside the journal is refused | `test_match_type_changes_outside_the_journal_are_refused`: AssertionError: unexpectedly None |
+| 152 | I2a guard: any other kind of change is refused | `test_other_kinds_of_change_are_refused`: AssertionError: unexpectedly None : /api/v2/chat/retention_policy |
+| 153 | I2a guard: a message delete needs a message the run recorded | `test_a_message_poll_or_group_must_be_the_runs`: AssertionError: 'a message this run did not record' not found in 'None' |
+| 154 | I2a guard: the server client asks the guard before sending | `test_a_refused_request_is_neither_sent_nor_counted`: AssertionError: GuardRefused not raised |
+| 155 | I2a guard: the run installs the guard with itself as the scope | `test_the_run_is_the_guards_scope`: AssertionError: unexpectedly None; `test_a_refusal_in_a_case_stops_the_run_after_its_row`: AssertionError: GuardRefused not raised |
+| 156 | I2a guard: cleanup --apply is guarded by the prefix | `test_cleanup_apply_is_guarded_by_the_prefix`: AssertionError: unexpectedly None |
+| 157 | I2a guard: the deleted-user artifact the cleanup creates is recorded | `test_the_artifact_the_runs_cleanup_creates_may_be_deleted`: KeyError: 'artifact_users_delete' |
+| 158 | I2a closing checks: verify compares every recorded setting | `test_an_application_wide_token_revocation_is_a_difference`: AssertionError: "revoke_tokens_issued_before is '2026-09-26T12:00:00Z', recorded None" not found in []; `test_every_hook_is_a_difference`: AssertionError: False is not true : webhook_url; `test_every_recorded_setting_is_compared_except_guest_creation`: AssertionError: "allow_multi_user_devices is 'changed', recorded False" not found in []; and 3 more |
+| 159 | I2a closing checks: an unrecorded setting must be absent or empty | `test_a_setting_the_baseline_did_not_record_may_be_absent_or_empty`: AssertionError: 'channel_hide_members_only is True, recorded as absent' not found in []; `test_every_hook_is_a_difference`: AssertionError: False is not true : before_message_send_hook_url |
+| 160 | I2a gap: the runner keeps a request sent outside a command | `test_every_request_is_reported_once_answered`: AssertionError: Lists differ: [('/late', 429)] != [('/between', 402), ('/late', 429)] |
+| 161 | I2a gap: the runner keeps a command's request answered after its reply | `test_every_request_is_reported_once_answered`: AssertionError: Lists differ: [('/between', 402)] != [('/between', 402), ('/late', 429)] |
+| 162 | I2a gap: a reply's requests outside its command are checked | `test_a_request_sent_between_commands`: AssertionError: GuardrailStop not raised; `test_an_answer_that_came_after_its_command_replied`: AssertionError: GuardrailStop not raised; `test_an_asynchronous_sdk_error`: AssertionError: GuardrailStop not raised |
+| 163 | I2a gap: an asynchronous SDK error is checked | `test_an_asynchronous_sdk_error`: AssertionError: GuardrailStop not raised; `test_the_end_of_the_run_closes_without_raising`: AssertionError: 0 != 1 |
+| 164 | I2a gap: the runner's own refusal is not a signal | `test_a_request_the_runner_refused_is_not_a_signal`: glow_stream_proof.usage.GuardrailStop: client fake: response text mentions a charge, upgrade or exceeded limit (an asynchronous SDK error); stopping a… |
+| 165 | I2a gap: calls sent between commands are counted | `test_a_request_sent_between_commands`: AssertionError: 0 != 1 |
+| 166 | I2a gap: closing a session checks its exit reply | `test_a_signal_at_exit_is_raised_when_nothing_else_is_in_flight`: AssertionError: GuardrailStop not raised; `test_a_signal_at_exit_never_replaces_an_exception_in_flight`: AssertionError: 0 != 1; `test_the_end_of_the_run_closes_without_raising`: AssertionError: 0 != 1 |
+| 167 | I2a gap: a signal at exit is raised only when nothing else is in flight | `test_a_signal_at_exit_never_replaces_an_exception_in_flight`: glow_stream_proof.usage.GuardrailStop: client fake: HTTP 402 (a request sent between commands); stopping at once |
+| 168 | I2a gap: the end of the run closes its sessions without raising | `test_a_signal_a_session_reports_as_it_closes_skips_the_cleanup`: glow_stream_proof.usage.GuardrailStop: client A: HTTP 402 (a request sent between commands); stopping at once |
+| 169 | I2a gap: the sessions close before the cleanup is decided | `test_a_signal_a_session_reports_as_it_closes_skips_the_cleanup`: AssertionError: 0 != 1 |
+| 170 | I2a gap: the cleanup checks again once the sessions are closed | `test_the_cleanup_checks_again_once_the_sessions_are_closed`: AssertionError: Lists differ: ['/api/v2/chat/channels/delete', '/api/v2/users/delete'] != [] |
+| 171 | I2a nit 1: RT3's control window is searched | `test_rt3_control_window_is_searched_but_for_bs_own_read_events`: AssertionError: 'HOLDS' != 'FAIL' |
+| 172 | I2a nit 1: only read events are left out of the control window | `test_rt3_control_window_is_searched_but_for_bs_own_read_events`: AssertionError: 'HOLDS' != 'FAIL' |
+| 173 | I2a nit 1: only the control member's own read events are left out | `test_rt3_control_window_is_searched_but_for_bs_own_read_events`: AssertionError: 'HOLDS' != 'FAIL' |
+| 174 | I2a nit 2(a): a charge signal met by the cleanup ends it (402 and code 99) | `test_a_charge_signal_met_during_cleanup_ends_it_too`: AssertionError: 'users_delete' unexpectedly found in {'errors': ['channels: server POST /api/v2/chat/channels/delete: HTTP 402; stopping at once'], 'u… |
+| 175 | I2a nit 2(b): S15 sends no unset after a budget stop | `test_no_unset_after_a_budget_stop_in_bs_reads`: AssertionError: Lists differ: [('PATCH', '/channels/glow-match/p061i1-si[44 chars]']})] != [] |
+| 176 | I2a nit 2(c): RT3's control only after an authentication or permission refusal | `test_rt3_control_is_sent_only_after_an_auth_or_permission_refusal`: AssertionError: Lists differ: [{'max_calls': 2, 'target': 'channel', 'me[155 chars]'}]}] != [] |
+| 177 | I2a nit 4: a phase's undo note is kept beside the earlier one | `test_both_phases_undo_notes_are_kept`: AssertionError: 'production: undo DELETE 200' != 'undo DELETE 200; production: undo DELETE 200' |
+| 178 | I2a nit 5: the printed report lists the charge or limit signals | `test_the_report_lists_every_charge_or_limit_signal`: AssertionError: 'Charge or limit signals:\n- server GET /x: HTTP 429; stopping at once' not found in 'Run `p061i1-x`\n\nAuthorized path\n\n\| Check \|… |
+| 179 | I2a DM-04 9(c): the cleanup's prefix scan includes deactivated users | `test_a_deactivated_user_with_the_prefix_is_found_and_deleted`: AssertionError: 0 != 1 |
+| 180 | I2a signals by kind: only a rate limit without billing wording is only a rate limit | `test_anything_else_is_a_charge_signal`: AssertionError: 'only a rate limit: wait at least 60 s (or[94 chars]run)' != 'a charge signal: make no further live call, and report it' |
+| 181 | I2a signals by kind: billing wording in the server's response hook | `test_a_rate_limit_with_quota_wording_is_a_charge_signal`: AssertionError: False is not true |
+| 182 | I2a signals by kind: billing wording in the server's result check | `test_a_rate_limit_with_quota_wording_is_a_charge_signal`: AssertionError: False is not true |
+| 183 | I2a signals by kind: billing wording in a client's recorded request | `test_record_and_error_sites`: AssertionError: False is not true |
+| 184 | I2a signals by kind: billing wording in a client's error | `test_record_and_error_sites`: AssertionError: False is not true |
+| 185 | I2a signals by kind: billing wording in an asynchronous SDK error | `test_an_asynchronous_sdk_error`: AssertionError: False is not true |
+| 186 | I2a signals by kind: a rate limit's stop names its reset | `test_the_stop_names_the_reset`: AssertionError: 'HTTP 429 (x-ratelimit-reset 1790309999); stopping at once' not found in 'server POST /api/v2/users: HTTP 429; stopping at once' |
+| 187 | I2a review 3: every signal in a reply is recorded | `test_a_charge_behind_a_rate_limit_is_recorded`: AssertionError: 1 != 2 |
+| 188 | I2a review 3: a signal is recorded before the calls are counted | `test_a_signal_is_not_hidden_by_the_budget`: AssertionError: False is not true |
+| 189 | I2a step 2 guard: a member named in the path | `test_a_user_the_run_did_not_create_is_refused`: AssertionError: unexpectedly None : ('PATCH', '/channels/glow-match/p061i1-0926000000-ch-ab/member/dashboard-owner-7f3a') |
+| 190 | I2a step 2 outage: the app send path refuses an unreachable provider | `test_an_unreachable_provider_refuses_the_send_and_keeps_nothing`: glow_stream_proof.app_send.ProviderUnavailable: ConnectError: injected outage; `test_the_send_is_refused_and_nothing_is_kept`: AssertionError: 'FAIL' != 'HOLDS' |
+| 191 | I2a step 2 outage: the server send turns a connection error into a refusal | `test_the_send_is_refused_and_nothing_is_kept`: AssertionError: 'FAIL' != 'HOLDS' |
+| 192 | I2a step 2 delete: the hard-deleted user is not named at cleanup | `test_deactivation_and_the_hard_delete`: AssertionError: 'p061i1-simulated-uh' unexpectedly found in ['p061i1-simulated-ua', 'p061i1-simulated-ub', 'p061i1-simulated-ux', 'p061i1-simulated-ud… |
+| 193 | I2a step 2 delete: the channel the delete removed is not named at cleanup | `test_deactivation_and_the_hard_delete`: AssertionError: 'glow-match:p061i1-simulated-ch-delete' unexpectedly found in ['glow-match:p061i1-simulated-ch-ab', 'glow-match:p061i1-simulated-ch-xd… |
+| 194 | I2a step 2 sessions: the I1 sessions close before the families | `test_the_i1_sessions_close_before_the_families_only_when_one_runs`: AssertionError: 'A' unexpectedly found in {'A': <tests.fakes.FakeSession object at 0x7fc563050c80>, 'B': <tests.fakes.FakeSession object at 0x7fc56305… |
+| 195 | I2a step 2 sessions: a family closes its own sessions | `test_a_familys_own_sessions_are_closed_at_its_end`: AssertionError: Items in the first set but not the second: |
+| 196 | I2a step 2 budget: a case starts only with the calls it declared | `test_a_family_starts_only_with_the_calls_it_declared`: AssertionError: Lists differ: ['R1', 'RV-remove'] != ['R1'] |
+| 197 | I2a step 2 rules: a revocation dimension needs a successful control | `test_a_dimension_ends_only_on_an_attributable_refusal_after_a_control`: AssertionError: 'ended' != 'not shown' |
+| 198 | I2a step 2 rules: an ended subscription needs a listener that received the probe | `test_the_subscription_ends_only_with_a_listener_that_received_it`: AssertionError: 'ended' != 'not shown' |
+| 199 | I2a step 2 oracle: a channel a probe created is counted | `test_a_missing_channel_that_a_probe_created_is_counted_and_cleaned_up`: AssertionError: 2 != 3 |
+| 200 | I2a step 2 S15 mapping: a member field not restored stops the run | `test_a_restore_that_fails_stops_the_run_after_the_case`: AssertionError: RunStopped not raised |
+| 201 | I2a review 1: a write is put back however the field ends | `test_a_field_the_control_set_is_restored_when_bs_session_ends`: AssertionError: 'channel_moderator' != 'channel_member' |
+| 202 | I2a review 1: nothing is put back for a field that reads as it was | `test_nothing_is_put_back_for_a_field_that_was_never_changed`: AssertionError: 13 != 2 |
+| 203 | I2a review 1: nothing is sent to restore after a guardrail stop | `test_nothing_is_sent_to_restore_after_a_guardrail_stop`: AssertionError: Lists differ: [{'unset': ['glow_note']}] != [] |
+| 204 | I2a review 1: a record that cannot be read after the restore stops the run | `test_a_record_that_cannot_be_read_after_restoring_stops_the_run`: AssertionError: False is not true |
+| 205 | I2a review 2: the listeners are collected first | `test_a_late_delivery_is_not_taken_for_an_ended_subscription`: AssertionError: Lists differ: ['M1', 'M2'] != ['M2', 'M1'] |
+| 206 | I2a review 2: a member that missed the probe gets a second window | `test_a_late_delivery_is_not_taken_for_an_ended_subscription`: AssertionError: False is not true |
+| 207 | I2a review 2: a closed or recovered connection leaves a miss not shown | `test_the_subscription_ends_only_with_a_listener_that_received_it`: AssertionError: 'ended' != 'not shown'; `test_a_closed_or_recovered_connection_leaves_a_channel_level_miss_not_shown`: AssertionError: 'ended' != 'not shown' |
+| 208 | I2a review 2: an account-level mechanism's close is not taken for a drop | `test_an_account_level_close_may_end_the_subscription_a_recovery_may_not`: AssertionError: 'not shown' != 'ended' |
+| 209 | I2a review 2: the mechanism's own window counts | `test_a_close_in_the_mechanisms_own_window_counts_too`: AssertionError: 'ended' != 'not shown' |
+| 210 | I2a review 4: an account-level mechanism is judged on a token issued after it | `test_token_revocation_on_two_devices`: KeyError: 'token_issued_after' |
+| 211 | I2a review 4: the revocation's late token is the token issued after it | `test_token_revocation_on_two_devices`: AssertionError: 'not shown' != 'not ended' |
+| 212 | I2a review 4: deactivation and deletion issue a token after the mechanism | `test_deactivation_and_the_hard_delete`: AssertionError: 'INCONCLUSIVE' != 'MEETS the history policy' |
+| 213 | I2a review 4: the policy requires every dimension of the mechanism | `test_the_policy_requires_every_dimension_of_the_mechanism`: AssertionError: 'MEETS the history policy' != 'INCONCLUSIVE' |
+| 214 | I2a review nit: a connect after the hard delete names the user at cleanup again | `test_a_connect_that_creates_the_deleted_user_again_is_cleaned_up`: AssertionError: 'p061i1-simulated-uh' not found in ['p061i1-simulated-ua', 'p061i1-simulated-ub', 'p061i1-simulated-ux', 'p061i1-simulated-ud', 'p061i… |
+| 215 | I2a review 6: a pair without a determinate answer is inconclusive | `test_a_pair_without_an_answer_is_inconclusive`: AssertionError: 'not attributable' not found in 'getMessage: identical no-response errors (no answer recorded (error: local SDK error)): the request m… |
+| 216 | I2a review 6: identical input or feature errors show nothing | `test_identical_input_errors_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 217 | I2a review 7: an oracle seen before an interruption stays a FAIL | `test_an_oracle_seen_before_an_interruption_stays_a_fail`: AssertionError: 'INCONCLUSIVE' != 'FAIL' |
+| 218 | I2a review 8: the delete's channel is checked at cleanup before the delete is sent | `test_a_stop_during_the_hard_deletes_task_leaves_the_channel_checked_first`: AssertionError: 'glow-match:p061i1-simulated-ch-delete' not found in set(); `test_the_cleanup_names_no_user_or_channel_that_is_gone`: AssertionError: 'glow-match:p061i1-simulated-ch-delete' not found in set() |
+| 219 | I2a review nit: the guard reads a mute's target | `test_a_user_the_run_did_not_create_is_refused`: AssertionError: unexpectedly None : ('POST', '/api/v2/moderation/mute') |
+| 220 | I2a review nit: the guard reads a poll update's poll from its body | `test_a_message_poll_or_group_must_be_the_runs`: AssertionError: 'a poll this run did not record' not found in 'None' |
+| 221 | I2a review nit: a show is sent only once the channel is hidden again | `test_a_hide_that_is_not_made_again_leaves_the_undo_unjudged`: AssertionError: False is not true |
+| 222 | I2a review nit: a delete whose task did not complete is not judged | `test_the_cleanup_names_no_user_or_channel_that_is_gone`: AssertionError: 'MEETS the history policy' != 'INCONCLUSIVE' |
+| 223 | I2a review nit: expiry controls count only well before the expiry | `test_controls_that_finish_too_close_to_the_expiry_are_inconclusive`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 224 | I2a review nit: G2's guest creation is tried again after any refusal | `test_any_refusal_is_tried_again_with_guest_creation_enabled`: KeyError: 'with_guest_creation_enabled' |
+| 225 | I2a review nit: the run plan counts what the session already used | `test_what_the_session_already_used_is_counted`: AssertionError: True is not false |
+| 226 | I2a review nit: a case runs only while the setup tokens are far from expiry | `test_a_case_is_not_run_while_the_setup_tokens_are_close_to_expiry`: AssertionError: 'HOLDS' != 'INCONCLUSIVE' |
+| 227 | I2a review nit: the reconnect check is not made near the tokens' expiry | `test_a_case_is_not_run_while_the_setup_tokens_are_close_to_expiry`: AssertionError: 'not made' not found in 'disconnect ok; reconnect ok (succeeded); watch 403 / code 17; message.new received True' |
+| 228 | I2a review nit: a family runs only while the shared tokens are far from expiry | `test_a_family_is_not_run_while_the_shared_tokens_are_close_to_expiry`: AssertionError: 'DOES NOT MEET the history policy' != 'INCONCLUSIVE' |
+| 229 | I2a review nit: no refusal near the member's own expiry is an ended dimension | `test_a_refusal_near_the_members_own_expiry_is_not_an_ended_dimension`: AssertionError: 'MEETS the history policy' != 'INCONCLUSIVE' |
+| 230 | I2a live: a listing not verified keeps Stream's message | `test_verify_clean_lists_polls_and_user_groups`: AssertionError: 'remaining_user_groups: not verified: HTTP 400 code 4: not supported' not found in ["remaining_polls: ['left-poll']", 'remaining_user_… |
+| 231 | I2a live: a channel's ID never replaces the command's own ID | `test_a_channel_command_keeps_its_own_id_end_to_end`: glow_stream_proof.client_bridge.ClientSessionEnded: client t ended: reply id 'proof-channel' does not match command id 2 |
+| 232 | I2a live: the runner opens the channel named by channel_id | `test_a_channel_command_names_its_channel_as_channel_id`: AssertionError: 'glow-match:proof-channel' not found in "Channel glow-match:2 hasn't been initialized yet. Make sure to call .watch() and wait for it …; `test_a_channel_command_keeps_its_own_id_end_to_end`: AssertionError: 'glow-match:proof-channel' not found in "Channel glow-match:2 hasn't been initialized yet. Make sure to call .watch() and wait for it … |
+| 233 | I2a review 7: a family goes on when a member's session has ended | `test_an_ended_client_session_ends_only_its_case`: AssertionError: 'after_probe' not found in {'mechanism': 'remove', 'scope': 'channel', 'setup': {'channel': '{CH_remove}', 'connected': {'M1': 'ok (su… |
+| 234 | I2a review 7: a session that ends at the S15 write leaves that dimension not shown | `test_an_ended_client_session_ends_only_its_case`: KeyError: 'M1' |
+| 235 | I2a review 7: an interrupted family keeps DOES NOT MEET | `test_an_interrupted_family_keeps_what_does_not_meet_the_policy`: AssertionError: 'INCONCLUSIVE' != 'DOES NOT MEET the history policy' |
+| 236 | I2a review 7: a family's row is kept after each step | `test_an_interrupted_family_keeps_what_does_not_meet_the_policy`: AssertionError: 'INCONCLUSIVE' != 'DOES NOT MEET the history policy'; `test_a_rate_limit_in_a_probe_keeps_what_was_observed`: AssertionError: 'M1: rest ended' not found in 'applied: 201' |
+| 237 | I2a review 7: an interrupted S15 mapping keeps the field in progress | `test_a_field_the_control_set_is_restored_when_bs_session_ends`: KeyError: 'interrupted' |
+| 238 | I2a review 7: an interrupted pin or archive keeps the restore's note | `test_a_leak_stays_a_fail_when_the_control_is_interrupted`: AttributeError: 'NoneType' object has no attribute 'endswith' |
+| 239 | I2a review 5: HOLDS (filtered) needs B's read to return A's member record | `test_a_b_read_without_as_member_record_is_inconclusive`: AssertionError: 'HOLDS (filtered, not refused)' != 'INCONCLUSIVE'; `test_a_refused_b_read_is_inconclusive`: AssertionError: 'HOLDS (filtered, not refused)' != 'INCONCLUSIVE' |
+| 240 | I2a review 5: HOLDS needs a readable stored record | `test_a_stored_record_that_cannot_be_read_is_inconclusive`: AssertionError: 'HOLDS (accepted, not applied)' != 'INCONCLUSIVE' |
+| 241 | I2a step 2 S10: the poll message is sent again until polls reach the channel | `test_the_poll_message_is_retried_until_polls_reach_the_channel`: AssertionError: 1 != 3 |
+| 242 | I2a step 2 G2: the guest is created server-side | `test_guest_reach_runs_on_a_guest_created_server_side`: AssertionError: unexpectedly None : G2's server-side setup was not made |
+
+### Deviations and limits
+
+- **Run 1 was spent by a harness defect** (C1's reply matching with a channel command), before any case; the one reserve rerun then ran every case. No run remains in this session: a case family that needs a rerun waits for I2b.
+- **The poll listing is not verified** in any run or check: server-side Query Polls needs a user, and the proof never uses the dashboard user. Nothing points to a leftover poll (earlier runs deleted theirs, and both runs deleted theirs by recorded ID with 200), but none can be shown absent. Both runs exited 4 for it, and `verify-clean` exited 1.
+- **Two FAILs read otherwise** (F9-thread and F9-sync): their only "disclosed" term was one A's own request carried. Recorded as FAIL; the rule is for the manager to decide.
+- **EO-channel's `query` and `watch` pairs** were judged different on Stream's message text, which the row does not keep; their FAIL rests on the harness's comparison alone. The `GET` pair's FAIL stands on status and code.
+- **The interpretation the prompt asks me to flag:** the four channel-level mechanisms share M1 and M2, each on a separate channel of its own (revision 1 of the prompt: "Channel-scoped mechanisms can share users on separate channels; user-scoped ones … need their own users"; DM-04 finding 5's count basis). Each family's controls show that no earlier family had reached its channel (M1's reads, writes and subscription succeeded before each channel-level mechanism).
+- **Deactivation's 404 code 16** (Stream's "does not exist" for a deactivated user) is not counted as an ended dimension, because the rule counts only authentication and permission errors; SD-deactivate is INCONCLUSIVE though S was locked out in every request made.
+- **Not exercised live:** every charge-signal path (none came), the rate-limit retry, the interruption paths (no case was interrupted in run 2), the stop paths of step 1, RT3's control, and `restore --apply`.
+- **The fakes do not model the client protocol:** they replace `ClientSession`, so the channel-command defect was invisible offline; two tests now drive the real runner offline for it.
+- **Sub-agents:** a read-only sub-agent made the independent check (its report was taken in full; I verified every finding in the code or by reproduction before fixing it). Two read-only research sub-agents read Stream's documentation (getstream.io only). None made a Stream call.
+- **Timing:** the families' observations used 2.5 s event windows (a second window when a member missed the probe) and a 7 s wait for the revocation; slower deliveries than that are not ruled out.
+
+### What I2b and P06.2 must know
+
+- **Findings for the product (P06.2):**
+  - No Stream mechanism meets the history policy on its own. Removal comes closest (it ends reads, the open subscription and token reuse; the member's own write then gets 404). A channel ban, hide and freeze leave the member reading the conversation and its events; hide is undone by the member's own client. Per-user revocation ends every existing token and subscription, but a token issued after it works, so the app's token endpoint must refuse the user. Deactivation locks the user out with 404 code 16 and keeps the data. The hard delete removes the conversation, the history the policy keeps for safety reports, and the user's old token, or a new one, can connect afterwards and re-create the user.
+  - Free-text paths to the other member outside the app's send path: invite accept and reject with a message (stored, and delivered as `message.new` and `channel.updated`); AI-indicator events (`updateAIState` with `ai_message`), accepted with custom events off; member custom data (S15) and a member's own `pinned` and `archived` flags, visible to the other member; and a member's write to the other member's membership was accepted (200).
+  - Existence oracles: Get Channel (403 or 404) and `getMessage` (403 or 404) tell a non-member whether a channel or message ID exists; error messages of `getReplies` and `getReactions` name the channel of a message ID.
+  - An open WebSocket connection outlived its token's expiry (TD-expiry), while REST and reconnection were refused.
+- **For the harness (I2b):**
+  - Decide the disclosure rule: whether a term the request itself carried counts (F9-thread, F9-sync). If not, exclude such terms and keep the response's key names in the row.
+  - Keep the two normalized messages in each existence-oracle pair, so a FAIL on text can be read.
+  - Fix the poll listing: server-side Query Polls needs `user` or `user_id`; whether that narrows the listing to that user's polls is not documented and needs a read of the API reference or a probe with the run's own user.
+  - Decide whether a deactivated user's 404 code 16 counts as ended.
+  - Stream's code-43 message quotes the application's API key; the redactor does not remove the API key from free text. It is not the secret, but records may prefer it removed.
+  - The fakes replace `ClientSession`; a test that drives the real runner (offline) is the only guard on the client protocol.
+- **Session state:** the ledger (this checkout's `.work/usage-ledger.json`) holds 15 users, 20 channels and 698 calls; a new session starts from zero. The application holds no proof data, one other user (the dashboard user) and the configuration verifies ("differences before: []").

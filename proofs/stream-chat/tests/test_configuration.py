@@ -30,6 +30,9 @@ def snapshot() -> dict[str, Any]:
     return {
         "app": {
             "app": {
+                # Every setting the committed baseline records, as the live application
+                # returns them (P06.1-I2a: verify compares them).
+                **conf.recorded_app_settings(),
                 "id": 1729640,
                 "disable_auth_checks": False,
                 "disable_permissions_checks": False,
@@ -175,6 +178,74 @@ class ConfigurationTest(unittest.TestCase):
         self.assertFalse(any(s.method == "DELETE" for s in plan))
         with_delete = conf.restore_plan(record, delete_match_type=True)
         self.assertEqual(with_delete[-1].method, "DELETE")
+
+
+class RecordedSettingsTest(unittest.TestCase):
+    """P06.1-I2a, DM-04 finding 2: verify compares every setting the baseline records.
+
+    Preflight, the end of a run and the dry-run configure all rely on verify, so an
+    application-wide token revocation or a hook is seen by each of them.
+    """
+
+    def test_an_application_wide_token_revocation_is_a_difference(self) -> None:
+        drift = configured(snapshot())
+        drift["app"]["app"]["revoke_tokens_issued_before"] = "2026-09-26T12:00:00Z"
+        self.assertIn(
+            "revoke_tokens_issued_before is '2026-09-26T12:00:00Z', recorded None",
+            conf.verify(drift),
+        )
+
+    def test_every_hook_is_a_difference(self) -> None:
+        for key, value in (
+            ("webhook_url", "https://hooks.invalid/w"),
+            ("custom_action_handler_url", "https://hooks.invalid/c"),
+            ("event_hooks", [{"url": "https://hooks.invalid/e"}]),
+            ("before_message_send_hook_url", "https://hooks.invalid/b"),
+        ):
+            drift = configured(snapshot())
+            drift["app"]["app"][key] = value
+            self.assertTrue(any(p.startswith(key) for p in conf.verify(drift)), key)
+
+    def test_every_recorded_setting_is_compared_except_guest_creation(self) -> None:
+        recorded = conf.recorded_app_settings()
+        own_rules = {"disable_auth_checks", "disable_permissions_checks"}
+        own_rules |= {"guest_user_creation_disabled", *conf.REQUIRED_APP_SETTINGS}
+        compared = sorted(set(recorded) - own_rules)
+        self.assertIn("revoke_tokens_issued_before", compared)
+        for key in compared:
+            drift = configured(snapshot())
+            drift["app"]["app"][key] = "changed"
+            self.assertIn(f"{key} is 'changed', recorded {recorded[key]!r}", conf.verify(drift))
+            missing = configured(snapshot())
+            del missing["app"]["app"][key]
+            self.assertIn(f"{key} is absent, recorded {recorded[key]!r}", conf.verify(missing))
+        # Guest creation differs from the record on purpose: the lockdown disables it.
+        self.assertIs(recorded["guest_user_creation_disabled"], False)
+        self.assertEqual(conf.verify(configured(snapshot())), [])
+
+    def test_a_setting_the_baseline_did_not_record_may_be_absent_or_empty(self) -> None:
+        self.assertNotIn("before_message_send_hook_url", conf.recorded_app_settings())
+        empties: tuple[Any, ...] = (None, "", [], {}, False)
+        for value in empties:
+            quiet = configured(snapshot())
+            quiet["app"]["app"]["before_message_send_hook_url"] = value
+            quiet["app"]["app"]["channel_hide_members_only"] = value
+            self.assertEqual(conf.verify(quiet), [], value)
+        loud = configured(snapshot())
+        loud["app"]["app"]["channel_hide_members_only"] = True
+        self.assertIn("channel_hide_members_only is True, recorded as absent", conf.verify(loud))
+
+    def test_the_committed_record_is_the_default(self) -> None:
+        recorded = conf.recorded_app_settings()
+        self.assertIsNone(recorded["revoke_tokens_issued_before"])
+        self.assertEqual((recorded["webhook_url"], recorded["custom_action_handler_url"]), ("", ""))
+        self.assertEqual(recorded["event_hooks"], [])
+        other = {**recorded, "webhook_url": "https://hooks.invalid/w"}
+        # With another record, the live value is compared with that one instead.
+        self.assertIn(
+            "webhook_url is '', recorded 'https://hooks.invalid/w'",
+            conf.verify(configured(snapshot()), other),
+        )
 
 
 if __name__ == "__main__":

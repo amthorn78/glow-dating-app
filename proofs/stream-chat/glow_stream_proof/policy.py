@@ -43,6 +43,10 @@ class MatchState:
     def members(self, channel_id: str) -> frozenset[str] | None:
         return self._channels.get(channel_id)
 
+    def snapshot(self) -> tuple[tuple[tuple[str, frozenset[str]], ...], frozenset[tuple[str, str]]]:
+        """The whole state, to compare before and after (P06.1-I2a, the outage injection)."""
+        return tuple(sorted(self._channels.items())), frozenset(self._blocks)
+
     def is_blocked(self, user_a: str, user_b: str) -> bool:
         return (user_a, user_b) in self._blocks or (user_b, user_a) in self._blocks
 

@@ -18,7 +18,7 @@ from glow_stream_proof.proof_run import (
     override_state,
 )
 from glow_stream_proof.server_api import ApiResult
-from glow_stream_proof.usage import GuardrailStop
+from glow_stream_proof.usage import GuardrailStop, UsageLedger
 from tests.fakes import FakeSession, NoSettle, error, make_run, record, set_up
 
 MATCH_PATH = f"/api/v2/chat/channeltypes/{configuration.MATCH_TYPE}"
@@ -109,12 +109,14 @@ class TypeFeatureRestoreTest(unittest.TestCase):
         self.assertEqual(run.journal, [])
 
     def test_restore_failure_does_not_hide_a_guardrail_stop_in_flight(self) -> None:
+        ledger = UsageLedger()  # the stop is raised through it (P06.1-I2a; nit 6)
+
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "sendEvent":
-                raise GuardrailStop("client A: HTTP 429; stopping at once")
+                raise ledger.stop_at_once("client A: HTTP 429; stopping at once", rate_limited=True)
             return None
 
-        run, server = make_run(behaviours={"A": a})
+        run, server = make_run(behaviours={"A": a}, ledger=ledger)
 
         def refuse_restore(
             method: str, path: str, body: Any, params: dict[str, str] | None
@@ -332,7 +334,8 @@ class FinishTest(unittest.TestCase):
             problems,
             [
                 "cleanup skipped: a charge or limit signal stopped the run at once (client A: "
-                "HTTP 402; stopping at once); check it, then run cleanup --apply"
+                "HTTP 402; stopping at once); a charge signal: make no further live call, "
+                "and report it"
             ],
         )
         self.assertFalse(any(path.endswith("/delete") for _m, path, _b in server.calls))
@@ -427,16 +430,19 @@ class GuardedUnsetTest(unittest.TestCase):
 
     def test_guardrail_stop_survives_a_failing_unset(self) -> None:
         writes: list[int] = []
+        ledger = UsageLedger()  # the stop is raised through it (P06.1-I2a; nit 6)
 
         def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
             if op == "call" and params.get("method") == "updateMemberPartial":
                 writes.append(1)
                 if len(writes) == 2:  # the control's write
-                    raise GuardrailStop("client A: HTTP 429; stopping at once")
+                    raise ledger.stop_at_once(
+                        "client A: HTTP 429; stopping at once", rate_limited=True
+                    )
                 return Reply(True, {}, None, [record(200, {})], api_calls=1)
             return None
 
-        run, server = make_run(behaviours={"A": a})
+        run, server = make_run(behaviours={"A": a}, ledger=ledger)
 
         def broken_unset(
             method: str, path: str, body: Any, params: dict[str, str] | None
@@ -494,8 +500,10 @@ class FinishRetryTest(unittest.TestCase):
 class RateLimitRetryTest(unittest.TestCase):
     """P06.1-C2, the C1 review's nit 4: among stop signals, only a rate limit is retried."""
 
-    def attempts_for(self, stop: GuardrailStop) -> tuple[int, list[str]]:
-        run, _server = make_run()
+    def attempts_for(
+        self, stop: GuardrailStop, ledger: UsageLedger | None = None
+    ) -> tuple[int, list[str]]:
+        run, _server = make_run(ledger=ledger)
         attempts: list[int] = []
 
         def stopped() -> str:
@@ -509,9 +517,12 @@ class RateLimitRetryTest(unittest.TestCase):
 
     def test_a_charge_signal_is_not_retried(self) -> None:
         for message in ("HTTP 402", "Stream error code 99", "response text mentions a charge"):
-            count, problems = self.attempts_for(
-                GuardrailStop(f"server PATCH /x: {message}; stopping at once")
+            # Raised as production raises it, through the run's ledger (P06.1-I2a; nit 6).
+            ledger = UsageLedger()
+            stop = ledger.stop_at_once(
+                f"server PATCH /x: {message}; stopping at once", rate_limited=False
             )
+            count, problems = self.attempts_for(stop, ledger)
             self.assertEqual(count, 1, message)
             self.assertTrue(any("not restored" in p for p in problems))
 

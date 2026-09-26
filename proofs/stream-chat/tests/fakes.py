@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -23,7 +24,8 @@ from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.credentials import ServerCredentials
 from glow_stream_proof.proof_run import ProofRun
 from glow_stream_proof.redaction import Redactor
-from glow_stream_proof.server_api import ApiResult
+from glow_stream_proof.server_api import ApiResult, Guard
+from glow_stream_proof.stops import GuardRefused
 from glow_stream_proof.usage import UsageLedger
 from tests.test_configuration import configured, snapshot
 
@@ -65,6 +67,8 @@ class FakeServer:
     # overrides, and whether it carries grants at all.
     merge_overrides: bool = True
     config_has_grants: bool = True
+    # As on ServerApi: asked before every request is counted or sent (P06.1-I2a).
+    guard: Guard | None = None
 
     def __post_init__(self) -> None:
         self.sdk = SimpleNamespace(
@@ -77,20 +81,29 @@ class FakeServer:
 
     # -- the typed SDK calls the harness makes ------------------------------------
 
-    def _count(self) -> None:
+    def _count(
+        self, method: str = "GET", path: str = "", body: Any = None, params: Any = None
+    ) -> None:
+        if self.guard is not None:
+            refused = self.guard(method, path, body, dict(params or {}))
+            if refused is not None:
+                raise GuardRefused(refused)
         self.ledger.reserve("api_calls")
 
     def _upsert(self, *users: Any) -> None:
-        self._count()
+        self._count("POST", "/api/v2/users", {"users": {u.id: {"id": u.id} for u in users}})
         for u in users:
             self.users[u.id] = {"id": u.id, "role": u.role, "name": u.name, "created_at": 0}
 
     def _channel(self, type: str, id: str, data: Any) -> None:
-        self._count()
+        members = [{"user_id": m.user_id} for m in data.members]
+        body = {"data": {"created_by_id": data.created_by_id, "members": members}}
+        self._count("POST", f"/api/v2/chat/channels/{type}/{id}/query", body)
         self.members[id] = [m.user_id for m in data.members]
 
     def _send_message(self, type: str, id: str, message: Any) -> Any:
-        self._count()
+        body = {"message": {"text": message.text, "user_id": message.user_id}}
+        self._count("POST", f"/api/v2/chat/channels/{type}/{id}/message", body)
         self.sent += 1
         if self.on_send is not None:
             self.on_send(id, f"m-{self.sent}")
@@ -98,7 +111,11 @@ class FakeServer:
 
     @staticmethod
     def _token(user_id: str, expiration: int) -> str:
-        return jwt.encode({"user_id": user_id, "iat": 0, "exp": expiration}, SECRET, "HS256")
+        # As getstream's create_token: iat back-dated by 5 s, exp from now.
+        now = int(time.time())
+        return jwt.encode(
+            {"user_id": user_id, "iat": now - 5, "exp": now + expiration}, SECRET, "HS256"
+        )
 
     # -- raw requests -------------------------------------------------------------
 
@@ -131,7 +148,7 @@ class FakeServer:
     def raw(
         self, method: str, path: str, *, body: Any = None, params: dict[str, str] | None = None
     ) -> ApiResult:
-        self._count()
+        self._count(method, path, body, params)
         self.calls.append((method, path, body))
         for handler in self.handlers:
             result = handler(method, path, body, params)
@@ -147,7 +164,14 @@ class FakeServer:
             payload = json.loads((params or {}).get("payload", "{}"))
             cond = payload.get("filter_conditions", {}).get("id", {})
             wanted = cond.get("$in") or ([cond["$eq"]] if "$eq" in cond else None)
-            users = [u for uid, u in self.users.items() if wanted is None or uid in wanted]
+            # As Stream's listing: deactivated users only when asked for (P06.1-I2a).
+            deactivated = payload.get("include_deactivated_users") is True
+            users = [
+                u
+                for uid, u in self.users.items()
+                if (wanted is None or uid in wanted)
+                and (deactivated or not u.get("deactivated_at"))
+            ]
             return ok(method, path, {"users": users}, 200)
         if path == "/api/v2/chat/members":
             payload = json.loads((params or {}).get("payload", "{}"))
@@ -155,9 +179,11 @@ class FakeServer:
             return ok(method, path, {"members": [{"user_id": i} for i in ids]}, 200)
         if path == "/api/v2/chat/channels":
             cid = ((body or {}).get("filter_conditions") or {}).get("cid")
-            if cid:
-                channel = self.effective_channel(str(cid).split(":", 1)[1])
+            channel_id = str(cid).split(":", 1)[-1]
+            if cid and channel_id in self.members:
+                channel = self.effective_channel(channel_id)
                 return ok(method, path, {"channels": [{"channel": channel}]}, 201)
+            # As Stream: a channel that does not exist is not listed (P06.1-I2a).
             return ok(method, path, {"channels": []}, 201)
         if path.startswith("/channels/glow-match/") and method == "PATCH" and "/member" not in path:
             channel_id = path.split("/")[3]
@@ -211,17 +237,31 @@ class FakeServer:
         return result
 
     def user_token(self, user_id: str, ttl_seconds: int) -> str:
-        return jwt.encode({"user_id": user_id, "iat": 0, "exp": ttl_seconds}, SECRET, "HS256")
+        return self._token(user_id, ttl_seconds)
 
     def expired_user_token(self, user_id: str) -> str:
         return jwt.encode({"user_id": user_id, "iat": 0, "exp": 1}, SECRET, "HS256")
 
     def raw_multipart(self, path: str, **_kwargs: Any) -> ApiResult:
-        self._count()
+        self._count("POST", path)
         return ok("POST", path, {"file": "https://cdn.invalid/f"})
 
+    def create_guest(self, user: dict[str, Any]) -> tuple[ApiResult, str | None]:
+        """As ServerApi.create_guest; refused while guest creation is disabled."""
+        self._count("POST", "/guest", {"user": user})
+        self.calls.append(("POST", "/guest", {"user": user}))
+        if self.app.get("guest_user_creation_disabled") is True:
+            return error("POST", "/guest", 403, 17, "guest user creation is disabled"), None
+        stored = f"guest-0000-{user['id']}"
+        self.users[stored] = {"id": stored, "role": "guest", "created_at": 0}
+        token = jwt.encode({"user_id": stored, "iat": 0}, SECRET, "HS256")
+        return ok("POST", "/guest", {"user": {"id": stored, "role": "guest"}}), token
 
-QUERY_PATH = "/channels/glow-match/x/query"
+
+# The run's own channel AB and user A: a server replay of a fake client record goes
+# through the guard like a live one, which refuses anything the run did not create.
+AB = f"{PREFIX}-ch-ab"
+QUERY_PATH = f"/channels/glow-match/{AB}/query"
 
 
 def record(
@@ -230,8 +270,8 @@ def record(
     return {
         "method": method,
         "path": path,
-        "params": {"user_id": "u", "api_key": "k"},
-        "body": {"data": {"members": ["a"]}},
+        "params": {"user_id": f"{PREFIX}-ua", "api_key": "k"},
+        "body": {"data": {"members": [f"{PREFIX}-ua"]}},
         "status": status,
         "response": response,
     }
@@ -268,13 +308,37 @@ class FakeSession:
     ``behaviour`` is asked first and may return a reply of its own.
     """
 
-    def __init__(self, label: str, behaviour: Behaviour | None = None) -> None:
+    def __init__(
+        self, label: str, behaviour: Behaviour | None = None, ledger: UsageLedger | None = None
+    ) -> None:
         self.label = label
         self.behaviour = behaviour
         self.pending_events: list[dict[str, Any]] = []
         self.sent: list[tuple[str, dict[str, Any]]] = []
+        # As ClientSession: an open connection is counted in the ledger (P06.1-I2a: the
+        # simulation counts the peak for the run plan).
+        self.ledger = ledger
+        self.connected = False
 
     def send(self, op: str, **params: Any) -> Reply:
+        opens = op in ("connect", "guest", "anonymous") and not self.connected
+        if opens and self.ledger is not None:
+            self.ledger.connection_opened()
+        reply = self._send(op, **params)
+        if self.ledger is not None and reply.api_calls:
+            # Counted as ClientSession counts a command's requests.
+            self.ledger.reserve("api_calls", reply.api_calls, source="client")
+        if opens and self.ledger is not None:
+            if reply.ok:
+                self.connected = True
+            else:
+                self.ledger.connection_closed()
+        if op == "disconnect" and reply.ok and self.connected and self.ledger is not None:
+            self.connected = False
+            self.ledger.connection_closed()
+        return reply
+
+    def _send(self, op: str, **params: Any) -> Reply:
         self.sent.append((op, params))
         if self.behaviour is not None:
             scripted = self.behaviour(self, op, params)
@@ -308,8 +372,10 @@ class FakeSession:
             return Reply(True, {}, None, [record(201, {"channels": []})], api_calls=1)
         return http_reply(403, 17)
 
-    def close(self) -> None:
-        pass
+    def close(self, *, raise_signal: bool = True) -> None:
+        if self.connected and self.ledger is not None:
+            self.connected = False
+            self.ledger.connection_closed()
 
 
 def make_run(
@@ -317,6 +383,7 @@ def make_run(
     behaviours: dict[str, Behaviour] | None = None,
     *,
     ledger: UsageLedger | None = None,
+    default_behaviour: Behaviour | None = None,
 ) -> tuple[ProofRun, FakeServer]:
     ledger = ledger or (server.ledger if server else UsageLedger())
     server = server or FakeServer(ledger)
@@ -333,7 +400,13 @@ def make_run(
     behaviours = behaviours or {}
 
     def fake_session(label: str, token: str | None, **_: Any) -> Any:
-        return sessions.setdefault(label, FakeSession(label, behaviours.get(label)))
+        # A label used again after its session was closed, or had ended (as a
+        # ClientSession's ``ended``), gets a new session.
+        existing = sessions.get(label)
+        if existing is not None and not getattr(existing, "ended", None):
+            return existing
+        sessions[label] = FakeSession(label, behaviours.get(label, default_behaviour), ledger)
+        return sessions[label]
 
     def deliver(channel_id: str, message_id: str) -> None:
         # Stream delivers a server-sent message to the channel's connected members.
@@ -369,14 +442,17 @@ class NoSettle:
             proof_run.TYPE_CHANGE_SETTLE_SECONDS,
             proof_run.TASK_POLL_INTERVAL_SECONDS,
             proof_run.RESTORE_RETRY_SECONDS,
+            proof_run.S10_RETRY_SECONDS,
         )
         proof_run.TYPE_CHANGE_SETTLE_SECONDS = 0
         proof_run.TASK_POLL_INTERVAL_SECONDS = 0
         proof_run.RESTORE_RETRY_SECONDS = 0
+        proof_run.S10_RETRY_SECONDS = 0
 
     def __exit__(self, *_exc: object) -> None:
         (
             proof_run.TYPE_CHANGE_SETTLE_SECONDS,
             proof_run.TASK_POLL_INTERVAL_SECONDS,
             proof_run.RESTORE_RETRY_SECONDS,
+            proof_run.S10_RETRY_SECONDS,
         ) = self._saved

@@ -20,7 +20,7 @@ from glow_stream_proof.client_bridge import ClientSessionEnded, Reply
 from glow_stream_proof.proof_run import ProofRun, RunStopped
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import GuardrailStop, UsageLedger
-from tests.fakes import Behaviour, FakeServer, FakeSession, NoSettle, make_run, set_up
+from tests.fakes import AB, Behaviour, FakeServer, FakeSession, NoSettle, make_run, set_up
 from tests.test_interruptions import matrix_run, only, success
 
 MATCH_PATH = f"/api/v2/chat/channeltypes/{configuration.MATCH_TYPE}"
@@ -115,6 +115,35 @@ class SignalRecordTest(unittest.TestCase):
         self.assertEqual(len(run.stop_signals), 1)
         self.assertIn("HTTP 429", run.stop_signals[0])
 
+    def test_a_charge_signal_met_during_cleanup_ends_it_too(self) -> None:
+        # P06.1-I2a, the C3 review's nit 2(a): until then only a 429 was tested here.
+        for signal in ("HTTP 402", "Stream error code 99"):
+            run, server = make_run()
+            with NoSettle():
+                set_up(run)
+
+            def charged_delete(
+                method: str,
+                path: str,
+                body: Any,
+                params: dict[str, str] | None,
+                run: ProofRun = run,
+                signal: str = signal,
+            ) -> ApiResult | None:
+                if path == "/api/v2/chat/channels/delete":
+                    raise run.ledger.stop_at_once(
+                        f"server POST {path}: {signal}; stopping at once", rate_limited=False
+                    )
+                return None
+
+            server.handlers.append(charged_delete)
+            with NoSettle():
+                out = run.cleanup()
+            self.assertNotIn("users_delete", out, signal)
+            self.assertEqual(deletes(server), ["/api/v2/chat/channels/delete"], signal)
+            self.assertEqual(len(run.stop_signals), 1, signal)
+            self.assertIn(signal, run.stop_signals[0])
+
     def test_a_signal_met_by_the_final_configuration_read_is_recorded(self) -> None:
         run, server = make_run()
 
@@ -153,7 +182,7 @@ class SignalReplacedInFlightTest(unittest.TestCase):
         real_close = FakeSession.close
         replaced: list[BaseException] = []
 
-        def close(session: FakeSession) -> None:
+        def close(session: FakeSession, **_kwargs: Any) -> None:
             if session.label == "A-role" and not replaced:
                 replaced.append(replacement)
                 raise replacement
@@ -253,7 +282,7 @@ class MemberFieldUnsetTest(unittest.TestCase):
     @staticmethod
     def a_writes(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
         if op == "call" and params.get("method") == "updateMemberPartial":
-            return success({}, "/channels/glow-match/x/member")
+            return success({}, f"/channels/glow-match/{AB}/member")
         return None
 
     def test_no_unset_after_a_guardrail_stop_in_bs_reads(self) -> None:
@@ -270,6 +299,23 @@ class MemberFieldUnsetTest(unittest.TestCase):
         )
         self.assertEqual(self.unsets(server), [])
         self.assertEqual([c.case_id for c in run.case_results], ["S15"])
+        self.assertTrue(
+            any(n.startswith("S15: A's member field not unset: not sent") for n in run.notes)
+        )
+
+    def test_no_unset_after_a_budget_stop_in_bs_reads(self) -> None:
+        # P06.1-I2a, the C3 review's nit 2(b): a budget stop is a guardrail stop too,
+        # and no more is sent for the run's own data after it.
+        def b(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "query":
+                raise GuardrailStop(BUDGET)
+            return None
+
+        run, server = matrix_run(
+            {"S15"}, after_setup={"A": self.a_writes, "B": b}, raises=GuardrailStop
+        )
+        self.assertEqual(self.unsets(server), [])
+        self.assertEqual(run.stop_signals, [])  # not a charge or limit signal
         self.assertTrue(
             any(n.startswith("S15: A's member field not unset: not sent") for n in run.notes)
         )
@@ -350,6 +396,88 @@ class MemberFieldUnsetTest(unittest.TestCase):
 
         _run, server = matrix_run({"S15"}, after_setup={"A": self.a_writes, "B": b})
         self.assertEqual(len(self.unsets(server)), 2)
+
+
+def closing_with_a_signal(run: ProofRun, label: str = "A") -> None:
+    """``label``'s session reports, as it closes, a charge signal on a request the SDK
+    sent after the last command: recorded in the run's ledger, never raised at the end
+    of the run (P06.1-I2a)."""
+    session = run.sessions[label]
+    assert isinstance(session, FakeSession)
+
+    def close(*, raise_signal: bool = True) -> None:
+        stop = run.ledger.stop_at_once(
+            f"client {label}: HTTP 402 (a request sent between commands); stopping at once",
+            rate_limited=False,
+        )
+        if raise_signal:  # as a real session does when nothing else is in flight
+            raise stop
+
+    session.close = close  # type: ignore[method-assign]
+
+
+class ClosingSessionSignalTest(unittest.TestCase):
+    """P06.1-I2a, the C3 review's gap: the sessions close before the cleanup is decided."""
+
+    def test_a_signal_a_session_reports_as_it_closes_skips_the_cleanup(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            closing_with_a_signal(run)
+            problems = run.finish(cleanup=True)
+        self.assertEqual(deletes(server), [])
+        skipped = [p for p in problems if p.startswith("cleanup skipped")]
+        self.assertEqual(len(skipped), 1)
+        self.assertIn("(a request sent between commands)", skipped[0])
+
+    def test_the_cleanup_checks_again_once_the_sessions_are_closed(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            closing_with_a_signal(run)
+            out = run.cleanup()
+        self.assertEqual(deletes(server), [])
+        self.assertTrue(out["errors"][0].startswith("not started: client A: HTTP 402"))
+
+
+class SignalKindTest(unittest.TestCase):
+    """P06.1-I2a, "Signals, by kind": the end of the run says what the operator does."""
+
+    def instruction(self, *stops: tuple[str, bool, bool]) -> str:
+        run, _server = make_run()
+        for message, rate_limited, billing in stops:
+            run.ledger.stop_at_once(message, rate_limited=rate_limited, billing=billing)
+        return run.signal_instruction()
+
+    def test_only_rate_limits(self) -> None:
+        self.assertTrue(
+            self.instruction(("server GET /x: HTTP 429; stopping at once", True, False)).startswith(
+                "only a rate limit: wait at least 60 s (or the reset the answer gave), then run "
+                "cleanup --apply once"
+            )
+        )
+
+    def test_anything_else_is_a_charge_signal(self) -> None:
+        charge_rule = "a charge signal: make no further live call, and report it"
+        for stops in (
+            [("server GET /x: HTTP 402; stopping at once", False, False)],
+            [("server GET /x: HTTP 429; stopping at once", True, True)],  # quota wording
+            [
+                ("server GET /x: HTTP 429; stopping at once", True, False),
+                ("client A: HTTP 402; stopping at once", False, False),
+            ],
+        ):
+            self.assertEqual(self.instruction(*stops), charge_rule, stops)
+
+    def test_the_cleanup_skipped_problem_carries_the_instruction(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+            run.ledger.stop_at_once("server GET /x: HTTP 429; stopping at once", rate_limited=True)
+            problems = run.finish(cleanup=True)
+        skipped = next(p for p in problems if p.startswith("cleanup skipped"))
+        self.assertTrue(skipped.endswith("verify-clean and configure (a dry run)"), skipped)
+        self.assertEqual(deletes(server), [])
 
 
 if __name__ == "__main__":

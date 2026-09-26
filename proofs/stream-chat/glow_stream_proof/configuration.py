@@ -1,8 +1,11 @@
 """The application configuration the proof applies, verifies and can restore.
 
-Everything here is pure: plans are lists of requests computed from a snapshot,
-and verification compares a re-read snapshot with the desired state. The live
+Plans are lists of requests computed from a snapshot, and verification compares
+a re-read snapshot with the desired state; nothing here calls Stream. The live
 command applies a plan through :class:`~glow_stream_proof.server_api.ServerApi`.
+Verification also compares every application setting the committed baseline
+records (P06.1-I2a; DM-04 finding 2), so that preflight, the end of a run and
+the dry-run ``configure`` see an application-wide token revocation or a hook.
 
 Design under proof: clients may only read their own match's channel. So:
 
@@ -20,11 +23,17 @@ Design under proof: clients may only read their own match's channel. So:
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 MATCH_TYPE = "glow-match"
+# The application's configuration before the proof changed it (read-only here).
+BASELINE_RECORD = (
+    Path(__file__).resolve().parent.parent / "baseline" / "application-1729640-2026-09-25.json"
+)
 DEFAULT_TYPES = ("commerce", "gaming", "livestream", "messaging", "team")
 CLIENT_APP_ROLES = ("user", "guest", "anonymous")
 # Members may read their channel and nothing else. read-channel-members was
@@ -98,6 +107,13 @@ REQUIRED_APP_SETTINGS: dict[str, Any] = {
     "member_custom_on_messages_enabled": False,
     "member_custom_on_mentioned_users_enabled": False,
 }
+# Application settings :func:`verify` checks by their own rules above; every other
+# setting the baseline records must keep its recorded value. Guest user creation is
+# the one the lockdown changes on purpose (P06.1-I2a).
+_OWN_RULE_SETTINGS = frozenset(
+    {"disable_auth_checks", "disable_permissions_checks", "guest_user_creation_disabled"}
+    | set(REQUIRED_APP_SETTINGS)
+)
 CHANNEL_TYPE_FEATURE_KEYS = tuple(k for k in MATCH_FEATURES if k != "commands") + (
     "message_retention",
     "push_level",
@@ -213,8 +229,52 @@ def apply_plan(snapshot: Mapping[str, Any]) -> list[ApiRequest]:
     return plan
 
 
-def verify(snapshot: Mapping[str, Any]) -> list[str]:
-    """Differences between a re-read snapshot and the desired configuration."""
+def recorded_app_settings() -> dict[str, Any]:
+    """The application settings the committed baseline records."""
+    record = json.loads(BASELINE_RECORD.read_text(encoding="utf-8"))
+    return dict(record["app_settings"])
+
+
+_ABSENT = object()
+
+
+def _empty(value: Any) -> bool:
+    return value is None or value is False or value in ("", [], {})
+
+
+def recorded_differences(app: Mapping[str, Any], recorded: Mapping[str, Any]) -> list[str]:
+    """Settings that no longer have the value the baseline records (DM-04 finding 2).
+
+    Every setting the baseline records must still have its recorded value, of the
+    same type, except the ones :func:`verify` checks by their own rules (guest
+    creation, which the lockdown changes on purpose, among them). A setting the
+    baseline does not record was absent from the application then (the committed
+    record has no ``before_message_send_hook_url``, for example): it must be absent
+    or empty now. So an application-wide ``revoke_tokens_issued_before`` or a hook
+    URL shows as a difference.
+    """
+    problems: list[str] = []
+    for key in sorted(set(APP_SETTING_KEYS) | set(recorded)):
+        if key in _OWN_RULE_SETTINGS:
+            continue
+        have = app.get(key, _ABSENT)
+        if key in recorded:
+            want = recorded[key]
+            if have is _ABSENT:
+                problems.append(f"{key} is absent, recorded {want!r}")
+            elif have != want or type(have) is not type(want):
+                problems.append(f"{key} is {have!r}, recorded {want!r}")
+        elif have is not _ABSENT and not _empty(have):
+            problems.append(f"{key} is {have!r}, recorded as absent")
+    return problems
+
+
+def verify(snapshot: Mapping[str, Any], recorded: Mapping[str, Any] | None = None) -> list[str]:
+    """Differences between a re-read snapshot and the desired configuration.
+
+    ``recorded`` is the baseline's application settings; by default the committed
+    record (P06.1-I2a).
+    """
     problems: list[str] = []
     app = _app(snapshot)
     types = _types(snapshot)
@@ -232,6 +292,7 @@ def verify(snapshot: Mapping[str, Any]) -> list[str]:
         granted = app.get("grants", {}).get(role, [])
         if granted:
             problems.append(f".app grants for {role} not empty: {granted}")
+    problems += recorded_differences(app, recorded_app_settings() if recorded is None else recorded)
     for name in DEFAULT_TYPES:
         cfg = types.get(name)
         if cfg is None:

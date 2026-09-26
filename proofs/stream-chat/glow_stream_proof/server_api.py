@@ -1,11 +1,14 @@
 """The harness's server side: Stream's Python server SDK (``getstream``).
 
 All server HTTP traffic goes through one ``httpx.Client`` owned by the SDK
-client. A request hook reserves one API call in the usage ledger before each
-request is sent, so the guardrail stops a call before it happens. A response
-hook checks every error response for a charge signal, so typed SDK calls
-(``upsert_users``, ``send_message`` and the rest) stop the run as raw requests
-do. Raw requests
+client. A request hook first asks the run's guard, when one is installed,
+whether the request may be sent (:mod:`glow_stream_proof.guard`; P06.1-I2a):
+a refused request raises :class:`~glow_stream_proof.stops.GuardRefused` and is
+neither sent nor counted. The hook then reserves one API call in the usage
+ledger before the request is sent, so the guardrail stops a call before it
+happens. A response hook checks every error response for a charge signal, so
+typed SDK calls (``upsert_users``, ``send_message`` and the rest) stop the run
+as raw requests do. Raw requests
 (:meth:`ServerApi.raw`) use the same SDK-authenticated client; they exist so
 that a positive control can replay exactly the method, path and body a client
 sent, and so that JSON ``null`` (which the SDK's typed methods strip) can be
@@ -19,6 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,7 +32,12 @@ from getstream import Stream
 
 from .credentials import ServerCredentials
 from .redaction import Redactor
-from .usage import UsageLedger, charge_signal, is_rate_limit
+from .stops import GuardRefused
+from .usage import UsageLedger, charge_signal, is_rate_limit, mentions_billing
+
+# A guard: (method, path, JSON body or None, query parameters) -> why the request is
+# refused, or None when it may be sent (glow_stream_proof.guard.refusal).
+Guard = Callable[[str, str, Any, Mapping[str, str]], str | None]
 
 BASE_URL = "https://chat.stream-io-api.com/"
 
@@ -66,6 +75,28 @@ def _parse(response: httpx.Response) -> tuple[Any, int | None, str | None]:
     return body, code, message
 
 
+def _json_body(request: httpx.Request) -> Any:
+    """The request's JSON body, or ``None`` (no body, a multipart upload, not JSON)."""
+    if request.headers.get("content-type", "").startswith("multipart/"):
+        return None
+    try:
+        content = request.content
+    except httpx.RequestNotRead:
+        return None
+    if not content:
+        return None
+    try:
+        return json.loads(content)
+    except ValueError:
+        return None
+
+
+def _rate_limit_reset(response: httpx.Response) -> str:
+    """The reset a rate-limited answer gives, for the stop's message (P06.1-I2a)."""
+    reset = response.headers.get("x-ratelimit-reset")
+    return f" (x-ratelimit-reset {reset})" if reset else ""
+
+
 class ServerApi:
     def __init__(
         self,
@@ -79,6 +110,8 @@ class ServerApi:
         self._credentials = credentials
         self._ledger = ledger
         self._redactor = redactor
+        # Installed by a run or by cleanup --apply (P06.1-I2a); None sends everything.
+        self.guard: Guard | None = None
         self._http = httpx.Client(
             timeout=30.0,
             event_hooks={"request": [self._before_request], "response": [self._after_response]},
@@ -92,6 +125,13 @@ class ServerApi:
         )
 
     def _before_request(self, request: httpx.Request) -> None:
+        if self.guard is not None:
+            # Before anything is counted or sent (DM-04 finding 1).
+            refused = self.guard(
+                request.method, request.url.path, _json_body(request), dict(request.url.params)
+            )
+            if refused is not None:
+                raise GuardRefused(refused)
         self._ledger.reserve("api_calls", source="server")
 
     def _after_response(self, response: httpx.Response) -> None:
@@ -105,8 +145,9 @@ class ServerApi:
         if signal is not None:
             method, path = response.request.method, response.request.url.path
             raise self._ledger.stop_at_once(
-                f"server {method} {path}: {signal}; stopping at once",
+                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",
                 rate_limited=is_rate_limit(response.status_code, code),
+                billing=mentions_billing(message),
             )
 
     def close(self) -> None:
@@ -147,8 +188,9 @@ class ServerApi:
         signal = charge_signal(result.status, result.code, result.message)
         if signal is not None:
             raise self._ledger.stop_at_once(
-                f"server {method} {path}: {signal}; stopping at once",
+                f"server {method} {path}: {signal}{_rate_limit_reset(response)}; stopping at once",
                 rate_limited=is_rate_limit(result.status, result.code),
+                billing=mentions_billing(result.message),
             )
         return result
 

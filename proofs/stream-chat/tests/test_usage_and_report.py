@@ -84,6 +84,20 @@ class ReportTest(unittest.TestCase):
         cases = [{"verdict": "HOLDS"}, {"verdict": "HOLDS"}, {"verdict": "FAIL"}]
         self.assertEqual(report.verdict_counts(cases), {"FAIL": 1, "HOLDS": 2})
 
+    def test_the_report_lists_every_charge_or_limit_signal(self) -> None:
+        # P06.1-I2a, the C3 review's nit 5: until then only the JSON results had them.
+        results = {
+            "prefix": "p061i1-x",
+            "checks": [],
+            "cases": [],
+            "stop_signals": ["server GET /x: HTTP 429; stopping at once"],
+        }
+        rendered = report.render(results)
+        self.assertIn(
+            "Charge or limit signals:\n- server GET /x: HTTP 429; stopping at once", rendered
+        )
+        self.assertNotIn("Charge or limit signals", report.render({**results, "stop_signals": []}))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,12 @@ Verdicts are taken from Stream's recorded answer to the request under test
 (:func:`_http_answer`, :func:`_ws_answer`), never from an error the SDK raised.
 Every temporary change is journalled before its enabling request and restored
 and verified when its case ends; a restore that fails stops the run.
+
+Every server request passes the run's guard before it is sent
+(:mod:`glow_stream_proof.guard`; P06.1-I2a): the run is the guard's scope, so a
+request that changes a user, channel, member, message, poll or group the run
+did not create, or an application setting not in its journal, is refused and
+stops the run.
 """
 
 from __future__ import annotations
@@ -25,16 +31,20 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
+from getstream.exceptions import StreamTransportException
 from getstream.models import ChannelInput, ChannelMemberRequest, MessageRequest, UserRequest
 
-from . import baseline, configuration, matrix
-from .app_send import AppSendService
+from . import baseline, configuration, guard, i2a, matrix, mechanisms
+from .app_send import AppSendService, ProviderUnavailable
 from .client_bridge import ClientSession, ClientSessionEnded, Reply, client_environment
 from .configuration import MATCH_MEMBER_GRANTS, MATCH_TYPE
 from .credentials import ServerCredentials
 from .policy import MatchState
 from .redaction import Redactor, describe_token, token_lifetime_seconds
 from .server_api import ApiResult, ServerApi
+from .stops import GuardRefused as GuardRefused
+from .stops import RunStopped as RunStopped
 from .usage import GuardrailStop, UsageLedger
 
 PREFIX_ROOT = "p061i1-"
@@ -55,7 +65,19 @@ CLEANUP_RESERVE = 130
 CASE_CALL_MARGIN = 30
 EVENT_WAIT_MS = 2500
 TYPE_CHANGE_SETTLE_SECONDS = 3
+# S10 (P06.1-I2a, the I1 review's finding 6): the poll message is sent again while
+# Stream answers that polls are not enabled for the channel, up to this many times.
+S10_ATTEMPTS = 10
+S10_RETRY_SECONDS = 3
 DESTRUCTIVE_PHASE = 70
+# From this phase the cases are P06.1-I2a's revocation, suspension and deletion
+# families, on their own users and channels: the I1 sessions are closed first, so
+# that the families' sessions stay within the connection guardrail.
+FAMILY_PHASE = 100
+# A case before the families runs only while the setup tokens (A, B, X and D) have
+# at least this long left, so that no refusal it judges is a token's own expiry
+# (P06.1-I2a; the independent review, a nit). The longest such case takes about 40 s.
+CASE_TOKEN_MARGIN_SECONDS = 120
 T = MATCH_TYPE
 # Nathan's confirmed dashboard administrator user was created at this minute
 # (UTC), as recorded in the P06.1 evidence. Preflight compares only the minute;
@@ -66,16 +88,6 @@ NOT_A_PASS = (matrix.FAIL, matrix.INCONCLUSIVE)
 PRODUCTION_NO_RESPONSE_REASON = (
     "no answer from Stream was recorded for the request under the production configuration"
 )
-
-
-class RunStopped(RuntimeError):
-    """The run stopped on a stop condition; the reason is reported.
-
-    ``case_result`` holds what the case in progress had already observed, so
-    that the matrix records it instead of losing it.
-    """
-
-    case_result: CaseResult | None = None
 
 
 @dataclass
@@ -89,6 +101,10 @@ class TemporaryChange:
     unverified: str | None = None
     # What re-reads showed (key names only), for the record.
     reread: dict[str, Any] = field(default_factory=dict)
+    # The application settings and match-type features the change may set while it is
+    # journalled: the guard allows those requests, and no others (P06.1-I2a).
+    app_settings: frozenset[str] = frozenset()
+    type_features: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -178,6 +194,13 @@ def _ws_answer(reply: Reply) -> Answer:
         code = code if isinstance(code, int) else None
         return Answer(matrix.classify(status, code), status, code, None)
     return Answer("no-response", None, None, None, _local_note(reply))
+
+
+def seconds_left(token: str | None) -> float | None:
+    """How long ``token`` has before its ``exp`` claim; ``None`` without one."""
+    claims = describe_token(token).get("claims") if token else None
+    exp = claims.get("exp") if isinstance(claims, dict) else None
+    return exp - time.time() if isinstance(exp, int) else None
 
 
 def _observed(answer: Answer) -> str:
@@ -278,6 +301,11 @@ def _generic(text: str, ctx: Mapping[str, str]) -> str:
 
 _TABLE_NAMES = frozenset(
     {"A", "B", "X", "D", "AB", "XD", "m_a", "m_b", "m_x", "m_ctl", "prefix", "guest_id", "ctl_poll"}
+    # P06.1-I2a: the families' users, their names and their channels.
+    | {"M1", "M2", "R", "S", "H", "M1_name", "M2_name", "R_name", "S_name", "H_name"}
+    # (written out: mechanisms imports this module; tests/test_mechanisms.py checks it)
+    | {"CH_remove", "CH_ban", "CH_hide", "CH_freeze", "CH_revoke", "CH_deactivate", "CH_delete"}
+    | {"CH_s10", "CH_in_accept", "CH_in_reject", "g2_id"}
 )
 
 
@@ -354,6 +382,46 @@ class ProofRun:
         # The case in progress's commands that recorded more than one request: what
         # each request got, kept in the case's row (P06.1-C3).
         self._multiple_requests: list[str] = []
+        # Messages the server created for the run, and the deleted-user artifacts its
+        # cleanup deletes: the guard's record of what the run owns (P06.1-I2a).
+        self.messages: set[str] = set()
+        self.artifacts: list[str] = []
+        # How G2's server-created guest was set up (P06.1-I2a); None until it is tried.
+        self.g2_setup: dict[str, Any] | None = None
+        # Channels a hard user delete may remove on its own (SD-delete): cleanup checks
+        # that each still exists before naming it (P06.1-I2a).
+        self.maybe_gone_channels: set[str] = set()
+        # Every server request passes the guard before it is sent (DM-04 finding 1).
+        self.api.guard = self._guard_refusal
+
+    # -- the guard's scope (P06.1-I2a) --------------------------------------------
+
+    def _guard_refusal(
+        self, method: str, path: str, body: Any, params: Mapping[str, str]
+    ) -> str | None:
+        return guard.refusal(method, path, body, params, self)
+
+    def owns_user(self, user_id: str) -> bool:
+        return user_id in self.users or user_id in self.artifacts or self.prefix in user_id
+
+    def owns_channel(self, channel: str) -> bool:
+        return channel in self.channels or self.prefix in guard.channel_id(channel)
+
+    def owns_message(self, message_id: str) -> bool:
+        recorded = {self.ctx.get(k) for k in ("m_a", "m_b", "m_x", "m_ctl")}
+        return message_id in self.messages or message_id in recorded
+
+    def owns_poll(self, poll_id: str) -> bool:
+        return poll_id in {p for p, _ in self.polls} or poll_id == self.ctx.get("ctl_poll")
+
+    def owns_group(self, group_id: str) -> bool:
+        return group_id in self.groups or group_id == self.ctx.get("ctl_group")
+
+    def journalled_app_settings(self) -> frozenset[str]:
+        return frozenset(k for change in self.journal for k in change.app_settings)
+
+    def journalled_type_features(self) -> frozenset[str]:
+        return frozenset(k for change in self.journal for k in change.type_features)
 
     # -- helpers ----------------------------------------------------------------
 
@@ -383,6 +451,21 @@ class ProofRun:
                 texts.append(text)
         return texts
 
+    def signal_instruction(self) -> str:
+        """What the operator does after the signals recorded, by kind (P06.1-I2a).
+
+        Only rate limits (HTTP 429 or Stream code 9, without billing, quota or
+        upgrade wording): wait at least the rate-limit window, then clean up once.
+        Anything else is a charge signal (HTTP 402, Stream code 99, or such wording):
+        no further live call.
+        """
+        if self.ledger.signals and all(s.only_rate_limit for s in self.ledger.signals):
+            return (
+                "only a rate limit: wait at least 60 s (or the reset the answer gave), then "
+                "run cleanup --apply once, verify-clean and configure (a dry run)"
+            )
+        return "a charge signal: make no further live call, and report it"
+
     def record_signal(self, exc: BaseException) -> None:
         """Add a charge or limit signal whose stop was not raised through the ledger."""
         if isinstance(exc, GuardrailStop) and exc.at_once and exc not in self.ledger.signals:
@@ -396,15 +479,26 @@ class ProofRun:
             max_api_calls=max_api_calls,
             secret=self.credentials.secret(),
         )
-        session = ClientSession(label, env, self.ledger, self.redactor)
+        session = ClientSession(label, env, self.ledger, self.redactor, note=self._client_note)
         self.sessions[label] = session
         return session
+
+    def _client_note(self, text: str) -> None:
+        self.notes.append(self.redactor.text(_generic(text, self.ctx)))
 
     def _send(self, session: ClientSession, op: str, **params: Any) -> Reply:
         reply = session.send(op, **params)
         self.ws_attempts += reply.ws_attempts
         for error in reply.async_errors:
             self.notes.append(f"client {session.label} async error: {_generic(error, self.ctx)}")
+        for record in reply.background_requests:
+            # Sent between commands, or answered after its command replied (P06.1-I2a).
+            status = record.get("status")
+            self.notes.append(
+                f"client {session.label} request outside its command: "
+                f"{_request_line(record, self.ctx)} -> "
+                + (str(status) if isinstance(status, int) else "no response")
+            )
         if len(reply.requests) > 1:
             # Such a command has no answer (_http_answer); what each of its requests
             # got is kept in the case's row (P06.1-C3).
@@ -433,8 +527,13 @@ class ProofRun:
             request.method, matrix.substitute(request.path, self.ctx), body=body, params=params
         )
 
-    def _remaining_ok(self) -> bool:
-        return self.ledger.remaining("api_calls") > CLEANUP_RESERVE + CASE_CALL_MARGIN
+    def _remaining_ok(self, case: matrix.Case | None = None) -> bool:
+        """Whether the case can run and still leave the calls the end of the run needs.
+
+        An I2a case declares how many calls it can use (``Case.calls``, P06.1-I2a).
+        """
+        margin = max(CASE_CALL_MARGIN, case.calls if case is not None else 0)
+        return self.ledger.remaining("api_calls") > CLEANUP_RESERVE + margin
 
     # -- temporary changes and undos ----------------------------------------------
 
@@ -543,9 +642,10 @@ class ProofRun:
     def _interrupted_row(self, case: matrix.Case, exc: BaseException) -> CaseResult:
         """The row of a case that ``exc`` ended before it finished.
 
-        It keeps what the case had observed: a FAIL stays a FAIL, and anything
-        else becomes INCONCLUSIVE with the interruption as its reason. A row the
-        case built itself for a failed restore (:meth:`_keep_case`) is used as it is.
+        It keeps what the case had observed: a FAIL stays a FAIL (and so does a
+        DOES NOT MEET), and anything else becomes INCONCLUSIVE with the
+        interruption as its reason. A row the case built itself for a failed
+        restore (:meth:`_keep_case`) is used as it is.
         """
         kept = exc.case_result if isinstance(exc, RunStopped) else None
         if kept is not None:
@@ -561,7 +661,7 @@ class ProofRun:
         row.detail["interrupted"] = f"{type(exc).__name__}: {text}"
         if isinstance(exc, RunStopped):
             row.detail["run_stopped"] = text
-        if row.verdict != matrix.FAIL:
+        if row.verdict not in matrix.KEPT_WHEN_INTERRUPTED:
             row.verdict = matrix.INCONCLUSIVE
             row.reason = f"interrupted before the case finished: {reason}"
         return row
@@ -704,11 +804,17 @@ class ProofRun:
 
     def _type_features_change(self, features: Mapping[str, Any]) -> TemporaryChange:
         return TemporaryChange(
-            f"{T} features {sorted(features)}", lambda: self._type_features_restore(features)
+            f"{T} features {sorted(features)}",
+            lambda: self._type_features_restore(features),
+            type_features=frozenset(features),
         )
 
     def _guest_creation_change(self) -> TemporaryChange:
-        return TemporaryChange("guest user creation enabled", self._disable_guest_creation)
+        return TemporaryChange(
+            "guest user creation enabled",
+            self._disable_guest_creation,
+            app_settings=frozenset({"guest_user_creation_disabled"}),
+        )
 
     def _disable_guest_creation(self) -> str:
         off = self._set_guest_creation_disabled(True)
@@ -791,6 +897,9 @@ class ProofRun:
         self.ctx["m_a_text"] = f"authorized message from A {self.prefix}"
         self.ctx["m_b_text"] = f"authorized message from B {self.prefix}"
         self.ctx["xd_text"] = f"xdmarker{self.prefix.replace('-', '')}"
+        # F9-sync asks for XD's events since the run started (P06.1-I2a).
+        started = datetime.fromtimestamp(self.started_ns / 1e9, UTC)
+        self.ctx["run_start"] = started.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
         self.ledger.reserve("users", 4)
         users = [
@@ -892,13 +1001,7 @@ class ProofRun:
     # -- authorized path -----------------------------------------------------------
 
     def send_as(self, channel_type: str, channel_id: str, user_id: str, text: str) -> ApiResult:
-        response = self.api.sdk.chat.send_message(
-            type=channel_type,
-            id=channel_id,
-            message=MessageRequest(text=text, user_id=user_id),
-        )
-        message_id = response.data.message.id
-        return ApiResult("POST", "send_message", 201, None, None, {"message": {"id": message_id}})
+        return server_send(self.api, self.messages, channel_type, channel_id, user_id, text)
 
     def authorized_path(self) -> None:
         service = AppSendService(self.state, self, T)
@@ -994,7 +1097,27 @@ class ProofRun:
     def _events(self, key: str, wait_ms: int = EVENT_WAIT_MS) -> list[dict[str, Any]]:
         return self._events_split(key, wait_ms)[0]
 
+    def _setup_tokens_expiring(self) -> str | None:
+        """The setup tokens with less than CASE_TOKEN_MARGIN_SECONDS left, if any."""
+        short = [
+            f"{key} {int(left)} s left"
+            for key in ("A", "B", "X", "D")
+            if (left := seconds_left(self._tokens.get(key))) is not None
+            and left < CASE_TOKEN_MARGIN_SECONDS
+        ]
+        return ", ".join(short) or None
+
     def reconnect_check(self) -> None:
+        short = self._setup_tokens_expiring()
+        if short:
+            # Not made: a refused reconnection could be the token's own expiry.
+            self._check(
+                "AP11",
+                "client A disconnects, reconnects over the WebSocket and receives the next message",
+                False,
+                f"not made: the setup tokens are close to their expiry ({short})",
+            )
+            return
         try:
             self._reconnect_check()
         except (GuardrailStop, RunStopped):
@@ -1076,6 +1199,7 @@ class ProofRun:
         self, only: set[str] | None = None, progress: Callable[[], None] | None = None
     ) -> None:
         reconnected = False
+        families = False
         for case in matrix.all_cases():
             if case.phase >= DESTRUCTIVE_PHASE and not reconnected:
                 # The reconnect check needs AB; the destructive cases come after it.
@@ -1083,7 +1207,28 @@ class ProofRun:
                 reconnected = True
             if only and case.id not in only:
                 continue
-            if not self._remaining_ok():
+            short = self._setup_tokens_expiring() if case.phase < FAMILY_PHASE else None
+            if short:
+                self.case_results.append(
+                    self._result(
+                        case,
+                        "-",
+                        f"not run: the setup tokens are close to their expiry ({short})",
+                        "-",
+                        matrix.Verdict(
+                            matrix.INCONCLUSIVE,
+                            "not run: a refusal could have been a token's own expiry",
+                        ),
+                    )
+                )
+                if progress is not None:
+                    progress()
+                continue
+            if case.phase >= FAMILY_PHASE and not families:
+                # The I1 sessions are not used again (P06.1-I2a).
+                self._close_i1_sessions()
+                families = True
+            if not self._remaining_ok(case):
                 self.notes.append(
                     f"matrix stopped before {case.id}: API-call budget reserved for cleanup"
                 )
@@ -1122,6 +1267,20 @@ class ProofRun:
                 )
         if not reconnected:
             self.reconnect_check()
+
+    def _close_i1_sessions(self) -> None:
+        """Close the I1 matrix's sessions before the I2a families (P06.1-I2a).
+
+        A signal a closing session reports is recorded and raised as the run's stop.
+        """
+        for label in [k for k in self.sessions if not k.startswith(mechanisms.FAMILY_LABELS)]:
+            session = self.sessions.pop(label)
+            session.close()
+        if self.stop_signals:
+            raise RunStopped(
+                f"a charge or limit signal was met as the I1 sessions closed "
+                f"({self.stop_signals[0]})"
+            )
 
     def _progress_quietly(self, progress: Callable[[], None] | None) -> None:
         """Write progress while a stop is in flight; a failed write never replaces the stop."""
@@ -1189,6 +1348,9 @@ class ProofRun:
             value = _dig(result.body, dotted)
             if isinstance(value, str):
                 self.ctx[name] = value
+        created = _dig(result.body, "message.id")
+        if result.ok and isinstance(created, str):
+            self.messages.add(created)  # the guard's record (P06.1-I2a)
         undo_notes = []
         if result.ok:
             for undo in control.undo:
@@ -1268,7 +1430,7 @@ class ProofRun:
             result.verdict = matrix.INCONCLUSIVE
             result.reason = PRODUCTION_NO_RESPONSE_REASON
         if production_succeeded:
-            self._undo_client_success(case, result)
+            self._undo_client_success(case, result, "production")
         return result
 
     def _evaluate_case(self, case: matrix.Case) -> CaseResult:
@@ -1355,13 +1517,19 @@ class ProofRun:
             return matrix.Verdict(matrix.FAIL, "response disclosed: " + ", ".join(leaks))
         return matrix.refused_verdict(outcome, control_ok)
 
-    def _undo_client_success(self, case: matrix.Case, row: CaseResult) -> None:
+    def _undo_client_success(
+        self, case: matrix.Case, row: CaseResult, phase: str | None = None
+    ) -> None:
         """Reverse a bypass that changed state with the case's own undo requests.
 
         The row records each undo's status, or that it was not completed and why.
+        A second phase's undo (the production phase of a feature-gated case) is added
+        to the first's note, labelled with its phase, never written over it
+        (P06.1-I2a; the C3 review's nit 4).
         """
+        earlier = row.detail.get("client_success_undo")
         if not case.control.undo:
-            row.detail["client_success_undo"] = "none defined"
+            row.detail.setdefault("client_success_undo", "none defined")
             return
         notes: list[str] = []
         try:
@@ -1371,7 +1539,9 @@ class ProofRun:
             notes.append(f"not completed: {type(exc).__name__}: {self._text(exc)}")
             raise
         finally:
-            row.detail["client_success_undo"] = self.redactor.text(", ".join(notes))
+            done = (f"{phase}: " if phase else "") + ", ".join(notes)
+            note = f"{earlier}; {done}" if earlier else done
+            row.detail["client_success_undo"] = self.redactor.text(note)
 
     def _undo_after_interruption(
         self, case: matrix.Case, exc: BaseException, row: CaseResult
@@ -1504,8 +1674,38 @@ class ProofRun:
             "typing-payload": self._proc_typing,
             "read-payload": self._proc_read,
             "realtime-isolation": self._proc_realtime_isolation,
+            # P06.1-I2a
+            "mechanism": self._proc_mechanism,
+            "oracle": self._proc_i2a_oracle,
+            "s15-map": self._proc_i2a_s15_map,
+            "own-member-flag": self._proc_i2a_own_member_flag,
+            "invite": self._proc_i2a_invite,
+            "token-expiry": self._proc_i2a_token_expiry,
+            "outage": self._proc_i2a_outage,
         }[name]
         return handler(case, arg)
+
+    def _proc_i2a_oracle(self, case: matrix.Case, kind: str) -> CaseResult:
+        return i2a.oracle(self, case, kind)
+
+    def _proc_i2a_s15_map(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.s15_map(self, case, arg)
+
+    def _proc_i2a_own_member_flag(self, case: matrix.Case, flag: str) -> CaseResult:
+        return i2a.own_member_flag(self, case, flag)
+
+    def _proc_i2a_invite(self, case: matrix.Case, kind: str) -> CaseResult:
+        return i2a.invite(self, case, kind)
+
+    def _proc_i2a_token_expiry(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.token_expiry(self, case, arg)
+
+    def _proc_i2a_outage(self, case: matrix.Case, arg: str) -> CaseResult:
+        return i2a.outage(self, case, arg)
+
+    def _proc_mechanism(self, case: matrix.Case, key: str) -> CaseResult:
+        """A revocation, suspension or deletion mechanism (P06.1-I2a)."""
+        return mechanisms.run_mechanism(self, case, key)
 
     def _bad_token(self, kind: str) -> tuple[str | None, str]:
         a = self.ctx["A"]
@@ -1899,16 +2099,26 @@ class ProofRun:
         return {"target": "client", "method": "getMessage", "args": [self.ctx["m_x"]]}, "X"
 
     def _proc_guest_role(self, case: matrix.Case, suffix: str) -> CaseResult:
-        session = self.sessions.get("guest")
+        """G2 (P06.1-I2a, the I1 review's finding 6): the guest is created server-side
+        and connects with its ID only, because the lockdown refuses the connect that
+        setGuestUser makes; G1's control's guest is not used."""
+        if "g2" not in self.sessions and self.g2_setup is None:
+            _session, self.g2_setup = i2a.g2_session(self)
+        session = self.sessions.get("g2")
         if session is None:
             return self._result(
                 case,
                 "-",
                 "not run: no guest session",
                 "-",
-                matrix.Verdict(matrix.INCONCLUSIVE, "the guest control did not create a guest"),
+                matrix.Verdict(
+                    matrix.INCONCLUSIVE, "the server-created guest was not created or connected"
+                ),
+                {"g2_setup": self.g2_setup},
             )
-        return self._probe_case(case, session, suffix)
+        result = self._probe_case(case, session, suffix)
+        result.detail["g2_setup"] = self.redactor.value(self.g2_setup)
+        return result
 
     def _proc_anonymous(self, case: matrix.Case, suffix: str) -> CaseResult:
         session = self.sessions.get("anonymous")
@@ -2021,7 +2231,9 @@ class ProofRun:
                 "-",
                 "not set up",
                 f"{state['setup_note']}; {change.note}",
-                matrix.Verdict(matrix.INCONCLUSIVE, "no poll message could be created in AB"),
+                matrix.Verdict(
+                    matrix.INCONCLUSIVE, "no poll message could be created in S10's channel"
+                ),
             )
         answer = _http_answer(reply)
         verdict = matrix.refused_verdict(answer.outcome, state["control_ok"])
@@ -2070,9 +2282,15 @@ class ProofRun:
         )
 
     def _poll_vote_phase(self, case: matrix.Case, state: dict[str, Any]) -> None:
-        """With polls on: B's poll message, A's vote and the server's identical vote."""
+        """With polls on: B's poll message, A's vote and the server's identical vote.
+
+        P06.1-I2a (the I1 review's finding 6): the poll message goes to a channel of its
+        own, S10, created while polls are on, and is sent again while Stream answers
+        that polls are not enabled for it (the type's change did not reach AB in I1).
+        """
         on = self._type_features_on({"polls": True})
         state["on"] = on
+        channel = self._s10_channel()
         poll = self.api.raw(
             "POST",
             "/polls",
@@ -2087,15 +2305,11 @@ class ProofRun:
         )
         if poll.ok and poll_id:
             self.polls.append((str(poll_id), self.ctx["B"]))
-        msg = self.api.raw(
-            "POST",
-            f"/channels/{T}/{self.ctx['AB']}/message",
-            body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
-        )
+        msg, attempts = self._poll_message(channel, poll_id)
         message_id = _dig(msg.body, "message.id")
         state["setup_note"] = (
-            f"polls on ({on.status}); poll {poll.status}; poll message {msg.status} / "
-            f"code {msg.code} ({msg.message})"
+            f"polls on ({on.status}); channel {{CH_s10}}; poll {poll.status}; poll message "
+            f"{msg.status} / code {msg.code} ({msg.message}) after {attempts} attempt(s)"
         )
         if not (poll.ok and msg.ok and message_id):
             return
@@ -2125,6 +2339,41 @@ class ProofRun:
             result = self.api.raw("POST", path, body=body)
             state["control_ok"] = result.ok
             state["control_desc"] = f"server replay POST -> {result.status}"
+
+    def _s10_channel(self) -> str:
+        """S10's own channel, with A and B, created while polls are on (P06.1-I2a)."""
+        channel = f"{self.prefix}-ch-s10"
+        self.ctx["CH_s10"] = channel
+        self.ledger.reserve("channels")
+        self.channels.append(f"{T}:{channel}")
+        self.api.sdk.chat.get_or_create_channel(
+            type=T,
+            id=channel,
+            data=ChannelInput(
+                created_by_id=self.ctx["B"],
+                members=[
+                    ChannelMemberRequest(user_id=self.ctx["A"]),
+                    ChannelMemberRequest(user_id=self.ctx["B"]),
+                ],
+            ),
+        )
+        return channel
+
+    def _poll_message(self, channel: str, poll_id: Any) -> tuple[ApiResult, int]:
+        """B's poll message, sent again while Stream answers that polls are not enabled
+        for the channel (P06.1-I2a); the last answer and the number of attempts."""
+        attempt = 0
+        while True:
+            attempt += 1
+            msg = self.api.raw(
+                "POST",
+                f"/channels/{T}/{channel}/message",
+                body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
+            )
+            not_yet = msg.status == 403 and "polls not enabled" in (msg.message or "").lower()
+            if msg.ok or not not_yet or attempt >= S10_ATTEMPTS:
+                return msg, attempt
+            time.sleep(S10_RETRY_SECONDS)
 
     def _b_member_views(self, marker: str) -> dict[str, Any]:
         """Whether B can read ``marker`` from A's membership, by each read B has.
@@ -2647,11 +2896,19 @@ class ProofRun:
                 self._send(self.sessions[control_label], "call", max_calls=2, **step)
             )
             # The control's own events (for RT3, B's own message.read) are collected
-            # apart, and are never searched for the marker.
+            # apart; only the control member's own read events are left out of the
+            # search for the marker (P06.1-I2a, below).
             control_events = self._events(control_label)
         windows = after_request + after_probe
         events = [e for e in windows if e.get("type") in event_types]
         carriers = sorted({str(e.get("type")) for e in windows if matrix.find_terms(e, [marker])})
+        # The control window is searched too, except the control member's own read
+        # events (P06.1-I2a; the C3 review's nit 1: until then the whole window went
+        # unsearched, so a marker arriving only after the control was not seen).
+        searched = self._searched_control_events(control_events, control_label)
+        carriers = sorted(
+            set(carriers) | {str(e.get("type")) for e in searched if matrix.find_terms(e, [marker])}
+        )
         keys = sorted({k for e in events for k in e.keys()})
         control_desc = f"B listening (received a probe message): {listening}"
         if control is not None:
@@ -2729,6 +2986,28 @@ class ProofRun:
                 else None,
             },
         )
+
+    def _searched_control_events(
+        self, events: list[dict[str, Any]], label: str | None
+    ) -> list[dict[str, Any]]:
+        """The control window's events, without the control member's own read events.
+
+        B's own ``markRead`` raises B's own read event, which may echo B's own body;
+        only that is left out: an event of type ``message.read`` or
+        ``notification.mark_read`` whose ``user.id`` is the control member's
+        (P06.1-I2a). Any other event, of any type or from any other user, is searched.
+        """
+        if label is None:
+            return events
+        own_id = self.ctx.get(label)
+        return [
+            e
+            for e in events
+            if not (
+                e.get("type") in ("message.read", "notification.mark_read")
+                and _dig(e, "user.id") == own_id
+            )
+        ]
 
     def _event_sample(self, events: list[dict[str, Any]]) -> Any:
         if not events:
@@ -2809,8 +3088,10 @@ class ProofRun:
     # -- cleanup ---------------------------------------------------------------------
 
     def close_sessions(self) -> None:
+        """Close every client session. A charge or limit signal a session reports as it
+        closes is recorded, never raised here (P06.1-I2a)."""
         for session in list(self.sessions.values()):
-            session.close()
+            session.close(raise_signal=False)
         self.sessions.clear()
 
     def _wait_task(self, task_id: str | None) -> str:
@@ -2833,6 +3114,12 @@ class ProofRun:
         """
         self.close_sessions()
         out: dict[str, Any] = {"errors": []}
+        if self.stop_signals:
+            # A session reported a charge or limit signal as it closed: nothing is
+            # deleted (P06.1-I2a).
+            out["errors"].append(f"not started: {self.stop_signals[0]}")
+            self.cleanup_result = out
+            return out
         steps: list[tuple[str, Callable[[], None]]] = [
             ("polls", lambda: self._delete_polls(out)),
             ("user groups", lambda: self._delete_groups(out)),
@@ -2870,6 +3157,20 @@ class ProofRun:
 
     def _delete_channels(self, out: dict[str, Any]) -> None:
         cids = sorted(set(self.channels))
+        for cid in sorted(self.maybe_gone_channels & set(cids)):
+            # A channel a hard user delete may have removed after the run last looked
+            # (P06.1-I2a): named only if it still exists. Only such channels are read
+            # first; a soft-deleted channel (C13's control) is not listed, but must
+            # still be named to be hard-deleted.
+            listed = self.api.raw(
+                "POST",
+                "/api/v2/chat/channels",
+                body={"filter_conditions": {"cid": cid}, "limit": 1},
+            )
+            channels = listed.body.get("channels") if isinstance(listed.body, dict) else None
+            if listed.ok and channels == []:
+                cids.remove(cid)
+                out.setdefault("channels_already_gone", []).append(_generic(cid, self.ctx))
         if cids:
             res = self.api.raw(
                 "POST", "/api/v2/chat/channels/delete", body={"cids": cids, "hard_delete": True}
@@ -2879,18 +3180,31 @@ class ProofRun:
 
     def _delete_users(self, out: dict[str, Any]) -> None:
         # Include any user whose ID contains this run's prefix (Stream prefixes
-        # guest IDs with "guest-<uuid>-"), not only the IDs recorded here.
+        # guest IDs with "guest-<uuid>-"), not only the IDs recorded here, and a
+        # deactivated one too (P06.1-I2a; DM-04 finding 9(c): until then the scan
+        # left deactivated users out, as Stream's listing does by default).
         listed = self.api.get(
             "/api/v2/users",
-            params={"payload": json.dumps({"filter_conditions": {}, "limit": 100})},
-        ).body
-        found = [
-            str(u.get("id"))
-            for u in (listed.get("users", []) if isinstance(listed, dict) else [])
-            if self.prefix in str(u.get("id"))
-        ]
+            params={
+                "payload": json.dumps(
+                    {"filter_conditions": {}, "limit": 100, "include_deactivated_users": True}
+                )
+            },
+        )
+        entries = listed.body.get("users") if isinstance(listed.body, dict) else None
+        entries = [u for u in entries if isinstance(u, dict)] if isinstance(entries, list) else []
+        found = [str(u.get("id")) for u in entries if self.prefix in str(u.get("id"))]
         out["users_found_by_prefix_not_recorded"] = len(set(found) - set(self.users))
-        users = sorted(set(self.users) | set(found))
+        recorded = set(self.users)
+        if listed.ok and len(entries) < 100:
+            # A recorded user that a complete listing does not show no longer exists
+            # (SD-delete's hard delete); the delete does not name it again, since a
+            # batch delete naming a user that is gone could be refused (P06.1-I2a).
+            gone = recorded - {str(u.get("id")) for u in entries}
+            if gone:
+                out["recorded_users_already_gone"] = len(gone)
+            recorded -= gone
+        users = sorted(recorded | set(found))
         if users:
             res = self.api.raw(
                 "POST",
@@ -2913,6 +3227,9 @@ class ProofRun:
         # artifact of this run's cleanup, so it is removed too.
         artifacts = self._artifact_users()
         out["artifact_users_found"] = len(artifacts)
+        # Created by this run's own delete, after it started: recorded, so the guard
+        # lets their delete through (P06.1-I2a).
+        self.artifacts.extend(a for a in artifacts if a not in self.artifacts)
         if artifacts:
             res = self.api.raw(
                 "POST",
@@ -2930,7 +3247,11 @@ class ProofRun:
     def _artifact_users(self) -> list[str]:
         result = self.api.get(
             "/api/v2/users",
-            params={"payload": json.dumps({"filter_conditions": {}, "limit": 100})},
+            params={
+                "payload": json.dumps(
+                    {"filter_conditions": {}, "limit": 100, "include_deactivated_users": True}
+                )
+            },
         )
         marker = f"deleted-user-{self.credentials.app_id}-"
         found = []
@@ -3022,17 +3343,21 @@ class ProofRun:
                     break
             if failure is not None:
                 problems.append(f"temporary change not restored: {self._text(failure)}")
+        # The client processes close before the cleanup is decided: a closing session
+        # reports what the SDK sent after its last command, and a charge or limit
+        # signal among it skips the cleanup like any other (P06.1-I2a).
+        self.close_sessions()
         if not cleanup:
             # Nothing to clean up when preflight stopped the run before setup.
-            self.close_sessions()
+            pass
         elif self.stop_signals:
             # A charge or limit signal was met: as the run's own stop, behind another
-            # stop or replaced in flight, or by the restores above. Nothing of the
-            # run's is deleted (P06.1-C3; until then only the run's own stop counted).
-            self.close_sessions()
+            # stop or replaced in flight, by the restores above, or as a session closed.
+            # Nothing of the run's is deleted (P06.1-C3; until then only the run's own
+            # stop counted).
             problems.append(
                 "cleanup skipped: a charge or limit signal stopped the run at once "
-                f"({self.stop_signals[0]}); check it, then run cleanup --apply"
+                f"({self.stop_signals[0]}); {self.signal_instruction()}"
             )
         else:
             problems += cleanup_problems(self.cleanup())
@@ -3066,6 +3391,28 @@ class ProofRun:
         }
 
 
+def server_send(
+    api: ServerApi, messages: set[str], channel_type: str, channel_id: str, user_id: str, text: str
+) -> ApiResult:
+    """Send ``text`` as ``user_id`` with the server SDK, and record the message's ID.
+
+    A request that got no answer at all (a connection error, which the SDK raises as
+    ``StreamTransportException``) raises :class:`ProviderUnavailable`, so that the app
+    send path refuses the send and keeps nothing of it (P06.1-I2a).
+    """
+    try:
+        response = api.sdk.chat.send_message(
+            type=channel_type,
+            id=channel_id,
+            message=MessageRequest(text=text, user_id=user_id),
+        )
+    except (StreamTransportException, httpx.TransportError) as exc:
+        raise ProviderUnavailable(f"{type(exc).__name__}: {exc}") from exc
+    message_id = response.data.message.id
+    messages.add(str(message_id))
+    return ApiResult("POST", "send_message", 201, None, None, {"message": {"id": message_id}})
+
+
 def list_polls_and_groups(api: ServerApi) -> dict[str, Any]:
     """Polls and user groups present in the application (the proof's are the only ones).
 
@@ -3083,7 +3430,11 @@ def list_polls_and_groups(api: ServerApi) -> dict[str, Any]:
             out[f"remaining_{key}"] = [str(i.get("id")) for i in items if isinstance(i, dict)]
         else:
             out[f"remaining_{key}"] = None
-            out[f"{key}_listing"] = f"not verified: HTTP {result.status} code {result.code}"
+            # Stream's own message says why (P06.1-I2a: the poll listing's first live use
+            # got 400 code 4, and the status and code alone did not say why).
+            out[f"{key}_listing"] = f"not verified: HTTP {result.status} code {result.code}" + (
+                f": {result.message}" if result.message else ""
+            )
     return out
 
 

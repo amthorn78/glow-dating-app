@@ -159,5 +159,52 @@ class StopAtOnceFlagTest(unittest.TestCase):
         self.assertEqual(ledger.signals, [])
 
 
+def api_with_headers(status: int, body: dict[str, object], headers: dict[str, str]) -> ServerApi:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, json=body, headers=headers)
+
+    return ServerApi(
+        ServerCredentials("1729640", "synthetickey", SECRET),
+        UsageLedger(),
+        Redactor([SECRET]),
+        transport=httpx.MockTransport(handler),
+    )
+
+
+class SignalKindAtTheServerTest(unittest.TestCase):
+    """P06.1-I2a, "Signals, by kind": a rate limit whose wording mentions a quota,
+    billing or an upgrade is not only a rate limit; a stop names the reset."""
+
+    def stops(self, status: int, body: dict[str, object]) -> list[GuardrailStop]:
+        api = api_with_headers(status, body, {"x-ratelimit-reset": "1790309999"})
+        try:
+            with self.assertRaises(GuardrailStop) as typed:
+                api.sdk.upsert_users(UserRequest(id="u1", role="user"))
+            with self.assertRaises(GuardrailStop) as raw:
+                api.raw("GET", "/api/v2/app")
+            response = httpx.Response(status, json=body, headers={"x-ratelimit-reset": "1"})
+            with self.assertRaises(GuardrailStop) as result:
+                api._result("GET", "/api/v2/app", response)
+        finally:
+            api.close()
+        return [typed.exception, raw.exception, result.exception]
+
+    def test_only_a_rate_limit(self) -> None:
+        for stop in self.stops(429, {"code": 9, "message": "Too many requests"}):
+            self.assertTrue(stop.only_rate_limit)
+
+    def test_a_rate_limit_with_quota_wording_is_a_charge_signal(self) -> None:
+        for stop in self.stops(429, {"code": 9, "message": "monthly quota exceeded"}):
+            self.assertTrue(stop.rate_limited)
+            self.assertTrue(stop.billing)
+            self.assertFalse(stop.only_rate_limit)
+
+    def test_the_stop_names_the_reset(self) -> None:
+        typed, raw, result = self.stops(429, {"code": 9, "message": "Too many requests"})
+        self.assertIn("HTTP 429 (x-ratelimit-reset 1790309999); stopping at once", str(typed))
+        self.assertIn("HTTP 429 (x-ratelimit-reset 1790309999); stopping at once", str(raw))
+        self.assertIn("HTTP 429 (x-ratelimit-reset 1); stopping at once", str(result))
+
+
 if __name__ == "__main__":
     unittest.main()
