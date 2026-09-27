@@ -1,3 +1,4 @@
+import dataclasses
 import unittest
 from unittest import mock
 
@@ -502,3 +503,17 @@ class CallAllowlistValidationTest(unittest.TestCase):
             problems = matrix.validate([self.case("client", method, ["/api/v2/chat/x"])])
             self.assertEqual(len(problems), 1, method)
             self.assertIn("which takes a URL, could reach Video or Feeds", problems[0])
+        # A get is not a call: the allowlist does not apply to it, and the path rule does.
+        get = self.case("client", "queryUsers", [{}])
+        product_get = dataclasses.replace(
+            get,
+            step=matrix.SdkStep(session="A", op="get", params={"path": "/api/v2/video/call/x"}),
+        )
+        self.assertEqual(
+            matrix.validate([product_get]),
+            ["X-call: a get of a Video or Feeds path; only the product op may reach them"],
+        )
+        chat_get = dataclasses.replace(
+            get, step=matrix.SdkStep(session="A", op="get", params={"path": "/channels/x"})
+        )
+        self.assertEqual(matrix.validate([chat_get]), [])

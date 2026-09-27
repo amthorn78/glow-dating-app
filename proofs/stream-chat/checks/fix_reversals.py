@@ -4196,6 +4196,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             TMV + "test_a_call_of_a_client_url_method_fails_validation",
             TMV + "test_a_get_of_a_product_path_fails_validation",
+            TCA + "test_the_client_url_methods_and_a_product_get_keep_their_rule",
         ],
     ),
     (
