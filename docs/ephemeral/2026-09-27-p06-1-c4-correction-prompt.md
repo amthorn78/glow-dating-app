@@ -9,6 +9,8 @@
   - the manager adds its verification there and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, high.** Effort score 2.13 (confidence 0.85); rung probabilities low 0.00, medium 0.05, high 0.78, extra high 0.16, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-09-27T13:37:56Z. Nathan picks the cell.
+  - **Nathan's pick: Opus 5.5 at high**, started 27 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** verified by the manager and integrated by fast-forward at `c83bedf` (code head `b2b9a0b`) on 27 September; see the evidence record, "P06.1-C4 corrections" and the manager's verification under it.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **Stream variables** (OD-28): none are needed, and Nathan adds none. This session never calls Stream. The environment check reports any it finds by name.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows and is P06.1's final delta review; the economics discovery comes after it.

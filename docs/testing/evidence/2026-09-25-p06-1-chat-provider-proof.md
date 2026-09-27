@@ -3690,3 +3690,45 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
   - in particular the baseline comparison. At the next live use it may report a difference that is Stream's rather than the lockdown's, for example a setting added since 27 September. Such a difference stops preflight and must be reported, never assumed away;
   - `maxRedirects: 0` on every chat request.
 - **For the delta review:** C4's change is `2c2d450..<head>`, with `634dc56`, `919a383` and `112011f` the code commits. The reviewer's probe scripts stayed in this session's scratch directory.
+
+### Manager verification of C4 (App Manager 5, 27 September 2026)
+
+App Manager 5 checked the relayed report against the pushed branch. The manager makes no call to Stream.
+
+- **Identity:**
+  - branch `claude/festive-ritchie-31vt3v`, head `c83bedf1f812cf454d4f16b5dc741c5d944749d9`, tree `52e33648ffb8d02429d434dc8e3de609579d92a2`, as reported. Ten commits on the start `2c2d450`, with one merge base. The code commits are `634dc56`, `919a383`, `112011f` and `b2b9a0b` (a test only); the other six change only Markdown. The code head is `b2b9a0b`;
+  - 17 files, +2,381 and −204: 15 under `proofs/stream-chat/`, the architecture document and this record. Every path is owned. No dependency file, lock, `.npmrc`, `pyproject.toml`, committed baseline or workflow changed. Every file has mode 100644, there is no symlink, and `git diff --check` is clean;
+  - this record: outside C4's appended section, five lines changed, all in I2b's own subsections, each a correction the prompt listed, marked. Every other line is byte-identical to `2c2d450`, the manager's verification of I2b and the exact-head review of I2b included;
+  - the architecture document: only section 3's existence-oracle row (nits 7 and 10) and three passages of section 5 (finding 2) changed. Its status line and "Review" columns are as the manager set them.
+- **Classification:** the trusted policy from `main` (`0f45e64`, sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs: `2c2d450` → `c83bedf` is full scope (`behavior-or-empty`), 17 paths.
+- **Code read,** the whole diff of the production code, about 710 changed lines:
+  - **finding 1:** the request interceptor calls `productRequestRefusal` before the budget, so a refused request is neither counted nor sent. It allows `https:` only, to Stream's three hosts only, and refuses a `Host` header and four forwarding headers. The path is normalized by `normalizedPath` (byte-wise decoding for up to eight rounds, dot and empty segments resolved); a product path not in its normalized form, a path that does not settle, and a product body that is not JSON are refused. `maxRedirects` is 0 on every request. `validate` refuses a `call` of one of `CLIENT_URL_METHODS` and a `get` of a product path;
+  - **finding 2:** `baseline_differences` compares the non-client roles' grants as sets, the call types' `settings` and `notification_settings` through `_changed_paths` (value and type, lists item by item), and the feed groups' two recorded fields. A scope or a role on one side only is a difference. The scoped record keeps `baseline_record` of the before- and the after-state;
+  - **nit 8:** `_apply` keeps each answered step, and the step that raised with what stopped it. `_read_after` re-reads only when `ctx.ledger.signals` is empty and no Ctrl-C ended the apply; `ctx.ledger` is the ledger `ServerApi` records its signals in (`cli.Context`). `finish()` re-raises a stop only after the record is written;
+  - **nit 4:** INCONCLUSIVE only for a success with nothing scanned; a refusal keeps its rule. **Nit 3:** both tables lower-case the key and the value `"true"`;
+  - the fake products now read the committed baseline for every scope, role and setting. The capability knob `allowed`, on which the verdict tests rely, is unchanged.
+- **Offline re-run,** in a scratch export of `c83bedf`, in clean processes without any `STREAM_*` variable, the installs with the proxy and CA variables by reference:
+  - `pip install --require-hashes -r requirements-dev.lock` and `pip check` ("No broken requirements found."); `npm ci --ignore-scripts` ("found 0 vulnerabilities");
+  - unit tests: `Ran 543 tests`, `OK`. Ruff check: "All checks passed!"; Ruff format: "55 files already formatted"; mypy: "Success: no issues found in 53 source files". `node --check` on the four `.cjs` files: OK. `checks/run_plan.py` with an empty ledger: "run plan: fits";
+  - `checks/fix_reversals.py`, from the export: "reversals: 378, not demonstrated: 0", exit 0, 18:55:36 to 19:24:01 UTC. Every row is OK: 456 failures on an assertion, 49 on the error the reverted fix causes, and 3 test processes stopped by Ctrl-C by design, none through a syntax, import or name error;
+  - the manager read the reasons of all 36 C4 entries. Each fails on its test's assertion (for example `'budget' != 'refused'`, `16 != 11` for the calls sent after a signal, `'HOLDS (filtered, not refused)' != 'INCONCLUSIVE'`), or, for nit 8's record, on the `StepRefused` its reverted fix lets escape. The I2b entry that `b2b9a0b` keeps demonstrable fails on `'budget' != 'refused'`.
+- **Secret scan** of the whole diff (229,207 bytes): 0 JWT-shaped strings, email addresses, private-key blocks, AWS, GitHub or Slack tokens and secret assignments.
+- **Hosted CI on C4's branch:**
+  - push run 356 ([36336214481](https://github.com/amthorn78/glow-dating-app/actions/runs/36336214481)) on the code head `b2b9a0b`: all seven jobs succeeded. "Stream proof checks" ran every step, not skipped, and Mobile checks ran the rendered suite;
+  - run 353 on `919a383` succeeded. Runs 351 on `634dc56` and 354 on `112011f` were cancelled by the next push, as the report says;
+  - runs 352, 355, 357 and 358 were on Markdown-only commits. Run 358 on the head skipped the application jobs by design, and its gate passed.
+- **Two slips in C4's section, no effect:**
+  - "Checks" item 6 gives the scanned diff as "about 197 KB"; the whole diff at the head is 229,207 bytes, as C4's report says;
+  - "What the final delta review and P06.2 must know" lists `634dc56`, `919a383` and `112011f` as the code commits and leaves out `b2b9a0b`, which changes a test. The section's first paragraph names it.
+
+#### Dispositions
+
+- **C4 is verified and integrated** into the manager branch by fast-forward, at `c83bedf`. The ten items are fixed, each code fix with a test that fails without it and a reversal, as the prompt required. The record corrections are the ones the disposition listed.
+- **The deviations are accepted:**
+  - **beyond the ten items,** C4 fixed one blocking gap and one should-fix in its own first fixes, and ten further items its own review found. All are in the class the prompt allowed (a request that could escape the deny-lists, or a request after a signal). Each narrows what the harness may send, and none widens it;
+  - **`maxRedirects: 0` without a test:** the one change without a test and a reversal. C4's exact-head review assesses whether an offline test is feasible;
+  - **letter case kept in the normalized-form comparison,** a departure from the prompt's wording. The prompt's requirement holds: a miscased fixed segment is refused by the allowlist, and an activity ID may hold capitals. The review assesses it;
+  - **the fake products model the committed baseline:** the tests of the plan now assert the live nine-`PUT` plan, and no verdict test changed. The review assesses whether any test is weaker;
+  - **the README limits** (the WebSocket's host, a per-request `proxy` or `socketPath`, the fetch adapter, two-level nested JSON in a query value, and two request-rewriting headers). The review checks that each is unreachable, as recorded.
+- **Not yet exercised live:** every C4 fix. The baseline comparison may report, at the next live use, a difference that is Stream's rather than the lockdown's. It stops preflight and must be reported, never assumed away.
+- **C4's exact-head review is next.** It is P06.1's final delta review, offline, of `c83bedf`.
