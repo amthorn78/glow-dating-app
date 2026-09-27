@@ -8,12 +8,12 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager:** App Manager 5, started by Nathan by hand on 27 September from the [start procedure](../planning/start-prompts/next-manager.md). App Manager 4 (`session_016nNFAZqaqTDqxX4Bq6jbRV`) pushes nothing after its handover commit, the head of `claude/stoic-carson-66gdig`, draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). App Manager 5 branches from that head, opens a replacement PR and closes PR26 with a link. A manager never reads or uses any `STREAM_*` variable its container holds (AM3-17).
+- **Manager:** App Manager 5, started by Nathan by hand on 27 September from the [start procedure](../planning/start-prompts/next-manager.md). App Manager 4 (`session_016nNFAZqaqTDqxX4Bq6jbRV`) pushes nothing after its handover commit, the head of `claude/stoic-carson-66gdig`, draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). App Manager 5 branches from that head, opens a replacement PR and closes PR26 with a link.
 - **Current item: P06.1**, the chat-provider permissions and economics proof (resumed 25 September; other feature work paused): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review; the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy alone (I2a).
-    - **Done:** DM-05: approved with conditions, all accepted and applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
+    - **Done:** DM-05: approved with conditions, applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
     - **Done:** I2b (`ad89753`, merged at `55b2238`): the Video and Feeds lockdown is applied to application 1729640; removal and deactivation MEET the history policy under the 404 code 16 rule; the [architecture document](../architecture/chat-provider-permissions.md) is written; "Stream proof checks" runs in CI.
     - **Done:** OD-33 and OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md), six rungs on both models; request v6 (Nathan's Claude skill `typesafe-scoring`); every prompt re-read.
     - **In flight:** the I2b review at `55b2238` ([prompt](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md), revision 3), on Fable 5.1 at max; then the economics discovery.
