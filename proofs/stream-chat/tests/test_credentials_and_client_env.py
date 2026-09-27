@@ -3,6 +3,7 @@ import subprocess
 import unittest
 
 import tests  # noqa: F401
+from glow_stream_proof import cli
 from glow_stream_proof.client_bridge import (
     PASSTHROUGH,
     RUNNER,
@@ -14,6 +15,7 @@ from glow_stream_proof.credentials import (
     EnvironmentRefused,
     load_server_credentials,
 )
+from glow_stream_proof.redaction import REDACTED_API_KEY
 
 SECRET = "synthetic-test-secret-value"
 GOOD = {
@@ -44,6 +46,22 @@ class CredentialsTest(unittest.TestCase):
             load_server_credentials({**GOOD, "STREAM_API_SECRET": ""})
         with self.assertRaises(EnvironmentRefused):
             load_server_credentials({**GOOD, "STREAM_APP_ID": "999"})
+
+
+class ContextRedactionTest(unittest.TestCase):
+    def test_the_commands_redactor_removes_the_api_key_from_free_text(self) -> None:
+        # P06.1-I2b: the redactor every command prints and writes through is given the
+        # application's API key, so Stream's code-43 message loses it.
+        ctx = cli.Context(environ=GOOD)
+        try:
+            text = ctx.redactor.text(
+                f"token created using the secret for API key synthetickey; secret {SECRET}"
+            )
+        finally:
+            ctx.close()
+        self.assertNotIn("synthetickey", text)
+        self.assertNotIn(SECRET, text)
+        self.assertIn(REDACTED_API_KEY, text)
 
 
 class ClientEnvironmentTest(unittest.TestCase):

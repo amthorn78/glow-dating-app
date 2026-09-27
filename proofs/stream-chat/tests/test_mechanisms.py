@@ -16,7 +16,7 @@ from glow_stream_proof.client_bridge import ClientSessionEnded
 from glow_stream_proof.proof_run import Answer, ProofRun
 from glow_stream_proof.usage import GuardrailStop, UsageLedger
 from tests.fake_world import World, family_run
-from tests.fakes import FakeServer, NoSettle, error
+from tests.fakes import FakeServer, NoSettle, error, record
 
 FAMILIES = [c.id for c in matrix.all_cases() if c.phase >= proof_run.FAMILY_PHASE]
 
@@ -502,6 +502,15 @@ class TokenLifetimeTest(unittest.TestCase):
         self.assertIn("the refusal could be its expiry", rest["why"])
         self.assertGreater(case.detail["token_seconds_left_after"]["M1"], 800)
 
+    def test_the_margin_applies_to_every_dimension(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): not only the REST read.
+        mechanisms.TOKEN_EXPIRY_MARGIN_SECONDS = 10_000
+        run, _, _, _ = run_families({"RV-remove"})
+        table = row(run, "RV-remove").detail["table"]["M1"]
+        for dim in mechanisms.DIMENSIONS:
+            self.assertEqual(table[dim]["status"], mechanisms.NOT_SHOWN, dim)
+            self.assertIn("the refusal could be its expiry", table[dim]["why"], dim)
+
 
 class BudgetAndSessionsTest(unittest.TestCase):
     def test_a_family_starts_only_with_the_calls_it_declared(self) -> None:
@@ -693,6 +702,283 @@ class StopsTest(unittest.TestCase):
             self.assertNotIn("A", run.sessions)
             self.assertIn("M1", run.sessions)
             run.finish(cleanup=True)
+
+
+class KeptStepsTest(unittest.TestCase):
+    """P06.1-I2b, the I2a review's finding 1: an interruption inside a family step keeps
+    that step's observations, so a member's "not ended" read seen before a stop stays in
+    the row as DOES NOT MEET (never as a pass)."""
+
+    ledger: UsageLedger
+
+    def test_a_stop_inside_a_step_keeps_the_other_members_observation(self) -> None:
+        # The review's scenario: RV-ban; M1's REST read after the ban succeeds (not
+        # ended); a 402 then arrives on M2's read, in the same step.
+        run, server, world, clock = family_run()
+        self.ledger = run.ledger
+        original = world.behaviour
+        queries = {"M2": 0}
+
+        def charge(session: Any, op: str, params: dict[str, Any]) -> Any:
+            if session.label == "M2" and op == "call" and params.get("method") == "query":
+                queries["M2"] += 1
+                if queries["M2"] == 2:  # the read after the mechanism
+                    raise self.ledger.stop_at_once(
+                        "client M2: HTTP 402; stopping at once", rate_limited=False
+                    )
+            return original(session, op, params)
+
+        world.behaviour = charge  # type: ignore[method-assign]
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-ban"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-ban")
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+        self.assertIn("does not end rest for M1", case.reason)
+        self.assertEqual(case.detail["table"]["M1"]["rest"]["status"], mechanisms.NOT_ENDED)
+        self.assertEqual(case.detail["after"]["M1"]["rest"], "201 (succeeded)")
+        self.assertIn("GuardrailStop", case.detail["interrupted"])
+
+    def test_a_stop_after_the_mechanisms_request_keeps_the_row_as_applied(self) -> None:
+        # A rate limit on the channel read right after the ban was applied: the row
+        # says the mechanism was applied, not "controls made; not yet applied".
+        reads = {"n": 0}
+
+        def limited(method: str, path: str, body: Any, params: Any) -> Any:
+            if method == "POST" and path == "/api/v2/chat/channels":
+                cid = str(((body or {}).get("filter_conditions") or {}).get("cid", ""))
+                if cid.endswith("-ch-ban"):
+                    reads["n"] += 1
+                    if reads["n"] == 2:  # the read after the mechanism was applied
+                        raise self.ledger.stop_at_once(
+                            "server POST: HTTP 429; stopping at once", rate_limited=True
+                        )
+            return None
+
+        run, server, _, clock = family_run()
+        self.ledger = run.ledger
+        server.handlers.insert(0, limited)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-ban"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-ban")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertTrue(case.observed.startswith("applied: 201"), case.observed)
+        self.assertEqual(case.detail["apply"]["answer"], "201")
+        self.assertIn("GuardrailStop", case.detail["interrupted"])
+
+    def test_a_stop_in_the_retention_read_keeps_what_the_channel_showed(self) -> None:
+        # The channel's first message is gone; a rate limit then stops the run in the
+        # members read that follows the retention read. DOES NOT MEET is kept.
+        def limited(method: str, path: str, body: Any, params: Any) -> Any:
+            if method == "GET" and path == "/api/v2/chat/members" and "-ch-remove" in str(params):
+                raise self.ledger.stop_at_once(
+                    "server GET: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        run, server, _, clock = family_run({"history_lost": True})
+        self.ledger = run.ledger
+        server.handlers.insert(0, limited)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-remove"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-remove")
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+        self.assertIn("not retained", case.reason)
+        self.assertIn("GuardrailStop", case.detail["interrupted"])
+
+
+class Missing404Test(unittest.TestCase):
+    """P06.1-I2b: a 404 code 16 counts as ended only under the three conditions the
+    manager decided and the I2a review refined."""
+
+    def test_the_rule(self) -> None:
+        gone = Answer("not-found", 404, 16, record(404, {"code": 16, "message": "u1 was removed"}))
+        ended = mechanisms.dimension(OK, gone, other_ok=True, missing="membership", uid="u1")
+        self.assertEqual(ended["status"], mechanisms.ENDED)
+        self.assertIn("u1 was removed", ended["why"])
+        self.assertIn("the other member's identical request still succeeded", ended["why"])
+        # Each condition on its own is not enough: the other member's request did not
+        # succeed (or was not collected), the mechanism removes nothing the request
+        # needs, the message names neither the membership nor the user, no control before.
+        for kwargs in (
+            {"other_ok": False, "missing": "membership", "uid": "u1"},
+            {"other_ok": None, "missing": "membership", "uid": "u1"},
+            {"other_ok": True, "missing": None, "uid": "u1"},
+        ):
+            shown = mechanisms.dimension(OK, gone, **kwargs)
+            self.assertEqual(shown["status"], mechanisms.NOT_SHOWN, kwargs)
+            self.assertIn("u1 was removed", shown["why"], kwargs)  # the message is kept
+        unnamed = Answer("not-found", 404, 16, record(404, {"code": 16, "message": "nope"}))
+        shown = mechanisms.dimension(OK, unnamed, other_ok=True, missing="membership", uid="u1")
+        self.assertEqual(shown["status"], mechanisms.NOT_SHOWN)
+        self.assertEqual(
+            mechanisms.dimension(DENIED, gone, other_ok=True, missing="user", uid="u1")["status"],
+            mechanisms.NOT_SHOWN,
+        )
+        # Only Stream code 16, and only a 404.
+        other_code = Answer("not-found", 404, 4, record(404, {"code": 4, "message": "u1 gone"}))
+        self.assertEqual(
+            mechanisms.dimension(OK, other_code, other_ok=True, missing="user", uid="u1")["status"],
+            mechanisms.NOT_SHOWN,
+        )
+        # The message may name the missing thing by its noun instead of the ID.
+        named = Answer(
+            "not-found", 404, 16, record(404, {"code": 16, "message": "the user x was deactivated"})
+        )
+        self.assertEqual(
+            mechanisms.dimension(OK, named, other_ok=True, missing="user", uid="u1")["status"],
+            mechanisms.ENDED,
+        )
+        self.assertEqual(
+            mechanisms.dimension(OK, named, other_ok=True, missing="membership", uid="u1")[
+                "status"
+            ],
+            mechanisms.NOT_SHOWN,
+        )
+        # The token dimensions follow the same rule, on the connect and on the read.
+        token = mechanisms.token_dimension(
+            OK, OK, gone, None, other_ok=True, missing="user", uid="u1"
+        )
+        self.assertEqual(token["status"], mechanisms.ENDED)
+        token = mechanisms.token_dimension(
+            OK, OK, OK, gone, other_ok=True, missing="user", uid="u1"
+        )
+        self.assertEqual(token["status"], mechanisms.ENDED)
+        self.assertEqual(
+            mechanisms.token_dimension(
+                OK, OK, gone, None, other_ok=False, missing="user", uid="u1"
+            )["status"],
+            mechanisms.NOT_SHOWN,
+        )
+        # The mechanisms it applies to: removal (the membership) and deactivation (the user).
+        self.assertEqual(mechanisms.REMOVES, {"remove": "membership", "deactivate": "user"})
+
+    def test_a_removed_members_own_write_404_ends_the_dimension(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, removed_member_write_404=True)
+        case = row(run, "RV-remove")
+        s15 = case.detail["table"]["M1"]["s15"]
+        self.assertEqual(s15["status"], mechanisms.ENDED)
+        self.assertIn("404 / code 16 after the membership was removed", s15["why"])
+        self.assertIn("{M1} was removed: not a member of glow-match:{CH_remove}", s15["why"])
+        # Stream's message is kept in the row, with the run's identifiers generalized.
+        self.assertEqual(
+            case.detail["after"]["M1"]["messages"]["s15"],
+            "{M1} was removed: not a member of glow-match:{CH_remove}",
+        )
+        self.assertEqual(case.verdict, mechanisms.MEETS)
+
+    def test_a_404_without_the_other_members_success_stays_not_shown(self) -> None:
+        run, _, world, clock = family_run({"removed_member_write_404": True})
+        original = world.behaviour
+        writes = {"M2": 0}
+
+        def other_fails(session: Any, op: str, params: dict[str, Any]) -> Any:
+            if (
+                session.label == "M2"
+                and op == "call"
+                and params.get("method") == "updateMemberPartial"
+            ):
+                writes["M2"] += 1
+                if writes["M2"] == 2:  # M2's write after the mechanism
+                    return world.reply(500, 0, response={"message": "internal"})
+            return original(session, op, params)
+
+        world.behaviour = other_fails  # type: ignore[method-assign]
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"RV-remove"})
+            run.finish(cleanup=True)
+        case = row(run, "RV-remove")
+        s15 = case.detail["table"]["M1"]["s15"]
+        self.assertEqual(s15["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("refusal not attributable (not-found)", s15["why"])
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_a_404_whose_message_names_nothing_stays_not_shown(self) -> None:
+        run, _, _, _ = run_families(
+            {"RV-remove"}, removed_member_write_404=True, missing_message="does not exist"
+        )
+        case = row(run, "RV-remove")
+        s15 = case.detail["table"]["M1"]["s15"]
+        self.assertEqual(s15["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("'does not exist'", s15["why"])
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+
+    def test_a_deactivated_users_404s_end_its_dimensions(self) -> None:
+        run, _, _, _ = run_families({"SD-deactivate"}, deactivated_answers_404=True)
+        case = row(run, "SD-deactivate")
+        table = case.detail["table"]["S"]
+        for dim in ("rest", "s15", "token_reuse", "token_issued_after"):
+            self.assertEqual(table[dim]["status"], mechanisms.ENDED, dim)
+            self.assertIn("404 / code 16 after the user was removed", table[dim]["why"], dim)
+            self.assertIn("the user {S} was deactivated", table[dim]["why"], dim)
+        messages = case.detail["after"]["S"]["messages"]
+        self.assertEqual(messages["rest"], "the user {S} was deactivated")
+        self.assertEqual(messages["token_reuse.connect"], "the user {S} was deactivated")
+        self.assertEqual(messages["token_issued_after.connect"], "the user {S} was deactivated")
+        self.assertEqual(case.detail["token_issued_after"]["connect"], "404 / code 16")
+        self.assertEqual(case.verdict, mechanisms.MEETS)
+
+    def test_a_404_after_another_mechanism_stays_not_shown(self) -> None:
+        # The same 404 with the same message after a ban: the ban removes nothing the
+        # write needs, so the rule does not apply.
+        run, _, world, clock = family_run({"removed_member_write_404": True})
+        original = world.behaviour
+
+        def banned_404(session: Any, op: str, params: dict[str, Any]) -> Any:
+            if (
+                session.label == "M1"
+                and op == "call"
+                and params.get("method") == "updateMemberPartial"
+                and world.banned.get(f"{run.prefix}-ch-ban")
+            ):
+                message = world.missing_message.format(uid=run.ctx["M1"], cid="x")
+                return world.reply(404, 16, response={"code": 16, "message": message})
+            return original(session, op, params)
+
+        world.behaviour = banned_404  # type: ignore[method-assign]
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            run.run_matrix({"RV-ban"})
+            run.finish(cleanup=True)
+        s15 = row(run, "RV-ban").detail["table"]["M1"]["s15"]
+        self.assertEqual(s15["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("refusal not attributable", s15["why"])
+
+
+class ListenerAndRetentionTest(unittest.TestCase):
+    """P06.1-I2b, the I2a review's nit 3: the listener and the retention read."""
+
+    def test_a_probe_that_reaches_no_session_leaves_the_subscription_not_shown(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, after_probe_lost=True)
+        case = row(run, "RV-remove")
+        ws = case.detail["table"]["M1"]["ws"]
+        self.assertEqual(ws["status"], mechanisms.NOT_SHOWN)
+        self.assertIn("no listener received the probe after the mechanism", ws["why"])
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("ws for M1", case.reason)
+
+    def test_a_channel_whose_first_message_is_gone_does_not_meet_the_policy(self) -> None:
+        run, _, _, _ = run_families({"RV-remove"}, history_lost=True)
+        case = row(run, "RV-remove")
+        retention = case.detail["retention"]
+        self.assertTrue(retention["channel_exists"])
+        self.assertFalse(retention["history_retained"])
+        self.assertEqual(case.verdict, mechanisms.FALLS_SHORT)
+        self.assertIn("the channel's messages are not retained", case.reason)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from getstream.models import UserRequest
+from getstream.models import ReactionRequest, UserRequest
 
 import tests  # noqa: F401
 from glow_stream_proof import cli, guard, matrix
@@ -230,10 +230,28 @@ class RefusalTest(unittest.TestCase):
     def test_a_message_poll_or_group_must_be_the_runs(self) -> None:
         self.assertIsNone(refusal("DELETE", "/messages/m-recorded"))
         self.assertIn("a message this run did not record", str(refusal("DELETE", "/messages/m-x")))
-        self.assertIsNone(refusal("POST", "/messages/m-x", {"message": {"user_id": A}}))
-        self.assertIsNotNone(
-            refusal("POST", "/messages/m-x", {"message": {"user_id": FOREIGN_USER}})
+        # Every mutating request on a message needs a message the run recorded, not only
+        # the delete (P06.1-I2b; the I2a review's nit 4).
+        mutating = (
+            ("POST", "/messages/m-x", {"message": {"id": "m-x", "user_id": A}}),
+            ("PUT", "/messages/m-x", {"set": {"pinned": False}, "user_id": A}),
+            ("POST", "/messages/m-x/action", {"form_data": {}, "user_id": A}),
+            ("POST", "/messages/m-x/reaction", {"reaction": {"type": "love", "user_id": A}}),
+            ("DELETE", "/messages/m-x/reaction/love", None),
+            ("POST", "/messages/m-x/undelete", {"message": {"user_id": A}}),
+            ("POST", "/api/v2/chat/messages/m-x/polls/poll-recorded/vote", {"user_id": A}),
         )
+        for method, path, body in mutating:
+            refused = refusal(method, path, body, {"user_id": A} if body is None else None)
+            self.assertIn("a message this run did not record", str(refused), (method, path))
+            owned = refusal(method, path.replace("m-x", "m-recorded"), body, None)
+            self.assertIsNone(owned, (method, path))
+        self.assertIsNotNone(
+            refusal("POST", "/messages/m-recorded", {"message": {"user_id": FOREIGN_USER}})
+        )
+        # A read of a message the run did not record is never refused.
+        self.assertIsNone(refusal("GET", "/messages/m-x"))
+        self.assertIsNone(refusal("GET", "/messages/m-x/replies"))
         self.assertIsNone(refusal("DELETE", "/polls/poll-recorded", None, {"user_id": A}))
         self.assertIn("a poll this run did not record", str(refusal("DELETE", "/polls/other")))
         # A poll update names its poll in the body.
@@ -311,6 +329,48 @@ class ServerHookTest(unittest.TestCase):
 
     def test_a_refusal_stops_the_run(self) -> None:
         self.assertTrue(issubclass(GuardRefused, RunStopped))
+
+    def test_the_message_rule_in_the_real_hook(self) -> None:
+        """P06.1-I2b, nit 4 and DM-05 finding 6 (b): the real ``ServerApi`` hook refuses a
+        change to a message the run did not record, raw and typed alike, and lets the
+        server replays that are the controls of S3a, S3b, S4a, S4b, S5 and S8 through
+        with a recorded message ID."""
+        api, seen = api_answering()
+        scope = Scope(RUN)
+        api.guard = lambda method, path, body, params: guard.refusal(
+            method, path, body, params, scope
+        )
+        try:
+            refused_calls = (
+                lambda: api.raw("POST", "/messages/m-x", body={"message": {"user_id": A}}),
+                lambda: api.raw("PUT", "/messages/m-x", body={"set": {"pinned": True}}),
+                lambda: api.raw("POST", "/messages/m-x/reaction", body={"reaction": {}}),
+                lambda: api.sdk.chat.update_message_partial(id="m-x", user_id=A, set={"x": 1}),
+                lambda: api.sdk.chat.send_reaction(
+                    id="m-x", reaction=ReactionRequest(type="love", user_id=A)
+                ),
+            )
+            for call in refused_calls:
+                with self.assertRaises(GuardRefused):
+                    call()
+            self.assertEqual(seen, [])
+            # The controls' shapes, on a recorded message: the edit (S3a, S3b), the
+            # reaction and its removal (S4a, S4b, S5) and the pin (S8).
+            api.raw(
+                "POST", "/messages/m-recorded", body={"message": {"id": "m-recorded", "user_id": A}}
+            )
+            api.raw(
+                "POST",
+                "/messages/m-recorded/reaction",
+                body={"reaction": {"type": "love", "user_id": A}},
+            )
+            api.raw("DELETE", "/messages/m-recorded/reaction/love", params={"user_id": A})
+            api.raw("PUT", "/messages/m-recorded", body={"set": {"pinned": True}, "user_id": A})
+            api.sdk.chat.update_message_partial(id="m-recorded", user_id=A, set={"pinned": False})
+        finally:
+            api.close()
+        self.assertEqual(len(seen), 5)
+        self.assertTrue(all("m-recorded" in path for path in seen), seen)
 
 
 class GuardedRunTest(unittest.TestCase):

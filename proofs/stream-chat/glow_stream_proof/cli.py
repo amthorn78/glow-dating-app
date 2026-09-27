@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -33,10 +34,14 @@ def _stamp() -> str:
 
 
 class Context:
-    def __init__(self) -> None:
-        self.credentials: ServerCredentials = load_server_credentials(os.environ)
+    def __init__(self, environ: Mapping[str, str] | None = None) -> None:
+        self.credentials: ServerCredentials = load_server_credentials(
+            os.environ if environ is None else environ
+        )
         self.secrets = [self.credentials.secret()]
-        self.redactor = Redactor(self.secrets)
+        # The API key is removed from free text too (P06.1-I2b): Stream's code-43
+        # message quotes it.
+        self.redactor = Redactor(self.secrets, api_key=self.credentials.api_key)
         self.ledger = UsageLedger.load(LEDGER)
         self.api = ServerApi(self.credentials, self.ledger, self.redactor)
 
@@ -250,6 +255,14 @@ def cmd_verify_clean(ctx: Context) -> int:
         remaining = listed[f"remaining_{key}"]
         shown = remaining if remaining is not None else listed[f"{key}_listing"]
         ctx.say(f"{key} remaining: {shown}")
+    if listed["remaining_polls"] is None:
+        # Stream's server-side Query Polls needs a user, and the proof never uses the
+        # dashboard user; a run's cleanup lists polls as each of its own users before
+        # their delete and reads each recorded poll by ID (P06.1-I2b).
+        ctx.say(
+            "polls: the standalone listing needs a user; a run's cleanup lists polls as each "
+            "of its own users before their delete and reads each recorded poll by ID"
+        )
     clean = not proof_users and not channels
     clean = clean and listed["remaining_polls"] == [] and listed["remaining_user_groups"] == []
     return 0 if clean else 1

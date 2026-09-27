@@ -69,6 +69,10 @@ class FakeServer:
     config_has_grants: bool = True
     # As on ServerApi: asked before every request is counted or sent (P06.1-I2a).
     guard: Guard | None = None
+    # Polls that exist (P06.1-I2b): created by POST /polls, gone after DELETE; the
+    # listing needs a user_id, as Stream's server-side Query Polls does.
+    polls: set[str] = field(default_factory=set)
+    poll_listing_needs_user: bool = True
 
     def __post_init__(self) -> None:
         self.sdk = SimpleNamespace(
@@ -200,12 +204,24 @@ class FakeServer:
         if path.endswith("/delete"):
             return ok(method, path, {"task_id": "t1"})
         if path == "/polls" and method == "POST":
+            self.polls.add("p1")
             return ok(method, path, {"poll": {"id": "p1", "options": [{"id": "o1"}]}})
         if path == "/api/v2/polls/query":
-            return ok(method, path, {"polls": []}, 201)
+            if self.poll_listing_needs_user and not (params or {}).get("user_id"):
+                # As Stream's server-side Query Polls (I2a's live run).
+                message = "either user or user_id must be provided when using server side auth."
+                return error(method, path, 400, 4, f"QueryPolls failed with error: {message!r}")
+            return ok(method, path, {"polls": [{"id": p} for p in sorted(self.polls)]}, 201)
+        if path.startswith("/api/v2/polls/") and method == "GET":
+            poll_id = path.rsplit("/", 1)[-1]
+            if poll_id in self.polls:
+                return ok(method, path, {"poll": {"id": poll_id}}, 200)
+            return error(method, path, 404, 16, f"poll {poll_id} does not exist")
         if path == "/api/v2/usergroups" and method == "GET":
             return ok(method, path, {"user_groups": []}, 200)
         if method == "DELETE":
+            if path.startswith("/polls/"):
+                self.polls.discard(path.rsplit("/", 1)[-1])
             return ok(method, path, {}, 200)
         if path.endswith("/message"):
             return ok(method, path, {"message": {"id": "m-poll"}})
@@ -294,8 +310,10 @@ def local_error(message: str = "local SDK error", status: int | None = 403) -> R
     return Reply(False, None, {"status": status, "code": 17, "message": message, "kind": "error"})
 
 
-def ws_refused(status: int = 403, code: int = 17, kind: str = "ws-api") -> Reply:
-    return Reply(False, None, {"status": status, "code": code, "message": "ws no", "kind": kind})
+def ws_refused(
+    status: int = 403, code: int = 17, kind: str = "ws-api", message: str = "ws no"
+) -> Reply:
+    return Reply(False, None, {"status": status, "code": code, "message": message, "kind": kind})
 
 
 Behaviour = Callable[["FakeSession", str, dict[str, Any]], Reply | None]

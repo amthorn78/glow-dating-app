@@ -68,6 +68,10 @@ I2 = "glow_stream_proof/i2a.py"
 AS = "glow_stream_proof/app_send.py"
 TMX = "tests.test_mechanisms."
 TI2 = "tests.test_i2a."
+# P06.1-I2b.
+MT = "glow_stream_proof/matrix.py"
+TCE = "tests.test_credentials_and_client_env."
+TCL = "tests.test_cleanup."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -1817,7 +1821,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 G,
-                '        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):\n',
+                "        if len(parts) >= 2 and parts[1] not in _KEYWORDS and not scope.owns_message(parts[1]):\n",
                 "        if False:\n",
             )
         ],
@@ -2263,7 +2267,13 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2a step 2 delete: the hard-deleted user is not named at cleanup",
-        [(MX, "                run.users.remove(affected_id)\n", "                pass\n")],
+        [
+            (
+                MX,
+                "                run.users.remove(run.ctx[mech.affected])\n",
+                "                pass\n",
+            )
+        ],
         [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
     ),
     (
@@ -2424,8 +2434,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 MX,
-                '        elif mech.scope == "account":\n            self.fresh_token()\n',
-                "        elif False:\n            self.fresh_token()\n",
+                '            elif mech.scope == "account":\n                self.fresh_token()\n',
+                "            elif False:\n                self.fresh_token()\n",
             )
         ],
         [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
@@ -2672,8 +2682,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 MX,
-                '            except ClientSessionEnded as exc:\n                self.after[label]["s15_error"] = run._text(exc)\n',
-                '            except ArithmeticError as exc:\n                self.after[label]["s15_error"] = run._text(exc)\n',
+                '                except ClientSessionEnded as exc:\n                    self.after[label]["s15_error"] = run._text(exc)\n',
+                '                except ArithmeticError as exc:\n                    self.after[label]["s15_error"] = run._text(exc)\n',
             )
         ],
         [TMX + "StopsTest.test_an_ended_client_session_ends_only_its_case"],
@@ -2692,15 +2702,27 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     (
         "I2a review 7: a family's row is kept after each step",
         [
+            # Since P06.1-I2b every part of the step keeps the row (finding 1), so all
+            # four blocks are reverted to show that none does.
             (
                 MX,
-                '        self.step("REST reads and S15 writes made after the mechanism")\n',
-                "        pass\n",
+                '        with self.stepping("REST reads and S15 writes made after the mechanism"):\n',
+                "        if True:\n",
             ),
             (
                 MX,
-                '        self.step("token reuse made after the mechanism")\n',
-                "        pass\n",
+                '        with self.stepping("token reuse made after the mechanism"):\n',
+                "        if True:\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("tokens issued after the mechanism tried"):\n',
+                "        if True:\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("the probe after the mechanism collected"):\n',
+                "        if True:\n",
             ),
         ],
         [
@@ -2766,6 +2788,390 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             "tests.test_run_simulation.SimulationTest.test_guest_reach_runs_on_a_guest_created_server_side"
         ],
+    ),
+    # P06.1-I2b: the I2a review's items, the two rules, the poll listing and the API key.
+    (
+        "I2b finding 1: a stop inside a step keeps the other members' observations",
+        [
+            (
+                MX,
+                '        with self.stepping("REST reads and S15 writes made after the mechanism"):\n',
+                "        if True:\n",
+            )
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_inside_a_step_keeps_the_other_members_observation"],
+    ),
+    (
+        "I2b finding 1: the row says applied once the mechanism's request is answered",
+        [
+            (
+                MX,
+                "        self.observe(\n"
+                '            matrix.Verdict(matrix.INCONCLUSIVE, "applied; nothing observed after it yet"),\n'
+                "            f\"applied: {self.detail['apply']['answer']}\",\n"
+                "        )\n",
+                "        pass\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("applied; the events and the channel after it read"):\n',
+                "        if True:\n",
+            ),
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_after_the_mechanisms_request_keeps_the_row_as_applied"],
+    ),
+    (
+        "I2b finding 1: the retention read keeps the row",
+        [
+            (
+                MX,
+                '            with self.stepping("retention read; the undo not yet made"):\n',
+                "            if True:\n",
+            )
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_in_the_retention_read_keeps_what_the_channel_showed"],
+    ),
+    (
+        "I2b finding 2: two successes are compared by shape, not by size",
+        [
+            (
+                I2,
+                "        text = json.dumps(shape(response), sort_keys=True)\n",
+                '        text = f"keys {sorted(response)}; size {len(json.dumps(response))}"\n',
+            )
+        ],
+        [TI2 + "OracleTest.test_two_successes_are_compared_by_shape_never_by_size"],
+    ),
+    (
+        "I2b finding 2: duration is left out of the shape",
+        [
+            (
+                I2,
+                '_VARYING_KEYS = frozenset({"duration"})\n',
+                "_VARYING_KEYS: frozenset[str] = frozenset()\n",
+            )
+        ],
+        [TI2 + "OracleTest.test_two_successes_are_compared_by_shape_never_by_size"],
+    ),
+    (
+        "I2b: each oracle pair keeps both normalized answers",
+        [
+            (I2, '                "existing_normalized": normalized(found, ids),\n', ""),
+            (I2, '                "missing_normalized": normalized(absent, ids),\n', ""),
+        ],
+        [TI2 + "OracleTest.test_a_refusals_normalized_messages_are_kept"],
+    ),
+    (
+        "I2b: the existence oracle has a sync pair",
+        [
+            (
+                I2,
+                "        pairs.append(\n"
+                "            (\n"
+                '                "sync",\n'
+                "                pr._http_answer(\n"
+                '                    _call(run, "A", "client", "sync", [[f"{T}:{existing}"], run.ctx["run_start"]])\n'
+                "                ),\n"
+                "                pr._http_answer(\n"
+                '                    _call(run, "A", "client", "sync", [[f"{T}:{missing}"], run.ctx["run_start"]])\n'
+                "                ),\n"
+                "            )\n"
+                "        )\n"
+                "        observe()\n",
+                "        pass\n",
+            )
+        ],
+        [TI2 + "OracleTest.test_the_channel_oracle_has_a_sync_pair"],
+    ),
+    (
+        "I2b nit 3: the oracle needs a successful control",
+        [(I2, '    elif control.outcome != "success":\n', "    elif False:\n")],
+        [TI2 + "OracleTest.test_the_oracle_needs_a_successful_control"],
+    ),
+    (
+        "I2b nit 3: a 5xx is not a determinate answer",
+        [
+            (
+                I2,
+                'DETERMINATE = ("success", "auth", "permission", "not-found", "input", "feature")\n',
+                'DETERMINATE = ("success", "auth", "permission", "not-found", "input", "feature", "other")\n',
+            )
+        ],
+        [TI2 + "OracleTest.test_two_different_5xx_answers_are_not_an_oracle"],
+    ),
+    (
+        "I2b nit 3: a write with no answer or a 5xx counts as written",
+        [
+            (
+                I2,
+                '        entry["written"] = answer.outcome not in (*REFUSALS, "feature", "input", "not-found")\n',
+                '        entry["written"] = answer.outcome == "success"\n',
+            )
+        ],
+        [TI2 + "S15MapTest.test_a_write_answered_5xx_is_still_put_back"],
+    ),
+    (
+        "I2b nit 3: OUT-send HOLDS with exactly one transport attempt",
+        [
+            (
+                I2,
+                "        and len(unreachable.attempts) == 1\n",
+                "        and len(unreachable.attempts) >= 1\n",
+            )
+        ],
+        [TI2 + "OutageTest.test_several_transport_attempts_are_inconclusive"],
+    ),
+    (
+        "I2b nit 3: the type of a recorded setting is compared",
+        [
+            (
+                CF,
+                "            elif have != want or type(have) is not type(want):\n",
+                "            elif have != want:\n",
+            )
+        ],
+        [TRS + "test_a_value_of_another_type_is_a_difference"],
+    ),
+    (
+        "I2b nit 3: the token margin applies to every dimension",
+        [
+            (
+                MX,
+                "                for dim in DIMENSIONS:\n",
+                '                for dim in ("rest",):\n',
+            )
+        ],
+        [TMX + "TokenLifetimeTest.test_the_margin_applies_to_every_dimension"],
+    ),
+    (
+        "I2b nit 3: the subscription needs a listener that received the probe",
+        [
+            (
+                MX,
+                "        return any(bool(g) for g in got) if got else None\n",
+                "        return True\n",
+            )
+        ],
+        [
+            TMX
+            + "ListenerAndRetentionTest.test_a_probe_that_reaches_no_session_leaves_the_subscription_not_shown"
+        ],
+    ),
+    (
+        "I2b nit 3: retention needs the channel's first message",
+        [
+            (
+                MX,
+                "            self.retained = self.history_id in ids\n",
+                "            self.retained = True\n",
+            )
+        ],
+        [
+            TMX
+            + "ListenerAndRetentionTest.test_a_channel_whose_first_message_is_gone_does_not_meet_the_policy"
+        ],
+    ),
+    (
+        "I2b nit 4: the guard checks the message for every mutating request",
+        [
+            (
+                G,
+                "        if len(parts) >= 2 and parts[1] not in _KEYWORDS and not scope.owns_message(parts[1]):\n",
+                '        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):\n',
+            )
+        ],
+        [
+            TGU + "RefusalTest.test_a_message_poll_or_group_must_be_the_runs",
+            TGU + "ServerHookTest.test_the_message_rule_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b nit 4: the poll message is the run's own message",
+        [(P, "                self.messages.add(message_id)\n", "                pass\n")],
+        [
+            TA
+            + "ProductionPhaseAnswerTest.test_polls_on_fail_survives_a_production_vote_without_an_answer",
+            TI
+            + "ProceduresKeepWhatTheyObservedTest.test_s10_vote_success_survives_an_error_in_the_server_replay",
+        ],
+    ),
+    (
+        "I2b, the disclosure rule: a term the request carried is left out",
+        [
+            (
+                P,
+                "        scanned = [t for t in terms if t not in carried]\n",
+                "        scanned = list(terms)\n",
+            )
+        ],
+        [TA + "DisclosureRuleTest.test_a_term_the_request_carried_is_not_a_disclosure"],
+    ),
+    (
+        "I2b, the disclosure rule: a carried term matches anywhere in the serialized request",
+        [
+            (
+                MT,
+                '    sent = "\\n".join(serialized_request(r) for r in records)\n',
+                '    sent = "\\n".join(str(r.get("path")) for r in records)\n',
+            )
+        ],
+        [
+            TA + "DisclosureRuleTest.test_a_term_the_request_carried_is_not_a_disclosure",
+            TA + "DisclosureRuleTest.test_the_helpers",
+        ],
+    ),
+    (
+        "I2b, the disclosure rule: where a term was found is kept",
+        [
+            (
+                P,
+                "            for term, paths in matrix.term_paths(answer, leaks).items():\n",
+                "            for term, paths in {}.items():\n",
+            )
+        ],
+        [
+            TA
+            + "DisclosureRuleTest.test_a_term_the_request_did_not_carry_is_a_disclosure_and_its_place_is_kept"
+        ],
+    ),
+    (
+        "I2b, 404 code 16: the other member's identical request must still succeed",
+        [
+            (
+                MX,
+                "    if not other_ok:\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_without_the_other_members_success_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: only where the mechanism removes what the request needs",
+        [
+            (
+                MX,
+                "    if missing is None:\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_after_another_mechanism_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: Stream's message must name the missing membership or user",
+        [
+            (
+                MX,
+                "    if not names_missing(message, missing, uid):\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_whose_message_names_nothing_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: the removal and the deactivation are the mechanisms it applies to",
+        [
+            (
+                MX,
+                'REMOVES: dict[str, str] = {"remove": "membership", "deactivate": "user"}\n',
+                "REMOVES: dict[str, str] = {}\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_a_removed_members_own_write_404_ends_the_dimension",
+            TMX + "Missing404Test.test_a_deactivated_users_404s_end_its_dimensions",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: Stream's message is kept in the row",
+        [
+            (
+                MX,
+                '                "messages": self.refusal_messages(label),\n',
+                '                "messages": {},\n',
+            )
+        ],
+        [TMX + "Missing404Test.test_a_removed_members_own_write_404_ends_the_dimension"],
+    ),
+    (
+        "I2b: a WebSocket refusal keeps Stream's message",
+        [
+            (
+                P,
+                '        note = message if isinstance(message, str) else ""\n',
+                '        note = ""\n',
+            )
+        ],
+        [TMX + "Missing404Test.test_a_deactivated_users_404s_end_its_dimensions"],
+    ),
+    (
+        "I2b: the API key is removed from free text",
+        [
+            (
+                RD,
+                "        if self._api_key:\n            value = value.replace(self._api_key, REDACTED_API_KEY)\n",
+                "        if False:\n            value = value.replace(self._api_key, REDACTED_API_KEY)\n",
+            )
+        ],
+        [
+            "tests.test_redaction.RedactionTest.test_the_api_key_is_removed_from_free_text_when_given",
+            TCE
+            + "ContextRedactionTest.test_the_commands_redactor_removes_the_api_key_from_free_text",
+        ],
+    ),
+    (
+        "I2b: the commands' redactor is given the API key",
+        [
+            (
+                C,
+                "        self.redactor = Redactor(self.secrets, api_key=self.credentials.api_key)\n",
+                "        self.redactor = Redactor(self.secrets)\n",
+            )
+        ],
+        [
+            TCE
+            + "ContextRedactionTest.test_the_commands_redactor_removes_the_api_key_from_free_text"
+        ],
+    ),
+    (
+        "I2b, the poll listing: polls are listed as each of the run's users",
+        [(P, '            ("polls verified", lambda: self._verify_polls(out)),\n', "")],
+        [TCL + "PollListingTest.test_polls_are_listed_as_each_run_user_and_read_by_id"],
+    ),
+    (
+        "I2b, the poll listing: a recorded poll must be gone after its delete",
+        [(P, '        if not str(status).startswith("404"):\n', "        if False:\n")],
+        [TCL + "PollListingTest.test_a_poll_that_survives_its_delete_is_a_problem"],
+    ),
+    (
+        "I2b, the poll listing: no listing as a deactivated user",
+        [
+            (
+                P,
+                "        users = sorted(set(self.users) - self.deactivated_users)\n",
+                "        users = sorted(set(self.users))\n",
+            )
+        ],
+        [TCL + "PollListingTest.test_no_listing_is_made_as_a_deactivated_user"],
+    ),
+    (
+        "I2b, the poll listing: the listing as the run's users stands in for the standalone one",
+        [
+            (
+                P,
+                '        if listed.get("remaining_polls") is None and self.polls_as_users is not None:\n',
+                "        if False:\n",
+            )
+        ],
+        [TCL + "PollListingTest.test_polls_are_listed_as_each_run_user_and_read_by_id"],
     ),
 ]
 

@@ -5,6 +5,7 @@ import jwt
 
 import tests  # noqa: F401
 from glow_stream_proof.redaction import (
+    REDACTED_API_KEY,
     REDACTED_JWT,
     REDACTED_SECRET,
     Redactor,
@@ -110,8 +111,31 @@ class RedactionTest(unittest.TestCase):
             self.assertFalse(is_sensitive_key(name), name)
 
     def test_api_key_is_not_redacted(self) -> None:
-        # The API key is client-safe and may appear in evidence.
+        # The API key is client-safe and may appear in evidence; a redactor not given it
+        # leaves it as it is.
         self.assertEqual(Redactor([SECRET]).text("api_key=abcdefghijkl"), "api_key=abcdefghijkl")
+
+    def test_the_api_key_is_removed_from_free_text_when_given(self) -> None:
+        # P06.1-I2b: Stream's code-43 message quotes the application's API key; a redactor
+        # given the key removes it from free text everywhere, as it does the secret.
+        redactor = Redactor([SECRET], api_key="abcdefghijkl")
+        message = (
+            f"token created using the secret for API key abcdefghijkl; secret {SECRET}; "
+            + _token({"user_id": "u1"})
+        )
+        out = redactor.text(message)
+        self.assertNotIn("abcdefghijkl", out)
+        self.assertIn(REDACTED_API_KEY, out)
+        self.assertIn(REDACTED_SECRET, out)
+        self.assertIn(REDACTED_JWT, out)
+        self.assertEqual(
+            redactor.value({"message": "key abcdefghijkl"}), {"message": f"key {REDACTED_API_KEY}"}
+        )
+        # It is not a leak: the key is client-safe.
+        self.assertEqual(find_leaks("abcdefghijkl", [SECRET]), [])
+        # A token whose characters happen to hold the key stays one whole redacted token.
+        token = "eyJhbGciOiJIUzI1NiJ9.abcdefghijklMNOP.sig"
+        self.assertEqual(redactor.text(token), REDACTED_JWT)
 
 
 class TokenDescriptionTest(unittest.TestCase):

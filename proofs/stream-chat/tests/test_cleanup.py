@@ -187,6 +187,115 @@ class ClientCreatedDataTest(unittest.TestCase):
         )
 
 
+class PollListingTest(unittest.TestCase):
+    """P06.1-I2b, the poll listing (the manager's decision on I2a): the run lists polls
+    as each of its own users before their delete, and reads each recorded poll by ID."""
+
+    def test_polls_are_listed_as_each_run_user_and_read_by_id(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        server.polls.add("p-left")
+        run.polls.append(("p-left", run.ctx["A"]))
+        run.ctx["ctl_poll"] = "p-ctl"
+        server.polls.add("p-ctl")
+        with NoSettle():
+            out = run.cleanup()
+        listings = [
+            (path, params)
+            for method, path, _body in server.calls
+            if path == "/api/v2/polls/query"
+            for params in [None]
+        ]
+        # As A, B, X and D, before the users are deleted, plus the standalone listing of
+        # verify-clean (which Stream refuses without a user).
+        self.assertEqual(len(listings), 5)
+        self.assertEqual(
+            out["polls_listed_as_run_users"],
+            {
+                "users": 4,
+                "deactivated_left_out": 0,
+                "listing": "verified",
+            },
+        )
+        self.assertEqual(
+            out["recorded_polls_after_delete"],
+            # The control poll's ID is generalized like the run's other identifiers.
+            {"p-left": "404 / code 16", "{ctl_poll}": "404 / code 16"},
+        )
+        # The standalone listing needs a user, so the listing as the run's users stands in.
+        self.assertEqual(out["remaining_polls"], [])
+        self.assertIn("listed as each of the run's own users", out["polls_listing"])
+        self.assertEqual(cleanup_problems(out), [])
+        # The listings came before the users' delete.
+        order = [path for _m, path, _b in server.calls]
+        self.assertLess(order.index("/api/v2/polls/query"), order.index("/api/v2/users/delete"))
+
+    def test_a_poll_that_survives_its_delete_is_a_problem(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+
+        def keep(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "DELETE" and path == "/polls/p-stuck":
+                return ok(method, path, {}, 200)  # accepted, but the poll stays
+            return None
+
+        server.handlers.append(keep)
+        server.polls.add("p-stuck")
+        run.polls.append(("p-stuck", run.ctx["A"]))
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(out["recorded_polls_after_delete"], {"p-stuck": "200"})
+        self.assertEqual(out["remaining_polls"], ["p-stuck"])
+        problems = cleanup_problems(out)
+        self.assertTrue(
+            any("recorded poll p-stuck still answers after its delete: 200" in p for p in problems)
+        )
+        self.assertTrue(any("remaining_polls: ['p-stuck']" in p for p in problems))
+
+    def test_a_listing_stream_refuses_leaves_the_polls_not_verified(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+
+        def refuse(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query" and (params or {}).get("user_id") == run.ctx["B"]:
+                return error(method, path, 403, 17, "QueryPolls not allowed")
+            return None
+
+        server.handlers.append(refuse)
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(
+            out["polls_listed_as_run_users"]["listing"],
+            "not verified: HTTP 403 code 17: QueryPolls not allowed",
+        )
+        self.assertIsNone(out["remaining_polls"])
+        self.assertTrue(any("remaining_polls: not verified" in p for p in cleanup_problems(out)))
+
+    def test_no_listing_is_made_as_a_deactivated_user(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        run.deactivated_users.add(run.ctx["D"])
+        with NoSettle():
+            out = run.cleanup()
+        asked = [
+            params
+            for method, path, _b in server.calls
+            if path == "/api/v2/polls/query"
+            for params in [None]
+        ]
+        self.assertEqual(len(asked), 4)  # three users, plus the standalone listing
+        self.assertEqual(out["polls_listed_as_run_users"]["deactivated_left_out"], 1)
+        self.assertEqual(out["polls_listed_as_run_users"]["users"], 3)
+
+
 class PreexistingPollsAndGroupsTest(unittest.TestCase):
     """The review's point 4: only polls and groups that appeared during the run count."""
 

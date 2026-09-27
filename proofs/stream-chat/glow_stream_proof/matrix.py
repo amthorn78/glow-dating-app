@@ -199,6 +199,45 @@ def find_terms(obj: Any, terms: tuple[str, ...] | list[str]) -> list[str]:
     return [t for t in terms if t and t in text]
 
 
+def serialized_request(record: Mapping[str, Any]) -> str:
+    """The request as the client sent it: its path, query and body (P06.1-I2b)."""
+    return json.dumps(
+        {"path": record.get("path"), "params": record.get("params"), "body": record.get("body")},
+        sort_keys=True,
+        default=str,
+    )
+
+
+def carried_terms(records: list[dict[str, Any]], terms: list[str]) -> list[str]:
+    """The terms that appear, as substrings, anywhere in the serialized requests a
+    command sent: the sender already had them, so their presence in an answer discloses
+    nothing (P06.1-I2b; the disclosure rule the manager decided on I2a, with its review's
+    detail: F9-sync carries XD's ID inside the cid string)."""
+    sent = "\n".join(serialized_request(r) for r in records)
+    return [t for t in terms if t and t in sent]
+
+
+def term_paths(obj: Any, terms: list[str], path: str = "") -> dict[str, list[str]]:
+    """Where each term appears in ``obj``: the key names down to the string that holds it,
+    with ``[]`` for a list item (P06.1-I2b: the row keeps where a term was found)."""
+    found: dict[str, list[str]] = {}
+    if isinstance(obj, Mapping):
+        for key, value in obj.items():
+            for term, paths in term_paths(
+                value, terms, f"{path}.{key}" if path else str(key)
+            ).items():
+                found.setdefault(term, []).extend(paths)
+    elif isinstance(obj, list):
+        for item in obj:
+            for term, paths in term_paths(item, terms, f"{path}[]").items():
+                found.setdefault(term, []).extend(paths)
+    elif isinstance(obj, str):
+        for term in terms:
+            if term and term in obj:
+                found.setdefault(term, []).append(path or "(the string itself)")
+    return {t: sorted(set(p)) for t, p in found.items()}
+
+
 @dataclass(frozen=True)
 class Verdict:
     label: str
@@ -1288,7 +1327,7 @@ def _i2a() -> list[Case]:
             calls=40,
         )
         for kind, action in (
-            ("channel", "read, watch and GET XD against a channel that does not exist"),
+            ("channel", "read, watch, GET and sync XD against a channel that does not exist"),
             ("user", "query X, and add X to AB, against a user that does not exist"),
             ("message", "fetch XD's message against a message that does not exist"),
         )

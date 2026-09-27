@@ -449,6 +449,7 @@ class CommandTest(unittest.TestCase):
 
     def test_verify_clean_lists_polls_and_user_groups(self) -> None:
         server = FakeServer(UsageLedger())
+        server.poll_listing_needs_user = False
 
         def leftover_poll(
             method: str, path: str, body: Any, params: dict[str, str] | None
@@ -462,6 +463,19 @@ class CommandTest(unittest.TestCase):
         server.handlers.append(leftover_poll)
         self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
         self.assertIn("polls remaining: ['left']", ctx.lines)
+
+    def test_verify_clean_says_why_the_poll_listing_is_not_verified(self) -> None:
+        # As Stream answers the standalone listing (P06.1-I2b): a user is needed, which
+        # the standalone command has none of; a run's cleanup lists as its own users.
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
+        listing = next(line for line in ctx.lines if line.startswith("polls remaining:"))
+        self.assertIn("not verified: HTTP 400 code 4", listing)
+        self.assertIn("either user or user_id must be provided", listing)
+        self.assertTrue(
+            any(line.startswith("polls: the standalone listing needs a user") for line in ctx.lines)
+        )
 
 
 class AtomicWriteTest(unittest.TestCase):

@@ -15,8 +15,9 @@ The guard goes further in the same direction. Every other request that changes
 something must be of a kind the proof makes, with the same checks on every user
 and channel it names; a channel type may change only in a journalled temporary
 ``glow-match`` toggle; and a request of any other kind is refused (for example
-a batch channel update, a retention policy or a role). A message may be deleted
-only if the run recorded it. Reads (GET and HEAD, and the POST queries in
+a batch channel update, a retention policy or a role). A message may be changed
+or deleted only if the run recorded it (every mutating ``messages/{id}`` path,
+since P06.1-I2b; until then only the delete). Reads (GET and HEAD, and the POST queries in
 :data:`READ_POSTS`) are never refused.
 
 A refusal names the request's shape and the reason, never an identifier the run
@@ -304,7 +305,11 @@ def _reason(
                     channels.append(f"{source['type']}:{source['id']}")
         return _unowned(users, channels, scope) if users else "no user named"
     if family == "messages":
-        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):
+        # Every mutating request on a message the run did not record is refused: an edit
+        # or partial update (POST and PUT), an action, a reaction and its removal, an
+        # undelete and a delete alike (P06.1-I2b; the I2a review's nit 4: until then only
+        # the delete checked the message).
+        if len(parts) >= 2 and parts[1] not in _KEYWORDS and not scope.owns_message(parts[1]):
             return "a message this run did not record"
         return _unowned(users, channels, scope)
     if family == "polls":

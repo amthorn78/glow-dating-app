@@ -192,7 +192,11 @@ def _ws_answer(reply: Reply) -> Answer:
     status, code = error.get("status"), error.get("code")
     if error.get("kind") == "ws-api" and isinstance(status, int):
         code = code if isinstance(code, int) else None
-        return Answer(matrix.classify(status, code), status, code, None)
+        # Stream's message from its error frame is kept as the note, so a 404 code 16 on
+        # a connect can be read (P06.1-I2b).
+        message = error.get("message")
+        note = message if isinstance(message, str) else ""
+        return Answer(matrix.classify(status, code), status, code, None, note)
     return Answer("no-response", None, None, None, _local_note(reply))
 
 
@@ -301,6 +305,8 @@ def _generic(text: str, ctx: Mapping[str, str]) -> str:
 
 _TABLE_NAMES = frozenset(
     {"A", "B", "X", "D", "AB", "XD", "m_a", "m_b", "m_x", "m_ctl", "prefix", "guest_id", "ctl_poll"}
+    # P06.1-I2b: the disclosure rule names the terms a request carried and the terms found.
+    | {"xd_text", "m_a_text", "m_b_text"}
     # P06.1-I2a: the families' users, their names and their channels.
     | {"M1", "M2", "R", "S", "H", "M1_name", "M2_name", "R_name", "S_name", "H_name"}
     # (written out: mechanisms imports this module; tests/test_mechanisms.py checks it)
@@ -391,6 +397,11 @@ class ProofRun:
         # Channels a hard user delete may remove on its own (SD-delete): cleanup checks
         # that each still exists before naming it (P06.1-I2a).
         self.maybe_gone_channels: set[str] = set()
+        # Users a mechanism deactivated: no poll listing is made as them (P06.1-I2b).
+        self.deactivated_users: set[str] = set()
+        # What the poll listing as each of the run's own users showed at cleanup, or None
+        # while it is not verified (P06.1-I2b; the manager's decision on I2a).
+        self.polls_as_users: list[str] | None = None
         # Every server request passes the guard before it is sent (DM-04 finding 1).
         self.api.guard = self._guard_refusal
 
@@ -1439,10 +1450,10 @@ class ProofRun:
         answer = _http_answer(reply)
         outcome = answer.outcome
         request = _request_line(answer.record, self.ctx)
-        leaks = matrix.find_terms(
-            _responses(reply) + [reply.data], matrix.substitute(list(case.leak_terms), self.ctx)
-        )
+        leaks, disclosure = self._disclosure(case, reply)
         detail: dict[str, Any] = {"stream_message": _answer_message(answer, reply)}
+        if disclosure is not None:
+            detail["disclosure"] = disclosure
         if case.expect == "no-leak":
             detail["learned"] = self._learned(reply)
         # A client success on a case that must be refused is undone once the
@@ -1506,6 +1517,31 @@ class ProofRun:
         if undo_owed:
             self._undo_client_success(case, result)
         return result
+
+    def _disclosure(
+        self, case: matrix.Case, reply: Reply
+    ) -> tuple[list[str], dict[str, Any] | None]:
+        """The case's leak terms found in the answers, under the disclosure rule
+        (P06.1-I2b; the manager's decision on I2a, as its review detailed it): a term that
+        appears, as a substring, anywhere in the serialized request (path, query and body)
+        is left out, because the sender already had it; the row keeps the terms the
+        request carried and the key names of where each disclosed term was found."""
+        terms = matrix.substitute(list(case.leak_terms), self.ctx)
+        if not terms:
+            return [], None
+        carried = matrix.carried_terms(reply.requests, terms)
+        scanned = [t for t in terms if t not in carried]
+        answers = _responses(reply) + [reply.data]
+        leaks = matrix.find_terms(answers, scanned)
+        where: dict[str, list[str]] = {}
+        for index, answer in enumerate(answers):
+            label = "data" if index == len(answers) - 1 else f"response[{index}]"
+            for term, paths in matrix.term_paths(answer, leaks).items():
+                where.setdefault(_generic(term, self.ctx), []).extend(f"{label}.{p}" for p in paths)
+        return leaks, {
+            "terms_in_the_request": [_generic(t, self.ctx) for t in carried],
+            "found_at": {t: sorted(set(p)) for t, p in where.items()},
+        }
 
     @staticmethod
     def _case_verdict(
@@ -2371,6 +2407,11 @@ class ProofRun:
                 body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
             )
             not_yet = msg.status == 403 and "polls not enabled" in (msg.message or "").lower()
+            message_id = _dig(msg.body, "message.id") if msg.ok else None
+            if isinstance(message_id, str):
+                # The run's own message: the server's vote on its poll passes the guard's
+                # message rule (P06.1-I2b; the I2a review's nit 4).
+                self.messages.add(message_id)
             if msg.ok or not not_yet or attempt >= S10_ATTEMPTS:
                 return msg, attempt
             time.sleep(S10_RETRY_SECONDS)
@@ -3123,6 +3164,8 @@ class ProofRun:
         steps: list[tuple[str, Callable[[], None]]] = [
             ("polls", lambda: self._delete_polls(out)),
             ("user groups", lambda: self._delete_groups(out)),
+            # Before the users are deleted: the listing needs them (P06.1-I2b).
+            ("polls verified", lambda: self._verify_polls(out)),
             ("channels", lambda: self._delete_channels(out)),
             ("users", lambda: self._delete_users(out)),
             ("deleted-user artifacts", lambda: self._delete_artifacts(out)),
@@ -3141,13 +3184,68 @@ class ProofRun:
         self.cleanup_result = out
         return out
 
-    def _delete_polls(self, out: dict[str, Any]) -> None:
+    def _recorded_polls(self) -> list[tuple[str, str]]:
         polls = list(self.polls)
         if "ctl_poll" in self.ctx:
             polls.append((self.ctx["ctl_poll"], self.ctx["A"]))
-        for poll_id, owner in dict.fromkeys(polls):
+        return list(dict.fromkeys(polls))
+
+    def _delete_polls(self, out: dict[str, Any]) -> None:
+        for poll_id, owner in self._recorded_polls():
             deleted = self.api.raw("DELETE", f"/polls/{poll_id}", params={"user_id": owner})
             out.setdefault("polls", []).append(deleted.status)
+
+    def _verify_polls(self, out: dict[str, Any]) -> None:
+        """Show the run's polls absent (P06.1-I2b; the manager's decision on I2a).
+
+        Stream's server-side Query Polls needs a user (I2a's live run: 400 code 4 without
+        one), and the proof never uses the dashboard user. So the polls are listed as each
+        of the run's own users while those users still exist (a deactivated one left out),
+        and each recorded poll is read by ID after its delete. Whether a listing as a user
+        shows that user's polls or every poll it may see is not documented; under
+        preflight's guarantee that the application holds no other user, every poll of the
+        run was created by, or on behalf of, one of its users, so an empty union of the
+        listings shows that none remains. A listing Stream does not answer with 2xx leaves
+        the polls "not verified", with Stream's message.
+        """
+        listed: set[str] = set()
+        refused: list[str] = []
+        users = sorted(set(self.users) - self.deactivated_users)
+        for uid in users:
+            result = self.api.raw(
+                "POST",
+                "/api/v2/polls/query",
+                body={"filter": {}, "limit": 100},
+                params={"user_id": uid},
+            )
+            items = result.body.get("polls") if isinstance(result.body, dict) else None
+            if result.ok and isinstance(items, list):
+                listed |= {str(i.get("id")) for i in items if isinstance(i, dict)}
+            else:
+                refused.append(
+                    f"HTTP {result.status} code {result.code}"
+                    + (f": {result.message}" if result.message else "")
+                )
+        if users and not refused:
+            self.polls_as_users = sorted(listed)
+            listing = "verified"
+        else:
+            self.polls_as_users = None
+            listing = "not verified: " + (
+                "; ".join(dict.fromkeys(refused)) if refused else "no user to list as"
+            )
+        out["polls_listed_as_run_users"] = {
+            "users": len(users),
+            "deactivated_left_out": len(self.deactivated_users & set(self.users)),
+            "listing": listing,
+        }
+        gone: dict[str, str] = {}
+        for poll_id, owner in self._recorded_polls():
+            read = self.api.raw("GET", f"/api/v2/polls/{poll_id}", params={"user_id": owner})
+            gone[_generic(poll_id, self.ctx)] = f"{read.status}" + (
+                f" / code {read.code}" if read.code else ""
+            )
+        out["recorded_polls_after_delete"] = gone
 
     def _delete_groups(self, out: dict[str, Any]) -> None:
         groups = list(self.groups) + ([self.ctx["ctl_group"]] if "ctl_group" in self.ctx else [])
@@ -3297,6 +3395,11 @@ class ProofRun:
     def _new_polls_and_groups(self) -> dict[str, Any]:
         """Polls and user groups present now that were not there at preflight."""
         listed = list_polls_and_groups(self.api)
+        if listed.get("remaining_polls") is None and self.polls_as_users is not None:
+            # The standalone listing needs a user; the listing as each of the run's own
+            # users, made before they were deleted, stands in for it (P06.1-I2b).
+            listed["remaining_polls"] = list(self.polls_as_users)
+            listed["polls_listing"] = "listed as each of the run's own users before their delete"
         for key in ("polls", "user_groups"):
             now = listed.get(f"remaining_{key}")
             before = self.preexisting.get(f"remaining_{key}")
@@ -3445,6 +3548,10 @@ def cleanup_problems(out: Mapping[str, Any]) -> list[str]:
         failed = [s for s in out.get(key) or [] if not (isinstance(s, int) and 200 <= s < 300)]
         if failed:
             problems.append(f"{key} delete statuses {failed}")
+    for poll_id, status in (out.get("recorded_polls_after_delete") or {}).items():
+        # A recorded poll must be gone once deleted: only a 404 shows it (P06.1-I2b).
+        if not str(status).startswith("404"):
+            problems.append(f"recorded poll {poll_id} still answers after its delete: {status}")
     for delete, task in (
         ("channels_delete", "channels_task"),
         ("users_delete", "users_task"),

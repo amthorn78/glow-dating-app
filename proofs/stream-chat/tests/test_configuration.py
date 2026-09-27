@@ -223,6 +223,24 @@ class RecordedSettingsTest(unittest.TestCase):
         self.assertIs(recorded["guest_user_creation_disabled"], False)
         self.assertEqual(conf.verify(configured(snapshot())), [])
 
+    def test_a_value_of_another_type_is_a_difference(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): 0 == False in Python, so the type is
+        # compared too; a setting that reads as another type has changed.
+        problems = conf.recorded_differences(
+            {"allow_multi_user_devices": 0}, {"allow_multi_user_devices": False}
+        )
+        self.assertEqual(problems, ["allow_multi_user_devices is 0, recorded False"])
+        self.assertEqual(
+            conf.recorded_differences({"webhook_url": None}, {"webhook_url": ""}),
+            ["webhook_url is None, recorded ''"],
+        )
+        self.assertEqual(
+            conf.recorded_differences(
+                {"allow_multi_user_devices": False}, {"allow_multi_user_devices": False}
+            ),
+            [],
+        )
+
     def test_a_setting_the_baseline_did_not_record_may_be_absent_or_empty(self) -> None:
         self.assertNotIn("before_message_send_hook_url", conf.recorded_app_settings())
         empties: tuple[Any, ...] = (None, "", [], {}, False)

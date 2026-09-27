@@ -161,10 +161,42 @@ jobs:
       - name: Inspect image, refuse unsafe modes, smoke loopback and terminate
         run: python3 scripts/container_smoke.py glow-api:ci
 
+  proof:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    name: Stream proof checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: proofs/stream-chat
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.14'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.19.0'
+          package-manager-cache: false
+      - run: npm install --global npm@11.9.0
+        working-directory: ${{ github.workspace }}
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip check
+      - run: npm ci --ignore-scripts
+      # The offline tests run in a clean environment; they assert that no STREAM_* variable
+      # is present, and this job is given none (no secret is needed or referenced).
+      - run: env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 python -m unittest discover -s tests -t .
+      - run: ruff check . && ruff format --check . && mypy
+      - run: for f in client/*.cjs; do node --check "$f"; done
+      - run: python checks/run_plan.py
+
   gate:
     name: Foundation gate
     if: always()
-    needs: [scope, api, mobile, smoke, artifact]
+    needs: [scope, api, mobile, smoke, artifact, proof]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -179,7 +211,7 @@ jobs:
           full = results["scope"]["outputs"].get("full")
           assert full in {"true", "false"}, "Missing classification output"
           expected = "success" if full == "true" else "skipped"
-          for job in ("api", "mobile", "smoke", "artifact"):
+          for job in ("api", "mobile", "smoke", "artifact", "proof"):
               assert results[job]["result"] == expected, f"Unexpected {job} result"
           print("Application checks passed" if full == "true" else "Ordinary documentation: application jobs intentionally skipped")
           PYTHON

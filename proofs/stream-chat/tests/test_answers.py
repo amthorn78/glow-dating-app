@@ -196,6 +196,91 @@ class RequestUnderTestInCasesTest(unittest.TestCase):
         self.assertIn("400 feature error (code 18)", case.reason)
 
 
+class DisclosureRuleTest(unittest.TestCase):
+    """P06.1-I2b, the disclosure rule the manager decided on I2a: a term the request itself
+    carried (as a substring of its path, query or body) discloses nothing; the row keeps
+    the terms the request carried and where each disclosed term was found."""
+
+    def run_f9_sync(self, response: dict[str, Any]) -> CaseResult:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sync":
+                cids = params["args"][0]
+                rec = record(201, response, path="/sync")
+                rec["body"] = {"channel_cids": cids, "last_sync_at": params["args"][1]}
+                return Reply(True, response, None, [rec], api_calls=1)
+            return None
+
+        def x(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sync":
+                found = {"events": [{"message": {"text": "xdmarker" + PREFIX.replace("-", "")}}]}
+                return Reply(True, found, None, [record(201, found, path="/sync")], api_calls=1)
+            return None
+
+        run, _ = make_run(behaviours={"A": a, "X": x})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"F9-sync"})
+        return case_of(run, "F9-sync")
+
+    def test_a_term_the_request_carried_is_not_a_disclosure(self) -> None:
+        # F9-sync: A's request names XD's cid, and Stream echoes it in inaccessible_cids.
+        xd_cid = f"glow-match:{PREFIX}-ch-xd"
+        case = self.run_f9_sync({"inaccessible_cids": [xd_cid], "events": []})
+        self.assertEqual(case.verdict, matrix.HOLDS_FILTERED)
+        disclosure = case.detail["disclosure"]
+        self.assertEqual(disclosure["terms_in_the_request"], ["{XD}"])
+        self.assertEqual(disclosure["found_at"], {})
+
+    def test_a_term_the_request_did_not_carry_is_a_disclosure_and_its_place_is_kept(self) -> None:
+        xd_cid = f"glow-match:{PREFIX}-ch-xd"
+        text = "xdmarker" + PREFIX.replace("-", "")
+        response = {"inaccessible_cids": [xd_cid], "events": [{"message": {"text": text}}]}
+        case = self.run_f9_sync(response)
+        self.assertEqual(case.verdict, matrix.FAIL)
+        self.assertIn("response disclosed: " + text, case.reason)
+        disclosure = case.detail["disclosure"]
+        self.assertEqual(disclosure["terms_in_the_request"], ["{XD}"])
+        self.assertEqual(
+            disclosure["found_at"],
+            {"{xd_text}": ["data.events[].message.text", "response[0].events[].message.text"]},
+        )
+
+    def test_the_helpers(self) -> None:
+        records = [
+            {"path": "/threads/m-1", "params": {"api_key": "<redacted-secret>"}, "body": None}
+        ]
+        self.assertEqual(matrix.carried_terms(records, ["m-1", "xd-text", "ch-xd"]), ["m-1"])
+        cid_record = [
+            {"path": "/sync", "params": {}, "body": {"channel_cids": ["glow-match:ch-xd"]}}
+        ]
+        self.assertEqual(matrix.carried_terms(cid_record, ["ch-xd", "m-1"]), ["ch-xd"])
+        obj = {"results": [{"message": {"text": "has xd-text"}, "cid": "glow-match:ch-xd"}], "n": 1}
+        self.assertEqual(
+            matrix.term_paths(obj, ["xd-text", "ch-xd", "absent"]),
+            {"xd-text": ["results[].message.text"], "ch-xd": ["results[].cid"]},
+        )
+
+        # F9-thread's shape: A and X get the same 404 whose message names the message ID
+        # A sent in the path; nothing is disclosed.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getThread":
+                message_id = params["args"][0]
+                body = {"code": 16, "message": f'Thread with id "{message_id}" doesn\'t exist'}
+                rec = record(404, body, path=f"/threads/{message_id}", method="GET")
+                error = {"status": 404, "code": 16, "message": body["message"], "kind": "api"}
+                return Reply(False, None, error, [rec], api_calls=1)
+            return None
+
+        run, _ = make_run(behaviours={"A": a, "X": a})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"F9-thread"})
+        case = case_of(run, "F9-thread")
+        self.assertNotEqual(case.verdict, matrix.FAIL)
+        self.assertNotIn("disclosed", case.reason)
+        self.assertEqual(case.detail["disclosure"]["terms_in_the_request"], ["{m_x}"])
+
+
 class AnonymousConnectWithoutAnswerTest(unittest.TestCase):
     """The review's nit: an anonymous connect that never answered is not a KeyError."""
 

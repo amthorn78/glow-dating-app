@@ -879,17 +879,43 @@ def invite(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
 # -- the existence oracle ------------------------------------------------------------------
 
 
+# Response fields that vary between two identical answers and tell a client nothing:
+# every Stream response carries ``duration`` (the I2a review's finding 2).
+_VARYING_KEYS = frozenset({"duration"})
+
+
+def shape(value: Any) -> Any:
+    """What a success's response tells a client, without its values: its key names,
+    each list's length, and the type of each scalar; ``duration`` left out at every
+    level (P06.1-I2b; the I2a review's finding 2: two identical successes must never
+    differ by their size)."""
+    if isinstance(value, Mapping):
+        return {str(k): shape(v) for k, v in sorted(value.items()) if str(k) not in _VARYING_KEYS}
+    if isinstance(value, list):
+        return f"list[{len(value)}]"
+    if value is None:
+        return "null"
+    return type(value).__name__
+
+
 def _normal(answer: pr.Answer, ids: tuple[str, ...]) -> tuple[Any, ...]:
-    """What a client can tell from an answer: status, code and message, IDs replaced."""
+    """What a client can tell from an answer: status, code and message, IDs replaced;
+    for a success, the response's shape (:func:`shape`)."""
     response = answer.record.get("response") if answer.record else None
     message = response.get("message") if isinstance(response, dict) else None
     text = str(message or "")
     for identifier in ids:
         text = text.replace(identifier, "{id}")
     if answer.outcome == "success" and isinstance(response, dict):
-        # Two successes differ when they return different amounts of data.
-        text = f"keys {sorted(response)}; size {len(json.dumps(response))}"
+        text = json.dumps(shape(response), sort_keys=True)
     return answer.status, answer.code, text
+
+
+def normalized(answer: pr.Answer, ids: tuple[str, ...]) -> str:
+    """The normalized answer as the row keeps it, so a FAIL can be read (P06.1-I2b)."""
+    status, code, text = _normal(answer, ids)
+    head = f"{status}" + (f" / code {code}" if code is not None else "")
+    return f"{head}: {text}" if text else head
 
 
 # Outcomes a pair can be judged on: Stream answered, and the answer is classified.
@@ -938,6 +964,9 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
             judged[name] = {
                 "existing": pr._observed(found),
                 "missing": pr._observed(absent),
+                # Both normalized answers, so a FAIL on the text can be read (P06.1-I2b).
+                "existing_normalized": normalized(found, ids),
+                "missing_normalized": normalized(absent, ids),
                 "verdict": status,
                 "why": why,
             }
@@ -984,6 +1013,20 @@ def oracle(run: pr.ProofRun, case: matrix.Case, kind: str) -> pr.CaseResult:
                     run._send(
                         run.sessions["A"], "get", max_calls=1, path=f"/channels/{T}/{missing}"
                     )
+                ),
+            )
+        )
+        observe()
+        # Whether sync answers differently for an existing and a missing channel
+        # (P06.1-I2b; the manager's decision on I2a): the cids carry the IDs.
+        pairs.append(
+            (
+                "sync",
+                pr._http_answer(
+                    _call(run, "A", "client", "sync", [[f"{T}:{existing}"], run.ctx["run_start"]])
+                ),
+                pr._http_answer(
+                    _call(run, "A", "client", "sync", [[f"{T}:{missing}"], run.ctx["run_start"]])
                 ),
             )
         )
