@@ -53,6 +53,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-19 | 26 Sep 2026 | accuracy | The DM-04 consultation told the Dev Manager that the Stream variables were not set for its read, and the records said "No Stream variables"; its container, started before OD-28, holds them, as AM3-17 had found for the manager's own | The Dev Manager, DM-04 finding 10 |
 | AM3-20 | 26 Sep 2026 | accuracy | Told Nathan that TypeSafe "only scores the level and can't pick a model". Its Choice questions can pick one, and the v4 request already asks one | Nathan |
 | AM3-21 | 27 Sep 2026 | accuracy | A Notion usage-log row said the manager had corrected nit 6's line reference in the I2a review; the evidence record keeps that reference | App Manager 3, re-reading the row |
+| AM4-01 | 27 Sep 2026 | process | The first report to Nathan listed two standing items as "waiting on you" without saying what they were or what he could do; he would not send the I2b prompt while they stood | Nathan |
 
 ## App Manager 2
 
@@ -312,3 +313,14 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** the row misstated the record for about a minute.
 - **Correction:** the note was rewritten from the evidence record at about 01:22 UTC and read back.
 - **Prevention:** write a Notion note from the committed record, not from memory of the work. The Notion checklist's readback step ("compare it with what was intended") compares with that record.
+
+## App Manager 4
+
+### AM4-01 — Two unexplained items put to Nathan (process)
+
+- **What happened:** App Manager 4's first report, which gave Nathan revision 2 of the I2b prompt, carried a line "Waiting on you, standing: confirmation of the shared-restore risk ADR 0004 records as accepted; the HDE contract date (OD-23). Neither blocks I2b." It copied the handoff's waiting checkpoint without saying what either item was, what would break without it, or what Nathan could do. The reporting guidance the start prompt names says a request is never phrased as an observation, and that an item is put to Nathan only with what it does, its impact, the options and a recommendation.
+- **Caught by:** Nathan: *"I don't know enough about what this means. If you have questions, they need to go to dev manager. I am not sending any implementation prompts with mysterious outstanding items"*.
+- **Effect:** Nathan did not start I2b from that message. No record or prompt was wrong.
+- **Correction:** his direction is OD-32. Both items leave the waiting checkpoint: ADR 0004's accepted restore risk is a question for the Dev Manager's close-out read, and the HDE contract date stays in Nathan's own process, where OD-23 put it. The prompt was given again, alone.
+- **Prevention:** OD-32's rule in the manager workflow and the start prompt: every item put to Nathan is explained or not put; questions go to the Dev Manager first.
+

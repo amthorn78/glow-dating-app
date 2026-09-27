@@ -15,7 +15,7 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy on its own (I2a).
     - **Done:** DM-05: approved with conditions, all accepted; revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md) applies them as written and needs no further read (DM-03 G2). Disposition: the [review log](dev-manager/README.md), "DM-05".
     - **Next:** I2b, live, from revision 2; Nathan adds the `STREAM_*` variables (OD-28) and runs it.
-- **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): Nathan sets the date in HDE's process; on delivery, record the receipt (its section 6).
+- **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6). Not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-05, Nathan's answers and the dispositions.
 
 ## Waiting checkpoint (27 September 2026)
@@ -23,8 +23,7 @@ This file only routes: the current item, what happens next and who waits on whom
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
 | App Manager 4 | Nathan | I2b's report, from revision 2 of its prompt | Nothing else starts (OD-29); ask Nathan for the session's state |
-| App Manager 4 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
-| App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's too) and of the HDE contract request, each a later step | PR26 cannot merge without the reads |
+| App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
 
 ## Next actions
 
