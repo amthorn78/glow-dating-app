@@ -3648,7 +3648,7 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
 5. **Fix reversals** (`checks/fix_reversals.py`, from a scratch copy of the directory outside the tree):
    - at the start: "reversals: 342, not demonstrated: 0", exit 0, 15:35:39 to 16:05:29 UTC;
    - at `112011f`: "reversals: 378, not demonstrated: 1", exit 1, 16:38:41 to 17:12:20 UTC. The one was "I2b products: the runner asks the op before a product request is sent": with the product op's own check removed, `EveryOpTest` still passed, because C4's request check now refuses the same requests with the same reasons. The fix is test-only (`b2b9a0b`): `EveryOpTest` also sends a product path carrying a query, which only the op's own check refuses. With the op's check reverted, that command reaches the budget (`'budget' != 'refused'`);
-   - at `b2b9a0b`: @@REV2@@;
+   - **at `b2b9a0b`, the code head: "reversals: 378, not demonstrated: 0", exit 0, 17:14:54 to 17:47:45 UTC** (342 at the start, 36 C4 entries added). Every row OK. The failure reasons read 456 `AssertionError`s and 49 errors each naming the error its reverted fix causes, with 3 test processes stopped by design (Ctrl-C). None failed through a syntax, import or name error;
    - the C4 entries were also run as a subset, with the two "I2b check 6" entries whose pattern moved: 23 at `634dc56` and 35 at `919a383`, "not demonstrated: 0" each time; the full run at `112011f` covers all 36. Every one failed on its test's assertion or on the error its reverted fix causes, none through a syntax, import or name error, none by Ctrl-C. For example:
      - finding 1: `'budget' != 'refused'`;
      - finding 2: `Lists differ: [] != ["video call type default: grants for call_member differ …"]`;
