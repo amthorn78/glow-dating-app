@@ -16,7 +16,7 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Next:** DM-05, the Dev Manager's read of I2b's live [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md), which Nathan carries (OD-25).
     - **Then:** I2b, with DM-05's conditions applied.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
-- **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-04, Nathan's answers and the dispositions.
+- **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-05, Nathan's answers and the dispositions.
 
 ## Waiting checkpoint (27 September 2026)
 
