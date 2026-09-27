@@ -4,7 +4,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Process:** Nathan's manual relay, per the [manager workflow](../planning/manager-workflow.md), with the [Dev Manager](../planning/dev-manager.md) as the second-layer reviewer; Nathan carries their messages by hand (OD-25).
 - **Standing directions:** the [owner-direction register](owner-directions.md). Notion carries a copy of it and of the operating procedure; the repository wins on any difference (OD-26, OD-27).
-- **A new manager** starts from the [next-manager start procedure](../planning/start-prompts/next-manager.md) and reads the [mistakes log](manager-mistakes.md).
+- **A new manager** starts from the [start procedure](../planning/start-prompts/next-manager.md) and reads the [mistakes log](manager-mistakes.md).
 
 ## Now
 
@@ -24,12 +24,12 @@ This file only routes: the current item, what happens next and who waits on whom
 |---|---|---|---|
 | App Manager 4 | Nathan | I2b's report, from revision 2 of its prompt | Nothing else starts (OD-29); ask Nathan for the session's state |
 | App Manager 4 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
-| App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's too) and of the HDE contract request, each as its own later step | PR26 cannot merge without the reads |
+| App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's too) and of the HDE contract request, each a later step | PR26 cannot merge without the reads |
 
 ## Next actions
 
 1. Verify I2b's report against its pushed branch, integrate it and read CI, the new job included; update the CI policy's job names and counts (DM-05 finding 4 (c)). Then I2b's exact-head review prompt, which names the workflow diff and asks the reviewer to confirm from the PR run that the new job ran. After the review, update ADR 0003's conditions (DM-05 finding 5 (b)).
-2. Then the economics discovery (the brief's "Sessions"). Live prompts tell Nathan to add the `STREAM_*` variables first (OD-28).
+2. Then the economics discovery (the brief's "Sessions").
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f`;
    - complete the pre-merge checklist in PR26 (workflow step 7);
@@ -43,7 +43,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches
 
-- **PR26** is not behind `main`. Its code: I1's harness (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`); the rest is Markdown.
+- **PR26** is not behind `main`. Its code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`); the rest is Markdown.
 - Merged into PR26 only: the session branches the brief names (I1, the flake fix, C1, C2, C3 and I2a) and `claude/dev-manager` (the Dev Manager's reports).
 - Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` after PR26 merges.
 - Every other remote branch is merged into `main`.
