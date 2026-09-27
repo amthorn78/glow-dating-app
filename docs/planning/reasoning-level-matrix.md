@@ -1,6 +1,6 @@
 # Reasoning-strength matrix and the TypeSafe request v5
 
-**Status:** in force from 27 September 2026 for every prompt given after it (OD-33). This file is the home of the matrix, of the v5 request and of its pre-registered rule; the Notion page *TypeSafe effort scorer — Glow app usage log* carries a matching copy and the uses table. Where the two differ, this file wins (OD-27).
+**Status:** in force from 27 September 2026 (OD-33, OD-34). This file is the home of the matrix, of the request in force (v6; v5 is kept below as history) and of its pre-registered rule; the Notion page *TypeSafe effort scorer — Glow app usage log* carries a matching copy and the uses table. Where the two differ, this file wins (OD-27).
 
 **Why it exists.** Nathan, 27 September 2026: *"I am feeling less trust about the scoring. There is a huge gap between fable extra high and opus extra high. I want you to make sure all strength levels are researched and included in this matrix for both models. They are Low, Medium, High, Extra, Max, and Ultracode for both models. It's important that your semantic query contains enough information for actual informed decisions. Revise and then re-score the last task."* The earlier requests, v4 (a level) and m1 (a model), sent TypeSafe one paragraph about the work and criteria of one line each; neither said what a level costs or does on either model, and v4's second question was written for another project.
 
@@ -35,9 +35,9 @@ Each cell: the work it fits; then its cost and behaviour. "Measured" figures are
 
 The uses table holds 20 rows (24 to 27 September 2026). Levels run: extra high 11, max 3, high 3, three not yet run. Low and medium were never run and never read by v4 (P(low) 0.00 in every row; P(medium) at most 0.07). Manager and TypeSafe disagreed on the level six times; in every case the higher level was run, and "better call" went by convention to whoever named the level run, never by running the other level. All 17 judged outcomes are "adequate"; "too low" and "too high" have never been recorded, and two sessions that missed things a later pass caught were kept "adequate" because an independent review exists to catch them. So the history cannot rank levels, cannot show that a lower level would have failed or that a higher one was wasted, and holds no session cost or duration figures. Ultracode has never been run here: v4's flag fired six times and was not followed. The Dev Manager's DM-01 finding stands: the scorer gates nothing and has not yet earned its cost. The matrix above therefore rests on Anthropic's published guidance, not on this project's outcomes; the outcomes of the next sessions, recorded against the cell run, are what will test it.
 
-## 4. The request v5
+## 4. The request v5 (superseded by v6 on 27 September 2026; see section 6)
 
-One request replaces v4 and m1 for every prompt given after 27 September 2026. It sends the same one or two sentences describing the session's work (never code, diffs, prompt bodies, records or credentials) and asks three questions: a five-rung `effort` score whose rungs carry the vendor's level definitions and measured anchors; an `orchestration` choice that carries ultracode as what it is, a harness setting; and a `model` choice whose options and trade-off carry price, positioning, latency, predecessor comparisons and classifier facts. Product names do not appear; the options are `most_capable_model` and `strong_lower_cost_model`, as in m1. `POST https://api.typesafe.ai/v1/systemone`, `Content-Type: application/json`, `jev-1.13.0` pinned, no Authorization header (the `Glow app` environment attaches the credential). About 3,100 input tokens per request against 800 to 1,000 for v4 or m1.
+One request replaced v4 and m1 on 27 September 2026 and was itself replaced by v6 the same day, because its max rung was unreachable and it had no ultracode rung. It sends the same one or two sentences describing the session's work (never code, diffs, prompt bodies, records or credentials) and asks three questions: a five-rung `effort` score whose rungs carry the vendor's level definitions and measured anchors; an `orchestration` choice that carries ultracode as what it is, a harness setting; and a `model` choice whose options and trade-off carry price, positioning, latency, predecessor comparisons and classifier facts. Product names do not appear; the options are `most_capable_model` and `strong_lower_cost_model`, as in m1. `POST https://api.typesafe.ai/v1/systemone`, `Content-Type: application/json`, `jev-1.13.0` pinned, no Authorization header (the `Glow app` environment attaches the credential). About 3,100 input tokens per request against 800 to 1,000 for v4 or m1.
 
 **Action-text template** (from the next prompt on; the re-score below used the existing text so that its readings compare with v4's and m1's): one or two sentences that state the object and its size in round independent units (files, endpoints, sources, phases), whether a task list already exists, whether the cause is known, whether a live run of new code occurs, whether a later independent review follows, and whether the work decomposes into many independent units that must be examined or cross-checked separately.
 
@@ -136,7 +136,71 @@ One request replaces v4 and m1 for every prompt given after 27 September 2026. I
 }
 ```
 
-## 5. Runs
+## 6. Request v6 and the six-rung ladder (in force from 27 September 2026, OD-34)
+
+**Why v5 was replaced the same day.** Nathan: the ladder has six strength levels on each model, low, medium, high, extra high, max and ultracode, and the request must be able to reach the top two. In v5 (and v4) the max rung was worded "no clear procedure", which no review or implementation in this project satisfies, and ultracode was a separate yes/no question about whether one session can hold the work; so in 31 readings max was read once and ultracode never. The manager's own judgement of model strength carries no weight (Nathan, 27 September: he wants the TypeSafe reading, and no evidence exists that an agent judges strength well; see the sources at the end of section 7). The manager also overrode Nathan's ladder by calling ultracode "not a sixth level"; that is corrected here (AM4-04).
+
+**How v6 was built.** A second research workflow (16 agents, 2.7 million tokens, 72 minutes) collected third-party measurements for every level on both models and for multi-agent orchestration, with a skeptic re-opening every source; three request designs were then written from that evidence and each was **tested live against the scorer** on the recorded project texts and on synthetic archetypes, iterated at most three times, then attacked by a hostile reviewer who re-ran the tests. The manager chose the "stakes ladder" design, the only single-question design whose top rung held when the archetype texts' cross-checking vocabulary was stripped. The request body lives in the skill `.claude/skills/typesafe-scoring/request-v6.json` and is immutable; a change is v7.
+
+**The ladder.** One `effort` score over six rungs, low, medium, high, extra high, max, ultracode, ordered by the cost of a miss and by how much later work rests on the result, not by whether a procedure exists; each rung text carries the independent figures below and the use cases third parties report. Ultracode is rung six: Nathan's top strength level; in Claude Code the many-agent workflow setting (extra high per request, a dynamic workflow of agents). One `model` choice, `most_capable_model` (Fable 5.1) against `strong_lower_cost_model` (Opus 5.5), with third-party price, index, speed and head-to-head facts. About 4,300 input tokens per request.
+
+**Pre-registered rule** (in the script, `scripts/score.py`): rung = nearest to the score, halves up (0.5 medium, 1.5 high, 2.5 extra high, 3.5 max, 4.5 ultracode); model = Fable 5.1 if P(most_capable_model) is 0.5 or more; cell = (model, rung). Recorded, never used: every rung probability, both model probabilities, both confidences, a "boundary" flag (score within 0.10 of a cut, or the top two rungs within 0.20) and a "model near tie" flag (P between 0.40 and 0.60). Run-to-run noise on identical text is about 0.05.
+
+**Acceptance, tested live before adoption (design and hostile-review runs, 27 September 2026, 10:40 to 11:05 UTC).** Max was read on the I2b review text (3.75 to 3.80, P(max) 0.79 to 0.82) and on the archetype "first offline review of a new 9,000-line auth service" (3.99); ultracode on the archetype "40-service pre-launch security audit" (4.95, P 0.96) and on the same text with every cross-checking phrase removed (4.91); the recorded correction passes stayed at high (C1 2.25, C3 2.40), a documented one-file fix read medium (1.06) and recording given answers read low (0.01). A probe showed the readings move with the description: the I2b text without its line counts and "new" markers reads extra high (3.04), so the action-text template in section 4 is part of the method.
+
+**Independent evidence per level, both models** (Artificial Analysis Intelligence Index v4.3.2 and its cost per index task; ARC-AGI-2 semi-private, ARC Prize verified):
+
+| Level | Opus 5.5: index / $ per task / ARC-AGI-2 | Fable 5.1: index / $ per task / ARC-AGI-2 |
+|---|---|---|
+| low | 42 / $0.55 / 70.1% | 47 / $2.37 / 78.3% |
+| medium | 51 / $1.34 / 87.5% | 49 / $2.98 / 86.3% |
+| high | 54 / $1.82 / 93.3% | 51 / $3.91 / 88.8% |
+| extra high | 56 / $3.46 / 92.5% | 53 / $5.98 / 90.0% |
+| max | 58 / $5.98 / 91.7% | 53 / $7.63 / 90.0% |
+| ultracode | no independent measurement of the setting on this model | no independent measurement of the setting on this model |
+
+Other independent points used in the rung texts: Vals AI at max, Opus 5.5 69.69% ($22.30 per test, 72 minutes) and Fable 5.1 68.83% ($28.92, 76 minutes), within error; Terminal-Bench 4.0 on Artificial Analysis, Opus 5.5 59.6% at both extra high and max; CodeRabbit, Fable 5.1 low 61.0% recall against high 57.1% on 105 known issues; the kaybenleroll seeded-defect review (one document, n=10 and n=5), where extra high found 0.9 and 0.66 more of 13 defects than high and max found no more than extra high; Dealwatch's orchestration benchmark on a 35,000-line project (orchestration neither helped nor hurt Opus 5.5; Fable 5.1 as orchestrator 1.9 to 3.0 times the cost, 4 of 5 seeded bugs against 3 of 5); the multi-agent review literature on older models (bug detection 32.8% for one agent to 72.4% combined at a 50% false-positive rate; cross-model review 71.6% to 89.7% with no self-review gain). Gaps: no third-party per-level code-review or security-audit measurement at pure API max or extra high for either model; no measured ultracode run on either model; Artificial Analysis rescored its index between 1 and 22 September 2026, so only v4.3.2 figures are used. The full claim sets, with URLs and quotes, are in the manager's session records and summarised in the skill's request text.
+
+**Re-read of every recorded prompt with v6, 27 September 2026, 11:40 to 11:43 UTC.** Rung probabilities in the order low / medium / high / extra high / max / ultracode; model probabilities Fable 5.1 / Opus 5.5. The flake diagnosis has no recorded action text and was not re-read.
+
+| Prompt | Score | Rung by rule | Rung probabilities | Model probabilities | Model by rule | Flags |
+|---|---|---|---|---|---|---|
+| M02-I1 implementation session | 1.87 | high | 0.00 / 0.31 / 0.52 / 0.16 / 0.01 / 0.00 | 0.03 / 0.97 | Opus 5.5 |  |
+| M02 exact-head code and security review | 3.14 | extra high | 0.00 / 0.00 / 0.14 / 0.57 / 0.29 / 0.00 | 0.23 / 0.77 | Opus 5.5 |  |
+| M02-C1 correction session | 2.60 | extra high | 0.00 / 0.01 / 0.44 / 0.49 / 0.06 / 0.00 | 0.08 / 0.92 | Opus 5.5 | boundary |
+| M02 delta review of PR18's final head | 3.04 | extra high | 0.00 / 0.00 / 0.00 / 0.96 / 0.04 / 0.00 | 0.31 / 0.69 | Opus 5.5 |  |
+| App Manager 3 start | 2.77 | extra high | 0.01 / 0.02 / 0.33 / 0.48 / 0.16 / 0.00 | 0.23 / 0.77 | Opus 5.5 | boundary |
+| P06.1-I1 implementation session | 3.97 | max | 0.00 / 0.00 / 0.00 / 0.02 / 0.97 / 0.01 | 0.97 / 0.03 | Fable 5.1 |  |
+| P06.1-I1 exact-head code and security review | 3.98 | max | 0.00 / 0.00 / 0.00 / 0.01 / 0.99 / 0.00 | 0.95 / 0.05 | Fable 5.1 |  |
+| P06.1 flake fix exact-head review | 2.07 | high | 0.00 / 0.12 / 0.69 / 0.19 / 0.00 / 0.00 | 0.03 / 0.97 | Opus 5.5 |  |
+| P06.1-C1 offline correction pass on the I1 harness | 2.24 | high | 0.00 / 0.03 / 0.71 / 0.26 / 0.00 / 0.00 | 0.00 / 1.00 | Opus 5.5 |  |
+| P06.1-C1 exact-head review | 2.74 | extra high | 0.00 / 0.00 / 0.27 / 0.72 / 0.01 / 0.00 | 0.01 / 0.99 | Opus 5.5 |  |
+| P06.1-C2 second offline correction pass on the harness | 2.36 | high | 0.00 / 0.02 / 0.61 / 0.37 / 0.00 / 0.00 | 0.01 / 0.99 | Opus 5.5 |  |
+| P06.1-C2 exact-head review | 2.70 | extra high | 0.00 / 0.01 / 0.30 / 0.68 / 0.01 / 0.00 | 0.02 / 0.98 | Opus 5.5 |  |
+| P06.1-C3 third offline correction pass on the harness | 2.42 | high | 0.00 / 0.02 / 0.54 / 0.43 / 0.01 / 0.00 | 0.01 / 0.99 | Opus 5.5 | boundary |
+| P06.1-C3 exact-head review | 2.76 | extra high | 0.00 / 0.01 / 0.24 / 0.74 / 0.01 / 0.00 | 0.01 / 0.99 | Opus 5.5 |  |
+| P06.1-I2a revocation and safety, live | 3.97 | max | 0.00 / 0.00 / 0.00 / 0.02 / 0.98 / 0.00 | 0.93 / 0.07 | Fable 5.1 |  |
+| P06.1-I2a exact-head review | 3.86 | max | 0.00 / 0.00 / 0.00 / 0.12 / 0.88 / 0.00 | 0.64 / 0.36 | Fable 5.1 |  |
+| App Manager 4 | 3.32 | extra high | 0.00 / 0.02 / 0.21 / 0.44 / 0.08 / 0.25 | 0.25 / 0.75 | Opus 5.5 | boundary |
+| P06.1-I2b exact-head review | 3.79 | max | 0.00 / 0.00 / 0.01 / 0.19 / 0.80 / 0.00 | 0.53 / 0.47 | Fable 5.1 | model near tie |
+| P06.1-I2b implementation | 3.99 | max | 0.00 / 0.00 / 0.00 / 0.01 / 0.98 / 0.01 | 0.98 / 0.02 | Fable 5.1 |  |
+
+**Recording (OD-34).** The uses table records, for every prompt, the rung probabilities, the model probabilities, the mapped cell and Nathan's pick (the columns *Nathan's pick (level)* and *Nathan's pick (model)*, formerly *Level used* and *Model used*). The outcome column is dropped. The manager's own call, if recorded at all, goes into *Manager level* and *Manager model* before the run and is not put to Nathan. The skill `typesafe-scoring` produces the reading and the row fields; the request is never hand-written.
+
+## 7. Sources for sections 6 and 7 (third party unless marked)
+
+- Artificial Analysis: model release and per-effort pages for Claude Opus 5.5 (https://artificialanalysis.ai/models/releases/claude-opus-5-5 and the per-variant pages) and Claude Fable 5.1 (v4.3.2 model pages); Terminal-Bench 4.0 evaluation page.
+- ARC Prize verified results: https://arcprize.org/results/anthropic-claude-opus-5-5 and the Fable 5.1 results page.
+- Vals AI model pages for Opus 5.5 and Fable 5.1 (Vals Index, per-test cost and time).
+- CodeRabbit, "Opus 5.5 model review" and its Fable 5.1 effort evaluation (recall and precision on 105 and 80 known issues).
+- kaybenleroll, effort-level seeded-defect review benchmark (25 September 2026; one synthetic document, small n).
+- Dealwatch, orchestration benchmark (September 2026; 35,000-line project, two repositories, ten runs).
+- Multi-agent review literature on earlier models: adversarial review (Sonnet 4.5), cross-model review (Opus 4.7 and GPT-5.5), reviewer-ensemble bug detection (arXiv 2511.16708).
+- METR predeployment summary of Opus 5.5 (no effort level given); Epoch AI model pages.
+- On agents judging difficulty: Estimating Item Difficulty with Large Language Models as Experts (https://arxiv.org/pdf/2605.18562); RouteLLM (https://arxiv.org/pdf/2406.18665); RouterBench (https://arxiv.org/pdf/2403.12031); LLMRouterBench (https://arxiv.org/html/2601.07206v1).
+- Anthropic's own documentation (secondary only): the effort page, Claude Code model configuration and workflows pages, for what the settings are, not for how well they perform.
+
+## 5. Runs (v5, superseded the same day)
 
 ### Calibration run, 27 September 2026
 
@@ -166,7 +230,7 @@ The action text is the one v4 and m1 read at 07:58 UTC, unchanged, so the readin
 - **Against the earlier readings:** v4 read extra high (2.77) and raised its ultracode flag from the foreign shape question (P(single session) 0.12); v5 reads extra high (2.73) and no ultracode (0.03). m1 read Opus 5.5 at 0.71; v5 reads Opus 5.5 at 0.82 with its price, positioning and code-review facts in front of it. The informed request agrees with the manager on the level and on no ultracode, and disagrees on the model more firmly than m1 did.
 - **Disposition:** both calls go to Nathan with the prompt, as OD-10 and OD-30 require; the manager's call stands as recorded and is not changed after the reading. The row in the uses table records both.
 
-## Sources
+## 8. Sources for sections 1 to 5
 
 Public pages were fetched on 27 September 2026 by the research workflow and re-read by its skeptics; the local skill files are the Claude API skill bundled with Claude Code (`claude-api`, `shared/` folder), outside this repository.
 

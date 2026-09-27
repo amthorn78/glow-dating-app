@@ -1,7 +1,7 @@
 # P06.1-I2b review prompt — exact-head review of other products, the architecture document and CI
 
 - **Owner:** App Manager 4. Nathan starts this session manually and relays its report.
-- **Revision 2, 27 September 2026:** header only, after OD-33. TypeSafe's reading was retaken with the request v5 ([reasoning-strength matrix](../planning/reasoning-level-matrix.md)); the body is unchanged apart from its revision line. Revision 1 was given to Nathan at `d94173f` and not started.
+- **Revision 3, 27 September 2026:** header only, after OD-34: the TypeSafe v6 reading below is the recommendation; the manager's call stays as a record only. **Revision 2, 27 September 2026:** header only, after OD-33. TypeSafe's reading was retaken with the request v5 ([reasoning-strength matrix](../planning/reasoning-level-matrix.md)); the body is unchanged apart from its revision line. Revision 1 was given to Nathan at `d94173f` and not started.
 - **Durable brief:** [P06.1 brief](../planning/p06-1-chat-provider-proof.md), "Sessions" (P06.1-I2b and its review).
   - Evidence: the [P06.1 evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md): "Exact-head review of I2a (27 September 2026)" with its disposition (I2b's offline work list), "P06.1-I2b" (I2b's own record) and the manager's verification under it; the new [architecture document](../architecture/chat-provider-permissions.md).
 - **Where the result goes:** the manager records the verified review in the evidence record, under a new heading "Exact-head review of I2b". The outcome goes into the brief's "Sessions". After it the manager updates ADR 0003's conditions (DM-05 finding 5 (b)).
@@ -9,6 +9,7 @@
   - **Manager: Fable 5.1, extra high,** decided at 07:58 UTC, before TypeSafe's readings. The review covers about 11,700 new lines of harness code and tests, a workflow change and the architecture document P06.2 designs from: a new client op and a guard scope for two products with a deny-list in code, a scoped configuration command that made the proof's one lasting change, new verdict rules, and two fixes made between live runs. Its live results exist only as I2b's record. That is a review of a large new system whose soundness is not yet established, the class where the most capable model is most likely to change the outcome; the I2a review, the same class, was adequate on Fable 5.1 at extra high. Extra high rather than max, in the manager's judgement: the review is offline, and on Fable a lower level often matches a higher one on Opus.
   - **TypeSafe v4** (sent 07:58:36 UTC): extra high (score 2.77, P(extra high) 0.75, P(high) 0.24, P(max) 0.01). It raises its ultracode flag (shape `broad_verification` 0.83; P(single session) 0.12). The manager does not recommend ultracode: one change, and the session can split the review across subagents itself.
   - **TypeSafe m1** (sent 07:58:37 UTC): Opus 5.5 (P(most capable) 0.29, confidence 0.42). The calls differ on the model. The manager keeps Fable 5.1: m1's criteria class a review of a bounded change against named findings as Opus work, but this review's object is a new system, not a correction pass, and its verdicts become the basis of P06.2's design.
+  - **TypeSafe v6** (the reading in force, OD-34; sent 2026-09-27T11:40:32Z; the same action text): **Fable 5.1, max.** Effort score 3.79 (confidence 0.86); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.19, max 0.80, ultracode 0.00. Model probabilities Fable 5.1 0.53, Opus 5.5 0.47 (confidence 0.06); flag: model near tie. Nathan picks the cell.
   - **TypeSafe v5** (sent 09:35:48 UTC, after the call above; the same action text): **Opus 5.5, extra high, no ultracode.** Effort score 2.73 (extra high 0.72, high 0.27, max 0.01; confidence 0.76); many-agent workflow 0.03 (confidence 0.93); most capable model 0.18 (confidence 0.65). The informed request agrees on the level and on no ultracode, and disagrees on the model more firmly than m1. The manager's call stands as recorded, for the reasons above; Nathan picks.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **Stream variables** (OD-28): none are needed, and Nathan adds none. This session never calls Stream. If Nathan has not yet deleted the three `STREAM_*` variables after I2b, this session's container holds them; the prompt tells it to report their names and never read or use them.
@@ -19,7 +20,7 @@
 
 ---
 
-You are the **review session for P06.1-I2b** of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 2, from commit `<RECORDS_COMMIT>`; revision 2 changed only the manager's header.
+You are the **review session for P06.1-I2b** of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 3, from commit `<RECORDS_COMMIT>`; revisions 2 and 3 changed only the manager's header.
 
 P06.1 tests Stream's permission model against Nathan's development Stream application 1729640, with synthetic users only, using the sandbox harness in `proofs/stream-chat/`. P06.1-I1 locked the chat down and ran the bypass matrix; three offline correction passes and P06.1-I2a (revocation and safety, live) followed, each with its exact-head review. P06.1-I2b, the last live session, then did this, from the manager branch at `b04306d`:
 
@@ -160,7 +161,7 @@ Report the exact commands and results.
 
 Your final message is the report Nathan relays:
 
-- the prompt revision you received (revision 2, from commit `<RECORDS_COMMIT>`);
+- the prompt revision you received (revision 3, from commit `<RECORDS_COMMIT>`);
 - the head you reviewed (`git rev-parse HEAD`) and the three classification outputs;
 - **verdict:** "approve" (I2b's harness, records and architecture document are sound, and P06.1 can close on them) or "changes required";
 - **findings,** most severe first. For each: severity (**blocking**, **should fix** or **nit**), `file:line`, the concrete failure scenario, a suggested fix, and whether it falls in one of the classes that need a correction pass before P06.1 closes;
