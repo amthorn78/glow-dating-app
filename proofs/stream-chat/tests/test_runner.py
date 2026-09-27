@@ -327,10 +327,20 @@ class EveryOpTest(unittest.TestCase):
                 "body": {},
                 "max_calls": 5,
             },
+            # A refusal only the op's own check makes (P06.1-C4): the runner's request check
+            # sees a clean path and a harmless query, so without the op's check this would
+            # reach the budget.
+            {
+                "id": 15,
+                "op": "product",
+                "method": "GET",
+                "path": "/api/v2/video/call/default/proof-call?x=1",
+                "max_calls": 5,
+            },
         )
         by_id = {r["id"]: r for r in replies}
-        self.assertEqual(sorted(by_id), list(range(1, 15)) + [99])
-        for command_id in range(1, 15):
+        self.assertEqual(sorted(by_id), list(range(1, 16)) + [99])
+        for command_id in range(1, 16):
             self.assertEqual(set(by_id[command_id]), REPLY_KEYS, command_id)
             self.assertEqual(by_id[command_id]["requests"], [], command_id)  # nothing sent
             self.assertEqual(by_id[command_id]["api_calls"], 0, command_id)
@@ -360,6 +370,11 @@ class EveryOpTest(unittest.TestCase):
         self.assertEqual(by_id[13]["error"]["message"], "PROOF_REFUSED: denied field (ring)")
         self.assertEqual(by_id[14]["error"]["kind"], "refused")
         self.assertEqual(by_id[14]["error"]["message"], "PROOF_REFUSED: denied path (join)")
+        self.assertEqual(by_id[15]["error"]["kind"], "refused")
+        self.assertEqual(
+            by_id[15]["error"]["message"],
+            "PROOF_REFUSED: query parameters belong in params, not in the path",
+        )
         exit_reply = by_id[99]
         self.assertTrue(exit_reply["ok"])
         self.assertEqual(
