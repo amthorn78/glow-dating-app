@@ -9,6 +9,7 @@
   - **Manager: Fable 5.1, extra high,** decided before TypeSafe's readings. The review covers about 8,800 new lines of harness code: a guard for destructive provider calls, new stop and cleanup paths, seven revocation families, an existence oracle and the S15 mapping. Its verdicts become product decisions, and I2b will use its guard live. That is a review of a large new system whose soundness is not yet established, where the most capable model is most likely to change the outcome. Extra high rather than max: on Fable a lower level often matches a higher one on Opus, and the review is offline. The closest precedent, the I1 review, ran at max on Opus.
   - **TypeSafe v4:** extra high (score 2.75, P(extra high) 0.71, P(high) 0.27, P(max) 0.02). It raises its ultracode flag (P(single session) 0.16; shape `broad_verification`, 0.64). The manager does not recommend ultracode: it is one change, and the session can split the review across subagents itself.
   - **TypeSafe m1:** Fable 5.1, by the narrowest margin (P(most capable) 0.51, confidence 0.02).
+  - **Used: extra high, on Fable 5.1** (Nathan, 27 September: "ran fable extra"). This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). I2b comes after it.
