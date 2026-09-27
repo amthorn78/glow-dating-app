@@ -134,6 +134,16 @@ const PRODUCT_HOSTNAMES = [PRODUCT_HOSTS.video, PRODUCT_HOSTS.feeds].map((h) => 
 const STREAM_HOSTNAMES = Object.values(PRODUCT_HOSTS).map((h) => new URL(h).hostname);
 const UNRESOLVED_HOST = 'unresolved.invalid';
 const FORWARDING_HEADERS = ['x-forwarded-host', 'forwarded', 'x-original-host', 'x-host'];
+// Headers that ask a server or its edge to take the request as another method or path
+// (P06.1-C5; the manager's addition to the C4 review's finding 1). Neither stream-chat
+// 9.53.0 nor axios 1.20.0 sends any of them.
+const REWRITING_HEADERS = [
+  'x-http-method-override',
+  'x-http-method',
+  'x-method-override',
+  'x-original-url',
+  'x-rewrite-url',
+];
 
 // The URL axios will send: its buildFullPath (the base URL joined to a relative URL, or to
 // any URL when allowAbsoluteUrls is false), then its Node adapter's new URL(). A relative
@@ -179,7 +189,8 @@ function readableBody(data) {
 }
 
 // Why a request, whatever op made it, may not be sent, or null (P06.1-C4; the I2b review's
-// finding 1, and C4's own review). Only Stream's three hosts, and no Host header. A request
+// finding 1, and C4's own review). Only Stream's three hosts, and no Host, forwarding or
+// request-rewriting header (P06.1-C5), each name read as axios sends it. A request
 // to either product's host, or to a path under /api/v2/video, /api/v2/feeds, /video or
 // /feeds once letter case, percent-encoding and dot segments are normalized
 // (normalizedPath), must pass the product op's own check (client/product-op.cjs) on the
@@ -205,6 +216,10 @@ function productRequestRefusal(config) {
   if (names.includes('host')) return 'a Host header';
   // Nor a forwarding header naming another host (C4's own review).
   if (FORWARDING_HEADERS.some((h) => names.includes(h))) return 'a forwarding header';
+  // Nor a header asking for another method or path (P06.1-C5): matrix.validate sees only the
+  // matrix's steps, and the harness's own code sends call ops too, so the runner refuses
+  // these for every request, whatever op sent it.
+  if (REWRITING_HEADERS.some((h) => names.includes(h))) return 'a request-rewriting header';
   const sent = parsed.pathname;
   const normalized = normalizedPath(sent);
   if (normalized === null) return 'a path whose percent-encoding does not settle';
@@ -228,16 +243,23 @@ function productRequestRefusal(config) {
   return productRefusal(config.method, sent, bodyOf(config.data), [query, params, nested]);
 }
 
-// The header names a request config carries, in lower case (axios's AxiosHeaders or an object,
+// A header name as it is sent, for comparison: axios's http adapter trims every name before
+// sending (AxiosHeaders' normalize), and a server reads names in any letter case (P06.1-C5:
+// until then " Host" passed the check and was sent as "Host").
+function sentHeaderName(name) {
+  return String(name).trim().toLowerCase();
+}
+
+// The header names a request config carries, as sent (axios's AxiosHeaders or an object,
 // with its per-method sections).
 function headerNames(headers) {
   if (!headers || typeof headers !== 'object') return [];
   const plain = typeof headers.toJSON === 'function' ? headers.toJSON() : headers;
   const names = [];
   for (const [key, value] of Object.entries(plain)) {
-    names.push(String(key).toLowerCase());
+    names.push(sentHeaderName(key));
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      for (const inner of Object.keys(value)) names.push(String(inner).toLowerCase());
+      for (const inner of Object.keys(value)) names.push(sentHeaderName(inner));
     }
   }
   return names;

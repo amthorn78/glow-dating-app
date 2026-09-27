@@ -145,20 +145,49 @@ class _Applied:
             return AFTER_NOT_READ_INTERRUPTED  # Ctrl-C: send nothing more
         return None
 
-    def finish(self) -> int | None:
-        """Re-raise what must reach ``main`` (a signal's stop, the guard's refusal, a
-        Ctrl-C), after the record is written; 1 for a step Stream refused; ``None`` when
-        every step succeeded."""
+    def stop(self) -> BaseException | None:
+        """What must reach ``main`` (a signal's stop, the guard's refusal, a Ctrl-C), or
+        ``None`` when every step succeeded or Stream refused one."""
         later = self.reread_failure
         if later is not None and (
             isinstance(later, GuardrailStop) or not isinstance(later, Exception)
         ):
-            raise later
-        if self.failure is None:
+            return later
+        if self.failure is None or isinstance(self.failure, StepRefused):
             return None
-        if isinstance(self.failure, StepRefused):
-            return 1
-        raise self.failure
+        return self.failure
+
+    def finish(self) -> int | None:
+        """Re-raise what must reach ``main``, after the record is written; 1 for a step
+        Stream refused; ``None`` when every step succeeded."""
+        stop = self.stop()
+        if stop is not None:
+            raise stop
+        return None if self.failure is None else 1
+
+
+def _write_record(ctx: Context, outcome: _Applied, name: str, record: dict[str, Any]) -> Path:
+    """Write a configure record. A write that raises (the leak check refuses the record, or
+    the disk write fails) never hides what must reach ``main``: a charge or limit signal's
+    stop, the guard's refusal or a Ctrl-C is raised with the write's error printed and
+    chained to it, so a signal still exits 3 (P06.1-C5; the C4 review's nit 4: until then
+    the write's error replaced the stop). Otherwise the write's error is raised."""
+    try:
+        return write_json(name, record, ctx.secrets)
+    except BaseException as exc:
+        stop = outcome.stop()
+        met = ctx.ledger.signals
+        line = f"the configuration record was not written: {type(exc).__name__}: {exc}"
+        if met:
+            line += f"; a charge or limit signal was met: {met[0]}"
+        if stop is not None and not (met and stop is met[0]):
+            line += f"; the apply stopped on {type(stop).__name__}: {stop}"
+        try:
+            ctx.say(line)
+        finally:
+            if stop is not None and stop is not exc:
+                raise stop from exc
+        raise
 
 
 def _apply_recorded(ctx: Context, plan: list[configuration.ApiRequest]) -> _Applied:
@@ -332,7 +361,7 @@ def cmd_configure(ctx: Context, apply: bool, scope: list[str] | None = None) -> 
     else:
         record["after"] = not_read
     record["problems_after"] = problems
-    path = write_json(f"configure-{record['at']}.json", record, ctx.secrets)
+    path = _write_record(ctx, outcome, f"configure-{record['at']}.json", record)
     ctx.say(f"configuration record written to {path.relative_to(PROOF_ROOT)}")
     if outcome.failure is not None:
         ctx.say(f"the apply did not complete: {record['failure']}")
@@ -419,7 +448,7 @@ def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope
     else:
         record["after"] = not_read
     record["problems_after"] = problems
-    path = write_json(f"configure-products-{record['at']}.json", record, ctx.secrets)
+    path = _write_record(ctx, outcome, f"configure-products-{record['at']}.json", record)
     ctx.say(f"configuration record written to {path.relative_to(PROOF_ROOT)}")
     if outcome.failure is not None:
         ctx.say(f"the apply did not complete: {record['failure']}")

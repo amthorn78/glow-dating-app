@@ -2056,6 +2056,85 @@ CLIENT_URL_METHODS = frozenset(
     {"get", "post", "put", "patch", "delete", "sendFile", "doAxiosRequest", "setBaseURL"}
 )
 
+# The ``call`` steps a case may make (P06.1-C5; the C4 review's finding 1): each target and
+# method the matrix uses, with the most positional arguments any of its steps passes, and
+# nothing else. In stream-chat 9.53.0 a request-options argument reaches the request's
+# configuration (``get`` hands its third argument to ``doAxiosRequest``, and
+# ``_enrichAxiosOptions`` spreads it over the SDK's own headers): the client's
+# ``queryUsers`` and ``search`` and the channel's ``queryMembers`` take one as their fourth
+# argument, the channel's ``sendFile`` and ``sendImage`` as their fifth. At the counts below
+# no step reaches such a position, and every caller value a listed method puts into a path
+# is encoded. tests/test_matrix.py checks that the table is exactly what the matrix uses.
+CALL_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("channel", "addMembers"): 1,
+    ("channel", "assignRoles"): 1,
+    ("channel", "banUser"): 2,
+    ("channel", "create"): 0,
+    ("channel", "delete"): 0,
+    ("channel", "getMessagesById"): 1,
+    ("channel", "getReactions"): 1,
+    ("channel", "getReplies"): 1,
+    ("channel", "partialUpdateMember"): 2,
+    ("channel", "query"): 1,
+    ("channel", "queryMembers"): 1,
+    ("channel", "removeMembers"): 2,
+    ("channel", "sendEvent"): 1,
+    ("channel", "sendFile"): 3,
+    ("channel", "sendImage"): 3,
+    ("channel", "sendMessage"): 1,
+    ("channel", "sendReaction"): 2,
+    ("channel", "shadowBan"): 2,
+    ("channel", "truncate"): 0,
+    ("channel", "update"): 1,
+    ("channel", "updateAIState"): 3,
+    ("channel", "updateMemberPartial"): 1,
+    ("channel", "updatePartial"): 1,
+    ("channel", "watch"): 0,
+    ("client", "createPoll"): 1,
+    ("client", "createUserGroup"): 1,
+    ("client", "deleteMessage"): 1,
+    ("client", "getMessage"): 1,
+    ("client", "getThread"): 1,
+    ("client", "partialUpdateUser"): 1,
+    ("client", "pinMessage"): 1,
+    ("client", "queryChannels"): 3,
+    ("client", "queryMessageHistory"): 1,
+    ("client", "queryReactions"): 2,
+    ("client", "queryUsers"): 1,
+    ("client", "search"): 3,
+    ("client", "sync"): 2,
+    ("client", "updateMessage"): 1,
+    ("client", "upsertUser"): 1,
+}
+# The client's reminder methods put a caller value (``messageId``) into the request path
+# without encoding it (stream-chat 9.53.0), so a step could steer the path; never allowed.
+REMINDER_METHODS = frozenset({"createReminder", "updateReminder", "deleteReminder"})
+
+
+def _call_refusal(step: SdkStep) -> str | None:
+    """Why a ``call`` step is outside the allowlist, or ``None`` (P06.1-C5)."""
+    target = step.params.get("target")
+    method = step.params.get("method")
+    args = step.params.get("args", [])
+    if target not in ("client", "channel"):
+        return f"a call on the target {target!r}, which is neither the client nor a channel"
+    if target == "client" and method in REMINDER_METHODS:
+        return (
+            f"a call of the client's {method}, which puts a caller value into the request "
+            "path unencoded"
+        )
+    limit = CALL_ALLOWLIST.get((str(target), str(method)))
+    if limit is None:
+        return f"a call of the {target}'s {method}, which is not on the call allowlist"
+    if not isinstance(args, list | tuple):
+        return f"a call of the {target}'s {method} whose arguments are not a list"
+    if len(args) > limit:
+        return (
+            f"a call of the {target}'s {method} with {len(args)} positional arguments; the "
+            f"allowlist admits at most {limit}, so no request-options argument is reachable"
+        )
+    return None
+
 
 def _product_reach(step: SdkStep) -> str | None:
     """Why a step that is not the product op could reach Video or Feeds, or ``None``."""
@@ -2104,6 +2183,12 @@ def validate(cases: list[Case]) -> list[str]:
             reach = _product_reach(case.step)
             if reach:
                 problems.append(f"{case.id}: {reach}; only the product op may reach them")
+            elif case.step.op == "call":
+                # P06.1-C5 (the C4 review's finding 1): nothing but the allowlist's calls, so
+                # no step passes a request option or steers a request's path.
+                refusal = _call_refusal(case.step)
+                if refusal:
+                    problems.append(f"{case.id}: {refusal}")
         if product_of(case) is not None and case.phase >= 100:
             problems.append(f"{case.id}: a product case runs before the families")
     return problems

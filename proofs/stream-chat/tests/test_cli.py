@@ -7,6 +7,8 @@
 - Nit 10: ``restore --apply`` re-reads and verifies.
 """
 
+import contextlib
+import io
 import json
 import unittest
 from collections.abc import Callable
@@ -23,7 +25,7 @@ from glow_stream_proof.proof_run import ProofRun, RunStopped, TemporaryChange
 from glow_stream_proof.redaction import Redactor
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
-from glow_stream_proof.workdir import PROOF_ROOT
+from glow_stream_proof.workdir import PROOF_ROOT, LeakRefused
 from tests.fake_products import (
     BASELINE,
     BEFORE_LOCKDOWN_CALL_TYPE_GRANTS,
@@ -714,13 +716,21 @@ class ScopedConfigureTest(_WritesTest):
 
 
 def failing_write(
-    server: FakeServer, nth: int, status: int, code: int, message: str, *, replace: bool = False
+    server: FakeServer,
+    nth: int,
+    status: int,
+    code: int,
+    message: str,
+    *,
+    replace: bool = False,
+    replace_with: BaseException | None = None,
 ) -> list[int]:
     """Answer the ``nth`` configuration write (PUT or PATCH) with ``status``, as the real
     server client would: a charge or limit signal is recorded in the ledger and its stop
-    raised (``ServerApi._result``); ``replace`` then raises a Ctrl-C in its place, as a
-    signal whose stop is replaced in flight. Returns, for each write, how many calls the
-    fake had counted when it answered, that write included."""
+    raised (``ServerApi._result``); ``replace`` then raises a Ctrl-C in its place, and
+    ``replace_with`` that error (P06.1-C5), as a signal whose stop is replaced in flight.
+    Returns, for each write, how many calls the fake had counted when it answered, that
+    write included."""
     seen: list[int] = []
 
     def handler(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
@@ -737,6 +747,8 @@ def failing_write(
             )
             if replace:
                 raise KeyboardInterrupt
+            if replace_with is not None:
+                raise replace_with
             raise stop
         return ApiResult(method, path, status, code, message, {"code": code, "message": message})
 
@@ -824,6 +836,32 @@ class ConfigureRecordTest(_WritesTest):
             cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
         self.assertEqual(record["failure"], "KeyboardInterrupt: ")
+
+    def test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(self) -> None:
+        """P06.1-C5, the C4 review's nit 5: an ordinary error, not a Ctrl-C, replaces the
+        signal's stop, so only the ledger tells that a signal was met (a Ctrl-C alone already
+        skips the re-read): no re-read is sent, and the record says a signal was met."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        replaced = RuntimeError("an error in place of the stop")
+        seen = failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
+        ctx = FakeContext(server)
+        with self.assertRaises(RuntimeError):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
+
+    def test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(
+        self,
+    ) -> None:
+        server = FakeServer(UsageLedger())
+        replaced = RuntimeError("an error in place of the stop")
+        seen = failing_write(server, 2, 429, 9, "Too many requests", replace_with=replaced)
+        ctx = FakeContext(server)
+        with self.assertRaises(RuntimeError):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-")
+        self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
 
     def test_a_ctrl_c_without_a_signal_sends_nothing_more(self) -> None:
         server = FakeServer(UsageLedger())
@@ -962,6 +1000,113 @@ class ConfigureRecordTest(_WritesTest):
         record = self.record("configure-products-")
         self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
         self.assertEqual(len(record["applied"]), 9)
+
+
+class ClosingContext(FakeContext):
+    """A fake context ``main`` can use and close (P06.1-C5)."""
+
+    def close(self) -> None:
+        pass
+
+
+class RecordWriteAfterASignalTest(_WritesTest):
+    """P06.1-C5, the C4 review's nit 4: after a charge or limit signal mid-plan, a record
+    write that raises (the leak check refuses the record, or the disk write fails) no
+    longer hides the signal. Its stop still reaches main, which exits 3 and names it; the
+    write's error is printed and chained to the stop; nothing is sent after the signal."""
+
+    def apply(
+        self, scope: list[str] | None, error: BaseException
+    ) -> tuple[FakeContext, FakeServer, list[int], BaseException]:
+        """A 402 on the second configuration write, then a record write that raises."""
+        server = FakeServer(UsageLedger())
+        if scope is not None:
+            server.products.grant_before_lockdown()
+        seen = failing_write(server, 2, 402, 4, "payment required")
+        ctx = FakeContext(server)
+        with mock.patch.object(cli, "write_json", side_effect=error):
+            with self.assertRaises(BaseException) as caught:
+                if scope is None:
+                    cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+                else:
+                    cli.cmd_configure(ctx, True, scope)  # type: ignore[arg-type]
+        return ctx, server, seen, caught.exception
+
+    def assert_the_stop_is_kept(self, scope: list[str] | None, error: BaseException) -> None:
+        ctx, server, seen, raised = self.apply(scope, error)
+        # The signal's stop leaves the command, not the write's error ...
+        self.assertIsInstance(raised, GuardrailStop)
+        self.assertIn("HTTP 402", str(raised))
+        # ... with the write's error chained to it, and printed on a line naming the signal.
+        self.assertIs(raised.__cause__, error)
+        lines = [line for line in ctx.lines if "record was not written" in line]
+        self.assertEqual(len(lines), 1, ctx.lines)
+        self.assertTrue(
+            lines[0].startswith(
+                f"the configuration record was not written: {type(error).__name__}: {error}; "
+                "a charge or limit signal was met: server P"
+            ),
+            lines[0],
+        )
+        self.assertIn("HTTP 402", lines[0])
+        # Nothing was sent after the signalling write.
+        self.assertEqual(len(server.calls), seen[-1])
+
+    def test_scoped_the_leak_check_refusing_the_record(self) -> None:
+        self.assert_the_stop_is_kept(
+            ["video", "feeds"], LeakRefused("refused output: contains a known secret")
+        )
+
+    def test_scoped_a_disk_write_that_fails(self) -> None:
+        self.assert_the_stop_is_kept(["video", "feeds"], OSError(28, "No space left on device"))
+
+    def test_general_the_leak_check_refusing_the_record(self) -> None:
+        self.assert_the_stop_is_kept(None, LeakRefused("refused output: contains a known secret"))
+
+    def test_general_a_disk_write_that_fails(self) -> None:
+        self.assert_the_stop_is_kept(None, OSError(28, "No space left on device"))
+
+    def test_main_exits_3_and_names_the_signal(self) -> None:
+        for argv in (
+            ["configure", "--apply", "--products", "video,feeds"],
+            ["configure", "--apply"],
+        ):
+            with self.subTest(argv=argv):
+                server = FakeServer(UsageLedger())
+                server.products.grant_before_lockdown()
+                failing_write(server, 2, 402, 4, "payment required")
+                ctx = ClosingContext(server)
+                stderr = io.StringIO()
+                error = OSError(28, "No space left on device")
+                with (
+                    mock.patch.object(cli, "Context", return_value=ctx),
+                    mock.patch.object(cli, "write_json", side_effect=error),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    try:
+                        code: int | BaseException = cli.main(argv)
+                    except BaseException as exc:  # an exception main did not handle
+                        code = exc
+                self.assertEqual(code, 3)
+                self.assertTrue(stderr.getvalue().startswith("guardrail stop: server P"))
+                self.assertIn("HTTP 402", stderr.getvalue())
+
+    def test_without_a_signal_the_writes_error_is_raised_and_printed(self) -> None:
+        """A refused step (no signal) and a failed write: the write's error leaves the
+        command, as before, and is printed too."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        error = OSError(28, "No space left on device")
+        with mock.patch.object(cli, "write_json", side_effect=error):
+            with self.assertRaises(OSError) as caught:
+                cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertIs(caught.exception, error)
+        self.assertIn(
+            "the configuration record was not written: OSError: [Errno 28] No space left on device",
+            ctx.lines,
+        )
 
 
 class ProbeAndBaselineTest(_WritesTest):

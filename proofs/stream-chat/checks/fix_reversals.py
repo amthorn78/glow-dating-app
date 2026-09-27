@@ -88,6 +88,10 @@ TPRR = TRN + "ProductReachTest."
 TMV = "tests.test_matrix.ProductReachValidationTest."
 TBC = TPR + "BaselineComparisonTest."
 TCR = TCLI + "ConfigureRecordTest."
+# P06.1-C5.
+TCA = "tests.test_matrix.CallAllowlistValidationTest."
+TRH = TRN + "RequestHeaderTest."
+TRW = TCLI + "RecordWriteAfterASignalTest."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -4366,12 +4370,125 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
                 "        self.signal = self.signal or isinstance(self.failure, GuardrailStop)\n        if self.signal:\n",
             )
         ],
-        [TCR + "test_the_signal_is_read_from_the_ledger_not_the_exception"],
+        [
+            TCR + "test_the_signal_is_read_from_the_ledger_not_the_exception",
+            # P06.1-C5, the C4 review's nit 5: an ordinary error replaces the stop, so
+            # only the ledger stops the re-read; reverted, the re-read is sent.
+            TCR + "test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it",
+            TCR
+            + "test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it",
+        ],
     ),
     (
         "C4 nit 8: a signal met in the re-read is recorded as such",
         [(C, "        if outcome.signal:\n            return None, AFTER_NOT_READ_SIGNAL\n", "")],
         [TCR + "test_a_signal_in_the_reread_is_recorded_and_sends_nothing_more"],
+    ),
+    # -- P06.1-C5: the C4 review's finding 1 (with the manager's addition) and nits 2 and 4 --
+    (
+        "C5 finding 1: validate refuses a call step outside the allowlist",
+        [
+            (
+                MT,
+                "                refusal = _call_refusal(case.step)\n",
+                "                refusal = None\n",
+            )
+        ],
+        [
+            TCA + "test_an_unlisted_method_on_the_client_fails_validation",
+            TCA + "test_an_unlisted_method_on_the_channel_fails_validation",
+            TCA + "test_a_listed_method_with_one_positional_argument_too_many_fails_validation",
+            TCA + "test_the_request_options_positions_are_unreachable",
+            TCA + "test_a_reminder_method_fails_validation",
+            TCA + "test_another_target_fails_validation",
+        ],
+    ),
+    (
+        "C5 finding 1: a listed method takes no more positional arguments than listed",
+        [(MT, "    if len(args) > limit:\n", "    if False:\n")],
+        [
+            TCA + "test_a_listed_method_with_one_positional_argument_too_many_fails_validation",
+            TCA + "test_the_request_options_positions_are_unreachable",
+        ],
+    ),
+    (
+        "C5 finding 1: a reminder method is refused whatever the allowlist holds",
+        [(MT, '    if target == "client" and method in REMINDER_METHODS:\n', "    if False:\n")],
+        [TCA + "test_a_reminder_method_fails_validation"],
+    ),
+    (
+        "C5 finding 1: the runner refuses a request-rewriting header, whatever op sent it",
+        [
+            (
+                RN,
+                "  if (REWRITING_HEADERS.some((h) => names.includes(h))) return 'a request-rewriting header';\n",
+                "",
+            )
+        ],
+        [
+            TRH + "test_each_request_rewriting_header_is_refused",
+            TRH + "test_a_header_name_is_read_as_axios_sends_it",
+        ],
+    ),
+    (
+        "C5: a header name is read as axios sends it, trimmed",
+        [
+            (
+                RN,
+                "  return String(name).trim().toLowerCase();\n",
+                "  return String(name).toLowerCase();\n",
+            )
+        ],
+        [
+            TRH + "test_a_header_name_is_read_as_axios_sends_it",
+            TRH + "test_each_request_rewriting_header_is_refused",
+        ],
+    ),
+    (
+        "C5 nit 2: every request leaves the interceptor with maxRedirects 0",
+        [(RN, "  config.maxRedirects = 0;\n", "")],
+        [
+            TRN
+            + "MaxRedirectsTest.test_every_request_leaves_the_interceptor_with_max_redirects_zero"
+        ],
+    ),
+    (
+        "C5 nit 4: a failed record write after a signal keeps the stop (the general apply)",
+        [
+            (
+                C,
+                "    path = _write_record(ctx, outcome, f\"configure-{record['at']}.json\", record)\n",
+                "    path = write_json(f\"configure-{record['at']}.json\", record, ctx.secrets)\n",
+            )
+        ],
+        [
+            TRW + "test_general_the_leak_check_refusing_the_record",
+            TRW + "test_general_a_disk_write_that_fails",
+            TRW + "test_main_exits_3_and_names_the_signal",
+        ],
+    ),
+    (
+        "C5 nit 4: a failed record write after a signal keeps the stop (the scoped apply)",
+        [
+            (
+                C,
+                "    path = _write_record(ctx, outcome, f\"configure-products-{record['at']}.json\", record)\n",
+                "    path = write_json(f\"configure-products-{record['at']}.json\", record, ctx.secrets)\n",
+            )
+        ],
+        [
+            TRW + "test_scoped_the_leak_check_refusing_the_record",
+            TRW + "test_scoped_a_disk_write_that_fails",
+            TRW + "test_main_exits_3_and_names_the_signal",
+        ],
+    ),
+    (
+        "C5 nit 4: the write's error is chained to the stop",
+        [(C, "                raise stop from exc\n", "                raise stop\n")],
+        [
+            TRW + "test_scoped_a_disk_write_that_fails",
+            TRW + "test_general_a_disk_write_that_fails",
+        ],
     ),
 ]
 

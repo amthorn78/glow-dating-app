@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import tests  # noqa: F401
 from glow_stream_proof import matrix, proof_run
@@ -378,3 +379,126 @@ class ProductReachValidationTest(unittest.TestCase):
         self.assertEqual(matrix.validate([client_call]), [])
         # And every case in the matrix: no step reaches a product but through the op.
         self.assertEqual(matrix.validate(matrix.all_cases()), [])
+
+
+class CallAllowlistValidationTest(unittest.TestCase):
+    """P06.1-C5, the C4 review's finding 1: a ``call`` step is refused unless its target,
+    method and number of positional arguments are on the allowlist, which holds exactly
+    what the matrix uses; so no step passes a request option (a header, a proxy, an
+    adapter) or steers a request's path."""
+
+    def case(self, target: object, method: str, args: list[object]) -> matrix.Case:
+        control = next(c for c in matrix.all_cases() if c.id == "S1").control
+        params: dict[str, object] = {"target": target, "method": method, "args": args}
+        if target == "channel":
+            params.update({"type": "glow-match", "id": "x"})
+        return matrix.Case(
+            id="X-call",
+            group="content",
+            actor="A",
+            token="A's valid token",
+            action="a call outside the allowlist",
+            expect="refused",
+            control=control,
+            step=matrix.SdkStep(session="A", op="call", params=params),
+            phase=40,
+        )
+
+    def test_the_allowlist_is_exactly_what_the_matrix_uses(self) -> None:
+        used: dict[tuple[str, str], int] = {}
+        for case in matrix.all_cases():
+            if case.step is not None and case.step.op == "call":
+                key = (case.step.params["target"], case.step.params["method"])
+                used[key] = max(used.get(key, 0), len(case.step.params["args"]))
+        self.assertEqual(used, matrix.CALL_ALLOWLIST)
+        # Every current case still validates.
+        self.assertEqual(matrix.validate(matrix.all_cases()), [])
+
+    def test_an_unlisted_method_on_the_client_fails_validation(self) -> None:
+        # The client methods the review names that take a request-options argument and are
+        # not in the matrix, and one that is in the harness's own code only.
+        for method in (
+            "searchUserGroups",
+            "queryChannelsRequestWithResponse",
+            "searchRoles",
+            "uploadFile",
+            "uploadImage",
+            "getUnreadCount",
+        ):
+            self.assertEqual(
+                matrix.validate([self.case("client", method, [{}])]),
+                [f"X-call: a call of the client's {method}, which is not on the call allowlist"],
+                method,
+            )
+
+    def test_an_unlisted_method_on_the_channel_fails_validation(self) -> None:
+        for method in ("markRead", "hide", "stopWatching", "sendAction"):
+            self.assertEqual(
+                matrix.validate([self.case("channel", method, [])]),
+                [f"X-call: a call of the channel's {method}, which is not on the call allowlist"],
+                method,
+            )
+
+    def test_a_listed_method_with_one_positional_argument_too_many_fails_validation(
+        self,
+    ) -> None:
+        for (target, method), limit in sorted(matrix.CALL_ALLOWLIST.items()):
+            args: list[object] = [{}] * (limit + 1)
+            self.assertEqual(
+                matrix.validate([self.case(target, method, args)]),
+                [
+                    f"X-call: a call of the {target}'s {method} with {limit + 1} positional "
+                    f"arguments; the allowlist admits at most {limit}, so no request-options "
+                    "argument is reachable"
+                ],
+                method,
+            )
+            # At the limit it validates.
+            self.assertEqual(matrix.validate([self.case(target, method, [{}] * limit)]), [])
+
+    def test_the_request_options_positions_are_unreachable(self) -> None:
+        """The review's scenario: a request option (here a request-rewriting header) in the
+        position stream-chat 9.53.0 hands to the request's configuration."""
+        options = {"headers": {"X-HTTP-Method-Override": "DELETE"}}
+        for target, method, position in (
+            ("client", "queryUsers", 4),
+            ("client", "search", 4),
+            ("channel", "queryMembers", 4),
+            ("channel", "sendFile", 5),
+            ("channel", "sendImage", 5),
+        ):
+            args: list[object] = [{}] * (position - 1) + [options]
+            problems = matrix.validate([self.case(target, method, args)])
+            self.assertEqual(len(problems), 1, method)
+            self.assertIn(f"with {position} positional arguments", problems[0])
+
+    def test_a_reminder_method_fails_validation(self) -> None:
+        """Refused as a reminder method, even were the allowlist to list it."""
+        for method in sorted(matrix.REMINDER_METHODS):
+            step = self.case("client", method, [{"messageId": "../../video/call/default/x"}])
+            refused = [
+                f"X-call: a call of the client's {method}, which puts a caller value into the "
+                "request path unencoded"
+            ]
+            self.assertEqual(matrix.validate([step]), refused, method)
+            with mock.patch.dict(matrix.CALL_ALLOWLIST, {("client", method): 1}):
+                self.assertEqual(matrix.validate([step]), refused, method)
+
+    def test_another_target_fails_validation(self) -> None:
+        for target in ("thread", None):
+            self.assertEqual(
+                matrix.validate([self.case(target, "query", [{}])]),
+                [
+                    f"X-call: a call on the target {target!r}, which is neither the client nor "
+                    "a channel"
+                ],
+                target,
+            )
+
+    def test_the_client_url_methods_and_a_product_get_keep_their_rule(self) -> None:
+        """C4's two rules stand: a client URL method is refused as one (not merely as a
+        method off the allowlist), and so is a get of a product path."""
+        for method in sorted(matrix.CLIENT_URL_METHODS):
+            problems = matrix.validate([self.case("client", method, ["/api/v2/chat/x"])])
+            self.assertEqual(len(problems), 1, method)
+            self.assertIn("which takes a URL, could reach Video or Feeds", problems[0])

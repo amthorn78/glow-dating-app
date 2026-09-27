@@ -407,12 +407,8 @@ def client_call(command_id: int, method: str, *args: Any) -> dict[str, Any]:
     }
 
 
-class ProductReachTest(unittest.TestCase):
-    """P06.1-C4, the I2b review's finding 1: nothing reaches Video or Feeds except through
-    the product op's check, whatever op sent the request. Offline: the budget is zero and
-    the proxy is a loopback port nothing listens on, so nothing can leave the machine; a
-    request the check lets through is refused by the budget (kind ``budget``), one it
-    refuses has kind ``refused``, and neither is counted or recorded."""
+class _NotSentTest(unittest.TestCase):
+    """The runner's reply to a command it sent nothing for: its error kind and message."""
 
     def assert_not_sent(self, reply: dict[str, Any], kind: str, message: str | None = None) -> None:
         self.assertFalse(reply["ok"], reply)
@@ -421,6 +417,14 @@ class ProductReachTest(unittest.TestCase):
             self.assertEqual(reply["error"]["message"], message, reply)
         self.assertEqual(reply["requests"], [], reply)
         self.assertEqual(reply["api_calls"], 0, reply)
+
+
+class ProductReachTest(_NotSentTest):
+    """P06.1-C4, the I2b review's finding 1: nothing reaches Video or Feeds except through
+    the product op's check, whatever op sent the request. Offline: the budget is zero and
+    the proxy is a loopback port nothing listens on, so nothing can leave the machine; a
+    request the check lets through is refused by the budget (kind ``budget``), one it
+    refuses has kind ``refused``, and neither is counted or recorded."""
 
     def test_the_reviews_scenario_a_client_post_to_a_join_with_ring(self) -> None:
         """The review's reproduction: after a REST user is set, a ``call`` of the client's
@@ -630,6 +634,180 @@ class ProductReachTest(unittest.TestCase):
             for index, case in enumerate(cases, start=2):
                 with self.subTest(case=case.id, act=act):
                     self.assert_not_sent(by_id[index], "budget")
+
+
+REWRITING_HEADERS = (
+    "X-HTTP-Method-Override",
+    "X-HTTP-Method",
+    "X-Method-Override",
+    "X-Original-URL",
+    "X-Rewrite-URL",
+)
+
+
+def with_headers(command_id: int, headers: dict[str, str]) -> dict[str, Any]:
+    """An ordinary chat request (a client ``post`` to the chat host) whose request options,
+    the SDK's third argument to ``post``, carry ``headers``."""
+    return client_call(
+        command_id, "post", CHAT + "/channels/glow-match/x/query", {}, {"headers": headers}
+    )
+
+
+class RequestHeaderTest(_NotSentTest):
+    """P06.1-C5, the manager's addition to the C4 review's finding 1: the runner refuses a
+    request carrying a request-rewriting header, in any letter case, whatever op sent it,
+    before it is counted or sent (kind ``refused``), as it refuses the forwarding headers.
+    Every header name is read as axios sends it, trimmed (C5 found that " Host" passed the
+    check). Offline: a zero budget and a loopback proxy nothing listens on."""
+
+    def test_each_request_rewriting_header_is_refused(self) -> None:
+        rewriting = "PROOF_REFUSED: a request-rewriting header"
+        headers = [{name: "DELETE"} for name in REWRITING_HEADERS]
+        # One in another letter case, and one with its name padded as axios would trim it.
+        headers += [{"x-REWRITE-url": "/api/v2/video/call/default/x/join"}]
+        headers += [{"  x-http-method-override\t": "DELETE"}]
+        commands = [with_headers(n, h) for n, h in enumerate(headers, start=2)]
+        # Whatever op sends it: the channel target's queryMembers and the client's queryUsers,
+        # with their request options (their fourth argument).
+        options = {"headers": {"X-HTTP-Method-Override": "DELETE"}}
+        commands.append(
+            {
+                "id": 20,
+                "op": "call",
+                "target": "channel",
+                "method": "queryMembers",
+                "args": [{}, [], {}, options],
+                "type": "glow-match",
+                "channel_id": "x",
+                "max_calls": 0,
+            }
+        )
+        commands.append(client_call(21, "queryUsers", {}, [], {}, options))
+        # An ordinary chat request: only the budget stops it.
+        commands.append(client_call(22, "post", CHAT + "/channels/glow-match/x/query", {}))
+        replies = run_runner_offline({"id": 1, **REST_USER}, *commands)
+        by_id = {r["id"]: r for r in replies}
+        for command in commands[:-1]:
+            with self.subTest(command=command["id"]):
+                self.assert_not_sent(by_id[command["id"]], "refused", rewriting)
+        self.assert_not_sent(by_id[22], "budget")
+
+    def test_a_header_name_is_read_as_axios_sends_it(self) -> None:
+        """A name padded with whitespace is trimmed by axios before it is sent, so the check
+        reads it trimmed: the Host and forwarding headers too."""
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            with_headers(2, {" Host": "video.stream-io-api.com"}),
+            with_headers(3, {"X-Forwarded-Host\t": "video.stream-io-api.com"}),
+            with_headers(4, {" X-Original-URL ": "/api/v2/video/call/default/x/join"}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assert_not_sent(by_id[2], "refused", "PROOF_REFUSED: a Host header")
+        self.assert_not_sent(by_id[3], "refused", "PROOF_REFUSED: a forwarding header")
+        self.assert_not_sent(by_id[4], "refused", "PROOF_REFUSED: a request-rewriting header")
+
+    def test_axios_trims_a_header_name_before_sending(self) -> None:
+        """The premise of reading names trimmed: the axios stream-chat uses sends each header
+        name trimmed (its http adapter's AxiosHeaders.normalize)."""
+        script = (
+            "const path = require('node:path');"
+            "const at = [path.dirname(require.resolve('stream-chat'))];"
+            "const { AxiosHeaders } = require(require.resolve('axios', { paths: at }));"
+            "const h = AxiosHeaders.concat({}, {' Host': 'v', 'X-Original-URL\\t': '/x'});"
+            "process.stdout.write(JSON.stringify({"
+            " seen: Object.keys(h.toJSON()),"
+            " sent: Object.keys(AxiosHeaders.from(h).normalize().toJSON()) }));"
+        )
+        done = subprocess.run(
+            ["node", "-e", script],
+            env={"PATH": os.environ.get("PATH", "/usr/bin")},
+            cwd=RUNNER.parent.parent,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        out = json.loads(done.stdout)
+        self.assertEqual(out["seen"], [" Host", "X-Original-URL\t"])
+        self.assertEqual(out["sent"], ["Host", "X-Original-URL"])
+
+    def test_neither_stream_chat_nor_axios_names_a_rewriting_header(self) -> None:
+        """So no chat request carries one, and the refusal changes no chat case: no file of
+        the installed stream-chat 9.53.0 or axios 1.20.0 names any of the five headers."""
+        modules = RUNNER.parent.parent / "node_modules"
+        versions = {
+            name: json.loads((modules / name / "package.json").read_text())["version"]
+            for name in ("stream-chat", "axios")
+        }
+        self.assertEqual(versions, {"stream-chat": "9.53.0", "axios": "1.20.0"})
+        names = [n.lower().encode() for n in REWRITING_HEADERS]
+        scanned = 0
+        for package in ("stream-chat", "axios"):
+            for path in sorted((modules / package).rglob("*")):
+                if path.is_file():
+                    scanned += 1
+                    text = path.read_bytes().lower()
+                    found = [n for n in names if n in text]
+                    self.assertEqual(found, [], str(path))
+        self.assertGreater(scanned, 100)
+
+
+# The runner loaded with a stub stream-chat in require.cache, as the runner itself places its
+# WebSocket for isomorphic-ws: the stub records the request interceptor the runner registers,
+# and nothing is sent.
+MAX_REDIRECTS_CASES = r"""
+const path = require('node:path');
+const interceptors = [];
+class StreamChat {
+  constructor() {
+    this.baseURL = 'https://chat.stream-io-api.com';
+    this.axiosInstance = {
+      interceptors: {
+        request: { use: (fn) => interceptors.push(fn) },
+        response: { use: () => {} },
+      },
+    };
+  }
+  on() {}
+}
+const stubPath = require.resolve('stream-chat');
+require.cache[stubPath] = {
+  id: stubPath, filename: stubPath, loaded: true, exports: { StreamChat }, children: [], paths: [],
+};
+require(path.resolve('client/runner.cjs'));
+const out = [];
+for (const config of [
+  { method: 'post', url: 'https://chat.stream-io-api.com/channels/glow-match/x/query', data: {} },
+  { method: 'get', url: 'https://chat.stream-io-api.com/users', maxRedirects: 5, params: {} },
+  { method: 'post', baseURL: 'https://chat.stream-io-api.com',
+    url: '/channels/glow-match/x/message', data: { message: { text: 'x' } }, maxRedirects: 21 },
+]) {
+  const sent = interceptors[0](config);
+  out.push(sent.maxRedirects === undefined ? 'unset' : sent.maxRedirects);
+}
+process.stdout.write(JSON.stringify({ interceptors: interceptors.length, maxRedirects: out }));
+process.exit(0);
+"""
+
+
+class MaxRedirectsTest(unittest.TestCase):
+    """P06.1-C5, the C4 review's nit 2: every request leaves the runner's request interceptor
+    with ``maxRedirects`` 0, so axios follows no redirect (C4's own review). The runner is
+    loaded with a stub stream-chat, so the interceptor is called directly and nothing is sent."""
+
+    def test_every_request_leaves_the_interceptor_with_max_redirects_zero(self) -> None:
+        done = subprocess.run(
+            ["node", "-e", MAX_REDIRECTS_CASES],
+            env={"PATH": os.environ.get("PATH", "/usr/bin"), "PROOF_API_KEY": "offlinetestkey"},
+            cwd=RUNNER.parent.parent,
+            input="",
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(done.returncode, 0, done.stderr)
+        out = json.loads(done.stdout)
+        self.assertEqual(out["interceptors"], 1)
+        self.assertEqual(out["maxRedirects"], [0, 0, 0])
 
 
 class RunnerReportsTest(unittest.TestCase):
