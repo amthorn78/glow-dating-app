@@ -185,7 +185,7 @@ Other independent points used in the rung texts: Vals AI at max, Opus 5.5 69.69%
 | P06.1-I2b exact-head review | 3.79 | max | 0.00 / 0.00 / 0.01 / 0.19 / 0.80 / 0.00 | 0.53 / 0.47 | Fable 5.1 | model near tie |
 | P06.1-I2b implementation | 3.99 | max | 0.00 / 0.00 / 0.00 / 0.01 / 0.98 / 0.01 | 0.98 / 0.02 | Fable 5.1 |  |
 
-**Recording (OD-34).** The uses table records, for every prompt, the rung probabilities, the model probabilities, the mapped cell and Nathan's pick (the columns *Nathan's pick (level)* and *Nathan's pick (model)*, formerly *Level used* and *Model used*). The outcome column is dropped. The manager's own call, if recorded at all, goes into *Manager level* and *Manager model* before the run and is not put to Nathan. Nathan's Claude skill `typesafe-scoring` produces the reading and the row fields; the request is never hand-written.
+**Recording (OD-34).** The uses table leads with the answer: for every prompt, *TypeSafe cell* (the model and rung the request reads, for example "Fable 5.1 at max") and *Nathan's pick* (the cell he ran, "pending" until he picks), then *Rung probabilities* and *Model probabilities*, then the detail columns. There is no outcome column. Every row carries the v6 reading; the readings given before v6 are kept in *TypeSafe detail* as history. Nathan's Claude skill `typesafe-scoring` prints the complete row from the script, so the fields are never composed by hand; the request is never hand-written.
 
 **The v6 request body** (`ACTION` is replaced by the session's description; identical to the skill's `request-v6.json`):
 
