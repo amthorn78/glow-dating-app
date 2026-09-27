@@ -54,6 +54,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-20 | 26 Sep 2026 | accuracy | Told Nathan that TypeSafe "only scores the level and can't pick a model". Its Choice questions can pick one, and the v4 request already asks one | Nathan |
 | AM3-21 | 27 Sep 2026 | accuracy | A Notion usage-log row said the manager had corrected nit 6's line reference in the I2a review; the evidence record keeps that reference | App Manager 3, re-reading the row |
 | AM4-01 | 27 Sep 2026 | process | The first report to Nathan listed two standing items as "waiting on you" without saying what they were or what he could do; he would not send the I2b prompt while they stood | Nathan |
+| AM4-02 | 27 Sep 2026 | process | Asked Nathan to pick a model and level for I2b when the manager's call and TypeSafe's readings were the same | Nathan |
 
 ## App Manager 2
 
@@ -323,4 +324,12 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** Nathan did not start I2b from that message. No record or prompt was wrong.
 - **Correction:** his direction is OD-32. Both items leave the waiting checkpoint: ADR 0004's accepted restore risk is a question for the Dev Manager's close-out read, and the HDE contract date stays in Nathan's own process, where OD-23 put it. The prompt was given again, alone.
 - **Prevention:** OD-32's rule in the manager workflow and the start prompt: every item put to Nathan is explained or not put; questions go to the Dev Manager first.
+
+### AM4-02 — A choice offered between identical options (process)
+
+- **What happened:** the message that gave Nathan I2b's prompt said "my call is Fable 5.1, extra high; TypeSafe agrees. You pick." There was nothing to pick.
+- **Caught by:** Nathan: *"For the record, you asked me to pick between 2 identical options."*
+- **Effect:** none on the session; he ran it on Fable 5.1 at extra high.
+- **Correction:** none needed in the records.
+- **Prevention:** when the manager's call and TypeSafe's readings agree, the message states the model and level as the recommendation and asks nothing. Only a disagreement is put to Nathan, with both readings.
 
