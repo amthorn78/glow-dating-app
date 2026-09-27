@@ -63,6 +63,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
 | AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
 | AM5-04 | 27 Sep 2026 | process | Pushed one records batch as three pushes within five minutes (`c7fd0a9`, `a5a113b`, `93cb9a0`): the entries AM5-02 and AM5-03, found during the Notion sync, were each pushed at once instead of with the next batch, and the later pushes cancelled four full runs (359 to 362). DM-01 P2 asks for pushes only when a session needs them. This entry was pushed after PR run 364 finished, so it cancelled no run, though it started one more | App Manager 5, reading the runs |
+| AM5-05 | 27 Sep 2026 | accuracy | The brief's entry for the C4 review listed the classes that get another correction pass without "or DOES NOT MEET", so its "only" excluded a class the prompt includes | App Manager 5, comparing the brief with the prompt |
 
 ## App Manager 2
 
@@ -406,3 +407,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision: the rows' other fields, Implementation Control and the repository were right.
 - **Correction:** both texts corrected and read back.
 - **Prevention:** it repeats AM5-02, a status left stale in a field the update did not touch, so the prevention is now an item of the manager workflow's checklist "Writing to Notion": when a status changes, update every property and page body that states it, then query the touched databases for the old wording before the batch ends.
+
+### AM5-05 — The brief's bound for the C4 review left out a class (accuracy)
+
+- **What happened:** the brief's entry for the C4 review, written with its prompt at `c7fd0a9`, summarised the classes that get another correction pass. Where the prompt says "lose an observed FAIL or DOES NOT MEET", the entry said "lose an observed FAIL", so its "only" excluded a class the prompt includes.
+- **Caught by:** App Manager 5, comparing the entry with the prompt before giving the prompt to Nathan.
+- **Effect:** none: the review follows its prompt, and no report has yet been dispositioned against the brief.
+- **Correction:** the entry now uses the prompt's wording.
+- **Prevention:** a brief entry that restates a prompt's bound uses the prompt's words, not a summary.
