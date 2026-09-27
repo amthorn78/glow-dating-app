@@ -333,3 +333,10 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Correction:** none needed in the records.
 - **Prevention:** when the manager's call and TypeSafe's readings agree, the message states the model and level as the recommendation and asks nothing. Only a disagreement is put to Nathan, with both readings.
 
+### AM4-03 — Scoring requests too thin for an informed reading (process)
+
+- **What happened:** the TypeSafe requests inherited and written by earlier managers (v4, m1) described each level in one line, said nothing about what a level costs or does on either model, and v4's second question was written for another project; m1's model criteria were the manager's own rules with no vendor facts. The readings looked precise but rested on almost no information, and the manager's call carried an unmeasured claim ("a lower level on Fable often matches a higher one on Opus") as if it were known.
+- **Caught by:** Nathan: *"I am feeling less trust about the scoring. There is a huge gap between fable extra high and opus extra high. ... It's important that your semantic query contains enough information for actual informed decisions."*
+- **Effect:** the I2b review prompt was re-scored before it started; no session ran on a wrong reading.
+- **Correction:** OD-33; the [reasoning-strength matrix](../planning/reasoning-level-matrix.md) researched from Anthropic's documentation, and the request v5 that carries it, pre-registered and calibrated before use; the manager workflow's step 3 no longer states the unmeasured claim.
+- **Prevention:** a scoring request carries the researched facts a reader would need to decide; any change to it is a new version with a rule saved before its first run; a claim about the models is written as judgement unless a source is cited.

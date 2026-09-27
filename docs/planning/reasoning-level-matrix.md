@@ -138,7 +138,33 @@ One request replaces v4 and m1 for every prompt given after 27 September 2026. I
 
 ## 5. Runs
 
-_(filled after each run; see below)_
+### Calibration run, 27 September 2026
+
+Pre-registration was pushed at `b755b07` (09:35:23 UTC); the run started at 09:35:45 UTC and ended at 09:35:48 UTC. Every request returned HTTP 200 from `jev-1.13.0` in 0.23 to 0.63 s, with 2,728 to 2,866 input tokens and 90 output tokens. **The gate passed on all three axes: level within one rung 10 of 10; `one_session` 10 of 10; model 10 of 10.** So v5 is in use unchanged.
+
+| Text | Label (level, model) | Effort score, rung (probabilities) | P(many-agent) | P(most capable) (confidence) | v5 cell |
+|---|---|---|---|---|---|
+| P06.1-I1 implementation session | extra high, Fable 5.1 | 2.97, extra high (high 0.03, extra high 0.97; confidence 0.97) | 0.36 | 0.98 (0.97) | Fable 5.1, extra high |
+| P06.1-I1 exact-head code and security review | max, Fable 5.1 | 3.15, extra high (extra high 0.85, max 0.15; confidence 0.87) | 0.23 | 0.98 (0.97) | Fable 5.1, extra high |
+| P06.1 flake fix exact-head review | high, Opus 5.5 | 1.94, high (medium 0.07, high 0.91, extra high 0.02; confidence 0.92) | 0.00 | 0.01 (0.98) | Opus 5.5, high |
+| P06.1-C1 offline correction pass on the I1 harness | extra high, Opus 5.5 | 1.88, high (medium 0.24, high 0.64, extra high 0.12; confidence 0.70) | 0.00 | 0.00 (0.99) | Opus 5.5, high |
+| P06.1-C1 exact-head review | extra high, Opus 5.5 | 2.47, high (high 0.53, extra high 0.47; confidence 0.60) | 0.02 | 0.01 (0.98) | Opus 5.5, high |
+| P06.1-C2 second offline correction pass on the harness | high, Opus 5.5 | 1.97, high (medium 0.15, high 0.73, extra high 0.12; confidence 0.77) | 0.00 | 0.01 (0.97) | Opus 5.5, high |
+| P06.1-C2 exact-head review | extra high, Opus 5.5 | 2.78, extra high (high 0.28, extra high 0.65, max 0.07; confidence 0.70) | 0.01 | 0.04 (0.91) | Opus 5.5, extra high |
+| P06.1-C3 third offline correction pass on the harness | high, Opus 5.5 | 2.03, high (medium 0.13, high 0.70, extra high 0.17; confidence 0.75) | 0.00 | 0.02 (0.96) | Opus 5.5, high |
+| P06.1-C3 exact-head review | extra high, Opus 5.5 | 2.73, extra high (high 0.30, extra high 0.66, max 0.04; confidence 0.71) | 0.01 | 0.01 (0.97) | Opus 5.5, extra high |
+| P06.1-I2a revocation and safety, live | max, Fable 5.1 | 2.99, extra high (high 0.01, extra high 0.98, max 0.01; confidence 0.97) | 0.08 | 0.94 (0.88) | Fable 5.1, extra high |
+
+What the run shows. The level rung agreed exactly with the manager's recorded call in 7 of 10 and sat one rung below it in 3 (the I1 review and I2a, called max, read extra high; the C1 pass and the C1 review, called extra high, read high at 0.64 and at 0.53 against 0.47). The four correction passes and the fix review read high or the boundary of medium and high, never extra high. The many-agent option never rose above 0.36 (the I1 implementation, a first live build; confidence 0.28), so the sixth column did not fire on any bounded session, as intended. The model readings sit near 0 or 1 in 9 of 10 (I2a 0.94). As with m1, the labels are the manager's own, so this shows that v5 says what the manager meant, not that the calls were right. Compared with v4 on the same texts, v5 reads the same rung in 8 of 10 and one rung lower in 2 (the C2 review and the C3 review are unchanged at extra high; the C1 review moved from high 2.54 to high 2.47; no text moved up).
+
+### Re-score of the I2b review prompt, 27 September 2026
+
+The action text is the one v4 and m1 read at 07:58 UTC, unchanged, so the readings compare. Sent 09:35:48 UTC; HTTP 200 in 0.29 s; 2,866 input and 90 output tokens.
+
+- **Manager's call, recorded at 07:58 UTC before any reading:** Fable 5.1, extra high, no ultracode.
+- **v5 reading: Opus 5.5, extra high, no ultracode.** Effort score 2.73: extra high 0.72, high 0.27, max 0.01, confidence 0.76; not bimodal; runner-up high. Many-agent workflow 0.03 (one session 0.97, confidence 0.93). Most capable model 0.18 (confidence 0.65).
+- **Against the earlier readings:** v4 read extra high (2.77) and raised its ultracode flag from the foreign shape question (P(single session) 0.12); v5 reads extra high (2.73) and no ultracode (0.03). m1 read Opus 5.5 at 0.71; v5 reads Opus 5.5 at 0.82 with its price, positioning and code-review facts in front of it. The informed request agrees with the manager on the level and on no ultracode, and disagrees on the model more firmly than m1 did.
+- **Disposition:** both calls go to Nathan with the prompt, as OD-10 and OD-30 require; the manager's call stands as recorded and is not changed after the reading. The row in the uses table records both.
 
 ## Sources
 
