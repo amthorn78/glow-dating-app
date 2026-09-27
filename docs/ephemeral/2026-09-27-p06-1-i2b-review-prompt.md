@@ -160,7 +160,7 @@ Report the exact commands and results.
 
 Your final message is the report Nathan relays:
 
-- the prompt revision you received (revision 1, from commit `<RECORDS_COMMIT>`);
+- the prompt revision you received (revision 2, from commit `<RECORDS_COMMIT>`);
 - the head you reviewed (`git rev-parse HEAD`) and the three classification outputs;
 - **verdict:** "approve" (I2b's harness, records and architecture document are sound, and P06.1 can close on them) or "changes required";
 - **findings,** most severe first. For each: severity (**blocking**, **should fix** or **nit**), `file:line`, the concrete failure scenario, a suggested fix, and whether it falls in one of the classes that need a correction pass before P06.1 closes;
