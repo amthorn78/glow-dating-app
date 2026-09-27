@@ -1,13 +1,13 @@
 # Next manager start prompt
 
-- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand.
+- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand; its note on placeholders corrected by App Manager 5 (AM4-05).
 - **Durable context:** [current handoff](../../continuity/current-handoff.md) and [manager workflow](../manager-workflow.md).
 - **A durable start procedure, not an ephemeral prompt** (DM-01 P9): each manager keeps it current for its successor.
 - **Two ways to start a manager:**
   - Nathan pastes the text below into a new session in the `Glow app` environment;
   - or, when Nathan directs it (OD-31), the outgoing manager creates the session with the remote-session tools and sends the text as its first message. It sets the manager PR's head branch as the new session's outcome branch, so the successor pushes that branch and the PR stays. Once the successor starts, the outgoing manager pushes nothing and edits nothing in Notion.
 
-**Nathan or the outgoing manager:** before sending, replace `<N>` with the manager's number and `<BRANCH>` with the manager PR's head branch. For App Manager 5 the outgoing manager has filled both in below the line, so Nathan pastes the text as it is.
+**Nathan or the outgoing manager:** before sending, replace `<N>` with the manager's number and `<BRANCH>` with the manager PR's head branch, which the current handoff names. The text below the line keeps both placeholders (AM4-05).
 
 ---
 

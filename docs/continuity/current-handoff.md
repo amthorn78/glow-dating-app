@@ -1,4 +1,4 @@
-# Current handoff — App Manager 4 (27 September 2026)
+# Current handoff — App Manager 5 (27 September 2026)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); the earlier handoff is [archived](history/m02-p06-1-handoff.md).
 
@@ -8,7 +8,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager:** App Manager 5, started by Nathan by hand on 27 September from the [start procedure](../planning/start-prompts/next-manager.md). App Manager 4 (`session_016nNFAZqaqTDqxX4Bq6jbRV`) pushes nothing after its handover commit, the head of `claude/stoic-carson-66gdig`, draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). App Manager 5 branches from that head, opens a replacement PR and closes PR26 with a link.
+- **Manager:** App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`), started by Nathan by hand on 27 September. Its branch `claude/magical-wozniak-yfmmx2` continues from App Manager 4's handover commit `2a86c8e`; draft [PR27](https://github.com/amthorn78/glow-dating-app/pull/27) replaces PR26, closed with a link.
 - **Current item: P06.1**, the chat-provider permissions and economics proof (resumed 25 September; other feature work paused): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
@@ -20,12 +20,12 @@ This file only routes: the current item, what happens next and who waits on whom
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-05.
 
-## Waiting checkpoint (27 September 2026, handover to App Manager 5)
+## Waiting checkpoint (27 September 2026, App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
 | App Manager 5 | Nathan | The I2b review's report (Fable 5.1 at max, started 27 September) | Nothing else starts (OD-29); ask for the session's state |
-| App Manager 5 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
+| App Manager 5 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR27 cannot merge without the reads |
 
 ## Next actions
 
@@ -33,7 +33,7 @@ This file only routes: the current item, what happens next and who waits on whom
 2. Then the economics discovery (the brief's "Sessions").
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f`;
-   - complete the pre-merge checklist in PR26 (workflow step 7);
+   - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;
    - merge and verify `main`;
    - record the receipt, this handoff and Notion;
@@ -44,6 +44,6 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches
 
-- **PR26** is not behind `main`. Code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`), I2a (`6a51dae`) and I2b (`55b2238`); the rest is Markdown.
-- Merged into PR26 only: the session branches the brief names and `claude/dev-manager`.
-- Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` after PR26 merges; every other remote branch is merged into `main`.
+- **PR27** is not behind `main`; earlier records call it PR26. Code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`), I2a (`6a51dae`) and I2b (`55b2238`); the rest is Markdown.
+- Merged into PR27 only: the session branches the brief names, `claude/dev-manager` and PR26's head, `claude/stoic-carson-66gdig`.
+- Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` after PR27 merges; every other remote branch is merged into `main`.

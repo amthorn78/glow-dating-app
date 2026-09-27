@@ -55,6 +55,9 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-21 | 27 Sep 2026 | accuracy | A Notion usage-log row said the manager had corrected nit 6's line reference in the I2a review; the evidence record keeps that reference | App Manager 3, re-reading the row |
 | AM4-01 | 27 Sep 2026 | process | The first report to Nathan listed two standing items as "waiting on you" without saying what they were or what he could do; he would not send the I2b prompt while they stood | Nathan |
 | AM4-02 | 27 Sep 2026 | process | Asked Nathan to pick a model and level for I2b when the manager's call and TypeSafe's readings were the same | Nathan |
+| AM4-03 | 27 Sep 2026 | process | Scoring requests too thin for an informed reading: one line per level, no facts about cost or capability on either model | Nathan |
+| AM4-04 | 27 Sep 2026 | process | Overrode Nathan's six-rung ladder, left max unreachable, and presented the manager's own model judgement as a recommendation | Nathan |
+| AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
 
 ## App Manager 2
 
@@ -348,3 +351,15 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** the I2b review had not started; no session ran on the v5 reading. A day of scoring revisions.
 - **Correction:** OD-34; request v6 with six rungs, built from third-party benchmarks and tested live for reachability before adoption; every recorded prompt re-read with it; the outcome column dropped; the reading produced by the Claude skill `typesafe-scoring`.
 - **Prevention:** an owner direction about the shape of a record or a scale is applied as given; a fact from documentation that seems to contradict it is stated once, in one sentence, and does not change the design. A scorer's request is accepted only after a live reachability test on archetype texts, never on the manager's reading of its wording. The manager's own strength judgement is recorded for comparison and never put to Nathan.
+
+### AM4-05 — Two slips in the handover records (accuracy)
+
+Recorded by App Manager 5, after App Manager 4's handover.
+
+- **What happened:**
+  - App Manager 4's handover commit `4bc1cd2` added to the next-manager start procedure: "For App Manager 5 the outgoing manager has filled both in below the line, so Nathan pastes the text as it is." The text below the line still carried `<N>` and `<BRANCH>`.
+  - AM4-03 and AM4-04 had full sections but no summary rows, against this log's rule that every mistake gets one.
+- **Caught by:** App Manager 5, reading the handover commit `2a86c8e` at its start.
+- **Effect:** none known. The start text Nathan pasted into App Manager 5's session had both filled in (App Manager 5, `claude/stoic-carson-66gdig`), so no session received the placeholders.
+- **Correction:** the start procedure's note now says the text keeps both placeholders and that the current handoff names the branch; the three summary rows are added.
+- **Prevention:** before a handover commit, read the start procedure below the line as the successor will receive it, and check that every section of this log has its summary row.
