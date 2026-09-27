@@ -3637,7 +3637,7 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
      - `glow_stream_proof/cli.py`, `matrix.py`, `products.py`, `proof_run.py`;
      - `tests/fake_products.py`, `test_answers.py`, `test_cli.py`, `test_configuration.py`, `test_matrix.py`, `test_products.py`, `test_runner.py`.
    - No dependency file, lock, `.npmrc`, `pyproject.toml` or committed baseline changed; every file is mode 100644, and there is no symlink.
-2. **Classification:** the trusted policy from `origin/main` (`0f45e64`, sha256 `dec69a26…`), extracted to a temporary directory outside the tree and run as `python3 -I …/change_scope.py --base 2c2d450883937191c55905bd49fe7b0af0a186e8 --head <head> --merge-base`, gave `{"full": true, "reason": "behavior-or-empty", …}` at `919a383`: full scope, as expected. It was re-run at the final head (below).
+2. **Classification:** the trusted policy from `origin/main` (`0f45e64`, sha256 `dec69a26…`), extracted to a temporary directory outside the tree and run as `python3 -I …/change_scope.py --base 2c2d450883937191c55905bd49fe7b0af0a186e8 --head <head> --merge-base`, gave `{"full": true, "reason": "behavior-or-empty", …}` at `919a383`, and again at `8077eea`, the last commit before this sentence: full scope, as expected, 17 paths each time. This sentence's commit adds Markdown only.
 3. **Installs:** as above.
 4. **Offline checks** at `112011f` and again at `b2b9a0b`, the same results:
    - unit tests: `Ran 543 tests`, `OK` (503 at the start, `Ran 503 tests … OK`);
