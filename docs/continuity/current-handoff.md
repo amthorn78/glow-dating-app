@@ -4,13 +4,13 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Process:** Nathan's manual relay, per the [manager workflow](../planning/manager-workflow.md), with the [Dev Manager](../planning/dev-manager.md) as second-layer reviewer (OD-25).
 - **Standing directions:** the [owner-direction register](owner-directions.md); Notion carries a copy, and the repository wins (OD-26, OD-27).
-- **A new manager** starts from the [start procedure](../planning/start-prompts/next-manager.md) and reads the [mistakes log](manager-mistakes.md).
+- **A new manager** starts from the [start procedure](../planning/start-prompts/next-manager.md); read the [mistakes log](manager-mistakes.md).
 
 ## Now
 
 - **Manager:** App Manager 4, `session_016nNFAZqaqTDqxX4Bq6jbRV` (Fable 5.1, extra high), created by App Manager 3 on 27 September (OD-31). It pushes `claude/stoic-carson-66gdig`, the head of draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). App Manager 3 pushes nothing after `642d1f8`. This container holds the three `STREAM_*` variables and never reads or uses them (AM3-17).
 - **Current item: P06.1**, the chat-provider permissions and economics proof (resumed 25 September; other feature work paused): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
-  - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands, and Nathan's principle is in force (OD-14, OD-16).
+  - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review; the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy alone (I2a).
     - **Done:** DM-05: approved with conditions, all accepted and applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
