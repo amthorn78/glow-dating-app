@@ -930,7 +930,7 @@ class ProofRun:
         # 9 (b)): any that exists was not this run's, and stops the run as a channel does.
         # A listing a product does not answer (not available, or not verified) is
         # recorded and stops nothing: no object of that product can be shown present.
-        objects = products.list_objects(self.api)
+        objects = products.list_objects(self.api, snapshot.get("products"))
         foreign_objects = [
             f"{products.OBJECT_NAMES[kind]} {_generic(str(item), self.ctx)}"
             for kind in products.OBJECT_KINDS
@@ -939,6 +939,19 @@ class ProofRun:
         if foreign_objects:
             raise RunStopped(
                 "application holds data this run did not create: " + "; ".join(foreign_objects)
+            )
+        # A product that reads as available must list its objects, as the channels must
+        # (the independent check of I2b, finding 3); a listing that is not verified
+        # cannot show that no foreign object exists.
+        unverified = [
+            f"{kind}: {objects[f'{kind}_listing']}"
+            for kind in products.OBJECT_KINDS
+            if objects.get(f"remaining_{kind}") is None
+            and str(objects.get(f"{kind}_listing")).startswith("not verified")
+        ]
+        if unverified:
+            raise RunStopped(
+                "a listing of the products' objects is not verified: " + "; ".join(unverified)
             )
         # Polls and user groups are listed now, so that the end of the run can tell
         # its own leftovers from anything already there. Only counts are shown.
@@ -3743,13 +3756,14 @@ class ProofRun:
                 if str(u.get("id")).startswith(f"deleted-user-{self.credentials.app_id}-")
             ),
             **self._new_polls_and_groups(),
-            **self._new_product_objects(),
+            **self._new_product_objects(snapshot.get("products")),
         }
 
-    def _new_product_objects(self) -> dict[str, Any]:
+    def _new_product_objects(self, state: Mapping[str, Any] | None) -> dict[str, Any]:
         """Calls, feeds and activities present now that were not there at preflight
-        (P06.1-I2b); a listing a product does not answer stays as its answer."""
-        listed = products.list_objects(self.api)
+        (P06.1-I2b); a listing a product does not answer is judged by the product's
+        configuration read (``state``)."""
+        listed = products.list_objects(self.api, state)
         for kind in products.OBJECT_KINDS:
             now = listed.get(f"remaining_{kind}")
             before = self.preexisting.get(f"remaining_{kind}")

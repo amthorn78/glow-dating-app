@@ -695,6 +695,21 @@ class ProductScopeTest(unittest.TestCase):
         configure = guard.ConfigureScope(RUN)
         for method, path, body in writes:
             self.assertIsNone(guard.refusal(method, path, body, None, configure), path)
+        # Only the lockdown's grants pass, even there (the independent check, nit 4).
+        for body in (
+            {"grants": {"admin": []}},
+            {"grants": {"user": ["read-call"]}},
+            {"grants": {"user": []}, "settings": {"audio": {}}},
+            {"settings": {"audio": {}}},
+            {},
+        ):
+            why = guard.refusal("PUT", "/api/v2/video/calltypes/default", body, None, configure)
+            self.assertEqual(
+                why,
+                "guard refused PUT video/calltypes/{id}: a Video or Feeds configuration write "
+                "that is not the lockdown's grants",
+                body,
+            )
         # The configure scope allows nothing else: not a call type's creation or deletion,
         # not a feed group, not the chat plan, not a delete of an object.
         others: list[tuple[str, str, Any]] = [

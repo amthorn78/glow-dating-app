@@ -6,6 +6,7 @@ from typing import Any
 
 import tests  # noqa: F401
 from glow_stream_proof.proof_run import RunStopped, _utc_minute
+from glow_stream_proof.server_api import ApiResult
 from tests.fakes import make_run
 
 CONFIRMED_NS = int(datetime(2026, 9, 24, 13, 7, 41, tzinfo=UTC).timestamp()) * 10**9
@@ -102,6 +103,27 @@ class ProductObjectsTest(unittest.TestCase):
             str(stopped.exception),
             "application holds data this run did not create: call default:foreign-call; "
             "activity a-7",
+        )
+
+    def test_a_listing_that_is_not_verified_stops_the_run(self) -> None:
+        """The independent check, finding 3: a product that reads as available must list
+        its objects, as the channels must; its listing's own wording decides nothing."""
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")
+
+        def refuse_calls(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if path == "/api/v2/video/calls":
+                message = "Video is not enabled for this application"
+                return ApiResult(method, path, 403, 17, message, {"code": 17, "message": message})
+            return None
+
+        server.handlers.append(refuse_calls)
+        with self.assertRaises(RunStopped) as stopped:
+            run.preflight()
+        self.assertEqual(
+            str(stopped.exception),
+            "a listing of the products' objects is not verified: calls: not verified: HTTP 403 "
+            "code 17: Video is not enabled for this application",
         )
 
     def test_a_listing_a_product_does_not_answer_is_recorded(self) -> None:

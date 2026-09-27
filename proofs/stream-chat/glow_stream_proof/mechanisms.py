@@ -557,13 +557,20 @@ class Family:
         )
         return copied
 
-    def events(self, wait_ms: int, labels: list[str] | None = None) -> dict[str, dict[str, Any]]:
+    def events(
+        self,
+        wait_ms: int,
+        labels: list[str] | None = None,
+        into: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Each session's events since the last collection, in the order of ``labels``:
         those for this channel (or for no channel), the SDK's local event types, and
         whether the connection closed or recovered. The first session collected waits
         ``wait_ms``. A session that has ended is not asked; its events are "not
-        collected" (the independent review, point 7)."""
-        out: dict[str, dict[str, Any]] = {}
+        collected" (the independent review, point 7). Each window is put in ``into`` as
+        it is collected, so a stop on a later session's collection loses none of the
+        earlier ones (P06.1-I2b; the independent check, finding 2)."""
+        out: dict[str, dict[str, Any]] = {} if into is None else into
         first = True
         for label in self.labels if labels is None else labels:
             session = self.run.sessions.get(label)
@@ -646,29 +653,45 @@ class Family:
         # so a late delivery is not taken for an ended subscription (the independent
         # review, point 2).
         order = self.window_order()
-        seen = self.events(pr.EVENT_WAIT_MS, order)
-        got = {
-            label: any(flags(w).values()) if (w := seen[label]).get("collected") else None
-            for label in order
-        }
-        second = [label for label in order if got[label] is False] if any(got.values()) else []
-        if second:
-            again = self.events(pr.EVENT_WAIT_MS, second)
-            for label in second:
-                seen[label] = merge_windows(seen[label], again[label])
-        received: dict[str, Any] = {}
-        for label in self.labels:
-            window = seen[label]
+        seen: dict[str, dict[str, Any]] = {}
+
+        def received_in(window: Mapping[str, Any]) -> dict[str, Any] | None:
             if not window.get("collected"):
-                received[label] = None
-                continue
-            received[label] = {
+                return None
+            return {
                 **flags(window),
                 "types": window["types"],
                 "local_types": window["local_types"],
                 "connection_closed": window["connection_closed"],
                 "connection_recovered": window["connection_recovered"],
             }
+
+        try:
+            self.events(pr.EVENT_WAIT_MS, order, into=seen)
+            got = {
+                label: any(flags(w).values()) if (w := seen[label]).get("collected") else None
+                for label in order
+            }
+            second = [label for label in order if got[label] is False] if any(got.values()) else []
+            if second:
+                again = self.events(pr.EVENT_WAIT_MS, second)
+                for label in second:
+                    seen[label] = merge_windows(seen[label], again[label])
+        except BaseException:
+            # A stop on a later session's collection: what the earlier sessions showed is
+            # kept as their subscription dimension before the step's row is judged
+            # (P06.1-I2b; the independent check, finding 2).
+            table = self.after if phase == "after" else self.before
+            for label, window in seen.items():
+                if label in table and "ws" not in table[label]:
+                    table[label]["ws"] = self.got_probe(received_in(window))
+            raise
+        received: dict[str, Any] = {}
+        for label in self.labels:
+            window = seen[label]
+            received[label] = received_in(window)
+            if received[label] is None:
+                continue
             if phase == "after":
                 self.note_connection(label, window)
         return {
@@ -1471,6 +1494,16 @@ class Family:
         record = answer.record
         control_ok = False
         control = "no client request to replay"
+        # What the member's own request showed is judged before the control is replayed,
+        # so a stop in the replay keeps a client success as FAIL (the client undid the
+        # mechanism) in the row (P06.1-I2b; the independent check, finding 1).
+        self.undo_verdict = matrix.refused_verdict(answer.outcome, False)
+        self.detail["client_undo"] = {
+            "request": pr._request_line(record, self.run.ctx),
+            "answer": pr._observed(answer),
+            "control": "not completed",
+            "verdict": f"{self.undo_verdict.label}: {self.undo_verdict.reason}",
+        }
         if record is not None:
             path = "/" + str(record.get("path") or "").lstrip("/")
             params = {

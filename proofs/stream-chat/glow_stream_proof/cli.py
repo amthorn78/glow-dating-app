@@ -216,7 +216,10 @@ def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope
     configuration does not verify, or if any planned request is outside the two
     configuration families; it then sends the plan through the guard's configure scope,
     re-reads and verifies chat and both products."""
-    chat_problems = configuration.verify(before)
+    # The chat verification alone gates the apply: once the lockdown is recorded as
+    # applied, verify() would name the products' own drift, which the apply is for (the
+    # independent check of I2b, nit 5).
+    chat_problems = [p for p in configuration.verify(before) if not p.startswith("video/feeds: ")]
     ctx.say(f"differences before: {chat_problems}")
     state = before["products"]
     _say_products(ctx, state)
@@ -403,7 +406,10 @@ def cmd_verify_clean(ctx: Context) -> int:
     # Stream prefixes guest IDs ("guest-<uuid>-<requested id>"), so match anywhere.
     proof_users = [u for u in users if PREFIX_ROOT in u]
     channels = [str(c["channel"]["cid"]) for c in snapshot["channels"].get("channels", [])]
-    listed = {**list_polls_and_groups(ctx.api), **products.list_objects(ctx.api)}
+    listed = {
+        **list_polls_and_groups(ctx.api),
+        **products.list_objects(ctx.api, snapshot.get("products")),
+    }
     ctx.say(f"proof users remaining: {proof_users}")
     ctx.say(f"channels remaining: {channels}")
     ctx.say(f"other users present: {len(users) - len(proof_users)}")
@@ -443,7 +449,7 @@ def cmd_cleanup(ctx: Context, apply: bool) -> int:
     ctx.say(f"proof users: {users}; proof channels: {cids}")
     # The products' objects whose IDs carry the prefix (P06.1-I2b); an activity has a
     # server ID, so the run users' Feeds data delete removes theirs.
-    objects = products.list_objects(ctx.api)
+    objects = products.list_objects(ctx.api, snapshot.get("products"))
     calls = [c for c in objects.get("remaining_calls") or [] if PREFIX_ROOT in c]
     feeds = [f for f in objects.get("remaining_feeds") or [] if PREFIX_ROOT in f]
     activities = objects.get("remaining_activities")

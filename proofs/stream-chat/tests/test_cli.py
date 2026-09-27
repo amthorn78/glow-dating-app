@@ -648,6 +648,17 @@ class ScopedConfigureTest(_WritesTest):
         self.assertTrue(all(p.startswith("/api/v2/video/") for _m, p, _b in puts(server)))
         self.assertEqual(server.products.visibility_grants["public"]["user"][:1], ["read-feed"])
 
+    def test_the_apply_is_gated_by_the_chat_verification_alone(self) -> None:
+        """The independent check, nit 5: once the lockdown is recorded as applied, the
+        products' own drift is what the apply is for, not a reason to refuse it."""
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        self.assertIn("differences before: []", ctx.lines)
+        self.assertEqual(len(puts(server)), 4)
+        self.assertIn("differences after: []", ctx.lines)
+
     def test_unknown_products_are_refused(self) -> None:
         server = FakeServer(UsageLedger())
         ctx = FakeContext(server)

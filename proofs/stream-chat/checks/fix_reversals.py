@@ -2392,7 +2392,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2a review 2: a member that missed the probe gets a second window",
-        [(MX, "        if second:\n", "        if False:\n")],
+        [(MX, "            if second:\n", "            if False:\n")],
         [TMX + "WindowTest.test_a_late_delivery_is_not_taken_for_an_ended_subscription"],
     ),
     (
@@ -3245,7 +3245,13 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2b products: the Python table refuses a denied field",
-        [(PR, "    field = denied_field(body) or denied_field(params)\n", "    field = None\n")],
+        [
+            (
+                PR,
+                '        return "query parameters belong in params, not in the path"\n    field = denied_field(body) or denied_field(params)\n',
+                '        return "query parameters belong in params, not in the path"\n    field = None\n',
+            )
+        ],
         [
             TPR + "AllowlistTest.test_the_python_table",
             TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
@@ -3277,8 +3283,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 G,
-                '        if scope.allows_product_configuration():\n            return None\n        return "a Video or Feeds configuration change outside the scoped configure"\n',
-                "        return None\n",
+                '        if not scope.allows_product_configuration():\n            return "a Video or Feeds configuration change outside the scoped configure"\n',
+                "        if False:\n            return None\n",
             )
         ],
         [
@@ -3373,7 +3379,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 PR,
-                "    if status is None or not 400 <= status < 500 or status == 402 or code == 99:\n",
+                "    if status is None or not 400 <= status < 500 or status in (402, 404) or code == 99:\n",
                 "    if status is None:\n",
             )
         ],
@@ -3395,7 +3401,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 U,
-                "        if _only_an_upgrade_word(message) and PRODUCT_UNAVAILABLE_WORDS.search(message):\n",
+                "        if _only_an_upgrade_word(message) and product_unavailable_wording(message):\n",
                 "        if False:\n",
             )
         ],
@@ -3734,7 +3740,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2b verify-clean: the products' objects are listed after the run",
-        [(P, "            **self._new_product_objects(),\n", "")],
+        [(P, '            **self._new_product_objects(snapshot.get("products")),\n', "")],
         [
             TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it",
             TPC
@@ -3789,6 +3795,121 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             "tests.test_matrix.ProductStepValidationTest.test_a_product_step_the_op_would_refuse_fails_validation"
         ],
+    ),
+    # -- P06.1-I2b: the independent check's findings ----------------------------------------
+    (
+        "I2b check 1: the member's own undo is judged before the control's replay",
+        [
+            (
+                MX,
+                '        self.undo_verdict = matrix.refused_verdict(answer.outcome, False)\n        self.detail["client_undo"] = {\n            "request": pr._request_line(record, self.run.ctx),\n            "answer": pr._observed(answer),\n            "control": "not completed",\n            "verdict": f"{self.undo_verdict.label}: {self.undo_verdict.reason}",\n        }\n',
+                "",
+            )
+        ],
+        [
+            TMX
+            + "KeptAfterTheIndependentCheckTest.test_the_members_own_undo_is_kept_when_the_replay_stops"
+        ],
+    ),
+    (
+        "I2b check 2: what the earlier sessions' windows showed is kept when a later collection stops",
+        [
+            (
+                MX,
+                "            for label, window in seen.items():\n",
+                "            for label, window in {}.items():\n",
+            )
+        ],
+        [
+            TMX
+            + "KeptAfterTheIndependentCheckTest.test_an_earlier_sessions_probe_is_kept_when_a_later_collection_stops"
+        ],
+    ),
+    (
+        "I2b check 3: the product wording needs the product as its subject",
+        [(U, "        and PRODUCT_SUBJECT_WORDS.search(message)\n", "")],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: wording about an object or a field of the request is not the product's",
+        [(U, "        and not PRODUCT_OBJECT_WORDS.search(message)\n", "")],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: a 404 to a case's request is an object that does not exist",
+        [
+            (
+                PR,
+                "    if status is None or not 400 <= status < 500 or status in (402, 404) or code == 99:\n",
+                "    if status is None or not 400 <= status < 500 or status == 402 or code == 99:\n",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: a listing is not available only by the product's configuration read",
+        [
+            (
+                PR,
+                '            if product_state.startswith("not available"):\n',
+                '            if product_state.startswith("not available") or unavailable_answer(result.status, result.code, result.message):\n',
+            )
+        ],
+        [
+            TPR + "ReadAndListTest.test_list_objects",
+            "tests.test_preflight.ProductObjectsTest.test_a_listing_that_is_not_verified_stops_the_run",
+        ],
+    ),
+    (
+        "I2b check 3: preflight stops on a listing that is not verified",
+        [
+            (
+                P,
+                '        if unverified:\n            raise RunStopped(\n                "a listing of the products\' objects is not verified: " + "; ".join(unverified)\n            )\n',
+                "        if False:\n            raise RunStopped(unverified)\n",
+            )
+        ],
+        [
+            "tests.test_preflight.ProductObjectsTest.test_a_listing_that_is_not_verified_stops_the_run"
+        ],
+    ),
+    (
+        "I2b check 4: the configure scope passes only the lockdown's grants",
+        [(G, "        if not products.is_lockdown_body(body):\n", "        if False:\n")],
+        [TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure"],
+    ),
+    (
+        "I2b check 5: the apply's gate is the chat verification alone",
+        [
+            (
+                C,
+                '    chat_problems = [p for p in configuration.verify(before) if not p.startswith("video/feeds: ")]\n',
+                "    chat_problems = configuration.verify(before)\n",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_the_apply_is_gated_by_the_chat_verification_alone"],
+    ),
+    (
+        "I2b check 6: only a boolean true is the denied value, as in the runner's op",
+        [
+            (
+                PR,
+                '            if key in DENIED_TRUE_KEYS and (item is True or item == "true"):\n',
+                '            if key in DENIED_TRUE_KEYS and item in (True, "true"):\n',
+            )
+        ],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
+    ),
+    (
+        "I2b check 6: a query in the path is named before a denied field, as in the runner's op",
+        [
+            (
+                PR,
+                '    if "?" in path:\n        return "query parameters belong in params, not in the path"\n    field = denied_field(body) or denied_field(params)\n    if field:\n        return f"denied field ({field})"\n',
+                '    field = denied_field(body) or denied_field(params)\n    if field:\n        return f"denied field ({field})"\n    if "?" in path:\n        return "query parameters belong in params, not in the path"\n',
+            )
+        ],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
     ),
 ]
 

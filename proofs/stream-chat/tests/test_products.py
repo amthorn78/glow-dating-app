@@ -95,6 +95,11 @@ TABLE: list[tuple[str, str, Any, Any, bool]] = [
     ),
     ("POST", "/api/v2/feeds/activities", {"feeds": ["user:x"], "skip_push": True}, None, True),
     ("POST", CALL + "?ring=true", {}, None, False),
+    # The independent check, nit 6: only a boolean true (or "true") is the denied value, in
+    # both tables; and a query in the path is named before a denied field, in both.
+    ("POST", CALL, {"video": 1}, None, True),
+    ("POST", CALL, {"data": {"video": "true"}}, None, False),
+    ("POST", CALL + "?x=1", {"ring": True}, None, False),
 ]
 
 
@@ -164,6 +169,26 @@ class AllowlistTest(unittest.TestCase):
             ),
             "denied field (create_notification_activity: true)",
         )
+
+    def test_the_lockdown_body(self) -> None:
+        """The independent check, nit 4: the configure scope passes only the lockdown's
+        grants."""
+        self.assertTrue(products.is_lockdown_body({"grants": {"user": []}}))
+        self.assertTrue(
+            products.is_lockdown_body({"grants": {"user": [], "guest": [], "anonymous": []}})
+        )
+        bodies: list[Any] = [
+            {"grants": {"admin": []}},
+            {"grants": {"user": ["read-call"]}},
+            {"grants": {}},
+            {"grants": {"user": []}, "settings": {"audio": {}}},
+            {"settings": {"audio": {}}},
+            {},
+            None,
+            [],
+        ]
+        for body in bodies:
+            self.assertFalse(products.is_lockdown_body(body), body)
 
     def test_configuration_writes(self) -> None:
         self.assertTrue(products.is_configuration_write("PUT", "/api/v2/video/calltypes/default"))
@@ -260,10 +285,22 @@ class AvailabilityTest(unittest.TestCase):
             products.unavailable_answer(400, 4, "feeds v3 is not available on your plan")
         )
         self.assertIsNotNone(products.unavailable_answer(403, 17, "This feature is disabled"))
+        self.assertIsNotNone(
+            products.unavailable_answer(403, 17, "The application is not enabled for video")
+        )
         for status, code, message in (
             (402, 17, "Video is not enabled"),  # 402 is always a charge signal
             (403, 99, "Video is not enabled"),  # code 99 too
+            (404, 16, "Video is not enabled"),  # a 404 is an object that does not exist
             (403, 17, "Not Allowed"),  # an ordinary refusal
+            # Input errors about an object or a field of the request (the independent
+            # check, finding 3): not the product.
+            (400, 4, "sort field 'x' is not supported"),
+            (400, 4, "feed group 'z' is not available"),
+            (400, 4, "call type 'x' is not enabled for ringing"),
+            (400, 4, "the field 'video' is not available"),
+            (400, 4, "user 'u' is not available"),
+            (400, 4, "is not enabled"),  # no subject at all
             (403, 17, "Upgrade your plan"),  # no wording that the product is not enabled
             (200, None, "Video is not enabled"),
             (500, -1, "Video is not enabled"),
@@ -425,10 +462,29 @@ class ReadAndListTest(unittest.TestCase):
         self.assertEqual(listed["remaining_feeds"], ["user:p061i1-ua"])
         self.assertEqual(listed["remaining_activities"], ["a-1"])
         server.products.available["video"] = False
+        # A listing that is not 2xx is "not available" only by the product's configuration
+        # read, never by its own message (the independent check, finding 3).
         listed = products.list_objects(server)  # type: ignore[arg-type]
         self.assertIsNone(listed["remaining_calls"])
+        self.assertTrue(listed["calls_listing"].startswith("not verified: HTTP 403 code 17"))
+        state_read = products.read_configuration(server)  # type: ignore[arg-type]
+        listed = products.list_objects(server, state_read)  # type: ignore[arg-type]
         self.assertTrue(listed["calls_listing"].startswith("not available: HTTP 403 code 17"))
+        self.assertIn("(the listing got HTTP 403 code 17", listed["calls_listing"])
         self.assertEqual(listed["remaining_feeds"], ["user:p061i1-ua"])
+        # An available product whose listing fails is not verified, whatever it says.
+        server.products.available["video"] = True
+        state_read = products.read_configuration(server)  # type: ignore[arg-type]
+
+        def refuse_calls(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if path == "/api/v2/video/calls":
+                message = "Video is not enabled for this application"
+                return ApiResult(method, path, 403, 17, message, {"code": 17, "message": message})
+            return None
+
+        server.handlers.append(refuse_calls)
+        listed = products.list_objects(server, state_read)  # type: ignore[arg-type]
+        self.assertTrue(listed["calls_listing"].startswith("not verified: HTTP 403 code 17"))
 
 
 if __name__ == "__main__":

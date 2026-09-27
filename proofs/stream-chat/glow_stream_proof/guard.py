@@ -428,9 +428,13 @@ def _product(
     if why:
         return f"on the Video and Feeds deny-list ({why})"
     if products.is_configuration_write(verb, path):
-        if scope.allows_product_configuration():
-            return None
-        return "a Video or Feeds configuration change outside the scoped configure"
+        if not scope.allows_product_configuration():
+            return "a Video or Feeds configuration change outside the scoped configure"
+        if not products.is_lockdown_body(body):
+            # Only the lockdown's grants, for the client roles (the independent check of
+            # I2b, nit 4).
+            return "a Video or Feeds configuration write that is not the lockdown's grants"
+        return None
     if parts[0] == "video":
         return _video(verb, parts, users, scope)
     return _feeds(verb, parts, body, users, scope)

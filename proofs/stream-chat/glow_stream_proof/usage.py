@@ -208,13 +208,36 @@ _BILLING_WORDS = re.compile(
 
 # Wording with which an answer says a product is not enabled or not available to the
 # application (P06.1-I2b; DM-05 finding 2 (c)). Stream documents no such message, so the
-# words are conservative: Stream's code-17 message, "Not Allowed", does not match, nor
-# does a rate limit's.
+# words are conservative: the phrase must be about the product, the feature, the
+# application or the plan (PRODUCT_SUBJECT_WORDS), not about an object or a field of the
+# request (PRODUCT_OBJECT_WORDS: "feed group 'x' is not available", "sort field 'y' is
+# not supported" are input errors). Stream's code-17 message, "Not Allowed", does not
+# match, nor does a rate limit's (the independent check of I2b, finding 3).
 PRODUCT_UNAVAILABLE_WORDS = re.compile(
-    r"(not|isn'?t|is not|are not) (enabled|available|activated|supported)|is disabled"
+    r"(not|isn'?t|is not|are not) (enabled|available|activated)|is disabled"
     r"|not (on|part of|included in) (the|your|this) plan",
     re.IGNORECASE,
 )
+PRODUCT_SUBJECT_WORDS = re.compile(
+    r"\b(video|feeds?( v3)?|(this|the) product|product|feature|application|app|plan)\b",
+    re.IGNORECASE,
+)
+PRODUCT_OBJECT_WORDS = re.compile(
+    r"\b(feed group|call type|field|filter|sort|activity|activities|comment|reaction"
+    r"|follow|user|channel|member|param(eter)?|id)\b",
+    re.IGNORECASE,
+)
+
+
+def product_unavailable_wording(message: str | None) -> bool:
+    """Whether a message says the product, feature, application or plan is not enabled or
+    not available, and names no object or field of the request (P06.1-I2b)."""
+    return bool(
+        message
+        and PRODUCT_UNAVAILABLE_WORDS.search(message)
+        and PRODUCT_SUBJECT_WORDS.search(message)
+        and not PRODUCT_OBJECT_WORDS.search(message)
+    )
 
 
 def mentions_billing(message: str | None) -> bool:
@@ -248,7 +271,7 @@ def charge_signal(status: int | None, code: int | None, message: str | None) -> 
     if code in _CHARGE_CODES:
         return f"Stream error code {code}"
     if message and _CHARGE_WORDS.search(message):
-        if _only_an_upgrade_word(message) and PRODUCT_UNAVAILABLE_WORDS.search(message):
+        if _only_an_upgrade_word(message) and product_unavailable_wording(message):
             # An answer that a product is not enabled or not available to the application,
             # whose only charge word is "upgrade", is that product's finding, not a charge
             # signal (P06.1-I2b; DM-05 finding 2 (c)). Wording about a charge, a payment,

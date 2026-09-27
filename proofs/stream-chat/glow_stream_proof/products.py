@@ -49,7 +49,7 @@ from typing import Any
 
 from .configuration import ApiRequest
 from .server_api import ApiResult, ServerApi
-from .usage import PRODUCT_UNAVAILABLE_WORDS
+from .usage import product_unavailable_wording
 
 PRODUCTS = ("video", "feeds")
 # The roles the lockdown empties; equal to configuration.CLIENT_APP_ROLES (a test says so).
@@ -121,7 +121,7 @@ def denied_field(value: Any) -> str | None:
         for key, item in value.items():
             if key in DENIED_KEYS:
                 return str(key)
-            if key in DENIED_TRUE_KEYS and item in (True, "true"):
+            if key in DENIED_TRUE_KEYS and (item is True or item == "true"):
                 return f"{key}: true"
             found = denied_field(item)
             if found:
@@ -129,13 +129,21 @@ def denied_field(value: Any) -> str | None:
     return None
 
 
-def denied(path: str, body: Any, params: Mapping[str, Any] | None) -> str | None:
-    """Why a Video or Feeds request is on the deny-list, or ``None``."""
+def denied_path(path: str) -> str | None:
+    """Why a path is on the deny-list, or ``None``."""
     clean = path.split("?", 1)[0]
     for segment in clean.lower().split("/"):
         for word in DENIED_PATH_WORDS:
             if word in segment:
                 return f"denied path ({word})"
+    return None
+
+
+def denied(path: str, body: Any, params: Mapping[str, Any] | None) -> str | None:
+    """Why a Video or Feeds request is on the deny-list, or ``None``."""
+    why = denied_path(path)
+    if why:
+        return why
     field = denied_field(body) or denied_field(params)
     if field:
         return f"denied field ({field})"
@@ -146,13 +154,16 @@ def client_refusal(
     method: str, path: str, body: Any, params: Mapping[str, Any] | None
 ) -> str | None:
     """Why the client's product op refuses this request (the Python mirror of
-    ``client/product-op.cjs``), or ``None`` when it may be sent."""
+    ``client/product-op.cjs``, in the same order), or ``None`` when it may be sent."""
     clean = path.split("?", 1)[0]
-    why = denied(path, body, params)
+    why = denied_path(path)
     if why:
         return why
     if "?" in path:
         return "query parameters belong in params, not in the path"
+    field = denied_field(body) or denied_field(params)
+    if field:
+        return f"denied field ({field})"
     verb = method.upper()
     for pattern, methods in CLIENT_ALLOWLIST:
         if pattern.match(clean):
@@ -197,13 +208,15 @@ def availability(result: ApiResult) -> str:
 
 
 def unavailable_answer(status: int | None, code: int | None, message: str | None) -> str | None:
-    """The product-finding rule (DM-05 finding 2 (c)): a 4xx other than 402, whose code is
-    not 99, whose message says the product is not enabled or not available to the
-    application. Such an answer is that product's finding, not a charge signal, and not a
-    refusal under the matrix quality rule."""
-    if status is None or not 400 <= status < 500 or status == 402 or code == 99:
+    """The product-finding rule (DM-05 finding 2 (c)): a 4xx other than 402 and 404, whose
+    code is not 99, whose message says the product (not an object or a field of the
+    request) is not enabled or not available to the application. Such an answer is that
+    product's finding, not a charge signal, and not a refusal under the matrix quality
+    rule. A 404 is "does not exist" (an object), except from a configuration read
+    (:func:`availability`)."""
+    if status is None or not 400 <= status < 500 or status in (402, 404) or code == 99:
         return None
-    if message and PRODUCT_UNAVAILABLE_WORDS.search(message):
+    if product_unavailable_wording(message):
         return f"HTTP {status} code {code}: {message}"
     return None
 
@@ -391,10 +404,12 @@ def baseline_record(state: Mapping[str, Any], app_id: str) -> dict[str, Any]:
 # -- the products' objects -------------------------------------------------------------
 
 
-def list_objects(api: ServerApi) -> dict[str, Any]:
+def list_objects(api: ServerApi, state: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Every call, feed and activity in the application (the proof's are the only ones).
-    A listing Stream does not answer with 2xx is reported as not verified, with the
-    product's availability when the answer says the product is not available."""
+    A listing Stream does not answer with 2xx is "not available: …" when the product's
+    configuration read (``state``, from :func:`read_configuration`) shows the product is
+    not available, so that no object of it can exist; otherwise it is "not verified: …",
+    whatever its own message says (the independent check of I2b, finding 3)."""
     out: dict[str, Any] = {}
     calls = api.raw("POST", "/api/v2/video/calls", body={"filter_conditions": {}, "limit": 100})
     feeds = api.raw("POST", "/api/v2/feeds/feeds/query", body={"limit": 100})
@@ -419,12 +434,29 @@ def list_objects(api: ServerApi) -> dict[str, Any]:
         if result.ok and isinstance(items, list):
             out[f"remaining_{key}"] = [ident(i) for i in items]
         else:
-            # "not available: ..." when the answer says the product is not available (no
-            # object of it can exist), "not verified: ..." otherwise.
             out[f"remaining_{key}"] = None
-            out[f"{key}_listing"] = availability(result)
+            product = "video" if key == "calls" else "feeds"
+            product_state = str(((state or {}).get(product) or {}).get("availability") or "")
+            why = f"HTTP {result.status} code {result.code}" + (
+                f": {result.message}" if result.message else ""
+            )
+            if product_state.startswith("not available"):
+                out[f"{key}_listing"] = f"{product_state} (the listing got {why})"
+            else:
+                out[f"{key}_listing"] = f"not verified: {why}"
     return out
 
 
 OBJECT_KINDS = ("calls", "feeds", "activities")
 OBJECT_NAMES = {"calls": "call", "feeds": "feed", "activities": "activity"}
+
+
+def is_lockdown_body(body: Any) -> bool:
+    """Whether a configuration write's body is the lockdown's and nothing else: ``grants``
+    alone, naming only client roles, each ``[]`` (the independent check of I2b, nit 4)."""
+    if not isinstance(body, Mapping) or set(body) != {"grants"}:
+        return False
+    grants = body["grants"]
+    if not isinstance(grants, Mapping) or not grants:
+        return False
+    return all(role in CLIENT_ROLES and granted == [] for role, granted in grants.items())

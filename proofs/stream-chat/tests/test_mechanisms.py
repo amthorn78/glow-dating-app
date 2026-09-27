@@ -959,6 +959,76 @@ class Missing404Test(unittest.TestCase):
         self.assertIn("refusal not attributable", s15["why"])
 
 
+class KeptAfterTheIndependentCheckTest(unittest.TestCase):
+    """P06.1-I2b, the independent check's findings 1 and 2: what a family observed is kept
+    when a stop falls inside the member's own undo or inside the probe's collection."""
+
+    def test_the_members_own_undo_is_kept_when_the_replay_stops(self) -> None:
+        run, server, _world, clock = family_run()
+
+        def charged_replay(method: str, path: str, body: Any, params: dict[str, str] | None) -> Any:
+            # The server's replay of the member's own show (its body names the user).
+            if method == "POST" and path.endswith("/show") and (body or {}).get("user_id"):
+                raise server.ledger.stop_at_once(
+                    "server POST show: HTTP 402; stopping at once", rate_limited=False, billing=True
+                )
+            return None
+
+        server.handlers.insert(0, charged_replay)
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-hide"})
+        kept = row(run, "RV-hide")
+        undo = kept.detail["client_undo"]
+        self.assertTrue(undo["verdict"].startswith(matrix.FAIL), undo)
+        self.assertEqual(undo["control"], "not completed")
+        self.assertEqual(undo["answer"], "201 (succeeded)")
+        self.assertEqual(kept.verdict, matrix.FALLS_SHORT)
+        self.assertIn("client undo: FAIL", kept.observed)
+
+    def test_an_earlier_sessions_probe_is_kept_when_a_later_collection_stops(self) -> None:
+        run, server, _world, clock = family_run()
+        original = run._session
+        seen_after: list[str] = []
+
+        def stopping_second(label: str, token: str | None, **kwargs: Any) -> Any:
+            session: Any = original(label, token, **kwargs)  # a FakeSession
+            inner = session.behaviour
+
+            def behaviour(sess: Any, op: str, params: dict[str, Any]) -> Any:
+                if op == "events" and any(World.is_after_probe(e) for e in sess.pending_events):
+                    seen_after.append(sess.label)
+                    if len(seen_after) == 2:
+                        # The second session's collection of the after-probe window: a
+                        # signal in a background request's answer.
+                        raise server.ledger.stop_at_once(
+                            f"client {sess.label}: HTTP 402; stopping at once",
+                            rate_limited=False,
+                            billing=True,
+                        )
+                return inner(sess, op, params) if inner is not None else None
+
+            session.behaviour = behaviour
+            return session
+
+        run._session = stopping_second  # type: ignore[method-assign]
+        with NoSettle(), clock:
+            run.setup()
+            run.authorized_path()
+            with self.assertRaises(GuardrailStop):
+                run.run_matrix({"RV-freeze"})
+        kept = row(run, "RV-freeze")
+        first, second = seen_after
+        table = kept.detail["table"]
+        # The first session's window was collected and shows the probe received: its
+        # subscription is "not ended"; the second's could not be collected.
+        self.assertEqual(table[first]["ws"]["status"], mechanisms.NOT_ENDED, table[first]["ws"])
+        self.assertEqual(table[second]["ws"]["status"], mechanisms.NOT_SHOWN)
+        self.assertEqual(kept.verdict, matrix.FALLS_SHORT)
+
+
 class ListenerAndRetentionTest(unittest.TestCase):
     """P06.1-I2b, the I2a review's nit 3: the listener and the retention read."""
 
