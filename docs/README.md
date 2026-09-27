@@ -27,7 +27,7 @@ Each kind of fact has one home. Other documents link to it rather than copy it.
 | Architecture decisions | `docs/adr/` |
 | What the app asks of HDE's contract, and the delivered contract's receipt | The [HDE contract request](planning/hde-contract-request.md); the receipt goes in `docs/architecture/` when the contract arrives |
 | Nathan's standing directions | The [owner-direction register](continuity/owner-directions.md) |
-| The reasoning-strength matrix (models and levels), the TypeSafe rule, evidence and readings | The [reasoning-strength matrix](planning/reasoning-level-matrix.md); the request in force and the scoring script are the skill `.claude/skills/typesafe-scoring/`; Notion's usage log carries a copy and the uses table |
+| The reasoning-strength matrix (models and levels), the TypeSafe rule, evidence and readings | The [reasoning-strength matrix](planning/reasoning-level-matrix.md); the reading is produced by Nathan's Claude skill `typesafe-scoring`; Notion's usage log carries a copy and the uses table |
 | Dev Manager consultations, verdicts and dispositions | The [review log](continuity/dev-manager/README.md) |
 | Managers' mistakes | The [mistakes log](continuity/manager-mistakes.md) |
 | The periodic status and State of the App | [A snapshot](continuity/state-of-the-app.md), refreshed only for a periodic review |
