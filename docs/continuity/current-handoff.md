@@ -44,6 +44,6 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches
 
-- **PR26** is not behind `main`. Its code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`), I2a (`6a51dae`) and I2b (`55b2238`); the rest is Markdown.
+- **PR26** is not behind `main`. Code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`), I2a (`6a51dae`) and I2b (`55b2238`); the rest is Markdown.
 - Merged into PR26 only: the session branches the brief names and `claude/dev-manager`.
 - Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` after PR26 merges; every other remote branch is merged into `main`.
