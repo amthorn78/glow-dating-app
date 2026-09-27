@@ -61,6 +61,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
 | AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
 | AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
+| AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
 
 ## App Manager 2
 
@@ -394,3 +395,13 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision: the *Nathan's pick* column, which the table's default view shows, was right. No other row carries a pick status in its *PR* text.
 - **Correction:** the row's *PR* text now says that Nathan picked Opus 5.5 at high and where C4's result is recorded; read back.
 - **Prevention:** a row's *PR* text carries no pick status; only the *Nathan's pick* column does. The C4 review's row follows that.
+
+### AM5-03 — Two Work Register texts left stale (accuracy)
+
+- **What happened:** two Notion texts kept a state that App Manager 5's own batches had changed:
+  - the P06.1 row's body said "I2b (its review in flight)". The takeover batch wrote it while the review ran; the batch that recorded the review (`47fe797`, `2c2d450`) updated the row's *Next Action* but not its body;
+  - the D10 row's *Next Action* said D10 is "on the manager branch until PR26 merges". The takeover batch replaced PR26's branch links across Notion, but not this text, and PR26 is closed.
+- **Caught by:** App Manager 5, querying the Work Register for old wording after finding AM5-02, while syncing the batch that integrated C4.
+- **Effect:** none on any decision: the rows' other fields, Implementation Control and the repository were right.
+- **Correction:** both texts corrected and read back.
+- **Prevention:** it repeats AM5-02, a status left stale in a field the update did not touch, so the prevention is now an item of the manager workflow's checklist "Writing to Notion": when a status changes, update every property and page body that states it, then query the touched databases for the old wording before the batch ends.
