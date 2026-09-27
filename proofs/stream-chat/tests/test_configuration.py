@@ -297,14 +297,24 @@ class ProductDifferencesTest(unittest.TestCase):
         self.assertEqual(conf.product_differences(snapshot(), locked=True), [])
         self.assertEqual(conf.verify(configured(snapshot())), [])
 
-    def test_before_the_apply_the_differences_are_not_drift(self) -> None:
+    def test_the_recorded_apply_is_the_live_applys_utc_stamp(self) -> None:
+        from glow_stream_proof import products
+
+        # Set by the commit after the live apply of 27 September 2026; from then on every
+        # verify compares the products (below).
+        self.assertEqual(products.LOCKDOWN_APPLIED, "2026-09-27T05:58:31Z")
+        self.assertRegex(products.LOCKDOWN_APPLIED or "", r"^2026-09-27T\d\d:\d\d:\d\dZ$")
+
+    def test_with_no_recorded_apply_the_differences_are_not_drift(self) -> None:
+        from unittest import mock
+
         from glow_stream_proof import products
 
         snap = configured(snapshot())
         snap["products"] = self.state(["create-call"])
-        self.assertIsNone(products.LOCKDOWN_APPLIED)  # flipped by the commit after the apply
-        self.assertEqual(conf.product_differences(snap), [])
-        self.assertEqual(conf.verify(snap), [])
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", None):
+            self.assertEqual(conf.product_differences(snap), [])
+            self.assertEqual(conf.verify(snap), [])
         self.assertEqual(
             conf.product_differences(snap, locked=True),
             [

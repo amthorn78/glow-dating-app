@@ -540,6 +540,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_the_dry_run_prints_the_plan_and_the_chat_verification(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx, False, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         self.assertIn("differences before: []", ctx.lines)
@@ -564,6 +565,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_apply_refuses_while_the_chat_configuration_does_not_verify(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         server.app["guest_user_creation_disabled"] = False
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
@@ -573,6 +575,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_apply_refuses_a_planned_request_outside_the_configuration_families(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         bad = configuration.ApiRequest(
             "PATCH", "/api/v2/app", {"grants": {"user": []}}, "video: not this"
@@ -593,6 +596,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_apply_sends_only_the_difference_and_verifies_both_products(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         sent = puts(server)
@@ -634,6 +638,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_apply_is_guarded_by_the_configure_scope(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         cli.cmd_configure(ctx, True, ["video"])  # type: ignore[arg-type]
         self.assertIsNotNone(server.guard)
@@ -652,6 +657,7 @@ class ScopedConfigureTest(_WritesTest):
         """The independent check, nit 5: once the lockdown is recorded as applied, the
         products' own drift is what the apply is for, not a reason to refuse it."""
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
             self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
@@ -661,6 +667,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_unknown_products_are_refused(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx, False, ["chat"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
         self.assertEqual(cli.cmd_configure(ctx, False, []), cli.EXIT_REFUSED)  # type: ignore[arg-type]
@@ -668,6 +675,7 @@ class ScopedConfigureTest(_WritesTest):
 
     def test_a_product_that_is_not_available_is_left_out_of_the_plan(self) -> None:
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
         server.products.available["feeds"] = False
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
@@ -710,6 +718,7 @@ class ProbeAndBaselineTest(_WritesTest):
     def test_baseline_and_the_products_baseline_record(self) -> None:
         server = FakeServer(UsageLedger())
         server.users["owner"] = dashboard_user("owner")
+        server.products.grant_before_lockdown()  # a baseline taken before the lockdown
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_baseline(ctx), 0)  # type: ignore[arg-type]
         name, snapshot = next((k, v) for k, v in self.written.items() if k.startswith("snapshot-"))

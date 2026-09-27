@@ -6,9 +6,12 @@ feeds, activities, comments, reactions, follows), and answers the requests the h
 and a client can send them, the way Stream's documentation describes: a grants update
 changes only the roles it names; a hard-deleted feed takes its activities with it and
 its ID is not reused ("feed with id ... has been deleted"); a user's Feeds data delete
-removes everything of that user's. The defaults are a model,
-not Stream's behaviour: the built-in call types' default grants and the visibilities'
-default grants are not published.
+removes everything of that user's. The configuration starts at the lockdown target, as the
+live application's has since the apply of 27 September 2026 (``products.LOCKDOWN_APPLIED``),
+so a run's preflight verifies it; ``grant_before_lockdown()`` puts the pre-lockdown model
+back. The grants are a model, not Stream's behaviour: the built-in call types' default
+grants and the visibilities' default grants are not published, and what a client may do
+(``allowed``) is a knob of its own.
 
 Knobs: ``available[product]`` (a product that is not available answers every request
 with the configured status, code and message); ``allowed`` (what a client with the
@@ -33,8 +36,10 @@ UNAVAILABLE_MESSAGE = (
     "{product} is not enabled for this application. Upgrade your plan to enable it."
 )
 CLIENT_ROLES = ("user", "guest", "anonymous")
-# What a fresh application's call types and visibilities grant (a model).
-DEFAULT_CALL_TYPE_GRANTS: dict[str, dict[str, list[str]]] = {
+# What a fresh application's call types and visibilities grant (a model), before the
+# lockdown; the state starts at the lockdown target (below) and tests of the plan and
+# of drift put this model back with ``ProductState.grant_before_lockdown()``.
+BEFORE_LOCKDOWN_CALL_TYPE_GRANTS: dict[str, dict[str, list[str]]] = {
     "default": {
         "admin": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
         "user": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
@@ -50,7 +55,7 @@ DEFAULT_CALL_TYPE_GRANTS: dict[str, dict[str, list[str]]] = {
         "anonymous": ["read-call"],
     },
 }
-DEFAULT_VISIBILITY_GRANTS: dict[str, dict[str, list[str]]] = {
+BEFORE_LOCKDOWN_VISIBILITY_GRANTS: dict[str, dict[str, list[str]]] = {
     "public": {
         "user": [
             "read-feed",
@@ -72,6 +77,17 @@ DEFAULT_VISIBILITY_GRANTS: dict[str, dict[str, list[str]]] = {
     },
     "private": {"feed_member": ["read-feed", "read-activities", "add-activity"]},
 }
+
+
+def locked_down(grants: Mapping[str, Mapping[str, list[str]]]) -> dict[str, dict[str, list[str]]]:
+    """A copy of ``grants`` at the lockdown target: the client roles hold nothing, every
+    other role keeps its grants (the live application since the apply of 27 September 2026)."""
+    return {
+        scope: {role: ([] if role in CLIENT_ROLES else list(g)) for role, g in roles.items()}
+        for scope, roles in grants.items()
+    }
+
+
 DEFAULT_FEED_GROUPS: dict[str, dict[str, Any]] = {
     "user": {"default_visibility": "visible", "default_follower_role": "feed_follower"},
     "timeline": {"default_visibility": "private", "default_follower_role": "feed_follower"},
@@ -115,14 +131,10 @@ class ProductState:
     unavailable_code: int = 17
     unavailable_message: str = UNAVAILABLE_MESSAGE
     call_type_grants: dict[str, dict[str, list[str]]] = field(
-        default_factory=lambda: {
-            k: {r: list(g) for r, g in v.items()} for k, v in DEFAULT_CALL_TYPE_GRANTS.items()
-        }
+        default_factory=lambda: locked_down(BEFORE_LOCKDOWN_CALL_TYPE_GRANTS)
     )
     visibility_grants: dict[str, dict[str, list[str]]] = field(
-        default_factory=lambda: {
-            k: {r: list(g) for r, g in v.items()} for k, v in DEFAULT_VISIBILITY_GRANTS.items()
-        }
+        default_factory=lambda: locked_down(BEFORE_LOCKDOWN_VISIBILITY_GRANTS)
     )
     feed_groups: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {k: dict(v) for k, v in DEFAULT_FEED_GROUPS.items()}
@@ -157,6 +169,18 @@ class ProductState:
     seen: list[tuple[str, str, str | None]] = field(default_factory=list)
 
     # -- helpers --
+
+    def grant_before_lockdown(self) -> None:
+        """Put the pre-lockdown model back: the client roles hold grants again, so the
+        lockdown has a plan and the drift check something to see."""
+        self.call_type_grants = {
+            k: {r: list(g) for r, g in v.items()}
+            for k, v in BEFORE_LOCKDOWN_CALL_TYPE_GRANTS.items()
+        }
+        self.visibility_grants = {
+            k: {r: list(g) for r, g in v.items()}
+            for k, v in BEFORE_LOCKDOWN_VISIBILITY_GRANTS.items()
+        }
 
     def _next(self, kind: str) -> str:
         self.counter += 1

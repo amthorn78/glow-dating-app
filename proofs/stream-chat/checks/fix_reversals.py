@@ -3471,7 +3471,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
                 "    if False:\n        return []\n",
             )
         ],
-        [TCF + "ProductDifferencesTest.test_before_the_apply_the_differences_are_not_drift"],
+        [TCF + "ProductDifferencesTest.test_with_no_recorded_apply_the_differences_are_not_drift"],
     ),
     (
         "I2b configuration: verify includes the products' differences",

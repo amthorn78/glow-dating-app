@@ -65,8 +65,9 @@ FEED_VISIBILITIES = "/api/v2/feeds/feed_visibilities"
 # stamp of that apply: from then on ``configuration.verify`` compares the products'
 # state with the lockdown target too, so preflight, the end of every run and the dry-run
 # ``configure`` see any drift. Before the apply the products' differences are the plan,
-# not drift, and the runs before the lockdown (run 1, run V1) must be allowed.
-LOCKDOWN_APPLIED: str | None = None
+# not drift, and the runs before the lockdown (run 1, run V1) must be allowed. Applied on
+# 27 September 2026 at 05:58:31 UTC (its record: configure-products-20260927T055831Z).
+LOCKDOWN_APPLIED: str | None = "2026-09-27T05:58:31Z"
 
 _SEG = r"[^/]+"
 # (pattern, methods): what a client may send through the runner's product op.

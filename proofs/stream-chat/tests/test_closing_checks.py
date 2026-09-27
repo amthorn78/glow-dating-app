@@ -78,6 +78,7 @@ class ProductDriftTest(unittest.TestCase):
 
         run, server = make_run()
         server.users["owner"] = dashboard_user("owner")
+        server.products.grant_before_lockdown()
         drift = "video/feeds: video call type default: grants for user not empty: "
         with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
             with self.assertRaises(RunStopped) as stopped:
@@ -103,6 +104,7 @@ class ProductDriftTest(unittest.TestCase):
         from glow_stream_proof import products
 
         server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
 
         class Context:
             api = server
