@@ -7,6 +7,7 @@
 - **Where the result goes:** the manager records the verified review in the evidence record, under a new heading "Exact-head review of C4". The outcome goes into the brief's "Sessions". It is P06.1's final delta review (the brief's review plan); the economics discovery and the close-out follow it.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, extra high.** Effort score 3.11 (confidence 0.86); rung probabilities low 0.00, medium 0.00, high 0.05, extra high 0.79, max 0.16, ultracode 0.00. Model probabilities Fable 5.1 0.19, Opus 5.5 0.81 (confidence 0.63). Sent 2026-09-27T19:29:19Z. Nathan picks the cell.
+- **Result:** changes required, with one should-fix finding in the correction class and four nits; recorded in the evidence record, "Exact-head review of C4", with the manager's verification and disposition. P06.1-C5 follows. The relay did not name Nathan's pick. This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **Stream variables** (OD-28): none are needed, and Nathan adds none. This session never calls Stream. The environment check reports any it finds by name.
 - **It runs alone** (OD-29, the linear process). The economics discovery comes after it.

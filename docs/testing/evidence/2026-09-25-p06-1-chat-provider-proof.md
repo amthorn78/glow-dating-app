@@ -3732,3 +3732,191 @@ App Manager 5 checked the relayed report against the pushed branch. The manager 
   - **the README limits** (the WebSocket's host, a per-request `proxy` or `socketPath`, the fetch adapter, two-level nested JSON in a query value, and two request-rewriting headers). The review checks that each is unreachable, as recorded.
 - **Not yet exercised live:** every C4 fix. The baseline comparison may report, at the next live use, a difference that is Stream's rather than the lockdown's. It stops preflight and must be reported, never assumed away.
 - **C4's exact-head review is next.** It is P06.1's final delta review, offline, of `c83bedf`.
+
+### Exact-head review of C4 (27 September 2026)
+
+Nathan ran the review session from revision 1 of the [review prompt](../../ephemeral/2026-09-27-p06-1-c4-review-prompt.md) (records commit `f17b111`) and relayed its report to App Manager 5. The relay does not name the model and level he picked. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: changes required.** C4's change is sound apart from one should-fix finding, which the review places, narrowly, in the class that gets another offline correction pass: `matrix.validate` does not refuse every stream-chat method whose arguments reach a request's configuration or path, and the README's recorded limits rest on it doing so. No current step reaches such an argument, and the harness has made no live call since C4.
+- **Four nits,** none in the class: `maxRedirects: 0` has no test, and one is feasible; ADR 0003's condition (c) still says a limit "stands until P06.1-C4"; a failed record write after a signal loses the stop's exit code; one test of nit 8's ledger rule shows less than its name says.
+- **The rest is confirmed.** The I2b review's ten items and the items C4's own review found are fixed, apart from the `validate` half of finding 1. The review agrees with the manager's dispositions except the README limits, where it disagrees in part.
+
+#### The report, as relayed
+
+The session's notes before its report, as relayed (the relay begins mid-session), verbatim:
+
+> Continuing with the rest of the review: the nit 8 and finding 2 tests, the fake products, the records and CI. I'm leaving further adversarial probing of the request check out of this review.
+>
+> Tests read. Now checking the records: the evidence record's in-place changes against `2c2d450`, and the architecture document.
+>
+> The reversal run is partway through (the C3 entries). Meanwhile I'm running the secret scan and reading the C4 reversal entries.
+>
+> Now checking hosted CI (read-only).
+>
+> CI is green on both runs. Next, the C4 reversal entries while the full run finishes.
+>
+> While the reversals finish, a quick differential check that the runner's `normalizedPath`/`isProductPath` and the Python mirror agree on random inputs (a pure equivalence test).
+>
+> Offline checks, CI, records and tests are read. I'm now waiting for two things: the full reversal run (about half done) and the read-only research agent on stream-chat's URL-taking methods.
+>
+> Both background jobs are still running: the full reversal run (177 of 378 entries done so far) and the read-only stream-chat inventory agent. I'll write the report once both are back. So far there is no blocking finding.
+>
+> The research agent is back. I'll use its result only at the level of which SDK methods pass caller options into the request configuration, and I'll check that against the matrix's steps. Two quick checks: the method signatures, and whether any current step passes such an argument.
+>
+> No current matrix step exposes this issue since none pass request-options or call the path-building methods—the real gap is in validate's coverage and the README's documented limits. Now checking the reversal run.
+>
+> The reversal run has about 106 of 378 entries left, roughly ten minutes. I'll read every C4 entry's failure reason when it finishes, then write the report.
+>
+> Writing the report. First, the path counts of the three classification outputs.
+
+The report, verbatim (its headings one level down):
+
+**Verdict: changes required.** C4 is sound apart from one should-fix finding, which I place (narrowly) in the class that gets another offline correction pass. `matrix.validate` does not refuse every SDK method whose arguments reach the request's configuration or path, and the README's recorded limits rest on it doing so. Everything else is nits or records.
+
+- **Prompt:** revision 1, from `f17b11146f37b8ee93b92ddefb52fde2cc19ac01`.
+- **Head reviewed:** `git rev-parse HEAD` printed `c83bedf1f812cf454d4f16b5dc741c5d944749d9`. The merge base is `0f45e64`, the head is an ancestor of `f17b111`, and the diff is 17 files, +2381 −204.
+- **Classification:** trusted policy from `main` (sha256 `dec69a26…`), run outside the tree with `python3 -I` and full SHAs:
+  - `main` → head: `{"full": true, "reason": "behavior-or-empty"}`, 145 paths;
+  - `55b2238` → head: `{"full": true, "reason": "behavior-or-empty"}`, 31 paths. The non-Markdown filter outside `proofs/stream-chat/` printed nothing;
+  - head → `f17b111`: `{"full": false, "reason": "ordinary-docs-only"}`, 7 paths.
+- **Environment:** none of the six variables is present. On the default PATH, `node` is `/opt/node22/bin/node` v22.22.2 and npm is 10.9.7. The pinned toolchain in `$HOME/.local/bin` is node v24.19.0, npm 11.9.0 and Python 3.12.14; I put it first on PATH for every check.
+
+##### Findings, most severe first
+
+**1. Should fix. `validate` misses methods that can steer a request, and the README's limits depend on it.** In class: yes, narrowly.
+- **Where:** `glow_stream_proof/matrix.py:2055` (`CLIENT_URL_METHODS`) and `:2060` (`_product_reach`); `README.md:398`.
+- **The gap:** stream-chat 9.53.0 has more methods whose JSON arguments reach the request than the eight `validate` refuses.
+  - These client methods take a request-options argument that the SDK passes into the request configuration: `queryUsers`, `searchUserGroups`, `queryChannelsRequestWithResponse`, `search`, `searchRoles`, `uploadFile` and `uploadImage`.
+  - So do three channel methods: `sendFile`, `sendImage` and `queryMembers`. `validate` does not check the channel target at all.
+  - `createReminder`, `updateReminder` and `deleteReminder` put a caller value into the request path without encoding it.
+- **Scenario:** the README says the residual request options (a per-request `proxy` or `socketPath`, the fetch adapter, and the two request-rewriting headers) are reachable "only [through] a `call` of a client URL method", which `validate` refuses. They are reachable through the methods above, and `validate` passes such a step.
+- **What holds:**
+  - The runner's check still runs on every HTTP request and resolves the final URL, so the host and product-path checks still apply.
+  - No current matrix step passes a request-options argument or calls a reminder method. I checked every `call` step in `all_cases()`.
+  - No live run remains in P06.1, so exposure today is nil.
+  - The escape is the one C4 already recorded: a rewrite header that Stream might honour.
+- **Fix:**
+  - Make `validate` an allowlist of the (target, method, maximum positional arguments) the matrix uses, or refuse any request-options argument and the reminder methods on either target.
+  - Add a test and a reversal.
+  - Correct `README.md:398`.
+- **Why the class:** the same reasoning as the I2b review's finding 1. A harness-authored step could reach what the recorded mitigation says it cannot.
+
+**2. Nit: `maxRedirects: 0` has no test, and an offline one is feasible.** Not in class.
+- **Where:** `client/runner.cjs:250`.
+- **What it changes:** axios 1.20.0 then uses the native `https` transport, not follow-redirects, and its fetch adapter sets `redirect: 'manual'`. A 3xx comes back as Stream's non-2xx answer, which is never a pass. No chat case relies on a redirect, and no live run recorded one.
+- **Fix:** load `runner.cjs` with a stub `stream-chat` in `require.cache` (the technique the runner already uses for `isomorphic-ws`). Capture the registered request interceptor, call it with a chat config, and assert `maxRedirects === 0`. Add a reversal.
+
+**3. Nit, records: ADR 0003's condition (c) says the re-read limit "stands until P06.1-C4".** Not in class.
+- **Where:** `docs/adr/0003-chat-display-rule.md`, "Conditions" (c); manager-owned.
+- C4 changed the harness's comparison, not what was read live. That the other roles and the settings are unchanged still rests on Stream's documentation until a live read, which the manager deferred to the Dev Manager's close-out.
+- **Fix:** say so, and point section 4 (c) of the architecture document at section 5's corrected wording.
+
+**4. Nit: a failed record write after a signal loses the stop's exit code.** Not in class.
+- **Where:** `glow_stream_proof/cli.py:335` and `:421`, where `write_json` runs before `outcome.finish()`.
+- **Scenario:** after a signal, if the write itself raises (the leak check refuses the record, or the disk write fails), that error replaces the signal's stop. The command then exits 1 with a traceback instead of 3, and no line names the signal. Nothing is sent either way.
+- **Fix:** run `finish()` in a `finally` around the write, or chain the write's error to the stop.
+
+**5. Nit, test strength.** Not in class.
+- **Where:** `tests/test_cli.py`, `test_the_signal_is_read_from_the_ledger_not_the_exception`.
+- The test replaces the stop with a Ctrl-C, which on its own already blocks the re-read. So it shows the record's label, not that the ledger rule prevents a request.
+- A variant where an ordinary error replaces the stop would show that. The code itself is correct.
+
+##### The I2b review's items and C4's own review
+
+| Item | Status |
+|---|---|
+| Finding 1 | Fixed in the runner: the check runs first in the interceptor, before the budget, whatever op sends the request. The `validate` half is incomplete (finding 1 above) |
+| Finding 2 | Fixed: non-client roles as sorted lists, settings field by field with type and list items, feed groups' two fields; full before- and after-state in the record |
+| Nit 3 | Fixed: both tables fold key and value case and give the same reasons (node-driven test, four reversals) |
+| Nit 4 | Fixed: INCONCLUSIVE only for a success with nothing scanned. The other no-leak call sites do not use the disclosure rule, so they are unaffected; no current case carries every term |
+| Nit 8, with the manager's addition | Fixed: no request after a 402 or 429 on a step or on the re-read; the signal is read from `ctx.ledger.signals` (the same ledger `ServerApi` records in); the record is always written; exit 3, 1 or Ctrl-C as recorded. Nits 4 and 5 above apply |
+| Nits 5, 6, 7, 9, 10 | Corrected. Nit 6's count checked: the I2b prompt's section 5 names 13 commands |
+| C4 review: `%ff` (blocking) | Fixed: byte-wise decoding. JS and Python agree on 20,000 random paths |
+| C4 review: should-fix and the ten further items | Fixed, each with a test and a reversal, except `maxRedirects` (nit 2 above) |
+| C4 re-check nits (the two rewrite headers) | Recorded as limits, but the reachability claim is wrong (finding 1 above) |
+
+##### The manager's dispositions
+
+- **C4 verified and integrated:** agree, subject to finding 1.
+- **Fixes beyond the ten items:** agree. Each narrows what may be sent.
+- **`maxRedirects` without a test:** agree it is not blocking. A test is feasible (nit 2).
+- **Letter case kept in the normalized-form comparison:** agree. It is sound: the deny-list folds case, the allowlist's fixed segments are case-sensitive, so a miscased fixed segment is refused, and an ID keeps its case.
+- **Fake products model the committed baseline:** agree. No verdict test is weaker: the fake's behaviour depends only on group existence and the `allowed` knob, not on grants. The plan tests now assert the live nine `PUT`s.
+- **README limits:** disagree in part. The WebSocket-host claim holds: only `setBaseURL` changes `wsBaseURL`. The fetch-adapter claim holds. "Only a client URL method could set them" does not hold (finding 1).
+- **Not yet exercised live:** agree.
+- **The two slips:** agree. The diff is 229,207 bytes, and `b2b9a0b` is missing from the code-commit list.
+
+##### Areas with no findings
+
+- Nit 4 creates no new HOLDS path.
+- A `refused` reply records no request, so it reads INCONCLUSIVE, never HOLDS.
+- The new check refuses nothing a chat case sends. Chat paths are not product paths, chat requests carry no host or forwarding header, and uploads go to chat paths.
+- Baseline differences carry the `video/feeds:` prefix, so they do not block the chat-only gate on the scoped apply.
+- The SDK registers no interceptor of its own. Its insights path, which bypasses the client's axios instance, is off in the runner and no method turns it on.
+- The fix reversals remove their fixes and fail for the right reasons (under Checks).
+- The records match the code, and every `file:line` I checked is right.
+- The evidence record is byte-identical to `2c2d450` apart from the five marked single-line corrections and the appended section.
+- Scope: 17 paths, all mode 100644, no symlink, and no dependency, lock, baseline or workflow file.
+
+##### Checks
+
+| Check | Result |
+|---|---|
+| `git diff --check 2c2d450… HEAD` | no output, exit 0 |
+| Installs (clean env, proxy/CA by reference) | pip `--require-hashes` OK; `pip check` "No broken requirements found."; `npm ci --ignore-scripts` "found 0 vulnerabilities"; stream-chat 9.53.0, axios 1.20.0 |
+| Unit tests | `Ran 543 tests`, `OK` |
+| Ruff / format / mypy | "All checks passed!" / "55 files already formatted" / "Success: no issues found in 53 source files" |
+| `node --check` on the four `.cjs` files | OK |
+| `checks/run_plan.py`, no `.work` | "run plan: fits", exit 0 |
+| `checks/fix_reversals.py`, scratch export | "reversals: 378, not demonstrated: 0", exit 0, 20:46:46 to 21:13:57 UTC. 456 assertion failures, 49 errors, 3 by-design Ctrl-C stops, no syntax, import or name error. All 36 C4 rows OK, each failing on its rule (for example `'budget' != 'refused'`, `16 != 11`, `'HOLDS (filtered, not refused)' != 'INCONCLUSIVE'`, `StepRefused` escaping). The I2b row kept by `b2b9a0b` fails on `'budget' != 'refused'` |
+| JS/Python normalization, differential | 20,000 random paths, 0 disagreements |
+| Secret scan of the diff (229,207 bytes) | 0 JWT-shaped strings, emails, private keys, AWS, GitHub or Slack tokens, or secret assignments |
+| CI push run 356 ([36336214481](https://github.com/amthorn78/glow-dating-app/actions/runs/36336214481)) on `b2b9a0b` | 7 jobs success; "Stream proof checks" ran every step, not skipped |
+| CI PR27 run 366 ([36345354254](https://github.com/amthorn78/glow-dating-app/actions/runs/36345354254)) on `f17b111` | 7 jobs success; "Stream proof checks" ran every step, not skipped; gate passed |
+
+##### Limits
+
+- Nothing was run live.
+- The API key's value was not available, so the scan could not search for it.
+- The SDK method inventory came from one read-only sub-agent reading the installed package. I confirmed the method signatures and the matrix steps myself.
+- Beyond reading the check and running the offline tests above, I did not probe the runner's request check adversarially.
+- `maxRedirects` behaviour comes from the axios source; it was not exercised.
+
+I changed nothing in the repository, on GitHub or in Notion; `git status` is clean at `c83bedf`.
+
+**DECISION NEEDED:** whether finding 1 gets another offline correction pass before P06.1 closes. I recommend a small one: `validate` becomes an allowlist of the methods and argument counts the matrix uses, with a test and a reversal, and `README.md:398` is corrected. The nits can ride in the same pass or go into the records.
+
+#### Manager verification of the review (App Manager 5, 27 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head `c83bedf`, in the scratch export it verified C4 in (identical to the head's harness) and in the stream-chat 9.53.0 and axios 1.20.0 that export installed. It made no Stream call.
+
+- **Identity and classification.** The prompt revision, the head, the merge base, the ancestor check and the diff's size are what the prompt expects. The three classification results and path counts (145, 31 and 7) are the ones the manager's own runs gave before it gave the prompt, with the same trusted policy.
+- **Finding 1, confirmed:**
+  - `_product_reach` (`matrix.py:2060`) refuses only a `call` on the client target naming one of the eight `CLIENT_URL_METHODS` (`:2055`), and a `get` of a product path. It does not look at the channel target or at the number of arguments;
+  - in stream-chat 9.53.0 (`dist/cjs/index.node.js`), `get(url, params, config)` hands its third argument to `doAxiosRequest` as `options.config`, and `_enrichAxiosOptions` spreads it into the axios request configuration (`...options.config`), after the SDK's own headers. The client's `queryUsers`, `searchUserGroups`, `queryChannelsRequestWithResponse`, `searchRoles` and `search` take such an argument (`requestOptions`), and the channel's `queryMembers` takes one too. The client's `uploadImage` and `uploadFile` and the channel's `sendFile` and `sendImage` take `axiosRequestConfig`. `createReminder`, `updateReminder` and `deleteReminder` put `messageId` into the path unencoded;
+  - no current step reaches that argument. The matrix's 132 cases pass `validate`, and their `call` steps give these methods at most three positional arguments (the client's `search` three, `queryUsers` one; the channel's `queryMembers` one, `sendFile` and `sendImage` three), which never reach the request-options position. No step calls a reminder method;
+  - the harness's own code also sends `call` ops, outside the matrix, which `validate` does not see: the controls, the setups and the families in `proof_run.py`, `mechanisms.py` and `i2a.py`. Of the methods above, it calls only `queryMembers` (`proof_run.py:854`, `:2752`) and `queryUsers` (`:2443`), each with one argument. So nothing sets a request option today;
+  - `README.md:398` and C4's own record ("C4's own review", the re-check of `112011f`: "only a `call` of a client URL method, which `validate` refuses, could set them") state the claim the review disproves.
+- **In the class: agreed, narrowly,** for the reason the review gives: a harness-authored step, or the harness's own code, could reach what the recorded mitigation says it cannot. The runner's host and path checks still apply to every HTTP request. What would pass them is a request-rewriting header that Stream's server or edge honours, which is not known.
+- **Nit 2, confirmed:** `runner.cjs:250` sets `maxRedirects = 0` in the interceptor. In axios 1.20.0, `lib/adapters/http.js` (`:1051`) then uses the native `http` or `https` transport, not follow-redirects, unless the request names its own `transport`, and `lib/adapters/fetch.js` (`:478`) sets `redirect: 'manual'`. The manager did not try the review's offline-test technique.
+- **Nit 3, confirmed:** ADR 0003's condition (c) says the limit "stands until P06.1-C4", and the architecture document's section 4 (c) gives finding 2 "for P06.1-C4". Section 5 already says correctly that the harness's fuller comparison runs at its next live use and that no live read has made it yet.
+- **Nit 4, confirmed:** both `configure --apply` paths write the record (`cli.py:335`, `:421`) before `outcome.finish()` (`:340`, `:427`), so an error raised by the write replaces the stop.
+- **Nit 5, confirmed:** `test_the_signal_is_read_from_the_ledger_not_the_exception` (`tests/test_cli.py:816`) replaces the stop with a Ctrl-C, which alone skips the re-read. The reversal of the ledger rule ("C4 nit 8: the signal is read from the ledger's recorded signals, not the exception") names only that test, which then fails on the record's label, not on a request sent.
+- **Hosted CI:** PR run [36345354254](https://github.com/amthorn78/glow-dating-app/actions/runs/36345354254) on `f17b111`: seven jobs, all success; "Stream proof checks" ran every step, and the gate passed. Push run 36336214481 is as the manager recorded it.
+- **Not re-run by the manager:** the session's reversal run, its differential normalization test and its SDK inventory. Its tests, lint, mypy and reversal summary (378, none "not demonstrated"; 456, 49 and 3) match C4's record and the manager's own run. The manager checked the methods finding 1 names in the SDK itself.
+- **The environment check:** on the session's default PATH, `node` was `/opt/node22/bin/node` v22.22.2 and npm 10.9.7. The prompt expected the pinned toolchain from `$HOME/.local/bin`; the session put it first on PATH for every check. The C5 prompt states this as an instruction.
+
+#### Disposition
+
+- **C4 stands, with finding 1 to fix.** Its other fixes are confirmed, and no recorded result changes.
+- **Finding 1 is in the review prompt's class,** narrowly. So an offline correction pass, **P06.1-C5**, fixes it before P06.1 closes. Required:
+  - **`validate`** refuses every `call` step outside an explicit allowlist of (target, method, maximum positional arguments) that holds exactly what the current matrix uses, on both targets. Another method, another target, an argument that would reach a request-options position, and the reminder methods all lie outside it. A test for each kind, and a reversal;
+  - **the manager's addition:** the runner also refuses a request carrying a request-rewriting header (`X-HTTP-Method-Override`, `X-HTTP-Method`, `X-Method-Override`, `X-Original-URL`, `X-Rewrite-URL`), in any letter case, as it refuses the forwarding headers: before the budget, neither sent nor counted, error kind `refused`. `validate` sees only the matrix, and the harness's own code also sends `call` ops; this closes the residual for every caller. Neither stream-chat 9.53.0 nor axios 1.20.0 sends any of these headers. A test that drives the real runner, and a reversal;
+  - **the records:** `README.md:398` and C4's limits bullet in its section of this record are corrected in place, marked "(corrected in P06.1-C5; the C4 review's finding 1)". They say what `validate` covers, what the runner now refuses, and what remains (a per-request `proxy`, `socketPath` or adapter, none of which gets past the runner's check).
+- **C5 also takes nits 2, 4 and 5,** because it runs anyway. Each gets a test that fails without the fix, and a reversal:
+  - **nit 2:** an offline test that every request leaves the interceptor with `maxRedirects` 0;
+  - **nit 4:** a failed record write after a signal keeps the stop: exit 3, and a line that names the signal;
+  - **nit 5:** a variant of the ledger test in which an ordinary error replaces the stop, and no re-read is sent. The ledger rule's reversal must fail it.
+- **Nit 3 is the manager's, in this batch.** ADR 0003's condition (c) and the architecture document's section 4 (c) now say that C4 extended the harness's comparison. They also say that the other roles and settings being unchanged rests on Stream's documentation until a live read, which is a question for the Dev Manager's close-out consultation.
+- **The review's disagreement with the manager's README-limits disposition is accepted;** it is finding 1.
+- **C5 and its exact-head review land before any further live use of the harness,** including a read the close-out consultation may weigh. The exact-head review of C5 is P06.1's final delta review, with the same bound as this one; the economics discovery follows it.
