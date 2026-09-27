@@ -3511,3 +3511,180 @@ The session committed nothing, so there is no branch to check. The manager check
   - The question goes to the Dev Manager's close-out consultation; a read would run C4's corrected comparison. Until then, the records say that the other roles and the settings are unchanged on Stream's documentation, not by a re-read.
 - **C4's exact-head review is P06.1's final delta review** (the brief's review plan). It covers C4's change and the manager's records since `55b2238`.
 - **Manager-owned, in this batch:** ADR 0003's conditions and "Revisit when" (DM-05 finding 5 (b)); App Manager 4's disposition bullet above, corrected in place (AM4-06).
+
+## P06.1-C4 corrections
+
+Nathan ran this session from revision 1 of the [C4 correction prompt](../../ephemeral/2026-09-27-p06-1-c4-correction-prompt.md), from commit `2c2d450883937191c55905bd49fe7b0af0a186e8` (App Manager 5's manager branch `claude/magical-wozniak-yfmmx2`), on the session branch `claude/festive-ritchie-31vt3v`. It made no Stream call and no call to any other provider, and ran none of the harness's live commands. Commits: `634dc56` (the fixes), `a2ca27f` (the record corrections), `919a383` and `112011f` (what C4's own review found), and the records commit that adds this section and two README limit sentences, the branch head named in the session's report. The code head is `112011f`.
+
+### Environment and start gate
+
+- None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY` or `STREAM_API_SECRET` was present (names checked only). node v24.19.0, npm 11.9.0, npx 11.9.0 and Python 3.12.14, all from `/root/.local/bin`.
+- The start gate passed: `git merge --ff-only 2c2d450…` onto the session branch; `git rev-parse HEAD` printed `2c2d450883937191c55905bd49fe7b0af0a186e8`; `git diff --stat 55b2238 HEAD -- proofs/stream-chat/ .github/` printed nothing.
+- Installs and offline checks ran in clean processes (`env -i` with the path, home and locale; the proxy and CA variables passed by reference for the installs): `python3.12 -m venv .venv`, `pip install --require-hashes -r requirements-dev.lock`, `pip check` ("No broken requirements found."), `npm ci --ignore-scripts` ("found 0 vulnerabilities"). No dependency file changed.
+
+### The review's items
+
+Paths are under `proofs/stream-chat/`; line numbers are at `112011f`. Each fix has an offline test that fails without it and a reversal in `checks/fix_reversals.py` (the "C4 …" entries).
+
+- **Finding 1, fixed.** Nothing reaches Video or Feeds except through the product op's check.
+  - `client/runner.cjs:192` (`productRequestRefusal`), called first in the request interceptor (`:250`), before the budget, so a refused request is neither counted, sent nor recorded, error kind `refused`. It applies `productRefusal` to the method, the path as sent, the body and the query whenever the host is the Video or Feeds host or the path is a product path.
+  - The URL is resolved as axios sends it (`sentURL`, `:142`: its `buildFullPath` against `config.baseURL`, then `new URL`).
+  - Product paths are those under `/api/v2/video`, `/api/v2/feeds`, `/video` or `/feeds` once letter case, percent-encoding, backslashes and dot and empty segments are normalized (`client/product-op.cjs:84` to `:118`, `decodeOnce`, `normalizedPath`, `isProductPath`, shared by the runner). A product path not in its normalized form is refused outright; so is a path whose encoding does not settle in eight rounds, and a product body the check cannot read (`readableBody`, `:163`).
+  - **A deliberate difference from the prompt's wording:** letter case is folded to find a product path but kept in the comparison with the normalized form. An ID may hold capitals (a Stream activity ID), and the allowlist's fixed segments are lower case, so a miscased fixed segment is still refused, by the op's check. C4's own review assessed this and found it sound (Go's router is case-sensitive, and a miscased ID gives nothing a lower-case one could not).
+  - `glow_stream_proof/matrix.py:2060` (`_product_reach`, called by `validate`) refuses a `call` of one of the client's URL-taking methods (`CLIENT_URL_METHODS`, `:2055`: `get`, `post`, `put`, `patch`, `delete`, `sendFile`, `doAxiosRequest`, `setBaseURL`) and a `get` of a product path (`products.is_product_path`, `glow_stream_proof/products.py:199`). No case in the matrix did either (`validate(all_cases())` is `[]`).
+  - Tests: `tests/test_runner.py` `ProductReachTest`:
+    - the review's scenario (a REST user set, then a `call` of the client's `post` to the chat host's `/api/v2/video/call/default/x/join` with `ring: true`, zero budget, unreachable proxy): kind `refused`, "PROOF_REFUSED: denied path (join)", not `budget`;
+    - non-normalized product paths; product hosts; the `get` op; bodies the check cannot read;
+    - the 18 product cases' steps, with a run's placeholder values and with an activity ID in capitals: every one passes the new check and is stopped only by the zero budget.
+  - `tests/test_matrix.py` `ProductReachValidationTest`.
+- **Finding 2, fixed.** `products.verify` (`glow_stream_proof/products.py:428`) now also calls `baseline_differences` (`:488`). For each available product, that compares the following with the committed `baseline/video-feeds-1729640-2026-09-27.json` (`PRODUCTS_BASELINE`, `:83`):
+  - every role's grants other than the client roles' (as sets);
+  - each call type's `settings` and `notification_settings` (field by field, value and type, lists item by item, `_changed_paths`, `:458`);
+  - each feed group's `default_visibility` and `default_follower_role`.
+
+  A call type, feed visibility, feed group or role present on one side only is a difference. The client roles must still read `[]` (absent counts as `[]`).
+  - What `baseline_record` keeps and is not compared, and why: `availability` has `verify`'s own rule; the read answers `read` and `feed_groups_read` describe the read, not the configuration. No kept field is a timestamp or otherwise volatile.
+  - The scoped `configure --apply` record (`glow_stream_proof/cli.py:418`) keeps the full before- and after-state in `baseline_record`'s shape, scanned like every record.
+  - `tests/fake_products.py` now models the committed baseline: every call type, visibility and feed group, every role's grants and every call type's settings. Preflight, the end of a run and the dry-run `configure` verify offline with no difference. `grant_before_lockdown()` puts the baseline's client grants back, and the plan is then the nine `PUT`s of the live apply; the tests' expectations moved from the old model to those nine `PUT`s.
+  - Tests: `tests/test_products.py` `BaselineComparisonTest`: a changed `call_member` grant, a changed call-type setting, a changed notification setting and a type change, a type change inside a list, a changed feed group, roles and scopes on one side only, the client roles, an unavailable product, and the committed baseline itself (only its 18 client-role grants differ). Also `tests/test_cli.py` `ScopedConfigureTest` (the full after-state) and `ProbeAndBaselineTest` (a record written from the fake's read equals the committed baseline).
+  - Records corrected: see below.
+- **Nit 3, fixed.** `client/product-op.cjs:48` and `:65`, `glow_stream_proof/products.py:128` and `:147`: a denied key matches in any letter case, and a denied-true key's value matches `true` as a boolean or as `"true"` in any letter case, with the reason naming the field in lower case. Tests: `tests/test_products.py` `AllowlistTest`: eleven new table rows, driven through both tables with node, and `test_letter_case_does_not_matter_and_the_reason_names_the_field` (the same reason from the JS op, the Python op mirror and the guard's `denied`). The "I2b check 6" reversal was moved to the new helper and still fails for its reason.
+- **Nit 4, fixed.** `glow_stream_proof/proof_run.py:1801` and `glow_stream_proof/matrix.py:305`: when the request carried every leak term, the row's `disclosure` detail says `nothing_scanned: true`, and a success is INCONCLUSIVE ("succeeded, but its own request carried every leak term, so nothing was left to scan"), never HOLDS (filtered). A refusal keeps its own rule. The new rule is in the README. Tests:
+  - `tests/test_answers.py` `DisclosureRuleTest`: F9-sync with a request carrying every term, answered 201 (INCONCLUSIVE) and 403 (HOLDS);
+  - `test_no_current_case_carries_every_leak_term_in_its_own_request`, which shows from the case definitions that every no-leak case with a step leaves terms to scan: R3, R4 and R5 three of four; R7a and R7b one of two; R8a two of four; R8b all three; F9-sync four of five; the four product no-leak cases all. That is the review's reading, so no recorded verdict changes;
+  - `tests/test_matrix.py` `test_no_leak_verdict_with_nothing_scanned`.
+- **Nit 5, corrected in the record** ("Checks" item 4 of "P06.1-I2b": mypy's 53 source files).
+- **Nit 6, corrected in the record.**
+  - The count is checked against section 5 of the I2b prompt, which names thirteen commands: `verify-clean` and the dry-run `configure` before any run, run 1, the probe, run V1, the baseline read, the scoped dry run and the apply, run V2, the one reserve rerun, and `verify-clean` with both dry runs after the last command.
+  - The table's 15 add command 3 and command 8.
+- **Nit 7, corrected in the architecture document**, section 3.
+- **Nit 8, fixed, with the manager's addition.** `glow_stream_proof/cli.py:71` (`_apply`), `:121` (`_Applied`), `:164` (`_apply_recorded`), `:174` (`_read_after`), used by both `cmd_configure`'s general apply and `_configure_products`.
+  - When a configuration write fails mid-plan, the command still writes its record: the steps applied so far (the step that raised with `status: null` and what stopped it), the failure, and the after-state.
+  - The re-read runs only when no charge or limit signal was met, decided from `ledger.signals`, not from the exception's type, and when no Ctrl-C ended the apply. After a signal the record says "after-state not read: a charge or limit signal was met" and nothing more is sent.
+  - A Stream refusal of a step exits 1. A signal's stop, the guard's refusal and a Ctrl-C reach `main` after the record (exit 3 for a signal).
+  - A signal or Ctrl-C met by the re-read itself, even after a refused step, is recorded (`reread_failure`) and reaches `main`.
+  - Tests: `tests/test_cli.py` `ConfigureRecordTest`, 12 tests:
+    - a mid-plan 400 (the record holds the re-read), in both commands;
+    - a mid-plan 402 and a mid-plan 429 in both commands (the fake counts no request after the signal, and the record is written);
+    - a signal whose stop a Ctrl-C replaced (read from the ledger);
+    - a Ctrl-C without a signal;
+    - a signal in the re-read, alone and after a refused step;
+    - a Ctrl-C in the re-read, alone and after a refused step.
+- **Nit 9, corrected in the record** (the deviation bullet on `93390ce`).
+- **Nit 10, corrected in the record and the architecture document.** No record holds the `sync` pair's two normalized answers; they are not reconstructed.
+- **Optional: done.** The README says that the existence-oracle cases, not the disclosure rule, hold the question of whether an echoed identifier signals existence.
+
+### C4's own review
+
+A fresh reader, a read-only sub-agent of this session, reviewed the code diff at `634dc56` under the prompt's rules: no network, no environment value, no change, and no run of `fix_reversals.py`. It then re-checked `919a383` and `112011f`.
+
+**Blocking at `634dc56`: one undecodable percent-escape switched the new check off, in both languages.**
+- `decodeURIComponent` in the runner, and Python's strict `unquote` in `validate`, threw on a valid-hex escape that is not UTF-8 (`%ff`, `%c0`). The decoding loop then stopped with nothing decoded.
+- So `POST …/api/v2/%76ideo/call/default/abc%ff/join` with `ring: true` was not seen as a Video path and reached only the budget. The reviewer showed offline, with Go 1.24's `http.ServeMux`, that such a path routes to the join handler.
+- **Fixed at `919a383`:** decoding is byte by byte in both languages and never throws; a path that does not settle is refused. A table test (`tests/test_products.py` `ProductPathTest`) runs the runner's `normalizedPath` and the Python `normalized_path` on the same 17 paths.
+
+This was a false-pass path in finding 1's own fix, so it was fixed here, with tests and reversals, before any report.
+
+**Further items from the review, fixed at `919a383`:**
+- the runner sends to no host but Stream's chat, Video and Feeds hosts, and refuses a `Host` header;
+- no redirect is followed (`maxRedirects: 0` on every request);
+- the bare `/video` and `/feeds` forms are product paths;
+- JSON inside a query value is read by the deny-list;
+- the baseline comparison walks lists item by item;
+- the step that met a signal stays in the record;
+- a Ctrl-C during the re-read still writes the record.
+
+**The re-check of `919a383` found one should-fix, fixed at `112011f`:** after a refused step, a signal or Ctrl-C met by the re-read was recorded but not re-raised. With it, `112011f` also sends `https:` only and refuses forwarding headers (`X-Forwarded-Host`, `Forwarded`, `X-Original-Host`, `X-Host`).
+
+**The re-check of `112011f`: nothing blocking and no should-fix.** Its two nits are recorded as README limits:
+- two request-rewriting headers (`X-HTTP-Method-Override`, `X-Original-URL`) still pass the check. They matter only if Stream honours them, and only a `call` of a client URL method, which `validate` refuses, could set them;
+- another re-read failure after a refused step exits 1.
+
+**Residuals the reviewer assessed and the README records:**
+- a per-request `proxy` or `socketPath`, the fetch adapter, and two-level nested JSON in a query value: none reaches Video or Feeds past the check;
+- the WebSocket's host: it follows the base URL, which only `setBaseURL`, refused by `validate`, changes. A refusal inside the WebSocket's constructor would make the SDK retry.
+
+**Found by C4 in its own reading:** a product request whose body the check cannot read (a string that is not JSON, which axios sends form-encoded). Fixed at `634dc56` with a test and a reversal.
+
+### Records corrected
+
+- **`proofs/stream-chat/README.md`:**
+  - finding 1: the runner's check on every request;
+  - finding 2: what the verification compares, the record's full state, and the sentence "that Stream changes only the roles named is documented and verified by the re-read after the apply, not assumed". It now says the re-read of 27 September compared the client roles' grants only, that the other roles and the settings being unchanged rests on Stream's documentation, and that the corrected verification compares them at the next live use;
+  - nit 3 and nit 4 (the new verdict rule);
+  - nit 8;
+  - the optional sentence;
+  - "Limits", "Added in P06.1-C4".
+- **`docs/architecture/chat-provider-permissions.md`:**
+  - section 3's existence-oracle row: the constraint is the document's own (DM-05 finding 5 (a)), not ADR 0003's, open for P06.2 (nit 7); "`sync` is an oracle too" rests on the one recorded observation (nit 10);
+  - section 5: the Stream-documentation sentence, "the re-read showed no difference from the target" and the "Untouched" paragraph (finding 2).
+
+  Its status line and "Review" columns are unchanged.
+- **This record, in I2b's own subsections**, each marked "(corrected in P06.1-C4; the I2b review's nit N)":
+  - "Results by topic", EO-channel's row (nit 10);
+  - "Checks" item 4 (nit 5);
+  - "Deviations and limits": the `93390ce` bullet (nit 9) and the command count (nit 6);
+  - "What P06.2 and the delta review must know" (nit 10).
+
+  Every other part of the record is byte-identical to `2c2d450`, the manager's verification of I2b and the exact-head review of I2b included; this section is appended at the end.
+
+### Checks
+
+1. `git diff --check 2c2d450883937191c55905bd49fe7b0af0a186e8 HEAD`: no output, exit 0.
+   - `git diff --name-only 2c2d450… HEAD`: 17 paths, all owned: `docs/architecture/chat-provider-permissions.md`, this record, and 15 under `proofs/stream-chat/`:
+     - `README.md`, `checks/fix_reversals.py`;
+     - `client/product-op.cjs`, `client/runner.cjs`;
+     - `glow_stream_proof/cli.py`, `matrix.py`, `products.py`, `proof_run.py`;
+     - `tests/fake_products.py`, `test_answers.py`, `test_cli.py`, `test_configuration.py`, `test_matrix.py`, `test_products.py`, `test_runner.py`.
+   - No dependency file, lock, `.npmrc`, `pyproject.toml` or committed baseline changed; every file is mode 100644, and there is no symlink.
+2. **Classification:** the trusted policy from `origin/main` (`0f45e64`, sha256 `dec69a26…`), extracted to a temporary directory outside the tree and run as `python3 -I …/change_scope.py --base 2c2d450883937191c55905bd49fe7b0af0a186e8 --head <head> --merge-base`, gave `{"full": true, "reason": "behavior-or-empty", …}` at `919a383`: full scope, as expected. It was re-run at the final head (below).
+3. **Installs:** as above.
+4. **Offline checks** at `112011f`:
+   - unit tests: `Ran 543 tests`, `OK` (503 at the start, `Ran 503 tests … OK`);
+   - Ruff: "All checks passed!" and "55 files already formatted";
+   - mypy: "Success: no issues found in 53 source files";
+   - `node --check` OK for `error-info.cjs`, `product-op.cjs`, `request-log.cjs` and `runner.cjs`;
+   - `checks/run_plan.py` with an empty ledger (no `.work` directory): "run plan: fits".
+5. **Fix reversals** (`checks/fix_reversals.py`, from a scratch copy of the directory outside the tree):
+   - at the start: "reversals: 342, not demonstrated: 0", exit 0, 15:35:39 to 16:05:29 UTC;
+   - at `112011f`: pending at this commit (filled in by the next commit);
+   - the C4 entries were also run as a subset, with the two "I2b check 6" entries whose pattern moved: 23 at `634dc56` and 35 at `919a383`, "not demonstrated: 0" each time; the full run at `112011f` covers all 36. Every one failed on its test's assertion or on the error its reverted fix causes, none through a syntax, import or name error, none by Ctrl-C. For example:
+     - finding 1: `'budget' != 'refused'`;
+     - finding 2: `Lists differ: [] != ["video call type default: grants for call_member differ …"]`;
+     - nit 3: `[None, None, None, None] != ['denied field (ring)', …]`;
+     - nit 4: `'HOLDS (filtered, not refused)' != 'INCONCLUSIVE'`;
+     - nit 8: `16 != 11` (calls sent after the signal), and `glow_stream_proof.cli.StepRefused: PUT … failed; stopping` (the error the reverted fix lets escape, with no record written);
+     - the review's items: `'/api/v2/%76ideo/call/default/abc%ff/join' != '/api/v2/video/call/default/abcÿ/join'` and `'budget' != 'refused'`.
+6. **Secret scan** of the whole diff `2c2d450..HEAD` (about 197 KB): no JWT-shaped string, email address, private-key block, AWS, GitHub or Slack token, or secret assignment, and 0 occurrences of the application's API key.
+7. **Foundation, on this branch:**
+   - run 351 on `634dc56` was cancelled by the next push;
+   - run 352 on `a2ca27f` succeeded (Markdown only against the previous push);
+   - run 353 on `919a383` succeeded;
+   - run 354 on `112011f`: pending at this commit (filled in by the next commit).
+
+   Nothing was re-run or dispatched.
+
+### Deviations and limits
+
+- **Beyond the review's ten items, C4 fixed what its own review found**, each with a test and a reversal. That was one blocking gap in finding 1's first fix (the `%ff` escape), a should-fix in nit 8's first fix, and ten further items, all in the class the prompt allows: letting a change escape the deny-lists, or sending a request after a signal.
+  - Two of those items widen nothing and narrow what the runner may send: only `https:` to Stream's three hosts, and no redirect.
+  - `maxRedirects: 0` has no offline test: showing it needs a server that redirects, and the runner sends to no host but Stream's. It is the one change without a reversal.
+- **Letter case is kept in the normalized-form comparison**, as described under finding 1, rather than making every product path with a capital "not normalized". The prompt's requirement is met: any miscased fixed segment is refused.
+- **Nothing here is exercised live.** No live run remains in P06.1; the fixes are first used live in a later phase.
+- **The fake products changed.** They now model the committed baseline instead of a guessed two-type model, so tests that asserted the old plan (four `PUT`s, two call types) now assert the live plan (nine `PUT`s, four call types, five visibilities, six feed groups). No verdict test changed; the capability knob `allowed` is unchanged.
+- **Not in this pass:** `checks/run_plan.py`'s mid-session reading, as the prompt says.
+
+### What the final delta review and P06.2 must know
+
+- **Rules that changed.**
+  - The runner refuses a request whatever op made it: any host but Stream's three; any protocol but `https:`; a `Host` or forwarding header. For a product host or path, the product op's check applies, and a product path or body it cannot read in normalized form is refused.
+  - `validate` refuses a `call` of a client URL method and a `get` of a product path.
+  - `products.verify` compares everything the committed products baseline records.
+  - A no-leak success with nothing scanned is INCONCLUSIVE.
+  - Both deny-list tables ignore letter case.
+  - A configure apply always leaves a record and sends nothing after a signal.
+- **Not yet exercised live:**
+  - every C4 fix;
+  - in particular the baseline comparison. At the next live use it may report a difference that is Stream's rather than the lockdown's, for example a setting added since 27 September. Such a difference stops preflight and must be reported, never assumed away;
+  - `maxRedirects: 0` on every chat request.
+- **For the delta review:** C4's change is `2c2d450..<head>`, with `634dc56`, `919a383` and `112011f` the code commits. The reviewer's probe scripts stayed in this session's scratch directory.
