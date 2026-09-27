@@ -16,7 +16,7 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Done:** DM-05: approved with conditions, all accepted and applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
     - **Done:** I2b (`ad89753`, merged at `55b2238`): the Video and Feeds lockdown is applied to application 1729640; removal and deactivation MEET the history policy under the 404 code 16 rule; the [architecture document](../architecture/chat-provider-permissions.md) is written; "Stream proof checks" runs in CI.
     - **Done:** OD-33 and OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md), six rungs on both models; the TypeSafe request v6 (Nathan's Claude skill `typesafe-scoring`), tested for reachability; every prompt re-read; the I2b review reads Fable 5.1, max.
-    - **Next:** the exact-head review of I2b at `55b2238` ([prompt](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md)) at the cell Nathan picks; then the economics discovery.
+    - **In flight:** the exact-head review of I2b at `55b2238` ([prompt](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md), revision 3), started by Nathan on Fable 5.1 at max, the cell v6 read; then the economics discovery.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-05.
 
@@ -24,7 +24,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 4 | Nathan | His pick for the I2b review, then its report | Nothing else starts (OD-29); ask for the session's state |
+| App Manager 4 | Nathan | The I2b review's report (running on Fable 5.1 at max) | Nothing else starts (OD-29); ask for the session's state |
 | App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
 
 ## Next actions
