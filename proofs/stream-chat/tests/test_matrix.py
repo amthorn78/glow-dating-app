@@ -104,10 +104,19 @@ class MatrixDefinitionTest(unittest.TestCase):
         for destructive in ("S4a", "S4b", "C12", "C13"):
             for earlier in ("S3a", "S5", "S8", "R6", "C11"):
                 self.assertLess(order.index(earlier), order.index(destructive))
-        # C13 deletes AB, so it is the last case that uses it. P06.1-I2a's families come
-        # after it: each runs on users and a channel of its own.
-        on_ab = [c.id for c in self.cases if c.phase < proof_run.FAMILY_PHASE]
+        # C13 deletes AB, so it is the last case that uses it. P06.1-I2b's Video and Feeds
+        # cases come after it, on objects of their own, and P06.1-I2a's families after
+        # them: each runs on users and a channel of its own.
+        on_ab = [
+            c.id
+            for c in self.cases
+            if c.phase < proof_run.FAMILY_PHASE and matrix.product_of(c) is None
+        ]
         self.assertEqual(on_ab[-1], "C13")
+        product_cases = [c.id for c in self.cases if matrix.product_of(c) is not None]
+        self.assertEqual(product_cases, matrix.product_case_ids())
+        self.assertLess(order.index("C13"), order.index(product_cases[0]))
+        self.assertLess(order.index(product_cases[-1]), order.index("RV-remove"))
         families = [c for c in self.cases if c.phase >= proof_run.FAMILY_PHASE]
         self.assertEqual(
             [c.id for c in families],
@@ -153,6 +162,16 @@ class MatrixDefinitionTest(unittest.TestCase):
                 "X_name",
                 "D_name",
                 "run_start",  # P06.1-I2a: F9-sync
+                # P06.1-I2b: the Video and Feeds cases' objects and markers.
+                "CALL",
+                "CALL_a",
+                "CALL_dev",
+                "CALL_x",
+                "ACT",
+                "FG",
+                "FGT",
+                "vd_text",
+                "fd_text",
             )
         }
         for case in self.cases:
@@ -242,3 +261,34 @@ class ClassificationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductStepValidationTest(unittest.TestCase):
+    """P06.1-I2b: a product case's step must be one the runner's op would send."""
+
+    def test_a_product_step_the_op_would_refuse_fails_validation(self) -> None:
+        good = next(c for c in matrix.all_cases() if c.id == "VD-create")
+        bad = matrix.Case(
+            id="VD-bad",
+            group="video",
+            actor="A",
+            token="A's valid token",
+            action="ring B",
+            expect="refused",
+            control=good.control,
+            step=matrix.SdkStep(
+                session="A",
+                op="product",
+                params={
+                    "method": "POST",
+                    "path": "/api/v2/video/call/default/x",
+                    "body": {"ring": True},
+                },
+            ),
+            phase=91,
+        )
+        problems = matrix.validate([good, bad])
+        self.assertEqual(
+            problems, ["VD-bad: the product op would refuse its step: denied field (ring)"]
+        )
+        self.assertEqual(matrix.validate([good]), [])

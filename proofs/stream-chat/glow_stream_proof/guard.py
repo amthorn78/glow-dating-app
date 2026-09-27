@@ -20,6 +20,16 @@ or deleted only if the run recorded it (every mutating ``messages/{id}`` path,
 since P06.1-I2b; until then only the delete). Reads (GET and HEAD, and the POST queries in
 :data:`READ_POSTS`) are never refused.
 
+Since P06.1-I2b the guard has a Video and Feeds scope (DM-05 finding 3): the same
+families the runner's product op allows (:mod:`glow_stream_proof.products`), on calls,
+feeds, activities, comments, reactions and follows the run created or recorded, plus
+their deletes and the run's own users' Feeds data delete; the deny-list (join, go_live,
+start_, stop_, broadcast, recording, transcription, caption, ring, notify, and the
+fields ring, notify, video: true, create_notification_activity: true) is refused first;
+and a Video or Feeds configuration write (a ``PUT`` of a call type's or a feed
+visibility's grants) passes only in the scoped ``configure`` mode, whose scope allows
+it, never during a run.
+
 A refusal names the request's shape and the reason, never an identifier the run
 did not create.
 """
@@ -30,6 +40,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from . import products
 from .configuration import MATCH_FEATURES, MATCH_TYPE
 
 MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -42,6 +53,13 @@ READ_POSTS = frozenset(
         ("threads",),
         ("sync",),
         ("unread_batch",),
+        # P06.1-I2b: the Video and Feeds queries.
+        ("video", "calls"),
+        ("video", "call", "members"),
+        ("feeds", "feeds", "query"),
+        ("feeds", "activities", "query"),
+        ("feeds", "comments", "query"),
+        ("feeds", "follows", "query"),
     }
 )
 # Keys whose values are user IDs (a string, or a list of strings or member objects).
@@ -75,6 +93,9 @@ USER_OBJECT_KEYS = frozenset({"user", "banned_by", "unbanned_by", "created_by"})
 CHANNEL_KEYS = frozenset({"channel_cid", "channel_cids", "cid", "cids"})
 # The fixed part of a glow-match type update, sent with its production values.
 FIXED_TYPE_KEYS = ("automod", "automod_behavior", "max_message_length")
+# The refusal of a request of a kind the proof does not make (P06.1-I2b: named once, for
+# the Video and Feeds families too).
+_OTHER_KIND = "not a kind of request this proof makes"
 _USER_ACTIONS = frozenset(
     {"delete", "deactivate", "reactivate", "restore", "block", "unblock", "live_locations"}
 )
@@ -116,6 +137,18 @@ _KEYWORDS = frozenset(
         "history",
         "undelete",
         "action",
+        # P06.1-I2b: Video and Feeds.
+        "video",
+        "feeds",
+        "call",
+        "calls",
+        "calltypes",
+        "feed_groups",
+        "feed_visibilities",
+        "activities",
+        "comments",
+        "follows",
+        "join",
         *_USER_ACTIONS,
     }
 )
@@ -137,6 +170,17 @@ class Scope(Protocol):
     def journalled_app_settings(self) -> frozenset[str]: ...
 
     def journalled_type_features(self) -> frozenset[str]: ...
+
+    # P06.1-I2b: Video and Feeds.
+    def owns_call(self, call_id: str) -> bool: ...
+
+    def owns_feed(self, feed_id: str) -> bool: ...
+
+    def owns_activity(self, activity_id: str) -> bool: ...
+
+    def owns_comment(self, comment_id: str) -> bool: ...
+
+    def allows_product_configuration(self) -> bool: ...
 
 
 @dataclass
@@ -171,6 +215,42 @@ class PrefixScope:
     def journalled_type_features(self) -> frozenset[str]:
         return frozenset()
 
+    def owns_call(self, call_id: str) -> bool:
+        return self.prefix in call_id
+
+    def owns_feed(self, feed_id: str) -> bool:
+        return self.prefix in feed_id
+
+    def owns_activity(self, activity_id: str) -> bool:
+        return False
+
+    def owns_comment(self, comment_id: str) -> bool:
+        return False
+
+    def allows_product_configuration(self) -> bool:
+        return False
+
+
+@dataclass
+class ConfigureScope(PrefixScope):
+    """The scope of ``configure --products video,feeds --apply`` (P06.1-I2b): it owns
+    nothing and allows one kind of request, a Video or Feeds configuration write."""
+
+    def owns_user(self, user_id: str) -> bool:
+        return False
+
+    def owns_channel(self, channel: str) -> bool:
+        return False
+
+    def owns_call(self, call_id: str) -> bool:
+        return False
+
+    def owns_feed(self, feed_id: str) -> bool:
+        return False
+
+    def allows_product_configuration(self) -> bool:
+        return True
+
 
 def channel_id(channel: str) -> str:
     """The channel ID of a CID ("type:id") or of a bare ID."""
@@ -191,6 +271,8 @@ def shape(parts: list[str]) -> str:
     """The path with every identifier replaced, for a refusal's message."""
     if parts[:1] == ["channels"] and len(parts) >= 3 and parts[1] not in _KEYWORDS:
         return "/".join(["channels", "{type}", "{id}", *(_generic(parts[3:]))])
+    if parts[:2] == ["video", "call"] and len(parts) >= 4 and parts[2] not in _KEYWORDS:
+        return "/".join(["video", "call", "{type}", "{id}", *(_generic(parts[4:]))])
     return "/".join(_generic(parts)) or "/"
 
 
@@ -325,7 +407,97 @@ def _reason(
         if len(parts) >= 2 and not scope.owns_group(parts[1]):
             return "a user group this run did not record"
         return _unowned(users, channels, scope)
+    if family in ("video", "feeds"):
+        return _product(verb, parts, body, params, users, scope)
     return "not a kind of request this proof makes"
+
+
+def _product(
+    verb: str,
+    parts: list[str],
+    body: Any,
+    params: Mapping[str, str],
+    users: list[str],
+    scope: Scope,
+) -> str | None:
+    """The Video and Feeds scope (P06.1-I2b; DM-05 finding 3): the deny-list first, then a
+    configuration write only in the scoped configure mode, then the families the runner's
+    product op allows, on the run's own objects, plus their deletes."""
+    path = "/api/v2/" + "/".join(parts)
+    why = products.denied(path, body, params)
+    if why:
+        return f"on the Video and Feeds deny-list ({why})"
+    if products.is_configuration_write(verb, path):
+        if scope.allows_product_configuration():
+            return None
+        return "a Video or Feeds configuration change outside the scoped configure"
+    if parts[0] == "video":
+        return _video(verb, parts, users, scope)
+    return _feeds(verb, parts, body, users, scope)
+
+
+def _video(verb: str, parts: list[str], users: list[str], scope: Scope) -> str | None:
+    # video/call/{type}/{id}: create or update; .../members, .../event, .../delete.
+    if parts[1:2] == ["call"] and len(parts) >= 4 and parts[2] not in _KEYWORDS:
+        tail = parts[4:]
+        allowed = {(): ("POST", "PATCH"), ("members",): ("POST",), ("event",): ("POST",)}
+        allowed[("delete",)] = ("POST",)
+        if tuple(tail) not in allowed or verb not in allowed[tuple(tail)]:
+            return _OTHER_KIND
+        if not scope.owns_call(parts[3]):
+            return "a call this run did not create"
+        return _unowned(users, [], scope)
+    return _OTHER_KIND
+
+
+def _owned_feeds(fids: list[str], scope: Scope) -> str | None:
+    if not fids:
+        return "no feed named"
+    if any(not scope.owns_feed(channel_id(fid)) for fid in fids):
+        return "a feed this run did not create"
+    return None
+
+
+def _feeds(verb: str, parts: list[str], body: Any, users: list[str], scope: Scope) -> str | None:
+    sub = parts[1:]
+    named = body if isinstance(body, Mapping) else {}
+    if sub[:1] == ["feed_groups"]:
+        # feed_groups/{group}/feeds/{id}: create, update or delete a feed; a feed group
+        # change is never made.
+        if len(sub) == 4 and sub[2] == "feeds":
+            return _owned_feeds([sub[3]], scope) or _unowned(users, [], scope)
+        return _OTHER_KIND
+    if sub == ["activities"] and verb == "POST":
+        return _owned_feeds(_strings(named.get("feeds")), scope) or _unowned(users, [], scope)
+    if sub[:1] == ["activities"] and len(sub) >= 2 and sub[1] not in _KEYWORDS:
+        # activities/{id}: update or delete; activities/{id}/reactions[/{type}].
+        if len(sub) > 2 and sub[2] != "reactions":
+            return _OTHER_KIND
+        if not scope.owns_activity(sub[1]):
+            return "an activity this run did not record"
+        return _unowned(users, [], scope)
+    if sub == ["comments"] and verb == "POST":
+        target = named.get("object_id")
+        if named.get("object_type", "activity") != "activity" or not isinstance(target, str):
+            return _OTHER_KIND
+        if not scope.owns_activity(target):
+            return "an activity this run did not record"
+        return _unowned(users, [], scope)
+    if sub[:1] == ["comments"] and len(sub) == 2 and sub[1] not in _KEYWORDS:
+        if not scope.owns_comment(sub[1]):
+            return "a comment this run did not record"
+        return _unowned(users, [], scope)
+    if sub == ["follows"] and verb == "POST":
+        fids = _strings(named.get("source")) + _strings(named.get("target"))
+        if len(fids) != 2:
+            return "no feed named"
+        return _owned_feeds(fids, scope) or _unowned(users, [], scope)
+    if sub[:1] == ["follows"] and len(sub) == 3 and verb == "DELETE":
+        return _owned_feeds(sub[1:3], scope) or _unowned(users, [], scope)
+    if sub[:1] == ["users"] and len(sub) == 3 and sub[2] == "delete":
+        # feeds/users/{user_id}/delete: the run's own user's Feeds data, at cleanup.
+        return _unowned([sub[1], *users], [], scope)
+    return _OTHER_KIND
 
 
 def _app(verb: str, parts: list[str], body: Any, scope: Scope) -> str | None:

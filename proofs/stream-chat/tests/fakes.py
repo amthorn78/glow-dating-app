@@ -27,6 +27,7 @@ from glow_stream_proof.redaction import Redactor
 from glow_stream_proof.server_api import ApiResult, Guard
 from glow_stream_proof.stops import GuardRefused
 from glow_stream_proof.usage import UsageLedger
+from tests.fake_products import ProductState, client_reply, is_product_path
 from tests.test_configuration import configured, snapshot
 
 SECRET = "simulation-secret-for-offline-tests-only"
@@ -73,6 +74,9 @@ class FakeServer:
     # listing needs a user_id, as Stream's server-side Query Polls does.
     polls: set[str] = field(default_factory=set)
     poll_listing_needs_user: bool = True
+    # Stream's Video and Feeds (P06.1-I2b): their configuration and objects, and the
+    # answers a client and the server get (tests/fake_products.py).
+    products: ProductState = field(default_factory=ProductState)
 
     def __post_init__(self) -> None:
         self.sdk = SimpleNamespace(
@@ -164,6 +168,14 @@ class FakeServer:
         self, method: str, path: str, body: Any, params: dict[str, str] | None
     ) -> ApiResult:
         match_path = f"/api/v2/chat/channeltypes/{configuration.MATCH_TYPE}"
+        if is_product_path(path):
+            # Before the generic rules below (a path ending in /delete, a DELETE).
+            status, answer = self.products.request(method, path, body, params, actor=None)
+            if status < 300:
+                return ok(method, path, answer, status)
+            return ApiResult(
+                method, path, status, answer.get("code"), answer.get("message"), answer
+            )
         if path == "/api/v2/users" and method == "GET":
             payload = json.loads((params or {}).get("payload", "{}"))
             cond = payload.get("filter_conditions", {}).get("id", {})
@@ -368,6 +380,18 @@ class FakeSession:
         if op == "events":
             events, self.pending_events = self.pending_events, []
             return Reply(True, {"events": events}, None)
+        if op == "product":
+            # A Video or Feeds request (P06.1-I2b): refused unless a behaviour answers it.
+            method, path = str(params.get("method")), str(params.get("path"))
+            return client_reply(
+                method,
+                path,
+                params.get("body"),
+                params.get("params"),
+                f"{PREFIX}-u{self.label.split('-', 1)[0].lower()}",
+                403,
+                {"code": 17, "message": "Not Allowed"},
+            )
         if op == "guest":
             post_status = 201 if self.label == "guest" else 403
             stored = f"guest-0000-{params['user']['id']}"  # Stream prefixes guest IDs

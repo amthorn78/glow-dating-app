@@ -29,6 +29,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from . import products
 from .configuration import DEFAULT_TYPES, MATCH_TYPE
 
 Expect = Literal[
@@ -83,7 +84,8 @@ PROOF_PNG_B64 = (
 @dataclass(frozen=True)
 class SdkStep:
     session: str
-    op: Literal["call"]
+    # ``product``: the runner's Video and Feeds op (P06.1-I2b).
+    op: Literal["call", "product"]
     params: Mapping[str, Any]
     max_calls: int = 3
 
@@ -94,6 +96,9 @@ class ServerRequest:
     path: str
     body: Mapping[str, Any] | None = None
     params: Mapping[str, str] | None = None
+    # Values of the answer kept in the run's context: {context name: dotted path}
+    # (P06.1-I2b: a fixture's activity ID).
+    capture: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -108,6 +113,11 @@ class Control:
     undo: tuple[ServerRequest, ...] = ()
     expect_terms: tuple[str, ...] = ()
     note: str = ""
+    # The undo reverses the client's change and the control's replay's alike (an
+    # idempotent create, a member added, data set), so a client success is not undone a
+    # second time after the replay made the undo: a second delete of the same object
+    # would get 404 (P06.1-I2b; the Video and Feeds cases).
+    undo_once: bool = False
 
 
 @dataclass(frozen=True)
@@ -132,6 +142,10 @@ class Case:
     # beyond the calls kept for the end of the run (P06.1-I2a: the I2a cases use more
     # than the 30 an I1 case can).
     calls: int = 30
+    # Server requests that put the case's objects in place before its step (P06.1-I2b:
+    # a call or a feed the run owns, an activity of A's). Each is sent once per run,
+    # through the guard, and what it creates is recorded for cleanup.
+    fixture: tuple[ServerRequest, ...] = ()
 
 
 # -- placeholders ---------------------------------------------------------------
@@ -253,6 +267,10 @@ INCONCLUSIVE = "INCONCLUSIVE"
 # P06.1-I2a: a revocation mechanism judged against the history policy (mechanisms.py).
 MEETS = "MEETS the history policy"
 FALLS_SHORT = "DOES NOT MEET the history policy"
+# P06.1-I2b: a Video or Feeds answer that the product is not enabled or not available
+# to the application (the product-finding rule; DM-05 finding 2 (c)): neither a refusal
+# under the quality rule nor a charge signal; it ends that product's cases.
+NOT_AVAILABLE = "NOT AVAILABLE (the product is not enabled for the application)"
 # What an interrupted case keeps: the failure was observed (the independent review of
 # P06.1-I2a, point 7). Anything else becomes INCONCLUSIVE.
 KEPT_WHEN_INTERRUPTED = frozenset({FAIL, FALLS_SHORT})
@@ -345,6 +363,53 @@ def _call(
 
 def _replay(**kwargs: Any) -> Control:
     return Control(kind="server-replay", **kwargs)
+
+
+def _product(
+    session: str,
+    method: str,
+    path: str,
+    body: Mapping[str, Any] | None = None,
+    *,
+    params: Mapping[str, str] | None = None,
+    max_calls: int = 2,
+) -> SdkStep:
+    """A Video or Feeds request through the runner's product op (P06.1-I2b)."""
+    step_params: dict[str, Any] = {"method": method, "path": path}
+    if body is not None:
+        step_params["body"] = dict(body)
+    if params is not None:
+        step_params["params"] = dict(params)
+    return SdkStep(session=session, op="product", params=step_params, max_calls=max_calls)
+
+
+# P06.1-I2b: the case groups of the two products, and the sets the live plan names.
+PRODUCT_GROUPS: dict[str, str] = {"video": "video", "feeds": "feeds"}
+# Run 1, the chat reruns only (the I2b prompt, section 5), in this order.
+RUN_1_CASES = (
+    "RV-remove",
+    "SD-deactivate",
+    "F9-thread",
+    "F9-sync",
+    "EO-channel",
+    "EO-user",
+    "EO-message",
+    "S3a",
+)
+
+
+def product_of(case: Case) -> str | None:
+    """The product a case belongs to (``video`` or ``feeds``), or ``None``."""
+    return PRODUCT_GROUPS.get(case.group)
+
+
+def product_case_ids(product: str | None = None) -> list[str]:
+    """The Video and Feeds cases (run V1 and run V2), in the matrix's order."""
+    return [
+        c.id
+        for c in all_cases()
+        if product_of(c) is not None and (product is None or product_of(c) == product)
+    ]
 
 
 def _tokens_and_access() -> list[Case]:
@@ -1555,6 +1620,404 @@ def _i2a() -> list[Case]:
     return cases
 
 
+def _products() -> list[Case]:
+    """P06.1-I2b: what a user token can do in Video and Feeds (the brief: "what a user
+    token can do, and a lockdown by configuration only"). Every request goes through the
+    runner's product op, whose allowlist and deny-list are in code; no request rings,
+    notifies, joins, records or broadcasts. Each case's objects are the run's own: a
+    fixture creates them server-side when the case needs them, cleanup deletes them.
+    Before the lockdown a FAIL records a capability; after it every case must HOLD, and a
+    FAIL is a capability the configuration did not remove. Phase 91 (Video) and 92
+    (Feeds): after C13, the last case on AB, and before the families."""
+    a_token, b_token = "A's valid token", "B's valid token"
+    call = "/api/v2/video/call/default/{CALL}"
+    call_x = "/api/v2/video/call/default/{CALL_x}"
+    members_a_b = [{"user_id": "{A}"}, {"user_id": "{B}"}]
+    # The fixtures: a call of A's with A and B as members, a call of A's with A alone.
+    fixture_call = ServerRequest(
+        "POST",
+        call,
+        {
+            "data": {
+                "created_by_id": "{A}",
+                "custom": {"glow_note": "{vd_text}"},
+                "members": members_a_b,
+            }
+        },
+    )
+    fixture_call_x = ServerRequest(
+        "POST",
+        call_x,
+        {
+            "data": {
+                "created_by_id": "{A}",
+                "custom": {"glow_note": "{vd_text}"},
+                "members": [{"user_id": "{A}"}],
+            }
+        },
+    )
+    delete_hard = {"hard": True}
+    video: list[Case] = [
+        Case(
+            id="VD-create",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="create a call (type default) with custom data and A and B as members",
+            expect="refused",
+            step=_product(
+                "A",
+                "POST",
+                "/api/v2/video/call/default/{CALL_a}",
+                {"data": {"custom": {"glow_note": "{vd_text}"}, "members": members_a_b}},
+            ),
+            control=_replay(
+                body_patch={"data": {"created_by_id": "{A}"}},
+                undo_once=True,
+                undo=(
+                    ServerRequest(
+                        "POST", "/api/v2/video/call/default/{CALL_a}/delete", delete_hard
+                    ),
+                ),
+            ),
+            phase=91,
+        ),
+        Case(
+            id="VD-create-dev",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="create a call of the built-in development type with A and B as members",
+            expect="refused",
+            step=_product(
+                "A",
+                "POST",
+                "/api/v2/video/call/development/{CALL_dev}",
+                {"data": {"custom": {"glow_note": "{vd_text}"}, "members": members_a_b}},
+            ),
+            control=_replay(
+                body_patch={"data": {"created_by_id": "{A}"}},
+                undo_once=True,
+                undo=(
+                    ServerRequest(
+                        "POST", "/api/v2/video/call/development/{CALL_dev}/delete", delete_hard
+                    ),
+                ),
+            ),
+            phase=91,
+        ),
+        Case(
+            id="VD-read",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="read a call A is a member of (a call the server created with A and B)",
+            expect="refused",
+            step=_product("A", "GET", call),
+            control=_replay(),
+            fixture=(fixture_call,),
+            phase=91,
+        ),
+        Case(
+            id="VD-read-other",
+            group="video",
+            actor="B",
+            token=b_token,
+            action="read A's call, which B is not a member of (can B see its custom data?)",
+            expect="no-leak",
+            step=_product("B", "GET", call_x),
+            control=Control(kind="session", session="A", expect_terms=("{vd_text}",)),
+            leak_terms=("{vd_text}", "{A}"),
+            fixture=(fixture_call_x,),
+            phase=91,
+        ),
+        Case(
+            id="VD-update",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="update the custom data of a call A is a member of",
+            expect="refused",
+            step=_product("A", "PATCH", call, {"custom": {"glow_note": "updated {vd_text}"}}),
+            control=_replay(
+                undo_once=True,
+                undo=(ServerRequest("PATCH", call, {"custom": {"glow_note": "{vd_text}"}}),),
+            ),
+            fixture=(fixture_call,),
+            phase=91,
+        ),
+        Case(
+            id="VD-members",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="add B as a member of A's call",
+            expect="refused",
+            step=_product(
+                "A", "POST", call_x + "/members", {"update_members": [{"user_id": "{B}"}]}
+            ),
+            control=_replay(
+                undo_once=True,
+                undo=(ServerRequest("POST", call_x + "/members", {"remove_members": ["{B}"]}),),
+            ),
+            fixture=(fixture_call_x,),
+            phase=91,
+        ),
+        Case(
+            id="VD-event",
+            group="video",
+            actor="A",
+            token=a_token,
+            action="send a custom event with free text to a call A and B are members of",
+            expect="refused",
+            step=_product(
+                "A", "POST", call + "/event", {"custom": {"glow_note": "event {vd_text}"}}
+            ),
+            control=_replay(body_patch={"user_id": "{A}"}),
+            fixture=(fixture_call,),
+            phase=91,
+        ),
+        Case(
+            id="VD-query",
+            group="video",
+            actor="B",
+            token=b_token,
+            action="query the calls A created (can B find A's call?)",
+            expect="no-leak",
+            step=_product(
+                "B",
+                "POST",
+                "/api/v2/video/calls",
+                {"filter_conditions": {"created_by_user_id": "{A}"}, "limit": 10},
+            ),
+            control=_replay(expect_terms=("{CALL_x}",)),
+            leak_terms=("{CALL_x}", "{vd_text}"),
+            fixture=(fixture_call_x,),
+            phase=91,
+        ),
+    ]
+    feed_a = "/api/v2/feeds/feed_groups/{FG}/feeds/{A}"
+    feed_b = "/api/v2/feeds/feed_groups/{FG}/feeds/{B}"
+    timeline_b = "/api/v2/feeds/feed_groups/{FGT}/feeds/{B}"
+    # The fixtures: A's and B's feeds, B's timeline, and an activity of A's in A's feed.
+    fixture_feed_a = ServerRequest("POST", feed_a, {"user_id": "{A}"})
+    fixture_feed_b = ServerRequest("POST", feed_b, {"user_id": "{B}"})
+    fixture_timeline_b = ServerRequest("POST", timeline_b, {"user_id": "{B}"})
+    fixture_activity = ServerRequest(
+        "POST",
+        "/api/v2/feeds/activities",
+        {
+            "type": "post",
+            "feeds": ["{FG}:{A}"],
+            "text": "{fd_text}",
+            "user_id": "{A}",
+            "skip_push": True,
+        },
+        capture={"ACT": "activity.id"},
+    )
+    with_activity = (fixture_feed_a, fixture_activity)
+    feeds: list[Case] = [
+        Case(
+            id="FD-feed",
+            group="feeds",
+            actor="A",
+            token=a_token,
+            action="create A's own feed with custom data (get or create)",
+            expect="refused",
+            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "{fd_text}"}}}),
+            control=_replay(
+                body_patch={"user_id": "{A}"},
+                undo_once=True,
+                undo=(ServerRequest("DELETE", feed_a, None, {"hard_delete": "true"}),),
+            ),
+            phase=92,
+        ),
+        Case(
+            id="FD-activity",
+            group="feeds",
+            actor="A",
+            token=a_token,
+            action="add an activity with free text to A's own feed",
+            expect="refused",
+            step=_product(
+                "A",
+                "POST",
+                "/api/v2/feeds/activities",
+                {"type": "post", "feeds": ["{FG}:{A}"], "text": "{fd_text}", "skip_push": True},
+            ),
+            control=_replay(body_patch={"user_id": "{A}"}),
+            fixture=(fixture_feed_a,),
+            phase=92,
+        ),
+        Case(
+            id="FD-other-feed",
+            group="feeds",
+            actor="A",
+            token=a_token,
+            action="add an activity with free text to B's feed",
+            expect="refused",
+            step=_product(
+                "A",
+                "POST",
+                "/api/v2/feeds/activities",
+                {
+                    "type": "post",
+                    "feeds": ["{FG}:{B}"],
+                    "text": "to B {fd_text}",
+                    "skip_push": True,
+                },
+            ),
+            control=_replay(body_patch={"user_id": "{A}"}),
+            fixture=(fixture_feed_b,),
+            phase=92,
+        ),
+        Case(
+            id="FD-read",
+            group="feeds",
+            actor="B",
+            token=b_token,
+            action="read A's feed (can B see A's activity?)",
+            expect="no-leak",
+            step=_product("B", "POST", feed_a, {"limit": 10}),
+            control=Control(kind="session", session="A", expect_terms=("{fd_text}",)),
+            leak_terms=("{fd_text}", "{ACT}"),
+            fixture=with_activity,
+            phase=92,
+        ),
+        Case(
+            id="FD-query",
+            group="feeds",
+            actor="B",
+            token=b_token,
+            action="query A's activities (can B find them?)",
+            expect="no-leak",
+            step=_product(
+                "B",
+                "POST",
+                "/api/v2/feeds/activities/query",
+                {"filter": {"user_id": "{A}"}, "limit": 10},
+            ),
+            control=_replay(expect_terms=("{fd_text}",)),
+            leak_terms=("{fd_text}", "{ACT}"),
+            fixture=with_activity,
+            phase=92,
+        ),
+        Case(
+            id="FD-follow",
+            group="feeds",
+            actor="B",
+            token=b_token,
+            action="follow A's feed from B's timeline",
+            expect="refused",
+            step=_product(
+                "B",
+                "POST",
+                "/api/v2/feeds/follows",
+                {"source": "{FGT}:{B}", "target": "{FG}:{A}", "skip_push": True},
+            ),
+            control=_replay(
+                undo_once=True,
+                undo=(ServerRequest("DELETE", "/api/v2/feeds/follows/{FGT}:{B}/{FG}:{A}"),),
+            ),
+            fixture=(fixture_feed_a, fixture_timeline_b),
+            phase=92,
+        ),
+        Case(
+            id="FD-comment",
+            group="feeds",
+            actor="B",
+            token=b_token,
+            action="comment with free text on A's activity",
+            expect="refused",
+            step=_product(
+                "B",
+                "POST",
+                "/api/v2/feeds/comments",
+                {
+                    "comment": "comment {fd_text}",
+                    "object_id": "{ACT}",
+                    "object_type": "activity",
+                    "skip_push": True,
+                },
+            ),
+            control=_replay(body_patch={"user_id": "{B}"}),
+            fixture=with_activity,
+            phase=92,
+        ),
+        Case(
+            id="FD-reaction",
+            group="feeds",
+            actor="B",
+            token=b_token,
+            action="react to A's activity",
+            expect="refused",
+            step=_product(
+                "B",
+                "POST",
+                "/api/v2/feeds/activities/{ACT}/reactions",
+                {"type": "like", "skip_push": True},
+            ),
+            control=_replay(
+                body_patch={"user_id": "{B}"},
+                undo_once=True,
+                undo=(
+                    ServerRequest(
+                        "DELETE",
+                        "/api/v2/feeds/activities/{ACT}/reactions/like",
+                        None,
+                        {"user_id": "{B}"},
+                    ),
+                ),
+            ),
+            fixture=with_activity,
+            phase=92,
+        ),
+        Case(
+            id="FD-update",
+            group="feeds",
+            actor="A",
+            token=a_token,
+            action="edit the text and custom data of A's own activity",
+            expect="refused",
+            step=_product(
+                "A",
+                "PUT",
+                "/api/v2/feeds/activities/{ACT}",
+                {"text": "edited {fd_text}", "custom": {"glow_note": "edited"}},
+            ),
+            control=_replay(
+                body_patch={"user_id": "{A}"},
+                undo_once=True,
+                undo=(
+                    ServerRequest(
+                        "PUT",
+                        "/api/v2/feeds/activities/{ACT}",
+                        {"text": "{fd_text}", "custom": {}, "user_id": "{A}"},
+                    ),
+                ),
+            ),
+            fixture=with_activity,
+            phase=92,
+        ),
+        Case(
+            id="FD-feed-custom",
+            group="feeds",
+            actor="A",
+            token=a_token,
+            action="update the custom data of A's own feed",
+            expect="refused",
+            step=_product("A", "PUT", feed_a, {"custom": {"glow_note": "feed {fd_text}"}}),
+            control=_replay(
+                undo_once=True,
+                undo=(ServerRequest("PUT", feed_a, {"custom": {}}),),
+            ),
+            fixture=(fixture_feed_a,),
+            phase=92,
+        ),
+    ]
+    return video + feeds
+
+
 def all_cases() -> list[Case]:
     cases = (
         _tokens_and_access()
@@ -1564,6 +2027,7 @@ def all_cases() -> list[Case]:
         + _escalation()
         + _create_join()
         + _i2a()
+        + _products()
         + _revocation()
     )
     return sorted(cases, key=lambda c: c.phase)
@@ -1587,4 +2051,17 @@ def validate(cases: list[Case]) -> list[str]:
             problems.append(f"{case.id}: no-leak case without leak terms")
         if case.step is not None and case.step.session not in ("A", "B", "X"):
             problems.append(f"{case.id}: unknown session {case.step.session}")
+        if case.step is not None and case.step.op == "product":
+            # P06.1-I2b: a product step names only what the runner's op allows.
+            params = case.step.params
+            why = products.client_refusal(
+                str(params.get("method")),
+                str(params.get("path")),
+                params.get("body"),
+                params.get("params"),
+            )
+            if why is not None:
+                problems.append(f"{case.id}: the product op would refuse its step: {why}")
+        if product_of(case) is not None and case.phase >= 100:
+            problems.append(f"{case.id}: a product case runs before the families")
     return problems

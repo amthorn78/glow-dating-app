@@ -452,3 +452,359 @@ class CleanupCommandTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# -- P06.1-I2b: the Video and Feeds scope ------------------------------------------------
+
+OWN_CALL = f"/api/v2/video/call/default/{RUN}-call"
+OTHER_CALL = "/api/v2/video/call/default/someone-elses-call"
+OWN_FEED = f"/api/v2/feeds/feed_groups/user/feeds/{A}"
+OTHER_FEED = "/api/v2/feeds/feed_groups/user/feeds/someone-else"
+
+
+class ProductScope(Scope):
+    """A run's scope with one recorded activity and one recorded comment."""
+
+    def owns_activity(self, activity_id: str) -> bool:
+        return activity_id == "a-recorded"
+
+    def owns_comment(self, comment_id: str) -> bool:
+        return comment_id == "c-recorded"
+
+
+def product_refusal(
+    method: str, path: str, body: Any = None, params: dict[str, str] | None = None
+) -> str | None:
+    return guard.refusal(method, path, body, params, ProductScope(RUN))
+
+
+class ProductScopeTest(unittest.TestCase):
+    """DM-05 finding 3: the guard allows the same families as the runner's product op, on
+    the run's own objects, plus their deletes; the deny-list first; a configuration write
+    only in the scoped configure mode."""
+
+    def test_reads_are_never_refused(self) -> None:
+        for method, path, body in (
+            ("GET", "/api/v2/video/calltypes", None),
+            ("GET", OTHER_CALL, None),
+            ("POST", "/api/v2/video/calls", {"filter_conditions": {}}),
+            ("POST", "/api/v2/video/call/members", {"id": "x", "type": "default"}),
+            ("GET", "/api/v2/feeds/feed_visibilities", None),
+            ("GET", "/api/v2/feeds/feed_groups", None),
+            ("POST", "/api/v2/feeds/feeds/query", {"limit": 10}),
+            ("POST", "/api/v2/feeds/activities/query", {"filter": {}}),
+            ("POST", "/api/v2/feeds/comments/query", {"filter": {}}),
+            ("POST", "/api/v2/feeds/follows/query", {"filter": {}}),
+            ("GET", "/api/v2/feeds/activities/a-other", None),
+        ):
+            self.assertIsNone(product_refusal(method, path, body), (method, path))
+
+    def test_the_runs_own_objects_pass(self) -> None:
+        for method, path, body, params in (
+            ("POST", OWN_CALL, {"data": {"created_by_id": A, "members": [{"user_id": B}]}}, None),
+            ("PATCH", OWN_CALL, {"custom": {"glow_note": "x"}}, None),
+            ("POST", OWN_CALL + "/members", {"update_members": [{"user_id": B}]}, None),
+            ("POST", OWN_CALL + "/members", {"remove_members": [B]}, None),
+            ("POST", OWN_CALL + "/event", {"user_id": A, "custom": {"x": 1}}, None),
+            ("POST", OWN_CALL + "/delete", {"hard": True}, None),
+            ("POST", OWN_FEED, {"user_id": A}, None),
+            ("PUT", OWN_FEED, {"custom": {}}, None),
+            ("DELETE", OWN_FEED, None, {"hard_delete": "true"}),
+            (
+                "POST",
+                "/api/v2/feeds/activities",
+                {"feeds": [f"user:{A}"], "text": "t", "user_id": A},
+                None,
+            ),
+            ("PUT", "/api/v2/feeds/activities/a-recorded", {"text": "t", "user_id": A}, None),
+            ("DELETE", "/api/v2/feeds/activities/a-recorded", None, {"hard_delete": "true"}),
+            (
+                "POST",
+                "/api/v2/feeds/activities/a-recorded/reactions",
+                {"type": "like", "user_id": B},
+                None,
+            ),
+            ("DELETE", "/api/v2/feeds/activities/a-recorded/reactions/like", None, {"user_id": B}),
+            (
+                "POST",
+                "/api/v2/feeds/comments",
+                {"comment": "c", "object_id": "a-recorded", "user_id": B},
+                None,
+            ),
+            ("DELETE", "/api/v2/feeds/comments/c-recorded", None, {"hard_delete": "true"}),
+            (
+                "POST",
+                "/api/v2/feeds/follows",
+                {"source": f"timeline:{B}", "target": f"user:{A}"},
+                None,
+            ),
+            ("DELETE", f"/api/v2/feeds/follows/timeline:{B}/user:{A}", None, None),
+            ("POST", f"/api/v2/feeds/users/{A}/delete", {}, None),
+        ):
+            self.assertIsNone(product_refusal(method, path, body, params), (method, path))
+
+    def test_objects_the_run_did_not_create_are_refused(self) -> None:
+        for method, path, body, params, reason in (
+            ("POST", OTHER_CALL, {"data": {}}, None, "a call this run did not create"),
+            ("PATCH", OTHER_CALL, {"custom": {}}, None, "a call this run did not create"),
+            (
+                "POST",
+                OTHER_CALL + "/delete",
+                {"hard": True},
+                None,
+                "a call this run did not create",
+            ),
+            (
+                "POST",
+                OWN_CALL + "/members",
+                {"update_members": [{"user_id": FOREIGN_USER}]},
+                None,
+                "a user ID this run did not create",
+            ),
+            ("POST", OTHER_FEED, {}, None, "a feed this run did not create"),
+            ("DELETE", OTHER_FEED, None, None, "a feed this run did not create"),
+            (
+                "POST",
+                "/api/v2/feeds/activities",
+                {"feeds": ["user:someone-else"], "text": "t"},
+                None,
+                "a feed this run did not create",
+            ),
+            ("POST", "/api/v2/feeds/activities", {"text": "t"}, None, "no feed named"),
+            (
+                "PUT",
+                "/api/v2/feeds/activities/a-other",
+                {"text": "t"},
+                None,
+                "an activity this run did not record",
+            ),
+            (
+                "DELETE",
+                "/api/v2/feeds/activities/a-other",
+                None,
+                None,
+                "an activity this run did not record",
+            ),
+            (
+                "POST",
+                "/api/v2/feeds/activities/a-other/reactions",
+                {"type": "like"},
+                None,
+                "an activity this run did not record",
+            ),
+            (
+                "POST",
+                "/api/v2/feeds/comments",
+                {"comment": "c", "object_id": "a-other"},
+                None,
+                "an activity this run did not record",
+            ),
+            (
+                "DELETE",
+                "/api/v2/feeds/comments/c-other",
+                None,
+                None,
+                "a comment this run did not record",
+            ),
+            (
+                "POST",
+                "/api/v2/feeds/follows",
+                {"source": f"timeline:{B}", "target": "user:someone-else"},
+                None,
+                "a feed this run did not create",
+            ),
+            (
+                "DELETE",
+                f"/api/v2/feeds/follows/timeline:{B}/user:someone-else",
+                None,
+                None,
+                "a feed this run did not create",
+            ),
+            (
+                "POST",
+                f"/api/v2/feeds/users/{FOREIGN_USER}/delete",
+                {},
+                None,
+                "a user ID this run did not create",
+            ),
+        ):
+            why = product_refusal(method, path, body, params)
+            self.assertIsNotNone(why, (method, path))
+            self.assertTrue(str(why).endswith(reason), (method, path, why))
+            self.assertNotIn("someone", str(why))
+            self.assertNotIn(FOREIGN_USER, str(why))
+
+    def test_the_deny_list_is_refused_first_even_on_the_runs_own_call(self) -> None:
+        for method, path, body, params, word in (
+            ("POST", OWN_CALL + "/join", {}, None, "join"),
+            ("POST", OWN_CALL + "/go_live", {}, None, "go_live"),
+            ("POST", OWN_CALL + "/start_recording", {}, None, "start_"),
+            ("POST", OWN_CALL + "/stop_transcription", {}, None, "stop_"),
+            ("POST", OWN_CALL + "/rtmp_broadcasts", {}, None, "broadcast"),
+            ("POST", OWN_CALL + "/start_closed_captions", {}, None, "start_"),
+            ("POST", OWN_CALL, {"ring": True}, None, "ring"),
+            ("POST", OWN_CALL, {"notify": False}, None, "notify"),
+            ("POST", OWN_CALL, {"video": True}, None, "video: true"),
+            (
+                "POST",
+                OWN_CALL,
+                {"data": {"members": [{"user_id": A, "custom": {"notify": 1}}]}},
+                None,
+                "notify",
+            ),
+            (
+                "POST",
+                OWN_CALL + "/members",
+                {"update_members": [{"user_id": B}]},
+                {"ring": "true"},
+                "ring",
+            ),
+            (
+                "POST",
+                "/api/v2/feeds/activities",
+                {"feeds": [f"user:{A}"], "create_notification_activity": True},
+                None,
+                "create_notification_activity: true",
+            ),
+        ):
+            why = product_refusal(method, path, body, params)
+            self.assertIsNotNone(why, (method, path, body))
+            self.assertIn("on the Video and Feeds deny-list", str(why), (method, path))
+            self.assertIn(word, str(why))
+        self.assertEqual(
+            product_refusal("POST", OWN_CALL + "/join", {}),
+            "guard refused POST video/call/{type}/{id}/join: on the Video and Feeds deny-list "
+            "(denied path (join))",
+        )
+
+    def test_a_configuration_write_passes_only_in_the_scoped_configure(self) -> None:
+        writes: list[tuple[str, str, Any]] = [
+            ("PUT", "/api/v2/video/calltypes/default", {"grants": {"user": []}}),
+            (
+                "PUT",
+                "/api/v2/feeds/feed_visibilities/public",
+                {"grants": {"user": [], "guest": []}},
+            ),
+        ]
+        for method, path, body in writes:
+            self.assertEqual(
+                product_refusal(method, path, body),
+                f"guard refused {method} {guard.shape(guard.parts_of(path))}: a Video or Feeds "
+                "configuration change outside the scoped configure",
+            )
+        configure = guard.ConfigureScope(RUN)
+        for method, path, body in writes:
+            self.assertIsNone(guard.refusal(method, path, body, None, configure), path)
+        # The configure scope allows nothing else: not a call type's creation or deletion,
+        # not a feed group, not the chat plan, not a delete of an object.
+        others: list[tuple[str, str, Any]] = [
+            ("POST", "/api/v2/video/calltypes", {"name": "x"}),
+            ("DELETE", "/api/v2/video/calltypes/default", None),
+            ("PUT", "/api/v2/feeds/feed_groups/user", {"default_visibility": "private"}),
+            ("PATCH", "/api/v2/app", {"grants": {"user": []}}),
+            ("PUT", f"/api/v2/chat/channeltypes/{T}", {"grants": {}}),
+            ("POST", OWN_CALL + "/delete", {"hard": True}),
+            ("POST", OWN_CALL, {"data": {}}),
+        ]
+        for method, path, body in others:
+            self.assertIsNotNone(guard.refusal(method, path, body, None, configure), (method, path))
+
+    def test_other_kinds_of_product_request_are_refused(self) -> None:
+        for method, path, body in (
+            ("POST", "/api/v2/video/calltypes", {"name": "x"}),
+            ("DELETE", "/api/v2/video/calltypes/default", None),
+            ("POST", OWN_CALL + "/block", {"user_id": B}),
+            ("POST", OWN_CALL + "/mark_read", {}),
+            ("PUT", OWN_CALL, {"custom": {}}),
+            ("POST", "/api/v2/video/call/default", {}),
+            ("POST", "/api/v2/feeds/feed_groups", {"id": "x"}),
+            ("PUT", "/api/v2/feeds/feed_groups/user", {}),
+            ("DELETE", "/api/v2/feeds/feed_groups/user", None),
+            ("POST", "/api/v2/feeds/activities/a-recorded/pin", {}),
+            ("POST", "/api/v2/feeds/feeds/delete", {"feeds": [f"user:{A}"]}),
+            (
+                "POST",
+                "/api/v2/feeds/comments",
+                {"comment": "c", "object_id": "a-recorded", "object_type": "comment"},
+            ),
+            ("POST", "/api/v2/feeds/follows/batch", {"follows": []}),
+            ("POST", "/api/v2/feeds/membership_levels", {"id": "x"}),
+        ):
+            why = product_refusal(method, path, body)
+            self.assertIsNotNone(why, (method, path))
+            self.assertTrue(
+                str(why).endswith("not a kind of request this proof makes"), (method, path, why)
+            )
+
+    def test_cleanup_apply_owns_calls_and_feeds_by_prefix_only(self) -> None:
+        prefix = guard.PrefixScope(PREFIX)
+        self.assertIsNone(
+            guard.refusal(
+                "POST",
+                f"/api/v2/video/call/default/{PREFIX}-c/delete",
+                {"hard": True},
+                None,
+                prefix,
+            )
+        )
+        self.assertIsNone(
+            guard.refusal(
+                "DELETE",
+                f"/api/v2/feeds/feed_groups/user/feeds/{PREFIX}-ua",
+                None,
+                {"hard_delete": "true"},
+                prefix,
+            )
+        )
+        self.assertIsNone(
+            guard.refusal("POST", f"/api/v2/feeds/users/{PREFIX}-ua/delete", {}, None, prefix)
+        )
+        self.assertIsNotNone(
+            guard.refusal("POST", OTHER_CALL + "/delete", {"hard": True}, None, prefix)
+        )
+        self.assertIsNotNone(
+            guard.refusal("DELETE", "/api/v2/feeds/activities/a-1", None, None, prefix)
+        )
+        self.assertIsNotNone(
+            guard.refusal("PUT", "/api/v2/video/calltypes/default", {"grants": {}}, None, prefix)
+        )
+
+
+class ProductHookTest(unittest.TestCase):
+    def test_the_products_rules_in_the_real_hook(self) -> None:
+        """The real ``ServerApi`` hook refuses a product request the guard refuses, typed
+        and raw alike, before it is sent or counted, and lets the run's own through."""
+        api, seen = api_answering()
+        scope = ProductScope(RUN)
+        api.guard = lambda method, path, body, params: guard.refusal(
+            method, path, body, params, scope
+        )
+        try:
+            refused_calls = (
+                lambda: api.sdk.video.delete_call(
+                    type="default", id="someone-elses-call", hard=True
+                ),
+                lambda: api.sdk.feeds.delete_activity(id="a-other", hard_delete=True),
+                lambda: api.sdk.video.update_call_type(name="default", grants={"user": []}),
+                lambda: api.raw("POST", OWN_CALL + "/join", body={}),
+                lambda: api.raw("POST", OWN_CALL, body={"ring": True, "data": {}}),
+            )
+            for call in refused_calls:
+                with self.assertRaises(GuardRefused):
+                    call()
+            self.assertEqual(seen, [])
+            self.assertEqual(api._ledger.run.api_calls, 0)
+            api.raw("POST", OWN_CALL + "/delete", body={"hard": True})
+            api.raw("DELETE", "/api/v2/feeds/activities/a-recorded", params={"hard_delete": "true"})
+            api.raw("GET", "/api/v2/video/calltypes")
+        finally:
+            api.close()
+        self.assertEqual(
+            seen,
+            [
+                f"POST {OWN_CALL}/delete",
+                "DELETE /api/v2/feeds/activities/a-recorded",
+                "GET /api/v2/video/calltypes",
+            ],
+        )
+        self.assertEqual(api._ledger.run.api_calls, 3)

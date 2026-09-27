@@ -268,3 +268,69 @@ class RecordedSettingsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductDifferencesTest(unittest.TestCase):
+    """P06.1-I2b: ``verify`` compares the Video and Feeds target too, from the commit that
+    records the live apply (``products.LOCKDOWN_APPLIED``) on; before it the products'
+    differences are the plan, not drift, and the runs before the lockdown are allowed."""
+
+    def state(self, user_grants: list[str]) -> dict[str, Any]:
+        return {
+            "video": {
+                "availability": "available",
+                "read": {},
+                "call_types": {
+                    "default": {"grants": {"user": user_grants, "admin": ["create-call"]}}
+                },
+            },
+            "feeds": {
+                "availability": "available",
+                "read": {},
+                "feed_visibilities": {"public": {"grants": {"user": user_grants}}},
+                "feed_groups_read": {},
+                "feed_groups": {},
+            },
+        }
+
+    def test_without_the_products_state_nothing_is_compared(self) -> None:
+        self.assertEqual(conf.product_differences(snapshot(), locked=True), [])
+        self.assertEqual(conf.verify(configured(snapshot())), [])
+
+    def test_before_the_apply_the_differences_are_not_drift(self) -> None:
+        from glow_stream_proof import products
+
+        snap = configured(snapshot())
+        snap["products"] = self.state(["create-call"])
+        self.assertIsNone(products.LOCKDOWN_APPLIED)  # flipped by the commit after the apply
+        self.assertEqual(conf.product_differences(snap), [])
+        self.assertEqual(conf.verify(snap), [])
+        self.assertEqual(
+            conf.product_differences(snap, locked=True),
+            [
+                "video/feeds: video call type default: grants for user not empty: ['create-call']",
+                "video/feeds: feeds feed visibility public: grants for user not empty: "
+                "['create-call']",
+            ],
+        )
+        self.assertEqual(conf.product_differences(snap, locked=False), [])
+
+    def test_after_the_apply_verify_sees_drift(self) -> None:
+        from unittest import mock
+
+        from glow_stream_proof import products
+
+        snap = configured(snapshot())
+        snap["products"] = self.state(["create-call"])
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            self.assertEqual(
+                conf.verify(snap),
+                [
+                    "video/feeds: video call type default: grants for user not empty: "
+                    "['create-call']",
+                    "video/feeds: feeds feed visibility public: grants for user not empty: "
+                    "['create-call']",
+                ],
+            )
+            snap["products"] = self.state([])
+            self.assertEqual(conf.verify(snap), [])

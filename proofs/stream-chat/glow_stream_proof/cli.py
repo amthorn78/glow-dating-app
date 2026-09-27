@@ -1,8 +1,10 @@
 """Command line entry point: ``python -m glow_stream_proof <command>``.
 
-Read-only: ``baseline``, ``verify-clean``, ``configure`` and ``restore`` without
-``--apply`` (they print the plan). Mutating: ``configure --apply``, ``run``,
-``cleanup --apply`` and ``restore --apply``.
+Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``configure`` and
+``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
+``configure --products video,feeds --apply``, ``run``, ``cleanup --apply`` and
+``restore --apply``. ``record-baseline`` and ``record-products-baseline`` write files
+from a snapshot and call nothing.
 """
 
 from __future__ import annotations
@@ -16,9 +18,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import baseline, configuration, guard, report
+from . import baseline, configuration, guard, products, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
-from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, list_polls_and_groups
+from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, lean_only, list_polls_and_groups
 from .redaction import Redactor
 from .server_api import ServerApi
 from .stops import GuardRefused
@@ -27,6 +29,8 @@ from .workdir import PROOF_ROOT, WORK_DIR, checked_text, write_json, write_text
 
 LEDGER = WORK_DIR / "usage-ledger.json"
 BASELINE_RECORD = configuration.BASELINE_RECORD
+BASELINE_DIR = BASELINE_RECORD.parent
+EXIT_REFUSED = 2
 
 
 def _stamp() -> str:
@@ -89,6 +93,15 @@ def _settings_view(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _say_products(ctx: Context, state: Mapping[str, Any]) -> None:
+    for product in products.PRODUCTS:
+        entry = state.get(product) or {}
+        ctx.say(f"{product}: {entry.get('availability')}")
+    ctx.say(f"video call types: {sorted(state['video']['call_types'])}")
+    ctx.say(f"feed visibilities: {sorted(state['feeds']['feed_visibilities'])}")
+    ctx.say(f"feed groups: {sorted(state['feeds']['feed_groups'])}")
+
+
 def cmd_baseline(ctx: Context) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
     # Written without other users' identifiers, names or custom fields.
@@ -99,6 +112,51 @@ def cmd_baseline(ctx: Context) -> int:
     ctx.say(
         f"configuration differences from the proof's target: {len(configuration.verify(snapshot))}"
     )
+    # The Video and Feeds configuration is part of the snapshot (P06.1-I2b): settings and
+    # grants only, no user and no data.
+    _say_products(ctx, snapshot["products"])
+    ctx.say(
+        "video and feeds differences from the lockdown target: "
+        f"{len(products.verify(snapshot['products']))}"
+    )
+    return 0
+
+
+def cmd_record_products_baseline(ctx: Context, snapshot_path: Path) -> int:
+    """Write the Video and Feeds baseline record from a ``baseline`` snapshot (P06.1-I2b):
+    ``baseline/video-feeds-<app>-<date>.json``, settings and grants only. Calls nothing."""
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    state = snapshot.get("products")
+    if not isinstance(state, dict):
+        ctx.say("refused: the snapshot holds no products section")
+        return EXIT_REFUSED
+    record = products.baseline_record(state, ctx.credentials.app_id)
+    BASELINE_DIR.mkdir(parents=True, exist_ok=True)
+    path = BASELINE_DIR / (
+        f"video-feeds-{ctx.credentials.app_id}-{datetime.now(UTC).strftime('%Y-%m-%d')}.json"
+    )
+    text = checked_text(json.dumps(record, indent=2, sort_keys=True) + "\n", ctx.secrets)
+    path.write_text(text, encoding="utf-8")
+    shown = path.relative_to(PROOF_ROOT) if path.is_relative_to(PROOF_ROOT) else path
+    ctx.say(f"video and feeds baseline record written to {shown}")
+    return 0
+
+
+def cmd_probe_products(ctx: Context) -> int:
+    """The availability probe (the I2b prompt, section 5): one read-only server request
+    per product, recorded; it decides whether that product's cases run at all."""
+    probe = products.probe(ctx.api)
+    path = write_json(f"probe-products-{_stamp()}.json", probe, ctx.secrets)
+    ctx.say(f"probe written to {path.relative_to(PROOF_ROOT)}")
+    for product in products.PRODUCTS:
+        entry = probe[product]
+        ctx.say(
+            f"{product}: {entry['availability']} ({entry['request']} -> HTTP "
+            f"{entry['answer']['status']} code {entry['answer']['code']})"
+        )
+    ctx.say(f"video call types: {probe['video']['call_types']}")
+    ctx.say(f"feed visibilities: {probe['feeds']['feed_visibilities']}")
+    ctx.say(f"feed groups: {probe['feeds']['feed_groups']}")
     return 0
 
 
@@ -112,14 +170,24 @@ def cmd_record_baseline(ctx: Context, snapshot_path: Path) -> int:
     return 0
 
 
-def cmd_configure(ctx: Context, apply: bool) -> int:
+def cmd_configure(ctx: Context, apply: bool, scope: list[str] | None = None) -> int:
+    if scope is not None:
+        unknown = sorted(set(scope) - set(products.PRODUCTS))
+        if unknown or not scope:
+            ctx.say(f"refused: --products names {unknown or 'nothing'}; only video and feeds")
+            return EXIT_REFUSED
     before = baseline.read_snapshot(ctx.api)
+    if scope is not None:
+        return _configure_products(ctx, before, apply, scope)
     plan = configuration.apply_plan(before)
     ctx.say(f"differences before: {configuration.verify(before)}")
     if not apply:
         ctx.say("plan (dry run; pass --apply to change the application):")
         _print_plan(ctx, plan)
         return 0
+    # The general apply re-sends the whole chat target (the application PATCH, the five
+    # default types and glow-match); it is the operator command that reapplies the chat
+    # configuration, outside the guard, and P06.1-I2b never runs it (DM-05 finding 1).
     applied = _apply(ctx, plan)
     after = baseline.read_snapshot(ctx.api)
     problems = configuration.verify(after)
@@ -141,6 +209,90 @@ def cmd_configure(ctx: Context, apply: bool) -> int:
     return 0 if not problems else 1
 
 
+def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope: list[str]) -> int:
+    """``configure --products video,feeds`` (P06.1-I2b; DM-05 finding 1): a scoped,
+    differential plan of Video and Feeds configuration writes only. The dry run prints
+    the plan and the chat verification. ``--apply`` refuses, in code, while the chat
+    configuration does not verify, or if any planned request is outside the two
+    configuration families; it then sends the plan through the guard's configure scope,
+    re-reads and verifies chat and both products."""
+    chat_problems = configuration.verify(before)
+    ctx.say(f"differences before: {chat_problems}")
+    state = before["products"]
+    _say_products(ctx, state)
+    ctx.say(f"video and feeds differences before: {products.verify(state)}")
+    # Each planned step names its product first in its purpose ("video: ...").
+    plan = [step for step in products.lockdown_plan(state) if step.purpose.split(":")[0] in scope]
+    if plan:
+        ctx.say("video and feeds plan (a difference; dry run unless --apply):")
+        _print_plan(ctx, plan)
+    else:
+        ctx.say("video and feeds plan: nothing to change")
+    if not apply:
+        return 0
+    if chat_problems:
+        ctx.say("refused: the chat configuration does not verify; nothing applied")
+        return EXIT_REFUSED
+    outside = [
+        f"{step.method} {step.path}"
+        for step in plan
+        if not products.is_configuration_write(step.method, step.path)
+    ]
+    if outside:
+        ctx.say(
+            "refused: a planned request is outside the Video and Feeds configuration "
+            f"families: {outside}; nothing applied"
+        )
+        return EXIT_REFUSED
+    if not plan:
+        ctx.say("nothing to apply")
+        return 0
+    # The guard's configure scope: only a call type's or a feed visibility's grants.
+    configure_scope = guard.ConfigureScope(PREFIX_ROOT)
+    ctx.api.guard = lambda method, path, body, params: guard.refusal(
+        method, path, body, params, configure_scope
+    )
+    applied = _apply(ctx, plan)
+    after = baseline.read_configuration(ctx.api)
+    problems = configuration.verify(after)
+    if products.LOCKDOWN_APPLIED is None:
+        # Until the commit that records the apply, verify() leaves the products out.
+        problems += configuration.product_differences(after, locked=True)
+    record = {
+        "at": _stamp(),
+        "scope": sorted(scope),
+        "before": {
+            product: {
+                "availability": state[product]["availability"],
+                "grants": _client_grants(state, product),
+            }
+            for product in products.PRODUCTS
+        },
+        "applied": applied,
+        "after": {
+            product: {
+                "availability": after["products"][product]["availability"],
+                "grants": _client_grants(after["products"], product),
+            }
+            for product in products.PRODUCTS
+        },
+        "problems_after": problems,
+    }
+    path = write_json(f"configure-products-{record['at']}.json", record, ctx.secrets)
+    ctx.say(f"configuration record written to {path.relative_to(PROOF_ROOT)}")
+    ctx.say(f"differences after: {problems}")
+    return 0 if not problems else 1
+
+
+def _client_grants(state: Mapping[str, Any], product: str) -> dict[str, dict[str, list[str]]]:
+    """Each call type's or feed visibility's grants for the client roles."""
+    key = "call_types" if product == "video" else "feed_visibilities"
+    return {
+        name: {role: list(cfg["grants"].get(role, [])) for role in products.CLIENT_ROLES}
+        for name, cfg in sorted((state.get(product) or {}).get(key, {}).items())
+    }
+
+
 EXIT_STOPPED = 2
 EXIT_AFTER_RUN_PROBLEMS = 4
 
@@ -149,6 +301,7 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     """One run. Exit 0 only if it completed, was cleaned up and the configuration
     verifies; 2 if it stopped; 4 if it completed but a check after it failed."""
     prefix = f"{PREFIX_ROOT}{datetime.now(UTC).strftime('%m%d%H%M%S')}"
+    lean = lean_only(only)
     run = ProofRun(
         ctx.credentials,
         ctx.api,
@@ -157,9 +310,12 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
         os.environ,
         prefix=prefix,
         accept_dashboard_user=accept_dashboard_user,
+        lean=lean,
     )
     started = datetime.now(UTC).isoformat(timespec="seconds")
     ctx.say(f"run {prefix} started {started}")
+    if lean:
+        ctx.say("a Video and Feeds run: lean setup (users A and B, no channel)")
     stop_reason = None
     cleanup_needed = False
 
@@ -247,11 +403,11 @@ def cmd_verify_clean(ctx: Context) -> int:
     # Stream prefixes guest IDs ("guest-<uuid>-<requested id>"), so match anywhere.
     proof_users = [u for u in users if PREFIX_ROOT in u]
     channels = [str(c["channel"]["cid"]) for c in snapshot["channels"].get("channels", [])]
-    listed = list_polls_and_groups(ctx.api)
+    listed = {**list_polls_and_groups(ctx.api), **products.list_objects(ctx.api)}
     ctx.say(f"proof users remaining: {proof_users}")
     ctx.say(f"channels remaining: {channels}")
     ctx.say(f"other users present: {len(users) - len(proof_users)}")
-    for key in ("polls", "user_groups"):
+    for key in ("polls", "user_groups", *products.OBJECT_KINDS):
         remaining = listed[f"remaining_{key}"]
         shown = remaining if remaining is not None else listed[f"{key}_listing"]
         ctx.say(f"{key} remaining: {shown}")
@@ -265,6 +421,12 @@ def cmd_verify_clean(ctx: Context) -> int:
         )
     clean = not proof_users and not channels
     clean = clean and listed["remaining_polls"] == [] and listed["remaining_user_groups"] == []
+    for kind in products.OBJECT_KINDS:
+        # A product that is not available can hold no object (P06.1-I2b).
+        if listed[f"remaining_{kind}"] is None:
+            clean = clean and str(listed[f"{kind}_listing"]).startswith("not available")
+        else:
+            clean = clean and listed[f"remaining_{kind}"] == []
     return 0 if clean else 1
 
 
@@ -279,6 +441,16 @@ def cmd_cleanup(ctx: Context, apply: bool) -> int:
         if PREFIX_ROOT in str(c["channel"]["cid"])
     ]
     ctx.say(f"proof users: {users}; proof channels: {cids}")
+    # The products' objects whose IDs carry the prefix (P06.1-I2b); an activity has a
+    # server ID, so the run users' Feeds data delete removes theirs.
+    objects = products.list_objects(ctx.api)
+    calls = [c for c in objects.get("remaining_calls") or [] if PREFIX_ROOT in c]
+    feeds = [f for f in objects.get("remaining_feeds") or [] if PREFIX_ROOT in f]
+    activities = objects.get("remaining_activities")
+    ctx.say(
+        f"proof calls: {calls}; proof feeds: {feeds}; activities present: "
+        f"{len(activities) if activities is not None else objects.get('activities_listing')}"
+    )
     if not apply:
         ctx.say("dry run; pass --apply to hard-delete them")
         return 0
@@ -287,6 +459,24 @@ def cmd_cleanup(ctx: Context, apply: bool) -> int:
     ctx.api.guard = lambda method, path, body, params: guard.refusal(
         method, path, body, params, scope
     )
+    for cid in calls:
+        call_type, _, call_id = cid.partition(":")
+        res = ctx.api.raw(
+            "POST", f"/api/v2/video/call/{call_type}/{call_id}/delete", body={"hard": True}
+        )
+        ctx.say(f"call delete -> {res.status}")
+    for fid in feeds:
+        group, _, feed_id = fid.partition(":")
+        res = ctx.api.raw(
+            "DELETE",
+            f"/api/v2/feeds/feed_groups/{group}/feeds/{feed_id}",
+            params={"hard_delete": "true"},
+        )
+        ctx.say(f"feed delete -> {res.status}")
+    if feeds or (activities and users):
+        for user_id in users:
+            res = ctx.api.raw("POST", f"/api/v2/feeds/users/{user_id}/delete", body={})
+            ctx.say(f"feeds user data delete -> {res.status}")
     if cids:
         res = ctx.api.raw(
             "POST", "/api/v2/chat/channels/delete", body={"cids": cids, "hard_delete": True}
@@ -324,6 +514,16 @@ def main(argv: list[str] | None = None) -> int:
     rec.add_argument("--snapshot", type=Path, required=True)
     conf = sub.add_parser("configure", help="plan (or --apply) the proof's configuration")
     conf.add_argument("--apply", action="store_true")
+    conf.add_argument(
+        "--products",
+        default=None,
+        help="scoped, differential: only Video and Feeds configuration writes (video,feeds)",
+    )
+    sub.add_parser("probe-products", help="read-only: is each of Video and Feeds available?")
+    prec = sub.add_parser(
+        "record-products-baseline", help="write the Video and Feeds baseline from a snapshot"
+    )
+    prec.add_argument("--snapshot", type=Path, required=True)
     run = sub.add_parser("run", help="one live proof run with cleanup")
     run.add_argument("--accept-dashboard-user", action="store_true")
     run.add_argument("--only", default="", help="comma-separated case ids (development)")
@@ -345,7 +545,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "record-baseline":
             return cmd_record_baseline(ctx, args.snapshot)
         if args.command == "configure":
-            return cmd_configure(ctx, args.apply)
+            scope = None
+            if args.products is not None:
+                scope = [s for s in args.products.split(",") if s]
+            return cmd_configure(ctx, args.apply, scope)
+        if args.command == "probe-products":
+            return cmd_probe_products(ctx)
+        if args.command == "record-products-baseline":
+            return cmd_record_products_baseline(ctx, args.snapshot)
         if args.command == "run":
             only = {s for s in args.only.split(",") if s} or None
             return cmd_run(ctx, args.accept_dashboard_user, only)

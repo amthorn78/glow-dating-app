@@ -41,6 +41,8 @@ const out = {
   api: errorInfo(api),
   local: errorInfo(new Error('channel is not initialized')),
   budget: errorInfo(Object.assign(new Error('PROOF_BUDGET'), { proofBudget: true })),
+  refused: errorInfo(Object.assign(new Error('PROOF_REFUSED: denied path (join)'),
+    { proofRefused: true })),
 };
 process.stdout.write(JSON.stringify(out));
 """
@@ -68,6 +70,11 @@ class ErrorInfoTest(unittest.TestCase):
         self.assertEqual((out["api"]["kind"], out["api"]["status"]), ("api", 403))
         self.assertEqual((out["local"]["kind"], out["local"]["status"]), ("error", None))
         self.assertEqual(out["budget"]["kind"], "budget")
+        # The product op's own refusal (P06.1-I2b): before anything is sent.
+        self.assertEqual(
+            (out["refused"]["kind"], out["refused"]["message"]),
+            ("refused", "PROOF_REFUSED: denied path (join)"),
+        )
 
 
 class RunnerTest(unittest.TestCase):
@@ -293,10 +300,36 @@ class EveryOpTest(unittest.TestCase):
             {"id": 9, "op": "guest", "user": {"id": "g"}, "max_calls": 0},
             {"id": 10, "op": "anonymous", "max_calls": 0},
             {"id": 11, "op": "events", "wait_ms": 10},
+            # P06.1-I2b: the Video and Feeds op, refused by the budget before it is sent,
+            # and one the op itself refuses (the deny-list) before the budget is asked.
+            {
+                "id": 12,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call",
+                "body": {"data": {"custom": {"glow_note": "x"}}},
+                "max_calls": 0,
+            },
+            {
+                "id": 13,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call",
+                "body": {"ring": True},
+                "max_calls": 5,
+            },
+            {
+                "id": 14,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call/join",
+                "body": {},
+                "max_calls": 5,
+            },
         )
         by_id = {r["id"]: r for r in replies}
-        self.assertEqual(sorted(by_id), list(range(1, 12)) + [99])
-        for command_id in range(1, 12):
+        self.assertEqual(sorted(by_id), list(range(1, 15)) + [99])
+        for command_id in range(1, 15):
             self.assertEqual(set(by_id[command_id]), REPLY_KEYS, command_id)
             self.assertEqual(by_id[command_id]["requests"], [], command_id)  # nothing sent
             self.assertEqual(by_id[command_id]["api_calls"], 0, command_id)
@@ -321,6 +354,11 @@ class EveryOpTest(unittest.TestCase):
         self.assertEqual(by_id[9]["error"]["kind"], "budget")
         self.assertEqual(by_id[10]["error"]["kind"], "ws-failure")
         self.assertEqual(by_id[11]["data"], {"events": []})
+        self.assertEqual(by_id[12]["error"]["kind"], "budget")
+        self.assertEqual(by_id[13]["error"]["kind"], "refused")
+        self.assertEqual(by_id[13]["error"]["message"], "PROOF_REFUSED: denied field (ring)")
+        self.assertEqual(by_id[14]["error"]["kind"], "refused")
+        self.assertEqual(by_id[14]["error"]["message"], "PROOF_REFUSED: denied path (join)")
         exit_reply = by_id[99]
         self.assertTrue(exit_reply["ok"])
         self.assertEqual(

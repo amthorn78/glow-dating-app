@@ -6,6 +6,7 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from . import products
 from .configuration import APP_SETTING_KEYS
 from .server_api import ServerApi
 
@@ -33,14 +34,21 @@ def read_snapshot(api: ServerApi) -> dict[str, Any]:
         "roles": roles,
         "users": users,
         "channels": channels,
+        # P06.1-I2b: the Video and Feeds configuration (settings and grants; no data).
+        "products": products.read_configuration(api),
     }
 
 
 def read_configuration(api: ServerApi) -> dict[str, Any]:
-    """Only what :func:`configuration.verify` needs: the app and the channel types."""
+    """Only what :func:`configuration.verify` needs: the app, the channel types and, since
+    P06.1-I2b, the Video and Feeds configuration."""
     app = api.require(api.get("/api/v2/app")).body
     channel_types = api.require(api.get("/api/v2/chat/channeltypes")).body
-    return {"app": app, "channel_types": channel_types}
+    return {
+        "app": app,
+        "channel_types": channel_types,
+        "products": products.read_configuration(api),
+    }
 
 
 def public_snapshot(snapshot: Mapping[str, Any], prefix_root: str) -> dict[str, Any]:
@@ -79,4 +87,6 @@ def public_snapshot(snapshot: Mapping[str, Any], prefix_root: str) -> dict[str, 
             "count": len(cids),
             "proof_cids": [c for c in cids if prefix_root in c],
         },
+        # Settings and grants only; the products' reads hold no user (P06.1-I2b).
+        "products": snapshot.get("products"),
     }

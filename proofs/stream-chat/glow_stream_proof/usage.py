@@ -206,9 +206,25 @@ _BILLING_WORDS = re.compile(
 )
 
 
+# Wording with which an answer says a product is not enabled or not available to the
+# application (P06.1-I2b; DM-05 finding 2 (c)). Stream documents no such message, so the
+# words are conservative: Stream's code-17 message, "Not Allowed", does not match, nor
+# does a rate limit's.
+PRODUCT_UNAVAILABLE_WORDS = re.compile(
+    r"(not|isn'?t|is not|are not) (enabled|available|activated|supported)|is disabled"
+    r"|not (on|part of|included in) (the|your|this) plan",
+    re.IGNORECASE,
+)
+
+
 def mentions_billing(message: str | None) -> bool:
     """Whether a response's wording mentions billing, an upgrade or a quota (P06.1-I2a)."""
     return bool(message and _BILLING_WORDS.search(message))
+
+
+def _only_an_upgrade_word(message: str) -> bool:
+    """Whether "upgrade" is the only charge word the message holds."""
+    return {m.lower() for m in _CHARGE_WORDS.findall(message)} <= {"upgrade"}
 
 
 # Stream codes: 9 rate limit, 99 application suspended.
@@ -232,5 +248,12 @@ def charge_signal(status: int | None, code: int | None, message: str | None) -> 
     if code in _CHARGE_CODES:
         return f"Stream error code {code}"
     if message and _CHARGE_WORDS.search(message):
+        if _only_an_upgrade_word(message) and PRODUCT_UNAVAILABLE_WORDS.search(message):
+            # An answer that a product is not enabled or not available to the application,
+            # whose only charge word is "upgrade", is that product's finding, not a charge
+            # signal (P06.1-I2b; DM-05 finding 2 (c)). Wording about a charge, a payment,
+            # an overage, billing, a quota or a plan limit still is one, and so are 402
+            # and code 99 above.
+            return None
         return "response text mentions a charge, upgrade or exceeded limit"
     return None

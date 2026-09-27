@@ -20,6 +20,7 @@ const path = require('node:path');
 const readline = require('node:readline');
 const { errorInfo } = require('./error-info.cjs');
 const { RequestLog, rateLimitOf } = require('./request-log.cjs');
+const { productRefusal } = require('./product-op.cjs');
 
 if (process.env.STREAM_API_SECRET !== undefined) {
   process.stderr.write('refused: STREAM_API_SECRET is present in the client environment\n');
@@ -82,6 +83,14 @@ const client = new StreamChat(API_KEY, {
 });
 
 const BASE = client.baseURL;
+// The hosts a product request may go to (P06.1-I2b). Stream's server SDK sends every
+// product's requests to the chat host; Stream's Video documentation names the video
+// host. The op's default is the chat host; a case may name another.
+const PRODUCT_HOSTS = {
+  chat: BASE,
+  video: 'https://video.stream-io-api.com',
+  feeds: 'https://feeds.stream-io-api.com',
+};
 let totalCalls = 0;
 let commandCalls = 0;
 let commandMax = 10;
@@ -99,7 +108,10 @@ function stripParams(params) {
 
 function relPath(url) {
   if (!url) return url;
-  return url.startsWith(BASE) ? url.slice(BASE.length) : url;
+  for (const host of Object.values(PRODUCT_HOSTS)) {
+    if (url.startsWith(host)) return url.slice(host.length);
+  }
+  return url;
 }
 
 function bodyOf(data) {
@@ -269,6 +281,27 @@ async function handle(cmd) {
       // A GET relative to the client's base URL, as a modified client can send one
       // (P06.1-I2a: the existence oracle's Get Channel). GET only.
       await client.get(BASE + cmd.path, cmd.params || {});
+      return {};
+    }
+    case 'product': {
+      // A Video or Feeds request as a modified client can send one, with this
+      // session's own token (P06.1-I2b): only a method and path on the allowlist, and
+      // nothing on the deny-list (client/product-op.cjs); refused before it is sent.
+      const why = productRefusal(cmd.method, cmd.path, cmd.body, cmd.params);
+      if (why) {
+        const err = new Error(`PROOF_REFUSED: ${why}`);
+        err.proofRefused = true;
+        throw err;
+      }
+      const host = PRODUCT_HOSTS[cmd.host || 'chat'];
+      if (!host) throw new Error(`unknown product host ${cmd.host}`);
+      const url = host + cmd.path;
+      const method = String(cmd.method).toUpperCase();
+      if (method === 'GET') await client.get(url, cmd.params || {});
+      else if (method === 'POST') await client.post(url, cmd.body || {});
+      else if (method === 'PUT') await client.put(url, cmd.body || {});
+      else if (method === 'PATCH') await client.patch(url, cmd.body || {});
+      else throw new Error(`unknown product method ${method}`);
       return {};
     }
     case 'events': {

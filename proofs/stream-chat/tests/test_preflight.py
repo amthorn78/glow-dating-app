@@ -72,3 +72,46 @@ class PreflightTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductObjectsTest(unittest.TestCase):
+    """P06.1-I2b; DM-05 finding 9 (b): preflight refuses a run when a call, feed or
+    activity exists that the run did not create, and records a listing a product does not
+    answer without stopping."""
+
+    def test_objects_stop_the_run_and_name_no_identifier_of_the_runs(self) -> None:
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")
+        server.products.calls["default:foreign-call"] = {
+            "id": "foreign-call",
+            "type": "default",
+            "custom": {},
+            "members": [],
+            "created_by": "x",
+        }
+        server.products.activities["a-7"] = {
+            "type": "post",
+            "text": "t",
+            "feeds": [],
+            "user_id": "x",
+            "custom": {},
+        }
+        with self.assertRaises(RunStopped) as stopped:
+            run.preflight()
+        self.assertEqual(
+            str(stopped.exception),
+            "application holds data this run did not create: call default:foreign-call; "
+            "activity a-7",
+        )
+
+    def test_a_listing_a_product_does_not_answer_is_recorded(self) -> None:
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")
+        server.products.available["video"] = False
+        result = run.preflight()
+        self.assertTrue(
+            str(result["calls_before_run"]).startswith(
+                "not available: HTTP 403 code 17: Video is not enabled"
+            )
+        )
+        self.assertEqual((result["feeds_before_run"], result["activities_before_run"]), (0, 0))

@@ -72,6 +72,17 @@ TI2 = "tests.test_i2a."
 MT = "glow_stream_proof/matrix.py"
 TCE = "tests.test_credentials_and_client_env."
 TCL = "tests.test_cleanup."
+# P06.1-I2b, step 2: Video and Feeds.
+PR = "glow_stream_proof/products.py"
+PO = "client/product-op.cjs"
+EI = "client/error-info.cjs"
+BL = "glow_stream_proof/baseline.py"
+RPL = "checks/run_plan.py"
+TPR = "tests.test_products."
+TPC = "tests.test_product_cases."
+TRN = "tests.test_runner."
+TCF = "tests.test_configuration."
+TCLI = "tests.test_cli."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -537,7 +548,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "nit 12 cleanup reserve",
-        [(P, "CLEANUP_RESERVE = 130\n", "CLEANUP_RESERVE = 60\n")],
+        [(P, "CLEANUP_RESERVE = 190\n", "CLEANUP_RESERVE = 60\n")],
         ["tests.test_cleanup.CleanupReserveTest.test_reserve_covers_the_worst_case_end_of_run"],
     ),
     (
@@ -3172,6 +3183,612 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             )
         ],
         [TCL + "PollListingTest.test_polls_are_listed_as_each_run_user_and_read_by_id"],
+    ),
+    # -- P06.1-I2b, step 2: Video and Feeds ------------------------------------------------
+    (
+        "I2b products: the runner's op refuses a denied field before sending",
+        [
+            (
+                PO,
+                "  const field = deniedField(body) || deniedField(params);\n",
+                "  const field = null;\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the runner's op refuses a denied path before sending",
+        [
+            (
+                PO,
+                "      if (segment.includes(word)) return `denied path (${word})`;\n",
+                "      if (false) return `denied path (${word})`;\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the runner's op refuses a path outside the allowlist",
+        [(PO, "  return 'path outside the Video and Feeds allowlist';\n", "  return null;\n")],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
+    ),
+    (
+        "I2b products: the runner asks the op before a product request is sent",
+        [
+            (
+                RN,
+                "      const why = productRefusal(cmd.method, cmd.path, cmd.body, cmd.params);\n",
+                "      const why = null;\n",
+            )
+        ],
+        [TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape"],
+    ),
+    (
+        "I2b products: the op's refusal has its own error kind",
+        [
+            (
+                EI,
+                "  if (err && err.proofRefused) {\n    info.kind = 'refused';\n    info.message = err.message;\n    return info;\n  }\n",
+                "",
+            )
+        ],
+        [
+            TRN + "ErrorInfoTest.test_kinds",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a denied field",
+        [(PR, "    field = denied_field(body) or denied_field(params)\n", "    field = None\n")],
+        [
+            TPR + "AllowlistTest.test_the_python_table",
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a denied path",
+        [(PR, "            if word in segment:\n", "            if False:\n")],
+        [
+            TPR + "AllowlistTest.test_the_python_table",
+            TGU + "ProductScopeTest.test_the_deny_list_is_refused_first_even_on_the_runs_own_call",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a path outside the allowlist",
+        [(PR, '    return "path outside the Video and Feeds allowlist"\n', "    return None\n")],
+        [TPR + "AllowlistTest.test_the_python_table"],
+    ),
+    (
+        "I2b guard: the deny-list is refused first",
+        [(G, "    why = products.denied(path, body, params)\n", "    why = None\n")],
+        [
+            TGU + "ProductScopeTest.test_the_deny_list_is_refused_first_even_on_the_runs_own_call",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a configuration write passes only in the scoped configure",
+        [
+            (
+                G,
+                '        if scope.allows_product_configuration():\n            return None\n        return "a Video or Feeds configuration change outside the scoped configure"\n',
+                "        return None\n",
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: the configure scope owns no call",
+        [
+            (
+                G,
+                "    def owns_call(self, call_id: str) -> bool:\n        return False\n",
+                "    def owns_call(self, call_id: str) -> bool:\n        return self.prefix in call_id\n",
+            )
+        ],
+        [TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure"],
+    ),
+    (
+        "I2b guard: a call the run did not create is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_call(parts[3]):\n            return "a call this run did not create"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a feed the run did not create is refused",
+        [
+            (
+                G,
+                '    if any(not scope.owns_feed(channel_id(fid)) for fid in fids):\n        return "a feed this run did not create"\n',
+                '    if False:\n        return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: an activity the run did not record is refused (update, delete, reaction)",
+        [
+            (
+                G,
+                '        if not scope.owns_activity(sub[1]):\n            return "an activity this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a comment on an activity the run did not record is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_activity(target):\n            return "an activity this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: a comment the run did not record is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_comment(sub[1]):\n            return "a comment this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: a user's Feeds data delete names the run's own user",
+        [(G, "        return _unowned([sub[1], *users], [], scope)\n", "        return None\n")],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: the Video and Feeds queries are reads",
+        [(G, '        ("video", "calls"),\n', "")],
+        [TGU + "ProductScopeTest.test_reads_are_never_refused"],
+    ),
+    (
+        "I2b products: the product-finding rule leaves 402 and code 99 to the charge rule",
+        [
+            (
+                PR,
+                "    if status is None or not 400 <= status < 500 or status == 402 or code == 99:\n",
+                "    if status is None:\n",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b products: a 404 from a configuration read means the product is not on the deployment",
+        [
+            (
+                PR,
+                '    if result.status == 404:\n        return f"not available: {why} ({_NOT_ON_DEPLOYMENT})"\n',
+                "",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_availability_from_the_configuration_read"],
+    ),
+    (
+        "I2b usage: an answer that a product is not enabled, saying only upgrade, is no charge signal",
+        [
+            (
+                U,
+                "        if _only_an_upgrade_word(message) and PRODUCT_UNAVAILABLE_WORDS.search(message):\n",
+                "        if False:\n",
+            )
+        ],
+        [SS + "ProductAvailabilityWordingTest.test_the_exemption"],
+    ),
+    (
+        "I2b usage: any other charge word keeps the answer a charge signal",
+        [
+            (
+                U,
+                '    return {m.lower() for m in _CHARGE_WORDS.findall(message)} <= {"upgrade"}\n',
+                "    return True\n",
+            )
+        ],
+        [SS + "ProductAvailabilityWordingTest.test_the_exemption"],
+    ),
+    (
+        "I2b products: the plan names only the client roles that still hold a grant",
+        [
+            (
+                PR,
+                "        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+                "        roles = [role for role in grants if grants.get(role)]\n",
+            )
+        ],
+        [
+            TPR
+            + "LockdownPlanTest.test_the_plan_is_a_difference_naming_only_the_client_roles_with_grants"
+        ],
+    ),
+    (
+        "I2b products: a product that is not available is neither planned nor a difference",
+        [
+            (
+                PR,
+                "        if not _available(state, product):\n            continue\n        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+                "        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+            ),
+            (
+                PR,
+                "        if not _available(state, product):\n            continue\n        for role in CLIENT_ROLES:\n",
+                "        for role in CLIENT_ROLES:\n",
+            ),
+        ],
+        [
+            TPR
+            + "LockdownPlanTest.test_a_product_that_is_not_available_is_neither_planned_nor_a_difference"
+        ],
+    ),
+    (
+        "I2b products: a configuration read that is not verified is a difference",
+        [
+            (
+                PR,
+                '        if note.startswith("not verified") or note == "not read":\n',
+                "        if False:\n",
+            )
+        ],
+        [TPR + "LockdownPlanTest.test_a_read_that_is_not_verified_is_a_difference"],
+    ),
+    (
+        "I2b configuration: verify compares the products from the recorded apply on",
+        [
+            (
+                CF,
+                "    applied = products.LOCKDOWN_APPLIED is not None if locked is None else locked\n    if not applied:\n        return []\n",
+                "    if False:\n        return []\n",
+            )
+        ],
+        [TCF + "ProductDifferencesTest.test_before_the_apply_the_differences_are_not_drift"],
+    ),
+    (
+        "I2b configuration: verify includes the products' differences",
+        [(CF, "    problems += product_differences(snapshot)\n", "")],
+        [
+            TCF + "ProductDifferencesTest.test_after_the_apply_verify_sees_drift",
+            "tests.test_closing_checks.ProductDriftTest.test_preflight_and_the_end_of_the_run_see_it",
+        ],
+    ),
+    (
+        "I2b baseline: the configuration read carries the products",
+        [
+            (
+                BL,
+                '    return {\n        "app": app,\n        "channel_types": channel_types,\n        "products": products.read_configuration(api),\n    }\n',
+                '    return {"app": app, "channel_types": channel_types}\n',
+            )
+        ],
+        ["tests.test_closing_checks.ProductDriftTest.test_preflight_and_the_end_of_the_run_see_it"],
+    ),
+    (
+        "I2b configure --products: --apply refuses while chat does not verify",
+        [
+            (
+                C,
+                '    if chat_problems:\n        ctx.say("refused: the chat configuration does not verify; nothing applied")\n        return EXIT_REFUSED\n',
+                "    if False:\n        return EXIT_REFUSED\n",
+            )
+        ],
+        [
+            TCLI
+            + "ScopedConfigureTest.test_apply_refuses_while_the_chat_configuration_does_not_verify"
+        ],
+    ),
+    (
+        "I2b configure --products: --apply refuses a path outside the configuration families",
+        [
+            (
+                C,
+                '    outside = [\n        f"{step.method} {step.path}"\n        for step in plan\n        if not products.is_configuration_write(step.method, step.path)\n    ]\n',
+                "    outside: list[str] = []\n",
+            )
+        ],
+        [
+            TCLI
+            + "ScopedConfigureTest.test_apply_refuses_a_planned_request_outside_the_configuration_families"
+        ],
+    ),
+    (
+        "I2b configure --products: the apply is guarded by the configure scope",
+        [
+            (
+                C,
+                "    configure_scope = guard.ConfigureScope(PREFIX_ROOT)\n    ctx.api.guard = lambda method, path, body, params: guard.refusal(\n        method, path, body, params, configure_scope\n    )\n",
+                "",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_apply_is_guarded_by_the_configure_scope"],
+    ),
+    (
+        "I2b configure --products: only the products named are planned",
+        [
+            (
+                C,
+                '    plan = [step for step in products.lockdown_plan(state) if step.purpose.split(":")[0] in scope]\n',
+                "    plan = products.lockdown_plan(state)\n",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_apply_is_guarded_by_the_configure_scope"],
+    ),
+    (
+        "I2b configure --products: unknown products are refused before any read",
+        [(C, "        if unknown or not scope:\n", "        if False:\n")],
+        [TCLI + "ScopedConfigureTest.test_unknown_products_are_refused"],
+    ),
+    (
+        "I2b verify-clean: a call, feed or activity left is not clean",
+        [
+            (
+                C,
+                '    for kind in products.OBJECT_KINDS:\n        # A product that is not available can hold no object (P06.1-I2b).\n        if listed[f"remaining_{kind}"] is None:\n            clean = clean and str(listed[f"{kind}_listing"]).startswith("not available")\n        else:\n            clean = clean and listed[f"remaining_{kind}"] == []\n',
+                "",
+            )
+        ],
+        [TCLI + "ProductLeftoversTest.test_verify_clean_lists_calls_feeds_and_activities"],
+    ),
+    (
+        "I2b cleanup --apply: the proof's calls and feeds are deleted",
+        [
+            (
+                C,
+                '    calls = [c for c in objects.get("remaining_calls") or [] if PREFIX_ROOT in c]\n',
+                "    calls: list[str] = []\n",
+            ),
+            (
+                C,
+                '    feeds = [f for f in objects.get("remaining_feeds") or [] if PREFIX_ROOT in f]\n',
+                "    feeds: list[str] = []\n",
+            ),
+        ],
+        [TCLI + "ProductLeftoversTest.test_cleanup_apply_deletes_the_proofs_calls_and_feeds_only"],
+    ),
+    (
+        "I2b record-products-baseline: a snapshot without products is refused",
+        [
+            (
+                C,
+                '    if not isinstance(state, dict):\n        ctx.say("refused: the snapshot holds no products section")\n        return EXIT_REFUSED\n',
+                "    if False:\n        return EXIT_REFUSED\n",
+            )
+        ],
+        [TCLI + "ProbeAndBaselineTest.test_record_refuses_a_snapshot_without_products"],
+    ),
+    (
+        "I2b run: a Video and Feeds run is lean",
+        [(C, "    lean = lean_only(only)\n", "    lean = False\n")],
+        [TCLI + "LeanRunTest.test_a_product_only_run_is_lean"],
+    ),
+    (
+        "I2b lean setup: users A and B only, no channel",
+        [
+            (
+                P,
+                "        if self.lean:\n            self._lean_setup()\n            return\n",
+                "        if False:\n            return\n",
+            )
+        ],
+        [
+            TPC + "LeanSetupTest.test_a_video_and_feeds_run_creates_two_users_and_no_channel",
+            "tests.test_run_plan.RunPlanTest.test_the_i2b_plan",
+        ],
+    ),
+    (
+        "I2b lean setup: no reconnect check",
+        [
+            (
+                P,
+                "            if case.phase >= DESTRUCTIVE_PHASE and not reconnected and not self.lean:\n",
+                "            if case.phase >= DESTRUCTIVE_PHASE and not reconnected:\n",
+            )
+        ],
+        [TPC + "LeanSetupTest.test_a_video_and_feeds_run_creates_two_users_and_no_channel"],
+    ),
+    (
+        "I2b lean_only: every case named must be a product case",
+        [
+            (
+                P,
+                "    cases = {c.id: c for c in matrix.all_cases()}\n",
+                "    return True\n    cases = {c.id: c for c in matrix.all_cases()}\n",
+            )
+        ],
+        [
+            TPC + "LeanSetupTest.test_lean_only",
+            "tests.test_run_plan.RunPlanTest.test_one_set_is_counted_on_its_own",
+        ],
+    ),
+    (
+        "I2b run plan: a set of product cases is counted with the lean setup",
+        [(RPL, "    run.lean = proof_run.lean_only(only)\n", "    run.lean = False\n")],
+        [
+            "tests.test_run_plan.RunPlanTest.test_the_i2b_plan",
+            "tests.test_run_plan.RunPlanTest.test_one_set_is_counted_on_its_own",
+        ],
+    ),
+    (
+        "I2b preflight: a call, feed or activity the run did not create stops the run",
+        [(P, "        if foreign_objects:\n", "        if False:\n")],
+        [
+            TPC
+            + "PreflightObjectsTest.test_a_call_feed_or_activity_the_run_did_not_create_stops_the_run",
+            "tests.test_preflight.ProductObjectsTest.test_objects_stop_the_run_and_name_no_identifier_of_the_runs",
+        ],
+    ),
+    (
+        "I2b product finding: an answer that the product is not available is its finding",
+        [(P, '        if outcome not in ("success", "no-response"):\n', "        if False:\n")],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_an_answer_that_the_product_is_not_enabled_is_its_finding_not_a_charge"
+        ],
+    ),
+    (
+        "I2b product finding: the product's remaining cases are not run",
+        [
+            (
+                P,
+                "            if product is not None and product in self.unavailable_products:\n",
+                "            if False:\n",
+            )
+        ],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_an_answer_that_the_product_is_not_enabled_is_its_finding_not_a_charge"
+        ],
+    ),
+    (
+        "I2b product finding: a fixture's answer counts too",
+        [
+            (
+                P,
+                "                return self._product_unavailable(\n                    case, result.status, result.code, result.message, observed\n                ) or self._result(\n",
+                "                return self._result(\n",
+            )
+        ],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_a_fixture_answered_not_available_ends_the_products_cases_too"
+        ],
+    ),
+    (
+        "I2b fixtures: each fixture request is sent once per run",
+        [
+            (
+                P,
+                "            if key in self._fixtures_done:\n                continue\n",
+                "            if False:\n                continue\n",
+            )
+        ],
+        [
+            TPC
+            + "BeforeTheLockdownTest.test_fixtures_are_sent_once_and_what_they_create_is_the_runs"
+        ],
+    ),
+    (
+        "I2b tracking: what the control's replay creates is the run's",
+        [
+            (
+                P,
+                "        if result.ok:\n            self._track_created(result.body)  # a Video or Feeds object (P06.1-I2b)\n",
+                "",
+            )
+        ],
+        [
+            TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it",
+            TPC
+            + "AfterTheLockdownTest.test_every_case_of_the_user_role_holds_with_the_servers_control",
+        ],
+    ),
+    (
+        "I2b tracking: what a client creates is the run's",
+        [(P, "            self._track_created(response)\n", "")],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b cleanup: the Video and Feeds objects are deleted",
+        [
+            (
+                P,
+                '            ("video and feeds objects", lambda: self._delete_product_objects(out)),\n',
+                "",
+            )
+        ],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b cleanup: each run user's Feeds data is deleted when the run touched Feeds",
+        [
+            (
+                P,
+                "        if self.feeds or self.activities or self.comments or self.reactions or self.follows:\n",
+                "        if False:\n",
+            )
+        ],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b verify-clean: the products' objects are listed after the run",
+        [(P, "            **self._new_product_objects(),\n", "")],
+        [
+            TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it",
+            TPC
+            + "PreflightObjectsTest.test_the_end_of_the_run_tells_new_objects_from_preexisting_ones",
+        ],
+    ),
+    (
+        "I2b cleanup problems: a product object's delete must be 2xx or 404, its task completed",
+        [(P, '    for entry in out.get("product_deletes") or []:\n', "    for entry in []:\n")],
+        [TCL + "ProductDeletesTest.test_delete_statuses"],
+    ),
+    (
+        "I2b cleanup problems: a listing a product does not answer is a problem unless not available",
+        [
+            (
+                P,
+                '            if not str(listing).startswith("not available"):\n',
+                "            if True:\n",
+            )
+        ],
+        [
+            TCL + "ProductDeletesTest.test_listings",
+            TPC
+            + "PreflightObjectsTest.test_the_end_of_the_run_tells_new_objects_from_preexisting_ones",
+        ],
+    ),
+    (
+        "I2b undo: a client success is undone once when the control's replay made the undo",
+        [
+            (
+                P,
+                "        if case.control.undo_once and case.id in self._undone_by_replay and phase is None:\n",
+                "        if False:\n",
+            )
+        ],
+        [
+            TPC
+            + "BeforeTheLockdownTest.test_client_successes_are_undone_once_where_an_undo_is_defined"
+        ],
+    ),
+    (
+        "I2b matrix: the Video and Feeds cases are in the matrix",
+        [(MT, "        + _products()\n", "")],
+        [
+            "tests.test_run_plan.RunPlanTest.test_the_complete_set_runs_every_case_cleanly",
+            "tests.test_matrix.MatrixDefinitionTest.test_destructive_cases_run_last",
+        ],
+    ),
+    (
+        "I2b matrix: a product step the op would refuse fails validation",
+        [(MT, "            if why is not None:\n", "            if False:\n")],
+        [
+            "tests.test_matrix.ProductStepValidationTest.test_a_product_step_the_op_would_refuse_fails_validation"
+        ],
     ),
 ]
 

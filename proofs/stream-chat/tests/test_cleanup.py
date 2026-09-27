@@ -25,6 +25,10 @@ CLEAN: dict[str, Any] = {
     "remaining_channels": [],
     "remaining_polls": [],
     "remaining_user_groups": [],
+    # P06.1-I2b: the Video and Feeds objects.
+    "remaining_calls": [],
+    "remaining_feeds": [],
+    "remaining_activities": [],
     "deleted_user_artifacts_remaining": 0,
 }
 
@@ -110,6 +114,36 @@ class CleanupReserveTest(unittest.TestCase):
         run.ctx["ctl_poll"] = "p-3"
         run.groups.append("g-1")
         run.ctx["ctl_group"] = "g-2"
+        # P06.1-I2b: one object of every Video and Feeds kind, whose deletes, the call's
+        # delete task (polled to its limit) and the users' Feeds data deletes the end of
+        # the run pays for too.
+        state = server.products
+        call, feed, timeline = f"{PREFIX}-call", f"user:{run.ctx['A']}", f"timeline:{run.ctx['B']}"
+        state.calls[f"default:{call}"] = {
+            "id": call,
+            "type": "default",
+            "custom": {},
+            "members": [run.ctx["A"]],
+            "created_by": run.ctx["A"],
+        }
+        state.feeds[feed] = {"user_id": run.ctx["A"], "custom": {}}
+        state.feeds[timeline] = {"user_id": run.ctx["B"], "custom": {}}
+        state.activities["a-1"] = {
+            "type": "post",
+            "text": "t",
+            "feeds": [feed],
+            "user_id": run.ctx["A"],
+            "custom": {},
+        }
+        state.comments["c-1"] = {"object_id": "a-1", "text": "c", "user_id": run.ctx["B"]}
+        state.reactions.add(("a-1", "like", run.ctx["B"]))
+        state.follows.add((timeline, feed))
+        run.calls.append(("default", call))
+        run.feeds += [feed, timeline]
+        run.activities.add("a-1")
+        run.comments.add("c-1")
+        run.reactions.append(("a-1", "like", run.ctx["B"]))
+        run.follows.append((timeline, feed))
         run.journal.append(run._guest_creation_change())
         server.task_status = "running"
         artifact = f"deleted-user-{run.credentials.app_id}-abc"
@@ -137,7 +171,7 @@ class CleanupReserveTest(unittest.TestCase):
             run.finish(cleanup=True)
         used = ledger.run.api_calls - before
         self.assertGreater(used, 100)
-        self.assertLessEqual(used, proof_run.CLEANUP_RESERVE)
+        self.assertLessEqual(used, proof_run.CLEANUP_RESERVE, used)
 
 
 class ClientCreatedDataTest(unittest.TestCase):
@@ -322,3 +356,50 @@ class PreexistingPollsAndGroupsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductDeletesTest(unittest.TestCase):
+    """P06.1-I2b: every Video or Feeds object's delete must be 2xx, or 404 for one already
+    gone, with its task completed; a listing a product does not answer is a problem unless
+    the product is not available."""
+
+    def test_delete_statuses(self) -> None:
+        out = {
+            **CLEAN,
+            "product_deletes": [
+                {"kind": "call", "status": 200, "code": None, "task": "completed"},
+                {"kind": "feed", "status": 404, "code": 16},
+                {"kind": "activity", "status": 500, "code": -1},
+                {"kind": "call", "status": 200, "code": None, "task": "running"},
+                {"kind": "comment", "status": 403, "code": 17},
+            ],
+        }
+        self.assertEqual(
+            cleanup_problems(out),
+            [
+                "activity delete got 500",
+                "call delete task is 'running', not 'completed'",
+                "comment delete got 403",
+            ],
+        )
+
+    def test_listings(self) -> None:
+        clean = {
+            **CLEAN,
+            "remaining_calls": None,
+            "calls_listing": "not available: HTTP 404 code 16: Not Found",
+        }
+        self.assertEqual(cleanup_problems(clean), [])
+        unverified = {
+            **CLEAN,
+            "remaining_feeds": None,
+            "feeds_listing": "not verified: HTTP 500 code -1: internal",
+        }
+        self.assertEqual(
+            cleanup_problems(unverified),
+            ["remaining_feeds: not verified: HTTP 500 code -1: internal"],
+        )
+        left = {**CLEAN, "remaining_activities": ["a-1"]}
+        self.assertEqual(cleanup_problems(left), ["remaining_activities: ['a-1']"])
+        missing = {k: v for k, v in CLEAN.items() if k != "remaining_calls"}
+        self.assertEqual(cleanup_problems(missing), ["remaining_calls: not checked"])

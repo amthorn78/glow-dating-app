@@ -35,7 +35,7 @@ class RunPlanTest(unittest.TestCase):
 
     def test_the_complete_set_runs_every_case_cleanly(self) -> None:
         complete = self.plan["complete_set"]
-        self.assertEqual(complete["cases"], 114)
+        self.assertEqual(complete["cases"], 132)  # 114 at I2a, plus the 18 I2b cases
         self.assertEqual(complete["problems"], [])
         self.assertEqual(complete["harness_errors"], [])
 
@@ -65,10 +65,37 @@ class RunPlanTest(unittest.TestCase):
         self.assertFalse(planned["all_fit"])
 
     def test_it_fits_with_one_rerun_in_reserve(self) -> None:
-        self.assertTrue(self.plan["all_fit"], self.plan["fits"])
+        self.assertTrue(self.plan["all_fit"], (self.plan["fits"], self.plan["i2b_fits"]))
         complete, reserve, caps = self.plan["complete_set"], self.plan["reserve"], self.plan["caps"]
         self.assertLessEqual(complete["users"] + reserve["users"], caps["users"])
         self.assertLessEqual(complete["channels"] + reserve["channels"], caps["channels"])
+
+    def test_the_i2b_plan(self) -> None:
+        """P06.1-I2b (its prompt, section 5; DM-05 finding 6): run 1, run V1, run V2 and
+        the largest of them in reserve fit the session caps."""
+        runs = self.plan["i2b_runs"]
+        self.assertEqual(sorted(runs), ["run_1", "run_V1", "run_V2"])
+        run_1 = runs["run_1"]
+        self.assertEqual(run_1["cases"], len(load_script().matrix.RUN_1_CASES))
+        self.assertEqual((run_1["users"], run_1["channels"]), (7, 4))
+        for name in ("run_V1", "run_V2"):
+            # The lean setup: users A and B, no channel, two connections.
+            self.assertEqual(runs[name]["cases"], 18)
+            self.assertEqual(
+                (runs[name]["users"], runs[name]["channels"], runs[name]["peak_connections"]),
+                (2, 0, 2),
+            )
+            self.assertEqual((runs[name]["problems"], runs[name]["harness_errors"]), ([], []))
+        self.assertEqual(self.plan["i2b_largest_run"]["users"], 7)
+        self.assertEqual(self.plan["i2b_total_with_reserve"], {"users": 18, "channels": 8})
+        self.assertTrue(all(self.plan["i2b_fits"].values()), self.plan["i2b_fits"])
+
+    def test_one_set_is_counted_on_its_own(self) -> None:
+        script = load_script()
+        only = script.measure({"VD-create", "FD-feed"})
+        self.assertEqual((only["users"], only["channels"], only["cases"]), (2, 0, 2))
+        mixed = script.measure({"VD-create", "S1"})
+        self.assertEqual((mixed["users"], mixed["channels"]), (4, 2))  # not lean
 
 
 if __name__ == "__main__":

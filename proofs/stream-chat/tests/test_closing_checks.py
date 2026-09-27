@@ -65,3 +65,55 @@ class ClosingChecksTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductDriftTest(unittest.TestCase):
+    """P06.1-I2b: once the lockdown is recorded as applied, preflight, the end of the run
+    and the dry-run ``configure`` see a client role's grant in Video or Feeds as drift."""
+
+    def test_preflight_and_the_end_of_the_run_see_it(self) -> None:
+        from unittest import mock
+
+        from glow_stream_proof import products
+
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")
+        drift = "video/feeds: video call type default: grants for user not empty: "
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            with self.assertRaises(RunStopped) as stopped:
+                run.preflight()
+            self.assertIn(drift, str(stopped.exception))
+            # Locked: the run may start.
+            for grants in server.products.call_type_grants.values():
+                for role in products.CLIENT_ROLES:
+                    grants[role] = []
+            for grants in server.products.visibility_grants.values():
+                for role in products.CLIENT_ROLES:
+                    grants[role] = []
+            run.preflight()
+            with NoSettle():
+                set_up(run)
+                server.products.call_type_grants["default"]["user"] = ["create-call"]
+                problems = run.finish(cleanup=True)
+        self.assertIn("configuration differs after the run: " + drift + "['create-call']", problems)
+
+    def test_the_dry_run_configure_sees_it(self) -> None:
+        from unittest import mock
+
+        from glow_stream_proof import products
+
+        server = FakeServer(UsageLedger())
+
+        class Context:
+            api = server
+            redactor = Redactor()
+            lines: list[str] = []
+
+            def say(self, text: str) -> None:
+                self.lines.append(text)
+
+        ctx = Context()
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            self.assertEqual(cli.cmd_configure(ctx, apply=False), 0)  # type: ignore[arg-type]
+        before = next(line for line in ctx.lines if line.startswith("differences before:"))
+        self.assertIn("video/feeds: video call type default: grants for user not empty", before)
