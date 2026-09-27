@@ -4,8 +4,9 @@
 grants, feed visibilities and their grants, feed groups) and their objects (calls,
 feeds, activities, comments, reactions, follows), and answers the requests the harness
 and a client can send them, the way Stream's documentation describes: a grants update
-changes only the roles it names; a hard-deleted feed takes its activities with it; a
-user's Feeds data delete removes everything of that user's. The defaults are a model,
+changes only the roles it names; a hard-deleted feed takes its activities with it and
+its ID is not reused ("feed with id ... has been deleted"); a user's Feeds data delete
+removes everything of that user's. The defaults are a model,
 not Stream's behaviour: the built-in call types' default grants and the visibilities'
 default grants are not published.
 
@@ -150,6 +151,7 @@ class ProductState:
     follows: set[tuple[str, str]] = field(default_factory=set)
     events: list[dict[str, Any]] = field(default_factory=list)
     user_data_deleted: list[str] = field(default_factory=list)
+    deleted_feeds: set[str] = field(default_factory=set)  # a deleted feed ID is not reused
     counter: int = 0
     # Every (method, path, actor) answered, for the tests.
     seen: list[tuple[str, str, str | None]] = field(default_factory=list)
@@ -389,6 +391,12 @@ class ProductState:
             if group not in self.feed_groups:
                 return self._missing("feed group")
             if method == "POST":
+                if fid in self.deleted_feeds and fid not in self.feeds:
+                    return 404, {
+                        "code": 16,
+                        "message": "GetOrCreateFeed failed with error: "
+                        f'"feed with id: {feed_id} has been deleted"',
+                    }
                 if fid not in self.feeds:
                     if not self._may(actor, "create-feed"):
                         return self._refused()
@@ -428,6 +436,7 @@ class ProductState:
                 if actor is not None:
                     return self._refused()
                 del self.feeds[fid]
+                self.deleted_feeds.add(fid)
                 for a in [a for a, act in self.activities.items() if fid in act["feeds"]]:
                     self._drop_activity(a)
                 self.follows = {f for f in self.follows if fid not in f}

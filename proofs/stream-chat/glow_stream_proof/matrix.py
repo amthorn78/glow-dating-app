@@ -1824,12 +1824,11 @@ def _products() -> list[Case]:
             token=a_token,
             action="create A's own feed with custom data (get or create)",
             expect="refused",
-            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "{fd_text}"}}}),
-            control=_replay(
-                body_patch={"user_id": "{A}"},
-                undo_once=True,
-                undo=(ServerRequest("DELETE", feed_a, None, {"hard_delete": "true"}),),
-            ),
+            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "feed of {A}"}}}),
+            # No undo: Stream does not recreate a deleted feed ID ("feed with id ... has
+            # been deleted", run V1 of 27 September 2026), and the later Feeds cases need
+            # A's feed; the replay's feed stays, recorded, and cleanup deletes it.
+            control=_replay(body_patch={"user_id": "{A}"}),
             phase=92,
         ),
         Case(

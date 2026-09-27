@@ -96,12 +96,14 @@ class BeforeTheLockdownTest(unittest.TestCase):
             "VD-create",
             "VD-create-dev",
             "VD-members",
-            "FD-feed",
             "FD-follow",
             "FD-reaction",
         ):
             self.assertEqual(row(self.proof, case_id).detail["client_success_undo"], once, case_id)
             self.assertIn("undo", row(self.proof, case_id).control)
+        # FD-feed has no undo: the replay's feed stays for the later cases (below).
+        self.assertEqual(row(self.proof, "FD-feed").detail["client_success_undo"], "none defined")
+        self.assertNotIn("undo", row(self.proof, "FD-feed").control)
         # An object with a server-assigned ID is recorded for cleanup instead.
         self.assertEqual(
             row(self.proof, "FD-activity").detail["client_success_undo"], "none defined"
@@ -109,6 +111,37 @@ class BeforeTheLockdownTest(unittest.TestCase):
         self.assertEqual(
             row(self.proof, "FD-comment").detail["client_success_undo"], "none defined"
         )
+
+    def test_a_deleted_feed_id_is_not_recreated_so_the_replays_feed_stays(self) -> None:
+        # Run V1 of 27 September 2026: FD-feed's undo hard-deleted A's feed and every later
+        # Feeds fixture got 404 / code 16 "feed with id ... has been deleted". The fake
+        # models the tombstone; FD-feed's replay leaves A's feed in place, recorded.
+        state = self.server.products
+        feed_a = f"{self.proof.ctx['FG']}:{self.proof.ctx['A']}"
+        self.assertIn(feed_a, self.proof.feeds)
+        self.assertIn(feed_a, state.feeds)
+        self.assertEqual(
+            [c.case_id for c in self.proof.case_results if c.verdict == matrix.INCONCLUSIVE], []
+        )
+        status, body = state.request(
+            "DELETE",
+            f"/api/v2/feeds/feed_groups/user/feeds/{self.proof.ctx['A']}",
+            None,
+            {},
+            actor=None,
+        )
+        self.assertEqual(status, 200)
+        status, body = state.request(
+            "POST",
+            f"/api/v2/feeds/feed_groups/user/feeds/{self.proof.ctx['A']}",
+            {"user_id": self.proof.ctx["A"]},
+            {},
+            actor=None,
+        )
+        self.assertEqual((status, body["code"]), (404, 16))
+        self.assertIn("has been deleted", body["message"])
+        state.feeds[feed_a] = {"user_id": self.proof.ctx["A"], "custom": {}}
+        state.deleted_feeds.discard(feed_a)
 
     def test_every_object_is_recorded_and_the_cleanup_removes_it(self) -> None:
         run, server = product_run()

@@ -3911,6 +3911,30 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         ],
         [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
     ),
+    (
+        "I2b live: FD-feed's replay leaves A's feed in place (Stream does not recreate a deleted feed ID)",
+        [
+            (
+                MT,
+                '            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "feed of {A}"}}}),\n'
+                '            # No undo: Stream does not recreate a deleted feed ID ("feed with id ... has\n'
+                '            # been deleted", run V1 of 27 September 2026), and the later Feeds cases need\n'
+                "            # A's feed; the replay's feed stays, recorded, and cleanup deletes it.\n"
+                '            control=_replay(body_patch={"user_id": "{A}"}),\n',
+                '            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "{fd_text}"}}}),\n'
+                "            control=_replay(\n"
+                '                body_patch={"user_id": "{A}"},\n'
+                "                undo_once=True,\n"
+                '                undo=(ServerRequest("DELETE", feed_a, None, {"hard_delete": "true"}),),\n'
+                "            ),\n",
+            )
+        ],
+        [
+            "tests.test_product_cases.BeforeTheLockdownTest.test_every_capability_is_recorded",
+            "tests.test_product_cases.BeforeTheLockdownTest."
+            "test_a_deleted_feed_id_is_not_recreated_so_the_replays_feed_stays",
+        ],
+    ),
 ]
 
 
