@@ -24,7 +24,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 4 | Nathan | His choice of model for the I2b review, then its report | Nothing else starts (OD-29); ask Nathan for the session's state |
+| App Manager 4 | Nathan | His choice of model for the I2b review, then its report | Nothing else starts (OD-29); ask for the session's state |
 | App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
 
 ## Next actions
