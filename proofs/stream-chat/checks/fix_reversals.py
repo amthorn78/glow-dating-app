@@ -3957,7 +3957,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 RN,
-                "  // Before the request is counted or sent (P06.1-C4; the I2b review's finding 1).\n"
+                "  config.maxRedirects = 0;\n"
                 "  const refused = productRequestRefusal(config);\n"
                 "  if (refused) {\n"
                 "    const err = new Error(`PROOF_REFUSED: ${refused}`);\n"
@@ -3976,6 +3976,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
                 "    err.proofBudget = true;\n"
                 "    throw err;\n"
                 "  }\n"
+                "  config.maxRedirects = 0;\n"
                 "  const refused = productRequestRefusal(config);\n"
                 "  if (refused) {\n"
                 "    const err = new Error(`PROOF_REFUSED: ${refused}`);\n"
@@ -4022,6 +4023,144 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         ],
         [TPRR + "test_a_product_body_the_check_cannot_read_is_refused"],
     ),
+    # C4's own review (a fresh reader of 634dc56): a blocking gap in finding 1's fix and
+    # five further items.
+    (
+        "C4 review 1: an escape that is not UTF-8 no longer stops the runner's decoding",
+        [
+            (
+                PO,
+                "  return text.replace(/%([0-9A-Fa-f]{2})/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));\n",
+                "  try {\n    return decodeURIComponent(text);\n  } catch (_e) {\n    return text;\n  }\n",
+            )
+        ],
+        [
+            TPRR + "test_an_escape_that_is_not_utf8_does_not_switch_the_check_off",
+            TPR + "ProductPathTest.test_the_runner_agrees",
+        ],
+    ),
+    (
+        "C4 review 1: an escape that is not UTF-8 no longer stops validate's decoding",
+        [
+            (
+                PR,
+                "    return _ESCAPE.sub(lambda m: chr(int(m.group(1), 16)), text)\n",
+                '    try:\n        return unquote(text, errors="strict")\n    except UnicodeDecodeError:\n        return text\n',
+            ),
+            (PR, "import json\n", "import json\nfrom urllib.parse import unquote\n"),
+        ],
+        [
+            TPR + "ProductPathTest.test_the_python_normalization",
+            TMV + "test_a_get_of_a_product_path_fails_validation",
+        ],
+    ),
+    (
+        "C4 review 1: a path whose encoding does not settle is refused (the runner)",
+        [
+            (
+                RN,
+                "  if (normalized === null) return 'a path whose percent-encoding does not settle';\n",
+                "",
+            )
+        ],
+        [TPRR + "test_an_escape_that_is_not_utf8_does_not_switch_the_check_off"],
+    ),
+    (
+        "C4 review 1: a path whose encoding does not settle counts as a product path (validate)",
+        [
+            (
+                PR,
+                "    if normalized is None:\n        return True\n",
+                "    if normalized is None:\n        return False\n",
+            )
+        ],
+        [
+            TPR + "ProductPathTest.test_the_python_normalization",
+            TMV + "test_a_get_of_a_product_path_fails_validation",
+        ],
+    ),
+    (
+        "C4 review 2: the runner sends to no host but Stream's three",
+        [
+            (
+                RN,
+                "  if (!STREAM_HOSTNAMES.includes(host) && host !== UNRESOLVED_HOST) {\n",
+                "  if (false) {\n",
+            )
+        ],
+        [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
+    ),
+    (
+        "C4 review 2: a request with a Host header of its own is refused",
+        [(RN, "  if (headerNames(config.headers).includes('host')) return 'a Host header';\n", "")],
+        [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
+    ),
+    (
+        "C4 review 2: the bare /video and /feeds forms are product paths",
+        [
+            (
+                PO,
+                "const PRODUCT_PREFIXES = ['/api/v2/video', '/api/v2/feeds', '/video', '/feeds'];\n",
+                "const PRODUCT_PREFIXES = ['/api/v2/video', '/api/v2/feeds'];\n",
+            )
+        ],
+        [
+            TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms",
+            TPR + "ProductPathTest.test_the_runner_agrees",
+        ],
+    ),
+    (
+        "C4 review 2: JSON inside a query value is read by the deny-list",
+        [
+            (
+                RN,
+                "  return productRefusal(config.method, sent, bodyOf(config.data), [query, params, nested]);\n",
+                "  return productRefusal(config.method, sent, bodyOf(config.data), [query, params]);\n",
+            )
+        ],
+        [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
+    ),
+    (
+        "C4 review 3: a list in a call type's settings is compared item by item",
+        [
+            (
+                PR,
+                "    if isinstance(have, list) and isinstance(want, list):\n",
+                "    if False:\n",
+            )
+        ],
+        [TBC + "test_a_type_change_inside_a_list_is_reported"],
+    ),
+    (
+        "C4 review 4: the step that met a signal is kept in the record's applied list",
+        [
+            (
+                C,
+                "        try:\n"
+                "            result = ctx.api.raw(step.method, step.path, body=step.body)\n"
+                "        except BaseException as exc:\n",
+                "        if True:\n"
+                "            result = ctx.api.raw(step.method, step.path, body=step.body)\n"
+                "        if False:\n"
+                "            exc = BaseException()\n",
+            )
+        ],
+        [
+            TCR + "test_scoped_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+            TCR + "test_general_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+        ],
+    ),
+    (
+        "C4 review 5: a Ctrl-C during the re-read still writes the record",
+        [
+            (
+                C,
+                "    except BaseException as exc:  # recorded; finish() re-raises it after the record\n",
+                "    except Exception as exc:  # recorded; finish() re-raises it after the record\n",
+            )
+        ],
+        [TCR + "test_a_ctrl_c_during_the_reread_still_writes_the_record"],
+    ),
     (
         "C4 finding 1: validate refuses a step that could reach a product through another op",
         [(MT, "            reach = _product_reach(case.step)\n", "            reach = None\n")],
@@ -4032,7 +4171,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "C4 finding 1: validate finds a product path once case, encoding and dot segments are normalized",
-        [(PR, "    folded = normalized_path(path).lower()\n", "    folded = path\n")],
+        [(PR, "    folded = normalized.lower()\n", "    folded = path\n")],
         [TMV + "test_a_get_of_a_product_path_fails_validation"],
     ),
     (

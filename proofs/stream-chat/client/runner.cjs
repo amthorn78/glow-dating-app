@@ -20,7 +20,7 @@ const path = require('node:path');
 const readline = require('node:readline');
 const { errorInfo } = require('./error-info.cjs');
 const { RequestLog, rateLimitOf } = require('./request-log.cjs');
-const { productRefusal } = require('./product-op.cjs');
+const { productRefusal, normalizedPath, isProductPath } = require('./product-op.cjs');
 
 if (process.env.STREAM_API_SECRET !== undefined) {
   process.stderr.write('refused: STREAM_API_SECRET is present in the client environment\n');
@@ -128,9 +128,11 @@ function bodyOf(data) {
 }
 
 // Where a Video or Feeds request can go (P06.1-C4; the I2b review's finding 1): the two
-// products' hosts, and the two path prefixes on any host.
+// products' hosts, and the product path prefixes (client/product-op.cjs) on any host. The
+// runner sends nothing to any host but these three.
 const PRODUCT_HOSTNAMES = [PRODUCT_HOSTS.video, PRODUCT_HOSTS.feeds].map((h) => new URL(h).hostname);
-const PRODUCT_PREFIXES = ['/api/v2/video', '/api/v2/feeds'];
+const STREAM_HOSTNAMES = Object.values(PRODUCT_HOSTS).map((h) => new URL(h).hostname);
+const UNRESOLVED_HOST = 'unresolved.invalid';
 
 // The URL axios will send: its buildFullPath (the base URL joined to a relative URL, or to
 // any URL when allowAbsoluteUrls is false), then its Node adapter's new URL(). A relative
@@ -147,34 +149,11 @@ function sentURL(config) {
     return new URL(full);
   } catch (_e) {
     try {
-      return new URL(full, 'https://unresolved.invalid');
+      return new URL(full, `https://${UNRESOLVED_HOST}`);
     } catch (_e2) {
       return null;
     }
   }
-}
-
-// A path with its percent-encoding decoded (repeatedly, so a double encoding is seen too),
-// backslashes read as slashes, empty and dot segments resolved; letter case is kept.
-function normalizedPath(pathname) {
-  let text = String(pathname).replace(/\\/g, '/');
-  for (let i = 0; i < 8; i += 1) {
-    let next;
-    try {
-      next = decodeURIComponent(text).replace(/\\/g, '/');
-    } catch (_e) {
-      break;
-    }
-    if (next === text) break;
-    text = next;
-  }
-  const out = [];
-  for (const segment of text.split('/')) {
-    if (segment === '' || segment === '.') continue;
-    if (segment === '..') out.pop();
-    else out.push(segment);
-  }
-  return '/' + out.join('/');
 }
 
 // Whether the check can read a body's fields: none, a JSON object or array, or a string
@@ -198,36 +177,71 @@ function readableBody(data) {
   return Array.isArray(data) || Object.getPrototypeOf(data) === Object.prototype;
 }
 
-function isProductPath(normalized) {
-  const folded = normalized.toLowerCase();
-  return PRODUCT_PREFIXES.some((p) => folded === p || folded.startsWith(p + '/'));
-}
-
-// Why a request, whatever op made it, may not go to Video or Feeds, or null (P06.1-C4;
-// the I2b review's finding 1). A request to either product's host, or to a path under
-// /api/v2/video or /api/v2/feeds once letter case, percent-encoding and dot segments are
-// normalized, must pass the product op's own check (client/product-op.cjs) on the
-// method, the path as sent, the body and the query. A product path whose form as sent is
-// not its normalized form is refused outright. Letter case is folded to find a product
-// path but kept in the comparison: an ID may hold capitals, and the allowlist's fixed
-// segments are lower case, so a miscased fixed segment is refused by the op's check.
+// Why a request, whatever op made it, may not be sent, or null (P06.1-C4; the I2b review's
+// finding 1, and C4's own review). Only Stream's three hosts, and no Host header. A request
+// to either product's host, or to a path under /api/v2/video, /api/v2/feeds, /video or
+// /feeds once letter case, percent-encoding and dot segments are normalized
+// (normalizedPath), must pass the product op's own check (client/product-op.cjs) on the
+// method, the path as sent, the body and the query (JSON inside a query value included). A
+// path whose encoding does not settle, a product path whose form as sent is not its
+// normalized form, and a product body the check cannot read are refused outright. Letter
+// case is folded to find a product path but kept in the comparison: an ID may hold
+// capitals, and the allowlist's fixed segments are lower case, so a miscased fixed segment
+// is refused by the op's check.
 function productRequestRefusal(config) {
   const parsed = sentURL(config);
   if (!parsed) return 'a URL that cannot be read';
   const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  // Only Stream's hosts (C4's own review): a request anywhere else is not the proof's.
+  if (!STREAM_HOSTNAMES.includes(host) && host !== UNRESOLVED_HOST) {
+    return 'a host other than Stream\'s chat, Video or Feeds host';
+  }
+  // A caller-supplied Host header would send the request to another virtual host than the
+  // URL names (C4's own review).
+  if (headerNames(config.headers).includes('host')) return 'a Host header';
   const sent = parsed.pathname;
   const normalized = normalizedPath(sent);
+  if (normalized === null) return 'a path whose percent-encoding does not settle';
   const onProductHost = PRODUCT_HOSTNAMES.includes(host);
   if (!onProductHost && !isProductPath(normalized)) return null;
   if (sent !== normalized) return 'a Video or Feeds path not in its normalized form';
   if (!readableBody(config.data)) return 'a Video or Feeds body the check cannot read';
   const query = {};
   for (const [k, v] of parsed.searchParams.entries()) query[k] = v;
-  return productRefusal(config.method, sent, bodyOf(config.data), [query, config.params || {}]);
+  const params = config.params || {};
+  // A query value that holds JSON (Stream's GET queries carry a JSON payload) is read too.
+  const nested = [];
+  for (const v of [...Object.values(query), ...Object.values(params)]) {
+    if (typeof v !== 'string') continue;
+    try {
+      nested.push(JSON.parse(v));
+    } catch (_e) {
+      // not JSON
+    }
+  }
+  return productRefusal(config.method, sent, bodyOf(config.data), [query, params, nested]);
+}
+
+// The header names a request config carries, in lower case (axios's AxiosHeaders or an object,
+// with its per-method sections).
+function headerNames(headers) {
+  if (!headers || typeof headers !== 'object') return [];
+  const plain = typeof headers.toJSON === 'function' ? headers.toJSON() : headers;
+  const names = [];
+  for (const [key, value] of Object.entries(plain)) {
+    names.push(String(key).toLowerCase());
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const inner of Object.keys(value)) names.push(String(inner).toLowerCase());
+    }
+  }
+  return names;
 }
 
 client.axiosInstance.interceptors.request.use((config) => {
-  // Before the request is counted or sent (P06.1-C4; the I2b review's finding 1).
+  // Before the request is counted or sent (P06.1-C4; the I2b review's finding 1). No
+  // redirect is followed: a redirected request would pass neither the check nor the budget
+  // (C4's own review).
+  config.maxRedirects = 0;
   const refused = productRequestRefusal(config);
   if (refused) {
     const err = new Error(`PROOF_REFUSED: ${refused}`);

@@ -490,6 +490,74 @@ class ProductReachTest(unittest.TestCase):
         self.assert_not_sent(by_id[4], "budget")
         self.assert_not_sent(by_id[5], "budget")  # a chat path: the check does not apply
 
+    def test_an_escape_that_is_not_utf8_does_not_switch_the_check_off(self) -> None:
+        """C4's own review (blocking): %ff or %c0 made decodeURIComponent throw, so the path
+        was left undecoded and a %76ideo path was not seen as Video. Decoding is now byte by
+        byte."""
+        not_normal = "PROOF_REFUSED: a Video or Feeds path not in its normalized form"
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            client_call(
+                2, "post", CHAT + "/api/v2/%76ideo/call/default/abc%ff/join", {"ring": True}
+            ),
+            {
+                "id": 3,
+                "op": "get",
+                "path": "/api/v2/%76ideo/call/default/abc%ff",
+                "params": {"ring": "true"},
+                "max_calls": 0,
+            },
+            {"id": 4, "op": "get", "path": "/api/v2/%66eeds/activities/a%c0", "max_calls": 0},
+            # An escape that is not hex is left as it is, and the rest is still decoded.
+            {"id": 5, "op": "get", "path": "/api/v2/%76ideo/%zz", "max_calls": 0},
+            # An encoding that does not settle in eight rounds is refused, on any path.
+            {"id": 6, "op": "get", "path": "/channels/x%" + "25" * 9 + "41", "max_calls": 0},
+        )
+        by_id = {r["id"]: r for r in replies}
+        for command_id in (2, 3, 4, 5):
+            self.assert_not_sent(by_id[command_id], "refused", not_normal)
+        self.assert_not_sent(
+            by_id[6], "refused", "PROOF_REFUSED: a path whose percent-encoding does not settle"
+        )
+
+    def test_only_streams_hosts_no_host_header_and_the_bare_product_forms(self) -> None:
+        """C4's own review: a request goes only to Stream's chat, Video or Feeds host, never
+        with a Host header of its own; the Video and Feeds clients' bare /video and /feeds
+        forms are product paths; JSON inside a query value is read by the deny-list."""
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            client_call(2, "post", "https://example.com/api/v2/chat/x", {}),
+            client_call(3, "post", "https://chat.stream-io-api.com.evil.test/x", {}),
+            client_call(
+                4,
+                "post",
+                CHAT + "/channels/glow-match/x/query",
+                {},
+                {"headers": {"Host": "video.stream-io-api.com"}},
+            ),
+            client_call(5, "post", CHAT + "/video/call/default/x/join", {}),
+            client_call(6, "post", CHAT + "/feeds/activities", {}),
+            {
+                "id": 7,
+                "op": "get",
+                "path": "/api/v2/video/call/default/x",
+                "params": {"payload": '{"Ring": true}'},
+                "max_calls": 0,
+            },
+            client_call(8, "post", CHAT + "/channels/glow-match/x/query", {}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        other_host = "PROOF_REFUSED: a host other than Stream's chat, Video or Feeds host"
+        self.assert_not_sent(by_id[2], "refused", other_host)
+        self.assert_not_sent(by_id[3], "refused", other_host)
+        self.assert_not_sent(by_id[4], "refused", "PROOF_REFUSED: a Host header")
+        self.assert_not_sent(by_id[5], "refused", "PROOF_REFUSED: denied path (join)")
+        self.assert_not_sent(
+            by_id[6], "refused", "PROOF_REFUSED: path outside the Video and Feeds allowlist"
+        )
+        self.assert_not_sent(by_id[7], "refused", "PROOF_REFUSED: denied field (ring)")
+        self.assert_not_sent(by_id[8], "budget")  # an ordinary chat request
+
     def test_the_get_op_is_checked_too(self) -> None:
         replies = run_runner_offline(
             {"id": 1, **REST_USER},

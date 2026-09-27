@@ -53,7 +53,6 @@ import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 from .configuration import ApiRequest
 from .server_api import ApiResult, ServerApi
@@ -156,23 +155,35 @@ def denied_field(value: Any) -> str | None:
     return None
 
 
-PRODUCT_PREFIXES = ("/api/v2/video", "/api/v2/feeds")
+# Where a Video or Feeds request can go on any Stream host: the REST prefixes and the Video
+# and Feeds clients' own bare forms (as client/product-op.cjs's PRODUCT_PREFIXES).
+PRODUCT_PREFIXES = ("/api/v2/video", "/api/v2/feeds", "/video", "/feeds")
+DECODE_ROUNDS = 8
+_ESCAPE = re.compile(r"%([0-9A-Fa-f]{2})")
 
 
-def normalized_path(path: str) -> str:
-    """A path as a server may read it: the query dropped, percent-encoding decoded
-    (repeatedly, so a double encoding is seen too), backslashes read as slashes, empty
-    and dot segments resolved; letter case is kept (the Python mirror of the runner's
-    ``normalizedPath``; P06.1-C4)."""
+def _decode_once(text: str) -> str:
+    """One round of percent-decoding, byte by byte (``%XX`` becomes the character with that
+    code), so that it never fails: an escape that is not valid UTF-8 (``%ff``, ``%c0``) is
+    decoded like any other, one that is not hex (``%zz``) is left (P06.1-C4; C4's own review
+    found that a strict decode stopped at ``%ff`` and left the whole path undecoded)."""
+    return _ESCAPE.sub(lambda m: chr(int(m.group(1), 16)), text)
+
+
+def normalized_path(path: str) -> str | None:
+    """A path as a server may read it: the query dropped, percent-encoding decoded until it
+    no longer changes, backslashes read as slashes, empty and dot segments resolved; letter
+    case is kept. ``None`` when it still changes after :data:`DECODE_ROUNDS` rounds. The
+    Python mirror of ``normalizedPath`` in ``client/product-op.cjs``; a test compares the two
+    (P06.1-C4)."""
     text = path.split("?", 1)[0].replace("\\", "/")
-    for _ in range(8):
-        try:
-            decoded = unquote(text, errors="strict").replace("\\", "/")
-        except UnicodeDecodeError:
-            break
+    for _ in range(DECODE_ROUNDS):
+        decoded = _decode_once(text).replace("\\", "/")
         if decoded == text:
             break
         text = decoded
+    else:
+        return None
     out: list[str] = []
     for segment in text.split("/"):
         if segment in ("", "."):
@@ -187,8 +198,12 @@ def normalized_path(path: str) -> str:
 
 def is_product_path(path: str) -> bool:
     """Whether a path reaches Video or Feeds once letter case, percent-encoding and dot
-    segments are normalized (P06.1-C4; the I2b review's finding 1)."""
-    folded = normalized_path(path).lower()
+    segments are normalized (P06.1-C4; the I2b review's finding 1). A path whose encoding
+    does not settle counts as one: the runner refuses it."""
+    normalized = normalized_path(path)
+    if normalized is None:
+        return True
+    folded = normalized.lower()
     return any(folded == p or folded.startswith(p + "/") for p in PRODUCT_PREFIXES)
 
 
@@ -441,7 +456,8 @@ def recorded_products() -> dict[str, Any]:
 
 
 def _changed_paths(have: Any, want: Any, path: str = "") -> list[str]:
-    """The dotted paths at which two JSON values differ, a list compared item by item."""
+    """The dotted paths at which two JSON values differ: a mapping key by key, a list by its
+    length and then item by item (C4's own review), a scalar by value and type."""
     if isinstance(have, Mapping) and isinstance(want, Mapping):
         out: list[str] = []
         for key in sorted(set(have) | set(want), key=str):
@@ -451,6 +467,13 @@ def _changed_paths(have: Any, want: Any, path: str = "") -> list[str]:
             else:
                 out += _changed_paths(have[key], want[key], sub)
         return out
+    if isinstance(have, list) and isinstance(want, list):
+        if len(have) != len(want):
+            return [f"{path or '(the whole value)'} (length {len(have)}, want {len(want)})"]
+        items: list[str] = []
+        for index, (h, w) in enumerate(zip(have, want, strict=True)):
+            items += _changed_paths(h, w, f"{path}[{index}]")
+        return items
     if have == want and type(have) is type(want):
         return []
     return [path or "(the whole value)"]

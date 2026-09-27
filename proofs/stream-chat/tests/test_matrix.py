@@ -353,6 +353,11 @@ class ProductReachValidationTest(unittest.TestCase):
             "/api/v2/chat/..%2Fvideo/calls",
             "/channels/../api/v2/feeds/feeds/query",
             "/api/v2/%76ideo",
+            # C4's own review: an escape that is not UTF-8 no longer hides the path.
+            "/api/v2/%76ideo/call/default/abc%ff",
+            "/api/v2/%66eeds/activities/a%c0",
+            "/video/call/default/x",
+            "/channels/x%" + "25" * 9 + "41",
         ):
             self.assertEqual(
                 matrix.validate([self.case("get", {"path": path})]),

@@ -78,7 +78,21 @@ def _apply(
     applied so far when a later step fails or raises (P06.1-C4)."""
     applied = [] if applied is None else applied
     for step in plan:
-        result = ctx.api.raw(step.method, step.path, body=step.body)
+        try:
+            result = ctx.api.raw(step.method, step.path, body=step.body)
+        except BaseException as exc:
+            # The step was sent (or refused before it was sent) and raised: a charge or limit
+            # signal's stop, the guard's refusal, a Ctrl-C. It joins the list with what
+            # stopped it (C4's own review: the signalling step was missing from the record).
+            applied.append(
+                {
+                    "method": step.method,
+                    "path": step.path,
+                    "status": None,
+                    "stopped": ctx.redactor.text(f"{type(exc).__name__}: {exc}"),
+                }
+            )
+            raise
         applied.append(
             {
                 "method": step.method,
@@ -160,12 +174,15 @@ def _read_after(
         return None, why
     try:
         return read(ctx.api), None
-    except Exception as exc:
+    except BaseException as exc:  # recorded; finish() re-raises it after the record
         outcome.signal = outcome.signal or bool(ctx.ledger.signals)
         if outcome.failure is None:
             outcome.failure = exc
         if outcome.signal:
             return None, AFTER_NOT_READ_SIGNAL
+        if not isinstance(exc, Exception):
+            # A Ctrl-C during the re-read (C4's own review): the record is still written.
+            return None, AFTER_NOT_READ_INTERRUPTED
         text = ctx.redactor.text(f"{type(exc).__name__}: {exc}")
         return None, f"after-state not read: the re-read failed: {text}"
 

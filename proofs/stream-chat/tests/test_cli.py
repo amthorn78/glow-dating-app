@@ -794,7 +794,10 @@ class ConfigureRecordTest(_WritesTest):
         with self.assertRaises(GuardrailStop):
             cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
-        self.assertEqual([s["status"] for s in record["applied"]], [201, 201])
+        # The signalling step is kept with what stopped it (C4's own review).
+        self.assertEqual([s["status"] for s in record["applied"]], [201, 201, None])
+        self.assertTrue(record["applied"][-1]["stopped"].startswith("GuardrailStop: server PUT"))
+        self.assertIn("HTTP 402", record["applied"][-1]["stopped"])
         self.assertTrue(record["failure"].startswith("GuardrailStop: server PUT"), record)
         self.assertIn("HTTP 402", record["failure"])
         self.assertIn(cli.AFTER_NOT_READ_SIGNAL, ctx.lines[-1])
@@ -807,7 +810,8 @@ class ConfigureRecordTest(_WritesTest):
         with self.assertRaises(GuardrailStop):
             cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
-        self.assertEqual(len(record["applied"]), 4)
+        self.assertEqual(len(record["applied"]), 5)
+        self.assertIn("HTTP 429", record["applied"][-1]["stopped"])
 
     def test_the_signal_is_read_from_the_ledger_not_the_exception(self) -> None:
         """A signal whose stop a Ctrl-C replaced: still no re-read, and the record says a
@@ -841,6 +845,25 @@ class ConfigureRecordTest(_WritesTest):
         record = self.record("configure-products-")
         self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
 
+    def test_a_ctrl_c_during_the_reread_still_writes_the_record(self) -> None:
+        """C4's own review: an interrupt in the re-read no longer loses the record."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+
+        def interrupt_the_reread(method: str, path: str, body: Any, params: Any) -> None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+        self.assertEqual(len(record["applied"]), 9)
+        self.assertEqual(record["failure"], "KeyboardInterrupt: ")
+
     def test_general_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
         server = FakeServer(UsageLedger())
         failing_write(server, 3, 400, 4, "bad request")
@@ -860,7 +883,8 @@ class ConfigureRecordTest(_WritesTest):
         with self.assertRaises(GuardrailStop):
             cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-")
-        self.assertEqual(len(record["applied"]), 2)
+        self.assertEqual(len(record["applied"]), 3)
+        self.assertIsNone(record["applied"][-1]["status"])
         self.assertNotIn("after_match_type", record)
 
     def test_general_a_429_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:

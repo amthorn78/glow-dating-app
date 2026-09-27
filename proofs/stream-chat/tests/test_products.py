@@ -142,6 +142,66 @@ def js_refusals(rows: list[tuple[str, str, Any, Any, bool]]) -> list[str | None]
     return list(json.loads(done.stdout))
 
 
+# (path, normalized form or None when it does not settle, a product path?): the runner's
+# normalizedPath and the Python normalized_path must agree (C4's own review).
+PATHS: list[tuple[str, str | None, bool]] = [
+    ("/api/v2/video/call/default/x", "/api/v2/video/call/default/x", True),
+    ("/api/v2/%76ideo/call/default/abc%ff/join", "/api/v2/video/call/default/abc\xff/join", True),
+    ("/api/v2/%66eeds/activities/a%c0", "/api/v2/feeds/activities/a\xc0", True),
+    ("/api/v2/%76ideo/%zz", "/api/v2/video/%zz", True),
+    ("/api/v2/chat/..%2fvideo/calls", "/api/v2/video/calls", True),
+    ("/api/v2/chat/..%5cvideo/calls", "/api/v2/video/calls", True),
+    ("/API/V2/VIDEO/call", "/API/V2/VIDEO/call", True),
+    ("/api/v2//feeds/./activities/", "/api/v2/feeds/activities", True),
+    ("/video/call/default/x", "/video/call/default/x", True),
+    ("/feeds", "/feeds", True),
+    ("/api/v2/videos", "/api/v2/videos", False),
+    ("/channels/glow-match/x", "/channels/glow-match/x", False),
+    ("/x/%252576ideo", "/x/video", False),
+    ("/channels/x%" + "25" * 9 + "41", None, True),
+    ("/channels/x%" + "25" * 6 + "41", "/channels/xA", False),
+    ("/../../api/v2/video", "/api/v2/video", True),
+    ("/a/b?x=/api/v2/video", "/a/b", False),
+]
+
+
+def js_paths(paths: list[str]) -> list[list[Any]]:
+    """What ``client/product-op.cjs`` gives for each path, run with node."""
+    script = (
+        "const { normalizedPath, isProductPath } = require(process.argv[1]);\n"
+        "const rows = JSON.parse(require('fs').readFileSync(0, 'utf8'));\n"
+        "const out = rows.map(p => { const n = normalizedPath(p);\n"
+        "  return [n, n === null ? true : isProductPath(n)]; });\n"
+        "process.stdout.write(JSON.stringify(out));\n"
+    )
+    done = subprocess.run(
+        ["node", "-e", script, str(PRODUCT_OP)],
+        input=json.dumps(paths),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    return list(json.loads(done.stdout))
+
+
+class ProductPathTest(unittest.TestCase):
+    """C4's own review: the runner and ``validate`` find a product path the same way, and a
+    percent-escape that is not UTF-8 or not hex never switches the decoding off."""
+
+    def test_the_python_normalization(self) -> None:
+        for path, normalized, product in PATHS:
+            self.assertEqual(products.normalized_path(path), normalized, path)
+            self.assertEqual(products.is_product_path(path), product, path)
+
+    def test_the_runner_agrees(self) -> None:
+        for (path, normalized, product), (js_normal, js_product) in zip(
+            PATHS, js_paths([p for p, _n, _b in PATHS]), strict=True
+        ):
+            self.assertEqual(js_normal, normalized, path)
+            self.assertEqual(js_product, product, path)
+
+
 class AllowlistTest(unittest.TestCase):
     def test_the_python_table(self) -> None:
         for method, path, body, params, allowed in TABLE:
@@ -548,6 +608,23 @@ class BaselineComparisonTest(unittest.TestCase):
                 "feeds feed group story: missing (the committed baseline has it)",
             ],
         )
+
+    def test_a_type_change_inside_a_list_is_reported(self) -> None:
+        """C4's own review: a list is compared item by item, value and type."""
+        server = FakeServer(UsageLedger())
+        settings = server.products.call_type_settings["default"]["settings"]
+        layers = settings["ingress"]["video_encoding_options"]["1280x720x30"]["layers"]
+        layers[0]["bitrate"] = float(layers[0]["bitrate"])  # the same value, another type
+        self.assertEqual(
+            products.verify(self.read(server)),
+            [
+                "video call type default: settings differ from the committed baseline at "
+                "ingress.video_encoding_options.1280x720x30.layers[0].bitrate"
+            ],
+        )
+        layers.append(dict(layers[0]))
+        (problem,) = products.verify(self.read(server))
+        self.assertIn("layers (length", problem)
 
     def test_the_client_roles_must_still_read_empty(self) -> None:
         server = FakeServer(UsageLedger())

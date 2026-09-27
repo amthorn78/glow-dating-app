@@ -72,6 +72,50 @@ function deniedField(value) {
   return null;
 }
 
+// Where a Video or Feeds request can go on any Stream host (P06.1-C4): the REST prefixes
+// and the Video and Feeds clients' own bare forms.
+const PRODUCT_PREFIXES = ['/api/v2/video', '/api/v2/feeds', '/video', '/feeds'];
+const DECODE_ROUNDS = 8;
+
+// One round of percent-decoding, byte by byte (%XX becomes the character with that code), so
+// that it never throws: an escape that is not valid UTF-8 (%ff, %c0) is decoded like any
+// other, and one that is not hex (%zz) is left as it is (P06.1-C4; C4's own review found
+// that decodeURIComponent threw on %ff and so left the whole path undecoded).
+function decodeOnce(text) {
+  return text.replace(/%([0-9A-Fa-f]{2})/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+// A path as a server may read it: percent-encoding decoded until it no longer changes,
+// backslashes read as slashes, empty and dot segments resolved; letter case is kept. null
+// when it still changes after DECODE_ROUNDS rounds: such a path is refused. The Python
+// mirror is glow_stream_proof/products.normalized_path; a test compares the two.
+function normalizedPath(pathname) {
+  let text = String(pathname).split('?')[0].replace(/\\/g, '/');
+  let settled = false;
+  for (let i = 0; i < DECODE_ROUNDS; i += 1) {
+    const next = decodeOnce(text).replace(/\\/g, '/');
+    if (next === text) {
+      settled = true;
+      break;
+    }
+    text = next;
+  }
+  if (!settled) return null;
+  const out = [];
+  for (const segment of text.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') out.pop();
+    else out.push(segment);
+  }
+  return '/' + out.join('/');
+}
+
+// Whether a normalized path reaches Video or Feeds (letter case folded).
+function isProductPath(normalized) {
+  const folded = String(normalized).toLowerCase();
+  return PRODUCT_PREFIXES.some((p) => folded === p || folded.startsWith(p + '/'));
+}
+
 // Why the request is refused, or null when it may be sent.
 function productRefusal(method, path, body, params) {
   const verb = String(method || '').toUpperCase();
@@ -94,4 +138,13 @@ function productRefusal(method, path, body, params) {
   return 'path outside the Video and Feeds allowlist';
 }
 
-module.exports = { productRefusal, ALLOWED, DENIED_PATH_WORDS, DENIED_KEYS, DENIED_TRUE_KEYS };
+module.exports = {
+  productRefusal,
+  normalizedPath,
+  isProductPath,
+  ALLOWED,
+  DENIED_PATH_WORDS,
+  DENIED_KEYS,
+  DENIED_TRUE_KEYS,
+  PRODUCT_PREFIXES,
+};
