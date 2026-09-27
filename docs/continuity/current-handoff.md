@@ -14,7 +14,7 @@ This file only routes: the current item, what happens next and who waits on whom
   - **Linear (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy on its own (I2a).
     - **Done:** DM-05: approved with conditions, all accepted; revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md) applies them as written and needs no further read (DM-03 G2). Disposition: the [review log](dev-manager/README.md), "DM-05".
-    - **Next:** I2b, live, from revision 2; Nathan adds the `STREAM_*` variables (OD-28) and runs it.
+    - **In flight:** I2b, live, from revision 2 (start `b04306d`); Nathan started it on 27 September on Fable 5.1 at extra high.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6). Not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-05, Nathan's answers and the dispositions.
 
