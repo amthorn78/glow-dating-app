@@ -8,7 +8,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager:** App Manager 4, `session_016nNFAZqaqTDqxX4Bq6jbRV` (Fable 5.1, extra high), created by App Manager 3 on 27 September (OD-31). It pushes `claude/stoic-carson-66gdig`, the head of draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). App Manager 3 pushes nothing after `642d1f8`. This container holds the three `STREAM_*` variables and never reads or uses them (AM3-17).
+- **Manager:** App Manager 5, started by Nathan by hand on 27 September from the [start procedure](../planning/start-prompts/next-manager.md), succeeding App Manager 4 (`session_016nNFAZqaqTDqxX4Bq6jbRV`, Fable 5.1 at extra high), whose handover commit is the head of `claude/stoic-carson-66gdig`, draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26); App Manager 4 pushes nothing after it. App Manager 5 works on its own branch from that head, opens a replacement PR and closes PR26 with a link (workflow, "Branches and pushes"). A manager's container may hold the three `STREAM_*` variables; it never reads or uses them (AM3-17).
 - **Current item: P06.1**, the chat-provider permissions and economics proof (resumed 25 September; other feature work paused): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
@@ -20,12 +20,13 @@ This file only routes: the current item, what happens next and who waits on whom
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-05.
 
-## Waiting checkpoint (27 September 2026)
+## Waiting checkpoint (27 September 2026, handover to App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 4 | Nathan | The I2b review's report (running on Fable 5.1 at max) | Nothing else starts (OD-29); ask for the session's state |
-| App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
+| App Manager 5 | Nathan | The I2b review's report (running on Fable 5.1 at max, started 27 September) | Nothing else starts (OD-29); ask for the session's state |
+| App Manager 5 | Nathan | The `typesafe-scoring` skill visible in its session | Report it; the request body is in the matrix file, section 6 |
+| App Manager 5 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
 
 ## Next actions
 
