@@ -10,6 +10,7 @@
   - **TypeSafe v4:** extra high (score 2.75, P(extra high) 0.71, P(high) 0.27, P(max) 0.02). It raises its ultracode flag (P(single session) 0.16; shape `broad_verification`, 0.64). The manager does not recommend ultracode: it is one change, and the session can split the review across subagents itself.
   - **TypeSafe m1:** Fable 5.1, by the narrowest margin (P(most capable) 0.51, confidence 0.02).
   - **Used: extra high, on Fable 5.1** (Nathan, 27 September: "ran fable extra"). This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** approve (27 September). Two should-fix findings and four nits, and no recorded result changes. Finding 1 falls narrowly in a class that delays I2b's live runs, so I2b fixes it offline before any live call. See the evidence record, "Exact-head review of I2a".
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action.
 - **No Stream variables** (OD-28): this session never calls Stream.
 - **It runs alone** (OD-29, the linear process). I2b comes after it.

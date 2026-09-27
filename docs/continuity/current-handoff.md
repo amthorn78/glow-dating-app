@@ -12,23 +12,23 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Current item: P06.1**, the chat-provider permissions and economics proof. Resumed on 25 September; other feature work stays paused. Plan, results and decisions: the [brief](../planning/p06-1-chat-provider-proof.md). Runs: the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** the I1 review confirmed it live, so the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands. Nathan's principle is in force, with the exceptions he confirmed (OD-16).
   - **Linear order (OD-29):** one session at a time, one prompt per message.
-    - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`) and C3 (`8c1a8c0`), each approved by its review; DM-04 (approved with conditions); I2a (`6a51dae`), live: no Stream mechanism meets the history policy on its own.
-    - **In flight:** I2a's exact-head review ([prompt](../ephemeral/2026-09-26-p06-1-i2a-review-prompt.md)), offline. Nathan started it on 27 September, at extra high.
-    - **Then:** I2b, whose live prompt the Dev Manager reads first.
+    - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. I2a found that no Stream mechanism meets the history policy on its own.
+    - **Next:** DM-05, the Dev Manager's read of I2b's live [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md), which Nathan carries (OD-25).
+    - **Then:** I2b, with DM-05's conditions applied.
 - **The [HDE contract request](../planning/hde-contract-request.md) is written** (OD-23). Nathan takes it into HDE's process and sets the date; on delivery, record the receipt (its section 6).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-04, Nathan's answers and the dispositions.
 
-## Waiting checkpoint (26 September 2026)
+## Waiting checkpoint (27 September 2026)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 3 | Nathan | The I2a review's report | Nothing else starts (OD-29) |
+| App Manager 3 | The Dev Manager, via Nathan | DM-05's report | I2b does not start (OD-29) |
 | App Manager 3 | Nathan | Confirmation of the shared-restore risk ADR 0004 records as accepted | ADR 0004 stands |
 | App Manager 3 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` and of the HDE contract request, each as its own later step | PR26 cannot merge without the reads |
 
 ## Next actions
 
-1. Verify the I2a review's report against the code and record it. Then write I2b's prompt, from the brief's I2b entry and the manager's verification of I2a, and its Dev Manager consultation.
+1. Integrate DM-05's report, apply its conditions to I2b's prompt, and give Nathan the prompt. I2b fixes the I2a review's finding 1 before any live call.
 2. Then the economics discovery (the brief's "Sessions"). Live prompts tell Nathan to add the `STREAM_*` variables first (OD-28).
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f` (charter, "A read covers one commit");

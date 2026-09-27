@@ -2818,3 +2818,203 @@ The first two are proposed rules for I2b's runs. The exact-head review assesses 
 - **I2a is verified and integrated** at `6a51dae3e0f2b7a69097151fb5e5dcfe4414b61d`. Its product findings are recorded under "What I2b and P06.2 must know". A design decision that rests on one of them stays conditional until a review confirms it live (DM-01 P4); for removal, that is I2b's rerun and I2b's review.
 - **I2b also carries:** the two rules above once assessed; the existence oracle keeping both normalized messages of each pair; the poll listing; removing the API key from free text in outputs; and the live reruns of RV-remove and SD-deactivate.
 - **I2a's exact-head review is next,** offline and scoped to I2a's change. After it, only certain findings delay I2b: a blocking finding, or a should-fix finding that could create a false HOLDS or a false "ended", lose an observed FAIL or DOES NOT MEET, send a request after a charge or limit signal, or let a change escape the guard. Other findings go into I2b's offline first step.
+
+### Exact-head review of I2a (27 September 2026)
+
+Nathan ran the review session at extra high, from revision 1 of the [review prompt](../../ephemeral/2026-09-26-p06-1-i2a-review-prompt.md) (records commit `9fc3b50`), and relayed its report. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** I2a's harness and record are a sound base for I2b's live runs. The C3 review's items, DM-04's conditions and the independent check's findings are confirmed fixed. The product findings are sound, but the hard delete's re-creation of the user is an inference (nit 6). The reviewer agrees with the manager's decisions, with one detail for the disclosure rule and one refinement for 404 code 16.
+- **Two should-fix findings and four nits remain, and no recorded result changes.** Finding 1 falls, narrowly, in a class that delays I2b's live runs: an interruption inside a family step loses that step's observations, so a DOES NOT MEET could be recorded as INCONCLUSIVE, never as a pass. Finding 2 can give the existence oracle a false FAIL.
+
+#### The report, as relayed
+
+The session's notes before its report, verbatim:
+
+> I'll begin with the environment check (names only) and the start gate, then read the required documents and diff before running the offline checks.
+>
+> Environment check passes: none of the six variable names is present, and the toolchain matches expectations. Now the start gate.
+>
+> All start-gate checks pass. Now the three classifications, the diff whitespace check, and file mode checks.
+>
+> All three classifications match expectations. Now the whitespace check, file modes, symlinks, and a first look at the diff's shape.
+>
+> Start gate and scope checks are clean. Now the reading. I'll begin with the I2a prompt, DM-04 and its disposition, then the harness README and the evidence record.
+>
+> I'm reading the governing documents in full before the code. The README is large, so I'll read it in two parts, and pull the evidence record's section map in parallel.
+>
+> I've reviewed the README. Next I'll pull the evidence record's structure, C3 review, the "must know" lists, I2a's section, corrections, and the brief/manager verification at `9fc3b50`—while kicking off the installs in the background to run in parallel.
+>
+> I'm checking that the install directories are git-ignored before I install, and reading the evidence record's sections in parallel.
+>
+> I'll continue reading I2a's evidence, then pull the remaining independent pieces together: the rest of that section, the brief and manager verification at the later commit, and the install log.
+>
+> Installs completed cleanly. I'll kick off the offline checks and fix-reversal run in the background (about 20 minutes), and meanwhile read through I2a's section, the brief, and the manager's verification at the later commit.
+>
+> I've finished reviewing the governing documents and records. Next, I'll read the new modules (guard, stops, request log, run plan) and the server client's hook in parallel, followed by the larger I2a and mechanisms modules.
+>
+> I've reviewed the guard, client bridge, mechanisms, and I2a modules. Next I'll check the case loop, end-of-run code, cleanup command, guard/real-runner tests, SDK client wiring, and runner command fields.
+>
+> Two earlier commands failed since they ran in the wrong directory, so I'll rerun them with absolute paths, then check the SDK's retry/exception handling, runner command fields, fakes, protected-section comparison, secret scan, and reversal-log progress.
+>
+> I'll now run several checks in parallel: re-check the C1 section diff, verify the reversal run's status, examine the fix-reversal table structure to review I2a's 95 entries, set up a mutation harness to test the key fixes, and locate where the API key is recorded to scan the diff for it.
+>
+> I'll write the missing mutation harness file and kick off its run, while the reversal run continues (169/242). Meanwhile, I'll check the baseline's recorded settings against the closing-check code.
+>
+> Mutations M1-M4 were caught, but M5 survived since the token-margin test only covers one dimension—I'll note this as a test-gap issue. While remaining runs finish, I'll check two things against the fakes: whether an interruption mid-family-step loses a "not ended" observation, and whether the oracle's size comparison is sensitive to Stream's variable-length `duration` field.
+>
+> Both probes confirm that a stop inside a family step drops the member's "not ended" read, causing the oracle's size comparison to misread a duration difference as a FAIL. Now I'll gather the reversal and mutation results.
+>
+> The reversal run is alive and near its end (it's on reversal 222 of 242), and the mutations are at 17 of 43. I'll poll once more and run the comparison as soon as the reversal log completes.
+>
+> The reversal run has finished. Now I'll read its summary, compare every row with the record's table, and list I2a's 95 failure reasons.
+>
+> The reversal run completed with all 242 items demonstrated and no changes to the repository. My comparison script flagged three rows that appear to be parser artifacts, so I'll verify those directly, check the mutation run, and then write the report.
+>
+> I noticed I mistakenly compared the flagged rows against C3's earlier table instead of I2a's own table—I'll redo that comparison correctly and verify the checkout remains unchanged.
+>
+> All checks are in. Before writing the report I'll load the workspace's reporting skill, since it governs messages that report findings to Nathan, and close out the task list.
+
+The report:
+
+**Verdict: approve.** I2a's harness and record are a sound base for I2b's live runs. There is no blocking finding. Two should-fix findings and four nits remain; one should-fix falls, narrowly, in a class that delays I2b's live runs, and its fix is a few lines that I2b's offline first step can carry before any live call.
+
+- **Prompt received:** revision 1, from commit `9fc3b504ada462ac186aed41852d3978808df95b`.
+- **Head reviewed:** `git rev-parse HEAD` printed `6a51dae3e0f2b7a69097151fb5e5dcfe4414b61d`. `HEAD^2` is `761fa289f1dacd13b8d48b78db6b220d07c079e3`. One merge base, `0f45e648099b415217938c25d7369164c0101def`. The ancestor check printed "records build on the head". `git diff --stat HEAD^1 HEAD`: 41 files, 9442 insertions, 246 deletions. The harness under `proofs/` at the head is identical to I2a's code head `7ce93cc`.
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` is present. node v24.19.0, npm 11.9.0, npx 11.9.0, Python 3.12.14, all from `/root/.local/bin`.
+
+| Classification (trusted `main` policy, `python3 -I`, outside the tree) | Output |
+|---|---|
+| `main` → head | `{"full": true, "reason": "behavior-or-empty"}`, 129 paths |
+| `8c1a8c0` → head | `{"full": true, "reason": "behavior-or-empty"}`, 53 paths; the filter for non-Markdown files outside `proofs/stream-chat/` printed nothing |
+| head → `9fc3b50` | `{"full": false, "reason": "ordinary-docs-only"}`, 5 paths |
+
+##### Findings, most severe first
+
+Paths are under `proofs/stream-chat/`.
+
+**1. Should fix. An interruption inside a family step loses that step's observations.** `glow_stream_proof/mechanisms.py:904` (`collect_after`; the same in `apply`, `:854`).
+- **Scenario, reproduced against the fakes:** RV-ban. M1's REST read after the ban succeeds (a "not ended" dimension). A 402 then arrives on M2's read, in the same step. The family's row is the last observed one, "applied: 201", INCONCLUSIVE "interrupted", with no `after` detail and an empty table. M1's observed success is in no row.
+- **Why:** a family judges and keeps its row only in `step()`, called after each whole step. Inside a step, only `ClientSessionEnded` is caught per member.
+- **Fix:** judge after each member's observations, or wrap each step in `try/finally: self.step(...)`. `step()` sends no request, so it is safe after a signal.
+- **Class:** yes, narrowly: it loses the observation a DOES NOT MEET rests on. The row becomes INCONCLUSIVE, never a pass. Run 2 was not interrupted, so no recorded result is affected.
+
+**2. Should fix. The existence oracle can report a false FAIL on two identical successes.** `glow_stream_proof/i2a.py:889`.
+- **Scenario, reproduced with `pair_verdict`:** two 200 answers with the same keys whose `duration` strings differ in length (`9.87ms` against `12.34ms`) are "different", because `_normal` compares `len(json.dumps(response))`, and every Stream response carries `duration`. EO-user's `queryUsers` pair would then FAIL as an oracle that is not one.
+- **Fix:** drop `duration` before comparing, and compare shape (keys and list lengths), not byte size.
+- **Class:** none. A false FAIL, not a false HOLDS. Run 2's EO-user HOLDS is sound: the sizes matched.
+
+**3. Nit (test gaps). Eight fixes still pass every test when broken another way.** I ran 43 mutations of the I2a code in a scratch copy against the full suite without `test_fix_reversals.py`; 35 were caught. The code is correct in each of these; only the test is missing. Class: none.
+- `mechanisms.py:1104`: the token margin applied to `rest` only. The one test asserts only `rest`.
+- `mechanisms.py:1145`: `listener()` always True. No family test has every session miss the probe, so a broken listener could give a false "ended" unseen by tests.
+- `mechanisms.py:1210`: `retained` always True when the channel exists. No test with the channel present and the history message gone.
+- `i2a.py:1061`: the oracle HOLDS without a successful control.
+- `i2a.py:560`: a write with no answer or a 5xx not counted as `written`, so not restored.
+- `i2a.py:896`: 5xx answers treated as determinate (two differing 5xx would FAIL).
+- `i2a.py:345`: OUT-send HOLDS with several transport attempts.
+- `configuration.py:266`: the type check in `recorded_differences`.
+
+**4. Nit. The guard checks a message's ownership only for a delete.** `glow_stream_proof/guard.py:306`. `POST` and `PUT /messages/{id}`, and `/action`, `/reaction` and `/undelete`, pass on their user IDs alone. Preflight guarantees no other data, and the README's limits say so, so no change can escape in practice. Fix: `owns_message` for every mutating `messages/{id}` path. Class: none, given preflight.
+
+**5. Nit. The client protocol is covered offline for two ops only.** `tests/test_runner.py:93` and `:121` drive the real runner for `set_rest_user` and a channel `call`; `connect`, `guest`, `anonymous`, `disconnect`, `get`, `events` and `channel_data` are covered only by run 2. Fix: one offline test that sends each op the Python side uses and checks the reply's shape. Class: none.
+
+**6. Nit (record).** "A connect with H's old token ... re-creates H" is an inference from the connect's success, not a read of the user; say so. The guard-install reference `proof_run.py:402` is line 395. Class: none.
+
+##### Confirmations and assessments
+
+**The C3 review's items, DM-04's conditions and the independent check:** all confirmed fixed at the head.
+
+| Item | Where confirmed |
+|---|---|
+| C3 nit 1 (control window searched, B's own read events only left out) | `proof_run.py:2990`, used at `:2908`; reversals 171 to 173 |
+| C3 gap (requests between commands, late answers, async errors checked and counted; exit reply; sessions closed before the cleanup is decided) | `client/request-log.cjs`; `client_bridge.py:331`, `:368`, `:432`; `proof_run.py:3349`; reversals 160 to 170 |
+| C3 nits 2(a), 2(b), 2(c), 4, 5, 6 | tests added and reversals 174 to 178; the five older stops now go through `ledger.stop_at_once` |
+| C3 nit 3 | README, S10 scoped out of the feature-gated sentences |
+| DM-04 1, the guard | `guard.py:254`, called from the server client's request hook before the reservation (`server_api.py:127`); the SDK's typed calls use the injected `httpx` client; the SDK's retry policy is disabled by default and retries GET and HEAD only, so nothing is re-sent after a stop |
+| DM-04 2, closing checks | `configuration.py:245`; all 19 recorded settings compared, plus two keys absent from the baseline that must stay absent or empty |
+| DM-04 3, 4, 5, 6, 7, 8, 9(a) to 9(d) | in-process transport; `only_rate_limit` and `signal_instruction`; `checks/run_plan.py`; undo and "what each member is shown"; the independent check recorded; runs tied to `5df522c` and `7ce93cc`; observation-only server send; `iat` recorded; `include_deactivated_users`; the prompt's wording |
+| Independent check 1 to 9 and its nits | each fix present at the lines the record names; each has a reversal (201 to 240) that fails for its stated reason |
+
+**Product findings in "What I2b and P06.2 must know":**
+- No mechanism meets the policy on its own: **sound.** Every DOES NOT MEET rests on a 2xx by the member after the mechanism, or on the channel absent from a server read after a delete sent with `conversations: hard`. The two INCONCLUSIVEs are conservative. The revocation's "ends the open subscription" rests on two 2.5 s windows in which M2 received the probe and R did not; a slower delivery is not ruled out, as the record says.
+- Free-text paths (invites, AI-indicator events, member custom data, pin and archive flags, a write to the other membership): **sound.** Each FAIL is a 2xx with the text or flag read back by A or B before any control.
+- Existence oracles: **sound** for Get Channel and `getMessage` (status and code) and for the channel named in `getReplies` and `getReactions` errors. EO-channel's query and watch pairs rest on message text the row does not keep, as the manager notes; the case's FAIL stands on the GET pair.
+- An open WebSocket outlived its token: **sound.** The probe was sent after `exp` plus 3 s and its `message.new` arrived on the expiring session.
+- "An old token can re-create the user": the connect's success is sound; the re-creation is inferred (finding 6).
+
+**The manager's decisions:**
+- **The disclosure rule: agree.** One detail for I2b: match the carried terms as substrings of the serialized request, because F9-sync carries `{XD}` inside the cid string, and keep the key names of where a term was found.
+- **404 code 16 as ended: agree, with one refinement.** Make the second condition checkable in code: the other member's identical request, already collected, still succeeds after the mechanism. That shows the resource exists and only the member's access is gone, and it separates a 404 for a missing membership or user from a 404 for a missing channel. Keep the message as the third condition. Apply it only where the mechanism removes what the request needs, and confirm live with the messages kept, as planned.
+- **The poll listing: agree.**
+- **The three deviations: agree.** On M1 and M2 shared by the four channel-level mechanisms: each effect is per channel by Stream's documentation, and each family's controls showed M1's reads, writes and subscription intact on the next channel before its mechanism. Putting the wording to the Dev Manager with I2b's prompt is right.
+
+**Areas reviewed with no findings:**
+- **The guard:** every mutating server path, the hook order, `cleanup --apply` scoped to the prefix, artifacts recorded before their delete, every type toggle and guest change inside a journalled block, preflight and `verify-clean` read only.
+- **Stop paths:** every signal in a reply is recorded before its calls are counted; a signal at exit is recorded always and raised only with nothing in flight (`sys.exc_info` is set inside a `finally`, verified); `finish()` closes the sessions before deciding the cleanup and `cleanup()` checks again; the response hook raises before the SDK sees a 429; the kinds by status, code and wording.
+- **Restores and cleanup:** A's member record read before any write and restored and verified after each field; the hide re-hidden before the member's `show`; H named again after a connect; the delete's channel read before the batch; deactivated users listed; the closing checks.
+- **The run-1 fix:** only a channel `call` sends `id`, and the runner reads `channel_id`; every command field the runner reads was audited against the Python side.
+- **Interrupted rows:** `KEPT_WHEN_INTERRUPTED`, the oracle's per-pair rows, the S15 mapping's per-field rows, pin and archive.
+- **The README's rules** match the code for every I2a case; the record's counts add up (114 cases; 85 I1 and 29 I2a; 393 tests; 242 reversals); the two in-place corrections are the C1 finding 5 and nit 13 rows, marked; the eight protected sections are byte-identical at `6e67fd6`, the head and `9fc3b50`.
+- **Scope:** only `proofs/stream-chat/**` (40 files) and the evidence record changed; no dependency file, lock, `.npmrc`, `pyproject.toml` dependency or baseline changed; all 41 files mode 100644; no symlink or executable under `proofs/stream-chat/`.
+
+##### Checks and limits
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | No output, exit 0 |
+| Installs (`env -i`, proxy and CA variables by reference) | `pip check`: "No broken requirements found."; getstream 6.1.0, ruff 0.16.8, mypy 2.3.1. `npm ci --ignore-scripts`: "added 51 packages", "found 0 vulnerabilities" |
+| Unit tests (`env -i`) | `Ran 393 tests`, `OK` |
+| Ruff check / format / mypy | "All checks passed!" / "51 files already formatted" / "Success: no issues found in 49 source files" |
+| `node --check` on the three `.cjs` files | Exit 0, each |
+| `checks/run_plan.py` | "run plan: fits", exit 0: complete set 11 users, 18 channels, peak 6 connections, 605 calls on the fakes; reserve 7, 8, 5; no harness errors or problems |
+| `checks/fix_reversals.py` | "reversals: 242, not demonstrated: 0", exit 0, 00:30:40 to 00:51:22 UTC (alongside the mutation run). 206 failed on an assertion, 33 on the error their reverted fix causes, 3 aborted on a Ctrl-C by design. All 242 rows match I2a's table by failing test and exception; I read each of I2a's 95 reasons. The checkout was unchanged afterwards |
+| Mutations (43, scratch copy, full suite minus the reversal-table test) | 35 caught, 8 survived (finding 3) |
+| Probes against the fakes | Finding 1 and finding 2 reproduced |
+| Secret scan of `git diff HEAD^1 HEAD` (666,258 bytes) | 0 JWT-shaped strings, emails, private-key blocks, AWS, GitHub or Slack tokens, TLS-weakening settings, environment dumps or secret assignments; the long strings are test names. The client-safe API key, as the four tracked documents record it, appears 0 times |
+| Repository | `git status` empty; only ignored paths created; no `.work/`; no commit, push, PR comment, re-run or Notion change |
+
+**Limits:** nothing was run live; the live results rest on I2a's record. I did not read hosted CI and used no sub-agents. The mutation set is mine and not exhaustive. EO-channel's query and watch message texts are not in the record, so their FAIL cannot be checked from it. The two background runs shared the container's CPU, so their timings are not comparable with I2a's.
+
+**NOTHING NEEDED.** Relay this to App Manager 3.
+
+#### Manager verification of the review (App Manager 3, 27 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head.
+
+- **Identity and classification.** The prompt revision, the head, its second parent, the merge base and the diff's size are what the prompt expects. The manager's own runs, with the same trusted policy (sha256 `dec69a26…`), gave the report's three results: full scope for 129 paths; full scope for 53 paths, with nothing outside `proofs/stream-chat/`; and `ordinary-docs-only` for 5 paths.
+- **Findings, at `6a51dae`,** whose harness is I2a's code head `7ce93cc`:
+  - **Finding 1:** a family's row is a snapshot of its state, taken each time it observes (`mechanisms.py:440`). `collect_after` (`:904`) stores each member's reads and writes, and only `step()` (`:1134`), called after the loop over the members (`:921`), judges them into a row. Inside the loop only `ClientSessionEnded` is caught. Any other stop reaches the case loop (`proof_run.py:1243`), and `_interrupted_row` (`:642`) keeps the last row observed, "applied; nothing observed after it yet" (`mechanisms.py:692`), as INCONCLUSIVE. `step()` judges and writes the row, and sends nothing.
+  - **Finding 2:** `_normal` (`i2a.py:882`) reduces a success to its keys and `len(json.dumps(response))`, and `pair_verdict` (`:903`) calls any difference a FAIL (`:910`).
+  - **Nit 3:** each of the eight lines holds the code the report names. The mutations were the session's own; the manager did not re-run them.
+  - **Nit 4:** in the `messages` family, `owns_message` is checked only for a DELETE of `messages/{id}` (`guard.py:306`).
+  - **Nit 5, with two corrections:** `RunnerGetTest` (`tests/test_i2a.py:747`) also drives the real runner, with `get`, and checks its budget refusal; and `channel_data` is a parameter of the `call` op, not an op. `connect`, `guest`, `anonymous`, `disconnect` and `events`, a `call` with `channel_data` and a sent `get`'s reply are not covered offline. The nit stands.
+  - **Nit 6:** both sentences rest on the connects' success: "which re-creates H", under "Revocation, suspension and deletion", and "can connect afterwards and re-create the user", under "What I2b and P06.2 must know". The line reference stands: `proof_run.py:402` is where the run passes itself to the guard as its scope, which is what the record's sentence says, and `:395` installs the guard.
+- **Hosted CI.** On the reviewed head, push run 36278363805 and PR run 36278366585 passed all six jobs (the manager's verification of I2a). The records commits since then are Markdown only:
+  - `9fc3b50`: push run [36278735596](https://github.com/amthorn78/glow-dating-app/actions/runs/36278735596) passed, and PR run [36278738109](https://github.com/amthorn78/glow-dating-app/actions/runs/36278738109) passed all six jobs;
+  - `2a9f934`: push run [36282606042](https://github.com/amthorn78/glow-dating-app/actions/runs/36282606042) skipped the four application jobs and its gate passed, and PR run [36282609128](https://github.com/amthorn78/glow-dating-app/actions/runs/36282609128) passed all six jobs.
+- **Not re-run by the manager:** the session's installs, tests, reversal run, 43 mutations and two probes. Its installs, tests and reversal summary match I2a's record and the manager's own run on `7ce93cc`.
+
+#### Disposition
+
+- **I2a's code head `7ce93cc`, merged at `6a51dae`, is approved.** No finding is blocking, and no recorded result changes.
+- **Finding 1 delays I2b's live runs, not the start of I2b.** The review prompt's bound names the live runs, and the reviewer recommends the same: the fix is a few lines, and `step()` sends no request. The brief's shorter wording, "delays I2b", is read the same way, and the Dev Manager reads this reading with I2b's prompt (DM-05). **Required before I2b's first live call:**
+  - the fix, in `collect_after` and in `apply`: judge after each member's observations, or keep the row in a `finally` around each step;
+  - a test that reproduces the review's scenario (RV-ban; M1's read after the ban succeeds; a 402 on M2's read) and fails without the fix, with its reversal;
+  - I2b's independent check before its first live call confirms the fix.
+- **I2b's offline first step also takes the rest.** Each code fix gets a test that fails without it and a reversal.
+  - **Required:**
+    - finding 2: two successes are compared by shape, keys and list lengths, without `duration`. Each pair keeps both normalized messages, as already planned;
+    - nit 3's listener and retention tests (`mechanisms.py:1145` and `:1210`), because I2b changes `mechanisms.py` and a broken listener could give a false "ended";
+    - nit 4: `owns_message` for every mutating `messages/{id}` path;
+    - nit 5: one offline test that sends the real runner each op the Python side uses, and checks the reply's shape;
+    - nit 6: the two sentences corrected in place and marked "(corrected in P06.1-I2b)". The re-creation is inferred from the connects' success; no read of the user shows it.
+  - **Fixed, or left with a one-line reason:** nit 3's other six tests.
+- **The manager's decisions, as the review leaves them,** for I2b's runs:
+  - **The disclosure rule** (F9-thread and F9-sync): the scan leaves out every term that appears, as a substring, anywhere in the serialized request (path, query and body), because the sender already had it. F9-sync carries `{XD}` inside the cid. The row keeps the key names of the response where a term was found.
+  - **404 code 16 as "ended":** only when all three hold:
+    - the same request by the same member succeeded before the mechanism;
+    - the other member's identical request, already collected, still succeeds after it;
+    - Stream's message, kept in the row, names the missing membership or user.
+
+    It applies only where the mechanism removes what the request needs: the membership after a removal, the user after a deactivation. Otherwise the dimension stays "not shown". I2b reruns RV-remove and SD-deactivate live under it, and I2b's review confirms the result before any design rests on it (DM-01 P4).
+  - **The poll listing and the three deviations:** as decided. The Dev Manager reads the wording on M1 and M2, shared by the four channel-level mechanisms, with I2b's prompt.
+- **I2b's prompt is next.** It authorizes credential use and live provider actions, so the Dev Manager reads it before Nathan runs it (DM-05).
