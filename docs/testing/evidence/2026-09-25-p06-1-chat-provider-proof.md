@@ -3514,7 +3514,7 @@ The session committed nothing, so there is no branch to check. The manager check
 
 ## P06.1-C4 corrections
 
-Nathan ran this session from revision 1 of the [C4 correction prompt](../../ephemeral/2026-09-27-p06-1-c4-correction-prompt.md), from commit `2c2d450883937191c55905bd49fe7b0af0a186e8` (App Manager 5's manager branch `claude/magical-wozniak-yfmmx2`), on the session branch `claude/festive-ritchie-31vt3v`. It made no Stream call and no call to any other provider, and ran none of the harness's live commands. Commits: `634dc56` (the fixes), `a2ca27f` (the record corrections), `919a383` and `112011f` (what C4's own review found), and the records commit that adds this section and two README limit sentences, the branch head named in the session's report. The code head is `112011f`.
+Nathan ran this session from revision 1 of the [C4 correction prompt](../../ephemeral/2026-09-27-p06-1-c4-correction-prompt.md), from commit `2c2d450883937191c55905bd49fe7b0af0a186e8` (App Manager 5's manager branch `claude/magical-wozniak-yfmmx2`), on the session branch `claude/festive-ritchie-31vt3v`. It made no Stream call and no call to any other provider, and ran none of the harness's live commands. Commits: `634dc56` (the fixes), `a2ca27f` (the record corrections), `919a383` and `112011f` (what C4's own review found), `ff0f0b7` (this section, in draft, and two README limit sentences), `b2b9a0b` (a test that keeps an I2b reversal demonstrable; see "Checks" item 5), and the records commit that completes this section, the branch head named in the session's report. The code head is `b2b9a0b`; its source files are those of `112011f`.
 
 ### Environment and start gate
 
@@ -3524,7 +3524,7 @@ Nathan ran this session from revision 1 of the [C4 correction prompt](../../ephe
 
 ### The review's items
 
-Paths are under `proofs/stream-chat/`; line numbers are at `112011f`. Each fix has an offline test that fails without it and a reversal in `checks/fix_reversals.py` (the "C4 …" entries).
+Paths are under `proofs/stream-chat/`; line numbers are at `b2b9a0b` (the source as at `112011f`). Each fix has an offline test that fails without it and a reversal in `checks/fix_reversals.py` (the "C4 …" entries).
 
 - **Finding 1, fixed.** Nothing reaches Video or Feeds except through the product op's check.
   - `client/runner.cjs:192` (`productRequestRefusal`), called first in the request interceptor (`:250`), before the budget, so a refused request is neither counted, sent nor recorded, error kind `refused`. It applies `productRefusal` to the method, the path as sent, the body and the query whenever the host is the Video or Feeds host or the path is a product path.
@@ -3639,7 +3639,7 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
    - No dependency file, lock, `.npmrc`, `pyproject.toml` or committed baseline changed; every file is mode 100644, and there is no symlink.
 2. **Classification:** the trusted policy from `origin/main` (`0f45e64`, sha256 `dec69a26…`), extracted to a temporary directory outside the tree and run as `python3 -I …/change_scope.py --base 2c2d450883937191c55905bd49fe7b0af0a186e8 --head <head> --merge-base`, gave `{"full": true, "reason": "behavior-or-empty", …}` at `919a383`: full scope, as expected. It was re-run at the final head (below).
 3. **Installs:** as above.
-4. **Offline checks** at `112011f`:
+4. **Offline checks** at `112011f` and again at `b2b9a0b`, the same results:
    - unit tests: `Ran 543 tests`, `OK` (503 at the start, `Ran 503 tests … OK`);
    - Ruff: "All checks passed!" and "55 files already formatted";
    - mypy: "Success: no issues found in 53 source files";
@@ -3647,7 +3647,8 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
    - `checks/run_plan.py` with an empty ledger (no `.work` directory): "run plan: fits".
 5. **Fix reversals** (`checks/fix_reversals.py`, from a scratch copy of the directory outside the tree):
    - at the start: "reversals: 342, not demonstrated: 0", exit 0, 15:35:39 to 16:05:29 UTC;
-   - at `112011f`: pending at this commit (filled in by the next commit);
+   - at `112011f`: "reversals: 378, not demonstrated: 1", exit 1, 16:38:41 to 17:12:20 UTC. The one was "I2b products: the runner asks the op before a product request is sent": with the product op's own check removed, `EveryOpTest` still passed, because C4's request check now refuses the same requests with the same reasons. The fix is test-only (`b2b9a0b`): `EveryOpTest` also sends a product path carrying a query, which only the op's own check refuses. With the op's check reverted, that command reaches the budget (`'budget' != 'refused'`);
+   - at `b2b9a0b`: @@REV2@@;
    - the C4 entries were also run as a subset, with the two "I2b check 6" entries whose pattern moved: 23 at `634dc56` and 35 at `919a383`, "not demonstrated: 0" each time; the full run at `112011f` covers all 36. Every one failed on its test's assertion or on the error its reverted fix causes, none through a syntax, import or name error, none by Ctrl-C. For example:
      - finding 1: `'budget' != 'refused'`;
      - finding 2: `Lists differ: [] != ["video call type default: grants for call_member differ …"]`;
