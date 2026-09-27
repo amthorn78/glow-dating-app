@@ -59,6 +59,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-04 | 27 Sep 2026 | process | Overrode Nathan's six-rung ladder, left max unreachable, and presented the manager's own model judgement as a recommendation | Nathan |
 | AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
 | AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
+| AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
 
 ## App Manager 2
 
@@ -374,3 +375,13 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** two wrong numbers in the record. No verdict or decision rests on either.
 - **Correction:** the disposition bullet is corrected in place and marked. P06.1-C4 corrects I2b's own two sentences, marked.
 - **Prevention:** a verification derives every count it repeats from its source, and compares each of its own check outputs with the figure the report under verification gives for the same check.
+
+## App Manager 5
+
+### AM5-01 — The classifier given a short SHA again (execution)
+
+- **What happened:** checking its own records batch `47fe797`, App Manager 5 ran the trusted classifier with `--base 70a55c9`, a short SHA. The policy answered `missing-or-invalid-comparison`, full scope, as it does for any comparison it cannot read. The re-run with full SHAs gave `ordinary-docs-only`, 8 paths. It repeats AM3-14.
+- **Caught by:** the classifier itself.
+- **Effect:** none; the batch was already committed, and the full-SHA result is the one recorded.
+- **Correction:** none needed.
+- **Prevention:** because it repeats AM3-14, whose prevention was never written down, the rule is now a checklist item in the manager workflow's "Classification (trusted base policy)": pass full 40-character SHAs from `git rev-parse`.
