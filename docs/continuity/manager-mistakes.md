@@ -62,6 +62,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
 | AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
 | AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
+| AM5-04 | 27 Sep 2026 | process | Pushed one records batch as three pushes within five minutes (`c7fd0a9`, `a5a113b`, `93cb9a0`): the entries AM5-02 and AM5-03, found during the Notion sync, were each pushed at once instead of with the next batch, and the later pushes cancelled four full runs (359 to 362). DM-01 P2 asks for pushes only when a session needs them. This entry was pushed after PR run 364 finished, so it cancelled no run, though it started one more | App Manager 5, reading the runs |
 
 ## App Manager 2
 
