@@ -3254,9 +3254,260 @@ App Manager 4 checked the relayed report against the pushed branch. The manager 
   - the reserve rerun spent on run V1, after the fix of the harness defect the first attempt exposed (`93390ce`), so that every Feeds case has its before-lockdown row; run V2 then had no rerun and needed none;
   - two code commits between live commands (`93390ce`, `ad89753`), each followed by the offline checks and the whole reversal set before the next live command that changes anything, as section 5 of the prompt requires;
   - `checks/run_plan.py` reporting "DOES NOT FIT" mid-session, because it adds the ledger to the whole plan again. The count before any live call fitted, and the harness's own ledger enforced the caps in every run (13 of 20 users after the last). The script's mid-session reading is misleading, not wrong about the caps; the review assesses it, and a later offline pass may make it count only what remains;
-  - fifteen live commands against the plan's eleven: the rerun, the second scoped dry run right before the apply, and the closing checks;
+  - fifteen commands in the live table, against the thirteen that section 5 of the prompt names, the reserve rerun included: command 3, a scoped dry run before run 1 besides the one right before the apply, and command 8, `record-products-baseline`, which made no network call (corrected by App Manager 5; the I2b review's nit 6; AM4-06);
   - F9-thread INCONCLUSIVE with replies off; VD-query (code 102) and FD-read (no successful control) INCONCLUSIVE after the lockdown, under the matrix quality rule.
 - **The lockdown stands** on application 1729640 for the rest of P06.1, as the brief says; Nathan decides at P06.1's close whether the development application stays locked down (likely) or is restored, and the products' baseline records what restoring would send.
 - **Open, not decided here:** the activities query returns another user's activities after the lockdown, and a call's member or a feed's creator keeps what their resource roles grant. For Glow both are closed by the design constraint the architecture document states (the server creates no call, feed or activity for a user). Whether to ask Stream which grant governs the activities query, or to test the remaining roles, is a question the manager puts to the Dev Manager with the close-out consultation (OD-32), not to Nathan now.
 - **Manager-owned follow-ups from DM-05:** the CI policy's job names and counts are updated in this batch (finding 4 (c)); ADR 0003's conditions and "Revisit when" are updated after I2b's review (finding 5 (b)).
 - **I2b's exact-head review is next,** offline and scoped to I2b's change, at `55b2238`.
+
+### Exact-head review of I2b (27 September 2026)
+
+Nathan ran the review session on Fable 5.1 at max, from revision 3 of the [review prompt](../../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md) (records commit `edbe592`), and relayed its report to App Manager 5. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** I2b's harness, records and architecture document are sound, and no recorded result changes. The I2a review's items, DM-05's conditions and the independent check's findings are confirmed fixed or applied. Both design decisions that rest on I2b's live results are sound: removal and deactivation meet the history policy under the 404 code 16 rule, and the record of what a user token can and cannot do in Video and Feeds before and after the lockdown. The activities query stays open, as recorded. The reviewer agrees with all six of the manager's dispositions.
+- **Two should-fix findings and eight nits remain.** Finding 1 falls, narrowly, in the class that gets an offline correction pass before P06.1 closes: the runner's generic `call` op can reach Video and Feeds endpoints without the product op's allowlist or deny-list. No case uses that path, and no live run remains. Finding 2: the lockdown's verification and its record cover only the client roles' grants.
+
+#### The report, as relayed
+
+The session's notes before its report, verbatim:
+
+> I'll start with the environment check (names only), then the start gate and classifications, then read the records and the diff before running the offline checks.
+>
+> Environment is clean: none of the six variables is set, and the toolchain matches the expected pins. Now the start gate.
+>
+> Start gate passes on every line. Now the three classifications and the non-Markdown scope check.
+>
+> All three classifications matched expectations. Now I'll pull the file list and sizes, then read the prompt, DM-05, and the records in parallel.
+>
+> All 41 files are mode 100644 and there are no symlinks. Now the reading: the I2b prompt, DM-05, and the manager README entry in parallel.
+>
+> The prompt and DM-05 outputs were saved to files. I'll read them in full now.
+>
+> I've got the prompt and DM-05. Now I'll pull the remaining independent records in one batch: the DM-05 disposition section, the evidence record's I2a/I2b reviews, the architecture document, harness README, ADR 0003, the workflow, the pin test, and the manager's verification at `edbe592`.
+>
+> I have several saved outputs to read in full, plus the manager's verification of I2b and the brief sections at `edbe592`. None depends on another, so I'll read them all now.
+>
+> I'll pull the rest of the README, the brief at edbe592, and confirm the install directories are ignored—all at once since they're independent—then kick off the installs in the background.
+>
+> I've confirmed the install directories are already covered by the root ignore file. I'll now kick off the installs in the background while starting to review the code diff, prioritizing the highest-risk files: the product op, the products module, and the guard.
+>
+> The product op and guard tables check out on their own. Now I'll pull in the runner's call op, the server hook's guard installation, and the CLI's scoped configure/probe/baseline wiring in parallel, since these can be read independently.
+>
+> The installs finished. Before starting the offline checks I'll read the install log and confirm where the fix-reversal script puts its scratch copy, so nothing lands inside the repository.
+>
+> Installs are clean with no changes to the tree. I'll now pull the reversal script's copy logic, check on the offline background checks, and review diffs for the verdict-bearing modules (mechanisms, i2a, matrix, proof_run, run_plan), since these are independent and can be requested together.
+>
+> Got the diffs for mechanisms, i2a, matrix, and run_plan. Now I'll read the full proof_run diff, which contains the case loop, disclosure rule, product-finding verdict, fixtures, and cleanup.
+>
+> I've read the verdict-bearing code. Next I'll kick off the fix-reversal run in the background and gather the remaining independent pieces: whitespace/secret scans, the protected-section comparison, baseline client-role grants against the nine recorded PUTs, F9-sync/F9-thread leak terms, `_case_verdict`/`step`/`judge_dimensions` and the `after_detail` caller, the `_CHARGE_WORDS` regex, the client bridge's `call`/`product` handling, and the GitHub tool schema for the hosted CI check.
+>
+> The offline checks are done. I'll review their log, then re-run the three misfired reads (the `step` method, F9-thread's leak terms, and the client bridge's `send`), and split out the I2a review section's diff into I2b's change versus the manager's.
+>
+> Everything offline checks out clean (tests, lint, formatting, mypy, node checks, run plan, pin test), and the protected-section diff is just a harmless blank-line separator I2b added. The three failed reads were due to a stale relative path after the working directory changed—I'll redo them with absolute paths and also pull hosted CI, the I2b test files, and the reversal table.
+>
+> Everything's clean so far—environment, installs, offline checks, and hosted CI all pass with "Stream proof checks" actually running. The fix-reversal job is running in the background while I read I2b's tests and reversal table using absolute paths.
+>
+> Reading the saved test outputs and the reversal table next, plus the two live-found fix commits in isolation, the F9-thread case, and the family channel naming. All independent, so one batch.
+>
+> I still need several independent checks: the reversal run's result, two offline probes on the deny-list and case-sensitive key matching, a diff scan for the API key value, verification that no matrix step reaches client request methods, the `ws_dimension`/`_guard_refusal` code paths, and a final tree-state check. Since these are all independent, I'll run them together.
+>
+> Probe 1 was inconclusive since the SDK blocked the call locally before hitting any request path—I'll rerun it with a development-token REST user to distinguish a budget refusal from an op refusal. Probe 2 confirmed differently cased keys pass both tables; I'll also redo the other reads with absolute paths since they failed due to the working directory shifting again.
+>
+> The bypass probe is conclusive: with a REST user set, the generic `call` op reached the request interceptor and was stopped only by the budget, while the `product` op on the same path was refused by the deny-list. Still pending: the reversal run, a harness tree check against I2b's code head, verifying the `configure`/`restore` plans reference no product path, and hosted CI on `ad89753`.
+>
+> The reversal run is about a third done and will notify me when finished. Meanwhile I'll check the missing run-1 line in the run plan and verify that the CI policy at the records commit names the fifth job as the manager's disposition indicates.
+>
+> The fix-reversal run is about a third done and should finish in roughly half an hour. Everything else offline is complete, so I'll just wait for that run's summary rather than poll it.
+>
+> All checks are done except the fix-reversal run, which is still in progress (~half an hour left). I'll wait for its summary line to appear and then finish writing the report with the exact result.
+>
+> I'll wait for the reversal run to finish, but in the meantime I'll check whether any current no-leak case could vacuously satisfy the disclosure rule, and pull F9-thread's definition, which my earlier grep missed since it's generated in a loop.
+>
+> I need to pull the full definitions of R7a, R7b, R8a, and R8b since my grep cut off their leak terms, and check whether RT1 and S15 route through the new disclosure code at all—both quick independent reads while the reversal run continues in the background.
+>
+> All findings and checks are settled, including confirming the disclosure-rule question stays closed (no no-leak case has every leak term satisfied by its own request). I'm just waiting on the fix-reversal run results before finalizing the report.
+>
+> Nothing further can be requested until the reversal run finishes: at 12:44 UTC it stood at 140 of 342 with no failure so far, so about twenty-five minutes remain. Both the run itself and the waiter on its summary line will notify me; I'll write the report as soon as the result is in.
+>
+> The reversal run has finished. I'll read its summary, break down the failure reasons, list I2b's entries, and confirm the tree is unchanged.
+>
+> All 342 reversals check out against the manager's figures (396 assertion failures, 47 errors, 3 by-design aborts, no "not demonstrated" cases). Next, I'll review each of I2b's 100 entries' failure reasons to confirm none stem from loading or naming errors.
+
+The report ("Review of P06.1-I2b at `55b2238`"; its headings are moved down to fit this record):
+
+**Prompt received:** revision 3, from commit `edbe5927d0a6279f4fea591dd03623a1b95722fe`.
+
+**Head reviewed:** `git rev-parse HEAD` printed `55b22387e6478e4b7c8d58480108e4c7341c4564`. `HEAD^2` is `0a0512c1fa95c1c55546eff57ba4d68f79325b3a`. One merge base, `0f45e648099b415217938c25d7369164c0101def`. The ancestor check printed "records build on the head". The diff stat is 41 files, 11719 insertions, 175 deletions. The harness at the head is identical to I2b's code head `ad89753` outside Markdown.
+
+**Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY`, `STREAM_API_SECRET` is present. node v24.19.0, npm 11.9.0, npx 11.9.0 and Python 3.12.14, all from `/root/.local/bin`.
+
+| Classification (trusted `main` policy, sha256 `dec69a26…`, `python3 -I`, outside the tree) | Output |
+|---|---|
+| `main` → head | `{"full": true, "reason": "behavior-or-empty"}`, 129 paths |
+| `6a51dae` → head | `{"full": true, "reason": "behavior-or-empty"}`, 55 paths; the filter for non-Markdown files outside `proofs/stream-chat/` and the workflow printed nothing |
+| head → `edbe592` | `{"full": false, "reason": "ordinary-docs-only"}`, 11 paths |
+
+**Verdict: approve.** I2b's harness, records and architecture document are sound, and no recorded result changes. There is no blocking finding. Two should-fix findings and eight nits remain. Finding 1 falls, narrowly, in the class that gets an offline correction pass before P06.1 closes: the runner has a second path to Video and Feeds endpoints that skips the deny-list. It is a few lines to close, no case uses it, and no live run remains in P06.1. Finding 2 and the nits go to the final delta review and the records. Both design decisions that rest on I2b's results are sound.
+
+##### Findings, most severe first
+
+Paths are under `proofs/stream-chat/` unless said otherwise.
+
+**1. Should fix. The runner's generic `call` op reaches Video and Feeds endpoints without the product op's allowlist or deny-list.**
+- Where: `client/runner.cjs:266` to `:279`, the `call` op, which invokes any method of the SDK client with any arguments; `glow_stream_proof/client_bridge.py:260`, which passes any method name; `glow_stream_proof/matrix.py:2053`, where `validate` checks `product` steps only.
+- Scenario, reproduced offline with a zero request budget and an unreachable proxy, so nothing left the machine: after a REST user was set, a `call` on the client's `post` to the chat host's `/api/v2/video/call/default/x/join` with `ring: true` reached the SDK's request interceptor and was stopped only by the budget, error kind `budget`. The `product` op on the same path was refused by the deny-list, kind `refused`. With a budget, the request would have been sent.
+- What holds: no case in the matrix uses this path. Every product case is a `product` step, which `validate` checks against the op, and the 18 live rows record the op's requests. The README's claim that the op is how a case sends a product request is true of the cases, not of the runner.
+- Fix: check the deny-list and allowlist inside the request interceptor for any URL whose path starts `/api/v2/video/` or `/api/v2/feeds/`, whatever op sent it; or refuse `call` on the client for its generic request methods. Add a `validate` rule, a test that drives the real runner, and a reversal.
+- Class: yes, narrowly. It lets a harness-authored request escape the deny-list. The exposure before P06.1 closes is nil, since no live run remains; the rule still routes it to the correction pass.
+
+**2. Should fix. The lockdown's verification and its record cover the client roles' grants only.**
+- Where: `glow_stream_proof/products.py:351` to `:370`, `verify`, which flags a client role's non-empty grants and an unverified read and nothing else; `glow_stream_proof/cli.py:259` to `:287`, where the full re-read is compared by that `verify` alone and the record keeps the client roles' grants alone.
+- Scenario: had a `PUT` reset a call type's settings or a resource role's grants, the re-read would still have printed "differences after: []" and the record would hold nothing of it. Later drift in `admin`, `call_member` or a setting goes unseen the same way. The README sentence "that Stream changes only the roles named is documented and verified by the re-read after the apply, not assumed" overstates what was verified: the client roles read `[]`; the other roles and the settings were not compared with the baseline.
+- What holds: the guard's `is_lockdown_body` proves each body was `grants` alone, naming client roles with `[]`. A change elsewhere could only come from Stream departing from its documented partial update. The nine `PUT`s are exactly the scopes where the committed baseline shows a client role with a grant, and the grant counts in the architecture document's section 5 match the baseline.
+- Fix: compare every non-client role's grants and each call type's settings with the committed products baseline, as the chat check does with its baseline; keep the full after-state in the record; correct the README sentence. A read-only `baseline` at P06.1's close, compared with the committed products baseline, would show what the nine `PUT`s left. That is a live command and the manager's call.
+- Class: none. No verdict rests on it, and the scoped configure could not have sent anything outside the two families.
+
+**3. Nit. Deny-list keys are matched case-sensitively.**
+- Where: `client/product-op.cjs:57` to `:58`; `glow_stream_proof/products.py:123` to `:125`.
+- Scenario, reproduced: `Ring: true`, `NOTIFY: true` and `video: "True"` pass both tables. Go's JSON decoder, which Stream's API uses, matches field names case-insensitively, so such a key may be honoured. Only harness code could send it, and `validate` would not catch it.
+- Fix: compare lowercased keys and values. Class: the deny-list class in principle, but it needs a deliberately miscased key in a case definition.
+
+**4. Nit. The disclosure rule can HOLD (filtered) with nothing scanned.**
+- Where: `glow_stream_proof/proof_run.py:1784` to `:1787`, `_disclosure`, where the scanned list may be empty.
+- Scenario: a future no-leak case whose every leak term is carried by its own request would HOLD (filtered) when its control found the terms. No current case is so: R3, R4 and R5 keep three of four terms; R7a and R7b keep the message ID; R8a keeps the names; R8b keeps all; F9-sync keeps three; the four product no-leak cases keep all.
+- Fix: INCONCLUSIVE when nothing is left to scan. Class: a false HOLDS in principle only; no case can trigger it.
+
+**5. Nit, records.** The I2b section's "Checks" item 4 gives mypy "55 source files". The head answers 53, as I2b's own step-2 line and the manager's run say.
+
+**6. Nit, records.** The deviations say "Fourteen live commands against the plan's eleven"; the table has 15 rows, and the manager's verification and the brief say fifteen. Row 8 makes no network call, which explains fourteen against fifteen; "eleven" is not derivable from the prompt's section 5.
+
+**7. Nit, records, architecture document.** Section 3's existence-oracle row attributes to ADR 0003's consequences that channel and message IDs are random, opaque and never shown. The ADR says that of user IDs. The document should state it as its own design constraint, as DM-05's finding 5 (a) allows, and mark it open for P06.2 as it does for channel naming.
+
+**8. Nit.** A non-2xx `PUT` mid-plan leaves no record: `cli.py:65` to `:84` raises on the first failure, and the re-read and the record at `:258` to `:287` come after. Not exercised live; the nine answers were 201. Fix: re-read and write the record in a `finally`.
+
+**9. Nit, records.** Commit `93390ce` also changed FD-feed's step body, whose custom note no longer carries the Feeds marker; the deviation bullet describes only the removed undo. The commit message says both.
+
+**10. Nit, records.** The `sync` pair's FAIL is recorded as "a list of two entries against one" without naming the list or its entries; the normalized shapes live only in I2b's local work files. The architecture document's "sync is an oracle too" rests on that one observation. The record should quote the two normalized shapes.
+
+##### Confirmations and assessments
+
+**The I2a review's items, DM-05's conditions and the independent check:** all confirmed fixed or applied at the head.
+
+| Item | Where confirmed |
+|---|---|
+| I2a finding 1 | `mechanisms.py` `stepping`, `collect_after`, `apply`, `after_apply`; `KeptStepsTest`, three tests; reversals "I2b finding 1" ×3 fail on `'INCONCLUSIVE' != 'DOES NOT MEET …'` |
+| I2a finding 2 | `i2a.py` `shape`, `_normal`, `normalized`; `OracleTest`; both normalized answers in every pair's row |
+| I2a nit 3, eight tests | margin on every dimension, listener, retention, oracle control, 5xx pair, 5xx write put back, transport attempts, setting type; none left; eight reversals |
+| I2a nit 4 | `guard.py:394`, every mutating `messages/{id}` path; `RefusalTest` and the real-hook test; S3a HOLDS live with its replay 201 |
+| I2a nit 5 | `EveryOpTest`: the real runner answers every op, `product` included, nothing sent |
+| I2a nit 6 | two sentences corrected in place, marked; the third hunk of I2b's record change |
+| DM-05 finding 1 | `_configure_products`: a difference, chat verification, refusals in code, `ConfigureScope`, re-read; `ScopedConfigureTest`, eight tests and five reversals |
+| DM-05 finding 2 | runs 1, V1 and V2 separate; `probe-products`; `unavailable_answer` and the `upgrade`-only exemption; cleanup proceeds |
+| DM-05 finding 3 | `product-op.cjs` and `products.py` tables, deny-list first; the guard's `_product`; `AllowlistTest` drives the JS file with node over 61 rows and requires the same reason; every object has a delete |
+| DM-05 finding 4 | the workflow, below; the pin test OK |
+| DM-05 finding 5 | the architecture document's sections 3 and 4 |
+| DM-05 finding 6 | `checks/run_plan.py` counts run 1, V1, V2 and the largest in reserve; S3a live |
+| Independent check 1 to 6 | `undo_verdict` before the replay; `events(into=…)` with the `except BaseException` keep; subject and object words, 404 as an object, listings not verified stop preflight; `is_lockdown_body`; the chat-only gate; the two tables agree on `"true"` and on order; reversals "I2b check 1" to "check 6" |
+
+**The design decisions that rest on I2b's results.**
+
+- **Removal and deactivation MEET under the 404 code 16 rule: sound.** `missing_404` returns ended only on a 404 with code 16, only for the affected member after a removal or deactivation, only with the other member's identical request collected and successful after the mechanism, and only with a message naming the membership or the user; `dimension` first requires the same member's success before. A missing channel fails the second condition, a malformed request the first and second, a harness error is no response. Given the recorded answers, `policy_verdict` must give MEETS. The residual is the record itself, which cannot be re-run.
+- **What a user token could do before the lockdown and what remains: sound.** Every FAIL in run V1 is the client's 2xx or B reading A's data with the terms scanned outside what its request carried. Every HOLDS in run V2 is a 403 code 17 with the server's 2xx control or A's own read finding the data; `refused_verdict` and `no_leak_verdict` allow nothing else. The seven FAILs after the lockdown are 2xx answers. Run V2's preflight compared the products under the recorded stamp, so the client roles read `[]` and the `.app` grants empty when those answers came.
+- **The activities query left open: sound as recorded.** A 201 with A's text and activity ID to B after the lockdown, with no grant in the plan governing it.
+
+**The disclosure rule, an assessment note.** The rule filters an echoed identifier even where the echo is an existence signal, as in R8a's queried IDs or a cid in `inaccessible_cids`. The existence-oracle cases carry that question, and EO-channel's `sync` pair caught it. The rule and the cases together are sound; the README could say that the oracle cases hold the existence question.
+
+**The manager's dispositions.** I agree with all six.
+
+- **The reserve rerun spent on run V1:** agree. The first attempt's eight INCONCLUSIVEs were a harness defect, the rerun gave every Feeds case its before row, and run V2 completed without a rerun.
+- **Two fix commits between live commands:** agree. Each has a failing test and a reversal, the whole set was demonstrated at each head, and every live command names its committed head. Commit `93390ce` also changed FD-feed's step body, nit 9.
+- **`checks/run_plan.py` reading "DOES NOT FIT" mid-session:** agree that it is misleading and not wrong about the caps. The script adds the ledger to the whole plan again by design. The delta review can make it count only what remains.
+- **F9-thread INCONCLUSIVE:** agree. With replies off no thread exists, the control failed, and the reads outside the match are covered by the grants.
+- **VD-query and FD-read INCONCLUSIVE after the lockdown:** agree. Code 102 is not attributable, and FD-read's control was refused. VD-query's message is itself an existence signal, which the architecture document records.
+- **The activities query open, not decided:** agree, including putting it to the Dev Manager at close-out.
+
+**The workflow.** `git diff HEAD^1 HEAD -- .github/` is exactly the job `proof`, "Stream proof checks", plus the gate's `needs` entry and its Python tuple entry. The job's condition is the other application jobs' condition, its action pins and `persist-credentials: false` are the same, `python-version: '3.12.14'`, `node-version: '24.19.0'` with `package-manager-cache: false`, one `npm install --global npm@11.9.0` right after setup-node with the workspace as its working directory, `timeout-minutes: 10`, no `secrets.*`, no `env:`, and it runs the README's installs and offline checks plus `checks/run_plan.py`. PR run 36305061337 on `84b2d6f`, a Markdown-only records commit whose code is the head's: all seven jobs succeeded; "Stream proof checks" ran, not skipped, every step success, the tests in 38 seconds; the gate succeeded. Push run 36298830899 on the code head `ad89753` shows the same. The gate's Python list at the head includes `proof`.
+
+**Areas reviewed with no findings.**
+- **The guard's Video and Feeds scope:** deny-list first, a configuration write only in `ConfigureScope` and only with the lockdown's body, a call type's creation or deletion and a feed group change refused everywhere, deletes only of run-owned objects, every named user the run's, the queries reads; the real hook refuses typed and raw calls alike before counting; the run's scope never allows product configuration; `cleanup --apply` owns calls and feeds by prefix only.
+- **The scoped configure:** the plan is a difference of `PUT`s naming only client roles with `[]`; nothing for an unavailable product or a scope at the target; `--apply` refuses on chat problems, on a planned path outside the two families, and on an unknown product; the general `configure` and `restore` plans reference no product path.
+- **The applied plan against the baseline:** nine scopes, roles and grant counts match the record and section 5 exactly; `default` lists no `anonymous` and `audio_room` and `livestream` no `guest`, as the document says.
+- **The product-finding rule and signals:** 402, code 99 and every other charge word still stop; a fixture's or a case's unavailable answer ends only that product's cases; chat rows are never touched; `NOT AVAILABLE` is neither kept when interrupted nor a pass; every new server path goes through the hook and cleanup is skipped after any recorded signal.
+- **Fixtures, tracking, cleanup, preflight and `verify-clean`:** each object recorded from the answer that created it, `undo_once`, FD-feed's feed kept for cleanup, deletes accepted as 2xx or 404 with tasks completed, the Feeds data delete, preflight refusing foreign objects and unverified listings, the poll listing as each run user with each recorded poll read back.
+- **The oracle and the interruption fixes:** shape without `duration`; `ws_dimension` cannot give ended when a window was not collected or no probe was accepted; `step` sends nothing.
+- **Records:** the counts add up, 503 tests, 342 reversals, 15 rows, 13 users and 102 client calls; the ten protected sections are byte-identical to `b04306d` in content, the last gaining only a blank separator line before the new section; the README's rules match the code for the 404 rule, the disclosure rule, the shape comparison, the deny-list words and the product-finding rule.
+- **Scope:** 38 files under `proofs/stream-chat/`, the workflow, the architecture document and the evidence record; no dependency file, lock, `.npmrc`, `pyproject.toml` dependency or committed chat baseline changed; all 41 files mode 100644; no symlink under `proofs/` or `.github/`.
+
+##### Checks and limits
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | no output, exit 0 |
+| Installs, `env -i`, proxy and CA variables by reference | `pip install --require-hashes`: getstream 6.1.0, ruff 0.16.8, mypy 2.3.1, httpx 0.28.1; `pip check`: "No broken requirements found."; `npm ci --ignore-scripts`: "added 51 packages", "found 0 vulnerabilities"; stream-chat 9.53.0, ws 8.21.3, https-proxy-agent 5.0.1; `npm audit`: "found 0 vulnerabilities" |
+| Unit tests, `env -i` | `Ran 503 tests in 37.730s`, `OK` |
+| Ruff check / format / mypy | "All checks passed!" / "55 files already formatted" / "Success: no issues found in 53 source files" |
+| `node --check` on the four `.cjs` files | exit 0 each |
+| `checks/run_plan.py`, empty ledger | "run plan: fits", exit 0; run 1: 7 users, 4 channels, peak 4, 8 cases; V1 and V2: 2 users, 0 channels, peak 2, 18 cases each; total with reserve 18 of 20 users, 8 of 30 channels; complete set 132 cases |
+| Pin test, `services/api` | `Ran 3 tests`, `OK` |
+| `checks/fix_reversals.py`, scratch copy outside the tree | "reversals: 342, not demonstrated: 0", exit 0, about 12:29 to 13:07:21 UTC; 396 failed on an assertion, 47 on the error their reverted fix causes, 3 aborted by design; no syntax, import or name error; all 100 I2b rows OK, each failing on its rule's assertion or its reverted fix's error, every reason read |
+| Secret scan of the diff, 707,890 bytes, and of the baseline | one JWT-shaped string, the fabricated redaction-test input, twice in the diff; 0 email addresses, private-key blocks, AWS, GitHub or Slack tokens, secret assignments; the application's API key 0 times in both |
+| Baseline file | keys `app_id`, `video`, `feeds` only; no user, member, email or token; 130,016 bytes |
+| Hosted CI | as above: PR run 36305061337 and push run 36298830899, seven jobs each, all success |
+| Offline probes of my own | the `call` op bypass, finding 1; key casing, finding 3 |
+| Repository | `git status` clean; only ignored paths created; the reversal scratch directory removed; no commit, push, PR comment, re-run, workflow dispatch or Notion change |
+
+**Limits.** Nothing was run live, and the live results rest on I2b's record, whose outputs stayed in its session. I used no sub-agents. My probes were two, not a mutation campaign. The `sync` pair's two answers cannot be read from the record, nit 10. Whether the nine `PUT`s left every non-client role and setting unchanged is not shown by the record or the harness, finding 2, and only a live read can show it. Hosted CI was read for the head's PR run and the code head's push run, not for every push on I2b's branch.
+
+#### Manager verification of the review (App Manager 5, 27 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head and made no Stream call.
+
+- **Identity and classification.** The prompt revision, the head, its second parent, the merge base, the ancestor check and the diff's size are what the prompt expects. The manager's own runs used the same trusted policy (sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs. They gave the report's three results:
+  - `main` → head: full scope, `behavior-or-empty`, **141 paths**. The report's "129 paths" is the count for `main` → `6a51dae`, the I2a review's, recorded above. The result itself is the same;
+  - `6a51dae` → head: full scope, 55 paths; no non-Markdown path lies outside `proofs/stream-chat/` and the workflow;
+  - head → `edbe592`: `ordinary-docs-only`, 11 paths.
+
+  No non-Markdown path differs between `ad89753` and the head. I2b's 41 files are 38 under `proofs/stream-chat/`, the workflow, the architecture document and this record, all with mode 100644.
+- **Findings, at `55b2238`:**
+  - **Finding 1:** the `call` op (`client/runner.cjs:266`) applies any method of the SDK client to the command's arguments, and the client's `get`, `post`, `put` and `patch` take a full URL. The request interceptor (`:130`) checks only the budget, so only the `product` op (`:286`) applies `productRefusal`. `client_bridge.send` (`client_bridge.py:260`) passes any op and fields, and `validate` (`matrix.py:2035`) checks only `product` steps (`:2053`). The manager did not re-run the reviewer's probe; the code gives its result.
+  - **Finding 2:** `products.verify` (`products.py:351`) flags an unverified read and a client role's non-empty grants, and nothing else. `configuration.product_differences` (`configuration.py:322`) is only that. The scoped `configure --apply` (`cli.py:258` to `:287`) compares its re-read with it and records only the client roles' grants (`_client_grants`, `:290`).
+  - **Nit 3:** `denied_field` (`products.py:113`) and `deniedField` (`client/product-op.cjs:47`) compare keys exactly, and a denied-true key's value only with `true` or `"true"`. The path check lowercases (`:71`); the field check does not.
+  - **Nit 4:** `_disclosure` (`proof_run.py:1773`) scans only the terms the request did not carry (`:1785`). With none left, nothing is found, and `no_leak_verdict` (`matrix.py:298`) gives HOLDS (filtered) on a 2xx whose control found the terms.
+  - **Nit 8:** `_apply` (`cli.py:65`) raises on the first non-2xx, before the re-read and the record. The general `configure --apply` (`:191`) has the same shape. **One addition to the review's fix:** a charge or limit signal is raised inside `ServerApi.raw` (`server_api.py:188`), and the ledger does not refuse later requests. A re-read in a `finally` would therefore send requests after the signal. After a signal, the record must be written without any request.
+  - **Nits 5, 6, 9 and 10,** in the record:
+    - I2b's "Checks" item 4 reads "55 source files"; its step 2 line and App Manager 4's run read 53;
+    - the live table has 15 rows. Section 5 of the I2b prompt names thirteen commands, the reserve rerun included. The two beyond them are command 3, a scoped dry run before run 1 besides the one before the apply, and command 8, `record-products-baseline`, which made no network call. No count gives eleven;
+    - `93390ce` also changed FD-feed's custom note from `{fd_text}` to `feed of {A}` (`matrix.py`), and the deviation bullet names only the removed undo;
+    - EO-channel's row in this record says "a list of two entries against one", and that the run's row keeps both normalized answers. The run's row is in I2b's local results file, which no record kept.
+  - **Nit 7:** ADR 0003's consequences say "random and opaque" of Stream user IDs only. The architecture document's section 3 attributes the same rule for channel and message IDs to ADR 0003. Its section 8 states the rule without the attribution.
+- **The manager's own record.** App Manager 4's verification of I2b repeated "the plan's eleven" in its disposition. It also did not flag item 4's 55, although its own mypy run printed 53. This is AM4-06; the disposition bullet is corrected in place.
+- **Hosted CI.** The manager read both runs the report cites. PR run [36305061337](https://github.com/amthorn78/glow-dating-app/actions/runs/36305061337) on `84b2d6f` and push run [36298830899](https://github.com/amthorn78/glow-dating-app/actions/runs/36298830899) on `ad89753` each ran seven jobs, all success; "Stream proof checks" ran every step, each a success. The manager's commits since `55b2238` are Markdown only (`ordinary-docs-only` against the head), and PR27's run on `70a55c9`, [36320114309](https://github.com/amthorn78/glow-dating-app/actions/runs/36320114309), passed all seven jobs.
+- **Not re-run by the manager:** the session's installs, tests, reversal run and two probes. Its tests, lint, mypy and reversal summary match I2b's record and App Manager 4's own run on `0a0512c`.
+
+#### Disposition
+
+- **I2b's code head `ad89753`, merged at `55b2238`, is approved.** No finding is blocking, and no recorded result changes.
+- **The two design decisions that rest on I2b's live results are confirmed** (DM-01 P4):
+  - removal and deactivation meet the history policy under the 404 code 16 rule;
+  - what a user token can and cannot do in Video and Feeds before and after the lockdown, as the architecture document's sections 2, 3 and 6 record it.
+
+  The manager marks I2b's claims in the architecture document's "Review" columns as confirmed, in this batch. The activities query stays open for the Dev Manager's close-out consultation, as App Manager 4's verification decided.
+- **Finding 1 is in the review prompt's class,** narrowly: a harness request could escape the deny-lists. So an offline correction pass, **P06.1-C4**, fixes it before P06.1 closes. Required:
+  - no request to the Video or the Feeds host, or to a path under `/api/v2/video` or `/api/v2/feeds` once case, percent-encoding and dot segments are normalized, leaves the runner unless the product op's check allows it, whatever op sent it; a product path sent in a non-normalized form is refused outright. The check runs in the request interceptor, before the request is counted;
+  - a `validate` rule that refuses a matrix step that reaches a product path through any op but `product`;
+  - a test that drives the real runner through the review's scenario and fails without the fix (the error kind is `refused`, not `budget`); a check that the 18 product cases' steps still pass; and a reversal.
+- **C4 also takes the other items, because it runs anyway.** Each code fix gets a test that fails without it, and a reversal.
+  - **Finding 2:** `products.verify` also compares every non-client role's grants, each call type's settings and notification settings, and each feed group's recorded fields with the committed products baseline, as the chat check does with its own baseline. The scoped `configure`'s record keeps the full after-state. The README sentence and the architecture document's section 5 say what the re-read verified and what rests on Stream's documentation.
+  - **Nit 3:** both tables match a denied key, and a denied-true key's value, in any letter case.
+  - **Nit 4:** a no-leak case that succeeds when its own request carried every leak term is INCONCLUSIVE, not HOLDS (filtered); a refusal keeps its own rule.
+  - **Nit 8:** a failed `PUT` mid-plan still leaves the record. It re-reads only when no charge or limit signal was met; after a signal it writes the record without any request.
+  - **Nit 7:** the architecture document's section 3 states random, opaque channel and message IDs as its own design constraint, open for P06.2.
+  - **Nits 5, 6, 9 and 10:** corrected in place in I2b's section, each marked. The two normalized `sync` shapes cannot be recovered. The record says so, and the architecture document says that "`sync` is an oracle too" rests on that one recorded observation.
+- **Not in C4:** `checks/run_plan.py`'s mid-session reading, a recorded limit; no live run remains in P06.1.
+- **Finding 2's live read** (the review: "the manager's call"): none now.
+  - No verdict rests on it, and every lockdown body named only client roles (`is_lockdown_body`).
+  - A read is a live command, and the Dev Manager reads its prompt first.
+  - The question goes to the Dev Manager's close-out consultation; a read would run C4's corrected comparison. Until then, the records say that the other roles and the settings are unchanged on Stream's documentation, not by a re-read.
+- **C4's exact-head review is P06.1's final delta review** (the brief's review plan). It covers C4's change and the manager's records since `55b2238`.
+- **Manager-owned, in this batch:** ADR 0003's conditions and "Revisit when" (DM-05 finding 5 (b)); App Manager 4's disposition bullet above, corrected in place (AM4-06).

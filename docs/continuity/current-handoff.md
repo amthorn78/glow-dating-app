@@ -13,10 +13,11 @@ This file only routes: the current item, what happens next and who waits on whom
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review; the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy alone (I2a).
-    - **Done:** DM-05: approved with conditions, applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
+    - **Done:** DM-05, its conditions applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md).
     - **Done:** I2b (`ad89753`, merged at `55b2238`): the Video and Feeds lockdown is applied to application 1729640; removal and deactivation MEET the history policy under the 404 code 16 rule; the [architecture document](../architecture/chat-provider-permissions.md) is written; "Stream proof checks" runs in CI.
-    - **Done:** OD-33 and OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md), six rungs on both models; request v6 (Nathan's Claude skill `typesafe-scoring`); every prompt re-read.
-    - **In flight:** the I2b review at `55b2238` ([prompt](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md), revision 3), on Fable 5.1 at max; then the economics discovery.
+    - **Done:** OD-33, OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md), six rungs, both models; request v6 (the Claude skill `typesafe-scoring`).
+    - **Done:** the I2b [review](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md): approve; both design decisions confirmed; finding 1 is in the correction class. ADR 0003's conditions updated.
+    - **Next:** P06.1-C4 ([prompt](../ephemeral/2026-09-27-p06-1-c4-correction-prompt.md)), offline; its exact-head review, the final delta review; the economics discovery.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
 - **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-05.
 
@@ -24,15 +25,15 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | Nathan | The I2b review's report (Fable 5.1 at max, started 27 September) | Nothing else starts (OD-29); ask for the session's state |
-| App Manager 5 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR27 cannot merge without the reads |
+| App Manager 5 | Nathan | C4's report (prompt given 27 September) | Nothing else starts (OD-29); ask for the session's state |
+| App Manager 5 | The Dev Manager, via Nathan | The close-out consultation, next action 3, a later step | PR27 cannot merge without it |
 
 ## Next actions
 
-1. Verify the I2b review's report; a correction pass only for a finding in the classes the review prompt names. Then update ADR 0003's conditions and "Revisit when" (DM-05 finding 5 (b)) and record the outcome.
+1. Verify C4's report and integrate it; then its exact-head review, P06.1's final delta review.
 2. Then the economics discovery (the brief's "Sessions").
 3. Close P06.1:
-   - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f`;
+   - the Dev Manager's close-out consultation: reads of the governing Markdown changed after `fa4dc5f` (ADR 0003's update too) and of the HDE contract request; the restore risk ADR 0004 records as accepted (OD-32); the activities query, `call_member` and the I2b review's finding 2 (a live read);
    - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;
    - merge and verify `main`;

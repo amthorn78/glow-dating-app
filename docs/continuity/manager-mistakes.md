@@ -58,6 +58,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-03 | 27 Sep 2026 | process | Scoring requests too thin for an informed reading: one line per level, no facts about cost or capability on either model | Nathan |
 | AM4-04 | 27 Sep 2026 | process | Overrode Nathan's six-rung ladder, left max unreachable, and presented the manager's own model judgement as a recommendation | Nathan |
 | AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
+| AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
 
 ## App Manager 2
 
@@ -363,3 +364,13 @@ Recorded by App Manager 5, after App Manager 4's handover.
 - **Effect:** none known. The start text Nathan pasted into App Manager 5's session had both filled in (App Manager 5, `claude/stoic-carson-66gdig`), so no session received the placeholders.
 - **Correction:** the start procedure's note now says the text keeps both placeholders and that the current handoff names the branch; the three summary rows are added.
 - **Prevention:** before a handover commit, read the start procedure below the line as the successor will receive it, and check that every section of this log has its summary row.
+
+### AM4-06 — The I2b verification repeated an underivable count and missed a wrong one (accuracy)
+
+Recorded by App Manager 5, after I2b's exact-head review.
+
+- **What happened:** App Manager 4's verification of I2b, in the evidence record, accepted "fifteen live commands against the plan's eleven" in its dispositions. It copied I2b's "the plan's eleven", which no count of the I2b prompt's section 5 gives: that section names thirteen commands, the reserve rerun included. The same verification ran mypy and printed "53 source files", but did not flag I2b's "Checks" item 4, which says 55.
+- **Caught by:** the exact-head review of I2b, nits 5 and 6.
+- **Effect:** two wrong numbers in the record. No verdict or decision rests on either.
+- **Correction:** the disposition bullet is corrected in place and marked. P06.1-C4 corrects I2b's own two sentences, marked.
+- **Prevention:** a verification derives every count it repeats from its source, and compares each of its own check outputs with the figure the report under verification gives for the same check.

@@ -51,10 +51,20 @@ Nathan, 25 September 2026: *"I accept your recommendation on S15. There should n
 
 ## Conditions (DM-02 B7)
 
+Each condition has its status after P06.1-I2a and I2b, whose exact-head reviews confirmed their findings on 27 September 2026. The [architecture document](../architecture/chat-provider-permissions.md), section 4, keeps the detail and names the review that confirmed each finding.
+
 - **(a)** P06.1-I2a shows that member custom data cannot change anything Glow displays or forwards, and that revocation ends the write.
+  - **Status: met per mechanism, not as a whole.**
+    - *Removal* and *deactivation* end the write (404 code 16; both meet the history policy in I2b's run). The *hard delete* ends it with the conversation.
+    - *Per-user token revocation* ends it for existing tokens, but a token issued afterwards works, so Glow's token endpoint must refuse the user.
+    - A *channel ban*, a *hide* and a *freeze* do not end it.
+    - That the data cannot change anything Glow displays or forwards rests on decisions 1 and 2, which P06.2 and P07 implement and test. The proof shows only that the data reaches the other member's client.
 - **(b)** Deletion and export (PV07) include member custom data held at Stream.
+  - **Status: open for P07 and P08.** The proof shows where the data lives, on the membership of the match channel. A hard delete removes the channel, so export must read the memberships first.
 - **(c)** I1's configuration becomes a reviewed, reapplicable plan for the production application, in `docs/architecture/chat-provider-permissions.md` (P06.1-I2b).
+  - **Status: met.** The plan is the document's section 5; the harness's `configure` and `configure --products video,feeds` are its executable form, and I2b's review confirmed it. One limit stands until P06.1-C4: the re-read after the Video and Feeds apply compared only the client roles' grants (the review's finding 2).
 - **(d)** One channel per person stays the recorded fallback if condition (a) fails. So does a provider-level closure, if Nathan wants one.
+  - **Status: recorded,** in the document's section 7. Condition (a) is met per mechanism only, so the fallback stands until P06.2 shows that the display rule holds.
 
 ## Consequences
 
@@ -70,6 +80,7 @@ Nathan, 25 September 2026: *"I accept your recommendation on S15. There should n
 
 - a later run or review narrows S15 or finds a configuration that closes it (the I1 review confirmed S15 on 25 September 2026);
 - Stream support says that the undocumented `channel_hide_members_only` setting keeps member data from other members;
-- P06.1-I2a fails condition (a);
+- P06.2 cannot show that the display rule holds, which brings in the fallback of condition (d); or Glow's unmatch or block path comes to rely on a channel ban, a hide or a freeze, none of which ends the write;
 - Stream adds a setting that disables client writes to member custom data;
+- a design change opens a path to the other member that a design constraint now closes, not the display rule: an invite, or a call, feed or activity the server creates for a user (the architecture document, sections 3 and 6);
 - an exception's basis changes, or a new one is proposed; only Nathan adds to the list.
