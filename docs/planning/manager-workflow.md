@@ -14,8 +14,10 @@ Nathan's direction, 24 September 2026:
 - **Nathan starts every implementation and review session himself.** He opens it in the dedicated app cloud environment, pastes the prompt, and relays that session's report back to the manager.
 - **The manager follows up through Nathan.** It checks relayed findings against the pushed branch, then gives Nathan the next prompt: a correction, a review or a close-out.
 - **Nathan reinitiates managers.** Manager sessions (App Manager 1, App Manager 2, …) do not run continuously. Every manager leaves a self-contained handoff so the next one can start cold.
+  - **Or he directs the outgoing manager to create its successor** (Nathan, 27 September 2026; OD-31): *"I want you to create a new version of yourself, App Manager 4. Make sure notion and your repo are current, and that all your procedures, parameters and github activity transition smoothly. Remember, all critical context should be either in notion or in repo."*
+  - The outgoing manager then runs the handover checklist below, and creates the session with the remote-session tools, as it created the Dev Manager. It sends the [next-manager start prompt](start-prompts/next-manager.md) as the first message, and sets the manager PR's head branch as the session's outcome branch.
 
-**The manager never starts implementation or review work itself.** It does not use subagents (Agent/Task tool) or remote-session tools for that work. When it needs something done, it writes a prompt for Nathan. Nathan brings the manager back when there is something to act on. The one exception is the Dev Manager below: Nathan directed the manager to create that session and relay to it itself.
+**The manager never starts implementation or review work itself.** It does not use subagents (Agent/Task tool) or remote-session tools for that work. When it needs something done, it writes a prompt for Nathan. Nathan brings the manager back when there is something to act on. The one exception is the Dev Manager below: Nathan directed the manager to create that session and relay to it itself. A successor manager, created only at Nathan's direction (OD-31), is not implementation or review work.
 
 **Implementation and review sessions are not restricted in tooling.** They may use any tools, subagents, scheduled wake-ups or other capabilities their assignment needs. Their boundaries are about scope: owned paths, their own branch, and the reporting the prompt asks for.
 
@@ -40,7 +42,7 @@ Nathan's direction, 24 September 2026:
 
 | Session | Started by | Does | Never |
 |---|---|---|---|
-| **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
+| **Manager** (App Manager *N*) | Nathan, with a start prompt or the current handoff; or its predecessor, at Nathan's direction (OD-31) | Reads state; writes briefs, prompts and handoffs; verifies relayed reports against pushed branches; classifies changes; integrates branches; drives PR/CI/merge; syncs Notion | Starts implementation or review work itself (subagents or remote-session tools); performs a commissioned work item unless Nathan directs it |
 | **Implementation** | Nathan, pasting a manager prompt | Works within its owned paths on its own session branch from the named commit, using any tools, subagents or wake-ups it needs; runs the listed checks; pushes its own branch; reports | Edits manager-owned files or other sessions' branches; merges to main (the manager integrates) |
 | **Review** | Nathan, pasting a manager review prompt | Reviews one exact head with any tools it needs; reports findings | Changes the reviewed branch |
 | **Dev Manager** | The primary manager, with the remote-session tools (Nathan, 25 September 2026) | Reviews and approves consequential decisions and process; periodic process and build reviews; documentation oversight. Answers through report files on its own branch, with a relay message that Nathan carries (OD-25) | Implements, commissions sessions, merges, edits Notion or decides for Nathan |
@@ -88,6 +90,15 @@ Nathan's direction, 24 September 2026:
 
 **Waiting checkpoints** (DM-01 P6). Before any long wait (a relay, a review, a Dev Manager report), the manager records in the current handoff what it waits for, from whom, and what it does if nothing arrives. Compaction or a handover then loses nothing.
 
+**Handover checklist** (OD-31). Before a successor starts, the outgoing manager:
+
+- pushes every records batch and reads its CI;
+- brings Notion into line with the repository at that commit, with readbacks;
+- moves anything the successor needs out of its own session files, such as request templates or drafts, into the repository or Notion;
+- routes the current handoff to the successor: who holds the branch, what is in flight, who carries it, and what comes next;
+- brings the next-manager start prompt up to date;
+- after the handover commit, pushes nothing and edits nothing in Notion.
+
 **Notion and the repository** (Nathan, 25 September 2026; OD-26 and OD-27).
 
 - **What Notion carries.** Implementation Control carries a matching copy of the operational guidance, as its operating procedure, and of the owner-direction register, on its own page. Nathan: *"operational guidance should live in notion, not just in repo, do not ignore that resource, it is critical"*.
@@ -106,7 +117,8 @@ Nathan's direction, 24 September 2026:
 - A cloud session can push only its own working branch.
   - An implementation session first runs `git fetch origin <manager-branch>` and `git merge --ff-only <start-sha>` on its own branch, then verifies `git rev-parse HEAD`. It pushes only that branch and reports the branch name and head SHA.
   - The manager integrates relayed branches into its own branch, which is the PR head.
-- A reinitiated manager cannot push the previous manager's branch. It continues on its own branch from the previous head, opens a replacement PR and closes the old PR with a link to the new one.
+- A manager that Nathan starts by hand cannot push the previous manager's branch. It continues on its own branch from the previous head, opens a replacement PR and closes the old PR with a link to the new one.
+- A successor created by its predecessor (OD-31) has the manager PR's head branch as its outcome branch. It pushes that branch, and the PR stays.
 - Concurrent writers need disjoint owned paths. Never let two sessions edit the same file uncoordinated.
 - **Branch and PR discretion.** Nathan, 24 September 2026: *"I will trust you to manage the branches and PRs as you see fit."* The manager decides branch and PR mechanics within these rules. Merging still requires the gates in the [CI/review policy](../operations/ci-and-branch-policy.md). It never uses force-pushes or rewritten history.
 - **Actions re-runs.** A rerun can confirm a diagnosis; it never resolves an intermittent failure by itself (OD-21). The manager session's GitHub integration cannot re-run Actions jobs; on 24 September 2026 a failed-jobs re-run returned `403 Resource not accessible by integration`. When a re-run is warranted, the manager says so on the PR and asks Nathan to use "Re-run failed jobs" on the run page. Pushing an empty commit to trigger CI is not allowed.

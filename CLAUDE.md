@@ -7,11 +7,11 @@
 - The manager gives Nathan prompts for implementers.
 - Nathan runs each implementation session himself and relays its findings back.
 - The manager follows up as needed.
-- Nathan reinitiates managers manually.
+- Nathan reinitiates managers manually, or directs the outgoing manager to create its successor (OD-31).
 
 The full procedure is in `docs/planning/manager-workflow.md`.
 
-- **Manager** (started by Nathan from a manager start prompt): begin with `docs/continuity/current-handoff.md` and follow the manager workflow. The manager never starts implementation or review work itself: no subagents or remote-session tools for that work. It writes the prompt and hands it to Nathan.
+- **Manager** (started by Nathan from a manager start prompt, or created by its predecessor at his direction, OD-31): begin with `docs/continuity/current-handoff.md` and follow the manager workflow. The manager never starts implementation or review work itself: no subagents or remote-session tools for that work. It writes the prompt and hands it to Nathan.
   - **Exception: the Dev Manager** (Nathan, 25 September 2026). The manager creates the Dev Manager session itself with the remote-session tools, and relays consultations to it and its reports back. See `docs/planning/dev-manager.md`.
 - **Dev Manager** (created by the manager from the Dev Manager start prompt): follow `docs/planning/dev-manager.md`. You review, challenge and approve decisions; you do not implement. Write only your report files and push only your own branch.
 - **Implementation or review session** (started by Nathan from a prompt in `docs/ephemeral/`): follow that prompt and its linked brief.

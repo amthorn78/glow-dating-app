@@ -52,6 +52,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-18 | 26 Sep 2026 | accuracy | Told Nathan, and wrote in Notion, that all 99 of C2's fix reversals were demonstrated, from the script's summary alone; one reversal failed only because its edit broke the file's syntax | The exact-head review of C2, finding 3 |
 | AM3-19 | 26 Sep 2026 | accuracy | The DM-04 consultation told the Dev Manager that the Stream variables were not set for its read, and the records said "No Stream variables"; its container, started before OD-28, holds them, as AM3-17 had found for the manager's own | The Dev Manager, DM-04 finding 10 |
 | AM3-20 | 26 Sep 2026 | accuracy | Told Nathan that TypeSafe "only scores the level and can't pick a model". Its Choice questions can pick one, and the v4 request already asks one | Nathan |
+| AM3-21 | 27 Sep 2026 | accuracy | A Notion usage-log row said the manager had corrected nit 6's line reference in the I2a review; the evidence record keeps that reference | App Manager 3, re-reading the row |
 
 ## App Manager 2
 
@@ -303,3 +304,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Effect:** none on any session. I2a's prompt was given before OD-30, so no prompt lacked a model reading it should have had.
 - **Correction:** the model question m1, a separate TypeSafe request, so v4 stays comparable. Its option criteria are the semantic rules for each model. Its decision rule and the manager's labels for 11 past sessions were saved in the Notion usage log before the first run, and the calibration agreed on all 11. The manager workflow, OD-30 and the usage log now describe both readings.
 - **Prevention:** before telling Nathan that a tool cannot do something, check the tool's documentation. Say what the current setup does, not what the tool cannot do.
+
+### AM3-21 — A Notion note contradicted the record (accuracy)
+
+- **What happened:** on 27 September, at about 01:21 UTC, the manager wrote the I2a review's outcome into its row of the Notion usage log. The note said that the manager had "corrected … one line reference in nit 6". Its verification in the evidence record, written minutes earlier, keeps that reference: the line names the run as the guard's scope, which is what the record says.
+- **Caught by:** App Manager 3, re-reading the row.
+- **Effect:** the row misstated the record for about a minute.
+- **Correction:** the note was rewritten from the evidence record at about 01:22 UTC and read back.
+- **Prevention:** write a Notion note from the committed record, not from memory of the work. The Notion checklist's readback step ("compare it with what was intended") compares with that record.
