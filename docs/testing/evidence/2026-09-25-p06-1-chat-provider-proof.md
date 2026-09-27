@@ -3597,7 +3597,7 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
 **The re-check of `919a383` found one should-fix, fixed at `112011f`:** after a refused step, a signal or Ctrl-C met by the re-read was recorded but not re-raised. With it, `112011f` also sends `https:` only and refuses forwarding headers (`X-Forwarded-Host`, `Forwarded`, `X-Original-Host`, `X-Host`).
 
 **The re-check of `112011f`: nothing blocking and no should-fix.** Its two nits are recorded as README limits:
-- two request-rewriting headers (`X-HTTP-Method-Override`, `X-Original-URL`) still pass the check. They matter only if Stream honours them, and only a `call` of a client URL method, which `validate` refuses, could set them;
+- two request-rewriting headers (`X-HTTP-Method-Override`, `X-Original-URL`) still pass the check. They matter only if Stream honours them (corrected in P06.1-C5; the C4 review's finding 1: this said that only a `call` of a client URL method, which `validate` refuses, could set them, but other stream-chat methods take a request-options argument too). Since P06.1-C5, `validate` covers the matrix's steps: every `call` step must be on its allowlist, with no more positional arguments than listed, so no step reaches a request option. The runner refuses those two headers and `X-HTTP-Method`, `X-Method-Override` and `X-Rewrite-URL`, in any letter case, on every request, whatever sent it. What remains is a per-request `proxy`, `socketPath` or adapter, none of which gets past the runner's host and path checks;
 - another re-read failure after a refused step exits 1.
 
 **Residuals the reviewer assessed and the README records:**
