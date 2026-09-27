@@ -127,7 +127,113 @@ function bodyOf(data) {
   return data;
 }
 
+// Where a Video or Feeds request can go (P06.1-C4; the I2b review's finding 1): the two
+// products' hosts, and the two path prefixes on any host.
+const PRODUCT_HOSTNAMES = [PRODUCT_HOSTS.video, PRODUCT_HOSTS.feeds].map((h) => new URL(h).hostname);
+const PRODUCT_PREFIXES = ['/api/v2/video', '/api/v2/feeds'];
+
+// The URL axios will send: its buildFullPath (the base URL joined to a relative URL, or to
+// any URL when allowAbsoluteUrls is false), then its Node adapter's new URL(). A relative
+// URL with no base URL cannot be sent; it is resolved against a placeholder host so that
+// its path is still checked.
+function sentURL(config) {
+  const url = typeof config.url === 'string' ? config.url : String(config.url ?? '');
+  const base = typeof config.baseURL === 'string' ? config.baseURL : '';
+  let full = url;
+  if (base && (!/^([a-z][a-z\d+\-.]*:)?\/\//i.test(url) || config.allowAbsoluteUrls === false)) {
+    full = url ? base.replace(/\/+$/, '') + '/' + url.replace(/^\/+/, '') : base;
+  }
+  try {
+    return new URL(full);
+  } catch (_e) {
+    try {
+      return new URL(full, 'https://unresolved.invalid');
+    } catch (_e2) {
+      return null;
+    }
+  }
+}
+
+// A path with its percent-encoding decoded (repeatedly, so a double encoding is seen too),
+// backslashes read as slashes, empty and dot segments resolved; letter case is kept.
+function normalizedPath(pathname) {
+  let text = String(pathname).replace(/\\/g, '/');
+  for (let i = 0; i < 8; i += 1) {
+    let next;
+    try {
+      next = decodeURIComponent(text).replace(/\\/g, '/');
+    } catch (_e) {
+      break;
+    }
+    if (next === text) break;
+    text = next;
+  }
+  const out = [];
+  for (const segment of text.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') out.pop();
+    else out.push(segment);
+  }
+  return '/' + out.join('/');
+}
+
+// Whether the check can read a body's fields: none, a JSON object or array, or a string
+// that parses as JSON. A form, a buffer, a stream or any other string (axios would send
+// it form-encoded) could carry a denied field the check cannot see.
+function readableBody(data) {
+  if (data === undefined || data === null) return true;
+  if (typeof data === 'string') {
+    try {
+      JSON.parse(data);
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+  if (typeof data !== 'object') return false;
+  if (Buffer.isBuffer(data) || ArrayBuffer.isView(data) || data instanceof ArrayBuffer) return false;
+  if (typeof data.getBoundary === 'function' || typeof data.pipe === 'function') return false;
+  if (typeof URLSearchParams !== 'undefined' && data instanceof URLSearchParams) return false;
+  if (typeof FormData !== 'undefined' && data instanceof FormData) return false;
+  return Array.isArray(data) || Object.getPrototypeOf(data) === Object.prototype;
+}
+
+function isProductPath(normalized) {
+  const folded = normalized.toLowerCase();
+  return PRODUCT_PREFIXES.some((p) => folded === p || folded.startsWith(p + '/'));
+}
+
+// Why a request, whatever op made it, may not go to Video or Feeds, or null (P06.1-C4;
+// the I2b review's finding 1). A request to either product's host, or to a path under
+// /api/v2/video or /api/v2/feeds once letter case, percent-encoding and dot segments are
+// normalized, must pass the product op's own check (client/product-op.cjs) on the
+// method, the path as sent, the body and the query. A product path whose form as sent is
+// not its normalized form is refused outright. Letter case is folded to find a product
+// path but kept in the comparison: an ID may hold capitals, and the allowlist's fixed
+// segments are lower case, so a miscased fixed segment is refused by the op's check.
+function productRequestRefusal(config) {
+  const parsed = sentURL(config);
+  if (!parsed) return 'a URL that cannot be read';
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  const sent = parsed.pathname;
+  const normalized = normalizedPath(sent);
+  const onProductHost = PRODUCT_HOSTNAMES.includes(host);
+  if (!onProductHost && !isProductPath(normalized)) return null;
+  if (sent !== normalized) return 'a Video or Feeds path not in its normalized form';
+  if (!readableBody(config.data)) return 'a Video or Feeds body the check cannot read';
+  const query = {};
+  for (const [k, v] of parsed.searchParams.entries()) query[k] = v;
+  return productRefusal(config.method, sent, bodyOf(config.data), [query, config.params || {}]);
+}
+
 client.axiosInstance.interceptors.request.use((config) => {
+  // Before the request is counted or sent (P06.1-C4; the I2b review's finding 1).
+  const refused = productRequestRefusal(config);
+  if (refused) {
+    const err = new Error(`PROOF_REFUSED: ${refused}`);
+    err.proofRefused = true;
+    throw err;
+  }
   // A command's own cap applies only while a command is in flight; the process
   // cap always does (P06.1-I2a).
   if ((log.inCommand && commandCalls >= commandMax) || totalCalls >= PROCESS_MAX_CALLS) {

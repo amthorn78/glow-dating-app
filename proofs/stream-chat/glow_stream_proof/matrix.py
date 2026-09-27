@@ -84,8 +84,10 @@ PROOF_PNG_B64 = (
 @dataclass(frozen=True)
 class SdkStep:
     session: str
-    # ``product``: the runner's Video and Feeds op (P06.1-I2b).
-    op: Literal["call", "product"]
+    # ``product``: the runner's Video and Feeds op (P06.1-I2b). ``get``: the runner's GET
+    # relative to the client's base URL; no case uses it today, and ``validate`` refuses
+    # one that names a Video or Feeds path (P06.1-C4).
+    op: Literal["call", "product", "get"]
     params: Mapping[str, Any]
     max_calls: int = 3
 
@@ -295,9 +297,23 @@ def refused_verdict(outcome: Outcome, control_ok: bool | None) -> Verdict:
     return Verdict(INCONCLUSIVE, f"refusal not attributable ({outcome})")
 
 
+NOTHING_SCANNED_REASON = (
+    "succeeded, but its own request carried every leak term, so nothing was left to scan"
+)
+
+
 def no_leak_verdict(
-    outcome: Outcome, leaks: list[str], control_ok: bool | None, control_found: bool
+    outcome: Outcome,
+    leaks: list[str],
+    control_ok: bool | None,
+    control_found: bool,
+    *,
+    nothing_scanned: bool = False,
 ) -> Verdict:
+    """``nothing_scanned``: the disclosure rule left out every leak term, because the
+    request itself carried each one. A success is then no evidence either way: it is
+    INCONCLUSIVE, never HOLDS (filtered); a refusal keeps its own rule (P06.1-C4; the I2b
+    review's nit 4)."""
     if leaks:
         return Verdict(FAIL, "response disclosed: " + ", ".join(leaks))
     if outcome == "no-response":
@@ -306,6 +322,8 @@ def no_leak_verdict(
         if control_ok:
             return Verdict(HOLDS, f"{outcome} error; control succeeded")
         return Verdict(INCONCLUSIVE, f"{outcome} error, but the positive control did not succeed")
+    if outcome == "success" and nothing_scanned:
+        return Verdict(INCONCLUSIVE, NOTHING_SCANNED_REASON)
     if outcome == "success":
         if control_ok and control_found:
             return Verdict(
@@ -2032,6 +2050,24 @@ def all_cases() -> list[Case]:
     return sorted(cases, key=lambda c: c.phase)
 
 
+# The client's methods that take the request's URL (stream-chat 9.53.0): a ``call`` of one
+# of them could send any method to any path, Video and Feeds included (P06.1-C4).
+CLIENT_URL_METHODS = frozenset(
+    {"get", "post", "put", "patch", "delete", "sendFile", "doAxiosRequest", "setBaseURL"}
+)
+
+
+def _product_reach(step: SdkStep) -> str | None:
+    """Why a step that is not the product op could reach Video or Feeds, or ``None``."""
+    if step.op == "call" and step.params.get("target") == "client":
+        method = str(step.params.get("method"))
+        if method in CLIENT_URL_METHODS:
+            return f"a call of the client's {method}, which takes a URL, could reach Video or Feeds"
+    if step.op == "get" and products.is_product_path(str(step.params.get("path") or "")):
+        return "a get of a Video or Feeds path"
+    return None
+
+
 def validate(cases: list[Case]) -> list[str]:
     """Structural problems in the matrix definition (used by the offline tests)."""
     problems = []
@@ -2061,6 +2097,13 @@ def validate(cases: list[Case]) -> list[str]:
             )
             if why is not None:
                 problems.append(f"{case.id}: the product op would refuse its step: {why}")
+        if case.step is not None:
+            # P06.1-C4 (the I2b review's finding 1): only the product op reaches Video or
+            # Feeds. The runner applies the op's check to every request it sends there,
+            # whatever op made it; a case must not rely on that.
+            reach = _product_reach(case.step)
+            if reach:
+                problems.append(f"{case.id}: {reach}; only the product op may reach them")
         if product_of(case) is not None and case.phase >= 100:
             problems.append(f"{case.id}: a product case runs before the families")
     return problems

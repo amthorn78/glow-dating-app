@@ -83,6 +83,11 @@ TPC = "tests.test_product_cases."
 TRN = "tests.test_runner."
 TCF = "tests.test_configuration."
 TCLI = "tests.test_cli."
+# P06.1-C4.
+TPRR = TRN + "ProductReachTest."
+TMV = "tests.test_matrix.ProductReachValidationTest."
+TBC = TPR + "BaselineComparisonTest."
+TCR = TCLI + "ConfigureRecordTest."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -3894,8 +3899,9 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 PR,
-                '            if key in DENIED_TRUE_KEYS and (item is True or item == "true"):\n',
-                '            if key in DENIED_TRUE_KEYS and item in (True, "true"):\n',
+                # Since P06.1-C4 the denied value is read by _is_true, in any letter case.
+                '    return item is True or (isinstance(item, str) and item.lower() == "true")\n',
+                '    return item in (True, "true") or (isinstance(item, str) and item.lower() == "true")\n',
             )
         ],
         [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
@@ -3934,6 +3940,274 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             "tests.test_product_cases.BeforeTheLockdownTest."
             "test_a_deleted_feed_id_is_not_recreated_so_the_replays_feed_stays",
         ],
+    ),
+    # -- P06.1-C4: the I2b review's findings 1 and 2 and nits 3, 4 and 8 ---------------------
+    (
+        "C4 finding 1: the runner checks every request to Video or Feeds, whatever op sent it",
+        [(RN, "  const refused = productRequestRefusal(config);\n", "  const refused = null;\n")],
+        [
+            TPRR + "test_the_reviews_scenario_a_client_post_to_a_join_with_ring",
+            TPRR + "test_a_product_path_not_in_its_normalized_form_is_refused_outright",
+            TPRR + "test_a_product_host_is_checked_whatever_its_path",
+            TPRR + "test_the_get_op_is_checked_too",
+        ],
+    ),
+    (
+        "C4 finding 1: the check runs before the budget, so a refused request is not counted",
+        [
+            (
+                RN,
+                "  // Before the request is counted or sent (P06.1-C4; the I2b review's finding 1).\n"
+                "  const refused = productRequestRefusal(config);\n"
+                "  if (refused) {\n"
+                "    const err = new Error(`PROOF_REFUSED: ${refused}`);\n"
+                "    err.proofRefused = true;\n"
+                "    throw err;\n"
+                "  }\n"
+                "  // A command's own cap applies only while a command is in flight; the process\n"
+                "  // cap always does (P06.1-I2a).\n"
+                "  if ((log.inCommand && commandCalls >= commandMax) || totalCalls >= PROCESS_MAX_CALLS) {\n"
+                "    const err = new Error('PROOF_BUDGET: request refused before sending (budget reached)');\n"
+                "    err.proofBudget = true;\n"
+                "    throw err;\n"
+                "  }\n",
+                "  if ((log.inCommand && commandCalls >= commandMax) || totalCalls >= PROCESS_MAX_CALLS) {\n"
+                "    const err = new Error('PROOF_BUDGET: request refused before sending (budget reached)');\n"
+                "    err.proofBudget = true;\n"
+                "    throw err;\n"
+                "  }\n"
+                "  const refused = productRequestRefusal(config);\n"
+                "  if (refused) {\n"
+                "    const err = new Error(`PROOF_REFUSED: ${refused}`);\n"
+                "    err.proofRefused = true;\n"
+                "    throw err;\n"
+                "  }\n",
+            )
+        ],
+        [TPRR + "test_the_reviews_scenario_a_client_post_to_a_join_with_ring"],
+    ),
+    (
+        "C4 finding 1: a product path not in its normalized form is refused outright",
+        [
+            (
+                RN,
+                "  if (sent !== normalized) return 'a Video or Feeds path not in its normalized form';\n",
+                "",
+            )
+        ],
+        [
+            TPRR + "test_a_product_path_not_in_its_normalized_form_is_refused_outright",
+            TPRR + "test_the_get_op_is_checked_too",
+        ],
+    ),
+    (
+        "C4 finding 1: a request to either product's host is checked whatever its path",
+        [
+            (
+                RN,
+                "  const onProductHost = PRODUCT_HOSTNAMES.includes(host);\n",
+                "  const onProductHost = false;\n",
+            )
+        ],
+        [TPRR + "test_a_product_host_is_checked_whatever_its_path"],
+    ),
+    (
+        "C4 finding 1: a product body the check cannot read is refused",
+        [
+            (
+                RN,
+                "  if (!readableBody(config.data)) return 'a Video or Feeds body the check cannot read';\n",
+                "",
+            )
+        ],
+        [TPRR + "test_a_product_body_the_check_cannot_read_is_refused"],
+    ),
+    (
+        "C4 finding 1: validate refuses a step that could reach a product through another op",
+        [(MT, "            reach = _product_reach(case.step)\n", "            reach = None\n")],
+        [
+            TMV + "test_a_call_of_a_client_url_method_fails_validation",
+            TMV + "test_a_get_of_a_product_path_fails_validation",
+        ],
+    ),
+    (
+        "C4 finding 1: validate finds a product path once case, encoding and dot segments are normalized",
+        [(PR, "    folded = normalized_path(path).lower()\n", "    folded = path\n")],
+        [TMV + "test_a_get_of_a_product_path_fails_validation"],
+    ),
+    (
+        "C4 finding 2: verify compares the products with the committed baseline",
+        [
+            (
+                PR,
+                "    problems += baseline_differences(state, recorded_products() if recorded is None else recorded)\n",
+                "",
+            )
+        ],
+        [
+            TBC + "test_a_changed_call_member_grant_is_reported",
+            TBC + "test_a_changed_call_type_setting_is_reported",
+            TBC + "test_a_changed_feed_group_is_reported",
+            TBC + "test_a_role_or_a_scope_on_one_side_only_is_a_difference",
+        ],
+    ),
+    (
+        "C4 finding 2: each call type's settings and notification settings are compared",
+        [
+            (
+                PR,
+                '            if product == "video":\n                for field in ("settings", "notification_settings"):\n',
+                '            if False:\n                for field in ("settings", "notification_settings"):\n',
+            )
+        ],
+        [
+            TBC + "test_a_changed_call_type_setting_is_reported",
+            TBC + "test_a_changed_notification_setting_and_a_type_change_are_reported",
+        ],
+    ),
+    (
+        "C4 finding 2: each feed group's recorded fields are compared",
+        [
+            (
+                PR,
+                '    if _available(state, "feeds"):\n        have_groups',
+                "    if False:\n        have_groups",
+            )
+        ],
+        [TBC + "test_a_changed_feed_group_is_reported"],
+    ),
+    (
+        "C4 finding 2: a role present on one side only is a difference",
+        [
+            (
+                PR,
+                "            for role in sorted((set(have_grants) | set(want_grants)) - set(CLIENT_ROLES)):\n",
+                "            for role in sorted((set(have_grants) & set(want_grants)) - set(CLIENT_ROLES)):\n",
+            )
+        ],
+        [TBC + "test_a_role_or_a_scope_on_one_side_only_is_a_difference"],
+    ),
+    (
+        "C4 finding 2: the scoped apply's record keeps the full after-state",
+        [
+            (
+                C,
+                '        record["after"] = products.baseline_record(after["products"], ctx.credentials.app_id)\n',
+                '        record["after"] = {p: after["products"][p]["availability"] for p in products.PRODUCTS}\n',
+            )
+        ],
+        [
+            TCLI
+            + "ScopedConfigureTest.test_apply_sends_only_the_difference_and_verifies_both_products"
+        ],
+    ),
+    (
+        "C4 nit 3: a denied key matches in any letter case (the guard's table)",
+        [(PR, "            name = str(key).lower()\n", "            name = str(key)\n")],
+        [
+            TPR + "AllowlistTest.test_letter_case_does_not_matter_and_the_reason_names_the_field",
+            TPR + "AllowlistTest.test_the_python_table",
+        ],
+    ),
+    (
+        'C4 nit 3: a denied-true value matches "true" in any letter case (the guard\'s table)',
+        [
+            (
+                PR,
+                '    return item is True or (isinstance(item, str) and item.lower() == "true")\n',
+                '    return item is True or item == "true"\n',
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_letter_case_does_not_matter_and_the_reason_names_the_field",
+            TPR + "AllowlistTest.test_the_python_table",
+        ],
+    ),
+    (
+        "C4 nit 3: a denied key matches in any letter case (the runner's op)",
+        [
+            (
+                PO,
+                "      const name = String(key).toLowerCase();\n",
+                "      const name = String(key);\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_letter_case_does_not_matter_and_the_reason_names_the_field",
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+        ],
+    ),
+    (
+        'C4 nit 3: a denied-true value matches "true" in any letter case (the runner\'s op)',
+        [
+            (
+                PO,
+                "  return item === true || (typeof item === 'string' && item.toLowerCase() === 'true');\n",
+                "  return item === true || item === 'true';\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_letter_case_does_not_matter_and_the_reason_names_the_field",
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+        ],
+    ),
+    (
+        "C4 nit 4: a disclosure with every leak term carried says nothing was scanned",
+        [(P, '            detail["nothing_scanned"] = True\n', "            pass\n")],
+        [TA + "DisclosureRuleTest.test_a_success_with_nothing_left_to_scan_is_inconclusive"],
+    ),
+    (
+        "C4 nit 4: a success with nothing scanned is INCONCLUSIVE, not HOLDS (filtered)",
+        [(MT, '    if outcome == "success" and nothing_scanned:\n', "    if False:\n")],
+        [
+            TA + "DisclosureRuleTest.test_a_success_with_nothing_left_to_scan_is_inconclusive",
+            "tests.test_matrix.ClassificationTest.test_no_leak_verdict_with_nothing_scanned",
+        ],
+    ),
+    (
+        "C4 nit 8: a failed configuration write still leaves the record",
+        [
+            (
+                C,
+                "    try:\n"
+                "        _apply(ctx, plan, outcome.steps)\n"
+                "    except BaseException as exc:  # recorded, then re-raised by finish() after the record\n"
+                "        outcome.failure = exc\n",
+                "    _apply(ctx, plan, outcome.steps)\n",
+            )
+        ],
+        [
+            TCR + "test_scoped_a_refused_write_mid_plan_keeps_the_record_and_the_reread",
+            TCR + "test_scoped_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+            TCR + "test_general_a_refused_write_mid_plan_keeps_the_record_and_the_reread",
+            TCR + "test_general_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+        ],
+    ),
+    (
+        "C4 nit 8: no request after a charge or limit signal (no re-read)",
+        [(C, "        if self.signal:\n            return AFTER_NOT_READ_SIGNAL\n", "")],
+        [
+            TCR + "test_scoped_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+            TCR + "test_scoped_a_429_mid_plan_sends_nothing_more_and_keeps_the_record",
+            TCR + "test_general_a_402_mid_plan_sends_nothing_more_and_keeps_the_record",
+            TCR + "test_general_a_429_mid_plan_sends_nothing_more_and_keeps_the_record",
+        ],
+    ),
+    (
+        "C4 nit 8: the signal is read from the ledger's recorded signals, not the exception",
+        [
+            (
+                C,
+                "        self.signal = self.signal or bool(ctx.ledger.signals)\n        if self.signal:\n",
+                "        self.signal = self.signal or isinstance(self.failure, GuardrailStop)\n        if self.signal:\n",
+            )
+        ],
+        [TCR + "test_the_signal_is_read_from_the_ledger_not_the_exception"],
+    ),
+    (
+        "C4 nit 8: a signal met in the re-read is recorded as such",
+        [(C, "        if outcome.signal:\n            return None, AFTER_NOT_READ_SIGNAL\n", "")],
+        [TCR + "test_a_signal_in_the_reread_is_recorded_and_sends_nothing_more"],
     ),
 ]
 

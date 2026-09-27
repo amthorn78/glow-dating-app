@@ -13,7 +13,8 @@
  *     caption, ring, notify, rtmp, hls or egress (a media session, a push, a recording
  *     or a broadcast: each could reach a device or incur a charge);
  *   - a body or query carrying ring or notify (any value), video: true, or
- *     create_notification_activity: true;
+ *     create_notification_activity: true, each key in any letter case and true as a
+ *     boolean or as "true" in any letter case (P06.1-C4);
  *   - any method and path outside the allowlist below (no delete, no configuration).
  */
 
@@ -43,7 +44,12 @@ const DENIED_PATH_WORDS = [
 const DENIED_KEYS = ['ring', 'notify'];
 const DENIED_TRUE_KEYS = ['video', 'create_notification_activity'];
 
-// The key of a denied field found anywhere in a body or query, or null.
+// A boolean true, or the string "true" in any letter case.
+function isTrue(item) {
+  return item === true || (typeof item === 'string' && item.toLowerCase() === 'true');
+}
+
+// The key of a denied field found anywhere in a body or query, in lower case, or null.
 function deniedField(value) {
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -54,8 +60,11 @@ function deniedField(value) {
   }
   if (value && typeof value === 'object') {
     for (const [key, item] of Object.entries(value)) {
-      if (DENIED_KEYS.includes(key)) return key;
-      if (DENIED_TRUE_KEYS.includes(key) && (item === true || item === 'true')) return `${key}: true`;
+      // In any letter case (P06.1-C4; the I2b review's nit 3): Stream's JSON decoding may
+      // match a field name without regard to case.
+      const name = String(key).toLowerCase();
+      if (DENIED_KEYS.includes(name)) return name;
+      if (DENIED_TRUE_KEYS.includes(name) && isTrue(item)) return `${name}: true`;
       const found = deniedField(item);
       if (found) return found;
     }

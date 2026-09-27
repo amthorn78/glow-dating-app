@@ -242,6 +242,22 @@ class ClassificationTest(unittest.TestCase):
         )
         self.assertEqual(matrix.no_leak_verdict("permission", [], True, False).label, matrix.HOLDS)
 
+    def test_no_leak_verdict_with_nothing_scanned(self) -> None:
+        """P06.1-C4, the I2b review's nit 4: a success with nothing left to scan is
+        INCONCLUSIVE; a refusal keeps its own rule."""
+        verdict = matrix.no_leak_verdict("success", [], True, True, nothing_scanned=True)
+        self.assertEqual(
+            (verdict.label, verdict.reason), (matrix.INCONCLUSIVE, matrix.NOTHING_SCANNED_REASON)
+        )
+        self.assertEqual(
+            matrix.no_leak_verdict("permission", [], True, True, nothing_scanned=True).label,
+            matrix.HOLDS,
+        )
+        self.assertEqual(
+            matrix.no_leak_verdict("permission", [], False, True, nothing_scanned=True).label,
+            matrix.INCONCLUSIVE,
+        )
+
     def test_not_effective_verdict(self) -> None:
         self.assertEqual(matrix.not_effective_verdict(True, "success", True).label, matrix.FAIL)
         self.assertEqual(
@@ -292,3 +308,68 @@ class ProductStepValidationTest(unittest.TestCase):
             problems, ["VD-bad: the product op would refuse its step: denied field (ring)"]
         )
         self.assertEqual(matrix.validate([good]), [])
+
+
+class ProductReachValidationTest(unittest.TestCase):
+    """P06.1-C4, the I2b review's finding 1: a step that could reach Video or Feeds through
+    any op but ``product`` fails validation."""
+
+    def case(self, op: str, params: dict[str, object]) -> matrix.Case:
+        control = next(c for c in matrix.all_cases() if c.id == "VD-create").control
+        return matrix.Case(
+            id=f"X-{op}",
+            group="content",
+            actor="A",
+            token="A's valid token",
+            action="reach a product another way",
+            expect="refused",
+            control=control,
+            step=matrix.SdkStep(session="A", op=op, params=params),  # type: ignore[arg-type]
+            phase=40,
+        )
+
+    def test_a_call_of_a_client_url_method_fails_validation(self) -> None:
+        for method in sorted(matrix.CLIENT_URL_METHODS):
+            case = self.case(
+                "call",
+                {
+                    "target": "client",
+                    "method": method,
+                    "args": ["https://chat.stream-io-api.com/api/v2/video/call/default/x/join"],
+                },
+            )
+            self.assertEqual(
+                matrix.validate([case]),
+                [
+                    f"X-call: a call of the client's {method}, which takes a URL, could reach "
+                    "Video or Feeds; only the product op may reach them"
+                ],
+            )
+
+    def test_a_get_of_a_product_path_fails_validation(self) -> None:
+        for path in (
+            "/api/v2/video/call/default/x",
+            "/api/v2/FEEDS/activities",
+            "/api/v2/chat/..%2Fvideo/calls",
+            "/channels/../api/v2/feeds/feeds/query",
+            "/api/v2/%76ideo",
+        ):
+            self.assertEqual(
+                matrix.validate([self.case("get", {"path": path})]),
+                ["X-get: a get of a Video or Feeds path; only the product op may reach them"],
+                path,
+            )
+
+    def test_what_stays_valid(self) -> None:
+        self.assertEqual(
+            matrix.validate([self.case("get", {"path": "/channels/glow-match/x"})]), []
+        )
+        self.assertEqual(matrix.validate([self.case("get", {"path": "/api/v2/videos"})]), [])
+        channel_call = self.case(
+            "call", {"target": "channel", "method": "query", "args": [{}], "type": "glow-match"}
+        )
+        self.assertEqual(matrix.validate([channel_call]), [])
+        client_call = self.case("call", {"target": "client", "method": "queryUsers", "args": [{}]})
+        self.assertEqual(matrix.validate([client_call]), [])
+        # And every case in the matrix: no step reaches a product but through the op.
+        self.assertEqual(matrix.validate(matrix.all_cases()), [])

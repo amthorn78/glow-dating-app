@@ -15,7 +15,12 @@ What this module holds:
   sent: a path holding ``join``, ``go_live``, ``start_``, ``stop_``, ``broadcast``,
   ``recording``, ``transcription``, ``caption``, ``ring``, ``notify``, ``rtmp``, ``hls``
   or ``egress``; a body or query carrying ``ring`` or ``notify``, ``video: true`` or
-  ``create_notification_activity: true``; any method and path outside the allowlist.
+  ``create_notification_activity: true`` (each key in any letter case, and true as a
+  boolean or as ``"true"`` in any letter case; P06.1-C4); any method and path outside
+  the allowlist. Since P06.1-C4 the runner applies the op's check to every request it
+  sends to either product's host or to a path under ``/api/v2/video`` or
+  ``/api/v2/feeds``, whatever op made it (:func:`is_product_path`; the I2b review's
+  finding 1).
 * **The configuration**, read-only: the call types and their grants (Video), the feed
   visibilities and their grants, and the feed groups (Feeds). Stream configures Chat
   grants per channel type, Feeds grants per feed visibility and Video grants per call
@@ -43,9 +48,12 @@ Nothing here calls Stream except :func:`read_configuration`, :func:`list_objects
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 from .configuration import ApiRequest
 from .server_api import ApiResult, ServerApi
@@ -68,6 +76,14 @@ FEED_VISIBILITIES = "/api/v2/feeds/feed_visibilities"
 # not drift, and the runs before the lockdown (run 1, run V1) must be allowed. Applied on
 # 27 September 2026 at 05:58:31 UTC (its record: configure-products-20260927T055831Z).
 LOCKDOWN_APPLIED: str | None = "2026-09-27T05:58:31Z"
+
+# The committed Video and Feeds baseline, read before the lockdown (``baseline`` then
+# ``record-products-baseline``, 27 September 2026). Since P06.1-C4 :func:`verify` compares
+# every other role's grants, each call type's settings and notification settings, and each
+# feed group's recorded fields with it (the I2b review's finding 2).
+PRODUCTS_BASELINE = (
+    Path(__file__).resolve().parent.parent / "baseline" / "video-feeds-1729640-2026-09-27.json"
+)
 
 _SEG = r"[^/]+"
 # (pattern, methods): what a client may send through the runner's product op.
@@ -110,8 +126,15 @@ DENIED_TRUE_KEYS = ("video", "create_notification_activity")
 _NOT_ON_DEPLOYMENT = "the endpoints are not available on the application's deployment"
 
 
+def _is_true(item: Any) -> bool:
+    """A boolean true, or the string ``"true"`` in any letter case."""
+    return item is True or (isinstance(item, str) and item.lower() == "true")
+
+
 def denied_field(value: Any) -> str | None:
-    """The key of a denied field anywhere in a body or query, or ``None``."""
+    """The key of a denied field anywhere in a body or query, in lower case, or ``None``.
+    A key matches in any letter case, and a denied-true key's value is a boolean true or
+    ``"true"`` in any letter case (P06.1-C4; the I2b review's nit 3)."""
     if isinstance(value, list | tuple):
         for item in value:
             found = denied_field(item)
@@ -120,14 +143,53 @@ def denied_field(value: Any) -> str | None:
         return None
     if isinstance(value, Mapping):
         for key, item in value.items():
-            if key in DENIED_KEYS:
-                return str(key)
-            if key in DENIED_TRUE_KEYS and (item is True or item == "true"):
-                return f"{key}: true"
+            # In any letter case (P06.1-C4; the I2b review's nit 3): Stream's JSON
+            # decoding may match a field name without regard to case.
+            name = str(key).lower()
+            if name in DENIED_KEYS:
+                return name
+            if name in DENIED_TRUE_KEYS and _is_true(item):
+                return f"{name}: true"
             found = denied_field(item)
             if found:
                 return found
     return None
+
+
+PRODUCT_PREFIXES = ("/api/v2/video", "/api/v2/feeds")
+
+
+def normalized_path(path: str) -> str:
+    """A path as a server may read it: the query dropped, percent-encoding decoded
+    (repeatedly, so a double encoding is seen too), backslashes read as slashes, empty
+    and dot segments resolved; letter case is kept (the Python mirror of the runner's
+    ``normalizedPath``; P06.1-C4)."""
+    text = path.split("?", 1)[0].replace("\\", "/")
+    for _ in range(8):
+        try:
+            decoded = unquote(text, errors="strict").replace("\\", "/")
+        except UnicodeDecodeError:
+            break
+        if decoded == text:
+            break
+        text = decoded
+    out: list[str] = []
+    for segment in text.split("/"):
+        if segment in ("", "."):
+            continue
+        if segment == "..":
+            if out:
+                out.pop()
+        else:
+            out.append(segment)
+    return "/" + "/".join(out)
+
+
+def is_product_path(path: str) -> bool:
+    """Whether a path reaches Video or Feeds once letter case, percent-encoding and dot
+    segments are normalized (P06.1-C4; the I2b review's finding 1)."""
+    folded = normalized_path(path).lower()
+    return any(folded == p or folded.startswith(p + "/") for p in PRODUCT_PREFIXES)
 
 
 def denied_path(path: str) -> str | None:
@@ -348,11 +410,13 @@ def lockdown_plan(state: Mapping[str, Any]) -> list[ApiRequest]:
     return plan
 
 
-def verify(state: Mapping[str, Any]) -> list[str]:
+def verify(state: Mapping[str, Any], recorded: Mapping[str, Any] | None = None) -> list[str]:
     """Differences between ``state`` and the lockdown target, for the available products.
     A product that is not available has nothing to lock and is no difference; one whose
     read is not verified (a 5xx, an outage) is a difference, because its state is not
-    known."""
+    known. The client roles must hold no grant; since P06.1-C4 everything else the
+    committed baseline records must be as it records it (:func:`baseline_differences`;
+    ``recorded`` defaults to :data:`PRODUCTS_BASELINE`)."""
     problems: list[str] = []
     for product in PRODUCTS:
         entry = state.get(product) or {}
@@ -367,6 +431,112 @@ def verify(state: Mapping[str, Any]) -> list[str]:
                 problems.append(
                     f"{product} {kind} {name}: grants for {role} not empty: {grants[role]}"
                 )
+    problems += baseline_differences(state, recorded_products() if recorded is None else recorded)
+    return problems
+
+
+def recorded_products() -> dict[str, Any]:
+    """The committed Video and Feeds baseline (:data:`PRODUCTS_BASELINE`)."""
+    return dict(json.loads(PRODUCTS_BASELINE.read_text(encoding="utf-8")))
+
+
+def _changed_paths(have: Any, want: Any, path: str = "") -> list[str]:
+    """The dotted paths at which two JSON values differ, a list compared item by item."""
+    if isinstance(have, Mapping) and isinstance(want, Mapping):
+        out: list[str] = []
+        for key in sorted(set(have) | set(want), key=str):
+            sub = f"{path}.{key}" if path else str(key)
+            if key not in have or key not in want:
+                out.append(sub + (" (not in the baseline)" if key not in want else " (missing)"))
+            else:
+                out += _changed_paths(have[key], want[key], sub)
+        return out
+    if have == want and type(have) is type(want):
+        return []
+    return [path or "(the whole value)"]
+
+
+def _shown(paths: list[str], limit: int = 8) -> str:
+    return ", ".join(paths[:limit]) + (
+        f" and {len(paths) - limit} more" if len(paths) > limit else ""
+    )
+
+
+def baseline_differences(state: Mapping[str, Any], recorded: Mapping[str, Any]) -> list[str]:
+    """What the lockdown must have left as the committed baseline records it, for each
+    available product (P06.1-C4; the I2b review's finding 2): every role's grants other
+    than the client roles' (compared as sets), each call type's ``settings`` and
+    ``notification_settings`` (compared field by field, value and type), and each feed
+    group's ``default_visibility`` and ``default_follower_role``. A call type, a feed
+    visibility, a feed group or a role present on one side only is a difference. Every
+    field :func:`baseline_record` keeps is compared except ``availability`` (checked by
+    :func:`verify`'s own rule) and the three read answers (``read``,
+    ``feed_groups_read``), which describe the read, not the configuration; no kept field
+    is a timestamp or another volatile value."""
+    problems: list[str] = []
+    for product, key, kind in (
+        ("video", "call_types", "call type"),
+        ("feeds", "feed_visibilities", "feed visibility"),
+    ):
+        if not _available(state, product):
+            continue
+        have_scopes = (state.get(product) or {}).get(key) or {}
+        want_scopes = (recorded.get(product) or {}).get(key) or {}
+        for name in sorted(set(have_scopes) | set(want_scopes)):
+            label = f"{product} {kind} {name}"
+            if name not in want_scopes:
+                problems.append(f"{label}: not in the committed baseline")
+                continue
+            if name not in have_scopes:
+                problems.append(f"{label}: missing (the committed baseline has it)")
+                continue
+            have, want = have_scopes[name], want_scopes[name]
+            have_grants = dict(have.get("grants") or {})
+            want_grants = dict(want.get("grants") or {})
+            for role in sorted((set(have_grants) | set(want_grants)) - set(CLIENT_ROLES)):
+                if role not in want_grants:
+                    problems.append(
+                        f"{label}: grants for {role} not in the committed baseline: "
+                        f"{sorted(have_grants[role])}"
+                    )
+                elif role not in have_grants:
+                    problems.append(
+                        f"{label}: grants for {role} missing; the committed baseline has "
+                        f"{sorted(want_grants[role])}"
+                    )
+                elif sorted(have_grants[role]) != sorted(want_grants[role]):
+                    added = sorted(set(have_grants[role]) - set(want_grants[role]))
+                    removed = sorted(set(want_grants[role]) - set(have_grants[role]))
+                    problems.append(
+                        f"{label}: grants for {role} differ from the committed baseline "
+                        f"(added {added}, removed {removed})"
+                    )
+            if product == "video":
+                for field in ("settings", "notification_settings"):
+                    changed = _changed_paths(have.get(field), want.get(field))
+                    if changed:
+                        problems.append(
+                            f"{label}: {field} differ from the committed baseline at "
+                            + _shown(changed)
+                        )
+    if _available(state, "feeds"):
+        have_groups = (state.get("feeds") or {}).get("feed_groups") or {}
+        want_groups = (recorded.get("feeds") or {}).get("feed_groups") or {}
+        for gid in sorted(set(have_groups) | set(want_groups)):
+            label = f"feeds feed group {gid}"
+            if gid not in want_groups:
+                problems.append(f"{label}: not in the committed baseline")
+            elif gid not in have_groups:
+                problems.append(f"{label}: missing (the committed baseline has it)")
+            else:
+                for field in ("default_visibility", "default_follower_role"):
+                    have_value = (have_groups[gid] or {}).get(field)
+                    want_value = (want_groups[gid] or {}).get(field)
+                    if have_value != want_value:
+                        problems.append(
+                            f"{label}: {field} is {have_value!r}; the committed baseline "
+                            f"has {want_value!r}"
+                        )
     return problems
 
 

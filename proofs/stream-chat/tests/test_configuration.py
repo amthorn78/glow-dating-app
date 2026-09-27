@@ -276,22 +276,23 @@ class ProductDifferencesTest(unittest.TestCase):
     differences are the plan, not drift, and the runs before the lockdown are allowed."""
 
     def state(self, user_grants: list[str]) -> dict[str, Any]:
-        return {
-            "video": {
-                "availability": "available",
-                "read": {},
-                "call_types": {
-                    "default": {"grants": {"user": user_grants, "admin": ["create-call"]}}
-                },
-            },
-            "feeds": {
-                "availability": "available",
-                "read": {},
-                "feed_visibilities": {"public": {"grants": {"user": user_grants}}},
-                "feed_groups_read": {},
-                "feed_groups": {},
-            },
-        }
+        """The committed products baseline at the lockdown target (every other role and
+        setting as recorded; P06.1-C4), with ``user_grants`` for the user role in the
+        default call type and the public feed visibility."""
+        import copy
+
+        from glow_stream_proof import products
+
+        recorded = products.recorded_products()
+        video, feeds = copy.deepcopy(recorded["video"]), copy.deepcopy(recorded["feeds"])
+        for scopes in (video["call_types"], feeds["feed_visibilities"]):
+            for cfg in scopes.values():
+                for role in products.CLIENT_ROLES:
+                    if role in cfg["grants"]:
+                        cfg["grants"][role] = []
+        video["call_types"]["default"]["grants"]["user"] = list(user_grants)
+        feeds["feed_visibilities"]["public"]["grants"]["user"] = list(user_grants)
+        return {"video": video, "feeds": feeds}
 
     def test_without_the_products_state_nothing_is_compared(self) -> None:
         self.assertEqual(conf.product_differences(snapshot(), locked=True), [])

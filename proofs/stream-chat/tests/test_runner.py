@@ -10,6 +10,7 @@ import unittest
 from typing import Any
 
 import tests  # noqa: F401
+from glow_stream_proof import matrix
 from glow_stream_proof.client_bridge import RUNNER, ClientSession
 from glow_stream_proof.redaction import Redactor
 from glow_stream_proof.usage import UsageLedger
@@ -373,6 +374,169 @@ class EveryOpTest(unittest.TestCase):
                 "async_errors",
             },
         )
+
+
+CHAT = "https://chat.stream-io-api.com"
+REST_USER = {"op": "set_rest_user", "user_id": "u", "token_source": "dev", "max_calls": 0}
+
+
+def client_call(command_id: int, method: str, *args: Any) -> dict[str, Any]:
+    """A ``call`` of one of the client's own methods, with a zero budget."""
+    return {
+        "id": command_id,
+        "op": "call",
+        "target": "client",
+        "method": method,
+        "args": list(args),
+        "max_calls": 0,
+    }
+
+
+class ProductReachTest(unittest.TestCase):
+    """P06.1-C4, the I2b review's finding 1: nothing reaches Video or Feeds except through
+    the product op's check, whatever op sent the request. Offline: the budget is zero and
+    the proxy is a loopback port nothing listens on, so nothing can leave the machine; a
+    request the check lets through is refused by the budget (kind ``budget``), one it
+    refuses has kind ``refused``, and neither is counted or recorded."""
+
+    def assert_not_sent(self, reply: dict[str, Any], kind: str, message: str | None = None) -> None:
+        self.assertFalse(reply["ok"], reply)
+        self.assertEqual(reply["error"]["kind"], kind, reply)
+        if message is not None:
+            self.assertEqual(reply["error"]["message"], message, reply)
+        self.assertEqual(reply["requests"], [], reply)
+        self.assertEqual(reply["api_calls"], 0, reply)
+
+    def test_the_reviews_scenario_a_client_post_to_a_join_with_ring(self) -> None:
+        """The review's reproduction: after a REST user is set, a ``call`` of the client's
+        ``post`` to the chat host's join path with ``ring: true``. Without the fix the
+        budget stopped it (kind ``budget``); with a budget it would have been sent."""
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            client_call(2, "post", CHAT + "/api/v2/video/call/default/x/join", {"ring": True}),
+            client_call(3, "post", CHAT + "/api/v2/video/call/default/x", {"ring": True}),
+            client_call(4, "post", "/api/v2/feeds/activities", {"feeds": ["user:x"]}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assertTrue(by_id[1]["ok"], by_id[1])
+        self.assert_not_sent(by_id[2], "refused", "PROOF_REFUSED: denied path (join)")
+        self.assert_not_sent(by_id[3], "refused", "PROOF_REFUSED: denied field (ring)")
+        # A relative URL (no base URL): still a product path, still the op's check; the
+        # allowlist admits it, so only the budget stops it.
+        self.assert_not_sent(by_id[4], "budget")
+        self.assertEqual(by_id[99]["background_requests"], [])
+
+    def test_a_product_path_not_in_its_normalized_form_is_refused_outright(self) -> None:
+        not_normal = "PROOF_REFUSED: a Video or Feeds path not in its normalized form"
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            # An encoded slash and dot segments: the chat prefix, read as Video.
+            client_call(2, "post", CHAT + "/api/v2/chat/..%2fvideo/call/default/x", {}),
+            # An encoded letter.
+            client_call(3, "post", CHAT + "/api/v2/%76ideo/call/default/x", {}),
+            # A double encoding.
+            client_call(4, "get", CHAT + "/api/v2/feeds/activities/a%252Fb", {}),
+            # An empty segment.
+            client_call(5, "post", CHAT + "/api/v2//video/call/default/x", {}),
+            # Letter case is folded to find the path; the allowlist's fixed segments are
+            # lower case, so the op's check refuses it.
+            client_call(6, "post", CHAT + "/API/V2/VIDEO/call/default/x", {}),
+            # A dot segment the URL parser resolves before sending: sent as the join path.
+            client_call(7, "post", CHAT + "/api/v2/chat/../video/call/default/x/join", {}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        for command_id in (2, 3, 4, 5):
+            self.assert_not_sent(by_id[command_id], "refused", not_normal)
+        self.assert_not_sent(
+            by_id[6], "refused", "PROOF_REFUSED: path outside the Video and Feeds allowlist"
+        )
+        self.assert_not_sent(by_id[7], "refused", "PROOF_REFUSED: denied path (join)")
+
+    def test_a_product_host_is_checked_whatever_its_path(self) -> None:
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            client_call(2, "post", "https://video.stream-io-api.com/api/v2/chat/channels", {}),
+            client_call(3, "post", "https://FEEDS.stream-io-api.com/channels/glow-match/x", {}),
+            client_call(4, "get", "https://video.stream-io-api.com/api/v2/video/call/default/x"),
+            client_call(
+                5, "get", "https://video.stream-io-api.com/api/v2/video/call/default/x?ring=1"
+            ),
+            client_call(6, "delete", "https://feeds.stream-io-api.com/api/v2/feeds/activities/a"),
+        )
+        by_id = {r["id"]: r for r in replies}
+        outside = "PROOF_REFUSED: path outside the Video and Feeds allowlist"
+        self.assert_not_sent(by_id[2], "refused", outside)
+        self.assert_not_sent(by_id[3], "refused", outside)
+        self.assert_not_sent(by_id[4], "budget")  # on the allowlist: only the budget stops it
+        self.assert_not_sent(by_id[5], "refused", "PROOF_REFUSED: denied field (ring)")
+        self.assert_not_sent(
+            by_id[6], "refused", "PROOF_REFUSED: method DELETE is not allowed on this path"
+        )
+
+    def test_a_product_body_the_check_cannot_read_is_refused(self) -> None:
+        """A string body that is not JSON (axios sends it form-encoded) could carry a denied
+        field the check cannot see; it is refused. A JSON string is read like an object."""
+        cannot_read = "PROOF_REFUSED: a Video or Feeds body the check cannot read"
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            client_call(2, "post", CHAT + "/api/v2/video/call/default/x", "ring=true"),
+            client_call(3, "post", CHAT + "/api/v2/video/call/default/x", '{"Ring": true}'),
+            client_call(4, "post", CHAT + "/api/v2/video/call/default/x", '{"custom": {}}'),
+            client_call(5, "post", CHAT + "/channels/glow-match/x/query", "not json"),
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assert_not_sent(by_id[2], "refused", cannot_read)
+        self.assert_not_sent(by_id[3], "refused", "PROOF_REFUSED: denied field (ring)")
+        self.assert_not_sent(by_id[4], "budget")
+        self.assert_not_sent(by_id[5], "budget")  # a chat path: the check does not apply
+
+    def test_the_get_op_is_checked_too(self) -> None:
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            {"id": 2, "op": "get", "path": "/../api/v2/video/call/default/x/join", "max_calls": 0},
+            {"id": 3, "op": "get", "path": "/api/v2/video/call/default/x", "max_calls": 0},
+            {"id": 4, "op": "get", "path": "/api/v2/feeds/%66eeds/query", "max_calls": 0},
+            {"id": 5, "op": "get", "path": "/channels/glow-match/x", "max_calls": 0},
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assert_not_sent(by_id[2], "refused", "PROOF_REFUSED: denied path (join)")
+        self.assert_not_sent(by_id[3], "budget")
+        self.assert_not_sent(
+            by_id[4], "refused", "PROOF_REFUSED: a Video or Feeds path not in its normalized form"
+        )
+        self.assert_not_sent(by_id[5], "budget")  # a chat path: the check does not apply
+
+    def test_the_18_product_cases_steps_are_not_refused_by_the_new_check(self) -> None:
+        """Each product case's step, with the values a run gives its placeholders, goes
+        through the product op and then the new check, and only the zero budget stops it.
+        An activity ID with capitals passes too: letter case is kept in the comparison."""
+        prefix = "p061i1-0927062935"
+        flat = prefix.replace("-", "")
+        ctx = {
+            "A": f"{prefix}-ua",
+            "B": f"{prefix}-ub",
+            "CALL": f"{prefix}-call",
+            "CALL_a": f"{prefix}-call-a",
+            "CALL_dev": f"{prefix}-call-dev",
+            "CALL_x": f"{prefix}-call-x",
+            "FG": "user",
+            "FGT": "timeline",
+            "vd_text": f"vdmarker{flat}",
+            "fd_text": f"fdmarker{flat}",
+        }
+        cases = [c for c in matrix.all_cases() if matrix.product_of(c) is not None]
+        self.assertEqual(len(cases), 18)
+        for act in ("0b6f7c1e-3a52-4d7e-9a1b-5c2d8e4f6a70", "0B6F7C1E-3A52-4D7E-9A1B-5C2D8E4F6A70"):
+            commands = []
+            for index, case in enumerate(cases, start=2):
+                assert case.step is not None and case.step.op == "product"
+                params = matrix.substitute(dict(case.step.params), {**ctx, "ACT": act})
+                commands.append({"id": index, "op": "product", **params, "max_calls": 0})
+            replies = run_runner_offline({"id": 1, **REST_USER}, *commands)
+            by_id = {r["id"]: r for r in replies}
+            for index, case in enumerate(cases, start=2):
+                with self.subTest(case=case.id, act=act):
+                    self.assert_not_sent(by_id[index], "budget")
 
 
 class RunnerReportsTest(unittest.TestCase):

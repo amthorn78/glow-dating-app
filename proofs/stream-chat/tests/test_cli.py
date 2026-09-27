@@ -22,8 +22,13 @@ from glow_stream_proof.credentials import ServerCredentials
 from glow_stream_proof.proof_run import ProofRun, RunStopped, TemporaryChange
 from glow_stream_proof.redaction import Redactor
 from glow_stream_proof.server_api import ApiResult
-from glow_stream_proof.usage import GuardrailStop, UsageLedger
+from glow_stream_proof.usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
 from glow_stream_proof.workdir import PROOF_ROOT
+from tests.fake_products import (
+    BASELINE,
+    BEFORE_LOCKDOWN_CALL_TYPE_GRANTS,
+    BEFORE_LOCKDOWN_VISIBILITY_GRANTS,
+)
 from tests.fakes import SECRET, FakeServer, FakeSession, NoSettle, make_run
 from tests.test_configuration import _type
 from tests.test_preflight import dashboard_user
@@ -534,6 +539,23 @@ def puts(server: FakeServer) -> list[tuple[str, str, Any]]:
     ]
 
 
+CT = "/api/v2/video/calltypes"
+FV = "/api/v2/feeds/feed_visibilities"
+# I2b's live dry run and apply (commands 3, 10 and 11): the nine PUTs the committed products
+# baseline gives, as (product, scope, client roles named).
+LIVE_PLAN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("v", "audio_room", ("user", "anonymous")),
+    ("v", "default", ("user", "guest")),
+    ("v", "development", ("user", "guest", "anonymous")),
+    ("v", "livestream", ("user", "anonymous")),
+    ("f", "followers", ("user",)),
+    ("f", "members", ("user",)),
+    ("f", "private", ("user",)),
+    ("f", "public", ("user", "guest", "anonymous")),
+    ("f", "visible", ("user", "guest", "anonymous")),
+)
+
+
 class ScopedConfigureTest(_WritesTest):
     """DM-05 finding 1: ``configure --products video,feeds`` is a difference of Video and
     Feeds configuration writes only, and its ``--apply`` refuses in code."""
@@ -546,19 +568,17 @@ class ScopedConfigureTest(_WritesTest):
         self.assertIn("differences before: []", ctx.lines)
         self.assertIn("video: available", ctx.lines)
         plan_lines = [line for line in ctx.lines if line.startswith("- ")]
-        self.assertEqual(
-            plan_lines,
-            [
-                "- PUT /api/v2/video/calltypes/default: video: remove the call type default "
-                "grants of user",
-                "- PUT /api/v2/video/calltypes/development: video: remove the call type "
-                "development grants of user, guest, anonymous",
-                "- PUT /api/v2/feeds/feed_visibilities/public: feeds: remove the feed visibility "
-                "public grants of user, guest",
-                "- PUT /api/v2/feeds/feed_visibilities/visible: feeds: remove the feed "
-                "visibility visible grants of user",
-            ],
-        )
+        # The fake models the committed products baseline (P06.1-C4), so the plan is the
+        # nine PUTs of I2b's live dry run (its command 3).
+        want = []
+        for product, name, roles in LIVE_PLAN:
+            path, label = (
+                (f"{CT}/{name}", "video: remove the call type")
+                if product == "v"
+                else (f"{FV}/{name}", "feeds: remove the feed visibility")
+            )
+            want.append(f"- PUT {path}: {label} {name} grants of {', '.join(roles)}")
+        self.assertEqual(plan_lines, want)
         self.assertFalse(any("/api/v2/app" in line or "channeltypes" in line for line in ctx.lines))
         self.assertEqual(puts(server), [])  # nothing sent
         self.assertEqual(self.written, {})
@@ -571,7 +591,10 @@ class ScopedConfigureTest(_WritesTest):
         self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
         self.assertIn("refused: the chat configuration does not verify; nothing applied", ctx.lines)
         self.assertEqual(puts(server), [])
-        self.assertEqual(server.products.call_type_grants["default"]["user"][:1], ["create-call"])
+        self.assertEqual(
+            server.products.call_type_grants["default"]["user"],
+            BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"]["user"],
+        )
 
     def test_apply_refuses_a_planned_request_outside_the_configuration_families(self) -> None:
         server = FakeServer(UsageLedger())
@@ -603,38 +626,39 @@ class ScopedConfigureTest(_WritesTest):
         self.assertEqual(
             sent,
             [
-                ("PUT", "/api/v2/video/calltypes/default", {"grants": {"user": []}}),
-                (
-                    "PUT",
-                    "/api/v2/video/calltypes/development",
-                    {"grants": {"user": [], "guest": [], "anonymous": []}},
-                ),
-                (
-                    "PUT",
-                    "/api/v2/feeds/feed_visibilities/public",
-                    {"grants": {"user": [], "guest": []}},
-                ),
-                ("PUT", "/api/v2/feeds/feed_visibilities/visible", {"grants": {"user": []}}),
+                ("PUT", f"{CT if p == 'v' else FV}/{n}", {"grants": {role: [] for role in r}})
+                for p, n, r in LIVE_PLAN
             ],
         )
         grants = server.products.call_type_grants["default"]
         self.assertEqual((grants["user"], grants["guest"]), ([], []))
-        self.assertEqual(grants["admin"][:1], ["create-call"])  # untouched: narrower than I1's
-        self.assertEqual(grants["call_member"][:1], ["read-call"])
+        # Untouched: narrower than I1's.
+        for role in ("admin", "call_member", "global_admin", "global_read_only"):
+            self.assertEqual(grants[role], BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"][role])
         self.assertIn("differences after: []", ctx.lines)
         record = next(v for k, v in self.written.items() if k.startswith("configure-products-"))
         self.assertEqual(record["problems_after"], [])
+        # The full after-state, every role and setting, in baseline_record's shape (P06.1-C4;
+        # the I2b review's finding 2).
+        after = record["after"]
+        self.assertEqual(set(after), {"app_id", "video", "feeds"})
         self.assertEqual(
-            record["after"]["video"]["grants"]["default"],
-            {"user": [], "guest": [], "anonymous": []},
+            after["video"]["call_types"]["default"]["grants"],
+            {**BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"], "user": [], "guest": []},
         )
+        self.assertEqual(
+            after["video"]["call_types"]["audio_room"]["settings"],
+            BASELINE["video"]["call_types"]["audio_room"]["settings"],
+        )
+        self.assertEqual(after["feeds"]["feed_groups"], BASELINE["feeds"]["feed_groups"])
+        self.assertEqual(record["before"]["video"]["call_types"], BASELINE["video"]["call_types"])
         self.assertEqual(record["scope"], ["feeds", "video"])
         # A second apply has nothing to send.
         ctx2 = FakeContext(server)
         self.assertEqual(cli.cmd_configure(ctx2, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         self.assertIn("video and feeds plan: nothing to change", ctx2.lines)
         self.assertIn("nothing to apply", ctx2.lines)
-        self.assertEqual(len(puts(server)), 4)
+        self.assertEqual(len(puts(server)), 9)
 
     def test_apply_is_guarded_by_the_configure_scope(self) -> None:
         server = FakeServer(UsageLedger())
@@ -651,7 +675,10 @@ class ScopedConfigureTest(_WritesTest):
         )
         # Only Video was in scope: the feed visibilities were not touched.
         self.assertTrue(all(p.startswith("/api/v2/video/") for _m, p, _b in puts(server)))
-        self.assertEqual(server.products.visibility_grants["public"]["user"][:1], ["read-feed"])
+        self.assertEqual(
+            server.products.visibility_grants["public"]["user"],
+            BEFORE_LOCKDOWN_VISIBILITY_GRANTS["public"]["user"],
+        )
 
     def test_the_apply_is_gated_by_the_chat_verification_alone(self) -> None:
         """The independent check, nit 5: once the lockdown is recorded as applied, the
@@ -662,7 +689,7 @@ class ScopedConfigureTest(_WritesTest):
         with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
             self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         self.assertIn("differences before: []", ctx.lines)
-        self.assertEqual(len(puts(server)), 4)
+        self.assertEqual(len(puts(server)), 9)
         self.assertIn("differences after: []", ctx.lines)
 
     def test_unknown_products_are_refused(self) -> None:
@@ -686,6 +713,188 @@ class ScopedConfigureTest(_WritesTest):
         self.assertIn("differences after: []", ctx.lines)
 
 
+def failing_write(
+    server: FakeServer, nth: int, status: int, code: int, message: str, *, replace: bool = False
+) -> list[int]:
+    """Answer the ``nth`` configuration write (PUT or PATCH) with ``status``, as the real
+    server client would: a charge or limit signal is recorded in the ledger and its stop
+    raised (``ServerApi._result``); ``replace`` then raises a Ctrl-C in its place, as a
+    signal whose stop is replaced in flight. Returns, for each write, how many calls the
+    fake had counted when it answered, that write included."""
+    seen: list[int] = []
+
+    def handler(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+        if method not in ("PUT", "PATCH"):
+            return None
+        seen.append(len(server.calls))
+        if len(seen) != nth:
+            return None
+        signal = charge_signal(status, code, message)
+        if signal is not None:
+            stop = server.ledger.stop_at_once(
+                f"server {method} {path}: {signal}; stopping at once",
+                rate_limited=is_rate_limit(status, code),
+            )
+            if replace:
+                raise KeyboardInterrupt
+            raise stop
+        return ApiResult(method, path, status, code, message, {"code": code, "message": message})
+
+    server.handlers.append(handler)
+    return seen
+
+
+class ConfigureRecordTest(_WritesTest):
+    """P06.1-C4, the I2b review's nit 8 with the manager's addition: a configuration write
+    that fails mid-plan still leaves the command's record (the steps applied so far, the
+    failure and the after-state); after a charge or limit signal nothing more is sent, and
+    the record says the after-state was not read. The command exits non-zero either way."""
+
+    def record(self, prefix: str) -> dict[str, Any]:
+        records = [v for k, v in self.written.items() if k.startswith(prefix)]
+        self.assertEqual(len(records), 1, sorted(self.written))
+        return dict(records[0])
+
+    def test_scoped_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 1)  # type: ignore[arg-type]
+        record = self.record("configure-products-")
+        self.assertEqual([s["status"] for s in record["applied"]], [201, 201, 400])
+        self.assertEqual(
+            record["failure"],
+            "StepRefused: PUT /api/v2/video/calltypes/development failed; stopping",
+        )
+        # The re-read ran: the full after-state, with what the failure left undone.
+        after = record["after"]
+        self.assertEqual(after["video"]["call_types"]["default"]["grants"]["user"], [])
+        self.assertTrue(after["video"]["call_types"]["development"]["grants"]["user"])
+        self.assertTrue(record["problems_after"])
+        self.assertTrue(any(m == "GET" for m, _p, _b in server.calls[-3:]), server.calls[-3:])
+
+    def assert_nothing_after_the_signal(
+        self, server: FakeServer, seen: list[int], prefix: str
+    ) -> dict[str, Any]:
+        # The signalling write was the last request (the fake counts a call before its
+        # handlers answer it).
+        self.assertEqual(len(server.calls), seen[-1])
+        self.assertEqual(len(server.ledger.signals), 1)
+        record = self.record(prefix)
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertIsNone(record["problems_after"])
+        return record
+
+    def test_scoped_a_402_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 3, 402, 4, "payment required")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual([s["status"] for s in record["applied"]], [201, 201])
+        self.assertTrue(record["failure"].startswith("GuardrailStop: server PUT"), record)
+        self.assertIn("HTTP 402", record["failure"])
+        self.assertIn(cli.AFTER_NOT_READ_SIGNAL, ctx.lines[-1])
+
+    def test_scoped_a_429_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 5, 429, 9, "Too many requests")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(len(record["applied"]), 4)
+
+    def test_the_signal_is_read_from_the_ledger_not_the_exception(self) -> None:
+        """A signal whose stop a Ctrl-C replaced: still no re-read, and the record says a
+        signal was met; the Ctrl-C reaches main."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 2, 402, 4, "payment required", replace=True)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(record["failure"], "KeyboardInterrupt: ")
+
+    def test_a_ctrl_c_without_a_signal_sends_nothing_more(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        count: list[int] = []
+
+        def interrupt(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if method == "PUT":
+                count.append(len(server.calls))
+                if len(count) == 2:
+                    raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(server.calls), count[-1])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+
+    def test_general_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
+        server = FakeServer(UsageLedger())
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True), 1)  # type: ignore[arg-type]
+        record = self.record("configure-")
+        self.assertEqual([s["status"] for s in record["applied"]][-1], 400)
+        self.assertEqual(len(record["applied"]), 3)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertIn("settings", record["after"])
+        self.assertIsInstance(record["problems_after"], list)
+
+    def test_general_a_402_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        seen = failing_write(server, 3, 402, 4, "payment required")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-")
+        self.assertEqual(len(record["applied"]), 2)
+        self.assertNotIn("after_match_type", record)
+
+    def test_general_a_429_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        seen = failing_write(server, 2, 429, 9, "Too many requests")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        self.assert_nothing_after_the_signal(server, seen, "configure-")
+
+    def test_a_signal_in_the_reread_is_recorded_and_sends_nothing_more(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                raise server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(gets), 1)
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertEqual(len(record["applied"]), 9)
+
+
 class ProbeAndBaselineTest(_WritesTest):
     def test_probe_products(self) -> None:
         server = FakeServer(UsageLedger())
@@ -694,8 +903,13 @@ class ProbeAndBaselineTest(_WritesTest):
         self.assertIn(
             "video: available (GET /api/v2/video/calltypes -> HTTP 200 code None)", ctx.lines
         )
-        self.assertIn("video call types: ['default', 'development']", ctx.lines)
-        self.assertIn("feed groups: ['notification', 'timeline', 'user']", ctx.lines)
+        self.assertIn(
+            "video call types: ['audio_room', 'default', 'development', 'livestream']", ctx.lines
+        )
+        self.assertIn(
+            "feed groups: ['foryou', 'notification', 'stories', 'story', 'timeline', 'user']",
+            ctx.lines,
+        )
         probe = next(v for k, v in self.written.items() if k.startswith("probe-products-"))
         self.assertEqual(probe["feeds"]["availability"], "available")
         # Reads only: the guard has nothing to refuse and nothing changed.
@@ -717,15 +931,18 @@ class ProbeAndBaselineTest(_WritesTest):
 
     def test_baseline_and_the_products_baseline_record(self) -> None:
         server = FakeServer(UsageLedger())
-        server.users["owner"] = dashboard_user("owner")
+        # A name no grant contains ("owner" is part of grant names such as
+        # "block-user-owner" in the committed baseline, which the fake models since P06.1-C4).
+        server.users["dashboard-person"] = dashboard_user("dashboard-person")
         server.products.grant_before_lockdown()  # a baseline taken before the lockdown
         ctx = FakeContext(server)
         self.assertEqual(cli.cmd_baseline(ctx), 0)  # type: ignore[arg-type]
         name, snapshot = next((k, v) for k, v in self.written.items() if k.startswith("snapshot-"))
         self.assertIn("products", snapshot)
         self.assertEqual(snapshot["products"]["video"]["availability"], "available")
-        self.assertNotIn("owner", json.dumps(snapshot["products"]))
-        self.assertIn("video and feeds differences from the lockdown target: 7", ctx.lines)
+        self.assertNotIn("dashboard-person", json.dumps(snapshot["products"]))
+        # The 18 client-role grants of I2b's live baseline read (its command 7).
+        self.assertIn("video and feeds differences from the lockdown target: 18", ctx.lines)
         import tempfile
         from pathlib import Path
 
@@ -738,8 +955,10 @@ class ProbeAndBaselineTest(_WritesTest):
             self.assertEqual(len(written), 1)
             record = json.loads(written[0].read_text(encoding="utf-8"))
         self.assertEqual(record["app_id"], "1729640")
-        self.assertEqual(sorted(record["video"]["call_types"]), ["default", "development"])
         self.assertEqual(sorted(record), ["app_id", "feeds", "video"])
+        # The fake models the committed products baseline before the lockdown (P06.1-C4), so
+        # the record written from its read is that baseline.
+        self.assertEqual(record, BASELINE)
         # The chat baseline is untouched.
         self.assertEqual(cli.BASELINE_RECORD.name, "application-1729640-2026-09-25.json")
 

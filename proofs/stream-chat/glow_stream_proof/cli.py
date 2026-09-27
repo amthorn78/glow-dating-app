@@ -62,8 +62,21 @@ def _print_plan(ctx: Context, plan: list[configuration.ApiRequest]) -> None:
         ctx.say("  body: " + json.dumps(step.body, sort_keys=True))
 
 
-def _apply(ctx: Context, plan: list[configuration.ApiRequest]) -> list[dict[str, Any]]:
-    applied = []
+class StepRefused(RuntimeError):
+    """Stream answered a configuration step with a status that is not 2xx and is no
+    charge or limit signal; the apply stops there (P06.1-C4 names it so that a configure
+    record can tell it from a stop that must reach ``main``)."""
+
+
+def _apply(
+    ctx: Context,
+    plan: list[configuration.ApiRequest],
+    applied: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Send the plan in order and stop at the first failure. Each answered step joins
+    ``applied`` as it is answered, so a caller that keeps the list still has the steps
+    applied so far when a later step fails or raises (P06.1-C4)."""
+    applied = [] if applied is None else applied
     for step in plan:
         result = ctx.api.raw(step.method, step.path, body=step.body)
         applied.append(
@@ -80,8 +93,81 @@ def _apply(ctx: Context, plan: list[configuration.ApiRequest]) -> list[dict[str,
             + (f" code {result.code}: {result.message}" if not result.ok else "")
         )
         if not result.ok:
-            raise RuntimeError(f"{step.method} {step.path} failed; stopping")
+            raise StepRefused(f"{step.method} {step.path} failed; stopping")
     return applied
+
+
+# What a configure record says when it does not re-read the application (P06.1-C4; the
+# manager's addition to the I2b review's nit 8): a charge or limit signal stops at once
+# and the ledger refuses no later request, so nothing more is sent.
+AFTER_NOT_READ_SIGNAL = "after-state not read: a charge or limit signal was met"
+AFTER_NOT_READ_INTERRUPTED = "after-state not read: the command was interrupted"
+
+
+class _Applied:
+    """The outcome of a configure plan's apply: the steps answered, the failure if one
+    ended it, and whether a charge or limit signal was met (from the ledger's recorded
+    signals, not only from the exception's type)."""
+
+    def __init__(self) -> None:
+        self.steps: list[dict[str, Any]] = []
+        self.failure: BaseException | None = None
+        self.signal = False
+
+    def failure_text(self, ctx: Context) -> str | None:
+        if self.failure is None:
+            return None
+        return ctx.redactor.text(f"{type(self.failure).__name__}: {self.failure}")
+
+    def may_read_after(self, ctx: Context) -> str | None:
+        """``None`` when the re-read may be sent, or why it may not."""
+        self.signal = self.signal or bool(ctx.ledger.signals)
+        if self.signal:
+            return AFTER_NOT_READ_SIGNAL
+        if self.failure is not None and not isinstance(self.failure, Exception):
+            return AFTER_NOT_READ_INTERRUPTED  # Ctrl-C: send nothing more
+        return None
+
+    def finish(self) -> int | None:
+        """Re-raise what must reach ``main`` (a signal's stop, the guard's refusal, a
+        Ctrl-C), after the record is written; 1 for a step Stream refused; ``None`` when
+        every step succeeded."""
+        if self.failure is None:
+            return None
+        if isinstance(self.failure, StepRefused):
+            return 1
+        raise self.failure
+
+
+def _apply_recorded(ctx: Context, plan: list[configuration.ApiRequest]) -> _Applied:
+    """Apply the plan, keeping what happened even when a step fails or raises."""
+    outcome = _Applied()
+    try:
+        _apply(ctx, plan, outcome.steps)
+    except BaseException as exc:  # recorded, then re-raised by finish() after the record
+        outcome.failure = exc
+    return outcome
+
+
+def _read_after(
+    ctx: Context, outcome: _Applied, read: Any
+) -> tuple[dict[str, Any] | None, str | None]:
+    """The re-read after an apply, unless a charge or limit signal was met or the command
+    was interrupted; a re-read that itself fails or meets a signal is recorded, not
+    raised."""
+    why = outcome.may_read_after(ctx)
+    if why is not None:
+        return None, why
+    try:
+        return read(ctx.api), None
+    except Exception as exc:
+        outcome.signal = outcome.signal or bool(ctx.ledger.signals)
+        if outcome.failure is None:
+            outcome.failure = exc
+        if outcome.signal:
+            return None, AFTER_NOT_READ_SIGNAL
+        text = ctx.redactor.text(f"{type(exc).__name__}: {exc}")
+        return None, f"after-state not read: the re-read failed: {text}"
 
 
 def _settings_view(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -188,24 +274,40 @@ def cmd_configure(ctx: Context, apply: bool, scope: list[str] | None = None) -> 
     # The general apply re-sends the whole chat target (the application PATCH, the five
     # default types and glow-match); it is the operator command that reapplies the chat
     # configuration, outside the guard, and P06.1-I2b never runs it (DM-05 finding 1).
-    applied = _apply(ctx, plan)
-    after = baseline.read_snapshot(ctx.api)
-    problems = configuration.verify(after)
-    record = {
+    # A step that fails, or a charge or limit signal, still leaves the record: the steps
+    # applied so far, the failure and the after-state, which is re-read only when no
+    # signal was met (P06.1-C4; the I2b review's nit 8, with the manager's addition).
+    outcome = _apply_recorded(ctx, plan)
+    after, not_read = _read_after(ctx, outcome, baseline.read_snapshot)
+    record: dict[str, Any] = {
         "at": _stamp(),
         "before": _settings_view(before),
-        "applied": applied,
-        "after": _settings_view(after),
-        "after_match_type": after["channel_types"]["channel_types"].get(configuration.MATCH_TYPE),
-        "after_default_type_grants": {
+        "applied": outcome.steps,
+    }
+    if outcome.failure is not None:
+        record["failure"] = outcome.failure_text(ctx)
+    problems: list[str] | None = None
+    if after is not None:
+        problems = configuration.verify(after)
+        record["after"] = _settings_view(after)
+        record["after_match_type"] = after["channel_types"]["channel_types"].get(
+            configuration.MATCH_TYPE
+        )
+        record["after_default_type_grants"] = {
             name: after["channel_types"]["channel_types"][name]["grants"]
             for name in configuration.DEFAULT_TYPES
-        },
-        "problems_after": problems,
-    }
+        }
+    else:
+        record["after"] = not_read
+    record["problems_after"] = problems
     path = write_json(f"configure-{record['at']}.json", record, ctx.secrets)
     ctx.say(f"configuration record written to {path.relative_to(PROOF_ROOT)}")
-    ctx.say(f"differences after: {problems}")
+    if outcome.failure is not None:
+        ctx.say(f"the apply did not complete: {record['failure']}")
+    ctx.say(f"differences after: {problems if problems is not None else not_read}")
+    failed = outcome.finish()
+    if failed is not None:
+        return failed
     return 0 if not problems else 1
 
 
@@ -255,45 +357,40 @@ def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope
     ctx.api.guard = lambda method, path, body, params: guard.refusal(
         method, path, body, params, configure_scope
     )
-    applied = _apply(ctx, plan)
-    after = baseline.read_configuration(ctx.api)
-    problems = configuration.verify(after)
-    if products.LOCKDOWN_APPLIED is None:
-        # Until the commit that records the apply, verify() leaves the products out.
-        problems += configuration.product_differences(after, locked=True)
-    record = {
+    # A step that fails, or a charge or limit signal, still leaves the record (P06.1-C4;
+    # the I2b review's nit 8, with the manager's addition): the re-read runs only when no
+    # signal was met. The record keeps the full before- and after-state in
+    # products.baseline_record's shape, every role and setting (the I2b review's
+    # finding 2), and is scanned like every other record.
+    outcome = _apply_recorded(ctx, plan)
+    after, not_read = _read_after(ctx, outcome, baseline.read_configuration)
+    record: dict[str, Any] = {
         "at": _stamp(),
         "scope": sorted(scope),
-        "before": {
-            product: {
-                "availability": state[product]["availability"],
-                "grants": _client_grants(state, product),
-            }
-            for product in products.PRODUCTS
-        },
-        "applied": applied,
-        "after": {
-            product: {
-                "availability": after["products"][product]["availability"],
-                "grants": _client_grants(after["products"], product),
-            }
-            for product in products.PRODUCTS
-        },
-        "problems_after": problems,
+        "before": products.baseline_record(state, ctx.credentials.app_id),
+        "applied": outcome.steps,
     }
+    if outcome.failure is not None:
+        record["failure"] = outcome.failure_text(ctx)
+    problems: list[str] | None = None
+    if after is not None:
+        problems = configuration.verify(after)
+        if products.LOCKDOWN_APPLIED is None:
+            # Until the commit that records the apply, verify() leaves the products out.
+            problems += configuration.product_differences(after, locked=True)
+        record["after"] = products.baseline_record(after["products"], ctx.credentials.app_id)
+    else:
+        record["after"] = not_read
+    record["problems_after"] = problems
     path = write_json(f"configure-products-{record['at']}.json", record, ctx.secrets)
     ctx.say(f"configuration record written to {path.relative_to(PROOF_ROOT)}")
-    ctx.say(f"differences after: {problems}")
+    if outcome.failure is not None:
+        ctx.say(f"the apply did not complete: {record['failure']}")
+    ctx.say(f"differences after: {problems if problems is not None else not_read}")
+    failed = outcome.finish()
+    if failed is not None:
+        return failed
     return 0 if not problems else 1
-
-
-def _client_grants(state: Mapping[str, Any], product: str) -> dict[str, dict[str, list[str]]]:
-    """Each call type's or feed visibility's grants for the client roles."""
-    key = "call_types" if product == "video" else "feed_visibilities"
-    return {
-        name: {role: list(cfg["grants"].get(role, [])) for role in products.CLIENT_ROLES}
-        for name, cfg in sorted((state.get(product) or {}).get(key, {}).items())
-    }
 
 
 EXIT_STOPPED = 2

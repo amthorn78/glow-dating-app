@@ -6,12 +6,14 @@ feeds, activities, comments, reactions, follows), and answers the requests the h
 and a client can send them, the way Stream's documentation describes: a grants update
 changes only the roles it names; a hard-deleted feed takes its activities with it and
 its ID is not reused ("feed with id ... has been deleted"); a user's Feeds data delete
-removes everything of that user's. The configuration starts at the lockdown target, as the
-live application's has since the apply of 27 September 2026 (``products.LOCKDOWN_APPLIED``),
-so a run's preflight verifies it; ``grant_before_lockdown()`` puts the pre-lockdown model
-back. The grants are a model, not Stream's behaviour: the built-in call types' default
-grants and the visibilities' default grants are not published, and what a client may do
-(``allowed``) is a knob of its own.
+removes everything of that user's. The configuration is the committed products baseline
+(``baseline/video-feeds-1729640-2026-09-27.json``, since P06.1-C4): its call types, feed
+visibilities and feed groups, every role's grants and the call types' settings. It starts
+at the lockdown target, as the live application's has since the apply of 27 September 2026
+(``products.LOCKDOWN_APPLIED``), so a run's preflight verifies it;
+``grant_before_lockdown()`` puts the baseline's client grants back. What a client may do
+(``allowed``) is a knob of its own, not derived from the grants: which grant each request
+needs is not documented.
 
 Knobs: ``available[product]`` (a product that is not available answers every request
 with the configured status, code and message); ``allowed`` (what a client with the
@@ -24,11 +26,14 @@ state, as the session's own user.
 
 from __future__ import annotations
 
+import copy
+import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from glow_stream_proof import products
 from glow_stream_proof.client_bridge import Reply
 
 PREFIX = "p061i1-simulated"
@@ -36,46 +41,29 @@ UNAVAILABLE_MESSAGE = (
     "{product} is not enabled for this application. Upgrade your plan to enable it."
 )
 CLIENT_ROLES = ("user", "guest", "anonymous")
-# What a fresh application's call types and visibilities grant (a model), before the
-# lockdown; the state starts at the lockdown target (below) and tests of the plan and
-# of drift put this model back with ``ProductState.grant_before_lockdown()``.
+# The fake's configuration is the committed Video and Feeds baseline, read from the live
+# application before the lockdown (P06.1-C4; the I2b review's finding 2): its call types,
+# feed visibilities and feed groups, every role's grants, and each call type's settings and
+# notification settings. So products.verify, which compares every role other than the
+# client roles, every setting and every feed group with that baseline, finds no
+# difference in the fake unless a test makes one. The state starts at the lockdown target
+# (the client roles emptied) and ``grant_before_lockdown()`` puts the baseline's client
+# grants back.
+BASELINE: dict[str, Any] = json.loads(products.PRODUCTS_BASELINE.read_text(encoding="utf-8"))
 BEFORE_LOCKDOWN_CALL_TYPE_GRANTS: dict[str, dict[str, list[str]]] = {
-    "default": {
-        "admin": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
-        "user": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
-        "call_member": ["read-call", "join-call", "send-audio", "send-video"],
-        "guest": [],
-        "anonymous": [],
-    },
-    "development": {
-        "admin": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
-        "user": ["create-call", "read-call", "update-call", "update-call-member", "join-call"],
-        "call_member": ["read-call", "join-call", "send-audio", "send-video"],
-        "guest": ["create-call", "read-call"],
-        "anonymous": ["read-call"],
-    },
+    name: {role: list(g) for role, g in cfg["grants"].items()}
+    for name, cfg in BASELINE["video"]["call_types"].items()
 }
 BEFORE_LOCKDOWN_VISIBILITY_GRANTS: dict[str, dict[str, list[str]]] = {
-    "public": {
-        "user": [
-            "read-feed",
-            "read-activities",
-            "add-activity",
-            "add-comment",
-            "add-activity-reaction",
-            "follow",
-        ],
-        "feed_member": ["read-feed", "read-activities", "add-activity"],
-        "guest": ["read-feed"],
-        "anonymous": [],
-    },
-    "visible": {
-        "user": ["read-feed", "read-activities", "follow", "add-comment", "add-activity-reaction"],
-        "feed_member": ["read-feed", "read-activities", "add-activity"],
-        "guest": [],
-        "anonymous": [],
-    },
-    "private": {"feed_member": ["read-feed", "read-activities", "add-activity"]},
+    name: {role: list(g) for role, g in cfg["grants"].items()}
+    for name, cfg in BASELINE["feeds"]["feed_visibilities"].items()
+}
+CALL_TYPE_SETTINGS: dict[str, dict[str, Any]] = {
+    name: {
+        "settings": copy.deepcopy(cfg["settings"]),
+        "notification_settings": copy.deepcopy(cfg["notification_settings"]),
+    }
+    for name, cfg in BASELINE["video"]["call_types"].items()
 }
 
 
@@ -89,9 +77,7 @@ def locked_down(grants: Mapping[str, Mapping[str, list[str]]]) -> dict[str, dict
 
 
 DEFAULT_FEED_GROUPS: dict[str, dict[str, Any]] = {
-    "user": {"default_visibility": "visible", "default_follower_role": "feed_follower"},
-    "timeline": {"default_visibility": "private", "default_follower_role": "feed_follower"},
-    "notification": {"default_visibility": "private", "default_follower_role": "feed_follower"},
+    gid: dict(cfg) for gid, cfg in BASELINE["feeds"]["feed_groups"].items()
 }
 # Every capability a client with the user role may have in this fake, by the request.
 ALL_CAPABILITIES = frozenset(
@@ -138,6 +124,10 @@ class ProductState:
     )
     feed_groups: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {k: dict(v) for k, v in DEFAULT_FEED_GROUPS.items()}
+    )
+    # Each call type's settings and notification settings (the baseline's).
+    call_type_settings: dict[str, dict[str, Any]] = field(
+        default_factory=lambda: copy.deepcopy(CALL_TYPE_SETTINGS)
     )
     # What a client with the user role may do; the server may do everything.
     allowed: set[str] = field(default_factory=lambda: set(ALL_CAPABILITIES))
@@ -285,8 +275,12 @@ class ProductState:
                     name: {
                         "name": name,
                         "grants": {r: list(g) for r, g in grants.items()},
-                        "settings": {"audio": {"mic_default_on": True}},
-                        "notification_settings": {"enabled": False},
+                        "settings": copy.deepcopy(
+                            self.call_type_settings.get(name, {}).get("settings")
+                        ),
+                        "notification_settings": copy.deepcopy(
+                            self.call_type_settings.get(name, {}).get("notification_settings")
+                        ),
                     }
                     for name, grants in self.call_type_grants.items()
                 },

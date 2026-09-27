@@ -5,6 +5,8 @@ without sending a request is never a HOLDS.
 """
 
 import dataclasses
+import json
+import re
 import unittest
 from typing import Any
 
@@ -243,6 +245,97 @@ class DisclosureRuleTest(unittest.TestCase):
         self.assertEqual(
             disclosure["found_at"],
             {"{xd_text}": ["data.events[].message.text", "response[0].events[].message.text"]},
+        )
+
+    def run_f9_sync_carrying_every_term(self, status: int) -> CaseResult:
+        """F9-sync with A's request carrying every one of the case's leak terms (as no
+        current case does), answered ``status``; X's control finds XD's text."""
+        holder: dict[str, Any] = {}
+        definition = next(c for c in matrix.all_cases() if c.id == "F9-sync")
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sync":
+                terms = matrix.substitute(list(definition.leak_terms), holder["run"].ctx)
+                body: dict[str, Any] = (
+                    {"events": []} if status < 300 else {"code": 17, "message": "Not Allowed"}
+                )
+                rec = record(status, body, path="/sync")
+                rec["body"] = {"channel_cids": params["args"][0], "carried": terms}
+                if status < 300:
+                    return Reply(True, body, None, [rec], api_calls=1)
+                error = {"status": status, "code": 17, "message": "Not Allowed", "kind": "api"}
+                return Reply(False, None, error, [rec], api_calls=1)
+            return None
+
+        def x(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sync":
+                found = {"events": [{"message": {"text": "xdmarker" + PREFIX.replace("-", "")}}]}
+                return Reply(True, found, None, [record(201, found, path="/sync")], api_calls=1)
+            return None
+
+        run, _ = make_run(behaviours={"A": a, "X": x})
+        holder["run"] = run
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"F9-sync"})
+        return case_of(run, "F9-sync")
+
+    def test_a_success_with_nothing_left_to_scan_is_inconclusive(self) -> None:
+        """P06.1-C4, the I2b review's nit 4: when the request carried every leak term,
+        nothing is scanned, and a success is INCONCLUSIVE, never HOLDS (filtered)."""
+        case = self.run_f9_sync_carrying_every_term(201)
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertEqual(case.reason, matrix.NOTHING_SCANNED_REASON)
+        disclosure = case.detail["disclosure"]
+        self.assertTrue(disclosure["nothing_scanned"])
+        self.assertEqual(len(disclosure["terms_in_the_request"]), 5)
+
+    def test_a_refusal_with_nothing_left_to_scan_keeps_its_own_rule(self) -> None:
+        case = self.run_f9_sync_carrying_every_term(403)
+        self.assertEqual(case.verdict, matrix.HOLDS)
+        self.assertEqual(case.reason, "permission error; control succeeded")
+
+    def test_no_current_case_carries_every_leak_term_in_its_own_request(self) -> None:
+        """P06.1-C4, the I2b review's nit 4: from the case definitions, every no-leak case
+        that the disclosure rule judges (a case with a step) leaves at least one leak term
+        to scan; so no recorded verdict changes. Each placeholder gets a distinct value
+        that is no substring of another, except that a cid carries its channel's ID."""
+        names: set[str] = set()
+        cases = [c for c in matrix.all_cases() if c.expect == "no-leak" and c.step is not None]
+        for case in cases:
+            assert case.step is not None
+            text = json.dumps([dict(case.step.params), list(case.leak_terms)])
+            names |= set(re.findall(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", text))
+        ctx = {name: f"<{name}>" for name in names}
+        # A channel's cid carries its ID, as a run's does (F9-sync's and R5's requests).
+        for name in [n for n in names if n.endswith("_cid")]:
+            ctx[name] = f"glow-match:<{name.removesuffix('_cid')}>"
+        left: dict[str, int] = {}
+        for case in cases:
+            assert case.step is not None
+            sent = json.dumps(matrix.substitute(dict(case.step.params), ctx), sort_keys=True)
+            terms = matrix.substitute(list(case.leak_terms), ctx)
+            left[case.id] = len([t for t in terms if t not in sent])
+            self.assertGreater(left[case.id], 0, case.id)
+        # The review's reading: R3, R4 and R5 keep three of four terms; R7a and R7b keep
+        # one of two; R8a keeps two of four; R8b keeps all three; F9-sync keeps four of five;
+        # the four product no-leak cases keep all.
+        self.assertEqual(
+            left,
+            {
+                "R3": 3,
+                "R4": 3,
+                "R5": 3,
+                "R7a": 1,
+                "R7b": 1,
+                "R8a": 2,
+                "R8b": 3,
+                "F9-sync": 4,
+                "VD-read-other": 2,
+                "VD-query": 2,
+                "FD-read": 2,
+                "FD-query": 2,
+            },
         )
 
     def test_the_helpers(self) -> None:

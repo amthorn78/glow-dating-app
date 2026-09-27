@@ -1703,6 +1703,7 @@ class ProofRun:
                 unavailable.request = request
                 return unavailable
         leaks, disclosure = self._disclosure(case, reply)
+        nothing_scanned = bool(disclosure and disclosure.get("nothing_scanned"))
         detail: dict[str, Any] = {"stream_message": _answer_message(answer, reply)}
         if disclosure is not None:
             detail["disclosure"] = disclosure
@@ -1730,7 +1731,7 @@ class ProofRun:
                 request,
                 _observed(answer),
                 "control not completed",
-                self._case_verdict(case, outcome, leaks, False, False),
+                self._case_verdict(case, outcome, leaks, False, False, nothing_scanned),
                 detail,
             )
         )
@@ -1762,7 +1763,7 @@ class ProofRun:
             terms = matrix.substitute(list(control.expect_terms), self.ctx)
             found = bool(terms) and len(matrix.find_terms(control_body, terms)) == len(terms)
             control_desc += f"; control found target data {found}"
-        verdict = self._case_verdict(case, outcome, leaks, control_ok, found)
+        verdict = self._case_verdict(case, outcome, leaks, control_ok, found, nothing_scanned)
         result = self._observe(
             self._result(case, request, _observed(answer), control_desc, verdict, detail)
         )
@@ -1790,17 +1791,29 @@ class ProofRun:
             label = "data" if index == len(answers) - 1 else f"response[{index}]"
             for term, paths in matrix.term_paths(answer, leaks).items():
                 where.setdefault(_generic(term, self.ctx), []).extend(f"{label}.{p}" for p in paths)
-        return leaks, {
+        detail: dict[str, Any] = {
             "terms_in_the_request": [_generic(t, self.ctx) for t in carried],
             "found_at": {t: sorted(set(p)) for t, p in where.items()},
         }
+        if not scanned:
+            # Every leak term was the request's own: nothing was scanned, so a success
+            # shows nothing (P06.1-C4; the I2b review's nit 4).
+            detail["nothing_scanned"] = True
+        return leaks, detail
 
     @staticmethod
     def _case_verdict(
-        case: matrix.Case, outcome: matrix.Outcome, leaks: list[str], control_ok: bool, found: bool
+        case: matrix.Case,
+        outcome: matrix.Outcome,
+        leaks: list[str],
+        control_ok: bool,
+        found: bool,
+        nothing_scanned: bool = False,
     ) -> matrix.Verdict:
         if case.expect == "no-leak":
-            return matrix.no_leak_verdict(outcome, leaks, control_ok, found)
+            return matrix.no_leak_verdict(
+                outcome, leaks, control_ok, found, nothing_scanned=nothing_scanned
+            )
         if leaks:
             return matrix.Verdict(matrix.FAIL, "response disclosed: " + ", ".join(leaks))
         return matrix.refused_verdict(outcome, control_ok)

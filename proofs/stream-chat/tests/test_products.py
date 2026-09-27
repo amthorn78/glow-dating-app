@@ -17,6 +17,7 @@ from glow_stream_proof import configuration, products
 from glow_stream_proof.client_bridge import RUNNER
 from glow_stream_proof.server_api import ApiResult
 from glow_stream_proof.usage import UsageLedger
+from tests.fake_products import BEFORE_LOCKDOWN_CALL_TYPE_GRANTS as BEFORE_LOCKDOWN
 from tests.fakes import FakeServer
 
 PRODUCT_OP = RUNNER.parent / "product-op.cjs"
@@ -100,6 +101,25 @@ TABLE: list[tuple[str, str, Any, Any, bool]] = [
     ("POST", CALL, {"video": 1}, None, True),
     ("POST", CALL, {"data": {"video": "true"}}, None, False),
     ("POST", CALL + "?x=1", {"ring": True}, None, False),
+    # P06.1-C4, the I2b review's nit 3: a denied key in any letter case, and a denied-true
+    # key's value "true" in any letter case, in both tables.
+    ("POST", CALL, {"Ring": True}, None, False),
+    ("POST", CALL, {"NOTIFY": False}, None, False),
+    ("POST", CALL, {"video": "True"}, None, False),
+    ("POST", CALL, {"Video": "TRUE"}, None, False),
+    ("POST", CALL, {"data": {"VIDEO": True}}, None, False),
+    ("POST", CALL, {"data": {"members": [{"user_id": "u", "custom": {"rInG": 0}}]}}, None, False),
+    ("GET", CALL, None, {"RING": "1"}, False),
+    ("GET", CALL, None, {"Video": "tRUE"}, False),
+    (
+        "POST",
+        "/api/v2/feeds/activities",
+        {"feeds": ["user:x"], "Create_Notification_Activity": "tRuE"},
+        None,
+        False,
+    ),
+    ("POST", CALL, {"Video": "yes"}, None, True),
+    ("POST", CALL, {"VIDEO": False}, None, True),
 ]
 
 
@@ -137,6 +157,33 @@ class AllowlistTest(unittest.TestCase):
             py = products.client_refusal(method, path, body, params)
             self.assertEqual(js is None, allowed, (method, path, js))
             self.assertEqual(js, py, (method, path))
+
+    def test_letter_case_does_not_matter_and_the_reason_names_the_field(self) -> None:
+        """P06.1-C4, the I2b review's nit 3: the same reason from each table, naming the
+        denied field in lower case."""
+        rows: list[tuple[str, str, Any, Any, bool]] = [
+            ("POST", CALL, {"Ring": True}, None, False),
+            ("GET", CALL, None, {"NOTIFY": "x"}, False),
+            ("POST", CALL, {"data": {"Video": "TRUE"}}, None, False),
+            (
+                "POST",
+                "/api/v2/feeds/activities",
+                {"CREATE_NOTIFICATION_ACTIVITY": "True"},
+                None,
+                False,
+            ),
+        ]
+        want = [
+            "denied field (ring)",
+            "denied field (notify)",
+            "denied field (video: true)",
+            "denied field (create_notification_activity: true)",
+        ]
+        self.assertEqual(js_refusals(rows), want)
+        self.assertEqual([products.client_refusal(*r[:4]) for r in rows], want)
+        self.assertEqual(
+            [products.denied(r[1], r[2], r[3]) for r in rows], want
+        )  # the guard's check
 
     def test_the_deny_list_is_named_first(self) -> None:
         self.assertEqual(
@@ -243,6 +290,18 @@ def state(
             "feed_groups": {"user": {"default_visibility": "visible"}},
         },
     }
+
+
+def own_baseline(current: dict[str, Any]) -> dict[str, Any]:
+    """A state's own record as the baseline: only the client-role and availability rules
+    speak (the comparison with the committed baseline has its own tests)."""
+    return products.baseline_record(current, "1729640")
+
+
+# The committed products baseline's call types and feed groups, which the fake models
+# (P06.1-C4).
+CALL_TYPES = ["audio_room", "default", "development", "livestream"]
+FEED_GROUPS = ["foryou", "notification", "stories", "story", "timeline", "user"]
 
 
 class AvailabilityTest(unittest.TestCase):
@@ -360,7 +419,7 @@ class LockdownPlanTest(unittest.TestCase):
             feeds={"public": {"user": [], "feed_member": ["add-activity"]}},
         )
         self.assertEqual(products.lockdown_plan(locked), [])
-        self.assertEqual(products.verify(locked), [])
+        self.assertEqual(products.verify(locked, own_baseline(locked)), [])
 
     def test_verify_names_each_client_grant_left(self) -> None:
         current = state(
@@ -368,7 +427,7 @@ class LockdownPlanTest(unittest.TestCase):
             feeds={"visible": {"anonymous": ["read-feed"]}},
         )
         self.assertEqual(
-            products.verify(current),
+            products.verify(current, own_baseline(current)),
             [
                 "video call type default: grants for user not empty: ['read-call']",
                 "video call type default: grants for guest not empty: ['read-call']",
@@ -386,7 +445,7 @@ class LockdownPlanTest(unittest.TestCase):
         plan = products.lockdown_plan(current)
         self.assertEqual([s.path for s in plan], ["/api/v2/video/calltypes/default"])
         self.assertEqual(
-            products.verify(current),
+            products.verify(current, own_baseline(current)),
             ["video call type default: grants for user not empty: ['read-call']"],
         )
 
@@ -394,9 +453,129 @@ class LockdownPlanTest(unittest.TestCase):
         current = state(video_available="not verified: HTTP 500 code -1: internal")
         self.assertEqual(products.lockdown_plan(current), [])
         self.assertEqual(
-            products.verify(current),
+            products.verify(current, own_baseline(current)),
             ["video configuration not verified: HTTP 500 code -1: internal"],
         )
+
+
+class BaselineComparisonTest(unittest.TestCase):
+    """P06.1-C4, the I2b review's finding 2: the lockdown's verification compares every
+    role other than the client roles, each call type's settings and notification
+    settings, and each feed group's recorded fields with the committed products baseline;
+    the client roles must still read []."""
+
+    def read(self, server: FakeServer) -> dict[str, Any]:
+        return products.read_configuration(server)  # type: ignore[arg-type]
+
+    def test_the_fake_at_the_lockdown_target_verifies(self) -> None:
+        server = FakeServer(UsageLedger())
+        self.assertEqual(products.verify(self.read(server)), [])
+
+    def test_a_changed_call_member_grant_is_reported(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.call_type_grants["default"]["call_member"].append("start-recording-any")
+        self.assertEqual(
+            products.verify(self.read(server)),
+            [
+                "video call type default: grants for call_member differ from the committed "
+                "baseline (added ['start-recording-any'], removed [])"
+            ],
+        )
+        server.products.call_type_grants["default"]["call_member"] = ["read-call"]
+        (problem,) = products.verify(self.read(server))
+        self.assertTrue(problem.startswith("video call type default: grants for call_member"))
+        self.assertIn("added []", problem)
+
+    def test_a_changed_call_type_setting_is_reported(self) -> None:
+        server = FakeServer(UsageLedger())
+        settings = server.products.call_type_settings["audio_room"]["settings"]
+        settings["ring"]["auto_cancel_timeout_ms"] += 1
+        settings["video"]["enabled"] = not settings["video"]["enabled"]
+        self.assertEqual(
+            products.verify(self.read(server)),
+            [
+                "video call type audio_room: settings differ from the committed baseline at "
+                "ring.auto_cancel_timeout_ms, video.enabled"
+            ],
+        )
+
+    def test_a_changed_notification_setting_and_a_type_change_are_reported(self) -> None:
+        server = FakeServer(UsageLedger())
+        notes = server.products.call_type_settings["default"]["notification_settings"]
+        notes["enabled"] = "true"  # the same meaning, another type: a difference
+        notes["call_ring"]["enabled"] = False
+        self.assertEqual(
+            products.verify(self.read(server)),
+            [
+                "video call type default: notification_settings differ from the committed "
+                "baseline at call_ring.enabled, enabled"
+            ],
+        )
+
+    def test_a_changed_feed_group_is_reported(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.feed_groups["user"]["default_visibility"] = "public"
+        server.products.feed_groups["timeline"]["default_follower_role"] = "feed_member"
+        self.assertEqual(
+            products.verify(self.read(server)),
+            [
+                "feeds feed group timeline: default_follower_role is 'feed_member'; the "
+                "committed baseline has None",
+                "feeds feed group user: default_visibility is 'public'; the committed "
+                "baseline has 'visible'",
+            ],
+        )
+
+    def test_a_role_or_a_scope_on_one_side_only_is_a_difference(self) -> None:
+        server = FakeServer(UsageLedger())
+        del server.products.call_type_grants["livestream"]["host"]
+        server.products.visibility_grants["private"]["feed_owner"] = ["read-feed"]
+        server.products.call_type_grants["glowcall"] = {"admin": ["read-call"]}
+        del server.products.visibility_grants["members"]
+        del server.products.feed_groups["story"]
+        server.products.feed_groups["extra"] = {"default_visibility": "private"}
+        problems = products.verify(self.read(server))
+        self.assertEqual(
+            problems,
+            [
+                "video call type glowcall: not in the committed baseline",
+                "video call type livestream: grants for host missing; the committed baseline "
+                "has " + str(sorted(BEFORE_LOCKDOWN["livestream"]["host"])),
+                "feeds feed visibility members: missing (the committed baseline has it)",
+                "feeds feed visibility private: grants for feed_owner not in the committed "
+                "baseline: ['read-feed']",
+                "feeds feed group extra: not in the committed baseline",
+                "feeds feed group story: missing (the committed baseline has it)",
+            ],
+        )
+
+    def test_the_client_roles_must_still_read_empty(self) -> None:
+        server = FakeServer(UsageLedger())
+        # A client role absent is the same as [] ...
+        del server.products.call_type_grants["default"]["guest"]
+        self.assertEqual(products.verify(self.read(server)), [])
+        # ... and one that holds a grant is still a difference, once.
+        server.products.call_type_grants["default"]["user"] = ["read-call"]
+        self.assertEqual(
+            products.verify(self.read(server)),
+            ["video call type default: grants for user not empty: ['read-call']"],
+        )
+
+    def test_a_product_that_is_not_available_is_not_compared(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.available["feeds"] = False
+        server.products.call_type_grants["default"]["admin"] = []
+        problems = products.verify(self.read(server))
+        self.assertEqual(len(problems), 1, problems)
+        self.assertTrue(problems[0].startswith("video call type default: grants for admin"))
+
+    def test_the_before_lockdown_baseline_differs_only_in_the_client_roles(self) -> None:
+        """The committed baseline itself, read before the lockdown: its only differences
+        are the 18 client-role grants the nine PUTs removed (command 3 of I2b's record)."""
+        recorded = products.recorded_products()
+        problems = products.verify({"video": recorded["video"], "feeds": recorded["feeds"]})
+        self.assertEqual(len(problems), 18)
+        self.assertTrue(all("not empty" in p for p in problems), problems)
 
 
 class ReadAndListTest(unittest.TestCase):
@@ -404,15 +583,17 @@ class ReadAndListTest(unittest.TestCase):
         server = FakeServer(UsageLedger())
         read = products.read_configuration(server)  # type: ignore[arg-type]
         self.assertEqual(read["video"]["availability"], "available")
-        self.assertEqual(sorted(read["video"]["call_types"]), ["default", "development"])
+        self.assertEqual(sorted(read["video"]["call_types"]), CALL_TYPES)
         self.assertEqual(read["feeds"]["availability"], "available")
-        self.assertEqual(sorted(read["feeds"]["feed_groups"]), ["notification", "timeline", "user"])
+        self.assertEqual(sorted(read["feeds"]["feed_groups"]), FEED_GROUPS)
         self.assertEqual(server.products.seen[0][1], products.CALL_TYPES)
         record = products.baseline_record(read, "1729640")
         self.assertEqual(record["app_id"], "1729640")
         text = json.dumps(record)
         # No user, member or object: the record is settings and grants only.
-        for word in ("user_id", "members", "created_by", '"activity"', "email", '"text"'):
+        # ("members" is a feed visibility's name in the committed baseline, which the fake
+        # models since P06.1-C4; a list of members would be '"members": [').
+        for word in ("user_id", '"members": [', "created_by", '"activity"', "email", '"text"'):
             self.assertNotIn(word, text, word)
         self.assertEqual(
             record["video"]["call_types"]["default"]["grants"],
@@ -433,7 +614,7 @@ class ReadAndListTest(unittest.TestCase):
         self.assertEqual(read["video"]["availability"], "available")
         probe = products.probe(server)  # type: ignore[arg-type]
         self.assertEqual(probe["feeds"]["feed_visibilities"], [])
-        self.assertEqual(probe["video"]["call_types"], ["default", "development"])
+        self.assertEqual(probe["video"]["call_types"], CALL_TYPES)
 
     def test_list_objects(self) -> None:
         server = FakeServer(UsageLedger())
