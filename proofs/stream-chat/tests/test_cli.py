@@ -864,6 +864,51 @@ class ConfigureRecordTest(_WritesTest):
         self.assertEqual(len(record["applied"]), 9)
         self.assertEqual(record["failure"], "KeyboardInterrupt: ")
 
+    def test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
+        """C4's own review (re-check): after a refused step, a signal met by the re-read is
+        not swallowed: the record says so and keeps both failures, and the stop reaches
+        main (exit 3 there), with nothing more sent."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                raise server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(gets), 1)
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertTrue(record["reread_failure"].startswith("GuardrailStop: "), record)
+
+    def test_a_ctrl_c_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
+        server = FakeServer(UsageLedger())
+        failing_write(server, 3, 400, 4, "bad request")
+
+        def interrupt_the_reread(method: str, path: str, body: Any, params: Any) -> None:
+            if any(m == "PATCH" for m, _p, _b in server.calls) and method == "GET":
+                raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.record("configure-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+        self.assertEqual(record["reread_failure"], "KeyboardInterrupt: ")
+
     def test_general_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
         server = FakeServer(UsageLedger())
         failing_write(server, 3, 400, 4, "bad request")

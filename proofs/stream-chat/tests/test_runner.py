@@ -545,6 +545,14 @@ class ProductReachTest(unittest.TestCase):
                 "max_calls": 0,
             },
             client_call(8, "post", CHAT + "/channels/glow-match/x/query", {}),
+            client_call(9, "post", "http://chat.stream-io-api.com/channels/glow-match/x", {}),
+            client_call(
+                10,
+                "post",
+                CHAT + "/channels/glow-match/x/query",
+                {},
+                {"headers": {"X-Forwarded-Host": "video.stream-io-api.com"}},
+            ),
         )
         by_id = {r["id"]: r for r in replies}
         other_host = "PROOF_REFUSED: a host other than Stream's chat, Video or Feeds host"
@@ -557,6 +565,8 @@ class ProductReachTest(unittest.TestCase):
         )
         self.assert_not_sent(by_id[7], "refused", "PROOF_REFUSED: denied field (ring)")
         self.assert_not_sent(by_id[8], "budget")  # an ordinary chat request
+        self.assert_not_sent(by_id[9], "refused", "PROOF_REFUSED: a protocol other than https")
+        self.assert_not_sent(by_id[10], "refused", "PROOF_REFUSED: a forwarding header")
 
     def test_the_get_op_is_checked_too(self) -> None:
         replies = run_runner_offline(

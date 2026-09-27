@@ -133,6 +133,7 @@ function bodyOf(data) {
 const PRODUCT_HOSTNAMES = [PRODUCT_HOSTS.video, PRODUCT_HOSTS.feeds].map((h) => new URL(h).hostname);
 const STREAM_HOSTNAMES = Object.values(PRODUCT_HOSTS).map((h) => new URL(h).hostname);
 const UNRESOLVED_HOST = 'unresolved.invalid';
+const FORWARDING_HEADERS = ['x-forwarded-host', 'forwarded', 'x-original-host', 'x-host'];
 
 // The URL axios will send: its buildFullPath (the base URL joined to a relative URL, or to
 // any URL when allowAbsoluteUrls is false), then its Node adapter's new URL(). A relative
@@ -191,6 +192,8 @@ function readableBody(data) {
 function productRequestRefusal(config) {
   const parsed = sentURL(config);
   if (!parsed) return 'a URL that cannot be read';
+  // HTTPS only: a plain http URL would send the user token in clear text (C4's own review).
+  if (parsed.protocol !== 'https:') return 'a protocol other than https';
   const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
   // Only Stream's hosts (C4's own review): a request anywhere else is not the proof's.
   if (!STREAM_HOSTNAMES.includes(host) && host !== UNRESOLVED_HOST) {
@@ -198,7 +201,10 @@ function productRequestRefusal(config) {
   }
   // A caller-supplied Host header would send the request to another virtual host than the
   // URL names (C4's own review).
-  if (headerNames(config.headers).includes('host')) return 'a Host header';
+  const names = headerNames(config.headers);
+  if (names.includes('host')) return 'a Host header';
+  // Nor a forwarding header naming another host (C4's own review).
+  if (FORWARDING_HEADERS.some((h) => names.includes(h))) return 'a forwarding header';
   const sent = parsed.pathname;
   const normalized = normalizedPath(sent);
   if (normalized === null) return 'a path whose percent-encoding does not settle';

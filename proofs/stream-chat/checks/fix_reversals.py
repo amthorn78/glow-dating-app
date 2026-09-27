@@ -4092,7 +4092,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "C4 review 2: a request with a Host header of its own is refused",
-        [(RN, "  if (headerNames(config.headers).includes('host')) return 'a Host header';\n", "")],
+        [(RN, "  if (names.includes('host')) return 'a Host header';\n", "")],
         [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
     ),
     (
@@ -4160,6 +4160,31 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             )
         ],
         [TCR + "test_a_ctrl_c_during_the_reread_still_writes_the_record"],
+    ),
+    # C4's own review, its re-check of 919a383.
+    (
+        "C4 re-check 1: a signal or Ctrl-C in the re-read after a refused step reaches main",
+        [(C, "        later = self.reread_failure\n", "        later = None\n")],
+        [
+            TCR + "test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main",
+            TCR + "test_a_ctrl_c_in_the_reread_after_a_refused_step_still_reaches_main",
+        ],
+    ),
+    (
+        "C4 re-check 2: the runner sends over https only",
+        [(RN, "  if (parsed.protocol !== 'https:') return 'a protocol other than https';\n", "")],
+        [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
+    ),
+    (
+        "C4 re-check 2: a forwarding header naming another host is refused",
+        [
+            (
+                RN,
+                "  if (FORWARDING_HEADERS.some((h) => names.includes(h))) return 'a forwarding header';\n",
+                "",
+            )
+        ],
+        [TPRR + "test_only_streams_hosts_no_host_header_and_the_bare_product_forms"],
     ),
     (
         "C4 finding 1: validate refuses a step that could reach a product through another op",

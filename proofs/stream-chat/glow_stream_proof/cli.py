@@ -126,6 +126,9 @@ class _Applied:
     def __init__(self) -> None:
         self.steps: list[dict[str, Any]] = []
         self.failure: BaseException | None = None
+        # What the re-read raised when an earlier failure (a refused step) already ended the
+        # apply: a signal's stop or a Ctrl-C here must still reach main (C4's own review).
+        self.reread_failure: BaseException | None = None
         self.signal = False
 
     def failure_text(self, ctx: Context) -> str | None:
@@ -146,6 +149,11 @@ class _Applied:
         """Re-raise what must reach ``main`` (a signal's stop, the guard's refusal, a
         Ctrl-C), after the record is written; 1 for a step Stream refused; ``None`` when
         every step succeeded."""
+        later = self.reread_failure
+        if later is not None and (
+            isinstance(later, GuardrailStop) or not isinstance(later, Exception)
+        ):
+            raise later
         if self.failure is None:
             return None
         if isinstance(self.failure, StepRefused):
@@ -178,6 +186,8 @@ def _read_after(
         outcome.signal = outcome.signal or bool(ctx.ledger.signals)
         if outcome.failure is None:
             outcome.failure = exc
+        else:
+            outcome.reread_failure = exc
         if outcome.signal:
             return None, AFTER_NOT_READ_SIGNAL
         if not isinstance(exc, Exception):
@@ -303,6 +313,11 @@ def cmd_configure(ctx: Context, apply: bool, scope: list[str] | None = None) -> 
     }
     if outcome.failure is not None:
         record["failure"] = outcome.failure_text(ctx)
+    if outcome.reread_failure is not None:
+        failed_reread = outcome.reread_failure
+        record["reread_failure"] = ctx.redactor.text(
+            f"{type(failed_reread).__name__}: {failed_reread}"
+        )
     problems: list[str] | None = None
     if after is not None:
         problems = configuration.verify(after)
@@ -389,6 +404,11 @@ def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope
     }
     if outcome.failure is not None:
         record["failure"] = outcome.failure_text(ctx)
+    if outcome.reread_failure is not None:
+        failed_reread = outcome.reread_failure
+        record["reread_failure"] = ctx.redactor.text(
+            f"{type(failed_reread).__name__}: {failed_reread}"
+        )
     problems: list[str] | None = None
     if after is not None:
         problems = configuration.verify(after)
