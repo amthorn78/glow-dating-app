@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import unittest
 from typing import Any
+from unittest import mock
 
 import jwt
 
@@ -198,6 +199,22 @@ class OutageTest(unittest.TestCase):
         self.assertEqual(case.verdict, matrix.FAIL)
         self.assertIn("raised: ValueError", case.reason)
 
+    def test_several_transport_attempts_are_inconclusive(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): HOLDS needs exactly one request to have
+        # been tried; a transport that saw two (an SDK retry) proves nothing about a
+        # partial state.
+        class Retrying(i2a._Unreachable):
+            def __call__(self, request: Any) -> Any:
+                self.attempts.append(f"retry {request.method} {request.url.path}")
+                return super().__call__(request)
+
+        with mock.patch.object(i2a, "_Unreachable", Retrying):
+            run, _ = matrix_run({"OUT-send"})
+        case = only(run, "OUT-send")
+        self.assertEqual(len(case.detail["transport_attempts"]), 2)
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("transport attempts 2", case.reason)
+
     def test_a_control_that_fails_is_inconclusive(self) -> None:
         def refused_control(server: FakeServer, run: ProofRun) -> Any:
             def send(type: str, id: str, message: Any) -> Any:
@@ -226,6 +243,8 @@ class MemberStore:
         self.reads = 0
         # Every server write of the member record is refused (a reserved field).
         self.patch_refused = False
+        # Fields whose client write is applied but answered 500 (P06.1-I2b).
+        self.answer_5xx: set[str] = set()
 
     def write(self, fields: dict[str, Any]) -> None:
         for key, value in fields.items():
@@ -244,6 +263,8 @@ class MemberStore:
                 return http_reply(403, 17, path=path)
             if field in self.applied:
                 self.write(fields)
+            if field in self.answer_5xx:
+                return http_reply(500, -1, path=path)
             return http_reply(200, response={"channel_member": {}}, path=path)
         if op == "call" and method in ("pin", "archive"):
             flag = "pinned" if method == "pin" else "archived"
@@ -328,6 +349,18 @@ class S15MapTest(unittest.TestCase):
         self.assertEqual([c.case_id for c in run.case_results], ["S15-map"])
         self.assertTrue(any("A's member record in AB is not as it was" in s for s in run.stops))
         self.assertIn("verified False", only(run, "S15-map").detail["fields"]["pinned"]["restored"])
+
+    def test_a_write_answered_5xx_is_still_put_back(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): a write with no answer or a 5xx may still
+        # have changed the record, so it counts as written and is restored.
+        store = MemberStore(applied={"glow_note"}, refused=set())
+        store.answer_5xx = {"glow_note"}
+        _, case = self.mapped(store)
+        entry = case.detail["fields"]["glow_note"]
+        self.assertEqual(entry["member_write"], "500 / code -1")
+        self.assertTrue(entry["written"])
+        self.assertTrue(entry["restored"].startswith("PATCH 200"), entry["restored"])
+        self.assertNotIn("glow_note", store.member)
 
     def test_nothing_is_put_back_for_a_field_that_was_never_changed(self) -> None:
         # A write accepted but ignored needs no restore, which Stream might refuse; the
@@ -634,6 +667,114 @@ class OracleTest(unittest.TestCase):
         case = only(run, "EO-channel")
         self.assertEqual(case.verdict, matrix.FAIL)
         self.assertIn("an existence oracle: query", case.reason)
+
+    def test_two_successes_are_compared_by_shape_never_by_size(self) -> None:
+        # The I2a review's finding 2 (P06.1-I2b): every Stream response carries ``duration``,
+        # whose length varies, so two identical successes were "different" by size.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "queryUsers":
+                duration = "9.87ms" if "none" not in str(params.get("args")) else "12.34ms"
+                body = {"duration": duration, "users": [{"id": "x", "name": "n"}]}
+                return http_reply(200, response=body)
+            return None
+
+        run, _ = matrix_run({"EO-user"}, after_setup={"A": a})
+        case = only(run, "EO-user")
+        pair = case.detail["pairs"]["queryUsers"]
+        self.assertEqual(pair["verdict"], matrix.HOLDS)
+        self.assertEqual(case.verdict, matrix.HOLDS)
+        # Both normalized answers are kept, so a FAIL on the text can be read.
+        self.assertEqual(pair["existing_normalized"], pair["missing_normalized"])
+        self.assertIn('"users": "list[1]"', pair["existing_normalized"])
+        self.assertNotIn("duration", pair["existing_normalized"])
+
+    def test_successes_of_different_shape_differ(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "queryUsers":
+                users = [{"id": "x"}] if "none" not in str(params.get("args")) else []
+                return http_reply(200, response={"duration": "1ms", "users": users})
+            return None
+
+        run, _ = matrix_run({"EO-user"}, after_setup={"A": a})
+        case = only(run, "EO-user")
+        self.assertEqual(case.verdict, matrix.FAIL)
+        pair = case.detail["pairs"]["queryUsers"]
+        self.assertIn('"users": "list[1]"', pair["existing_normalized"])
+        self.assertIn('"users": "list[0]"', pair["missing_normalized"])
+        self.assertEqual(
+            i2a.shape({"duration": "1ms", "a": [1, 2], "b": {"c": None, "d": 3}}),
+            {"a": "list[2]", "b": {"c": "null", "d": "int"}},
+        )
+
+    def test_a_refusals_normalized_messages_are_kept(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                message_id = params["args"][0]
+                if "none" in message_id:
+                    return http_reply(404, 16, {"code": 16, "message": f"{message_id} not found"})
+                return http_reply(403, 17, {"code": 17, "message": f"no access to {message_id}"})
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
+        pair = only(run, "EO-message").detail["pairs"]["getMessage"]
+        self.assertEqual(pair["verdict"], matrix.FAIL)
+        self.assertEqual(pair["existing_normalized"], "403 / code 17: no access to {id}")
+        self.assertEqual(pair["missing_normalized"], "404 / code 16: {id} not found")
+
+    def test_the_channel_oracle_has_a_sync_pair(self) -> None:
+        # P06.1-I2b: whether sync answers differently for an existing and a missing channel.
+        run, _ = matrix_run({"EO-channel"})
+        pairs = only(run, "EO-channel").detail["pairs"]
+        self.assertEqual(list(pairs), ["query", "watch", "GET channel", "sync"])
+        self.assertEqual(pairs["sync"]["verdict"], matrix.HOLDS)
+        sent = [
+            p["args"]
+            for op, p in run.sessions["A"].sent  # type: ignore[attr-defined]
+            if op == "call" and p.get("method") == "sync"
+        ]
+        self.assertEqual(len(sent), 2)
+        self.assertEqual(sent[0][0], [f"glow-match:{run.ctx['XD']}"])
+        self.assertEqual(sent[1][0], [f"glow-match:{run.prefix}-none-channel"])
+
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "sync":
+                cid = params["args"][0][0]
+                if "none" in cid:
+                    return http_reply(400, 4, {"code": 4, "message": f"channel {cid} not found"})
+                return http_reply(201, response={"inaccessible_cids": [cid]})
+            return None
+
+        run, _ = matrix_run({"EO-channel"}, after_setup={"A": a})
+        case = only(run, "EO-channel")
+        self.assertEqual(case.verdict, matrix.FAIL)
+        self.assertIn("sync:", case.reason)
+
+    def test_the_oracle_needs_a_successful_control(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): identical answers show nothing about an
+        # existence oracle unless an entitled read shows that the existing ID exists.
+        def x(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                return http_reply(500, -1)
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"X": x})
+        case = only(run, "EO-message")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("the control did not succeed", case.reason)
+
+    def test_two_different_5xx_answers_are_not_an_oracle(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): a 5xx is not a determinate answer.
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op == "call" and params.get("method") == "getMessage":
+                status = 503 if "none" in params["args"][0] else 500
+                return http_reply(status, -1)
+            return None
+
+        run, _ = matrix_run({"EO-message"}, after_setup={"A": a})
+        case = only(run, "EO-message")
+        self.assertEqual(case.verdict, matrix.INCONCLUSIVE)
+        self.assertIn("not attributable", case.reason)
+        self.assertNotIn("other", i2a.DETERMINATE)
 
     def test_a_missing_channel_that_a_probe_created_is_counted_and_cleaned_up(self) -> None:
         def created(_server: FakeServer, run: ProofRun) -> Any:

@@ -68,6 +68,21 @@ I2 = "glow_stream_proof/i2a.py"
 AS = "glow_stream_proof/app_send.py"
 TMX = "tests.test_mechanisms."
 TI2 = "tests.test_i2a."
+# P06.1-I2b.
+MT = "glow_stream_proof/matrix.py"
+TCE = "tests.test_credentials_and_client_env."
+TCL = "tests.test_cleanup."
+# P06.1-I2b, step 2: Video and Feeds.
+PR = "glow_stream_proof/products.py"
+PO = "client/product-op.cjs"
+EI = "client/error-info.cjs"
+BL = "glow_stream_proof/baseline.py"
+RPL = "checks/run_plan.py"
+TPR = "tests.test_products."
+TPC = "tests.test_product_cases."
+TRN = "tests.test_runner."
+TCF = "tests.test_configuration."
+TCLI = "tests.test_cli."
 RT3_CONTROL_HOLDS = (
     "            elif (\n"
     '                control.outcome == "success" and _request_line(control.record, self.ctx) == request\n'
@@ -533,7 +548,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "nit 12 cleanup reserve",
-        [(P, "CLEANUP_RESERVE = 130\n", "CLEANUP_RESERVE = 60\n")],
+        [(P, "CLEANUP_RESERVE = 190\n", "CLEANUP_RESERVE = 60\n")],
         ["tests.test_cleanup.CleanupReserveTest.test_reserve_covers_the_worst_case_end_of_run"],
     ),
     (
@@ -1817,7 +1832,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 G,
-                '        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):\n',
+                "        if len(parts) >= 2 and parts[1] not in _KEYWORDS and not scope.owns_message(parts[1]):\n",
                 "        if False:\n",
             )
         ],
@@ -2263,7 +2278,13 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2a step 2 delete: the hard-deleted user is not named at cleanup",
-        [(MX, "                run.users.remove(affected_id)\n", "                pass\n")],
+        [
+            (
+                MX,
+                "                run.users.remove(run.ctx[mech.affected])\n",
+                "                pass\n",
+            )
+        ],
         [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
     ),
     (
@@ -2371,7 +2392,7 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     ),
     (
         "I2a review 2: a member that missed the probe gets a second window",
-        [(MX, "        if second:\n", "        if False:\n")],
+        [(MX, "            if second:\n", "            if False:\n")],
         [TMX + "WindowTest.test_a_late_delivery_is_not_taken_for_an_ended_subscription"],
     ),
     (
@@ -2424,8 +2445,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 MX,
-                '        elif mech.scope == "account":\n            self.fresh_token()\n',
-                "        elif False:\n            self.fresh_token()\n",
+                '            elif mech.scope == "account":\n                self.fresh_token()\n',
+                "            elif False:\n                self.fresh_token()\n",
             )
         ],
         [TMX + "FamiliesTest.test_deactivation_and_the_hard_delete"],
@@ -2672,8 +2693,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 MX,
-                '            except ClientSessionEnded as exc:\n                self.after[label]["s15_error"] = run._text(exc)\n',
-                '            except ArithmeticError as exc:\n                self.after[label]["s15_error"] = run._text(exc)\n',
+                '                except ClientSessionEnded as exc:\n                    self.after[label]["s15_error"] = run._text(exc)\n',
+                '                except ArithmeticError as exc:\n                    self.after[label]["s15_error"] = run._text(exc)\n',
             )
         ],
         [TMX + "StopsTest.test_an_ended_client_session_ends_only_its_case"],
@@ -2692,15 +2713,27 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     (
         "I2a review 7: a family's row is kept after each step",
         [
+            # Since P06.1-I2b every part of the step keeps the row (finding 1), so all
+            # four blocks are reverted to show that none does.
             (
                 MX,
-                '        self.step("REST reads and S15 writes made after the mechanism")\n',
-                "        pass\n",
+                '        with self.stepping("REST reads and S15 writes made after the mechanism"):\n',
+                "        if True:\n",
             ),
             (
                 MX,
-                '        self.step("token reuse made after the mechanism")\n',
-                "        pass\n",
+                '        with self.stepping("token reuse made after the mechanism"):\n',
+                "        if True:\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("tokens issued after the mechanism tried"):\n',
+                "        if True:\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("the probe after the mechanism collected"):\n',
+                "        if True:\n",
             ),
         ],
         [
@@ -2765,6 +2798,1141 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [(P, "            _session, self.g2_setup = i2a.g2_session(self)\n", "            pass\n")],
         [
             "tests.test_run_simulation.SimulationTest.test_guest_reach_runs_on_a_guest_created_server_side"
+        ],
+    ),
+    # P06.1-I2b: the I2a review's items, the two rules, the poll listing and the API key.
+    (
+        "I2b finding 1: a stop inside a step keeps the other members' observations",
+        [
+            (
+                MX,
+                '        with self.stepping("REST reads and S15 writes made after the mechanism"):\n',
+                "        if True:\n",
+            )
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_inside_a_step_keeps_the_other_members_observation"],
+    ),
+    (
+        "I2b finding 1: the row says applied once the mechanism's request is answered",
+        [
+            (
+                MX,
+                "        self.observe(\n"
+                '            matrix.Verdict(matrix.INCONCLUSIVE, "applied; nothing observed after it yet"),\n'
+                "            f\"applied: {self.detail['apply']['answer']}\",\n"
+                "        )\n",
+                "        pass\n",
+            ),
+            (
+                MX,
+                '        with self.stepping("applied; the events and the channel after it read"):\n',
+                "        if True:\n",
+            ),
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_after_the_mechanisms_request_keeps_the_row_as_applied"],
+    ),
+    (
+        "I2b finding 1: the retention read keeps the row",
+        [
+            (
+                MX,
+                '            with self.stepping("retention read; the undo not yet made"):\n',
+                "            if True:\n",
+            )
+        ],
+        [TMX + "KeptStepsTest.test_a_stop_in_the_retention_read_keeps_what_the_channel_showed"],
+    ),
+    (
+        "I2b finding 2: two successes are compared by shape, not by size",
+        [
+            (
+                I2,
+                "        text = json.dumps(shape(response), sort_keys=True)\n",
+                '        text = f"keys {sorted(response)}; size {len(json.dumps(response))}"\n',
+            )
+        ],
+        [TI2 + "OracleTest.test_two_successes_are_compared_by_shape_never_by_size"],
+    ),
+    (
+        "I2b finding 2: duration is left out of the shape",
+        [
+            (
+                I2,
+                '_VARYING_KEYS = frozenset({"duration"})\n',
+                "_VARYING_KEYS: frozenset[str] = frozenset()\n",
+            )
+        ],
+        [TI2 + "OracleTest.test_two_successes_are_compared_by_shape_never_by_size"],
+    ),
+    (
+        "I2b: each oracle pair keeps both normalized answers",
+        [
+            (I2, '                "existing_normalized": normalized(found, ids),\n', ""),
+            (I2, '                "missing_normalized": normalized(absent, ids),\n', ""),
+        ],
+        [TI2 + "OracleTest.test_a_refusals_normalized_messages_are_kept"],
+    ),
+    (
+        "I2b: the existence oracle has a sync pair",
+        [
+            (
+                I2,
+                "        pairs.append(\n"
+                "            (\n"
+                '                "sync",\n'
+                "                pr._http_answer(\n"
+                '                    _call(run, "A", "client", "sync", [[f"{T}:{existing}"], run.ctx["run_start"]])\n'
+                "                ),\n"
+                "                pr._http_answer(\n"
+                '                    _call(run, "A", "client", "sync", [[f"{T}:{missing}"], run.ctx["run_start"]])\n'
+                "                ),\n"
+                "            )\n"
+                "        )\n"
+                "        observe()\n",
+                "        pass\n",
+            )
+        ],
+        [TI2 + "OracleTest.test_the_channel_oracle_has_a_sync_pair"],
+    ),
+    (
+        "I2b nit 3: the oracle needs a successful control",
+        [(I2, '    elif control.outcome != "success":\n', "    elif False:\n")],
+        [TI2 + "OracleTest.test_the_oracle_needs_a_successful_control"],
+    ),
+    (
+        "I2b nit 3: a 5xx is not a determinate answer",
+        [
+            (
+                I2,
+                'DETERMINATE = ("success", "auth", "permission", "not-found", "input", "feature")\n',
+                'DETERMINATE = ("success", "auth", "permission", "not-found", "input", "feature", "other")\n',
+            )
+        ],
+        [TI2 + "OracleTest.test_two_different_5xx_answers_are_not_an_oracle"],
+    ),
+    (
+        "I2b nit 3: a write with no answer or a 5xx counts as written",
+        [
+            (
+                I2,
+                '        entry["written"] = answer.outcome not in (*REFUSALS, "feature", "input", "not-found")\n',
+                '        entry["written"] = answer.outcome == "success"\n',
+            )
+        ],
+        [TI2 + "S15MapTest.test_a_write_answered_5xx_is_still_put_back"],
+    ),
+    (
+        "I2b nit 3: OUT-send HOLDS with exactly one transport attempt",
+        [
+            (
+                I2,
+                "        and len(unreachable.attempts) == 1\n",
+                "        and len(unreachable.attempts) >= 1\n",
+            )
+        ],
+        [TI2 + "OutageTest.test_several_transport_attempts_are_inconclusive"],
+    ),
+    (
+        "I2b nit 3: the type of a recorded setting is compared",
+        [
+            (
+                CF,
+                "            elif have != want or type(have) is not type(want):\n",
+                "            elif have != want:\n",
+            )
+        ],
+        [TRS + "test_a_value_of_another_type_is_a_difference"],
+    ),
+    (
+        "I2b nit 3: the token margin applies to every dimension",
+        [
+            (
+                MX,
+                "                for dim in DIMENSIONS:\n",
+                '                for dim in ("rest",):\n',
+            )
+        ],
+        [TMX + "TokenLifetimeTest.test_the_margin_applies_to_every_dimension"],
+    ),
+    (
+        "I2b nit 3: the subscription needs a listener that received the probe",
+        [
+            (
+                MX,
+                "        return any(bool(g) for g in got) if got else None\n",
+                "        return True\n",
+            )
+        ],
+        [
+            TMX
+            + "ListenerAndRetentionTest.test_a_probe_that_reaches_no_session_leaves_the_subscription_not_shown"
+        ],
+    ),
+    (
+        "I2b nit 3: retention needs the channel's first message",
+        [
+            (
+                MX,
+                "            self.retained = self.history_id in ids\n",
+                "            self.retained = True\n",
+            )
+        ],
+        [
+            TMX
+            + "ListenerAndRetentionTest.test_a_channel_whose_first_message_is_gone_does_not_meet_the_policy"
+        ],
+    ),
+    (
+        "I2b nit 4: the guard checks the message for every mutating request",
+        [
+            (
+                G,
+                "        if len(parts) >= 2 and parts[1] not in _KEYWORDS and not scope.owns_message(parts[1]):\n",
+                '        if verb == "DELETE" and len(parts) == 2 and not scope.owns_message(parts[1]):\n',
+            )
+        ],
+        [
+            TGU + "RefusalTest.test_a_message_poll_or_group_must_be_the_runs",
+            TGU + "ServerHookTest.test_the_message_rule_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b nit 4: the poll message is the run's own message",
+        [(P, "                self.messages.add(message_id)\n", "                pass\n")],
+        [
+            TA
+            + "ProductionPhaseAnswerTest.test_polls_on_fail_survives_a_production_vote_without_an_answer",
+            TI
+            + "ProceduresKeepWhatTheyObservedTest.test_s10_vote_success_survives_an_error_in_the_server_replay",
+        ],
+    ),
+    (
+        "I2b, the disclosure rule: a term the request carried is left out",
+        [
+            (
+                P,
+                "        scanned = [t for t in terms if t not in carried]\n",
+                "        scanned = list(terms)\n",
+            )
+        ],
+        [TA + "DisclosureRuleTest.test_a_term_the_request_carried_is_not_a_disclosure"],
+    ),
+    (
+        "I2b, the disclosure rule: a carried term matches anywhere in the serialized request",
+        [
+            (
+                MT,
+                '    sent = "\\n".join(serialized_request(r) for r in records)\n',
+                '    sent = "\\n".join(str(r.get("path")) for r in records)\n',
+            )
+        ],
+        [
+            TA + "DisclosureRuleTest.test_a_term_the_request_carried_is_not_a_disclosure",
+            TA + "DisclosureRuleTest.test_the_helpers",
+        ],
+    ),
+    (
+        "I2b, the disclosure rule: where a term was found is kept",
+        [
+            (
+                P,
+                "            for term, paths in matrix.term_paths(answer, leaks).items():\n",
+                "            for term, paths in {}.items():\n",
+            )
+        ],
+        [
+            TA
+            + "DisclosureRuleTest.test_a_term_the_request_did_not_carry_is_a_disclosure_and_its_place_is_kept"
+        ],
+    ),
+    (
+        "I2b, 404 code 16: the other member's identical request must still succeed",
+        [
+            (
+                MX,
+                "    if not other_ok:\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_without_the_other_members_success_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: only where the mechanism removes what the request needs",
+        [
+            (
+                MX,
+                "    if missing is None:\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_after_another_mechanism_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: Stream's message must name the missing membership or user",
+        [
+            (
+                MX,
+                "    if not names_missing(message, missing, uid):\n        return None\n",
+                "    if False:\n        return None\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_the_rule",
+            TMX + "Missing404Test.test_a_404_whose_message_names_nothing_stays_not_shown",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: the removal and the deactivation are the mechanisms it applies to",
+        [
+            (
+                MX,
+                'REMOVES: dict[str, str] = {"remove": "membership", "deactivate": "user"}\n',
+                "REMOVES: dict[str, str] = {}\n",
+            )
+        ],
+        [
+            TMX + "Missing404Test.test_a_removed_members_own_write_404_ends_the_dimension",
+            TMX + "Missing404Test.test_a_deactivated_users_404s_end_its_dimensions",
+        ],
+    ),
+    (
+        "I2b, 404 code 16: Stream's message is kept in the row",
+        [
+            (
+                MX,
+                '                "messages": self.refusal_messages(label),\n',
+                '                "messages": {},\n',
+            )
+        ],
+        [TMX + "Missing404Test.test_a_removed_members_own_write_404_ends_the_dimension"],
+    ),
+    (
+        "I2b: a WebSocket refusal keeps Stream's message",
+        [
+            (
+                P,
+                '        note = message if isinstance(message, str) else ""\n',
+                '        note = ""\n',
+            )
+        ],
+        [TMX + "Missing404Test.test_a_deactivated_users_404s_end_its_dimensions"],
+    ),
+    (
+        "I2b: the API key is removed from free text",
+        [
+            (
+                RD,
+                "        if self._api_key:\n            value = value.replace(self._api_key, REDACTED_API_KEY)\n",
+                "        if False:\n            value = value.replace(self._api_key, REDACTED_API_KEY)\n",
+            )
+        ],
+        [
+            "tests.test_redaction.RedactionTest.test_the_api_key_is_removed_from_free_text_when_given",
+            TCE
+            + "ContextRedactionTest.test_the_commands_redactor_removes_the_api_key_from_free_text",
+        ],
+    ),
+    (
+        "I2b: the commands' redactor is given the API key",
+        [
+            (
+                C,
+                "        self.redactor = Redactor(self.secrets, api_key=self.credentials.api_key)\n",
+                "        self.redactor = Redactor(self.secrets)\n",
+            )
+        ],
+        [
+            TCE
+            + "ContextRedactionTest.test_the_commands_redactor_removes_the_api_key_from_free_text"
+        ],
+    ),
+    (
+        "I2b, the poll listing: polls are listed as each of the run's users",
+        [(P, '            ("polls verified", lambda: self._verify_polls(out)),\n', "")],
+        [TCL + "PollListingTest.test_polls_are_listed_as_each_run_user_and_read_by_id"],
+    ),
+    (
+        "I2b, the poll listing: a recorded poll must be gone after its delete",
+        [(P, '        if not str(status).startswith("404"):\n', "        if False:\n")],
+        [TCL + "PollListingTest.test_a_poll_that_survives_its_delete_is_a_problem"],
+    ),
+    (
+        "I2b, the poll listing: no listing as a deactivated user",
+        [
+            (
+                P,
+                "        users = sorted(set(self.users) - self.deactivated_users)\n",
+                "        users = sorted(set(self.users))\n",
+            )
+        ],
+        [TCL + "PollListingTest.test_no_listing_is_made_as_a_deactivated_user"],
+    ),
+    (
+        "I2b, the poll listing: the listing as the run's users stands in for the standalone one",
+        [
+            (
+                P,
+                '        if listed.get("remaining_polls") is None and self.polls_as_users is not None:\n',
+                "        if False:\n",
+            )
+        ],
+        [TCL + "PollListingTest.test_polls_are_listed_as_each_run_user_and_read_by_id"],
+    ),
+    # -- P06.1-I2b, step 2: Video and Feeds ------------------------------------------------
+    (
+        "I2b products: the runner's op refuses a denied field before sending",
+        [
+            (
+                PO,
+                "  const field = deniedField(body) || deniedField(params);\n",
+                "  const field = null;\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the runner's op refuses a denied path before sending",
+        [
+            (
+                PO,
+                "      if (segment.includes(word)) return `denied path (${word})`;\n",
+                "      if (false) return `denied path (${word})`;\n",
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the runner's op refuses a path outside the allowlist",
+        [(PO, "  return 'path outside the Video and Feeds allowlist';\n", "  return null;\n")],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
+    ),
+    (
+        "I2b products: the runner asks the op before a product request is sent",
+        [
+            (
+                RN,
+                "      const why = productRefusal(cmd.method, cmd.path, cmd.body, cmd.params);\n",
+                "      const why = null;\n",
+            )
+        ],
+        [TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape"],
+    ),
+    (
+        "I2b products: the op's refusal has its own error kind",
+        [
+            (
+                EI,
+                "  if (err && err.proofRefused) {\n    info.kind = 'refused';\n    info.message = err.message;\n    return info;\n  }\n",
+                "",
+            )
+        ],
+        [
+            TRN + "ErrorInfoTest.test_kinds",
+            TRN + "EveryOpTest.test_each_op_replies_with_the_protocols_shape",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a denied field",
+        [
+            (
+                PR,
+                '        return "query parameters belong in params, not in the path"\n    field = denied_field(body) or denied_field(params)\n',
+                '        return "query parameters belong in params, not in the path"\n    field = None\n',
+            )
+        ],
+        [
+            TPR + "AllowlistTest.test_the_python_table",
+            TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a denied path",
+        [(PR, "            if word in segment:\n", "            if False:\n")],
+        [
+            TPR + "AllowlistTest.test_the_python_table",
+            TGU + "ProductScopeTest.test_the_deny_list_is_refused_first_even_on_the_runs_own_call",
+        ],
+    ),
+    (
+        "I2b products: the Python table refuses a path outside the allowlist",
+        [(PR, '    return "path outside the Video and Feeds allowlist"\n', "    return None\n")],
+        [TPR + "AllowlistTest.test_the_python_table"],
+    ),
+    (
+        "I2b guard: the deny-list is refused first",
+        [(G, "    why = products.denied(path, body, params)\n", "    why = None\n")],
+        [
+            TGU + "ProductScopeTest.test_the_deny_list_is_refused_first_even_on_the_runs_own_call",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a configuration write passes only in the scoped configure",
+        [
+            (
+                G,
+                '        if not scope.allows_product_configuration():\n            return "a Video or Feeds configuration change outside the scoped configure"\n',
+                "        if False:\n            return None\n",
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: the configure scope owns no call",
+        [
+            (
+                G,
+                "    def owns_call(self, call_id: str) -> bool:\n        return False\n",
+                "    def owns_call(self, call_id: str) -> bool:\n        return self.prefix in call_id\n",
+            )
+        ],
+        [TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure"],
+    ),
+    (
+        "I2b guard: a call the run did not create is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_call(parts[3]):\n            return "a call this run did not create"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a feed the run did not create is refused",
+        [
+            (
+                G,
+                '    if any(not scope.owns_feed(channel_id(fid)) for fid in fids):\n        return "a feed this run did not create"\n',
+                '    if False:\n        return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: an activity the run did not record is refused (update, delete, reaction)",
+        [
+            (
+                G,
+                '        if not scope.owns_activity(sub[1]):\n            return "an activity this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [
+            TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused",
+            TGU + "ProductHookTest.test_the_products_rules_in_the_real_hook",
+        ],
+    ),
+    (
+        "I2b guard: a comment on an activity the run did not record is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_activity(target):\n            return "an activity this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: a comment the run did not record is refused",
+        [
+            (
+                G,
+                '        if not scope.owns_comment(sub[1]):\n            return "a comment this run did not record"\n',
+                '        if False:\n            return ""\n',
+            )
+        ],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: a user's Feeds data delete names the run's own user",
+        [(G, "        return _unowned([sub[1], *users], [], scope)\n", "        return None\n")],
+        [TGU + "ProductScopeTest.test_objects_the_run_did_not_create_are_refused"],
+    ),
+    (
+        "I2b guard: the Video and Feeds queries are reads",
+        [(G, '        ("video", "calls"),\n', "")],
+        [TGU + "ProductScopeTest.test_reads_are_never_refused"],
+    ),
+    (
+        "I2b products: the product-finding rule leaves 402 and code 99 to the charge rule",
+        [
+            (
+                PR,
+                "    if status is None or not 400 <= status < 500 or status in (402, 404) or code == 99:\n",
+                "    if status is None:\n",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b products: a 404 from a configuration read means the product is not on the deployment",
+        [
+            (
+                PR,
+                '    if result.status == 404:\n        return f"not available: {why} ({_NOT_ON_DEPLOYMENT})"\n',
+                "",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_availability_from_the_configuration_read"],
+    ),
+    (
+        "I2b usage: an answer that a product is not enabled, saying only upgrade, is no charge signal",
+        [
+            (
+                U,
+                "        if _only_an_upgrade_word(message) and product_unavailable_wording(message):\n",
+                "        if False:\n",
+            )
+        ],
+        [SS + "ProductAvailabilityWordingTest.test_the_exemption"],
+    ),
+    (
+        "I2b usage: any other charge word keeps the answer a charge signal",
+        [
+            (
+                U,
+                '    return {m.lower() for m in _CHARGE_WORDS.findall(message)} <= {"upgrade"}\n',
+                "    return True\n",
+            )
+        ],
+        [SS + "ProductAvailabilityWordingTest.test_the_exemption"],
+    ),
+    (
+        "I2b products: the plan names only the client roles that still hold a grant",
+        [
+            (
+                PR,
+                "        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+                "        roles = [role for role in grants if grants.get(role)]\n",
+            )
+        ],
+        [
+            TPR
+            + "LockdownPlanTest.test_the_plan_is_a_difference_naming_only_the_client_roles_with_grants"
+        ],
+    ),
+    (
+        "I2b products: a product that is not available is neither planned nor a difference",
+        [
+            (
+                PR,
+                "        if not _available(state, product):\n            continue\n        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+                "        roles = [role for role in CLIENT_ROLES if grants.get(role)]\n",
+            ),
+            (
+                PR,
+                "        if not _available(state, product):\n            continue\n        for role in CLIENT_ROLES:\n",
+                "        for role in CLIENT_ROLES:\n",
+            ),
+        ],
+        [
+            TPR
+            + "LockdownPlanTest.test_a_product_that_is_not_available_is_neither_planned_nor_a_difference"
+        ],
+    ),
+    (
+        "I2b products: a configuration read that is not verified is a difference",
+        [
+            (
+                PR,
+                '        if note.startswith("not verified") or note == "not read":\n',
+                "        if False:\n",
+            )
+        ],
+        [TPR + "LockdownPlanTest.test_a_read_that_is_not_verified_is_a_difference"],
+    ),
+    (
+        "I2b configuration: verify compares the products from the recorded apply on",
+        [
+            (
+                CF,
+                "    applied = products.LOCKDOWN_APPLIED is not None if locked is None else locked\n    if not applied:\n        return []\n",
+                "    if False:\n        return []\n",
+            )
+        ],
+        [TCF + "ProductDifferencesTest.test_with_no_recorded_apply_the_differences_are_not_drift"],
+    ),
+    (
+        "I2b configuration: verify includes the products' differences",
+        [(CF, "    problems += product_differences(snapshot)\n", "")],
+        [
+            TCF + "ProductDifferencesTest.test_after_the_apply_verify_sees_drift",
+            "tests.test_closing_checks.ProductDriftTest.test_preflight_and_the_end_of_the_run_see_it",
+        ],
+    ),
+    (
+        "I2b baseline: the configuration read carries the products",
+        [
+            (
+                BL,
+                '    return {\n        "app": app,\n        "channel_types": channel_types,\n        "products": products.read_configuration(api),\n    }\n',
+                '    return {"app": app, "channel_types": channel_types}\n',
+            )
+        ],
+        ["tests.test_closing_checks.ProductDriftTest.test_preflight_and_the_end_of_the_run_see_it"],
+    ),
+    (
+        "I2b configure --products: --apply refuses while chat does not verify",
+        [
+            (
+                C,
+                '    if chat_problems:\n        ctx.say("refused: the chat configuration does not verify; nothing applied")\n        return EXIT_REFUSED\n',
+                "    if False:\n        return EXIT_REFUSED\n",
+            )
+        ],
+        [
+            TCLI
+            + "ScopedConfigureTest.test_apply_refuses_while_the_chat_configuration_does_not_verify"
+        ],
+    ),
+    (
+        "I2b configure --products: --apply refuses a path outside the configuration families",
+        [
+            (
+                C,
+                '    outside = [\n        f"{step.method} {step.path}"\n        for step in plan\n        if not products.is_configuration_write(step.method, step.path)\n    ]\n',
+                "    outside: list[str] = []\n",
+            )
+        ],
+        [
+            TCLI
+            + "ScopedConfigureTest.test_apply_refuses_a_planned_request_outside_the_configuration_families"
+        ],
+    ),
+    (
+        "I2b configure --products: the apply is guarded by the configure scope",
+        [
+            (
+                C,
+                "    configure_scope = guard.ConfigureScope(PREFIX_ROOT)\n    ctx.api.guard = lambda method, path, body, params: guard.refusal(\n        method, path, body, params, configure_scope\n    )\n",
+                "",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_apply_is_guarded_by_the_configure_scope"],
+    ),
+    (
+        "I2b configure --products: only the products named are planned",
+        [
+            (
+                C,
+                '    plan = [step for step in products.lockdown_plan(state) if step.purpose.split(":")[0] in scope]\n',
+                "    plan = products.lockdown_plan(state)\n",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_apply_is_guarded_by_the_configure_scope"],
+    ),
+    (
+        "I2b configure --products: unknown products are refused before any read",
+        [(C, "        if unknown or not scope:\n", "        if False:\n")],
+        [TCLI + "ScopedConfigureTest.test_unknown_products_are_refused"],
+    ),
+    (
+        "I2b verify-clean: a call, feed or activity left is not clean",
+        [
+            (
+                C,
+                '    for kind in products.OBJECT_KINDS:\n        # A product that is not available can hold no object (P06.1-I2b).\n        if listed[f"remaining_{kind}"] is None:\n            clean = clean and str(listed[f"{kind}_listing"]).startswith("not available")\n        else:\n            clean = clean and listed[f"remaining_{kind}"] == []\n',
+                "",
+            )
+        ],
+        [TCLI + "ProductLeftoversTest.test_verify_clean_lists_calls_feeds_and_activities"],
+    ),
+    (
+        "I2b cleanup --apply: the proof's calls and feeds are deleted",
+        [
+            (
+                C,
+                '    calls = [c for c in objects.get("remaining_calls") or [] if PREFIX_ROOT in c]\n',
+                "    calls: list[str] = []\n",
+            ),
+            (
+                C,
+                '    feeds = [f for f in objects.get("remaining_feeds") or [] if PREFIX_ROOT in f]\n',
+                "    feeds: list[str] = []\n",
+            ),
+        ],
+        [TCLI + "ProductLeftoversTest.test_cleanup_apply_deletes_the_proofs_calls_and_feeds_only"],
+    ),
+    (
+        "I2b record-products-baseline: a snapshot without products is refused",
+        [
+            (
+                C,
+                '    if not isinstance(state, dict):\n        ctx.say("refused: the snapshot holds no products section")\n        return EXIT_REFUSED\n',
+                "    if False:\n        return EXIT_REFUSED\n",
+            )
+        ],
+        [TCLI + "ProbeAndBaselineTest.test_record_refuses_a_snapshot_without_products"],
+    ),
+    (
+        "I2b run: a Video and Feeds run is lean",
+        [(C, "    lean = lean_only(only)\n", "    lean = False\n")],
+        [TCLI + "LeanRunTest.test_a_product_only_run_is_lean"],
+    ),
+    (
+        "I2b lean setup: users A and B only, no channel",
+        [
+            (
+                P,
+                "        if self.lean:\n            self._lean_setup()\n            return\n",
+                "        if False:\n            return\n",
+            )
+        ],
+        [
+            TPC + "LeanSetupTest.test_a_video_and_feeds_run_creates_two_users_and_no_channel",
+            "tests.test_run_plan.RunPlanTest.test_the_i2b_plan",
+        ],
+    ),
+    (
+        "I2b lean setup: no reconnect check",
+        [
+            (
+                P,
+                "            if case.phase >= DESTRUCTIVE_PHASE and not reconnected and not self.lean:\n",
+                "            if case.phase >= DESTRUCTIVE_PHASE and not reconnected:\n",
+            )
+        ],
+        [TPC + "LeanSetupTest.test_a_video_and_feeds_run_creates_two_users_and_no_channel"],
+    ),
+    (
+        "I2b lean_only: every case named must be a product case",
+        [
+            (
+                P,
+                "    cases = {c.id: c for c in matrix.all_cases()}\n",
+                "    return True\n    cases = {c.id: c for c in matrix.all_cases()}\n",
+            )
+        ],
+        [
+            TPC + "LeanSetupTest.test_lean_only",
+            "tests.test_run_plan.RunPlanTest.test_one_set_is_counted_on_its_own",
+        ],
+    ),
+    (
+        "I2b run plan: a set of product cases is counted with the lean setup",
+        [(RPL, "    run.lean = proof_run.lean_only(only)\n", "    run.lean = False\n")],
+        [
+            "tests.test_run_plan.RunPlanTest.test_the_i2b_plan",
+            "tests.test_run_plan.RunPlanTest.test_one_set_is_counted_on_its_own",
+        ],
+    ),
+    (
+        "I2b preflight: a call, feed or activity the run did not create stops the run",
+        [(P, "        if foreign_objects:\n", "        if False:\n")],
+        [
+            TPC
+            + "PreflightObjectsTest.test_a_call_feed_or_activity_the_run_did_not_create_stops_the_run",
+            "tests.test_preflight.ProductObjectsTest.test_objects_stop_the_run_and_name_no_identifier_of_the_runs",
+        ],
+    ),
+    (
+        "I2b product finding: an answer that the product is not available is its finding",
+        [(P, '        if outcome not in ("success", "no-response"):\n', "        if False:\n")],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_an_answer_that_the_product_is_not_enabled_is_its_finding_not_a_charge"
+        ],
+    ),
+    (
+        "I2b product finding: the product's remaining cases are not run",
+        [
+            (
+                P,
+                "            if product is not None and product in self.unavailable_products:\n",
+                "            if False:\n",
+            )
+        ],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_an_answer_that_the_product_is_not_enabled_is_its_finding_not_a_charge"
+        ],
+    ),
+    (
+        "I2b product finding: a fixture's answer counts too",
+        [
+            (
+                P,
+                "                return self._product_unavailable(\n                    case, result.status, result.code, result.message, observed\n                ) or self._result(\n",
+                "                return self._result(\n",
+            )
+        ],
+        [
+            TPC
+            + "ProductNotAvailableTest.test_a_fixture_answered_not_available_ends_the_products_cases_too"
+        ],
+    ),
+    (
+        "I2b fixtures: each fixture request is sent once per run",
+        [
+            (
+                P,
+                "            if key in self._fixtures_done:\n                continue\n",
+                "            if False:\n                continue\n",
+            )
+        ],
+        [
+            TPC
+            + "BeforeTheLockdownTest.test_fixtures_are_sent_once_and_what_they_create_is_the_runs"
+        ],
+    ),
+    (
+        "I2b tracking: what the control's replay creates is the run's",
+        [
+            (
+                P,
+                "        if result.ok:\n            self._track_created(result.body)  # a Video or Feeds object (P06.1-I2b)\n",
+                "",
+            )
+        ],
+        [
+            TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it",
+            TPC
+            + "AfterTheLockdownTest.test_every_case_of_the_user_role_holds_with_the_servers_control",
+        ],
+    ),
+    (
+        "I2b tracking: what a client creates is the run's",
+        [(P, "            self._track_created(response)\n", "")],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b cleanup: the Video and Feeds objects are deleted",
+        [
+            (
+                P,
+                '            ("video and feeds objects", lambda: self._delete_product_objects(out)),\n',
+                "",
+            )
+        ],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b cleanup: each run user's Feeds data is deleted when the run touched Feeds",
+        [
+            (
+                P,
+                "        if self.feeds or self.activities or self.comments or self.reactions or self.follows:\n",
+                "        if False:\n",
+            )
+        ],
+        [TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it"],
+    ),
+    (
+        "I2b verify-clean: the products' objects are listed after the run",
+        [(P, '            **self._new_product_objects(snapshot.get("products")),\n', "")],
+        [
+            TPC + "BeforeTheLockdownTest.test_every_object_is_recorded_and_the_cleanup_removes_it",
+            TPC
+            + "PreflightObjectsTest.test_the_end_of_the_run_tells_new_objects_from_preexisting_ones",
+        ],
+    ),
+    (
+        "I2b cleanup problems: a product object's delete must be 2xx or 404, its task completed",
+        [(P, '    for entry in out.get("product_deletes") or []:\n', "    for entry in []:\n")],
+        [TCL + "ProductDeletesTest.test_delete_statuses"],
+    ),
+    (
+        "I2b cleanup problems: a listing a product does not answer is a problem unless not available",
+        [
+            (
+                P,
+                '            if not str(listing).startswith("not available"):\n',
+                "            if True:\n",
+            )
+        ],
+        [
+            TCL + "ProductDeletesTest.test_listings",
+            TPC
+            + "PreflightObjectsTest.test_the_end_of_the_run_tells_new_objects_from_preexisting_ones",
+        ],
+    ),
+    (
+        "I2b undo: a client success is undone once when the control's replay made the undo",
+        [
+            (
+                P,
+                "        if case.control.undo_once and case.id in self._undone_by_replay and phase is None:\n",
+                "        if False:\n",
+            )
+        ],
+        [
+            TPC
+            + "BeforeTheLockdownTest.test_client_successes_are_undone_once_where_an_undo_is_defined"
+        ],
+    ),
+    (
+        "I2b matrix: the Video and Feeds cases are in the matrix",
+        [(MT, "        + _products()\n", "")],
+        [
+            "tests.test_run_plan.RunPlanTest.test_the_complete_set_runs_every_case_cleanly",
+            "tests.test_matrix.MatrixDefinitionTest.test_destructive_cases_run_last",
+        ],
+    ),
+    (
+        "I2b matrix: a product step the op would refuse fails validation",
+        [(MT, "            if why is not None:\n", "            if False:\n")],
+        [
+            "tests.test_matrix.ProductStepValidationTest.test_a_product_step_the_op_would_refuse_fails_validation"
+        ],
+    ),
+    # -- P06.1-I2b: the independent check's findings ----------------------------------------
+    (
+        "I2b check 1: the member's own undo is judged before the control's replay",
+        [
+            (
+                MX,
+                '        self.undo_verdict = matrix.refused_verdict(answer.outcome, False)\n        self.detail["client_undo"] = {\n            "request": pr._request_line(record, self.run.ctx),\n            "answer": pr._observed(answer),\n            "control": "not completed",\n            "verdict": f"{self.undo_verdict.label}: {self.undo_verdict.reason}",\n        }\n',
+                "",
+            )
+        ],
+        [
+            TMX
+            + "KeptAfterTheIndependentCheckTest.test_the_members_own_undo_is_kept_when_the_replay_stops"
+        ],
+    ),
+    (
+        "I2b check 2: what the earlier sessions' windows showed is kept when a later collection stops",
+        [
+            (
+                MX,
+                "            for label, window in seen.items():\n",
+                "            for label, window in {}.items():\n",
+            )
+        ],
+        [
+            TMX
+            + "KeptAfterTheIndependentCheckTest.test_an_earlier_sessions_probe_is_kept_when_a_later_collection_stops"
+        ],
+    ),
+    (
+        "I2b check 3: the product wording needs the product as its subject",
+        [(U, "        and PRODUCT_SUBJECT_WORDS.search(message)\n", "")],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: wording about an object or a field of the request is not the product's",
+        [(U, "        and not PRODUCT_OBJECT_WORDS.search(message)\n", "")],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: a 404 to a case's request is an object that does not exist",
+        [
+            (
+                PR,
+                "    if status is None or not 400 <= status < 500 or status in (402, 404) or code == 99:\n",
+                "    if status is None or not 400 <= status < 500 or status == 402 or code == 99:\n",
+            )
+        ],
+        [TPR + "AvailabilityTest.test_the_product_finding_rule"],
+    ),
+    (
+        "I2b check 3: a listing is not available only by the product's configuration read",
+        [
+            (
+                PR,
+                '            if product_state.startswith("not available"):\n',
+                '            if product_state.startswith("not available") or unavailable_answer(result.status, result.code, result.message):\n',
+            )
+        ],
+        [
+            TPR + "ReadAndListTest.test_list_objects",
+            "tests.test_preflight.ProductObjectsTest.test_a_listing_that_is_not_verified_stops_the_run",
+        ],
+    ),
+    (
+        "I2b check 3: preflight stops on a listing that is not verified",
+        [
+            (
+                P,
+                '        if unverified:\n            raise RunStopped(\n                "a listing of the products\' objects is not verified: " + "; ".join(unverified)\n            )\n',
+                "        if False:\n            raise RunStopped(unverified)\n",
+            )
+        ],
+        [
+            "tests.test_preflight.ProductObjectsTest.test_a_listing_that_is_not_verified_stops_the_run"
+        ],
+    ),
+    (
+        "I2b check 4: the configure scope passes only the lockdown's grants",
+        [(G, "        if not products.is_lockdown_body(body):\n", "        if False:\n")],
+        [TGU + "ProductScopeTest.test_a_configuration_write_passes_only_in_the_scoped_configure"],
+    ),
+    (
+        "I2b check 5: the apply's gate is the chat verification alone",
+        [
+            (
+                C,
+                '    chat_problems = [p for p in configuration.verify(before) if not p.startswith("video/feeds: ")]\n',
+                "    chat_problems = configuration.verify(before)\n",
+            )
+        ],
+        [TCLI + "ScopedConfigureTest.test_the_apply_is_gated_by_the_chat_verification_alone"],
+    ),
+    (
+        "I2b check 6: only a boolean true is the denied value, as in the runner's op",
+        [
+            (
+                PR,
+                '            if key in DENIED_TRUE_KEYS and (item is True or item == "true"):\n',
+                '            if key in DENIED_TRUE_KEYS and item in (True, "true"):\n',
+            )
+        ],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
+    ),
+    (
+        "I2b check 6: a query in the path is named before a denied field, as in the runner's op",
+        [
+            (
+                PR,
+                '    if "?" in path:\n        return "query parameters belong in params, not in the path"\n    field = denied_field(body) or denied_field(params)\n    if field:\n        return f"denied field ({field})"\n',
+                '    field = denied_field(body) or denied_field(params)\n    if field:\n        return f"denied field ({field})"\n    if "?" in path:\n        return "query parameters belong in params, not in the path"\n',
+            )
+        ],
+        [TPR + "AllowlistTest.test_the_runner_agrees_with_the_guard"],
+    ),
+    (
+        "I2b live: FD-feed's replay leaves A's feed in place (Stream does not recreate a deleted feed ID)",
+        [
+            (
+                MT,
+                '            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "feed of {A}"}}}),\n'
+                '            # No undo: Stream does not recreate a deleted feed ID ("feed with id ... has\n'
+                '            # been deleted", run V1 of 27 September 2026), and the later Feeds cases need\n'
+                "            # A's feed; the replay's feed stays, recorded, and cleanup deletes it.\n"
+                '            control=_replay(body_patch={"user_id": "{A}"}),\n',
+                '            step=_product("A", "POST", feed_a, {"data": {"custom": {"glow_note": "{fd_text}"}}}),\n'
+                "            control=_replay(\n"
+                '                body_patch={"user_id": "{A}"},\n'
+                "                undo_once=True,\n"
+                '                undo=(ServerRequest("DELETE", feed_a, None, {"hard_delete": "true"}),),\n'
+                "            ),\n",
+            )
+        ],
+        [
+            "tests.test_product_cases.BeforeTheLockdownTest.test_every_capability_is_recorded",
+            "tests.test_product_cases.BeforeTheLockdownTest."
+            "test_a_deleted_feed_id_is_not_recreated_so_the_replays_feed_stays",
         ],
     ),
 ]

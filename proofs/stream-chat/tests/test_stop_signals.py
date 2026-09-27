@@ -482,3 +482,44 @@ class SignalKindTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductAvailabilityWordingTest(unittest.TestCase):
+    """P06.1-I2b; DM-05 finding 2 (c): an answer that a product is not enabled or not
+    available, whose only charge word is "upgrade", is a finding, not a charge signal.
+    Wording about a charge, a payment, an overage, billing, a quota or a plan limit still
+    is one, and so are 402 and code 99."""
+
+    def test_the_exemption(self) -> None:
+        from glow_stream_proof.usage import PRODUCT_UNAVAILABLE_WORDS, charge_signal
+
+        finding = "Feeds is not enabled for this application. Upgrade your plan to enable it."
+        self.assertIsNone(charge_signal(403, 17, finding))
+        self.assertIsNone(
+            charge_signal(400, 4, "Video is not available on your plan; upgrade to use it")
+        )
+        # Without the wording that the product is not enabled, "upgrade" is a signal.
+        self.assertEqual(
+            charge_signal(403, 17, "Upgrade your plan to enable it."),
+            "response text mentions a charge, upgrade or exceeded limit",
+        )
+        # With any other charge word, a signal.
+        for message in (
+            "Feeds is not enabled; billing required",
+            "Feeds is not enabled; payment required",
+            "Feeds is not enabled; overage",
+            "Feeds is not enabled; this incurs a charge",
+            "Feeds is not enabled; quota reached",
+            "Feeds is not enabled; plan limit reached",
+        ):
+            self.assertIsNotNone(charge_signal(403, 17, message), message)
+        # 402 and code 99 always are.
+        self.assertEqual(charge_signal(402, 17, finding), "HTTP 402")
+        self.assertEqual(charge_signal(403, 99, finding), "Stream error code 99")
+        # Stream's ordinary messages do not read as a product finding.
+        for message in (
+            "Not Allowed",
+            "rate limit exceeded",
+            "Too many requests, please try again",
+        ):
+            self.assertIsNone(PRODUCT_UNAVAILABLE_WORDS.search(message), message)

@@ -293,6 +293,7 @@ def verify(snapshot: Mapping[str, Any], recorded: Mapping[str, Any] | None = Non
         if granted:
             problems.append(f".app grants for {role} not empty: {granted}")
     problems += recorded_differences(app, recorded_app_settings() if recorded is None else recorded)
+    problems += product_differences(snapshot)
     for name in DEFAULT_TYPES:
         cfg = types.get(name)
         if cfg is None:
@@ -316,6 +317,23 @@ def verify(snapshot: Mapping[str, Any], recorded: Mapping[str, Any] | None = Non
         if sorted(granted) != want_grants:
             problems.append(f"{MATCH_TYPE} grants for {role} are {granted}, want {want_grants}")
     return problems
+
+
+def product_differences(snapshot: Mapping[str, Any], locked: bool | None = None) -> list[str]:
+    """The Video and Feeds differences from the lockdown target (P06.1-I2b), for a snapshot
+    that carries the products' state (``read_snapshot`` and ``read_configuration`` read
+    it), once the lockdown has been applied (``products.LOCKDOWN_APPLIED``, or ``locked``).
+    Before the apply the products' differences are the plan, not drift: run 1 and run V1
+    must be allowed. So preflight, the end of every run and the dry-run ``configure`` see
+    drift from the lockdown from the commit that records the apply on."""
+    from . import products  # products imports ApiRequest from this module
+
+    if "products" not in snapshot:
+        return []
+    applied = products.LOCKDOWN_APPLIED is not None if locked is None else locked
+    if not applied:
+        return []
+    return [f"video/feeds: {d}" for d in products.verify(snapshot["products"])]
 
 
 def restore_plan(record: Mapping[str, Any], *, delete_match_type: bool) -> list[ApiRequest]:

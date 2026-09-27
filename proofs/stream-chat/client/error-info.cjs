@@ -8,6 +8,9 @@
  *   WebSocket (the SDK's JSON message has isWSFailure === false).
  * kind 'ws-failure': any other WebSocket failure; it carries no answer from Stream.
  * kind 'budget': the runner refused the request before sending it.
+ * kind 'refused': the runner's product op refused the request before sending it: its
+ *   path or body is outside the Video and Feeds allowlist or on the deny-list
+ *   (client/product-op.cjs; P06.1-I2b).
  * kind 'error': anything else, local to the SDK or the runner.
  */
 
@@ -15,6 +18,11 @@ function errorInfo(err) {
   const info = { status: null, code: null, message: null, kind: 'error' };
   if (err && err.proofBudget) {
     info.kind = 'budget';
+    info.message = err.message;
+    return info;
+  }
+  if (err && err.proofRefused) {
+    info.kind = 'refused';
     info.message = err.message;
     return info;
   }

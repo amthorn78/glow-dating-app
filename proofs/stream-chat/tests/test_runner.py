@@ -41,6 +41,8 @@ const out = {
   api: errorInfo(api),
   local: errorInfo(new Error('channel is not initialized')),
   budget: errorInfo(Object.assign(new Error('PROOF_BUDGET'), { proofBudget: true })),
+  refused: errorInfo(Object.assign(new Error('PROOF_REFUSED: denied path (join)'),
+    { proofRefused: true })),
 };
 process.stdout.write(JSON.stringify(out));
 """
@@ -68,6 +70,11 @@ class ErrorInfoTest(unittest.TestCase):
         self.assertEqual((out["api"]["kind"], out["api"]["status"]), ("api", 403))
         self.assertEqual((out["local"]["kind"], out["local"]["status"]), ("error", None))
         self.assertEqual(out["budget"]["kind"], "budget")
+        # The product op's own refusal (P06.1-I2b): before anything is sent.
+        self.assertEqual(
+            (out["refused"]["kind"], out["refused"]["message"]),
+            ("refused", "PROOF_REFUSED: denied path (join)"),
+        )
 
 
 class RunnerTest(unittest.TestCase):
@@ -215,6 +222,156 @@ class RequestLogTest(unittest.TestCase):
         self.assertIsNone(out["rateLimit200"])
         self.assertEqual(
             out["afterAnswers"]["background_requests"][1]["ratelimit"]["reset"], "1790"
+        )
+
+
+# Every reply to a command carries these keys (client_bridge.Reply reads them).
+REPLY_KEYS = {
+    "id",
+    "ok",
+    "data",
+    "error",
+    "requests",
+    "api_calls",
+    "api_calls_total",
+    "ws_attempts",
+    "background_requests",
+    "background_api_calls",
+    "async_errors",
+}
+# The proxy the WebSocket and HTTP requests would go through: a loopback port nothing
+# listens on, so a connect fails at once and no request leaves the machine.
+UNREACHABLE_PROXY = "http://127.0.0.1:1"
+
+
+def run_runner_offline(*commands: dict[str, Any]) -> list[dict[str, Any]]:
+    lines = "".join(json.dumps(c) + "\n" for c in (*commands, {"id": 99, "op": "exit"}))
+    done = subprocess.run(
+        ["node", str(RUNNER)],
+        env={
+            "PATH": os.environ.get("PATH", "/usr/bin"),
+            "PROOF_API_KEY": "offlinetestkey",
+            "PROOF_MAX_API_CALLS": "0",
+            "HTTPS_PROXY": UNREACHABLE_PROXY,
+        },
+        cwd=RUNNER.parent.parent,
+        input=lines,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return [json.loads(line) for line in done.stdout.splitlines()]
+
+
+class EveryOpTest(unittest.TestCase):
+    """P06.1-I2b, the I2a review's nit 5: the real runner, offline, answers each op the
+    Python side uses with a reply of the protocol's shape. Nothing connects: the HTTP
+    budget is zero, so the SDK's requests are refused before they are sent, and the
+    WebSocket goes to a loopback proxy nothing listens on."""
+
+    def test_each_op_replies_with_the_protocols_shape(self) -> None:
+        dev = {"token_source": "dev"}
+        replies = run_runner_offline(
+            {"id": 1, "op": "ping"},
+            {"id": 2, "op": "selfcheck"},
+            {"id": 3, "op": "connect", "user": {"id": "u"}, **dev, "max_calls": 0},
+            {"id": 4, "op": "disconnect", "max_calls": 0},
+            {"id": 5, "op": "set_rest_user", "user_id": "u", **dev, "max_calls": 0},
+            {
+                "id": 6,
+                "op": "call",
+                "target": "channel",
+                "method": "_checkInitialized",
+                "args": [],
+                "type": "glow-match",
+                "channel_id": "proof-channel",
+                "channel_data": {"members": ["u"]},
+                "max_calls": 0,
+            },
+            {
+                "id": 7,
+                "op": "call",
+                "target": "client",
+                "method": "queryUsers",
+                "args": [{"id": "u"}],
+                "max_calls": 0,
+            },
+            {"id": 8, "op": "get", "path": "/channels/glow-match/proof-channel", "max_calls": 0},
+            {"id": 9, "op": "guest", "user": {"id": "g"}, "max_calls": 0},
+            {"id": 10, "op": "anonymous", "max_calls": 0},
+            {"id": 11, "op": "events", "wait_ms": 10},
+            # P06.1-I2b: the Video and Feeds op, refused by the budget before it is sent,
+            # and one the op itself refuses (the deny-list) before the budget is asked.
+            {
+                "id": 12,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call",
+                "body": {"data": {"custom": {"glow_note": "x"}}},
+                "max_calls": 0,
+            },
+            {
+                "id": 13,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call",
+                "body": {"ring": True},
+                "max_calls": 5,
+            },
+            {
+                "id": 14,
+                "op": "product",
+                "method": "POST",
+                "path": "/api/v2/video/call/default/proof-call/join",
+                "body": {},
+                "max_calls": 5,
+            },
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assertEqual(sorted(by_id), list(range(1, 15)) + [99])
+        for command_id in range(1, 15):
+            self.assertEqual(set(by_id[command_id]), REPLY_KEYS, command_id)
+            self.assertEqual(by_id[command_id]["requests"], [], command_id)  # nothing sent
+            self.assertEqual(by_id[command_id]["api_calls"], 0, command_id)
+        self.assertEqual(by_id[1]["data"], {"pong": True})
+        self.assertTrue(by_id[2]["data"]["isomorphic_ws_shared"])
+        # The connect's WebSocket could not be opened: no answer from Stream (ws-failure),
+        # and one attempt was made.
+        self.assertFalse(by_id[3]["ok"])
+        self.assertEqual(by_id[3]["error"]["kind"], "ws-failure")
+        self.assertGreaterEqual(by_id[3]["ws_attempts"], 1)
+        self.assertTrue(by_id[4]["ok"])
+        self.assertEqual(by_id[5]["data"], {"user_id": "u"})
+        # A channel command with channel_data opens the channel with that data.
+        self.assertEqual(by_id[6]["error"]["kind"], "error")
+        self.assertIn("glow-match:proof-channel", by_id[6]["error"]["message"])
+        # A client call without a connection: the connect's failure rethrown locally, or
+        # its HTTP request refused by the budget before it is sent. Nothing is sent.
+        self.assertFalse(by_id[7]["ok"])
+        self.assertIn(by_id[7]["error"]["kind"], ("ws-failure", "error", "budget"))
+        # The GET and the guest's POST are refused by the budget before they are sent.
+        self.assertEqual(by_id[8]["error"]["kind"], "budget")
+        self.assertEqual(by_id[9]["error"]["kind"], "budget")
+        self.assertEqual(by_id[10]["error"]["kind"], "ws-failure")
+        self.assertEqual(by_id[11]["data"], {"events": []})
+        self.assertEqual(by_id[12]["error"]["kind"], "budget")
+        self.assertEqual(by_id[13]["error"]["kind"], "refused")
+        self.assertEqual(by_id[13]["error"]["message"], "PROOF_REFUSED: denied field (ring)")
+        self.assertEqual(by_id[14]["error"]["kind"], "refused")
+        self.assertEqual(by_id[14]["error"]["message"], "PROOF_REFUSED: denied path (join)")
+        exit_reply = by_id[99]
+        self.assertTrue(exit_reply["ok"])
+        self.assertEqual(
+            set(exit_reply),
+            {
+                "id",
+                "ok",
+                "api_calls_total",
+                "ws_attempts",
+                "background_requests",
+                "background_api_calls",
+                "async_errors",
+            },
         )
 
 

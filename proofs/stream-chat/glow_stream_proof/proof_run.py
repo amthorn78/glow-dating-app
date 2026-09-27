@@ -35,7 +35,7 @@ import httpx
 from getstream.exceptions import StreamTransportException
 from getstream.models import ChannelInput, ChannelMemberRequest, MessageRequest, UserRequest
 
-from . import baseline, configuration, guard, i2a, matrix, mechanisms
+from . import baseline, configuration, guard, i2a, matrix, mechanisms, products
 from .app_send import AppSendService, ProviderUnavailable
 from .client_bridge import ClientSession, ClientSessionEnded, Reply, client_environment
 from .configuration import MATCH_MEMBER_GRANTS, MATCH_TYPE
@@ -48,6 +48,9 @@ from .stops import RunStopped as RunStopped
 from .usage import GuardrailStop, UsageLedger
 
 PREFIX_ROOT = "p061i1-"
+# Stream's default feed groups the Feeds cases use (P06.1-I2b; Stream, "Feed groups").
+FEED_GROUP = "user"
+TIMELINE_GROUP = "timeline"
 TOKEN_TTL_SECONDS = 900
 TASK_POLL_ATTEMPTS = 30
 TASK_POLL_INTERVAL_SECONDS = 2
@@ -60,7 +63,10 @@ RESTORE_RETRY_SECONDS = 10
 # and group deletes, 3 deletes with their task polls (93), 3 user listings, the
 # verify-clean reads (7), the journal restores (6) and the final configuration
 # read (2). tests/test_cleanup.py measures it against a fake server.
-CLEANUP_RESERVE = 130
+# Raised from 130 in P06.1-I2b: the Video and Feeds objects' deletes, the call's delete
+# task and the users' Feeds data deletes join the end of the run (tests/test_cleanup.py
+# measures the worst case, 172).
+CLEANUP_RESERVE = 190
 # The most one case can use before the next reserve check.
 CASE_CALL_MARGIN = 30
 EVENT_WAIT_MS = 2500
@@ -192,7 +198,11 @@ def _ws_answer(reply: Reply) -> Answer:
     status, code = error.get("status"), error.get("code")
     if error.get("kind") == "ws-api" and isinstance(status, int):
         code = code if isinstance(code, int) else None
-        return Answer(matrix.classify(status, code), status, code, None)
+        # Stream's message from its error frame is kept as the note, so a 404 code 16 on
+        # a connect can be read (P06.1-I2b).
+        message = error.get("message")
+        note = message if isinstance(message, str) else ""
+        return Answer(matrix.classify(status, code), status, code, None, note)
     return Answer("no-response", None, None, None, _local_note(reply))
 
 
@@ -301,6 +311,10 @@ def _generic(text: str, ctx: Mapping[str, str]) -> str:
 
 _TABLE_NAMES = frozenset(
     {"A", "B", "X", "D", "AB", "XD", "m_a", "m_b", "m_x", "m_ctl", "prefix", "guest_id", "ctl_poll"}
+    # P06.1-I2b: the Video and Feeds cases' calls, activity and markers.
+    | {"CALL", "CALL_a", "CALL_dev", "CALL_x", "ACT", "vd_text", "fd_text"}
+    # P06.1-I2b: the disclosure rule names the terms a request carried and the terms found.
+    | {"xd_text", "m_a_text", "m_b_text"}
     # P06.1-I2a: the families' users, their names and their channels.
     | {"M1", "M2", "R", "S", "H", "M1_name", "M2_name", "R_name", "S_name", "H_name"}
     # (written out: mechanisms imports this module; tests/test_mechanisms.py checks it)
@@ -338,6 +352,7 @@ class ProofRun:
         *,
         prefix: str,
         accept_dashboard_user: bool,
+        lean: bool = False,
     ) -> None:
         if not prefix.startswith(PREFIX_ROOT):
             raise ValueError(f"run prefix must start with {PREFIX_ROOT}")
@@ -348,6 +363,10 @@ class ProofRun:
         self.environ = environ
         self.prefix = prefix
         self.accept_dashboard_user = accept_dashboard_user
+        # A Video and Feeds run (P06.1-I2b): only users A and B, no channel, no authorized
+        # path and no reconnect check, so that a stop in it affects only its own small
+        # data set (the I2b prompt, section 5).
+        self.lean = lean
         self.ctx: dict[str, str] = {"prefix": prefix, "T": T}
         self.sessions: dict[str, ClientSession] = {}
         self._tokens: dict[str, str] = {}
@@ -391,6 +410,28 @@ class ProofRun:
         # Channels a hard user delete may remove on its own (SD-delete): cleanup checks
         # that each still exists before naming it (P06.1-I2a).
         self.maybe_gone_channels: set[str] = set()
+        # Users a mechanism deactivated: no poll listing is made as them (P06.1-I2b).
+        self.deactivated_users: set[str] = set()
+        # What the poll listing as each of the run's own users showed at cleanup, or None
+        # while it is not verified (P06.1-I2b; the manager's decision on I2a).
+        self.polls_as_users: list[str] | None = None
+        # The Video and Feeds objects the run created or recorded (P06.1-I2b): the guard's
+        # record of what it owns, and what cleanup deletes.
+        self.calls: list[tuple[str, str]] = []  # (type, id)
+        self.feeds: list[str] = []  # "group:id"
+        self.activities: set[str] = set()
+        self.comments: set[str] = set()
+        self.reactions: list[tuple[str, str, str]] = []  # (activity, type, user)
+        self.follows: list[tuple[str, str]] = []  # (source fid, target fid)
+        # A product an answer showed as not enabled or not available to the application,
+        # with the answer: its remaining cases are not run (the product-finding rule).
+        self.unavailable_products: dict[str, str] = {}
+        # The fixture requests already made (each once per run).
+        self._fixtures_done: set[str] = set()
+        # Cases whose control's replay succeeded and made the case's undo requests, so the
+        # client's success is not undone a second time (P06.1-I2b: a second delete of the
+        # same object would get 404).
+        self._undone_by_replay: set[str] = set()
         # Every server request passes the guard before it is sent (DM-04 finding 1).
         self.api.guard = self._guard_refusal
 
@@ -422,6 +463,23 @@ class ProofRun:
 
     def journalled_type_features(self) -> frozenset[str]:
         return frozenset(k for change in self.journal for k in change.type_features)
+
+    # P06.1-I2b: Video and Feeds.
+
+    def owns_call(self, call_id: str) -> bool:
+        return call_id in {i for _, i in self.calls} or self.prefix in call_id
+
+    def owns_feed(self, feed_id: str) -> bool:
+        return feed_id in {guard.channel_id(f) for f in self.feeds} or self.prefix in feed_id
+
+    def owns_activity(self, activity_id: str) -> bool:
+        return activity_id in self.activities or activity_id == self.ctx.get("ACT")
+
+    def owns_comment(self, comment_id: str) -> bool:
+        return comment_id in self.comments
+
+    def allows_product_configuration(self) -> bool:
+        return False  # never during a run; only the scoped configure
 
     # -- helpers ----------------------------------------------------------------
 
@@ -868,9 +926,36 @@ class ProofRun:
                 "application holds data this run did not create: "
                 + "; ".join(foreign_users + [f"channel {c}" for c in foreign_channels])
             )
+        # Calls, feeds and activities are the products' data (P06.1-I2b; DM-05 finding
+        # 9 (b)): any that exists was not this run's, and stops the run as a channel does.
+        # A listing a product does not answer (not available, or not verified) is
+        # recorded and stops nothing: no object of that product can be shown present.
+        objects = products.list_objects(self.api, snapshot.get("products"))
+        foreign_objects = [
+            f"{products.OBJECT_NAMES[kind]} {_generic(str(item), self.ctx)}"
+            for kind in products.OBJECT_KINDS
+            for item in (objects.get(f"remaining_{kind}") or [])
+        ]
+        if foreign_objects:
+            raise RunStopped(
+                "application holds data this run did not create: " + "; ".join(foreign_objects)
+            )
+        # A product that reads as available must list its objects, as the channels must
+        # (the independent check of I2b, finding 3); a listing that is not verified
+        # cannot show that no foreign object exists.
+        unverified = [
+            f"{kind}: {objects[f'{kind}_listing']}"
+            for kind in products.OBJECT_KINDS
+            if objects.get(f"remaining_{kind}") is None
+            and str(objects.get(f"{kind}_listing")).startswith("not verified")
+        ]
+        if unverified:
+            raise RunStopped(
+                "a listing of the products' objects is not verified: " + "; ".join(unverified)
+            )
         # Polls and user groups are listed now, so that the end of the run can tell
         # its own leftovers from anything already there. Only counts are shown.
-        self.preexisting = list_polls_and_groups(self.api)
+        self.preexisting = {**list_polls_and_groups(self.api), **objects}
         return {
             "dashboard_users_present": len(dashboard),
             "configuration_problems": problems,
@@ -881,11 +966,32 @@ class ProofRun:
                     ("user_groups", self.preexisting.get("remaining_user_groups")),
                 )
             },
+            **{
+                f"{kind}_before_run": len(items)
+                if (items := objects.get(f"remaining_{kind}")) is not None
+                else str(objects.get(f"{kind}_listing"))
+                for kind in products.OBJECT_KINDS
+            },
         }
 
     # -- setup -----------------------------------------------------------------
 
     def setup(self) -> None:
+        flat = self.prefix.replace("-", "")
+        # The Video and Feeds cases' objects and markers (P06.1-I2b). The feed groups are
+        # Stream's defaults ("user" and "timeline"); ACT is captured from the fixture's
+        # activity.
+        self.ctx["CALL"] = f"{self.prefix}-call"
+        self.ctx["CALL_a"] = f"{self.prefix}-call-a"
+        self.ctx["CALL_dev"] = f"{self.prefix}-call-dev"
+        self.ctx["CALL_x"] = f"{self.prefix}-call-x"
+        self.ctx["FG"] = FEED_GROUP
+        self.ctx["FGT"] = TIMELINE_GROUP
+        self.ctx["vd_text"] = f"vdmarker{flat}"
+        self.ctx["fd_text"] = f"fdmarker{flat}"
+        if self.lean:
+            self._lean_setup()
+            return
         names = {"A": "ua", "B": "ub", "X": "ux", "D": "ud"}
         for key, suffix in names.items():
             self.ctx[key] = f"{self.prefix}-{suffix}"
@@ -985,6 +1091,58 @@ class ProofRun:
                 f"role {(reply.data or {}).get('me', {}).get('role') if reply.ok else '-'}",
             )
 
+    def _lean_setup(self) -> None:
+        """A Video and Feeds run's setup (P06.1-I2b): users A and B with tokens and a
+        connected session each; no channel, no message. The count is 2 users and 2
+        connections, so run V1 and run V2 fit beside run 1 and its reserve."""
+        names = {"A": "ua", "B": "ub"}
+        for key, suffix in names.items():
+            self.ctx[key] = f"{self.prefix}-{suffix}"
+            self.ctx[f"{key}_name"] = f"Synthetic {key} {self.prefix[-6:]}"
+        self.ledger.reserve("users", 2)
+        users = [
+            UserRequest(id=self.ctx[k], name=self.ctx[f"{k}_name"], role="user") for k in names
+        ]
+        self.users.extend(self.ctx[k] for k in names)
+        self.api.sdk.upsert_users(*users)
+        stored = self.api.require(
+            self.api.get(
+                "/api/v2/users",
+                params={
+                    "payload": json.dumps(
+                        {"filter_conditions": {"id": {"$in": [self.ctx[k] for k in names]}}}
+                    )
+                },
+            )
+        ).body.get("users", [])
+        roles = sorted({u.get("role") for u in stored})
+        self._check(
+            "AP1",
+            "server creates two synthetic users with the ordinary user role (lean setup)",
+            len(stored) == 2 and roles == ["user"],
+            f"{len(stored)} users, roles {roles}",
+        )
+        for key in names:
+            token = self.api.user_token(self.ctx[key], TOKEN_TTL_SECONDS)
+            self._tokens[key] = token
+            self.token_claims[key] = describe_token(token)
+        for key in names:
+            session = self._session(key, self._tokens[key])
+            reply = self._send(session, "connect", max_calls=3, user={"id": self.ctx[key]})
+            self.connect_replies[key] = reply
+            connected = _ws_answer(reply)
+            self._check(
+                f"AP4-{key}",
+                f"client {key} connects over Stream's WebSocket (lean setup; no channel)",
+                connected.outcome == "success",
+                f"connect {_observed(connected)}; "
+                f"role {(reply.data or {}).get('me', {}).get('role') if reply.ok else '-'}",
+            )
+        self.notes.append(
+            "lean setup (a Video and Feeds run): users A and B only, no channel; the "
+            "authorized path and the reconnect check are not made"
+        )
+
     def _server_members(self, channel_id: str) -> list[str]:
         result = self.api.require(
             self.api.get(
@@ -1004,6 +1162,8 @@ class ProofRun:
         return server_send(self.api, self.messages, channel_type, channel_id, user_id, text)
 
     def authorized_path(self) -> None:
+        if self.lean:
+            return  # noted at setup (P06.1-I2b)
         service = AppSendService(self.state, self, T)
         for key, text_key, channel in (("A", "m_a", "AB"), ("B", "m_b", "AB"), ("X", "m_x", "XD")):
             text = self.ctx.get(f"{text_key}_text") or self.ctx["xd_text"]
@@ -1201,11 +1361,27 @@ class ProofRun:
         reconnected = False
         families = False
         for case in matrix.all_cases():
-            if case.phase >= DESTRUCTIVE_PHASE and not reconnected:
+            if case.phase >= DESTRUCTIVE_PHASE and not reconnected and not self.lean:
                 # The reconnect check needs AB; the destructive cases come after it.
                 self.reconnect_check()
                 reconnected = True
             if only and case.id not in only:
+                continue
+            product = matrix.product_of(case)
+            if product is not None and product in self.unavailable_products:
+                # The product-finding rule (P06.1-I2b): an answer that the product is not
+                # enabled or not available ends that product's cases.
+                self.case_results.append(
+                    self._result(
+                        case,
+                        "-",
+                        f"not run: {product} is not available to the application",
+                        "-",
+                        matrix.Verdict(matrix.NOT_AVAILABLE, self.unavailable_products[product]),
+                    )
+                )
+                if progress is not None:
+                    progress()
                 continue
             short = self._setup_tokens_expiring() if case.phase < FAMILY_PHASE else None
             if short:
@@ -1265,7 +1441,7 @@ class ProofRun:
                 raise RunStopped(
                     f"after {case.id}: a charge or limit signal was met ({self.stop_signals[0]})"
                 )
-        if not reconnected:
+        if not reconnected and not self.lean:
             self.reconnect_check()
 
     def _close_i1_sessions(self) -> None:
@@ -1351,10 +1527,14 @@ class ProofRun:
         created = _dig(result.body, "message.id")
         if result.ok and isinstance(created, str):
             self.messages.add(created)  # the guard's record (P06.1-I2a)
+        if result.ok:
+            self._track_created(result.body)  # a Video or Feeds object (P06.1-I2b)
         undo_notes = []
         if result.ok:
             for undo in control.undo:
                 undo_notes.append(self._undo(undo, case.id))
+            if control.undo:
+                self._undone_by_replay.add(case.id)
         summary = f"server replay {method} -> {result.status}" + (
             f" / code {result.code} ({result.message})" if result.code is not None else ""
         )
@@ -1370,6 +1550,10 @@ class ProofRun:
         well formed. The override is then removed and the same request is sent
         under the production configuration, where it must also fail.
         """
+        if case.fixture:
+            not_in_place = self._fixtures(case)
+            if not_in_place is not None:
+                return not_in_place
         if not case.feature_override and not case.type_override:
             return self._evaluate_case(case)
         assert case.step is not None
@@ -1433,16 +1617,95 @@ class ProofRun:
             self._undo_client_success(case, result, "production")
         return result
 
+    def _fixtures(self, case: matrix.Case) -> CaseResult | None:
+        """Put the case's objects in place with its fixture requests (P06.1-I2b): each is
+        sent once per run, through the guard, and what it creates is recorded. A fixture
+        Stream does not answer with 2xx leaves the case INCONCLUSIVE without its step; an
+        answer that the product is not available is that product's finding."""
+        for request in case.fixture:
+            path = matrix.substitute(request.path, self.ctx)
+            body = (
+                matrix.substitute(dict(request.body), self.ctx)
+                if request.body is not None
+                else None
+            )
+            params = (
+                matrix.substitute(dict(request.params), self.ctx)
+                if request.params is not None
+                else None
+            )
+            key = json.dumps([request.method, path, body, params], sort_keys=True)
+            if key in self._fixtures_done:
+                continue
+            result = self.api.raw(request.method, path, body=body, params=params)
+            line = f"{request.method} {_generic(path, self.ctx)}"
+            if not result.ok:
+                observed = f"fixture {line} got {result.status} / code {result.code}"
+                return self._product_unavailable(
+                    case, result.status, result.code, result.message, observed
+                ) or self._result(
+                    case,
+                    line,
+                    observed,
+                    "-",
+                    matrix.Verdict(
+                        matrix.INCONCLUSIVE,
+                        f"fixture not in place: {observed}"
+                        + (f": {result.message}" if result.message else ""),
+                    ),
+                )
+            self._fixtures_done.add(key)
+            self._track_created(result.body)
+            for name, dotted in request.capture.items():
+                value = _dig(result.body, dotted)
+                if isinstance(value, str):
+                    self.ctx[name] = value
+        return None
+
+    def _product_unavailable(
+        self,
+        case: matrix.Case,
+        status: int | None,
+        code: int | None,
+        message: str | None,
+        observed: str,
+    ) -> CaseResult | None:
+        """The product-finding rule (P06.1-I2b; DM-05 finding 2 (c)): an answer that the
+        case's product is not enabled or not available to the application is recorded as
+        that product's finding, ends its cases, and is not a charge signal."""
+        product = matrix.product_of(case)
+        if product is None:
+            return None
+        found = products.unavailable_answer(status, code, message)
+        if found is None:
+            return None
+        self.unavailable_products.setdefault(product, found)
+        return self._result(
+            case,
+            "-",
+            observed,
+            "-",
+            matrix.Verdict(matrix.NOT_AVAILABLE, found),
+            {"stream_message": message},
+        )
+
     def _evaluate_case(self, case: matrix.Case) -> CaseResult:
         assert case.step is not None
         reply = self._step(case.step)
         answer = _http_answer(reply)
         outcome = answer.outcome
         request = _request_line(answer.record, self.ctx)
-        leaks = matrix.find_terms(
-            _responses(reply) + [reply.data], matrix.substitute(list(case.leak_terms), self.ctx)
-        )
+        if outcome not in ("success", "no-response"):
+            unavailable = self._product_unavailable(
+                case, answer.status, answer.code, _answer_message(answer, reply), _observed(answer)
+            )
+            if unavailable is not None:
+                unavailable.request = request
+                return unavailable
+        leaks, disclosure = self._disclosure(case, reply)
         detail: dict[str, Any] = {"stream_message": _answer_message(answer, reply)}
+        if disclosure is not None:
+            detail["disclosure"] = disclosure
         if case.expect == "no-leak":
             detail["learned"] = self._learned(reply)
         # A client success on a case that must be refused is undone once the
@@ -1507,6 +1770,31 @@ class ProofRun:
             self._undo_client_success(case, result)
         return result
 
+    def _disclosure(
+        self, case: matrix.Case, reply: Reply
+    ) -> tuple[list[str], dict[str, Any] | None]:
+        """The case's leak terms found in the answers, under the disclosure rule
+        (P06.1-I2b; the manager's decision on I2a, as its review detailed it): a term that
+        appears, as a substring, anywhere in the serialized request (path, query and body)
+        is left out, because the sender already had it; the row keeps the terms the
+        request carried and the key names of where each disclosed term was found."""
+        terms = matrix.substitute(list(case.leak_terms), self.ctx)
+        if not terms:
+            return [], None
+        carried = matrix.carried_terms(reply.requests, terms)
+        scanned = [t for t in terms if t not in carried]
+        answers = _responses(reply) + [reply.data]
+        leaks = matrix.find_terms(answers, scanned)
+        where: dict[str, list[str]] = {}
+        for index, answer in enumerate(answers):
+            label = "data" if index == len(answers) - 1 else f"response[{index}]"
+            for term, paths in matrix.term_paths(answer, leaks).items():
+                where.setdefault(_generic(term, self.ctx), []).extend(f"{label}.{p}" for p in paths)
+        return leaks, {
+            "terms_in_the_request": [_generic(t, self.ctx) for t in carried],
+            "found_at": {t: sorted(set(p)) for t, p in where.items()},
+        }
+
     @staticmethod
     def _case_verdict(
         case: matrix.Case, outcome: matrix.Outcome, leaks: list[str], control_ok: bool, found: bool
@@ -1530,6 +1818,13 @@ class ProofRun:
         earlier = row.detail.get("client_success_undo")
         if not case.control.undo:
             row.detail.setdefault("client_success_undo", "none defined")
+            return
+        if case.control.undo_once and case.id in self._undone_by_replay and phase is None:
+            # The control's successful replay made the same undo requests, which reverse
+            # the client's change and the server's alike (an idempotent create, a member
+            # added, data set); a second delete of the same object would get 404 and stop
+            # the run for nothing (P06.1-I2b; only for a case that says so).
+            row.detail["client_success_undo"] = "made once, by the control's replay's undo"
             return
         notes: list[str] = []
         try:
@@ -1596,7 +1891,8 @@ class ProofRun:
         )
 
     def _track_client_created(self, reply: Reply) -> None:
-        """A poll or user group a client managed to create is deleted at cleanup."""
+        """A poll, user group, call, feed, activity, comment, reaction or follow a client
+        managed to create is recorded, and deleted at cleanup."""
         for response in _responses(reply):
             poll_id = _dig(response, "poll.id")
             if isinstance(poll_id, str) and poll_id:
@@ -1605,6 +1901,44 @@ class ProofRun:
             group_id = _dig(response, "user_group.id")
             if isinstance(group_id, str) and group_id:
                 self.groups.append(group_id)
+            self._track_created(response)
+
+    def _track_created(self, body: Any) -> None:
+        """Record every Video or Feeds object an answer shows (P06.1-I2b): the guard's
+        record of what the run owns, and what cleanup deletes. A fixture's, a control's
+        and a client's answers all pass here."""
+        if not isinstance(body, Mapping):
+            return
+        cid = _dig(body, "call.cid")
+        if isinstance(cid, str) and ":" in cid:
+            call_type, call_id = cid.split(":", 1)
+            if (call_type, call_id) not in self.calls:
+                self.calls.append((call_type, call_id))
+        fid = _dig(body, "feed.feed")
+        if isinstance(fid, str) and fid and fid not in self.feeds:
+            self.feeds.append(fid)
+        activity_id = _dig(body, "activity.id")
+        if isinstance(activity_id, str) and activity_id:
+            self.activities.add(activity_id)
+        comment_id = _dig(body, "comment.id")
+        if isinstance(comment_id, str) and comment_id:
+            self.comments.add(comment_id)
+        reaction = body.get("reaction")
+        if isinstance(reaction, Mapping):
+            entry = (
+                str(reaction.get("activity_id")),
+                str(reaction.get("type")),
+                str(_dig(reaction, "user.id") or ""),
+            )
+            if all(entry) and entry not in self.reactions:
+                self.reactions.append(entry)
+        source, target = (
+            _dig(body, "follow.source_feed.feed"),
+            _dig(body, "follow.target_feed.feed"),
+        )
+        if isinstance(source, str) and isinstance(target, str):
+            if (source, target) not in self.follows:
+                self.follows.append((source, target))
 
     def _learned(self, reply: Reply) -> dict[str, Any]:
         """What the response revealed, with non-synthetic identifiers withheld."""
@@ -2371,6 +2705,11 @@ class ProofRun:
                 body={"message": {"text": "poll", "poll_id": poll_id, "user_id": self.ctx["B"]}},
             )
             not_yet = msg.status == 403 and "polls not enabled" in (msg.message or "").lower()
+            message_id = _dig(msg.body, "message.id") if msg.ok else None
+            if isinstance(message_id, str):
+                # The run's own message: the server's vote on its poll passes the guard's
+                # message rule (P06.1-I2b; the I2a review's nit 4).
+                self.messages.add(message_id)
             if msg.ok or not not_yet or attempt >= S10_ATTEMPTS:
                 return msg, attempt
             time.sleep(S10_RETRY_SECONDS)
@@ -3123,6 +3462,10 @@ class ProofRun:
         steps: list[tuple[str, Callable[[], None]]] = [
             ("polls", lambda: self._delete_polls(out)),
             ("user groups", lambda: self._delete_groups(out)),
+            # Before the users are deleted: the listing needs them (P06.1-I2b).
+            ("polls verified", lambda: self._verify_polls(out)),
+            # The Video and Feeds objects, before the users (P06.1-I2b).
+            ("video and feeds objects", lambda: self._delete_product_objects(out)),
             ("channels", lambda: self._delete_channels(out)),
             ("users", lambda: self._delete_users(out)),
             ("deleted-user artifacts", lambda: self._delete_artifacts(out)),
@@ -3141,19 +3484,140 @@ class ProofRun:
         self.cleanup_result = out
         return out
 
-    def _delete_polls(self, out: dict[str, Any]) -> None:
+    def _recorded_polls(self) -> list[tuple[str, str]]:
         polls = list(self.polls)
         if "ctl_poll" in self.ctx:
             polls.append((self.ctx["ctl_poll"], self.ctx["A"]))
-        for poll_id, owner in dict.fromkeys(polls):
+        return list(dict.fromkeys(polls))
+
+    def _delete_polls(self, out: dict[str, Any]) -> None:
+        for poll_id, owner in self._recorded_polls():
             deleted = self.api.raw("DELETE", f"/polls/{poll_id}", params={"user_id": owner})
             out.setdefault("polls", []).append(deleted.status)
+
+    def _verify_polls(self, out: dict[str, Any]) -> None:
+        """Show the run's polls absent (P06.1-I2b; the manager's decision on I2a).
+
+        Stream's server-side Query Polls needs a user (I2a's live run: 400 code 4 without
+        one), and the proof never uses the dashboard user. So the polls are listed as each
+        of the run's own users while those users still exist (a deactivated one left out),
+        and each recorded poll is read by ID after its delete. Whether a listing as a user
+        shows that user's polls or every poll it may see is not documented; under
+        preflight's guarantee that the application holds no other user, every poll of the
+        run was created by, or on behalf of, one of its users, so an empty union of the
+        listings shows that none remains. A listing Stream does not answer with 2xx leaves
+        the polls "not verified", with Stream's message.
+        """
+        listed: set[str] = set()
+        refused: list[str] = []
+        users = sorted(set(self.users) - self.deactivated_users)
+        for uid in users:
+            result = self.api.raw(
+                "POST",
+                "/api/v2/polls/query",
+                body={"filter": {}, "limit": 100},
+                params={"user_id": uid},
+            )
+            items = result.body.get("polls") if isinstance(result.body, dict) else None
+            if result.ok and isinstance(items, list):
+                listed |= {str(i.get("id")) for i in items if isinstance(i, dict)}
+            else:
+                refused.append(
+                    f"HTTP {result.status} code {result.code}"
+                    + (f": {result.message}" if result.message else "")
+                )
+        if users and not refused:
+            self.polls_as_users = sorted(listed)
+            listing = "verified"
+        else:
+            self.polls_as_users = None
+            listing = "not verified: " + (
+                "; ".join(dict.fromkeys(refused)) if refused else "no user to list as"
+            )
+        out["polls_listed_as_run_users"] = {
+            "users": len(users),
+            "deactivated_left_out": len(self.deactivated_users & set(self.users)),
+            "listing": listing,
+        }
+        gone: dict[str, str] = {}
+        for poll_id, owner in self._recorded_polls():
+            read = self.api.raw("GET", f"/api/v2/polls/{poll_id}", params={"user_id": owner})
+            gone[_generic(poll_id, self.ctx)] = f"{read.status}" + (
+                f" / code {read.code}" if read.code else ""
+            )
+        out["recorded_polls_after_delete"] = gone
 
     def _delete_groups(self, out: dict[str, Any]) -> None:
         groups = list(self.groups) + ([self.ctx["ctl_group"]] if "ctl_group" in self.ctx else [])
         for group_id in dict.fromkeys(groups):
             deleted = self.api.raw("DELETE", f"/api/v2/usergroups/{group_id}")
             out.setdefault("user_groups", []).append(deleted.status)
+
+    def _delete_product_objects(self, out: dict[str, Any]) -> None:
+        """Delete every call, feed, activity, comment, reaction and follow the run created
+        or recorded (P06.1-I2b), each through the guard, and then each run user's Feeds
+        data (Stream's ``POST /api/v2/feeds/users/{id}/delete``), when the run touched
+        Feeds at all. Each delete's status is recorded; a 404 shows the object gone."""
+        deletes: list[dict[str, Any]] = []
+
+        def send(
+            kind: str,
+            method: str,
+            path: str,
+            *,
+            body: Any = None,
+            params: dict[str, str] | None = None,
+        ) -> ApiResult:
+            result = self.api.raw(method, path, body=body, params=params)
+            entry: dict[str, Any] = {"kind": kind, "status": result.status, "code": result.code}
+            task = _dig(result.body, "task_id")
+            if result.ok and isinstance(task, str) and task:
+                entry["task"] = self._wait_task(task)
+            deletes.append(entry)
+            return result
+
+        for activity_id, kind, user_id in list(self.reactions):
+            send(
+                "reaction",
+                "DELETE",
+                f"/api/v2/feeds/activities/{activity_id}/reactions/{kind}",
+                params={"user_id": user_id},
+            )
+        for comment_id in sorted(self.comments):
+            send(
+                "comment",
+                "DELETE",
+                f"/api/v2/feeds/comments/{comment_id}",
+                params={"hard_delete": "true"},
+            )
+        for activity_id in sorted(self.activities):
+            send(
+                "activity",
+                "DELETE",
+                f"/api/v2/feeds/activities/{activity_id}",
+                params={"hard_delete": "true"},
+            )
+        for source, target in list(self.follows):
+            send("follow", "DELETE", f"/api/v2/feeds/follows/{source}/{target}")
+        for fid in list(self.feeds):
+            group, _, feed_id = fid.partition(":")
+            send(
+                "feed",
+                "DELETE",
+                f"/api/v2/feeds/feed_groups/{group}/feeds/{feed_id}",
+                params={"hard_delete": "true"},
+            )
+        for call_type, call_id in list(self.calls):
+            send(
+                "call",
+                "POST",
+                f"/api/v2/video/call/{call_type}/{call_id}/delete",
+                body={"hard": True},
+            )
+        if self.feeds or self.activities or self.comments or self.reactions or self.follows:
+            for user_id in sorted(set(self.users) - self.deactivated_users):
+                send("feeds user data", "POST", f"/api/v2/feeds/users/{user_id}/delete", body={})
+        out["product_deletes"] = deletes
 
     def _delete_channels(self, out: dict[str, Any]) -> None:
         cids = sorted(set(self.channels))
@@ -3292,11 +3756,30 @@ class ProofRun:
                 if str(u.get("id")).startswith(f"deleted-user-{self.credentials.app_id}-")
             ),
             **self._new_polls_and_groups(),
+            **self._new_product_objects(snapshot.get("products")),
         }
+
+    def _new_product_objects(self, state: Mapping[str, Any] | None) -> dict[str, Any]:
+        """Calls, feeds and activities present now that were not there at preflight
+        (P06.1-I2b); a listing a product does not answer is judged by the product's
+        configuration read (``state``)."""
+        listed = products.list_objects(self.api, state)
+        for kind in products.OBJECT_KINDS:
+            now = listed.get(f"remaining_{kind}")
+            before = self.preexisting.get(f"remaining_{kind}")
+            if before is not None and now is not None:
+                listed[f"remaining_{kind}"] = [i for i in now if i not in set(before)]
+                listed[f"{kind}_present_before_run"] = len(before)
+        return listed
 
     def _new_polls_and_groups(self) -> dict[str, Any]:
         """Polls and user groups present now that were not there at preflight."""
         listed = list_polls_and_groups(self.api)
+        if listed.get("remaining_polls") is None and self.polls_as_users is not None:
+            # The standalone listing needs a user; the listing as each of the run's own
+            # users, made before they were deleted, stands in for it (P06.1-I2b).
+            listed["remaining_polls"] = list(self.polls_as_users)
+            listed["polls_listing"] = "listed as each of the run's own users before their delete"
         for key in ("polls", "user_groups"):
             now = listed.get(f"remaining_{key}")
             before = self.preexisting.get(f"remaining_{key}")
@@ -3388,7 +3871,20 @@ class ProofRun:
             "cleanup": self.cleanup_result,
             "usage": self.ledger.summary(),
             "ws_attempts": self.ws_attempts,
+            "lean": self.lean,
+            "unavailable_products": dict(self.unavailable_products),
         }
+
+
+def lean_only(only: set[str] | None) -> bool:
+    """Whether a run of ``only`` these cases is a Video and Feeds run (P06.1-I2b): every
+    case named belongs to a product, so the lean setup is enough."""
+    if not only:
+        return False
+    cases = {c.id: c for c in matrix.all_cases()}
+    return all(
+        case_id in cases and matrix.product_of(cases[case_id]) is not None for case_id in only
+    )
 
 
 def server_send(
@@ -3445,6 +3941,10 @@ def cleanup_problems(out: Mapping[str, Any]) -> list[str]:
         failed = [s for s in out.get(key) or [] if not (isinstance(s, int) and 200 <= s < 300)]
         if failed:
             problems.append(f"{key} delete statuses {failed}")
+    for poll_id, status in (out.get("recorded_polls_after_delete") or {}).items():
+        # A recorded poll must be gone once deleted: only a 404 shows it (P06.1-I2b).
+        if not str(status).startswith("404"):
+            problems.append(f"recorded poll {poll_id} still answers after its delete: {status}")
     for delete, task in (
         ("channels_delete", "channels_task"),
         ("users_delete", "users_task"),
@@ -3456,16 +3956,32 @@ def cleanup_problems(out: Mapping[str, Any]) -> list[str]:
                 problems.append(f"{delete} got {status}")
             if out.get(task) != "completed":
                 problems.append(f"{task} is {out.get(task)!r}, not 'completed'")
+    for entry in out.get("product_deletes") or []:
+        # A Video or Feeds object's delete must be 2xx, or 404 for one already gone
+        # (P06.1-I2b); its task, when Stream gave one, must complete.
+        status = entry.get("status")
+        if not (isinstance(status, int) and (200 <= status < 300 or status == 404)):
+            problems.append(f"{entry.get('kind')} delete got {status}")
+        elif "task" in entry and entry["task"] != "completed":
+            problems.append(
+                f"{entry.get('kind')} delete task is {entry['task']!r}, not 'completed'"
+            )
     for key in (
         "remaining_proof_users",
         "remaining_channels",
         "remaining_polls",
         "remaining_user_groups",
+        "remaining_calls",
+        "remaining_feeds",
+        "remaining_activities",
     ):
+        listing = out.get(key.replace("remaining_", "") + "_listing")
         if key not in out:
             problems.append(f"{key}: not checked")
         elif out[key] is None:
-            problems.append(f"{key}: {out.get(key.replace('remaining_', '') + '_listing')}")
+            if not str(listing).startswith("not available"):
+                # A product that is not available can hold no object (P06.1-I2b).
+                problems.append(f"{key}: {listing}")
         elif out[key]:
             problems.append(f"{key}: {out[key]}")
     if out.get("deleted_user_artifacts_remaining"):

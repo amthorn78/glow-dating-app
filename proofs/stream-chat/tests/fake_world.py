@@ -77,6 +77,18 @@ class World:
     server_send_refused_when_frozen: bool = False
     # A connect as a hard-deleted user creates it again (unknown for Stream).
     connect_recreates_deleted: bool = False
+    # P06.1-I2b, the rule for 404 code 16: a removed member's own member write, and a
+    # deactivated user's requests and connects, answered 404 code 16 with a message that
+    # names the missing membership or user (as I2a's live run saw), instead of 403 or 401.
+    removed_member_write_404: bool = False
+    deactivated_answers_404: bool = False
+    # The message Stream gives with those 404s; the default names the member's ID.
+    missing_message: str = "{uid} was removed: not a member of {cid}"
+    deactivated_message: str = "the user {uid} was deactivated"
+    # P06.1-I2b, the I2a review's nit 3: the probe after the mechanism reaches nobody
+    # (no listener), and the channel's first message is gone while the channel stays.
+    after_probe_lost: bool = False
+    history_lost: bool = False
     # Sessions whose events arrive one collection late (a slow delivery; the
     # independent review, point 2).
     late: set[str] = field(default_factory=set)
@@ -144,6 +156,8 @@ class World:
 
     def deliver(self, channel_id: str, event: dict[str, Any], *, only: str | None = None) -> None:
         """Deliver ``event`` to the sessions watching the channel that may receive it."""
+        if self.after_probe_lost and self.is_after_probe(event):
+            return
         for label in sorted(self.watching.get(channel_id, set())):
             uid = self.label_user(label)
             if uid is None or (only is not None and uid != only):
@@ -157,6 +171,18 @@ class World:
                     self.held.setdefault(label, []).append(copied)
                 else:
                     session.pending_events.append(copied)
+
+    @staticmethod
+    def is_after_probe(event: dict[str, Any]) -> bool:
+        """Whether ``event`` is the probe after the mechanism: the server's channel update
+        with its marker, or the other member's probe message."""
+        if event.get("type") == "channel.updated":
+            probe = (event.get("channel") or {}).get("glow_probe")
+            return isinstance(probe, str) and probe.startswith("afterprobe")
+        if event.get("type") == "message.new":
+            text = (event.get("message") or {}).get("text")
+            return isinstance(text, str) and text.startswith("after probe")
+        return False
 
     def receives(self, label: str, uid: str, channel_id: str) -> bool:
         if uid in self.deleted or uid in self.deactivated:
@@ -178,10 +204,19 @@ class World:
         if uid in self.deleted:
             return self.reply(401, 5)
         if uid in self.deactivated:
+            if self.deactivated_answers_404:
+                message = self.deactivated_message.format(uid=uid)
+                return self.reply(404, 16, response={"code": 16, "message": message})
             return self.reply(401, 5)
         if not self.token_ok(label, uid):
             return self.reply(401, 40)
         return None
+
+    @staticmethod
+    def refused_message(refused: Reply) -> str:
+        response = refused.requests[0].get("response") if refused.requests else None
+        message = response.get("message") if isinstance(response, dict) else None
+        return str(message) if message else "no"
 
     @staticmethod
     def reply(status: int, code: int | None = None, response: Any = None, path: str = "") -> Reply:
@@ -287,9 +322,13 @@ class World:
     def channel_read(self, method: str, path: str, channel_id: str) -> Any:
         if channel_id not in self.server.members:
             return ok(method, path, {"channels": []}, 201)
+        messages = list(self.messages.get(channel_id, []))
+        if self.history_lost:
+            # The channel stays, its first message is gone (the I2a review's nit 3).
+            messages = [m for m in messages if not str(m.get("text", "")).startswith("history")]
         channel = {
             "channel": {"cid": f"{T}:{channel_id}", "frozen": channel_id in self.frozen},
-            "messages": list(self.messages.get(channel_id, [])),
+            "messages": messages,
             "members": self.member_list(channel_id),
         }
         return ok(method, path, {"channels": [channel]}, 201)
@@ -385,7 +424,9 @@ class World:
                 self.server.users[uid] = {"id": uid, "role": "user", "created_at": time.time_ns()}
             refused = self.auth_error(label, uid)
             if refused is not None:
-                return ws_refused(refused.status or 401, refused.code or 5)
+                return ws_refused(
+                    refused.status or 401, refused.code or 5, message=self.refused_message(refused)
+                )
             return Reply(True, {"me": {"id": uid, "role": "user"}}, None)
         if op == "events" and label in self.late:
             # What was held back at the previous collection arrives now.
@@ -428,6 +469,11 @@ class World:
                 path=f"{path}/query",
             )
         if method == "updateMemberPartial":
+            if not member and self.removed_member_write_404:
+                message = self.missing_message.format(uid=uid, cid=f"{T}:{channel_id}")
+                return self.reply(
+                    404, 16, response={"code": 16, "message": message}, path=f"{path}/member"
+                )
             if not member:
                 return self.reply(403, 17, path=f"{path}/member")
             note = ((params.get("args") or [{}])[0].get("set") or {}).get("glow_note")

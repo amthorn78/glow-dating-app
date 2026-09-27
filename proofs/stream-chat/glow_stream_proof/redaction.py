@@ -16,6 +16,7 @@ from typing import Any
 
 REDACTED_SECRET = "<redacted-secret>"
 REDACTED_JWT = "<redacted-jwt>"
+REDACTED_API_KEY = "<redacted-api-key>"
 
 # A compact JWS: base64url header starting with '{"' (eyJ), payload, signature.
 # The signature part may be empty or a literal such as Stream's "devtoken".
@@ -45,16 +46,29 @@ def is_sensitive_key(key: str) -> bool:
 
 
 class Redactor:
-    """Replaces known secrets and anything shaped like a JWT."""
+    """Replaces known secrets, anything shaped like a JWT and, when given, the
+    application's API key.
 
-    def __init__(self, secrets: Iterable[str] = ()) -> None:
+    The API key is client-safe, not a credential, but Stream quotes it in free text
+    (its code-43 message, "created using the secret for API key …"), so it is removed
+    from every output as the secret is (P06.1-I2b). It is not a leak: :func:`find_leaks`
+    does not refuse it.
+    """
+
+    def __init__(self, secrets: Iterable[str] = (), *, api_key: str | None = None) -> None:
         # Longest first so a secret that contains another is fully replaced.
         self._secrets = sorted({s for s in secrets if s}, key=len, reverse=True)
+        self._api_key = api_key or None
 
     def text(self, value: str) -> str:
         for secret in self._secrets:
             value = value.replace(secret, REDACTED_SECRET)
-        return JWT_PATTERN.sub(REDACTED_JWT, value)
+        # Tokens first: a key's characters could sit inside one, and a token cut in
+        # two would no longer match the pattern.
+        value = JWT_PATTERN.sub(REDACTED_JWT, value)
+        if self._api_key:
+            value = value.replace(self._api_key, REDACTED_API_KEY)
+        return value
 
     def value(self, obj: Any) -> Any:
         if isinstance(obj, str):

@@ -37,6 +37,20 @@ received none of the probe's events while a listener (the other member, when it
 is still entitled) received them, and the member's connection did not close or
 recover in a way that could explain the miss. Anything else is ``not shown``.
 
+A 404 with Stream code 16 counts as ``ended`` too, but only when all three hold
+(P06.1-I2b; the manager's decision on I2a, as its review refined it): the same
+request by the same member succeeded before the mechanism; the other member's
+identical request, already collected, still succeeds after it; and Stream's
+message, kept in the row, names the missing membership or user. It applies only
+where the mechanism removes what the request needs: the membership after a
+removal, the user after a deactivation (:data:`REMOVES`). Otherwise the dimension
+stays ``not shown``.
+
+What a family has observed is judged and kept as its row after every part of a
+step, however that part ends (P06.1-I2b; the I2a review's finding 1): an
+interruption inside a step no longer loses the step's observations, so a member's
+``not ended`` read seen before a stop stays in the row as DOES NOT MEET.
+
 Also recorded: the event types each member receives when the mechanism is applied
 (the SDK's local events excluded), any system message the provider adds, where
 the acting user appears in them, whether the channel's messages are retained
@@ -57,7 +71,8 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -70,6 +85,7 @@ from .app_send import AppSendService
 from .client_bridge import ClientSession, ClientSessionEnded, Reply
 from .configuration import MATCH_TYPE
 from .redaction import describe_token
+from .server_api import ApiResult
 
 T = MATCH_TYPE
 
@@ -102,6 +118,16 @@ DELETE_TASK_POLLS = 30
 # P06.1-I2a, a nit).
 FAMILY_TOKEN_MARGIN_SECONDS = 300
 TOKEN_EXPIRY_MARGIN_SECONDS = 60
+# The mechanisms after which a 404 code 16 can count as ended, and what each removes
+# that the member's requests need (P06.1-I2b): the membership after a removal, the
+# user after a deactivation. A 404 after any other mechanism stays "not shown".
+REMOVES: dict[str, str] = {"remove": "membership", "deactivate": "user"}
+# The words with which Stream's message may name what is missing, besides the
+# member's own user ID.
+_NAMES_MISSING: dict[str, tuple[str, ...]] = {
+    "membership": ("member", "membership"),
+    "user": ("user", "deactivat"),
+}
 
 
 @dataclass(frozen=True)
@@ -133,9 +159,64 @@ MECHANISMS: dict[str, Mechanism] = {
 # -- the rules (pure functions, tested offline) ---------------------------------------
 
 
-def dimension(before: pr.Answer | None, after: pr.Answer | None) -> dict[str, str]:
+def message_of(answer: pr.Answer | None) -> str | None:
+    """Stream's message in an answer: from its recorded response, or the note a
+    WebSocket refusal keeps (P06.1-I2b)."""
+    if answer is None:
+        return None
+    response = answer.record.get("response") if answer.record else None
+    if isinstance(response, Mapping) and isinstance(response.get("message"), str):
+        return str(response["message"])
+    return answer.note or None
+
+
+def names_missing(message: str | None, missing: str, uid: str) -> bool:
+    """Whether Stream's message names the missing membership or user: the member's own
+    ID, or one of the words for what is missing (P06.1-I2b)."""
+    if not message:
+        return False
+    text = message.lower()
+    return (bool(uid) and uid.lower() in text) or any(
+        word in text for word in _NAMES_MISSING.get(missing, ())
+    )
+
+
+def missing_404(
+    after: pr.Answer | None, other_ok: bool | None, missing: str | None, uid: str
+) -> str | None:
+    """Why a 404 code 16 after the mechanism counts as ended, or ``None`` (P06.1-I2b).
+
+    All three must hold, besides the control before the mechanism the caller checks:
+    the mechanism removed what the request needs (``missing``), the other member's
+    identical request still succeeded after it (``other_ok``), and Stream's message
+    names the missing membership or user.
+    """
+    if after is None or after.outcome != "not-found" or after.code != 16:
+        return None
+    if missing is None:
+        return None
+    if not other_ok:
+        return None
+    message = message_of(after)
+    if not names_missing(message, missing, uid):
+        return None
+    return (
+        f"404 / code 16 after the {missing} was removed: {message!r}; the other member's "
+        "identical request still succeeded"
+    )
+
+
+def dimension(
+    before: pr.Answer | None,
+    after: pr.Answer | None,
+    *,
+    other_ok: bool | None = None,
+    missing: str | None = None,
+    uid: str = "",
+) -> dict[str, str]:
     """``ended`` only on an authentication or permission refusal after the same
-    request by the same member succeeded before the mechanism."""
+    request by the same member succeeded before the mechanism; or on a 404 code 16
+    under the three conditions of :func:`missing_404` (P06.1-I2b)."""
     if before is None or before.outcome != "success":
         shown = pr._observed(before) if before is not None else "not made"
         return {"status": NOT_SHOWN, "why": f"no successful control before ({shown})"}
@@ -145,10 +226,14 @@ def dimension(before: pr.Answer | None, after: pr.Answer | None) -> dict[str, st
         return {"status": ENDED, "why": pr._observed(after)}
     if after.outcome == "success":
         return {"status": NOT_ENDED, "why": pr._observed(after)}
-    return {
-        "status": NOT_SHOWN,
-        "why": f"refusal not attributable ({after.outcome}): {pr._observed(after)}",
-    }
+    gone = missing_404(after, other_ok, missing, uid)
+    if gone is not None:
+        return {"status": ENDED, "why": gone}
+    why = f"refusal not attributable ({after.outcome}): {pr._observed(after)}"
+    message = message_of(after)
+    if message:
+        why += f": {message!r}"
+    return {"status": NOT_SHOWN, "why": why}
 
 
 def ws_dimension(
@@ -206,10 +291,17 @@ def token_dimension(
     control_query: pr.Answer | None,
     connect: pr.Answer | None,
     query: pr.Answer | None,
+    *,
+    other_ok: bool | None = None,
+    missing: str | None = None,
+    uid: str = "",
 ) -> dict[str, str]:
     """A new session with the member's existing token: ``ended`` when its connect,
     or its read of the channel, gets an authentication or permission refusal after
-    the member's own connect and read succeeded before the mechanism."""
+    the member's own connect and read succeeded before the mechanism; or a 404 code
+    16 under the three conditions of :func:`missing_404`, where ``other_ok`` is
+    whether the other member's new session connected and read after the mechanism
+    (P06.1-I2b)."""
     controls = (control_connect, control_query)
     if any(c is None or c.outcome != "success" for c in controls):
         return {"status": NOT_SHOWN, "why": "no successful connect and read before"}
@@ -218,14 +310,24 @@ def token_dimension(
     if connect.outcome in ("auth", "permission"):
         return {"status": ENDED, "why": f"connect {pr._observed(connect)}"}
     if connect.outcome != "success":
-        return {"status": NOT_SHOWN, "why": f"connect {pr._observed(connect)}"}
+        gone = missing_404(connect, other_ok, missing, uid)
+        if gone is not None:
+            return {"status": ENDED, "why": f"connect {gone}"}
+        why = f"connect {pr._observed(connect)}"
+        message = message_of(connect)
+        return {"status": NOT_SHOWN, "why": why + (f": {message!r}" if message else "")}
     if query is None:
         return {"status": NOT_SHOWN, "why": "connected; the read was not made"}
     if query.outcome in ("auth", "permission"):
         return {"status": ENDED, "why": f"connected; read {pr._observed(query)}"}
     if query.outcome == "success":
         return {"status": NOT_ENDED, "why": f"connected; read {pr._observed(query)}"}
-    return {"status": NOT_SHOWN, "why": f"connected; read {pr._observed(query)}"}
+    gone = missing_404(query, other_ok, missing, uid)
+    if gone is not None:
+        return {"status": ENDED, "why": f"connected; read {gone}"}
+    why = f"connected; read {pr._observed(query)}"
+    message = message_of(query)
+    return {"status": NOT_SHOWN, "why": why + (f": {message!r}" if message else "")}
 
 
 def policy_verdict(
@@ -455,13 +557,20 @@ class Family:
         )
         return copied
 
-    def events(self, wait_ms: int, labels: list[str] | None = None) -> dict[str, dict[str, Any]]:
+    def events(
+        self,
+        wait_ms: int,
+        labels: list[str] | None = None,
+        into: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Each session's events since the last collection, in the order of ``labels``:
         those for this channel (or for no channel), the SDK's local event types, and
         whether the connection closed or recovered. The first session collected waits
         ``wait_ms``. A session that has ended is not asked; its events are "not
-        collected" (the independent review, point 7)."""
-        out: dict[str, dict[str, Any]] = {}
+        collected" (the independent review, point 7). Each window is put in ``into`` as
+        it is collected, so a stop on a later session's collection loses none of the
+        earlier ones (P06.1-I2b; the independent check, finding 2)."""
+        out: dict[str, dict[str, Any]] = {} if into is None else into
         first = True
         for label in self.labels if labels is None else labels:
             session = self.run.sessions.get(label)
@@ -544,29 +653,45 @@ class Family:
         # so a late delivery is not taken for an ended subscription (the independent
         # review, point 2).
         order = self.window_order()
-        seen = self.events(pr.EVENT_WAIT_MS, order)
-        got = {
-            label: any(flags(w).values()) if (w := seen[label]).get("collected") else None
-            for label in order
-        }
-        second = [label for label in order if got[label] is False] if any(got.values()) else []
-        if second:
-            again = self.events(pr.EVENT_WAIT_MS, second)
-            for label in second:
-                seen[label] = merge_windows(seen[label], again[label])
-        received: dict[str, Any] = {}
-        for label in self.labels:
-            window = seen[label]
+        seen: dict[str, dict[str, Any]] = {}
+
+        def received_in(window: Mapping[str, Any]) -> dict[str, Any] | None:
             if not window.get("collected"):
-                received[label] = None
-                continue
-            received[label] = {
+                return None
+            return {
                 **flags(window),
                 "types": window["types"],
                 "local_types": window["local_types"],
                 "connection_closed": window["connection_closed"],
                 "connection_recovered": window["connection_recovered"],
             }
+
+        try:
+            self.events(pr.EVENT_WAIT_MS, order, into=seen)
+            got = {
+                label: any(flags(w).values()) if (w := seen[label]).get("collected") else None
+                for label in order
+            }
+            second = [label for label in order if got[label] is False] if any(got.values()) else []
+            if second:
+                again = self.events(pr.EVENT_WAIT_MS, second)
+                for label in second:
+                    seen[label] = merge_windows(seen[label], again[label])
+        except BaseException:
+            # A stop on a later session's collection: what the earlier sessions showed is
+            # kept as their subscription dimension before the step's row is judged
+            # (P06.1-I2b; the independent check, finding 2).
+            table = self.after if phase == "after" else self.before
+            for label, window in seen.items():
+                if label in table and "ws" not in table[label]:
+                    table[label]["ws"] = self.got_probe(received_in(window))
+            raise
+        received: dict[str, Any] = {}
+        for label in self.labels:
+            window = seen[label]
+            received[label] = received_in(window)
+            if received[label] is None:
+                continue
             if phase == "after":
                 self.note_connection(label, window)
         return {
@@ -688,22 +813,29 @@ class Family:
                     ),
                     f"not applied: {answer}",
                 )
-            self.observe(
-                matrix.Verdict(matrix.INCONCLUSIVE, "applied; nothing observed after it yet"),
-                f"applied: {self.detail['apply']['answer']}",
-            )
             self.collect_after()
             self.step("observed after the mechanism; retention and undo not yet made")
             self.send_checks()
-            self.retention()
-            self.step("retention read; the undo not yet made")
+            with self.stepping("retention read; the undo not yet made"):
+                self.retention()
             if self.mech.undo is not None:
-                self.undo()
+                with self.stepping("the undo made; the verdict not yet given"):
+                    self.undo()
             verdict = self.verdict()
             return self.observe(verdict, self.summary())
         finally:
             for label in self.own_sessions:
                 close_session(self.run, label)
+
+    @contextmanager
+    def stepping(self, done: str) -> Iterator[None]:
+        """Judge and keep what has been observed when the block ends, however it ends
+        (P06.1-I2b; the I2a review's finding 1). :meth:`step` sends no request, so it
+        is safe after a stop or a charge signal."""
+        try:
+            yield
+        finally:
+            self.step(done)
 
     def setup(self) -> None:
         run, mech = self.run, self.mech
@@ -843,6 +975,22 @@ class Family:
         if not result.ok:
             self.detail["apply"]["message"] = self.generic(result.message or "")
             return False
+        if mech.key == "deactivate":
+            run.deactivated_users.add(affected_id)  # no poll listing as S (P06.1-I2b)
+        # Applied: kept as the row now, so an interruption in the reads that follow
+        # cannot leave the row saying "not yet applied" (P06.1-I2b; finding 1).
+        self.observe(
+            matrix.Verdict(matrix.INCONCLUSIVE, "applied; nothing observed after it yet"),
+            f"applied: {self.detail['apply']['answer']}",
+        )
+        with self.stepping("applied; the events and the channel after it read"):
+            self.after_apply(result)
+        return True
+
+    def after_apply(self, result: ApiResult) -> None:
+        """What follows the mechanism's request: the delete's task, the events each
+        member received, the system messages and whether the channel still exists."""
+        run, mech = self.run, self.mech
         if mech.key == "delete":
             task = pr._dig(result.body, "task_id")
             self.detail["apply"]["task"] = self.run._wait_task(
@@ -850,7 +998,7 @@ class Family:
             )
             if self.detail["apply"]["task"] == "completed":
                 # Deleted: cleanup must not name it again (a batch delete could refuse it).
-                run.users.remove(affected_id)
+                run.users.remove(run.ctx[mech.affected])
         on_apply = self.events(pr.EVENT_WAIT_MS)
         for label, window in on_apply.items():
             self.note_connection(label, window)
@@ -873,7 +1021,6 @@ class Family:
             # members); cleanup must not name it again.
             run.channels.remove(self.cid)
             self.detail["channel_deleted_by_the_mechanism"] = True
-        return True
 
     def needles(self) -> dict[str, str]:
         ctx = self.run.ctx
@@ -906,43 +1053,47 @@ class Family:
         ends leaves its member's remaining dimensions "not shown"; what is observed is
         kept as the case's row after each step (the independent review, point 7)."""
         run, mech = self.run, self.mech
-        for label in self.labels:
-            try:
-                answer, sees = self.query(label)
-            except ClientSessionEnded as exc:
-                self.after[label]["rest_error"] = run._text(exc)
-                continue
-            self.after[label]["rest"] = answer
-            self.after[label]["sees_history"] = sees
-            try:
-                self.after[label]["s15"] = self.s15_write(label, "after")
-            except ClientSessionEnded as exc:
-                self.after[label]["s15_error"] = run._text(exc)
-        self.step("REST reads and S15 writes made after the mechanism")
+        # Each part of the step keeps the row when it ends, however it ends: a stop on
+        # one member's request no longer loses another member's observation
+        # (P06.1-I2b; the I2a review's finding 1).
+        with self.stepping("REST reads and S15 writes made after the mechanism"):
+            for label in self.labels:
+                try:
+                    answer, sees = self.query(label)
+                except ClientSessionEnded as exc:
+                    self.after[label]["rest_error"] = run._text(exc)
+                    continue
+                self.after[label]["rest"] = answer
+                self.after[label]["sees_history"] = sees
+                try:
+                    self.after[label]["s15"] = self.s15_write(label, "after")
+                except ClientSessionEnded as exc:
+                    self.after[label]["s15_error"] = run._text(exc)
         if mech.key == "hide":
             self.detail["hidden_in_channel_list"] = self.listed(mech.affected)
-        for label in self.labels:
-            self.after[label]["token_reuse"] = self.reuse(label, self.tokens[label])
-        self.step("token reuse made after the mechanism")
-        if mech.key == "revoke":
-            self.reissued()
-        elif mech.scope == "account":
-            self.fresh_token()
-        probe = self.probes("after")
-        for label in self.labels:
-            self.after[label]["ws"] = self.got_probe(probe["received"].get(label))
-        self.detail["after_probe"] = probe
-        if mech.key == "hide":
-            self.detail["listed_after_a_new_message"] = self.listed(mech.affected)
-        # How long each member's own token had left when the observations ended.
-        self.token_seconds_left = {
-            label: self.token_left(self.tokens.get(label)) for label in self.labels
-        }
-        self.detail["token_seconds_left_after"] = {
-            label: None if left is None else int(left)
-            for label, left in self.token_seconds_left.items()
-        }
-        self.after_detail()
+        with self.stepping("token reuse made after the mechanism"):
+            for label in self.labels:
+                self.after[label]["token_reuse"] = self.reuse(label, self.tokens[label])
+        with self.stepping("tokens issued after the mechanism tried"):
+            if mech.key == "revoke":
+                self.reissued()
+            elif mech.scope == "account":
+                self.fresh_token()
+        with self.stepping("the probe after the mechanism collected"):
+            probe = self.probes("after")
+            for label in self.labels:
+                self.after[label]["ws"] = self.got_probe(probe["received"].get(label))
+            self.detail["after_probe"] = probe
+            if mech.key == "hide":
+                self.detail["listed_after_a_new_message"] = self.listed(mech.affected)
+            # How long each member's own token had left when the observations ended.
+            self.token_seconds_left = {
+                label: self.token_left(self.tokens.get(label)) for label in self.labels
+            }
+            self.detail["token_seconds_left_after"] = {
+                label: None if left is None else int(left)
+                for label, left in self.token_seconds_left.items()
+            }
 
     def after_detail(self) -> None:
         self.detail["after"] = {
@@ -959,9 +1110,53 @@ class Family:
                     for k, v in (self.after[label].get("token_reuse") or {}).items()
                 },
                 "ws_probe_received": self.after[label].get("ws"),
+                # Stream's message for each refusal after the mechanism, so a 404 can be
+                # read (P06.1-I2b; the rule for 404 code 16 rests on it).
+                "messages": self.refusal_messages(label),
             }
             for label in self.labels
         }
+
+    def refusal_messages(self, label: str) -> dict[str, str]:
+        answers: dict[str, pr.Answer | None] = {
+            "rest": self.after[label].get("rest"),
+            "s15": self.after[label].get("s15"),
+        }
+        for kind in ("token_reuse", "token_issued_after"):
+            used = self.after[label].get(kind) or {}
+            answers[f"{kind}.connect"] = used.get("connect")
+            answers[f"{kind}.query"] = used.get("query")
+        out: dict[str, str] = {}
+        for name, answer in answers.items():
+            if answer is None or answer.outcome in ("success", "no-response"):
+                continue
+            message = message_of(answer)
+            if message:
+                out[name] = self.generic(message)
+        return out
+
+    def other_ok(self, label: str, dim: str) -> bool | None:
+        """Whether the other member's identical request, already collected, still
+        succeeded after the mechanism (the second condition for a 404 code 16). For the
+        token dimensions it is the other member's new session connecting and reading."""
+        other = OTHER if self.member(label) != OTHER else self.mech.affected
+        after = self.after.get(other) or {}
+        if dim in ("rest", "s15"):
+            answer = after.get(dim)
+            return None if answer is None else answer.outcome == "success"
+        used = after.get("token_reuse") or {}
+        connect, query = used.get("connect"), used.get("query")
+        if connect is None or query is None:
+            return None
+        return bool(connect.outcome == "success" and query.outcome == "success")
+
+    def missing(self, label: str) -> str | None:
+        """What the mechanism removed that this member's requests need, if it is the
+        member acted on (P06.1-I2b): the membership after a removal, the user after a
+        deactivation."""
+        if self.member(label) != self.mech.affected:
+            return None
+        return REMOVES.get(self.mech.key)
 
     def listed(self, label: str) -> str:
         """Whether the member's channel list includes the channel (a hidden one is left out)."""
@@ -1086,20 +1281,47 @@ class Family:
             )
             if ws["status"] == ENDED and "closed" in self.connection_changes.get(label, set()):
                 ws["why"] += "; the connection closed after the mechanism"
+            missing, uid = self.missing(label), self.uid(label)
             self.table[label] = {
-                "rest": dimension(before.get("rest"), after.get("rest")),
+                "rest": dimension(
+                    before.get("rest"),
+                    after.get("rest"),
+                    other_ok=self.other_ok(label, "rest"),
+                    missing=missing,
+                    uid=uid,
+                ),
                 "ws": ws,
                 "token_reuse": token_dimension(
-                    connect, before.get("rest"), reuse.get("connect"), reuse.get("query")
+                    connect,
+                    before.get("rest"),
+                    reuse.get("connect"),
+                    reuse.get("query"),
+                    other_ok=self.other_ok(label, "token_reuse"),
+                    missing=missing,
+                    uid=uid,
                 ),
-                "s15": dimension(before.get("s15"), after.get("s15")),
+                "s15": dimension(
+                    before.get("s15"),
+                    after.get("s15"),
+                    other_ok=self.other_ok(label, "s15"),
+                    missing=missing,
+                    uid=uid,
+                ),
             }
             fresh: dict[str, Any] = {}
             if "token_issued_after" in self.dimensions and self.member(label) == self.mech.affected:
                 fresh = self.after[self.mech.affected].get("token_issued_after") or {}
                 self.table[label]["token_issued_after"] = token_dimension(
-                    connect, before.get("rest"), fresh.get("connect"), fresh.get("query")
+                    connect,
+                    before.get("rest"),
+                    fresh.get("connect"),
+                    fresh.get("query"),
+                    other_ok=self.other_ok(label, "token_issued_after"),
+                    missing=missing,
+                    uid=uid,
                 )
+            for judged in self.table[label].values():
+                judged["why"] = self.generic(judged["why"])
             left = self.token_seconds_left.get(label)
             if left is not None and left < TOKEN_EXPIRY_MARGIN_SECONDS:
                 for dim in DIMENSIONS:
@@ -1272,6 +1494,16 @@ class Family:
         record = answer.record
         control_ok = False
         control = "no client request to replay"
+        # What the member's own request showed is judged before the control is replayed,
+        # so a stop in the replay keeps a client success as FAIL (the client undid the
+        # mechanism) in the row (P06.1-I2b; the independent check, finding 1).
+        self.undo_verdict = matrix.refused_verdict(answer.outcome, False)
+        self.detail["client_undo"] = {
+            "request": pr._request_line(record, self.run.ctx),
+            "answer": pr._observed(answer),
+            "control": "not completed",
+            "verdict": f"{self.undo_verdict.label}: {self.undo_verdict.reason}",
+        }
         if record is not None:
             path = "/" + str(record.get("path") or "").lstrip("/")
             params = {
@@ -1322,6 +1554,9 @@ class Family:
 
     def summary(self) -> str:
         parts = []
+        applied = self.detail.get("apply", {}).get("answer")
+        if applied and str(applied).startswith("2"):
+            parts.append(f"applied: {applied}")
         for label in self.labels:
             dims = self.table.get(label)
             if not dims:

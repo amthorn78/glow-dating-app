@@ -223,6 +223,24 @@ class RecordedSettingsTest(unittest.TestCase):
         self.assertIs(recorded["guest_user_creation_disabled"], False)
         self.assertEqual(conf.verify(configured(snapshot())), [])
 
+    def test_a_value_of_another_type_is_a_difference(self) -> None:
+        # The I2a review's nit 3 (P06.1-I2b): 0 == False in Python, so the type is
+        # compared too; a setting that reads as another type has changed.
+        problems = conf.recorded_differences(
+            {"allow_multi_user_devices": 0}, {"allow_multi_user_devices": False}
+        )
+        self.assertEqual(problems, ["allow_multi_user_devices is 0, recorded False"])
+        self.assertEqual(
+            conf.recorded_differences({"webhook_url": None}, {"webhook_url": ""}),
+            ["webhook_url is None, recorded ''"],
+        )
+        self.assertEqual(
+            conf.recorded_differences(
+                {"allow_multi_user_devices": False}, {"allow_multi_user_devices": False}
+            ),
+            [],
+        )
+
     def test_a_setting_the_baseline_did_not_record_may_be_absent_or_empty(self) -> None:
         self.assertNotIn("before_message_send_hook_url", conf.recorded_app_settings())
         empties: tuple[Any, ...] = (None, "", [], {}, False)
@@ -250,3 +268,79 @@ class RecordedSettingsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProductDifferencesTest(unittest.TestCase):
+    """P06.1-I2b: ``verify`` compares the Video and Feeds target too, from the commit that
+    records the live apply (``products.LOCKDOWN_APPLIED``) on; before it the products'
+    differences are the plan, not drift, and the runs before the lockdown are allowed."""
+
+    def state(self, user_grants: list[str]) -> dict[str, Any]:
+        return {
+            "video": {
+                "availability": "available",
+                "read": {},
+                "call_types": {
+                    "default": {"grants": {"user": user_grants, "admin": ["create-call"]}}
+                },
+            },
+            "feeds": {
+                "availability": "available",
+                "read": {},
+                "feed_visibilities": {"public": {"grants": {"user": user_grants}}},
+                "feed_groups_read": {},
+                "feed_groups": {},
+            },
+        }
+
+    def test_without_the_products_state_nothing_is_compared(self) -> None:
+        self.assertEqual(conf.product_differences(snapshot(), locked=True), [])
+        self.assertEqual(conf.verify(configured(snapshot())), [])
+
+    def test_the_recorded_apply_is_the_live_applys_utc_stamp(self) -> None:
+        from glow_stream_proof import products
+
+        # Set by the commit after the live apply of 27 September 2026; from then on every
+        # verify compares the products (below).
+        self.assertEqual(products.LOCKDOWN_APPLIED, "2026-09-27T05:58:31Z")
+        self.assertRegex(products.LOCKDOWN_APPLIED or "", r"^2026-09-27T\d\d:\d\d:\d\dZ$")
+
+    def test_with_no_recorded_apply_the_differences_are_not_drift(self) -> None:
+        from unittest import mock
+
+        from glow_stream_proof import products
+
+        snap = configured(snapshot())
+        snap["products"] = self.state(["create-call"])
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", None):
+            self.assertEqual(conf.product_differences(snap), [])
+            self.assertEqual(conf.verify(snap), [])
+        self.assertEqual(
+            conf.product_differences(snap, locked=True),
+            [
+                "video/feeds: video call type default: grants for user not empty: ['create-call']",
+                "video/feeds: feeds feed visibility public: grants for user not empty: "
+                "['create-call']",
+            ],
+        )
+        self.assertEqual(conf.product_differences(snap, locked=False), [])
+
+    def test_after_the_apply_verify_sees_drift(self) -> None:
+        from unittest import mock
+
+        from glow_stream_proof import products
+
+        snap = configured(snapshot())
+        snap["products"] = self.state(["create-call"])
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            self.assertEqual(
+                conf.verify(snap),
+                [
+                    "video/feeds: video call type default: grants for user not empty: "
+                    "['create-call']",
+                    "video/feeds: feeds feed visibility public: grants for user not empty: "
+                    "['create-call']",
+                ],
+            )
+            snap["products"] = self.state([])
+            self.assertEqual(conf.verify(snap), [])
