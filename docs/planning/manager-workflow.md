@@ -97,7 +97,7 @@ Nathan's direction, 24 September 2026:
 - moves anything the successor needs out of its own session files, such as request templates or drafts, into the repository or Notion;
 - routes the current handoff to the successor: who holds the branch, what is in flight, who carries it, and what comes next;
 - brings the next-manager start prompt up to date;
-- after the handover commit, pushes nothing and edits nothing in Notion.
+- once the successor starts, pushes nothing and edits nothing in Notion. The branch head at that moment is its handover commit.
 
 **Notion and the repository** (Nathan, 25 September 2026; OD-26 and OD-27).
 

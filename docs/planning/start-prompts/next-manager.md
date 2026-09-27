@@ -5,7 +5,7 @@
 - **A durable start procedure, not an ephemeral prompt** (DM-01 P9): each manager keeps it current for its successor.
 - **Two ways to start a manager:**
   - Nathan pastes the text below into a new session in the `Glow app` environment;
-  - or, when Nathan directs it (OD-31), the outgoing manager creates the session with the remote-session tools and sends the text as its first message. It sets the manager PR's head branch as the new session's outcome branch, so the successor pushes that branch and the PR stays. The outgoing manager pushes nothing after its handover commit.
+  - or, when Nathan directs it (OD-31), the outgoing manager creates the session with the remote-session tools and sends the text as its first message. It sets the manager PR's head branch as the new session's outcome branch, so the successor pushes that branch and the PR stays. Once the successor starts, the outgoing manager pushes nothing and edits nothing in Notion.
 
 **Nathan or the outgoing manager:** before sending, replace `<N>` with the manager's number and `<BRANCH>` with the manager PR's head branch.
 
