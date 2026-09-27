@@ -13,21 +13,22 @@ This file only routes: the current item, what happens next and who waits on whom
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands, and Nathan's principle is in force (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
     - **Done:** I1 (`9ff600f`) and its review (changes required); the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`), each approved by its review; DM-04. No Stream mechanism meets the history policy on its own (I2a).
-    - **Done:** DM-05: approved with conditions, all accepted; revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md) applies them as written and needs no further read (DM-03 G2). Disposition: the [review log](dev-manager/README.md), "DM-05".
-    - **In flight:** I2b, live, from revision 2 (start `b04306d`); Nathan started it on 27 September on Fable 5.1 at extra high.
+    - **Done:** DM-05: approved with conditions, all accepted and applied in revision 2 of I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); disposition in the [review log](dev-manager/README.md).
+    - **Done:** I2b (`ad89753`, merged at `55b2238`): the Video and Feeds lockdown is applied to application 1729640; removal and deactivation MEET the history policy under the 404 code 16 rule; the [architecture document](../architecture/chat-provider-permissions.md) is written; "Stream proof checks" runs in CI.
+    - **Next:** the exact-head review of I2b at `55b2238` ([prompt](../ephemeral/2026-09-27-p06-1-i2b-review-prompt.md)); then the economics discovery.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6). Not a standing item for him (OD-32).
-- **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`. Its [review log](dev-manager/README.md) holds DM-01 to DM-05, Nathan's answers and the dispositions.
+- **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-05 and the dispositions.
 
 ## Waiting checkpoint (27 September 2026)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 4 | Nathan | I2b's report, from revision 2 of its prompt | Nothing else starts (OD-29); ask Nathan for the session's state |
+| App Manager 4 | Nathan | The I2b review's report | Nothing else starts (OD-29); ask Nathan for the session's state |
 | App Manager 4 | The Dev Manager, via Nathan | Reads of the governing changes after `fa4dc5f` (OD-31's and OD-32's too) and of the HDE contract request, each a later step; that read also confirms the restore risk ADR 0004 records as accepted (OD-32) | PR26 cannot merge without the reads |
 
 ## Next actions
 
-1. Verify I2b's report against its pushed branch, integrate it and read CI, the new job included; update the CI policy's job names and counts (DM-05 finding 4 (c)). Then I2b's exact-head review prompt, which names the workflow diff and asks the reviewer to confirm from the PR run that the new job ran. After the review, update ADR 0003's conditions (DM-05 finding 5 (b)).
+1. Verify the I2b review's report; a correction pass only for a finding in the classes the review prompt names. Then update ADR 0003's conditions and "Revisit when" (DM-05 finding 5 (b)) and record the outcome.
 2. Then the economics discovery (the brief's "Sessions").
 3. Close P06.1:
    - the Dev Manager's reads of the governing Markdown changed after `fa4dc5f`;
@@ -42,7 +43,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches
 
-- **PR26** is not behind `main`. Its code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`) and I2a (`6a51dae`); the rest is Markdown.
-- Merged into PR26 only: the session branches the brief names (I1, the flake fix, C1, C2, C3 and I2a) and `claude/dev-manager` (the Dev Manager's reports).
+- **PR26** is not behind `main`. Its code: I1 (`9ff600f`), the flake fix (`8b8b1bd`), C1 (`e85bba0`), C2 (`63e922f`), C3 (`8c1a8c0`), I2a (`6a51dae`) and I2b (`55b2238`); the rest is Markdown.
+- Merged into PR26 only: the session branches the brief names (I1, the flake fix, C1, C2, C3, I2a and I2b) and `claude/dev-manager` (the Dev Manager's reports).
 - Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` after PR26 merges.
 - Every other remote branch is merged into `main`.
