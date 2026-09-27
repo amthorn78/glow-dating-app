@@ -60,6 +60,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
 | AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
 | AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
+| AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
 
 ## App Manager 2
 
@@ -385,3 +386,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none; the batch was already committed, and the full-SHA result is the one recorded.
 - **Correction:** none needed.
 - **Prevention:** because it repeats AM3-14, whose prevention was never written down, the rule is now a checklist item in the manager workflow's "Classification (trusted base policy)": pass full 40-character SHAs from `git rev-parse`.
+
+### AM5-02 — A uses-table row kept "Nathan's pick pending" after his pick (accuracy)
+
+- **What happened:** when Nathan picked Opus 5.5 at high for C4, App Manager 5 set the *Nathan's pick* column of C4's row in the TypeSafe uses table (Notion), but left the row's *PR* text ending "Nathan's pick pending", written when it scored the prompt. The row contradicted itself until the records batch that integrated C4.
+- **Caught by:** App Manager 5, reading C4's row while writing the C4 review's row.
+- **Effect:** none on any decision: the *Nathan's pick* column, which the table's default view shows, was right. No other row carries a pick status in its *PR* text.
+- **Correction:** the row's *PR* text now says that Nathan picked Opus 5.5 at high and where C4's result is recorded; read back.
+- **Prevention:** a row's *PR* text carries no pick status; only the *Nathan's pick* column does. The C4 review's row follows that.
