@@ -2118,6 +2118,11 @@ def _call_refusal(step: SdkStep) -> str | None:
     args = step.params.get("args", [])
     if target not in ("client", "channel"):
         return f"a call on the target {target!r}, which is neither the client nor a channel"
+    # The runner looks a method up by its string form, so ["createReminder"] would call the
+    # reminder method; a method that is not a name is refused, never a crash here (C5's own
+    # review).
+    if not isinstance(method, str):
+        return f"a call of the {target}'s method {method!r}, which is not a method name"
     if target == "client" and method in REMINDER_METHODS:
         return (
             f"a call of the client's {method}, which puts a caller value into the request "

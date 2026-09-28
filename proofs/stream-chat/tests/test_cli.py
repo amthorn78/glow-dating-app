@@ -837,6 +837,15 @@ class ConfigureRecordTest(_WritesTest):
         record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
         self.assertEqual(record["failure"], "KeyboardInterrupt: ")
 
+    def assert_the_signal_left(
+        self, raised: BaseException, server: FakeServer, replaced: BaseException
+    ) -> None:
+        """The ledger's signal is what left the command (exit 3 in main), with the error that
+        replaced its stop in flight chained to it (C5's own review: until then the error
+        left, and main exited 1). GuardrailStop is a RuntimeError, so the identity counts."""
+        self.assertIs(raised, server.ledger.signals[0])
+        self.assertIs(raised.__cause__, replaced)
+
     def test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(self) -> None:
         """P06.1-C5, the C4 review's nit 5: an ordinary error, not a Ctrl-C, replaces the
         signal's stop, so only the ledger tells that a signal was met (a Ctrl-C alone already
@@ -846,10 +855,11 @@ class ConfigureRecordTest(_WritesTest):
         replaced = RuntimeError("an error in place of the stop")
         seen = failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
         ctx = FakeContext(server)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(BaseException) as caught:
             cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
         self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
 
     def test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(
         self,
@@ -858,10 +868,41 @@ class ConfigureRecordTest(_WritesTest):
         replaced = RuntimeError("an error in place of the stop")
         seen = failing_write(server, 2, 429, 9, "Too many requests", replace_with=replaced)
         ctx = FakeContext(server)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(BaseException) as caught:
             cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
         record = self.assert_nothing_after_the_signal(server, seen, "configure-")
         self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
+
+    def test_a_signal_in_the_reread_whose_stop_an_error_replaced_still_leaves(self) -> None:
+        """C5's own review: after a refused step, the re-read meets a signal and an ordinary
+        error replaces its stop in flight. The signal, not the refusal (exit 1), leaves the
+        command, with the error chained; nothing more is sent."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        replaced = RuntimeError("an error in place of the stop")
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+                raise replaced
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(BaseException) as caught:
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertEqual(record["reread_failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
 
     def test_a_ctrl_c_without_a_signal_sends_nothing_more(self) -> None:
         server = FakeServer(UsageLedger())
@@ -1016,13 +1057,17 @@ class RecordWriteAfterASignalTest(_WritesTest):
     write's error is printed and chained to the stop; nothing is sent after the signal."""
 
     def apply(
-        self, scope: list[str] | None, error: BaseException
+        self,
+        scope: list[str] | None,
+        error: BaseException,
+        replace_with: BaseException | None = None,
     ) -> tuple[FakeContext, FakeServer, list[int], BaseException]:
-        """A 402 on the second configuration write, then a record write that raises."""
+        """A 402 on the second configuration write (its stop replaced in flight by
+        ``replace_with``, if given), then a record write that raises."""
         server = FakeServer(UsageLedger())
         if scope is not None:
             server.products.grant_before_lockdown()
-        seen = failing_write(server, 2, 402, 4, "payment required")
+        seen = failing_write(server, 2, 402, 4, "payment required", replace_with=replace_with)
         ctx = FakeContext(server)
         with mock.patch.object(cli, "write_json", side_effect=error):
             with self.assertRaises(BaseException) as caught:
@@ -1065,6 +1110,60 @@ class RecordWriteAfterASignalTest(_WritesTest):
 
     def test_general_a_disk_write_that_fails(self) -> None:
         self.assert_the_stop_is_kept(None, OSError(28, "No space left on device"))
+
+    def test_an_ordinary_error_in_place_of_the_stop_and_a_failed_write(self) -> None:
+        """C5's own review: an ordinary error replaced the signal's stop in flight, and the
+        record's write fails. The signal's stop still leaves the command, with the write's
+        error chained, and the line names the signal and the error that replaced its stop."""
+        for scope in (["video", "feeds"], None):
+            with self.subTest(scope=scope):
+                error = OSError(28, "No space left on device")
+                replaced = RuntimeError("an error in place of the stop")
+                ctx, server, seen, raised = self.apply(scope, error, replace_with=replaced)
+                self.assertIs(raised, server.ledger.signals[0])
+                self.assertIs(raised.__cause__, error)
+                lines = [line for line in ctx.lines if "record was not written" in line]
+                self.assertEqual(len(lines), 1, ctx.lines)
+                self.assertTrue(
+                    lines[0].endswith(
+                        "; the apply stopped on RuntimeError: an error in place of the stop"
+                    ),
+                    lines[0],
+                )
+                self.assertIn("; a charge or limit signal was met: server P", lines[0])
+                self.assertEqual(len(server.calls), seen[-1])
+
+    def test_main_exits_3_when_an_ordinary_error_replaced_the_stop(self) -> None:
+        """C5's own review: whether the record's write succeeds or fails, a signal whose stop
+        an ordinary error replaced ends the command through the guardrail stop (exit 3)."""
+        for argv in (
+            ["configure", "--apply", "--products", "video,feeds"],
+            ["configure", "--apply"],
+        ):
+            for write_fails in (False, True):
+                with self.subTest(argv=argv, write_fails=write_fails):
+                    server = FakeServer(UsageLedger())
+                    server.products.grant_before_lockdown()
+                    replaced = RuntimeError("an error in place of the stop")
+                    failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
+                    ctx = ClosingContext(server)
+                    stderr = io.StringIO()
+                    writes = (
+                        mock.patch.object(cli, "write_json", side_effect=OSError(28, "full"))
+                        if write_fails
+                        else contextlib.nullcontext()
+                    )
+                    with (
+                        mock.patch.object(cli, "Context", return_value=ctx),
+                        writes,
+                        contextlib.redirect_stderr(stderr),
+                    ):
+                        try:
+                            code: int | BaseException = cli.main(argv)
+                        except BaseException as exc:  # an exception main did not handle
+                            code = exc
+                    self.assertEqual(code, 3)
+                    self.assertTrue(stderr.getvalue().startswith("guardrail stop: server P"))
 
     def test_main_exits_3_and_names_the_signal(self) -> None:
         for argv in (

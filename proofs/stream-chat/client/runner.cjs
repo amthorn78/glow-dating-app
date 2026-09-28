@@ -190,7 +190,7 @@ function readableBody(data) {
 
 // Why a request, whatever op made it, may not be sent, or null (P06.1-C4; the I2b review's
 // finding 1, and C4's own review). Only Stream's three hosts, and no Host, forwarding or
-// request-rewriting header (P06.1-C5), each name read as axios sends it. A request
+// request-rewriting header (P06.1-C5), each name read as it is sent (sentHeaderName). A request
 // to either product's host, or to a path under /api/v2/video, /api/v2/feeds, /video or
 // /feeds once letter case, percent-encoding and dot segments are normalized
 // (normalizedPath), must pass the product op's own check (client/product-op.cjs) on the
@@ -245,9 +245,12 @@ function productRequestRefusal(config) {
 
 // A header name as it is sent, for comparison: axios's http adapter trims every name before
 // sending (AxiosHeaders' normalize), and a server reads names in any letter case (P06.1-C5:
-// until then " Host" passed the check and was sent as "Host").
+// until then " Host" passed the check and was sent as "Host"). Some servers also read an
+// underscore in a name as a hyphen, so "X_HTTP_Method_Override" is compared as
+// "x-http-method-override" (C5's own review). No name stream-chat or axios sets holds one.
 function sentHeaderName(name) {
-  return String(name).trim().toLowerCase();
+  const sent = String(name).trim().toLowerCase();
+  return sent.replace(/_/g, '-');
 }
 
 // The header names a request config carries, as sent (axios's AxiosHeaders or an object,

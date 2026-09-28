@@ -658,7 +658,8 @@ class RequestHeaderTest(_NotSentTest):
     request carrying a request-rewriting header, in any letter case, whatever op sent it,
     before it is counted or sent (kind ``refused``), as it refuses the forwarding headers.
     Every header name is read as axios sends it, trimmed (C5 found that " Host" passed the
-    check). Offline: a zero budget and a loopback proxy nothing listens on."""
+    check), with an underscore read as a hyphen (C5's own review). Offline: a zero budget and
+    a loopback proxy nothing listens on."""
 
     def test_each_request_rewriting_header_is_refused(self) -> None:
         rewriting = "PROOF_REFUSED: a request-rewriting header"
@@ -706,6 +707,27 @@ class RequestHeaderTest(_NotSentTest):
         self.assert_not_sent(by_id[3], "refused", "PROOF_REFUSED: a forwarding header")
         self.assert_not_sent(by_id[4], "refused", "PROOF_REFUSED: a request-rewriting header")
 
+    def test_an_underscore_in_a_header_name_is_read_as_a_hyphen(self) -> None:
+        """C5's own review: some servers read an underscore in a header name as a hyphen, so
+        an underscore spelling of a refused header is refused too."""
+        rewriting = "PROOF_REFUSED: a request-rewriting header"
+        forwarding = "PROOF_REFUSED: a forwarding header"
+        cases = [
+            ({"X_HTTP_Method_Override": "DELETE"}, rewriting),
+            ({"x_original_url": "/api/v2/video/call/default/x/join"}, rewriting),
+            ({"X-HTTP_Method": "DELETE"}, rewriting),
+            ({"x_method-override": "DELETE"}, rewriting),
+            ({"X_Rewrite_URL": "/api/v2/feeds/activities"}, rewriting),
+            ({"X_Forwarded_Host": "video.stream-io-api.com"}, forwarding),
+            ({"x_original_host": "video.stream-io-api.com"}, forwarding),
+        ]
+        commands = [with_headers(n, h) for n, (h, _) in enumerate(cases, start=2)]
+        replies = run_runner_offline({"id": 1, **REST_USER}, *commands)
+        by_id = {r["id"]: r for r in replies}
+        for command, (headers, message) in zip(commands, cases, strict=True):
+            with self.subTest(headers=headers):
+                self.assert_not_sent(by_id[command["id"]], "refused", message)
+
     def test_axios_trims_a_header_name_before_sending(self) -> None:
         """The premise of reading names trimmed: the axios stream-chat uses sends each header
         name trimmed (its http adapter's AxiosHeaders.normalize)."""
@@ -732,14 +754,17 @@ class RequestHeaderTest(_NotSentTest):
 
     def test_neither_stream_chat_nor_axios_names_a_rewriting_header(self) -> None:
         """So no chat request carries one, and the refusal changes no chat case: no file of
-        the installed stream-chat 9.53.0 or axios 1.20.0 names any of the five headers."""
+        the installed stream-chat 9.53.0 or axios 1.20.0 names any of the five headers, nor,
+        in its underscore spelling, any name the runner refuses (C5's own review)."""
         modules = RUNNER.parent.parent / "node_modules"
         versions = {
             name: json.loads((modules / name / "package.json").read_text())["version"]
             for name in ("stream-chat", "axios")
         }
         self.assertEqual(versions, {"stream-chat": "9.53.0", "axios": "1.20.0"})
+        refused = [*REWRITING_HEADERS, "X-Forwarded-Host", "X-Original-Host", "X-Host"]
         names = [n.lower().encode() for n in REWRITING_HEADERS]
+        names += [n.lower().replace("-", "_").encode() for n in refused]
         scanned = 0
         for package in ("stream-chat", "axios"):
             for path in sorted((modules / package).rglob("*")):

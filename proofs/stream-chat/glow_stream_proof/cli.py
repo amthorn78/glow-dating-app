@@ -145,23 +145,39 @@ class _Applied:
             return AFTER_NOT_READ_INTERRUPTED  # Ctrl-C: send nothing more
         return None
 
-    def stop(self) -> BaseException | None:
+    def stop(self, ctx: Context) -> BaseException | None:
         """What must reach ``main`` (a signal's stop, the guard's refusal, a Ctrl-C), or
-        ``None`` when every step succeeded or Stream refused one."""
+        ``None`` when every step succeeded or Stream refused one.
+
+        After a charge or limit signal, the ledger's first recorded signal is what reaches
+        ``main`` (exit 3), whatever replaced its stop in flight, as the ledger, not the
+        exception's type, also decides the re-read; only a Ctrl-C is kept instead (P06.1-C5,
+        C5's own review: until then an ordinary error that replaced the stop exited 1)."""
         later = self.reread_failure
         if later is not None and (
             isinstance(later, GuardrailStop) or not isinstance(later, Exception)
         ):
             return later
+        signals = ctx.ledger.signals
+        if signals and (self.failure is None or isinstance(self.failure, Exception)):
+            return signals[0]
         if self.failure is None or isinstance(self.failure, StepRefused):
             return None
         return self.failure
 
-    def finish(self) -> int | None:
-        """Re-raise what must reach ``main``, after the record is written; 1 for a step
-        Stream refused; ``None`` when every step succeeded."""
-        stop = self.stop()
+    def ended_on(self) -> BaseException | None:
+        """What ended the apply or its re-read, if anything did."""
+        return self.reread_failure if self.reread_failure is not None else self.failure
+
+    def finish(self, ctx: Context) -> int | None:
+        """Re-raise what must reach ``main``, after the record is written, with what it
+        replaced chained to it; 1 for a step Stream refused; ``None`` when every step
+        succeeded."""
+        stop = self.stop(ctx)
         if stop is not None:
+            ended = self.ended_on()
+            if ended is not None and ended is not stop:
+                raise stop from ended
             raise stop
         return None if self.failure is None else 1
 
@@ -171,17 +187,25 @@ def _write_record(ctx: Context, outcome: _Applied, name: str, record: dict[str, 
     the disk write fails) never hides what must reach ``main``: a charge or limit signal's
     stop, the guard's refusal or a Ctrl-C is raised with the write's error printed and
     chained to it, so a signal still exits 3 (P06.1-C5; the C4 review's nit 4: until then
-    the write's error replaced the stop). Otherwise the write's error is raised."""
+    the write's error replaced the stop). The printed line also names what ended the apply
+    when that is neither the signal nor a refused step (which ``_apply`` printed). Otherwise
+    the write's error is raised, or, should the line itself fail to print, that failure, with
+    the write's error as its context (C5's own review)."""
     try:
         return write_json(name, record, ctx.secrets)
     except BaseException as exc:
-        stop = outcome.stop()
+        stop = outcome.stop(ctx)
         met = ctx.ledger.signals
+        ended = outcome.ended_on()
         line = f"the configuration record was not written: {type(exc).__name__}: {exc}"
         if met:
             line += f"; a charge or limit signal was met: {met[0]}"
-        if stop is not None and not (met and stop is met[0]):
-            line += f"; the apply stopped on {type(stop).__name__}: {stop}"
+        if (
+            ended is not None
+            and not isinstance(ended, StepRefused)
+            and not (met and ended is met[0])
+        ):
+            line += f"; the apply stopped on {type(ended).__name__}: {ended}"
         try:
             ctx.say(line)
         finally:
@@ -366,7 +390,7 @@ def cmd_configure(ctx: Context, apply: bool, scope: list[str] | None = None) -> 
     if outcome.failure is not None:
         ctx.say(f"the apply did not complete: {record['failure']}")
     ctx.say(f"differences after: {problems if problems is not None else not_read}")
-    failed = outcome.finish()
+    failed = outcome.finish(ctx)
     if failed is not None:
         return failed
     return 0 if not problems else 1
@@ -453,7 +477,7 @@ def _configure_products(ctx: Context, before: dict[str, Any], apply: bool, scope
     if outcome.failure is not None:
         ctx.say(f"the apply did not complete: {record['failure']}")
     ctx.say(f"differences after: {problems if problems is not None else not_read}")
-    failed = outcome.finish()
+    failed = outcome.finish(ctx)
     if failed is not None:
         return failed
     return 0 if not problems else 1

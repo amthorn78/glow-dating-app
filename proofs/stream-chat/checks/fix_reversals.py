@@ -4169,6 +4169,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
     (
         "C4 re-check 1: a signal or Ctrl-C in the re-read after a refused step reaches main",
         [(C, "        later = self.reread_failure\n", "        later = None\n")],
+        # Since P06.1-C5 (C5's own review) the ledger also sends a signal met by the re-read
+        # to main, so with this reverted only the Ctrl-C test fails.
         [
             TCR + "test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main",
             TCR + "test_a_ctrl_c_in_the_reread_after_a_refused_step_still_reaches_main",
@@ -4436,8 +4438,8 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [
             (
                 RN,
-                "  return String(name).trim().toLowerCase();\n",
-                "  return String(name).toLowerCase();\n",
+                "  const sent = String(name).trim().toLowerCase();\n",
+                "  const sent = String(name).toLowerCase();\n",
             )
         ],
         [
@@ -4490,6 +4492,40 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
             TRW + "test_scoped_a_disk_write_that_fails",
             TRW + "test_general_a_disk_write_that_fails",
         ],
+    ),
+    # -- P06.1-C5: what C5's own review found --
+    (
+        "C5 review: a header name's underscores are read as hyphens",
+        [(RN, "  return sent.replace(/_/g, '-');\n", "  return sent;\n")],
+        [TRH + "test_an_underscore_in_a_header_name_is_read_as_a_hyphen"],
+    ),
+    (
+        "C5 review: after a signal, its stop reaches main whatever replaced it, except a Ctrl-C",
+        [
+            (
+                C,
+                "        if signals and (self.failure is None or isinstance(self.failure, Exception)):\n",
+                "        if False:\n",
+            )
+        ],
+        [
+            TCR + "test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it",
+            TCR
+            + "test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it",
+            TCR + "test_a_signal_in_the_reread_whose_stop_an_error_replaced_still_leaves",
+            TRW + "test_an_ordinary_error_in_place_of_the_stop_and_a_failed_write",
+            TRW + "test_main_exits_3_when_an_ordinary_error_replaced_the_stop",
+        ],
+    ),
+    (
+        "C5 review: validate refuses a call whose method is not a name",
+        [(MT, "    if not isinstance(method, str):\n", "    if False:\n")],
+        [TCA + "test_a_method_that_is_not_a_name_fails_validation"],
+    ),
+    (
+        "C5 finding 1: a call step's arguments must be a list",
+        [(MT, "    if not isinstance(args, list | tuple):\n", "    if False:\n")],
+        [TCA + "test_arguments_that_are_not_a_list_fail_validation"],
     ),
 ]
 

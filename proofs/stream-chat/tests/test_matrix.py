@@ -388,7 +388,7 @@ class CallAllowlistValidationTest(unittest.TestCase):
     what the matrix uses; so no step passes a request option (a header, a proxy, an
     adapter) or steers a request's path."""
 
-    def case(self, target: object, method: str, args: list[object]) -> matrix.Case:
+    def case(self, target: object, method: object, args: object) -> matrix.Case:
         control = next(c for c in matrix.all_cases() if c.id == "S1").control
         params: dict[str, object] = {"target": target, "method": method, "args": args}
         if target == "channel":
@@ -494,6 +494,29 @@ class CallAllowlistValidationTest(unittest.TestCase):
                     "a channel"
                 ],
                 target,
+            )
+
+    def test_a_method_that_is_not_a_name_fails_validation(self) -> None:
+        """C5's own review: the runner looks a method up by its string form, so a list
+        holding a reminder method's name would call it; such a method is refused, and
+        ``validate`` never raises on it."""
+        not_names: tuple[object, ...] = (["createReminder"], {"name": "queryUsers"}, None, 7)
+        for method in not_names:
+            self.assertEqual(
+                matrix.validate([self.case("client", method, [{}])]),
+                [f"X-call: a call of the client's method {method!r}, which is not a method name"],
+                method,
+            )
+
+    def test_arguments_that_are_not_a_list_fail_validation(self) -> None:
+        """A string would be spread into characters, one argument each; an object is not
+        a list of positional arguments at all."""
+        not_lists: tuple[object, ...] = ("x", {"0": {}}, 7)
+        for args in not_lists:
+            self.assertEqual(
+                matrix.validate([self.case("client", "queryUsers", args)]),
+                ["X-call: a call of the client's queryUsers whose arguments are not a list"],
+                args,
             )
 
     def test_the_client_url_methods_and_a_product_get_keep_their_rule(self) -> None:
