@@ -64,6 +64,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
 | AM5-04 | 27 Sep 2026 | process | Pushed one records batch as three pushes within five minutes (`c7fd0a9`, `a5a113b`, `93cb9a0`): the entries AM5-02 and AM5-03, found during the Notion sync, were each pushed at once instead of with the next batch, and the later pushes cancelled four full runs (359 to 362). DM-01 P2 asks for pushes only when a session needs them. This entry was pushed after PR run 364 finished, so it cancelled no run, though it started one more | App Manager 5, reading the runs |
 | AM5-05 | 27 Sep 2026 | accuracy | The brief's entry for the C4 review listed the classes that get another correction pass without "or DOES NOT MEET", so its "only" excluded a class the prompt includes | App Manager 5, comparing the brief with the prompt |
+| AM5-06 | 28 Sep 2026 | accuracy | The verification of C5 found "no slip" in C5's section, which, like `README.md:398`, said JSON nested two levels deep in a query value is reachable only through a request-options argument; a `product` step's `params` can carry it too. The verification of C4 had passed the same list to the review untested | The exact-head review of C5 (nit 1) |
 
 ## App Manager 2
 
@@ -415,3 +416,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none: the review follows its prompt, and no report has yet been dispositioned against the brief.
 - **Correction:** the entry now uses the prompt's wording.
 - **Prevention:** a brief entry that restates a prompt's bound uses the prompt's words, not a summary.
+
+### AM5-06 — The C5 verification missed a wrong reachability claim (accuracy)
+
+- **What happened:** App Manager 5's verification of C5 said "no slip found" in C5's own section. That section's "Deviations and limits", like `README.md:398`, said the non-header residuals, JSON nested two levels deep in a query value among them, are reachable only through a request-options argument. A `product` step's `params` can carry the nested JSON too, past `validate` and the runner's check. The wording dates from C4's README, and the manager's verification of C4 had passed that list to the review without testing it.
+- **Caught by:** the exact-head review of C5, its nit 1.
+- **Effect:** none on any result or decision. The residual is C4's, and the C4 review assessed it. No case or harness op carries nested JSON, and whether Stream decodes JSON nested inside a JSON query value is not known.
+- **Correction:** `README.md:398` and the evidence record at lines 3600, 4107 and 4191 are corrected in place and marked. The manager confirmed the claim offline with the real `productRefusal`: one level of nested JSON is refused, two levels pass.
+- **Prevention:** when a record says a residual is reachable "only through" one route, the verification tests the claim against every input that reaches the checked requests (for the runner's product check, the `product` op's own `params` and body first), not only against the named route.

@@ -3597,7 +3597,7 @@ This was a false-pass path in finding 1's own fix, so it was fixed here, with te
 **The re-check of `919a383` found one should-fix, fixed at `112011f`:** after a refused step, a signal or Ctrl-C met by the re-read was recorded but not re-raised. With it, `112011f` also sends `https:` only and refuses forwarding headers (`X-Forwarded-Host`, `Forwarded`, `X-Original-Host`, `X-Host`).
 
 **The re-check of `112011f`: nothing blocking and no should-fix.** Its two nits are recorded as README limits:
-- two request-rewriting headers (`X-HTTP-Method-Override`, `X-Original-URL`) still pass the check. They matter only if Stream honours them (corrected in P06.1-C5; the C4 review's finding 1: this said that only a `call` of a client URL method, which `validate` refuses, could set them, but other stream-chat methods take a request-options argument too). Since P06.1-C5, `validate` covers the matrix's steps: every `call` step must be on its allowlist, with no more positional arguments than listed, so no step reaches a request option. The runner refuses those two headers and `X-HTTP-Method`, `X-Method-Override` and `X-Rewrite-URL`, in any letter case and with an underscore for a hyphen, on every request, whatever sent it. What remains is a per-request `proxy`, `socketPath` or adapter, none of which gets past the runner's host and path checks;
+- two request-rewriting headers (`X-HTTP-Method-Override`, `X-Original-URL`) still pass the check. They matter only if Stream honours them (corrected in P06.1-C5; the C4 review's finding 1: this said that only a `call` of a client URL method, which `validate` refuses, could set them, but other stream-chat methods take a request-options argument too). Since P06.1-C5, `validate` covers the matrix's steps: every `call` step must be on its allowlist, with no more positional arguments than listed, so no step reaches a request option. The runner refuses those two headers and `X-HTTP-Method`, `X-Method-Override` and `X-Rewrite-URL`, in any letter case and with an underscore for a hyphen, on every request, whatever sent it. What remains is a per-request `proxy`, `socketPath` or adapter, none of which gets past the runner's host and path checks; the README's limits also list the other routing headers and JSON nested two levels deep (pointer added by App Manager 5 after the exact-head review of C5, its nit 1);
 - another re-read failure after a refused step exits 1.
 
 **Residuals the reviewer assessed and the README records:**
@@ -4104,7 +4104,7 @@ It did not run `checks/fix_reversals.py` (this section's "Checks" item 5 does), 
     - which stream-chat methods take a request-options argument;
     - what `validate` covers: the matrix's steps, on the allowlist, with no reminder method; the harness's own `call` ops pass no request option either;
     - what the runner refuses: the five rewriting headers, in any letter case and with an underscore for a hyphen, on every request, whatever sent it; neither package sends one;
-    - what remains: a per-request `proxy` or `socketPath`, `adapter: "fetch"` or `httpVersion: 2` (the fetch-adapter statement is kept), and JSON nested two levels deep in a query value. None gets past the runner's host and path checks.
+    - what remains: a per-request `proxy` or `socketPath`, `adapter: "fetch"` or `httpVersion: 2` (the fetch-adapter statement is kept), and JSON nested two levels deep in a query value. None gets past the runner's host and path checks. (The README's nested-JSON item is corrected by App Manager 5 after the exact-head review of C5, its nit 1: a `product` step's `params` can carry it too.)
   - **Brought into line:**
     - "Nothing else reaches Video or Feeds" (`:281`): the rewriting headers, how header names are read, `validate`'s allowlist, and the refusal of a method that is not a name or arguments that are not a list;
     - the scoped `configure --apply` bullet (`:336`): nit 4, and what reaches `main` after a signal;
@@ -4188,7 +4188,7 @@ It did not run `checks/fix_reversals.py` (this section's "Checks" item 5 does), 
 - **Nit 5 has two variants**, one per `configure --apply` path, where the prompt asked for one.
 - **Nit 4's printed line names the ledger's signal as well as the write's error**, and what ended the apply when that is neither. A Ctrl-C that replaced the signal's stop still reaches `main`, as C4 decided; the line names the signal, and nothing is sent.
 - **`validate` runs offline only.** It is called by the unit tests, and so by the Foundation job, never by a live command; a live command relies on the offline checks having passed at its head. The allowlist is exactly today's matrix: a new case with another method or more arguments fails the tests until the table changes.
-- **The runner refuses named headers only.** Other routing headers pass its check. The non-header residuals (a per-request `proxy` or `socketPath`, the fetch adapter or HTTP/2, JSON nested two levels deep) do too. All are reachable only through a request-options argument, which no matrix step can pass after C5 and no harness `call` op passes. None gets past the runner's host and path checks. A per-request `proxy` would send the checked request, with its token, through the proxy it names; that is recorded, not changed.
+- **The runner refuses named headers only.** Other routing headers pass its check. The non-header residuals (a per-request `proxy` or `socketPath`, the fetch adapter or HTTP/2, JSON nested two levels deep) do too. All but the nested JSON are reachable only through a request-options argument, which no matrix step can pass after C5 and no harness `call` op passes; a `product` step's `params` can carry JSON nested two levels deep (corrected by App Manager 5 after the exact-head review of C5, its nit 1). None gets past the runner's host and path checks. A per-request `proxy` would send the checked request, with its token, through the proxy it names; that is recorded, not changed.
 - **Nothing here is exercised live.** No live run remains in P06.1.
 
 ### What the final delta review must know
@@ -4248,3 +4248,309 @@ App Manager 5 checked the relayed report against the pushed branch. The manager 
   - `cmd_run`'s final results write, which, if it raises, exits through an uncaught error instead of the stop's code; nothing more is sent by then.
 - **Not yet exercised live:** every C5 fix.
 - **C5's exact-head review is next.** It is P06.1's final delta review, offline, of `1a5f58a`.
+
+### Exact-head review of C5 (28 September 2026)
+
+Nathan ran the review session from revision 1 of the [review prompt](../../ephemeral/2026-09-28-p06-1-c5-review-prompt.md) (records commit `8cac8d0`) on Opus 5.5 at extra high, and relayed its report to App Manager 5. The session committed and pushed nothing, and made no Stream call.
+
+- **Verdict: approve.** C5's change and its records are sound, and P06.1 can close on them. There is no blocking or should-fix finding, and no finding falls in a class that needs another correction pass.
+- **Three nits, none in that class.**
+  - The records say JSON nested two levels deep in a query value is reachable only through a request-options argument, but a `product` step's `params` can carry it too.
+  - A C4 clause that now matters only for a budget stop in the re-read has no test.
+  - When no signal was met, `finish()` chains an apply failure to a later re-read error, replacing the failure's own cause.
+- **The rest is confirmed.** The C4 review's items, and the items C5 or its own review found, are fixed. The review agrees with every one of the manager's dispositions, and would reconsider an allowlist of header names before the harness is used live again in P06.2.
+
+#### The report, as relayed
+
+The session's notes before its report, as relayed, verbatim:
+
+> I'll start with the environment check (names only).
+>
+> Start gate passes. Now the three classifications.
+>
+> All three classifications match expectations. Now reading the C5 prompt and the diff.
+>
+> Now the code diff, file by file.
+>
+> Start gate and classifications pass; I'm now reading C5's evidence section before the code deep-dive.
+>
+> Now the manager's records at `8cac8d0`.
+>
+> Now the README's install and checks sections, and the parts C5 changed.
+>
+> Setting up a scratch export of the head for installs and checks (clean processes).
+>
+> Offline checks pass (570 tests). Starting the full fix-reversal run in the background while I read the code.
+>
+> While that runs, reading `cli.py`'s apply/stop logic in full.
+>
+> All checks pass so far (570 tests), and the full reversal run is going in the background. Having finished reviewing `cli.py`'s stop/exit logic, I'll now check the `validate` allowlist against the stream-chat 9.53.0 source.
+>
+> Now checking each allowlisted method against stream-chat 9.53.0's source. First the core request plumbing.
+>
+> Still reviewing: the channel methods on the allowlist check out so far; now the helpers they call (`_update`, `_sendMessage`, `_sendReaction`, `addFileToFormData`) and the client methods.
+>
+> Confirmed the allowlisted methods only place caller values into bodies, payloads, or encoded path segments. Now verifying whether the reminder methods are truly the only directly callable ones using an unencoded path value.
+>
+> Confirmed only the three reminder methods place unencoded caller values into a path, while the polls query methods put `userId` unencoded into the query string (no path steering, not allowlisted). Next I'll check the harness's own `call` ops outside the matrix.
+>
+> Progress: the harness's own `call` sites are being enumerated (proof_run, mechanisms, i2a). Checking the remaining ones, including control steps built from dicts.
+>
+> All harness `call` sites check out fine—none passes a request option, calls a reminder/URL method, or builds an unencoded path. Next I'll check the runner's header handling against axios 1.20.0 and the "nested JSON" issue.
+>
+> The README's allowlisted-method and header claims hold so far. Now the tests: `RequestHeaderTest`, `MaxRedirectsTest` and the matrix allowlist tests.
+>
+> Now a few adversarial header probes of my own against the real runner offline (zero budget, unreachable loopback proxy, as C5's tests do).
+>
+> Cases 4 and 7–11 check out, with 7 matching C5's recorded residual. I'll verify the remaining cases by spinning up a loopback-only HTTP server to see exactly what axios and Node send over the wire.
+>
+> Header handling checks out: NBSP-padded names are rejected by the runner, CRLF injection doesn't create extra headers, invalid names never leave Node, and null/false values plus other-method sections are correctly skipped. Moving on to the matrix and CLI tests now.
+>
+> The allowlist tests look right. Checking whether run-time placeholder filling could change a validated step's method or argument count.
+>
+> Now the CLI tests for nit 4/nit 5 and C5's own-review change.
+>
+> Tests are sound. Now the reversal table changes.
+>
+> I've read the reversal table. Now I'll test in a scratch copy whether the GuardrailStop clause in C4's `later` branch is redundant with C5's new ledger branch for signals, and whether it's untested for non-signal (budget) stops.
+>
+> Confirmed: with that clause removed, all 570 tests still pass. Checking the behavioural effect it guards (a non-signal budget stop in the re-read after a refused step).
+>
+> Confirmed as a test-coverage nit (no request is sent either way). Now verifying the evidence record's byte-identity outside C5's section and the one in-place correction.
+>
+> Record is byte-identical to `438d047` apart from line 3600 (the marked correction) and the appended section. Now checking every `file:line` C5's section cites.
+>
+> All 34 citations match. README line citations next, plus the counts C5's section states (39 pairs: 24 channel / 15 client; 10 + 5 + 1 + 8 tests).
+>
+> Everything cited matches. Now testing C5's recorded claim that JSON nested two levels deep is "reachable only through a request-options argument", using the `product` op's own `params` offline.
+>
+> Confirmed that a two-level nested JSON query value reaches the budget via the `product` op's own `params` and passes `validate`, so the "reachable only through a request-options argument" claim doesn't hold for that residual (C4's accepted residual is unaffected). Moving on to check scope, modes, and the secret scan.
+>
+> Secret scan clean (only a commit SHA, a path and an SDK method name match the broad patterns). Now hosted CI, read-only.
+>
+> Push run 371: all seven jobs success; "Stream proof checks" ran every step. Now PR27's latest pull-request run.
+>
+> PR27's latest pull-request run is 374 on `8cac8d0` (which contains the head). Checking its jobs.
+>
+> Both CI runs are green with the full "Stream proof checks" run complete. While reversals finish up, I'll run my own configure exit matrix through main offline using the test fakes.
+>
+> Every signal row shows nothing sent after the signal and exit 3 unless Ctrl-C replaced the stop, and a Ctrl-C during the post-signal write still exits 3. I'll now compare the no-signal rows against the pre-C5 code at `438d047`.
+>
+> No-signal exits are identical before and after C5; the only change is signal + failed write (exit 3 instead of an uncaught `OSError`), as intended. Checking the reversal run.
+>
+> Reversals are at 203 of 391. Meanwhile I'm checking README:398's list of stream-chat methods that take a request-options argument for completeness.
+>
+> Confirmed README:398's list matches exactly—those ten methods plus the URL methods pass a caller argument, while queryChannels only forwards `signal` and is unreachable at count 3. Now verifying the package-scan counts against C5 records.
+>
+> Package counts check out (265/89) and no refused or residual routing headers found. Next I'll verify `finish()`'s `raise stop from ended` behavior for the no-signal case where the apply fails with an ordinary error and the subsequent re-read also fails.
+>
+> Confirmed this is just a diagnostics-only nit — without a signal, `finish()` overwrites the apply failure's `__cause__` with the later re-read error, though exit code and record stay unchanged. Now waiting on the reversal run.
+>
+> While the run continues, a quick check of the two pre-existing items the manager recorded.
+>
+> Pre-existing items confirmed as the manager describes (test classes after the main guard still load under `discover`; `cmd_run`'s final write is outside C5's change). Checking the reversal run again.
+>
+> The run is progressing (its log is block-buffered). I'll wait on it with a monitor rather than end the turn.
+>
+> While the reversal run finishes, drafting the report. I'll resume when the monitor fires.
+>
+> Reversal run done: 391, none "not demonstrated", exit 0. Extracting the C5 entries' failure reasons, the "C4 re-check 1" row, the ledger-rule row, and the overall tallies.
+>
+> All 13 C5 entries fail for their stated reasons. Final check that I changed nothing in the repository.
+
+The report, verbatim (its title in bold, its headings at level five):
+
+**P06.1-C5 exact-head review: approve (final delta review)**
+
+**Verdict: approve.** C5's change and its records are sound, and P06.1 can close on them. I found no blocking or should-fix finding. Three nits go into the records, and none falls in a class that needs another correction pass.
+
+- **Prompt:** revision 1, from commit `8cac8d061d5719706aa2c712e58034dd0d36ec22`.
+- **Head reviewed:** `git rev-parse HEAD` printed `1a5f58aec87cacfdd1dc32c893467f8f00e9ac7e`.
+- **Environment:** none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY` or `STREAM_API_SECRET` was present (names checked only).
+- **Toolchain:** the default PATH already finds the pinned tools in `/root/.local/bin`: node v24.19.0, npm 11.9.0, npx, python3.12 3.12.14. I put `$HOME/.local/bin` first on PATH for every harness process anyway.
+- **Start gate:** passed.
+  - The merge base with `main` is one line, `0f45e648…`.
+  - The records commit `8cac8d0` builds on the head.
+  - `git diff --stat 438d047 HEAD`: 9 files, 1260 insertions, 37 deletions.
+
+**Classification.** I used the trusted policy from `main` (sha256 `dec69a26…`), extracted outside the tree and run with `python3 -I` and full SHAs:
+
+| Range | Result |
+|---|---|
+| `main` → head | `{"full": true, "reason": "behavior-or-empty", …}`, 145 paths |
+| `c83bedf` → head | `{"full": true, "reason": "behavior-or-empty", …}`, 18 paths. The filter for non-Markdown files outside `proofs/stream-chat/` printed nothing |
+| head → `8cac8d0` | `{"full": false, "reason": "ordinary-docs-only", …}`, 5 paths |
+
+##### Findings, most severe first
+
+**1. Nit (records): one residual's reachability is misstated.** Not in a correction class.
+- **Where:** `proofs/stream-chat/README.md:398`, and the evidence record's C5 section at lines 4107 and 4191.
+- **What they say:** "JSON nested two levels deep inside a query value" is "reachable only through a request-options argument".
+- **What I found:** it is also reachable through the `product` op's own `params`, and through the `get` op's. `validate` passes such a step: `products.client_refusal` returns `None`. I showed this offline with the real runner (zero budget, unreachable proxy):
+  - one level deep, `{"payload": "{\"ring\": true}"}`, is refused with "denied field (ring)";
+  - two levels deep, `{"payload": "{\"a\": \"{\\\"ring\\\": true}\"}"}`, reaches the budget, so the runner would send it.
+- **Why it is not in a class:** this residual is C4's, and C5 did not change the code. The C4 review assessed it as not reaching Video or Feeds, because Stream is not known to decode a JSON string nested inside a query value. No current case and no harness op carries it.
+- **Suggested fix:** reword both records, for example: "reachable through a `product` or `get` step's `params` too; `validate`'s Python mirror does not parse nested JSON either". If the manager wants it closed in code, both checks would have to read JSON recursively.
+- **Optional, same records:** line 3600's "What remains" names only `proxy`, `socketPath` and the adapter. The other routing headers (`X-Forwarded-Prefix` and similar) are recorded in the README and in C5's section, so a pointer to them would do.
+
+**2. Nit (test coverage): one C4 clause no longer has a test.** Not in a class: no request is sent either way.
+- **Where:** `glow_stream_proof/cli.py:158`, the `isinstance(later, GuardrailStop)` clause of `_Applied.stop`.
+- **What changed:** C5's new ledger branch also sends a re-read signal to `main`. So this clause now matters only for a guardrail stop that is not a signal: the API-call budget stop, met by the re-read after a refused step.
+- **Scenario:** I removed the clause in a scratch copy, and all 570 tests still passed. I then drove a budget `GuardrailStop` in the re-read after a 400:
+  - at the head, the `GuardrailStop` reaches `main` (exit 3);
+  - with the clause removed, the command returns 1.
+
+  The budget refuses before sending, so nothing is sent in either case.
+- **This answers the prompt's question on "C4 re-check 1".** The signal case is still covered, twice: by the `later` branch and by the ledger branch. So no single reversal can make `test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main` fail. The ledger branch is shown by "C5 review: after a signal, its stop reaches main…", through `test_a_signal_in_the_reread_whose_stop_an_error_replaced_still_leaves`. Only the clause's remaining budget-stop case has no test.
+- **Suggested fix:** add a test in which the re-read after a refused step raises a budget `GuardrailStop` (not one from `stop_at_once`) and must reach `main`, and add a reversal that removes only the clause.
+
+**3. Nit (diagnostics): an exception chain is backwards when no signal was met.** Not in a class: the exit code and the record are unchanged.
+- **Where:** `glow_stream_proof/cli.py:179–180`, the `raise stop from ended` in `finish()`, which also runs without a signal.
+- **Scenario:** without a signal, the apply fails with an ordinary error, the re-read runs (it is allowed then), and the re-read fails too. `finish` then raises the apply's failure `from` the later re-read error. That shows the re-read as the "direct cause", and it overwrites the failure's own `__cause__`.
+  - I showed this offline: a `ConnectionError` raised from an `OSError`. At `438d047` its cause is still the `OSError`. At the head it is the re-read's `RuntimeError`.
+  - The exit code is unchanged, nothing is sent, and the record still keeps both `failure` and `reread_failure`.
+- **Suggested fix:** chain only when the stop being raised is the ledger's signal, not the apply's own failure.
+
+##### The C4 review's items and C5's own items
+
+| Item | Status |
+|---|---|
+| **Finding 1, `validate` allowlist** | **Confirmed fixed.** Details below |
+| **Manager's addition, rewriting headers** | **Confirmed fixed.** Details below |
+| Nit 2, `maxRedirects` | Confirmed fixed. `MaxRedirectsTest` loads the real `runner.cjs` with a stub `stream-chat`, calls the one interceptor it registers, and gets `[0, 0, 0]`. Its reversal fails on `['unset', 5, 21]` |
+| Nit 3 | The manager's own item. ADR 0003 was outside this review's scope and was not read |
+| Nit 4, record write after a signal | Confirmed fixed. See the exit table below |
+| Nit 5, the ledger-rule test | Confirmed fixed. Two variants; the ledger-rule reversal fails them on the requests sent (`15 != 10`, `18 != 10`) |
+| C5: header names trimmed | Confirmed fixed |
+| C5's review: underscore read as a hyphen | Confirmed fixed |
+| C5's review: a method that is not a name | Confirmed fixed |
+| C5's review: arguments that are not a list | Confirmed fixed |
+| C5's review: the ledger decides the exit after a signal | Confirmed fixed |
+| C5's review: the docstring on a failing print | Confirmed fixed |
+
+**Finding 1, the `validate` allowlist.**
+- `CALL_ALLOWLIST` has 39 pairs, 24 on the channel and 15 on the client. It equals what the matrix uses, and the test keeps it so. All 132 cases validate.
+- I read every allowlisted method at its count in stream-chat 9.53.0. Each argument reaches only the body, the query payload, or a path segment that is `encodeURIComponent`-encoded; `_channelURL` encodes the type and ID too.
+- No request-options position is reachable at these counts. `queryChannels` at 3 is safe: its fourth argument only forwards `signal`.
+- A multi-line scan of the Channel and StreamChat classes finds only the three reminder methods putting a caller value into a path unencoded. The polls query methods put `userId` into the query string after `?`, which cannot change the path, and none of them is allowlisted.
+- The README's list of methods that take a request-options argument is complete.
+
+**The manager's addition, the rewriting headers.**
+- The runner refuses them before the request is counted or sent, with error kind `refused`, whatever op sent it.
+- My own offline probes against the real runner:
+
+| Probe | Result |
+|---|---|
+| A rewriting header in the `common` section, or in the request method's own section | refused |
+| A name padded with a non-breaking space, which axios sends trimmed | refused |
+| An array value | refused |
+| A header in another method's section | not refused, and axios drops it |
+| A `null` or `false` value | not refused, and axios does not send it |
+| A CRLF inside a value | not refused, and no second header reaches the wire (checked on a loopback server) |
+| A name with invalid characters (a colon, a zero-width space) | not refused, and Node refuses to send it (`ERR_INVALID_HTTP_TOKEN`) |
+
+- Nothing adds a caller-chosen header after the interceptor, except through request options.
+- Neither package names a refused header or any of the residual routing headers: 265 files of stream-chat and 89 of axios. So no chat case is refused falsely.
+
+**`configure --apply` exits, through `main`.** I ran every combination of signal, what replaced its stop, and how the record write ended, for both commands, with the test fakes:
+
+| Situation | Exit |
+|---|---|
+| A 402, or a 429 with code 9, whatever replaced the stop | 3, with 0 requests after the signal |
+| The same, when a Ctrl-C replaced the stop | the Ctrl-C reaches `main` |
+| A Ctrl-C during the record write, after a signal | 3 |
+| No signal, a refused step or no failure, write succeeding or failing | identical to `438d047` |
+
+The only exit that changed from `438d047` is a signal with a failed write: 3, where it used to be an uncaught `OSError`. The ledger's signals are kept in memory only: `UsageLedger.load` restores the session counts, not the signals.
+
+##### The manager's dispositions
+
+I agree with all of them.
+
+- **C5 verified and integrated:** agree.
+- **Deviations accepted** (the trim, the underscore spelling, a method that is not a name, the ledger deciding what reaches `main`, the reminder methods' own rule, nit 5's two variants, nit 4's line): agree. Each only narrows what may be sent or validated.
+- **A Ctrl-C during the record write after a signal exits 3, with the Ctrl-C chained:** sound. Nothing more is sent, the Ctrl-C is not lost, and exit 3 carries the more important fact to the operator.
+- **No allowlist of header names in the runner, for P06.1:** agree. A caller's header can be set only through request options. No matrix step can now pass them, and none of the roughly 35 harness `call` sites does; I checked each one. I would reconsider it before the harness is used live again in P06.2.
+- **No argument counts enforced by the runner at run time, for P06.1:** agree, for the same reason. The harness's own `call` ops also use methods outside the allowlist (`markRead`, `getUnreadCount`, `castPollVote`, `unbanUser`, `show`, `pin`, `archive`, `acceptInvite`, `rejectInvite`). I checked each one: none takes request options or builds an unencoded path.
+- **The two pre-existing items, recorded and not fixed:** agree. `unittest discover` still finds the test classes defined after the main guard, and `cmd_run`'s final write sends nothing more.
+
+##### Areas with no findings
+
+- The header-name reading, and the residual routing and non-header options: unreachable by every matrix step and harness op, as recorded (except finding 1's rewording).
+- The tests: each tests what it claims, and each would fail if its fix were broken another way. For example, the header refusal fails if it were moved after the budget or limited to product paths, because the chat-path cases would then read `budget`.
+- The reversal table.
+- The evidence record: byte-identical to `438d047` apart from the marked line 3600 and the appended section. Every one of the 34 `file:line` citations I checked in C5's section is correct, and so are the counts (39 pairs; 10, 5, 1 and 8 tests; 265 and 89 files). The manager's section at `8cac8d0` only appends.
+- The README's rules and limits match the code, apart from finding 1.
+- Scope: only the 9 paths, all mode 100644, no symlink, and no dependency file, lock, `.npmrc`, `pyproject.toml`, baseline or workflow changed since `c83bedf`.
+
+##### Checks run
+
+| Check | Result |
+|---|---|
+| `git diff --check 438d047… HEAD` | no output, exit 0 |
+| Installs, in a scratch export, `env -i`, proxy and CA variables by reference | `pip install --require-hashes` OK; `pip check`: "No broken requirements found."; `npm ci --ignore-scripts`: "found 0 vulnerabilities"; stream-chat 9.53.0, axios 1.20.0 |
+| Unit tests | `Ran 570 tests`, `OK` |
+| Ruff check / format / mypy | "All checks passed!" / "55 files already formatted" / "Success: no issues found in 53 source files" |
+| `node --check` on the four `.cjs` files | OK |
+| `checks/run_plan.py`, no `.work` | "run plan: fits", exit 0 |
+| `checks/fix_reversals.py`, 01:31:14–02:00:14 UTC | "reversals: 391, not demonstrated: 0", exit 0. 505 assertion failures, 50 errors, 3 test processes stopped by Ctrl-C by design; no syntax, import or name error |
+| The 13 C5 reversal entries | each fails for the reason C5 recorded (for example `'budget' != 'refused'`, `['unset', 5, 21] != [0, 0, 0]`, `OSError(…) != 3`, `TypeError: unhashable type: 'list'`). "C4 re-check 1" fails only its Ctrl-C test, `KeyboardInterrupt not raised` |
+| Secret scan of the whole diff (119,481 bytes) | 0 JWT-shaped strings, email addresses, private keys, AWS, GitHub or Slack tokens, bearer tokens or secret assignments. The only 40-hex string is a commit SHA |
+| CI push run 371 ([36360951436](https://github.com/amthorn78/glow-dating-app/actions/runs/36360951436)) on `11b5771` | 7 of 7 jobs success; "Stream proof checks" ran every step, not skipped |
+| CI PR27 pull-request run 374 ([36365364988](https://github.com/amthorn78/glow-dating-app/actions/runs/36365364988)) on `8cac8d0` | 7 of 7 jobs success; "Stream proof checks" ran every step; the gate passed |
+
+My own offline experiments, all in scratch copies:
+- the header probes against the real runner;
+- the axios and Node wire check, on a loopback server only;
+- the nested-JSON probe;
+- the `configure` exit table through `main`, at the head and at `438d047`;
+- the clause-removal experiment (finding 2);
+- the exception-chain probe (finding 3);
+- the SDK method scans.
+
+##### Limits
+
+- Nothing was run live. Whether Stream or its edge honours the rewriting or routing headers, or decodes nested JSON, is not known.
+- The API key was absent, so the secret scan could not search for its value.
+- The safety of axios's `maxRedirects: 0` rests on the axios source and on the unit test of the interceptor. No redirect was exercised.
+- I did not read ADR 0003 (nit 3) or other governing Markdown; both are out of scope.
+
+I changed nothing in the repository, on GitHub or in Notion. `git status` is clean at `1a5f58a`, and all scratch work stayed in the session's scratch directory.
+
+#### Manager verification of the review (App Manager 5, 28 September 2026)
+
+The session committed nothing, so there is no branch to check. The manager checked the report's claims against the reviewed head `1a5f58a`, in the scratch export it verified C5 in (the head's harness, with stream-chat 9.53.0 and axios 1.20.0 installed). It made no Stream call.
+
+- **Identity and classification.** The prompt revision, the head, the merge base, the ancestor check and the diff's size are what the prompt expects. The second and third classifications' results and path counts (18 and 5) match the manager's own runs. One slip, with no effect: the first classification lists 147 paths, not 145, in the manager's run of the same policy on the same SHAs (GitHub counts 148 at `8cac8d0`, which adds this review's prompt). Its result, full scope, is the same.
+- **Nit 1, confirmed:**
+  - the runner's check parses a query or `params` value's JSON one level deep (`client/runner.cjs:234`–`243`), and `deniedField` (`client/product-op.cjs:53`) reads no JSON inside a string. With the real `productRefusal` and the runner's one-level parse, `{"payload": "{\"ring\": true}"}` is refused ("denied field (ring)"), and the two-level form is not;
+  - `validate`'s mirror, `products.client_refusal`, reads no JSON inside a value at all: it passes both forms and refuses a plain `ring` key. So a `product` step's `params` can carry the two-level form past `validate` and the runner. A matrix `get` of a Video or Feeds path is refused by `validate` (C4's rule, `matrix.py:2144`), so for a matrix step the route is the `product` op's `params`;
+  - the wording dates from C4. At `438d047` the README already listed nested JSON among the "request options a `call` of a client URL method could pass". C5 kept it under "reachable only through a request-options argument" (`README.md:398`), and its section says the same (`:4191`) and quotes the README (`:4107`). C4's section at `:3600` names only the `proxy`, `socketPath` and adapter residuals;
+  - not in a class, as the review says: the residual is C4's, the C4 review assessed it, no case or harness op carries one, and whether Stream decodes JSON nested inside a JSON query value is not known.
+- **Nit 2, confirmed.** `_Applied.stop` (`cli.py:157`–`160`) returns the re-read's failure when it is a `GuardrailStop` or not an `Exception`.
+  - With the `isinstance(later, GuardrailStop)` clause removed in the manager's scratch export, all 570 tests still pass; the file was then restored and compared with the head.
+  - The budget check (`usage.py:126`–`135`) raises a `GuardrailStop` without recording a signal. So after C5 the clause matters only for a budget stop in the re-read after a refused step: with it the stop reaches `main` (exit 3), and without it `finish` returns 1.
+  - The budget refuses before sending, so nothing is sent either way.
+- **Nit 3, confirmed.** At `438d047`, `finish()` raised `self.failure` itself. At the head, it raises the stop from `ended_on()` whenever the two differ (`cli.py:176`–`181`).
+  - Without a signal, an ordinary error as the failure lets the re-read run (`may_read_after`). If the re-read fails too, the apply's failure is raised from the later re-read error, and loses its own cause.
+  - The exit code is unchanged, and so is the record, which keeps both failures.
+- **The review's other claims match the manager's own checks at the head:**
+  - 570 tests, and the lint, format and type checks;
+  - 391 reversals, none "not demonstrated", with 505, 50 and 3, and each C5 entry's failure reason;
+  - the 132 cases passing `validate`, the 39 pairs, and the 265 and 89 package files;
+  - the record byte-identical to `438d047` outside line 3600 and C5's section;
+  - push run 371 and PR run 374.
+- **Spot checks of the harness's own `call` methods outside the allowlist,** in stream-chat 9.53.0: `castPollVote` encodes both path values; `unbanUser` and `getUnreadCount` pass their values as query parameters; `acceptInvite` and `rejectInvite` send theirs in the body.
+- **Not re-run by the manager:** the session's header probes, its loopback wire check, its exit table through `main` and its SDK scans.
+
+#### Disposition
+
+- **Approve: C5 stands, and P06.1's harness code stands as reviewed.** Its fixes are confirmed, no finding falls in a class that needs another correction pass, and no recorded result changes. The economics discovery is next. The Dev Manager reads its prompt first (DM-06), because the session acts in Nathan's signed-in Stream dashboard.
+- **Nit 1 is corrected in the records by the manager, in this batch.** The corrections are at `README.md:398` and in this record at `:3600`, `:4107` and `:4191`, each marked with App Manager 5 and the C5 review's nit 1.
+  - They record that JSON nested two levels deep can reach the runner through a `product` step's `params`, and that the runner reads one level of JSON while `validate` reads none.
+  - No code changes. The manager's own miss is AM5-06: its verification of C5 found "no slip" in C5's section.
+- **Nits 2 and 3 are recorded, not fixed in P06.1.** Neither sends a request or changes a recorded result, and P06.1 has no further harness session. They go to the harness's next use, with the review's advice to reconsider an allowlist of header names before the harness is used live again (P06.2, if it reuses the harness):
+  - **nit 2:** a test in which the re-read after a refused step meets a budget stop that must reach `main`, and a reversal that removes only the `isinstance(later, GuardrailStop)` clause;
+  - **nit 3:** `finish()` chains only a signal's stop to what replaced it, so an apply failure keeps its own cause.
+- **The manager's dispositions of C5 stand;** the review agrees with each.
+- **Nathan's pick for this review: Opus 5.5 at extra high,** recorded in the uses table.
