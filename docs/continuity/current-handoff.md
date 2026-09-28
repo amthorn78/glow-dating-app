@@ -15,23 +15,22 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Done:** I1 and its review; the flake fix, C1, C2, C3 and I2a, each approved by its review (commits: "Branches"); DM-04. No Stream mechanism meets the history policy alone (I2a).
     - **Done:** DM-05; I2b (merged at `55b2238`): Video and Feeds locked down; removal and deactivation MEET the history policy; the [architecture document](../architecture/chat-provider-permissions.md) is written.
     - **Done:** OD-33, OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md); request v6 (skill `typesafe-scoring`).
-    - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 and its review (changes); C5 and its review, the final delta review: approve, nits recorded; [DM-06](dev-manager/reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md): approved with conditions. Prompts: the brief's "Sessions".
-    - **Next:** the economics discovery in Claude in Chrome, from [revision 2](../ephemeral/2026-09-28-p06-1-economics-discovery-prompt.md) of its prompt, which applies DM-06.
+    - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 and its review (changes); C5 and its review, the final delta review: approve, nits recorded; [DM-06](dev-manager/reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md): approved with conditions; the economics discovery, recorded. Prompts: the brief's "Sessions".
+    - **Next:** [DM-07](../ephemeral/2026-09-28-dm-07-p06-1-close-out-read.md), the Dev Manager's close-out read.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
-- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 at Nathan's direction on 28 September; branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-06.
+- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 at Nathan's direction on 28 September; branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-07.
 
 ## Waiting checkpoint (28 September 2026, App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | Nathan | The discovery's report (revision 2, given 28 September) | Ask Nathan whether it ran |
-| App Manager 5 | The Dev Manager, via Nathan | The close-out consultation, next action 2, a later step | PR27 cannot merge without it |
+| App Manager 5 | Dev Manager 2, via Nathan | DM-07's report (given 28 September) | Tell Nathan PR27 waits on it |
 
 ## Next actions
 
-1. Verify and record the discovery's report (the brief's "Sessions"; DM-06 findings 5 (d) and (e)).
+1. Verify and record DM-07's report (the review log).
 2. Close P06.1:
-   - the Dev Manager's close-out consultation: reads of the governing Markdown changed after `fa4dc5f` (ADR 0003's update too) and of the HDE contract request; the restore risk ADR 0004 records as accepted (OD-32); the activities query, `call_member` and the I2b review's finding 2 (a live read);
+   - put DM-07's item 6 to Nathan in one message (OD-32): the lockdown, the secret, the environments;
    - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;
    - merge and verify `main`;

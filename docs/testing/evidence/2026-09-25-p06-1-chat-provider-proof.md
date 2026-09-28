@@ -4554,3 +4554,221 @@ The session committed nothing, so there is no branch to check. The manager check
   - **nit 3:** `finish()` chains only a signal's stop to what replaced it, so an apply failure keeps its own cause.
 - **The manager's dispositions of C5 stand;** the review agrees with each.
 - **Nathan's pick for this review: Opus 5.5 at extra high,** recorded in the uses table.
+
+## Economics discovery (28 September 2026)
+
+Nathan ran the read-only discovery in Claude in Chrome, in his own browser signed in to the Stream dashboard, from revision 2 of the [economics discovery prompt](../../ephemeral/2026-09-28-p06-1-economics-discovery-prompt.md), written at `78a0a45`. Revision 2 applies the Dev Manager's DM-06 conditions, so it needed no further read. Nathan relayed the session's notes and report to App Manager 5 on 28 September; the model and level he ran it on were not stated. The session used no API key or secret and, as its report says, changed nothing: navigation and reading only, with the interactions it lists. It finished reading at about 20:37 UTC.
+
+- **The account** (dashboard; account-specific):
+  - the plans are Free Chat, Free Feeds and Video Build, $0 for 1 to 30 September, not a trial;
+  - no payment method is on file, and no spending cap or usage alert is shown;
+  - the eight Chat limits are unchanged since 25 September;
+  - Chat, Video, Feeds and Moderation are in US East;
+  - the "DEV" badge carries no explanation, and no Maker status is shown.
+- **September's usage:**
+  - Chat, 1 to 28 September: 2,262 API calls, 152 QueryChannels calls, a peak of 5 concurrent connections and 5 MB outbound;
+  - Feeds, in a chart that covers 24 to 28 September only: 9 activities, 2 follows and 171 API requests;
+  - Video: none.
+  - No warning is shown, and nothing is near a limit.
+- **Stream's public pricing and terms** (general policy, paraphrased by the session with each page named):
+  - Chat's plans are Build (free), Start ($399 a month billed annually, $499 monthly), Elevate ($599 and $675) and Enterprise; the Fair Usage document's overage rates apply to every plan.
+  - The Maker program, if approved, gives 2,000 monthly active users and 100 concurrent connections with hard limits, for teams of fewer than 5 with under $100k funding and under $10k monthly revenue.
+  - No page says what a free Chat account does at a limit; the terms (section 4.6) let Stream suspend or limit usage above plan limits without payment.
+  - No attribution is required (terms, section 3). No page read excludes any kind of app, and no clause names dating or adult content.
+  - The data-processing addendum is a self-serve PDF, not opened; the privacy statement names the EU–US Data Privacy Framework and standard contractual clauses. No public list of Chat hosting regions was found.
+
+### The report, as relayed
+
+The session's notes before its report, as relayed, verbatim; the line breaks between notes are restored:
+
+> Started: I'm in the Stream dashboard in a new tab (read-only). The app list shows "Glow Connection System Chat Engine" (ID 1729640, DEV badge, US East). Next I'm opening Billing and Usage pages.
+>
+> Progress: Billing and Chat usage pages read (plan "Free Chat", limits unchanged, no payment method shown). Video/Feeds usage default to Sep 24–28, so I'm opening the date-range picker (view-only) to get Sep 1 onward.
+>
+> Progress: Feeds/Video usage read. On the app list I'm now hovering the DEV badge (no clicks) to see whether the dashboard explains the mode limits; then I'll check for Maker/compliance notices.
+>
+> Progress: Part A (dashboard) is read. Now on getstream.io: Chat pricing page read (Build free / Start $399 / Elevate $599 / Enterprise). Next: Fair Usage doc, Video & Feeds pricing, Maker page, legal/terms.
+>
+> Progress: Terms of Service (last updated October 2024), Maker pages, Video/Feeds pricing and the Fair Usage doc are read. Now reading the Data Processing Addendum and subprocessors pages, then I'll check for an acceptable-use policy, regions, and the free-plan-at-limit behaviour.
+>
+> Progress: DPA page (effective 26 Feb 2024, PDF download only — I won't download it), subprocessors page (last update September 2026), privacy statement (DPF + SCCs) and security page read. Now looking for hosting regions and message-retention docs on getstream.io.
+>
+> The docs search box is open (a search box on getstream.io, which is permitted). Typing a query there.
+>
+> Progress: Data-retention doc read (hard-deletes, optional policy 24h–5 years). I can't find a public list of Chat hosting regions in the docs yet; trying the Trust Center (a getstream.io subdomain, read-only, no forms), then one check for an acceptable-use policy and free-plan-at-limit wording.
+>
+> Progress: Trust Center page rendered blank in the browser (and read tools errored), so I'm treating it as not readable. Checking one candidate acceptable-use policy URL on getstream.io now.
+
+The report, as relayed, verbatim:
+
+> Stream (getstream.io) lookup for Glow: report on prompt revision 2
+> Quoting: my rules cap me at one short quote per response, so I paraphrased policy wording and gave the page where the exact text sits. Names, numbers and labels are reported as shown. The one quote is under item 12.
+> Prompt revision received: revision 2 (App Manager 5, 28 September 2026).
+> Checked at: 2026-09-28 20:37 UTC (approximate; taken when I finished reading).
+> Sites opened:
+>
+> * dashboard.getstream.io
+> * getstream.io, including its docs pages
+> * trust.getstream.io, which rendered blank and could not be read
+>
+> I did not open the DPA PDF, which is hosted on amazonaws.com. I only recorded its link.
+> A. Dashboard
+>
+> 1. Plan: The plans are Free Chat, Free Feeds and Video Build (billing page). No trial is shown. The billing period is Sep 1 – Sep 30, and the amount for it is $0.00 (billing page). Confirmed; account-specific.
+> 2. Limits: All eight limits match 25 September (Chat usage page, Metrics & limits table):
+>    * 1,000 active users
+>    * 100 concurrent connections
+>    * 2,000,000 API calls
+>    * 200,000 QueryChannels calls
+>    * 500,000 stored channels
+>    * 5,000,000 stored messages
+>    * 5,500,000 total records
+>    * 500 GB outbound traffic
+>    * Billing page, Free Chat: 100 concurrent connections included, and an outbound bandwidth allowance shown as "512,000 units" against a usage of "5 MB". The units are unclear.
+>    * Billing page, Free Feeds: 5,000 activities and 200,000 API calls included.
+>    * No Video limit is shown. Confirmed; account-specific.
+> 3. Usage:
+>    * Chat (Sep 1–28):
+>       * API calls 2,262
+>       * QueryChannels 152
+>       * Concurrent connections 5
+>       * Outbound traffic 5 MB
+>       * Active users, stored channels, stored messages and total records show "—" (not shown)
+>    * Feeds (charts cover Sep 24–28 only):
+>       * Activities 9
+>       * Follows 2
+>       * Peak concurrent connections 5
+>       * API requests 171
+>    * Video: the page says no usage in the period.
+>    * Range: the Sep 1–30 period isn't over. Video and Feeds charts wouldn't widen past Sep 24–28, so the billing page's Sep totals are the wider view.
+>    * Warnings and limits: no warnings are shown, and no usage is near a limit. The highest is 5 of 100 concurrent connections. No new billing period has begun. Confirmed; account-specific.
+> 4. Past a limit:
+>    * The dashboard gives no statement of what happens. It offers only a "Fair Usage" link and a "Contact Sales" button (Chat usage page). I clicked neither.
+>    * Payment method on file: No. The billing page's Payment Method section reports no Stripe ID assigned.
+>    * Spending cap or usage alert: not shown.
+>    * Invoices: none found. Not shown; account-specific.
+> 5. Maker: not shown on any allowed dashboard page (apps list, billing, usage). Not shown.
+> 6. Region and mode:
+>    * Chat, Video, Feeds and Moderation for app 1729640 all show "US East" in the app list.
+>    * The DEV badge has no tooltip and no explanation of limits or of what production requires.
+>    * Nothing is shown about other regions or changing region.
+>    * The Stream docs (general) say a Stream app can be in development or production mode, that you can switch later, and that production mode disables certain destructive dashboard features. That is the docs, not the dashboard. Confirmed for region; not shown for the rest.
+> 7. Attribution and agreements: no branding or attribution notice, DPA, or security or compliance document is offered on the pages I was allowed to open. The account menu has only Account and Logout, and I did not open Account. Not shown.
+>
+> B. Public site
+>
+> 8. Chat pricing (getstream.io/chat/pricing/; no "last updated" date shown):
+>    * Build (free): 1,000 MAU and 100 concurrent connections. The feature table says total API calls up to 1M, Query Channel calls up to 100K, and API bandwidth up to 10 GB. That is lower than your dashboard limits (item 2).
+>    * Start: $399/mo billed annually or $499 monthly, with 10,000 MAU and 500 concurrent connections.
+>    * Elevate: $599/mo billed annually or $675 monthly, with 10,000 MAU and 500 concurrent connections.
+>    * Enterprise: contact sales.
+>    * Overage on the pricing page: the MAU and concurrent overage rows read "Limits Apply", with no rates.
+>    * Overage rates in the Fair Usage doc (getstream.io/chat/docs/node/fair-usage-limits/, no date; it applies to every Chat plan): stored messages $5.00 per 1M, stored channels $100.00 per 1M, outbound traffic $0.40 per GB, API calls $7 per million, query-channel calls $2.50 per 100,000. Your dashboard limits match its lowest band ($0–$6K annual spend).
+>    * Free plan for commercial production: not stated on the pricing page. No excluded app types are named (dating and adult are not mentioned). Confirmed for prices; not shown for commercial use; general policy.
+> 9. Video and Feeds: both are priced separately from Chat.
+>    * Video: free Build plan with 333,000 participant minutes (page also says "$100 in free credits"). Pay-as-you-go is $0.30 per 1,000 participant minutes. Add-ons are priced per 1,000 call minutes.
+>    * Feeds: free plan with 125,000 API calls and 5,000 activities; overage is listed as "Not allowed". Start is $499/mo billed annually ($599 monthly). Elevate is $899/mo billed annually ($999 monthly). Your dashboard shows 200,000 Feeds API calls included, which differs from the public 125,000.
+>    * Confirmed; general policy.
+> 10. Free plan past a limit with no payment method:
+>    * No page states this directly for Chat.
+>    * The Fair Usage doc says usage above thresholds is billed as overage.
+>    * Terms section 4.6 lets Stream suspend or limit usage above plan limits without payment.
+>    * Feeds free plan overage is listed as "Not allowed".
+>    * Unclear; general policy.
+> 11. Maker Account (getstream.io/maker-account/ and getstream.io/blog/maker-account/):
+>    * Eligibility: under 5 team members (the blog says "fewer than 5"; the program page says "five or less"), under $100k funding, and under $10k monthly revenue. Availability is limited.
+>    * Includes: a modified Chat Start plan (2,000 MAU, 100 concurrent connections), the Feeds Start plan (125,000 API calls a month), Video Build (333,000 participant minutes), AI Moderation pay-as-you-go with a $100 monthly credit, and hard limits. Support is low-priority.
+>    * Duration: the blog says free indefinitely while you qualify. Applying starts a 30-day free trial that converts on approval.
+>    * When it ends: terms section 4.5 says you keep Maker status only while qualifying. If you exceed the criteria without upgrading, Stream may disable access without notice. Volume above the cap is rejected until the monthly reset or an upgrade.
+>    * Commercial production and excluded apps: the blog FAQ says regular terms apply and you can build anything. No excluded app kinds are named.
+>    * Attribution or publicity: none stated on the Maker pages.
+>    * Confirmed; general policy.
+> 12. Attribution: none required. Terms section 3 says "Customer's implementation of the Service will not require displaying Marks to End Users" (getstream.io/legal/). The same section says not to remove Stream marks from the Service or its code files. Looked at:
+>    * the three pricing pages
+>    * both Maker pages
+>    * the terms
+>    * Confirmed none found; general policy.
+> 13. Data processing and region:
+>    * DPA: getstream.io/legal/dpa/, effective Feb 26, 2024. It is a self-serve PDF download with no request form seen. I did not download it, so the transfer mechanism it names is unverified.
+>    * Transfer mechanism: the privacy statement (getstream.io/legal/privacy/, effective Feb 27, 2024) says Stream is certified under the EU–US Data Privacy Framework, with the UK Extension and the Swiss–US framework. It also says EU Standard Contractual Clauses are used with recipients in countries without adequate protection.
+>    * Retention: the Chat pricing FAQ says messages are stored as long as the plan is active. The docs offer an optional retention policy of 24 hours to 5 years, and deletion is a permanent hard delete. The security page (effective June 2025) says data can be deleted via API or by requesting deletion from Stream's privacy contact. How long deleted data survives in backups is not shown.
+>    * Hosting regions for Chat: no public list found. The app-settings doc says you can control the primary region, where data is stored. The security page mentions dedicated regional servers as an Enterprise option.
+>    * Changing region after creation: unclear.
+>    * Subprocessors: getstream.io/legal/subprocessors/, last update September 2026.
+>    * Mixed; general policy.
+> 14. Terms: https://getstream.io/legal/, last update October 2024.
+>    * Price change notice: at least 30 days' advance notice, and increases take effect at the next renewal term (section 4.2).
+>    * Acceptable-use policy: none found. The Legal Center links don't list one, and one guessed URL returned 404.
+>    * Dating or adult content: no clause names either.
+>    * Content-moderation duty: section 6.2 requires you to limit End User access to people who agree to your own terms. It also requires commercially reasonable efforts to detect, address and remove content that violates your terms.
+>    * Confirmed; general policy.
+>
+> Changes since 25 September
+>
+> * Item 2 limits: no change.
+> * Usage has changed from 10 API calls and everything else zero. It now shows:
+>    * Chat: 2,262 API calls, 152 QueryChannels calls, 5 concurrent connections and 5 MB outbound
+>    * Feeds: 9 activities, 2 follows, 171 API requests
+>    * Video: none
+>
+> Risks noticed
+>
+> * No payment method is on file, and no page says what a free Chat account does at a limit.
+> * The Maker hard cap and the terms 4.5 disable-without-notice clause apply if you go that route. Chat under Maker is 2,000 MAU and 100 concurrent connections. The $10k monthly revenue and $100k funding caps also apply.
+> * Public Build-plan figures (1M API calls, 100K QueryChannels, 10 GB bandwidth, 125,000 Feeds calls) are lower than what your dashboard shows.
+> * No attribution requirement and no excluded app kinds were found in the pages I read. I could not read the DPA PDF or the Trust Center, so those two sources are unchecked.
+> * Nothing is near a limit. The app is on DEV, US East.
+> * Terms section 12.5 lets Stream use your name and logo in client lists and marketing.
+>
+> Actions taken: navigation and reading only, plus these interactions:
+>
+> * I opened the Video/Feeds date-range picker (no change made).
+> * I opened the account dropdown without clicking Account or Logout. It showed your email, which I did not record.
+> * I typed only into the docs search box on getstream.io. Two typing actions ran while that box wasn't focused, so that text went nowhere.
+>
+> No secrets were visible. I opened no app-level pages. I opened no Edit, Configure, Contact Sales or Register controls. Nothing was downloaded, and I clicked nothing that changes a plan. The tab I created is closed, and your original tab was left untouched.
+> The report is this message; I did not save it to a file.
+
+### Manager verification (App Manager 5, 28 September 2026)
+
+- **What the manager could check.** The manager opened neither the dashboard nor Stream's public site: its rules forbid connecting to a provider, as the Dev Manager's did for DM-06. So the dashboard facts rest on the session's report, as the baseline's did, and the public facts rest on its reading of the pages it names. The manager checked the report against the prompt's rules, the brief's baseline and this record's usage ledgers.
+- **Against the prompt's rules:**
+  - it received revision 2;
+  - **sites:** it opened dashboard.getstream.io, getstream.io and trust.getstream.io, a getstream.io address the rules allow. It recorded the data-processing addendum's link on amazonaws.com without opening it;
+  - **dashboard pages:** the application list, billing and usage, all in the allowed set; no application page;
+  - **clicks:** the Video and Feeds date-range picker, with no change; the account menu, a menu, which showed Nathan's email, not recorded. A hover over the "DEV" badge is not a click;
+  - **typing:** only in the docs search box on getstream.io, as allowed, except that two typing actions ran while the box was not focused. The session says the text went nowhere, and nothing was submitted. **A deviation, disclosed;**
+  - nothing was downloaded, recorded or submitted, and no plan, trial, checkout, program, agreement, booking or contact control was used. No secret was visible, and the session's own tab was closed;
+  - **quotes:** the rules ask for the exact words about charges, overage, limits, attribution, eligibility and data processing. The session gave one quote (item 12) and paraphrased the rest, naming each page, because its own rules allow one short quote per response. **A deviation, disclosed;** see the disposition.
+- **Against the baseline of 25 September** (the brief): the plan, the billing period, the $0, the missing payment method, US East, the "DEV" badge and all eight limits match. New: the billing page names Free Feeds and Video Build too. The Free Chat outbound allowance, "512,000 units", is 500 × 1,024, so it is plausibly 500 GB in megabytes; that is the manager's arithmetic, not a dashboard statement.
+- **Usage against the sessions' ledgers** (DM-06 finding 5 (d)). The four sessions that called Stream counted 2,261 API calls between them, for every product, server and client: I1 884, the I1 review 119, I2a 698 and I2b 560 (this record's usage sections). The baseline showed 10 calls before I1.
+  - I2b sent its Video and Feeds requests to the chat host, as the server SDK does. If the dashboard's Chat count includes them, the sessions account for 2,252 of its 2,262 calls, and the ledgers counted 9 more than Stream did.
+  - If the Chat count excludes them, the Feeds page's 171 requests come on top, and Stream counted up to 162 more than the ledgers, about 7%. The ledgers do not split calls by product, so the exact figure is not known.
+  - **Either way the difference is small.** The ledger enforced the budget guardrails, and no session came near the 5,000-call cap; September's use is about 0.1% of the plan's 2,000,000 calls.
+  - The dashboard's peak of 5 concurrent connections is one below I2a's ledger peak of 6. Stream samples connections; the ledger counts every connection the harness held at once.
+  - **Feeds:** the 2 follows match I2b's records: the client's follow in the V1 rerun and the server's replay in run V2. The 9 activities are consistent with the three V runs' adds, which the records do not count.
+  - **Stored data:** the dashboard shows "—" for active users, stored channels, stored messages and total records, so it cannot be compared with the cleanups' "nothing remaining". I2b's last `verify-clean` (27 September, 06:30 UTC) found no proof user, channel, call, feed or activity.
+- **Inside the report:**
+  - The public Build plan's figures (1M API calls, 100K QueryChannels calls, 10 GB bandwidth) are below this account's limits, which match the Fair Usage document's lowest band. The public Feeds allowance (125,000 API calls) is below the dashboard's 200,000.
+  - The dashboard's figures are this account's; which figures bind a production application is not stated.
+
+### Disposition
+
+- **The discovery is recorded, and it answers the economics outcome (the brief's outcome 5) as far as a read-only look can:**
+  - **the plan's real limits:** the eight Chat limits on the dashboard, with the Feeds allowances and no Video limit;
+  - **the costs that would apply:** Stream's public plans and the Fair Usage overage rates;
+  - **the usage the proof caused:** the September figures above, within 7% of the sessions' ledgers;
+  - **the approvals P06.2 needs:** none. P06.2 works on the same development application, and the proof's use was about 0.1% of the plan;
+  - **the approvals launch needs:** a billing decision before any real traffic, as the brief already says (A04). The free plan allows 1,000 monthly active users and 100 concurrent connections; the Maker program, if approved, 2,000 and 100 with hard limits while Glow qualifies; Stream's Start plan costs $399 a month billed annually, for 10,000 monthly active users. No payment method is on file, and the budget is $0 (OD-12).
+- **The deviations are accepted:**
+  - **Paraphrase instead of exact words:** a limit of the tool, disclosed. Before any decision rests on Stream's exact wording (the overage and suspension terms, the Maker criteria, the data-processing addendum), that page is read then; the report names each page. A later prompt of this kind asks for the page and a close paraphrase, with at most one quote.
+  - **The account menu:** within the rules on menus; no personal data was recorded.
+  - **The two unfocused typing actions:** no text reached a form, and nothing was submitted. A later prompt asks the session to type only once the search box has focus.
+- **DM-06 finding 5 (e): nothing to put to Nathan.** The pages read show no attribution requirement (terms, section 3), no excluded kind of app and no restriction on production use. The data-processing addendum's PDF and the Trust Center were not read, so those two sources are unchecked.
+- **Two terms bear on later phases.** They are recorded here, not decided:
+  - **Section 6.2:** the customer limits End User access to people who agree to its own terms, and makes commercially reasonable efforts to detect, address and remove content that breaks them. This is for P07's moderation plan (A05).
+  - **Section 12.5:** Stream may show the customer's name and logo in its client lists and marketing. Outside the app, this bears on Nathan's principle that nothing should indicate anything outside Glow (A04).
+  - The close-out consultation asks the Dev Manager whether either is Nathan's to decide now (OD-32).
+- **Where the facts live:** this section and the brief's "Sessions", with Notion's A04 and A05 rows. PF01 is not changed: it changes only when a rule does (DM-01 P3), and no rule changed. R04 is unchanged: its cost trigger, a price above the approved budget, is the launch decision A04 already records.
+- **Maker:** the dashboard shows no status, so OD-22's "pending" stands.
+- **Nathan's pick** for this session was not stated; the uses table keeps "pending".
