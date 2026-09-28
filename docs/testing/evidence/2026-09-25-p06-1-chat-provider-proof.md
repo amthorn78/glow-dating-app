@@ -3920,3 +3920,289 @@ The session committed nothing, so there is no branch to check. The manager check
 - **Nit 3 is the manager's, in this batch.** ADR 0003's condition (c) and the architecture document's section 4 (c) now say that C4 extended the harness's comparison. They also say that the other roles and settings being unchanged rests on Stream's documentation until a live read, which is a question for the Dev Manager's close-out consultation.
 - **The review's disagreement with the manager's README-limits disposition is accepted;** it is finding 1.
 - **C5 and its exact-head review land before any further live use of the harness,** including a read the close-out consultation may weigh. The exact-head review of C5 is P06.1's final delta review, with the same bound as this one; the economics discovery follows it.
+
+## P06.1-C5 corrections
+
+Nathan ran this session from revision 1 of the [C5 correction prompt](../../ephemeral/2026-09-27-p06-1-c5-correction-prompt.md), from commit `438d047046e275e2a781937cc7f8e51f2b1a0bf6` (App Manager 5's manager branch `claude/magical-wozniak-yfmmx2`), on the session branch `claude/zealous-gauss-bgnir3`. It made no Stream call and no call to any other provider, and ran none of the harness's live commands. Commits:
+
+- `1e65ace`: the fixes;
+- `fc489d9`: a test now checks the rule its name gives;
+- `61eae94`: the record corrections;
+- `11b5771`: what C5's own review found;
+- the records commit that adds this section, the branch head named in the session's report.
+
+The code head is `11b5771`.
+
+### Environment and start gate
+
+- None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_APP_ID`, `STREAM_API_KEY` or `STREAM_API_SECRET` was present (names checked only).
+- The default PATH already finds the pinned toolchain first: `/root/.local/bin` is its first entry. `node`, `npm`, `npx` and `python3.12` all resolve there, as they do with `$HOME/.local/bin` put first, which every harness process had. Versions: node v24.19.0, npm 11.9.0, npx 11.9.0, Python 3.12.14.
+- The start gate passed:
+  - `git fetch origin claude/magical-wozniak-yfmmx2`;
+  - `git merge --ff-only 438d047…` fast-forwarded the session branch from `0f45e64` (`main`);
+  - `git rev-parse HEAD` printed `438d047046e275e2a781937cc7f8e51f2b1a0bf6`;
+  - `git diff --stat c83bedf… HEAD -- proofs/stream-chat/ .github/` printed nothing.
+- Installs and offline checks ran in clean processes (`env -i` with the path, home and locale; the proxy and CA variables passed by reference for the installs):
+  - `python3.12 -m venv .venv`;
+  - `pip install --require-hashes -r requirements-dev.lock`;
+  - `pip check` ("No broken requirements found.");
+  - `npm ci --ignore-scripts` ("found 0 vulnerabilities").
+
+  No dependency file changed.
+
+### The review's items
+
+Paths are under `proofs/stream-chat/`; line numbers are at the code head, `11b5771`. Each fix has an offline test that fails without it and a reversal in `checks/fix_reversals.py` (the "C5 …" entries).
+
+- **Finding 1, fixed: both the allowlist and the manager's addition.**
+  - **`validate`.** `glow_stream_proof/matrix.py:2068`, `CALL_ALLOWLIST`, holds the 39 (target, method) pairs that the matrix's `call` steps use: 24 on the channel and 15 on the client. Each pair has the most positional arguments any step passes. `validate` calls `_call_refusal` (`:2114`) for every `call` step (`:2194`), after C4's `_product_reach` (`:2188`). It refuses:
+    - a target other than the client or a channel;
+    - a method that is not a name (`:2124`, from C5's own review, below);
+    - the client's reminder methods (`REMINDER_METHODS`, `:2111`: `createReminder`, `updateReminder`, `deleteReminder`), whatever the allowlist holds, because they put a caller value into the path unencoded;
+    - a method not on the allowlist;
+    - arguments that are not a list (`:2134`);
+    - more positional arguments than listed (`:2136`).
+
+    The client's URL methods keep C4's refusal and message, and a `get` of a product path keeps its rule. `validate(all_cases())` is `[]`.
+  - **Why the counts suffice**, from stream-chat 9.53.0 as installed, read offline:
+    - for every listed method, each argument up to its count goes into the request's body, its payload, or a path segment the SDK encodes (`encodeURIComponent`, or `_channelURL`);
+    - the method's first request-options argument lies beyond its count.
+
+    The request-options positions the review names:
+    - listed: the client's `queryUsers` and `search` (4th); the channel's `queryMembers` (4th); the channel's `sendFile` and `sendImage` (5th);
+    - not listed: the client's `searchUserGroups` and `searchRoles` (2nd), `queryChannelsRequestWithResponse` (4th), and `uploadFile` and `uploadImage` (5th).
+
+    `queryChannels` is listed with 3 and passes only its 4th argument's `signal` to the request. C5's own review read every entry again and agreed.
+  - **The runner.** `client/runner.cjs:140`, `REWRITING_HEADERS`. `productRequestRefusal` (`:203`) refuses a request carrying any of these, in any letter case (`:222`):
+    - `X-HTTP-Method-Override`;
+    - `X-HTTP-Method`;
+    - `X-Method-Override`;
+    - `X-Original-URL`;
+    - `X-Rewrite-URL`.
+
+    It does so as it refuses the Host (`:216`) and forwarding (`:218`) headers. It runs in the request interceptor (`:271`), before the budget. A refused request is neither counted, sent nor recorded; its error kind is `refused`, whatever op sent it.
+  - **Header names are read as they are sent** (`sentHeaderName`, `:251`), for every name, the per-method sections' too (`headerNames`, `:258`):
+    - **trimmed (`:252`), found by C5 in its own reading.** Names were compared lower-cased but untrimmed, while axios trims them before sending (its http adapter's `AxiosHeaders.from(config.headers).normalize()`). So `" Host"` and `"X-Forwarded-Host\t"` passed C4's check, and axios would have sent them as `Host` and `X-Forwarded-Host`: before the fix, each reached error kind `budget`, not `refused` (shown offline);
+    - **with an underscore read as a hyphen (`:253`), from C5's own review.** `X_HTTP_Method_Override` or `X_Forwarded_Host` passed the check, and some servers read an underscore in a name as a hyphen.
+
+    Both change only which spellings of an already-refused header are refused. A header of a caller's choosing is reachable only through a request-options argument (see "Deviations and limits").
+  - **Neither package sends a refused header.** `test_neither_stream_chat_nor_axios_names_a_rewriting_header` reads every file of `node_modules/stream-chat` (9.53.0, 265 files) and `node_modules/axios` (1.20.0, 89 files). No file names:
+    - any of the five headers, in any letter case;
+    - any refused name in its underscore spelling.
+
+    No chat case is affected: an ordinary chat request still reaches the budget, and C4's tests of the 18 product cases' steps still pass the check.
+  - **Tests.**
+    - `tests/test_matrix.py`, `CallAllowlistValidationTest` (`:385`, 10 tests):
+      - the allowlist equals the matrix's use, and every case validates;
+      - an unlisted client method (`searchUserGroups`, `queryChannelsRequestWithResponse`, `searchRoles`, `uploadFile`, `uploadImage`, `getUnreadCount`);
+      - an unlisted channel method (`markRead`, `hide`, `stopWatching`, `sendAction`);
+      - one positional argument too many, for every entry (each valid at its limit);
+      - the review's positions, with a rewriting header in the request options;
+      - each reminder method, refused also when patched into the allowlist;
+      - another target;
+      - a method that is not a name (`["createReminder"]`, an object, `None`, a number);
+      - arguments that are not a list (a string, an object, a number);
+      - C4's two rules: a client URL method is refused as one, and a `get` of a product path is refused while a chat `get` validates.
+    - `tests/test_runner.py`, `RequestHeaderTest` (`:656`, 5 tests), with the real runner, a zero budget and an unreachable proxy (`HTTPS_PROXY=http://127.0.0.1:1`):
+      - error kind `refused`, nothing counted or sent, for:
+        - each of the five headers;
+        - `x-REWRITE-url`, in another letter case;
+        - a padded name;
+        - the channel's `queryMembers` and the client's `queryUsers`, with a request-options object in the 4th position;
+      - an ordinary chat request still reaches `budget`;
+      - padded names (`" Host"`, `"X-Forwarded-Host\t"`, `" X-Original-URL "`): `refused`;
+      - underscore spellings (`X_HTTP_Method_Override`, `x_original_url`, `X-HTTP_Method`, `x_method-override`, `X_Rewrite_URL`, `X_Forwarded_Host`, `x_original_host`): `refused`;
+      - axios's own `AxiosHeaders` trims the names the interceptor saw before the adapter sends them;
+      - the package scan above.
+  - **Reversals:**
+    - "C5 finding 1: validate refuses a call step outside the allowlist";
+    - "C5 finding 1: a listed method takes no more positional arguments than listed";
+    - "C5 finding 1: a reminder method is refused whatever the allowlist holds";
+    - "C5 finding 1: a call step's arguments must be a list";
+    - "C5 finding 1: the runner refuses a request-rewriting header, whatever op sent it";
+    - "C5: a header name is read as axios sends it, trimmed";
+    - "C5 review: a header name's underscores are read as hyphens";
+    - "C5 review: validate refuses a call whose method is not a name".
+- **Nit 2, fixed.** `tests/test_runner.py`, `MaxRedirectsTest` (`:817`), loads `client/runner.cjs` with a stub `stream-chat` in `require.cache`, as the runner places its WebSocket for `isomorphic-ws`.
+  - It captures the one request interceptor the runner registers.
+  - It calls the interceptor with three configs:
+    - a chat `post` without `maxRedirects`;
+    - a `get` with 5;
+    - a `post` with a `baseURL` and 21.
+  - Each leaves with `maxRedirects` 0 (`client/runner.cjs:275`).
+
+  Reversal: "C5 nit 2: every request leaves the interceptor with maxRedirects 0".
+- **Nit 4, fixed.** `glow_stream_proof/cli.py:185`, `_write_record`, writes both `configure --apply` paths' records: `:388`, the general apply, and `:475`, the scoped apply. `_Applied.stop(ctx)` (`:148`) returns what must reach `main`, and `finish(ctx)` (`:172`) raises it.
+  - **When the record's write raises** (the leak check refuses the record, or the disk write fails), a line is printed:
+    - "the configuration record was not written: `<type>`: `<error>`";
+    - then "; a charge or limit signal was met: `<the ledger's first signal>`";
+    - then, when what ended the apply is neither that signal nor a refused step (which `_apply` already printed), "; the apply stopped on `<type>`: `<error>`".
+  - **Then the stop is raised with the write's error chained** (`raise stop from exc`, `:213`), so a signal exits 3. With no stop in flight, the write's error is raised, after the same line.
+  - **After a signal, the signal's stop is what reaches `main` even when an ordinary error replaced it in flight** (`:162`, from C5's own review). Nit 4 requires exit 3 after a signal when the write raises. At `1e65ace`, a signal whose stop an ordinary error had replaced exited 1, whether or not the write failed. The ledger now decides this, as it decides the re-read: the ledger's first signal reaches `main`, with the replacing error chained (`raise stop from ended`, `:180`). Only a Ctrl-C is kept instead, as C4 decided.
+  - Nothing is sent either way: the write comes after the apply and after the re-read decision.
+  - Tests: `tests/test_cli.py`, `RecordWriteAfterASignalTest` (`:1053`, 8 tests):
+    - a 402 on the second write, then a record write refused by the leak check (`LeakRefused`) or failing on the disk (`OSError` 28), in each path. The `GuardrailStop` with "HTTP 402" reaches the caller, and its `__cause__` is the write's error. The one line names both, and no request follows the signal;
+    - the same with an ordinary error in place of the stop: the ledger's signal leaves, and the line also names the error;
+    - `main` exits 3 and prints "guardrail stop: …" for both commands. It does so also when an ordinary error replaced the stop, with the write succeeding and failing;
+    - without a signal, the write's error is raised and printed.
+
+    Also `ConfigureRecordTest.test_a_signal_in_the_reread_whose_stop_an_error_replaced_still_leaves` (`:877`): after a refused step, a signal in the re-read whose stop an error replaced leaves (exit 3), not the refusal (exit 1).
+  - Reversals:
+    - "C5 nit 4: a failed record write after a signal keeps the stop (the general apply)";
+    - "C5 nit 4: a failed record write after a signal keeps the stop (the scoped apply)";
+    - "C5 nit 4: the write's error is chained to the stop";
+    - "C5 review: after a signal, its stop reaches main whatever replaced it, except a Ctrl-C".
+- **Nit 5, fixed.** Two variants of the prompt's test, in `tests/test_cli.py`, `ConfigureRecordTest`:
+  - `test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it` (`:849`): the scoped apply, a 402;
+  - `test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it` (`:864`): the general apply, a 429 with code 9.
+
+  In each, the signal is met on the second write, and an ordinary `RuntimeError` replaces its stop. The tests check that:
+  - no request follows the signal, so no re-read was sent;
+  - the record's `after` is "after-state not read: a charge or limit signal was met", and its `failure` names the error;
+  - since C5's own review, the ledger's signal is what leaves, with the error chained. `GuardrailStop` is a `RuntimeError`, so the test checks the identity.
+
+  Both are in the ledger rule's reversal, "C4 nit 8: the signal is read from the ledger's recorded signals, not the exception". It fails them on the requests sent: `15 != 10` (scoped) and `18 != 10` (general).
+
+### C5's own review
+
+A read-only sub-agent of this session reviewed the code diff at `1e65ace` under the prompt's rules: no network, no environment value, no change, and no run of `fix_reversals.py`. It exported the commit with `git archive` and tested it in a scratch directory, because the working tree was being edited meanwhile. It ran the unit tests (564, OK), Ruff, format, mypy and `node --check`, all clean. It applied every C5 reversal, and the extended C4 nit 8 one, in scratch, and each failed for the right reason. It then drove the real runner offline and ran every `configure` combination through `main`.
+
+**Blocking: none.**
+
+**Should-fix:**
+1. **The runner's refused headers are a list, and some spellings and headers pass it.**
+   - Underscore spellings (`X_HTTP_Method_Override`, `x_original_url`, `X_Forwarded_Host`) passed, and some server stacks read `_` as `-`. **Fixed at `11b5771`:** names are compared with an underscore read as a hyphen, as described under finding 1.
+   - Other routing headers (`X-Forwarded-Prefix`, `X-Forwarded-Proto`, `X-Original-Method`) pass. **Recorded, not changed** (README, "Added in P06.1-C5"). They are not among the headers the manager's addition names. A header of a caller's choosing can be set only through a request-options argument, which no case step can pass after C5 and the harness's own `call` ops do not.
+   - The reviewer's stronger fix, refusing every header name outside those stream-chat and axios set before the interceptor, is a change of design. It is for the manager to take up. The reviewer's own classification was "not class A today".
+2. **An ordinary error that replaced a signal's stop exited 1, not 3**, with or without a failing record write. The new nit 5 tests' `assertRaises(RuntimeError)` could not tell the two apart, because a `GuardrailStop` is a `RuntimeError`. **Fixed at `11b5771`**, as described under nit 4: nit 4 requires exit 3 after a signal when the write raises, and the README already said that the command exits through the guardrail stop after a signal.
+3. **The committed README at `1e65ace` still described the code before C5.** It was already corrected at `61eae94`, which the review did not cover.
+
+**Nits:**
+- **A `method` that is a list or an object made `_call_refusal` raise `TypeError` instead of returning a problem.** The runner looks a method up by its string form, so `["createReminder"]` would reach the reminder method. The tests failed closed. **Fixed at `11b5771`** with a test and a reversal. Reason: `validate` should refuse such a step, not crash on it.
+- **If `ctx.say` itself raised in `_write_record` with no stop in flight, the say's error left instead of the write's**, and the docstring said otherwise. The write's error is still its context, so nothing is lost. **The docstring now says so**; the behaviour is unchanged.
+- **The runner's check covers headers only.**
+  - The non-header request options (`adapter: "fetch"`, `socketPath`, `proxy`, `httpVersion: 2`) pass it. They stay recorded as residuals, as the prompt requires.
+  - Enforcing the allowlist's argument counts in the runner's `call` op, so that the harness's own code is covered at run time, is recorded as a proposal, not made. It would need its own table of the harness's `call` ops, and none of them passes a request option.
+  - The "arguments are not a list" branch had no test. **It has one now**, with a reversal.
+
+**What the reviewer checked and found sound:**
+- every allowlist entry against `node_modules/stream-chat/dist/cjs/index.node.js`, and that the reminder methods are the only directly callable client methods that put a caller value into the path unencoded;
+- that names are trimmed exactly as axios 1.20.0 trims them;
+- that every header form is merged before the interceptor runs;
+- that no SDK header name collides with the refused lists;
+- every `configure` combination through `main`.
+
+It did not run `checks/fix_reversals.py` (this section's "Checks" item 5 does), and it made no network or live check.
+
+**The C4 reversal "C4 re-check 1" now fails only its Ctrl-C test.** Since `11b5771`, the ledger also sends a signal met by the re-read to `main`, so with `later` reverted the signal test passes. The Ctrl-C test still fails ("KeyboardInterrupt not raised"), so the reversal is demonstrated; a comment in the table says so.
+
+### Records corrected
+
+- **`proofs/stream-chat/README.md`:**
+  - **`:397`, corrected in place** and marked "(corrected in P06.1-C5; the C4 review's nit 2 …)": `maxRedirects: 0` now has an offline test. The WebSocket-host statement is kept.
+  - **`:398`, corrected in place** and marked "(corrected in P06.1-C5; the C4 review's finding 1 …)". It says:
+    - which stream-chat methods take a request-options argument;
+    - what `validate` covers: the matrix's steps, on the allowlist, with no reminder method; the harness's own `call` ops pass no request option either;
+    - what the runner refuses: the five rewriting headers, in any letter case and with an underscore for a hyphen, on every request, whatever sent it; neither package sends one;
+    - what remains: a per-request `proxy` or `socketPath`, `adapter: "fetch"` or `httpVersion: 2` (the fetch-adapter statement is kept), and JSON nested two levels deep in a query value. None gets past the runner's host and path checks.
+  - **Brought into line:**
+    - "Nothing else reaches Video or Feeds" (`:281`): the rewriting headers, how header names are read, `validate`'s allowlist, and the refusal of a method that is not a name or arguments that are not a list;
+    - the scoped `configure --apply` bullet (`:336`): nit 4, and what reaches `main` after a signal;
+    - the configure-record limit (`:400`): a re-read failure after a refused step exits 1 unless a signal was met;
+    - the file table (`:28`) and "Checks (offline)" (`:109`): the reversal script covers C4 and C5 (`:28` had not named C4 either).
+  - **"Added in P06.1-C5", three limits:**
+    - `validate` runs offline only, and the allowlist is exactly the matrix's use;
+    - a configure record whose own write raises after a signal is not written;
+    - the header check names the headers it refuses.
+- **This record:** one bullet of "P06.1-C4 corrections", corrected in place: the one under "C4's own review" on the re-check of `112011f` (line 3600). It is marked "(corrected in P06.1-C5; the C4 review's finding 1: …)" and says what `validate` covers, what the runner refuses and what remains, as the README does. Every other part of the record is byte-identical to `438d047`, the manager's verification of C4 and the exact-head review of C4 included. This section is appended at the end.
+
+### Checks
+
+1. `git diff --check 438d047046e275e2a781937cc7f8e51f2b1a0bf6 HEAD`: no output, exit 0.
+   - `git diff --name-only 438d047… HEAD`: 9 paths, all owned. They are this record and 8 under `proofs/stream-chat/`: `README.md`, `checks/fix_reversals.py`, `client/runner.cjs`, `glow_stream_proof/cli.py`, `glow_stream_proof/matrix.py`, `tests/test_cli.py`, `tests/test_matrix.py` and `tests/test_runner.py`.
+   - No dependency file, lock, `.npmrc`, `pyproject.toml` or committed baseline changed. Every file is mode 100644, and there is no symlink.
+2. **Classification** used the trusted policy from `origin/main` (`0f45e64`, sha256 `dec69a26…`), extracted to a directory outside the tree and run as `python3 -I …/change_scope.py --base 438d047046e275e2a781937cc7f8e51f2b1a0bf6 --head <head> --merge-base`.
+   - It gave `{"full": true, "reason": "behavior-or-empty", …}` at `61eae94`, and again at `11b5771`, the last commit before this section: full scope, as expected, with one merge base (`438d047`) and the 9 paths above.
+   - This section's commit adds Markdown only.
+3. **Installs:** as above, in the working tree, and again in scratch exports of `438d047`, `fc489d9` and `11b5771` for the full reversal runs.
+4. **Offline checks** at `11b5771`, in the working tree and in the scratch export, with the same results:
+   - unit tests: `Ran 570 tests`, `OK` (`Ran 543 tests … OK` at the start; 564 at `1e65ace`);
+   - Ruff: "All checks passed!" and "55 files already formatted";
+   - mypy: "Success: no issues found in 53 source files";
+   - `node --check` OK for `error-info.cjs`, `product-op.cjs`, `request-log.cjs` and `runner.cjs`;
+   - `checks/run_plan.py` with an empty ledger (no `.work` directory): "run plan: fits", exit 0.
+5. **Fix reversals** (`checks/fix_reversals.py`, from a scratch copy outside the tree):
+   - **at the start:** "reversals: 378, not demonstrated: 0", exit 0, 23:00:43 to 23:28:35 UTC. The failure reasons read 456 `AssertionError`s and 49 errors, with 3 test processes stopped by design (Ctrl-C);
+   - **at `11b5771`, the code head: "reversals: 391, not demonstrated: 0", exit 0, 00:06:23 to 00:34:15 UTC** (378 at the start, and 13 C5 entries). Every row is OK.
+     - The failure reasons read 505 `AssertionError`s and 50 errors, with 3 test processes stopped by design (Ctrl-C), as at the start.
+     - The one error beyond the start's is the new method-name reversal's `TypeError: unhashable type: 'list'`: the crash that rule removes.
+     - None failed through a syntax, import or name error;
+   - **subset runs along the way:**
+     - the 9 C5 entries at `1e65ace`: "not demonstrated: 0";
+     - the 36 C4 entries at `1e65ace`: "not demonstrated: 0";
+     - 38 entries on the working tree that became `11b5771` (every C5 entry, and the C4 entries on the same code): "not demonstrated: 0";
+   - **stopped, not a result:** a full run at `fc489d9`, stopped by this session after 295 of 387 entries, when `11b5771` superseded it; none "not demonstrated" by then;
+   - **each new reversal's failure reason** (from the run at `11b5771`):
+     - "C5 finding 1: validate refuses a call step outside the allowlist": its six tests fail on the problems returned, for example `Lists differ: [] != ["X-call: a call of the channel's markRead, which is not on the call allowlist"]` and `0 != 1 : queryUsers`;
+     - "… a listed method takes no more positional arguments than listed": `Lists differ: [] != ["X-call: a call of the channel's addMembe[104 chars]ble"]` and `0 != 1 : queryUsers`;
+     - "… a reminder method is refused whatever the allowlist holds": the reminder is refused only as unlisted, `[… which is not on the call allowlist"] != [… which puts a caller value into the request path unencoded"]`;
+     - "… a call step's arguments must be a list": `Lists differ: [] != ["X-call: a call of the client's queryUsers whose arguments are not a list"]`;
+     - "… the runner refuses a request-rewriting header, whatever op sent it": `'budget' != 'refused'`, in ten subtests;
+     - "C5: a header name is read as axios sends it, trimmed": `'budget' != 'refused'`;
+     - "C5 review: a header name's underscores are read as hyphens": `'budget' != 'refused'`, in seven subtests;
+     - "C5 review: validate refuses a call whose method is not a name": `TypeError: unhashable type: 'list'`, the crash the rule removes (an error by design; the reverted file loads);
+     - "C5 nit 2: every request leaves the interceptor with maxRedirects 0": `Lists differ: ['unset', 5, 21] != [0, 0, 0]`;
+     - "C5 nit 4: … (the general apply)" and "(the scoped apply)": `LeakRefused('refused output: contains a known secret') is not an instance of <class 'glow_stream_proof.usage.GuardrailStop'>`, the same for `OSError(28, 'No space left on device')`, and `OSError(28, 'No space left on device') != 3` from `main`;
+     - "C5 nit 4: the write's error is chained to the stop": `None is not OSError(28, 'No space left on device')`;
+     - "C5 review: after a signal, its stop reaches main whatever replaced it, except a Ctrl-C": `RuntimeError('an error in place of the stop') is not GuardrailStop('server PUT …: HTTP 402; stopping at once')`, `BaseException not raised` (the refused step's exit 1) and `RuntimeError('an error in place of the stop') != 3` from `main`;
+     - the ledger rule's reversal, with the two nit 5 tests: `15 != 10` and `18 != 10`, the requests sent after the signal.
+6. **Secret scan** of the whole diff `438d047..11b5771` (88,234 bytes). The added lines hold none of:
+   - a JWT-shaped string;
+   - an email address;
+   - a private-key block;
+   - an AWS-style, GitHub or Slack token;
+   - a TLS-weakening setting;
+   - an environment dump;
+   - a secret assignment.
+
+   The 29 long token-like strings are 28 test names and one SDK method name (`queryChannelsRequestWithResponse`). The scan could not look for the application's API key, because its variable is absent (OD-28); no added line holds a 12-character string mixing lower-case letters and digits.
+7. **Foundation, on this branch:**
+   - run 369 on `1e65ace` ([36358644511](https://github.com/amthorn78/glow-dating-app/actions/runs/36358644511)) succeeded;
+   - run 370 on `61eae94` ([36359890081](https://github.com/amthorn78/glow-dating-app/actions/runs/36359890081)) succeeded: all seven jobs, "Stream proof checks" included, every step success;
+   - **run 371 on the code head `11b5771`** ([36360951436](https://github.com/amthorn78/glow-dating-app/actions/runs/36360951436)), 00:06:40 to 00:12:50 UTC: all seven jobs success.
+     - Change scope, API checks, API artifact checks, API mobile smoke, and Mobile checks (the rendered suite included).
+     - "Stream proof checks" ran, not skipped, and every step succeeded: the hash-locked install, `pip check`, `npm ci --ignore-scripts`, the tests under `env -i`, Ruff, format, mypy, `node --check` on every `.cjs` file, and `checks/run_plan.py`.
+     - The Foundation gate.
+
+   This records commit is Markdown only. It was pushed after run 371 finished, so it did not cancel that run; its own run is in the session's report. Nothing was re-run or dispatched.
+
+### Deviations and limits
+
+- **Beyond the review's items, C5 fixed three things**, each with tests and a reversal:
+  - the header-name trim, found in its own reading;
+  - the underscore spelling, from its own review;
+  - a method that is not a name, from its own review.
+
+  It also changed what reaches `main` after a signal (its own review's should-fix 2). That serves nit 4's requirement that a signal still exits 3 when the record's write raises.
+- **The reminder methods have a rule of their own** rather than only being absent from the allowlist, so that an addition to the allowlist cannot admit them. A test patches one in, and it is still refused.
+- **Nit 5 has two variants**, one per `configure --apply` path, where the prompt asked for one.
+- **Nit 4's printed line names the ledger's signal as well as the write's error**, and what ended the apply when that is neither. A Ctrl-C that replaced the signal's stop still reaches `main`, as C4 decided; the line names the signal, and nothing is sent.
+- **`validate` runs offline only.** It is called by the unit tests, and so by the Foundation job, never by a live command; a live command relies on the offline checks having passed at its head. The allowlist is exactly today's matrix: a new case with another method or more arguments fails the tests until the table changes.
+- **The runner refuses named headers only.** Other routing headers pass its check. The non-header residuals (a per-request `proxy` or `socketPath`, the fetch adapter or HTTP/2, JSON nested two levels deep) do too. All are reachable only through a request-options argument, which no matrix step can pass after C5 and no harness `call` op passes. None gets past the runner's host and path checks. A per-request `proxy` would send the checked request, with its token, through the proxy it names; that is recorded, not changed.
+- **Nothing here is exercised live.** No live run remains in P06.1.
+
+### What the final delta review must know
+
+- **Rules that changed.**
+  - `validate` refuses every `call` step outside `CALL_ALLOWLIST` (target, method and a maximum of positional arguments). It also refuses:
+    - the client's reminder methods, always;
+    - a method that is not a name;
+    - arguments that are not a list.
+  - The runner refuses the five request-rewriting headers on every request, before it is counted or sent (error kind `refused`). It reads every header name trimmed, lower-cased and with an underscore as a hyphen: the Host and forwarding headers too.
+  - `maxRedirects: 0` has an offline test.
+  - After a charge or limit signal, the ledger's signal is what reaches `main` (exit 3), whatever replaced its stop in flight; only a Ctrl-C is kept instead. A `configure --apply` record write that raises keeps that stop, with the write's error chained and a line naming both.
+- **Not yet exercised live:**
+  - every C5 fix;
+  - in particular the header refusal and the header-name reading on a live run's chat requests (the tests show no chat case sends such a header);
+  - nit 4's path, which needs a failing write after a live signal.
+- **For the delta review:** C5's change is `438d047..<head>`. The code commits are `1e65ace`, `fc489d9` (a test and the reversal table) and `11b5771`. The reviewer's working files stayed in this session's scratch directory.
