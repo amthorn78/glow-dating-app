@@ -65,6 +65,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-04 | 27 Sep 2026 | process | Pushed one records batch as three pushes within five minutes (`c7fd0a9`, `a5a113b`, `93cb9a0`): the entries AM5-02 and AM5-03, found during the Notion sync, were each pushed at once instead of with the next batch, and the later pushes cancelled four full runs (359 to 362). DM-01 P2 asks for pushes only when a session needs them. This entry was pushed after PR run 364 finished, so it cancelled no run, though it started one more | App Manager 5, reading the runs |
 | AM5-05 | 27 Sep 2026 | accuracy | The brief's entry for the C4 review listed the classes that get another correction pass without "or DOES NOT MEET", so its "only" excluded a class the prompt includes | App Manager 5, comparing the brief with the prompt |
 | AM5-06 | 28 Sep 2026 | accuracy | The verification of C5 found "no slip" in C5's section, which, like `README.md:398`, said JSON nested two levels deep in a query value is reachable only through a request-options argument; a `product` step's `params` can carry it too. The verification of C4 had passed the same list to the review untested | The exact-head review of C5 (nit 1) |
+| AM5-07 | 28 Sep 2026 | accuracy | Two link properties of the D10 Work Register row left stale in Notion: *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig` and *Evidence* at PR26. The takeover batch replaced the old branch's links in page bodies, and AM5-03's old-wording query read only the rows' *Next Action* text. A repeat of AM5-03 | Dev Manager 2, its start note and DM-06 (finding 6) |
 
 ## App Manager 2
 
@@ -424,3 +425,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any result or decision. The residual is C4's, and the C4 review assessed it. No case or harness op carries nested JSON, and whether Stream decodes JSON nested inside a JSON query value is not known.
 - **Correction:** `README.md:398` and the evidence record at lines 3600, 4107 and 4191 are corrected in place and marked. The manager confirmed the claim offline with the real `productRefusal`: one level of nested JSON is refused, two levels pass.
 - **Prevention:** when a record says a residual is reachable "only through" one route, the verification tests the claim against every input that reaches the checked requests (for the runner's product check, the `product` op's own `params` and body first), not only against the named route.
+
+### AM5-07 — D10's two links left on the old branch and PR26 (accuracy)
+
+- **What happened:** the D10 row of the Work Register kept two link properties from before App Manager 5's takeover. *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig`, App Manager 4's branch, and *Evidence* at PR26, closed on 27 September. The takeover batch replaced the old branch's links in page bodies, not in properties. When AM5-03 corrected the same row's *Next Action*, its old-wording query read only the rows' *Next Action* text.
+- **Caught by:** Dev Manager 2, in its start note and in DM-06 (finding 6).
+- **Effect:** none on any decision. The old branch still exists, so both links resolved, to the superseded head; Implementation Control, the row's other fields and the repository named the manager branch and PR27.
+- **Correction:** *Plan Reference* now points at the charter on `claude/magical-wozniak-yfmmx2`, and *Evidence* at PR27; read back.
+- **Prevention:** it repeats AM5-03, so the manager workflow's checklist item for "Writing to Notion" now says that the old-wording query reads every property, links and URLs included, not only text: when a branch or PR is replaced, it looks for the old branch name and PR number in each.

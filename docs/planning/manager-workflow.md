@@ -112,7 +112,7 @@ Nathan's direction, 24 September 2026:
 - Escape a literal `$` as `\$`.
 - In a rows-mode query, wrap the filters in a group (AM3-01).
 - Read back every write and compare it with what was intended.
-- When a status changes (a session done, a review recorded, a pick made, a PR replaced), update every property and page body that states it, then query the touched databases for the old wording before the batch ends (AM5-02, AM5-03).
+- When a status changes (a session done, a review recorded, a pick made, a PR replaced), update every property and page body that states it, then query the touched databases for the old wording before the batch ends (AM5-02, AM5-03). The query reads every property, links and URLs included, not only text; when a branch or PR is replaced, it looks for the old branch name and PR number in each (AM5-07).
 
 ## Branches and pushes
 

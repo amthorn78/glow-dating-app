@@ -12,26 +12,25 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Current item: P06.1**, the chat-provider permissions and economics proof (resumed 25 September; other feature work paused): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
   - **S15:** confirmed live; the display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands (OD-14, OD-16).
   - **Linear (OD-29):** one session at a time, one prompt per message.
-    - **Done:** I1 and its review; the flake fix, C1, C2, C3 and I2a, each approved by its review (commits under "Branches"); DM-04. No Stream mechanism meets the history policy alone (I2a).
-    - **Done:** DM-05, applied in I2b's [prompt](../ephemeral/2026-09-27-p06-1-i2b-implementation-prompt.md); I2b (`ad89753`, merged at `55b2238`): the Video and Feeds lockdown is applied; removal and deactivation MEET the history policy; the [architecture document](../architecture/chat-provider-permissions.md) is written.
+    - **Done:** I1 and its review; the flake fix, C1, C2, C3 and I2a, each approved by its review (commits: "Branches"); DM-04. No Stream mechanism meets the history policy alone (I2a).
+    - **Done:** DM-05; I2b (merged at `55b2238`): Video and Feeds locked down; removal and deactivation MEET the history policy; the [architecture document](../architecture/chat-provider-permissions.md) is written.
     - **Done:** OD-33, OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md); request v6 (skill `typesafe-scoring`).
-    - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 (`c83bedf`) and its review (changes); C5 (`1a5f58a`) and its review, the final delta review: approve, nits recorded. Prompts: the brief's "Sessions".
-    - **Next:** [DM-06](../ephemeral/2026-09-28-dm-06-economics-discovery-prompt-read.md), the Dev Manager's read of the economics discovery [prompt](../ephemeral/2026-09-28-p06-1-economics-discovery-prompt.md); then the discovery, in Claude in Chrome.
+    - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 and its review (changes); C5 and its review, the final delta review: approve, nits recorded; [DM-06](dev-manager/reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md): approved with conditions. Prompts: the brief's "Sessions".
+    - **Next:** the economics discovery in Claude in Chrome, from [revision 2](../ephemeral/2026-09-28-p06-1-economics-discovery-prompt.md) of its prompt, which applies DM-06.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
-- **Dev Manager 1:** session `session_01MrcrmqtuENZ345mKfmsSWv`, branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-06.
+- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 at Nathan's direction on 28 September; branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-06.
 
 ## Waiting checkpoint (28 September 2026, App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | The Dev Manager, via Nathan | DM-06's report (given 28 September) | Ask Nathan whether to run the discovery without the read |
-| App Manager 5 | The Dev Manager, via Nathan | The close-out consultation, next action 3, a later step | PR27 cannot merge without it |
+| App Manager 5 | Nathan | The discovery's report (revision 2, given 28 September) | Ask Nathan whether it ran |
+| App Manager 5 | The Dev Manager, via Nathan | The close-out consultation, next action 2, a later step | PR27 cannot merge without it |
 
 ## Next actions
 
-1. Apply DM-06's verdict to the economics prompt, then give it to Nathan.
-2. Verify and record the discovery's report (the brief's "Sessions").
-3. Close P06.1:
+1. Verify and record the discovery's report (the brief's "Sessions"; DM-06 findings 5 (d) and (e)).
+2. Close P06.1:
    - the Dev Manager's close-out consultation: reads of the governing Markdown changed after `fa4dc5f` (ADR 0003's update too) and of the HDE contract request; the restore risk ADR 0004 records as accepted (OD-32); the activities query, `call_member` and the I2b review's finding 2 (a live read);
    - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;
@@ -39,7 +38,8 @@ This file only routes: the current item, what happens next and who waits on whom
    - record the receipt, this handoff and Notion;
    - rotate the development Stream secret (DM-02 B8).
    - before the harness is used live again: the C5 review's nits 2 and 3, and its header-allowlist advice.
-4. **Next item after P06.1:** P06.DB, the early disposable-PostgreSQL proof (OD-17, PF01 §6). Then P06.2.
+   - before the next Dev Manager session: rewrite its start prompt (DM-03 E3; Dev Manager 1's handover, section 7).
+3. **Next item after P06.1:** P06.DB, the early disposable-PostgreSQL proof (OD-17, PF01 §6). Then P06.2.
 
 **Recorded follow-ups** (after P06.1): Setup-script and pin-test hardening ([M02 brief](../planning/claude-setup-optimization.md)); a stale-documentation sweep of `docs/architecture/`, `docs/testing/` and `docs/operations/`.
 
