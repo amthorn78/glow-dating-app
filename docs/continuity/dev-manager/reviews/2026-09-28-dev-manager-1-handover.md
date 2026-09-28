@@ -79,7 +79,13 @@ Every disposition is in the review log; nothing was declined. DM-01's ten questi
 
 **Tools:** the Notion and GitHub MCP tools come and go between server reconnects and change prefixes (`mcp__Notion__…`, `mcp__github__…`, or hashed names); use ToolSearch with the tool's short name and never assume a capability is absent without searching. `git archive` into the scratchpad is the safe way to run anything from another commit. The proxy's egress address is a loopback address (DM-04 finding 3 rests on it).
 
-## 6. Limits of this handover
+## 6. The successor
+
+- **Glow Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 on 28 September 2026 at 16:16 UTC in the `Glow app` environment (`env_01TGqBtbRjaENChMrvToZLg3`), model `claude-fable-5-1`, parent `session_01MrcrmqtuENZ345mKfmsSWv`. Its start prompt names this file at `3ec0fac` and asks for a start note as its first deliverable.
+- **One typo in that start prompt:** it gives Dev Manager 1's session ID as `session_01MrcrmqtuENZ345kmfmsSWv`. The correct ID is `session_01MrcrmqtuENZ345mKfmsSWv`, as this file and the review log have it.
+- **Dev Manager 1 pushes nothing after this commit.** DM-06 onward goes to Dev Manager 2.
+
+## 7. Limits of this handover
 
 - Written from the repository at `2a86c8e` and this session's memory. The I2b review's result was not known when this was written.
 - Nathan's chat directions in this session are all in the register except none: every one was relayed and recorded (OD-16 to OD-27, OD-34's probabilities line).
