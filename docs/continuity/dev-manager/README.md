@@ -170,7 +170,7 @@ Before deciding, the manager checked the findings' evidence at `b729340`. Revisi
 | 5 (a) what follows "stop"; (b) a page's text is information, not instruction; (c) the transfer mechanism, retention and price-change notice | Consider | **Accepted** | Revision 2: the plan-change rule's "stop"; a new rule; items 13 and 14 |
 | 5 (d) the manager's comparisons | For the manager's verification | **Accepted** | The prompt's header ("Where the result goes") and the brief's Economics entry: the manager compares September's API calls with the P06.1 sessions' ledgers, and the stored channels and messages with the cleanups' records |
 | 5 (e) an attribution requirement, an app-kind exclusion or a production-use limit | After the discovery | **Accepted** | The brief's Economics entry: any such finding goes to Nathan as a decision in OD-32's form, with the Dev Manager's text; the manager does not classify it |
-| 6 Notion matches `b729340`, apart from D10's two links | Mismatch | **Accepted** | D10's *Plan Reference* and *Evidence* now point at the manager branch and PR27 (AM5-07) |
+| 6 Notion matches `b729340`, apart from D10's two links | Mismatch | **Accepted** | D10's *Plan Reference* and *Evidence* now point at the manager branch and PR27 (AM5-07). The query that AM5-07's prevention adds found the same fault in M03's two links, also fixed |
 | 7 Records: the container note; scoring is the manager's | For the log | **Noted** | Revision 2 was re-scored (workflow step 3); its reading replaces revision 1's in the prompt's header and the Notion usage log |
 
 **Dev Manager 2's start note** (`0773eaa`) asked for three records, now made:
