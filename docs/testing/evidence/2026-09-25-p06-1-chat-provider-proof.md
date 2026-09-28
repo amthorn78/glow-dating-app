@@ -4206,3 +4206,45 @@ It did not run `checks/fix_reversals.py` (this section's "Checks" item 5 does), 
   - in particular the header refusal and the header-name reading on a live run's chat requests (the tests show no chat case sends such a header);
   - nit 4's path, which needs a failing write after a live signal.
 - **For the delta review:** C5's change is `438d047..<head>`. The code commits are `1e65ace`, `fc489d9` (a test and the reversal table) and `11b5771`. The reviewer's working files stayed in this session's scratch directory.
+
+### Manager verification of C5 (App Manager 5, 28 September 2026)
+
+App Manager 5 checked the relayed report against the pushed branch. The manager made no call to Stream.
+
+- **Identity:**
+  - branch `claude/zealous-gauss-bgnir3`, head `1a5f58aec87cacfdd1dc32c893467f8f00e9ac7e`, tree `da7d7f8e9f8cb25298b2b74731caed9c80169d29`, as reported. Five commits on the start `438d047`, with one merge base (`0f45e64` with `main`). The code commits are `1e65ace`, `fc489d9` and `11b5771`; `61eae94` and `1a5f58a` change only Markdown. The code head is `11b5771`;
+  - 9 files, +1,260 and −37: 8 under `proofs/stream-chat/` and this record. Every path is owned. No dependency file, lock, `.npmrc`, `pyproject.toml`, committed baseline or workflow changed. Every file keeps mode 100644, there is no symlink, and `git diff --check` is clean;
+  - this record: within its length at `438d047`, only line 3600 changed, the bullet the prompt named, marked "(corrected in P06.1-C5; the C4 review's finding 1 …)". C5's section follows the old last line. Every other line is byte-identical to `438d047`, the manager's verification of C4 and the exact-head review of C4 included.
+- **Classification:** the trusted policy from `main` (`0f45e64`, sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs: `438d047` → `1a5f58a` is full scope (`behavior-or-empty`), 9 paths; `11b5771` → `1a5f58a` is `ordinary-docs-only` (this record only).
+- **Code read,** the whole diff of the production code, about 200 changed lines:
+  - **finding 1, `validate`:** `CALL_ALLOWLIST` holds 39 (target, method) pairs, 24 on the channel and 15 on the client, each with the most positional arguments a step passes. They are the ones the manager counted in the matrix when it verified the C4 review. `_call_refusal` refuses another target, a method that is not a string, the client's three reminder methods whatever the allowlist holds, a method not on the list, arguments that are not a list, and more arguments than listed. C4's rules for the client's URL methods and a product `get` stand;
+  - **the allowlist's safety,** spot-checked in stream-chat 9.53.0: `getMessage`, `getThread`, `getReplies`, `getReactions`, `partialUpdateMember`, `queryReactions`, `updateMessage`, `deleteMessage` and `sendReaction` encode every caller value they put into a path; `createPoll` puts none there, and `updateAIState` sends an event body only. The request-options positions of the listed methods lie beyond their counts;
+  - **the manager's addition, the runner:** `REWRITING_HEADERS` names the five headers, and `productRequestRefusal` refuses them after the Host and forwarding headers, before the budget. `sentHeaderName` compares every name trimmed, lower-cased and with an underscore as a hyphen. Neither package sends a refused header: none of the 265 files of stream-chat 9.53.0 or the 89 of axios 1.20.0 names one, in either spelling;
+  - **nit 4 and C5's own review:** `_Applied.stop` returns the ledger's first signal after any charge or limit signal, unless a Ctrl-C replaced it; without a signal the exit is what it was (1 for a refused step). The ledger's signals are kept in memory only (`UsageLedger.signals`; `load` restores the session counts, not the signals), so only this process's own signals count. `_write_record` prints a line and raises the stop with the write's error chained. One observation, for the exact-head review: a Ctrl-C during the record write itself, after a signal, leaves as the signal's stop (exit 3) with the Ctrl-C chained; nothing is sent either way;
+  - **the reversal table:** 13 new C5 entries. The changes to C4's entries add tests or comments: "C4 re-check 1" now fails only its Ctrl-C test, because the new ledger branch also sends the signal case to `main`, and that branch has a reversal of its own.
+- **Offline re-run,** in a scratch export of `1a5f58a`, in clean processes without any `STREAM_*` variable, the installs with the proxy and CA variables by reference:
+  - `pip install --require-hashes -r requirements-dev.lock` and `pip check` ("No broken requirements found."); `npm ci --ignore-scripts` ("found 0 vulnerabilities");
+  - unit tests: `Ran 570 tests`, `OK`. Ruff check: "All checks passed!"; Ruff format: "55 files already formatted"; mypy: "Success: no issues found in 53 source files". `node --check` on the four `.cjs` files: OK. `checks/run_plan.py` with an empty ledger: "run plan: fits";
+  - `checks/fix_reversals.py`, from the export: "reversals: 391, not demonstrated: 0", exit 0, 00:42:29 to 01:13:38 UTC. Every row is OK: 505 failures on an assertion, 50 on the error the reverted fix causes, and 3 test processes stopped by Ctrl-C by design, none through a syntax, import or name error, as C5 reported. The one error beyond C4's 49 is the method-name reversal's `TypeError: unhashable type: 'list'`, the crash that rule removes;
+  - each of the 13 C5 entries failed for the reason C5's section gives. "C4 re-check 1" failed its Ctrl-C test only ("KeyboardInterrupt not raised"), and the ledger rule's reversal failed the two nit 5 tests on the requests sent after the signal (`15 != 10`, `18 != 10`).
+- **Secret scan** of the whole diff `438d047..1a5f58a` (119,481 bytes, the size the report gives): 0 JWT-shaped strings, email addresses, private-key blocks, AWS, GitHub or Slack tokens and secret assignments.
+- **Hosted CI on C5's branch:**
+  - push run 371 ([36360951436](https://github.com/amthorn78/glow-dating-app/actions/runs/36360951436)) on the code head `11b5771`: all seven jobs succeeded. "Stream proof checks" ran every step, not skipped, and Mobile checks ran the rendered suite;
+  - runs 369 on `1e65ace` and 370 on `61eae94` succeeded. Run 372 on the head, a Markdown-only push, skipped the application jobs by design, and its gate passed: as the report says, not a pass of those jobs.
+- **C5's own section,** read against the code and the runs: no slip found. Its secret scan covers `438d047..11b5771` (88,234 bytes); the report's covers the diff to the head.
+
+#### Dispositions
+
+- **C5 is verified and integrated** into the manager branch by fast-forward, at `1a5f58a`. Finding 1, with the manager's addition, and nits 2, 4 and 5 are fixed, each code fix with a test that fails without it and a reversal, as the prompt required. The record correction is the one the prompt named.
+- **The deviations are accepted:**
+  - **beyond the four items,** the header-name trim, the underscore spelling and the refusal of a method that is not a name. Each narrows what may be sent or validated;
+  - **what reaches `main` after a signal:** the ledger's signal, whatever replaced its stop, except a Ctrl-C. It serves nit 4's requirement that a signal exits 3, and it changes no exit where no signal was met;
+  - **the reminder methods' own rule, nit 5's two variants, and nit 4's line naming both the signal and what replaced it.**
+- **The two proposals C5 recorded and did not make are not taken in P06.1:**
+  - **an allowlist of header names in the runner,** in place of its list of refused names: the other routing headers can be set only through a request-options argument, which no matrix step can now pass and no harness `call` op passes. The exact-head review assesses whether any path reaches them;
+  - **the argument counts enforced in the runner at run time:** the harness's own `call` ops are fixed in its code. The manager checked those that call a request-options method (`queryMembers` twice and `queryUsers` once, each with one argument).
+- **The two pre-existing items C5 reported are recorded, not fixed here;** neither is in a correction class:
+  - two test classes defined after `if __name__ == "__main__"` (`tests/test_stop_signals.py`, `tests/test_cleanup.py`), which `unittest discover` still finds;
+  - `cmd_run`'s final results write, which, if it raises, exits through an uncaught error instead of the stop's code; nothing more is sent by then.
+- **Not yet exercised live:** every C5 fix.
+- **C5's exact-head review is next.** It is P06.1's final delta review, offline, of `1a5f58a`.
