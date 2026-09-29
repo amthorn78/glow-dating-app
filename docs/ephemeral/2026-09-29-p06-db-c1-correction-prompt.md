@@ -11,6 +11,7 @@
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, high.** Effort score 2.22 (confidence 0.82); rung probabilities low 0.00, medium 0.02, high 0.74, extra high 0.24, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-09-29T06:39:25Z. Nathan picks the cell.
   - **Nathan's pick: Opus 5.5 at high**, started 29 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** done on 29 September. F1 to F4 are fixed, each with a test, and Foundation run 36534514283 on `4280770` is the run of record; the evidence record explains its run-level `cancelled` label (AM5-14). The manager verified the report and integrated the branch at `ea21ac8`; see the evidence record, "Manager verification of P06.DB-C1". C1's exact-head review follows.
 - **No Dev Manager read is needed:** the job's generated password is not credential use in the charter's sense (DM-08 7.2), the session takes no live provider action, and nothing here departs from the brief's D3, D4 or D5.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows.

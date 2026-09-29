@@ -498,3 +498,65 @@ At the end I stopped the cluster (`pg_ctl stop -m fast` printed `server stopped`
   - a forced wait counts as observed only when `pg_blocking_pids` of the waiting backend names the holder's backend.
 - `oracle._Submission` and `oracle._Revocation` are renamed `SubmissionRow` and `RevocationRow`, and the rules moved into `oracle.judge`; `evaluate` reads the rows as before and calls it.
 - The offline tests replace Django's connection with stand-ins in `tests/fakes.py`; no test opens a database.
+
+### Manager verification of P06.DB-C1 (App Manager 5, 29 September 2026)
+
+App Manager 5 checked the relayed report against the pushed branch, the code and hosted CI. The manager started no database: its re-run below is the offline checks only.
+
+- **Identity:**
+  - branch `claude/confident-knuth-b9d0c2`, final head `24e716b643b0ad0bd3f969d5c0351862a4a66321`, tree `c3c9bac548b2ad0d2ba29d1a1f1d6988c65dab5f`, as reported. Three commits on the start `4511bbc`: `4280770` (the code), then `60b6b70` and `24e716b` (this record only). The start gate holds: `git diff --stat 6f5866d 4511bbc -- proofs/ .github/` is empty;
+  - 15 paths, +1,250 and −122: `proofs/postgres-ordering/README.md`, seven files under `glow_ordering_proof/`, six under `tests/` and this record. The code commit changes 433 lines of source and adds 739 lines of tests. No dependency file, workflow, `services/`, `scripts/`, `apps/` or `packages/` path changed, and `git diff --check` is clean;
+  - **integrated** with a merge commit, `ea21ac8577b83158be1f941b93dbef411bece41f` (first parent `82c3883`, the manager branch; second parent `24e716b`). At the merge, its proof package and this record are byte-identical to `24e716b`'s.
+- **Classification:** the trusted policy from `main` (sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs: `4511bbc` → `4280770` is full scope (`behavior-or-empty`), 14 paths; `4511bbc` → `24e716b` is full scope, 15 paths.
+- **The diff, read whole** (`git diff 4511bbc 4280770`). Each fix is the one the prompt asked for:
+  - **F1:** `_intervals` selects by run tag, `case_id` and iteration. `_overlapped` takes the race's kind and, for `race.racing_duplicates`, intersects the two sends' intervals. The per-iteration oracle check passes `case_id`, and `oracle.evaluate` applies it. The floors, the head start and the budget are unchanged;
+  - **F2:** O2 flags every block or unmatch of the send's match whose log row carries a contact version and that committed before or with the send. The version comparison is gone, and O6 is unchanged. The rules moved into `oracle.judge`, which `evaluate` calls with the rows it read;
+  - **F3:** each case failure carries a signal. Each control declares a `Signal`: case signals, all required, and oracle rules, one of which must appear. `judge_forced` and `judge_stress` count a control only when its signal is met, and never beside a harness error, a database error or a stress harness failure. A control that declares nothing can never count;
+  - **F4:** the holder's backend pid is captured through `on_begin`. The observer reads `pg_blocking_pids` with the wait state and counts a wait only when the holder is among the blockers. A wait on another backend keeps it polling until the arriver finishes or the timeout passes.
+- **Offline re-run** in a scratch worktree of `4280770`, with Python 3.12.14, every command in a clean process (`env -i`), the install with the proxy and CA variables by reference:
+  - `pip install --require-hashes -r requirements-dev.lock`; `pip check`: "No broken requirements found.";
+  - `python -m unittest discover -s tests -t .`: `Ran 82 tests`, `OK`. Ruff check: "All checks passed!"; Ruff format check: "28 files already formatted"; mypy: "Success: no issues found in 28 source files";
+  - `services/api`'s `python3.12 -m unittest tests.test_toolchain_pins`: `Ran 3 tests`, `OK`.
+- **Fix reversals,** in the manager's own run: each fix undone alone, in a fresh copy of the package at `4280770`, then its test module run.
+
+  | Reversal | Result |
+  |---|---|
+  | F1: `_intervals` without its `case_id` condition | 2 of the 8 overlap tests fail |
+  | F1: the duplicates race treated as a two-writer race | 2 of 8 fail |
+  | F1: the per-iteration oracle check without `case_id` (`stress.py:297`) | **all 8 pass** (observation 1 below) |
+  | F2: O2 compares versions again | 3 of the 15 oracle-rule tests fail |
+  | F3: a forced control counts on any failure | 3 of the 14 control-signal tests fail (6 failures, counting subtests) |
+  | F3: a stress control counts on any violation or harness failure | 2 of 14 fail |
+  | F4: any lock wait counts | 2 of the 5 lock-wait tests fail |
+
+- **Secret scan** over the added lines of `git diff 4511bbc 24e716b`: no password, token, key, connection string or email address. The only long hexadecimal strings are commit SHAs (40 characters) and the image digest (64).
+- **Hosted CI:** Foundation run [36534514283](https://github.com/amthorn78/glow-dating-app/actions/runs/36534514283) on `4280770`, a push run. All eight jobs succeeded, and the gate (job 109296705850) printed `Application checks passed`, with every job's result `success`, `database` included.
+- **The database job's log, read whole** (job 109295439073; 798 lines in the manager's download), against the section above:
+  - the image digest `sha256:d74eeac9…`; PostgreSQL 17.11, `superuser` false, `track_commit_timestamp` on, `read committed`; the sixteen migrations; `No changes detected`; `Ran 82 tests`, `OK`;
+  - `cases: 55/55 passed`, and each of the 25 held cases shows `pg_blocking_pids=[97] (holder pid 97)`;
+  - the twelve races' iterations, measured overlaps (174 to 200), seconds and outcomes, exactly as the section's table gives them, each race with 0 violations, 0 harness failures and its floors met;
+  - the ten controls, each `failed as intended` with the declared signal the section's controls table gives, the two stress controls at iteration 1;
+  - the oracle: 617 submissions and 2,694 revocation rows, `violations in the design's rows: 0`, the control tags' violations as given, and `== VERDICT: PASS ==`; the artifact `p06-db-proof-results`, ID 11017908859;
+  - **no password:** the only `***` are on lines 38 and 94 (`actions/checkout`) and 152 (`actions/setup-python`), all before the credential step (line 328), and no 48-character hexadecimal string appears;
+  - disposal: `container removed: glow-proof-db-36534514283-1`, `credential files removed`, `no proof container remains`.
+- **The records:** "Manager verification of P06.DB" and "Exact-head review of P06.DB" are byte-identical to `4511bbc`'s, each section compared whole. The in-place corrections carry the required mark and say what run 36520940933 established, what it did not, and where the corrected counts are. The README's corrections match the code.
+
+#### The run-level conclusion `cancelled`
+
+- **What happened,** from the runs' and jobs' timestamps: run 36534514283 started at 07:04:34. The session's records push `60b6b70` started run 36534597575 at 07:05:24 on the same branch, so in the same concurrency group (`foundation-${{ github.ref }}`, `cancel-in-progress: true`). That run created its first job at 07:09:04. Run 36534514283's gate had finished at 07:09:03, and the run was marked `cancelled` at 07:09:05. None of its jobs was cancelled: all eight, and every step in them, completed with `success`.
+- **The cause is the prompt's,** not the session's environment or the proof's: it told the session to push its records after its code, but not to wait for the code run to finish first (AM5-14). The proof needs no database in the session: its database runs inside the GitHub Actions job.
+- **Decision (App Manager 5):** run 36534514283's job results are C1's run of record for the stress numbers. The manager workflow's test for a push run as evidence is its gate log, and the gate printed `Application checks passed` on the exact code head after the other seven jobs had completed. The label is recorded here as a limit. PR28's pull-request run on the integrated head, which carries `4280770`'s proof package unchanged, runs every job again. Its result is in PR28's description and is recorded with the next records batch.
+
+#### Observations for the exact-head review
+
+1. **One part of F1 has no test that fails without it.** Removing `case_id` from the per-iteration oracle check at its call site (`stress.py:297`) leaves every test passing: `test_the_per_iteration_oracle_check_names_the_race` tests the query of `oracle.evaluate`, not the call. Today the change is behavior-neutral, because only the two stress controls use that check (`stop_at_first_violation`), each under its own run tag with one race.
+2. **Two statements in the section above differ from the manager's reading, with no effect.** Its checks table quotes the Ruff format check as "28 files left unchanged", the wording of `ruff format` without `--check`; the job's log and the manager's run of `ruff format --check .` both say "28 files already formatted". And it gives the database job's log as 797 lines, where the manager's download counts 798.
+3. **The "without the fix" paragraph** ran the new tests against the package at `4511bbc`, where the F1, F3 and F4 tests fail on missing names rather than on behavior. The reversals above show each fix's behavior caught, except the one in observation 1.
+
+#### Dispositions
+
+- **F1 to F4 are fixed.** The manager found nothing in the four correction classes.
+- **DB06:** the F1 limit is settled. In run 36534514283 each race measured its own overlaps, 174 to 200 of its 200 iterations (floor 10), with zero violations, and the oracle with the stronger O2 found none in the design's rows. The P11 plan's DB06 entry now rests on this run, and C1's exact-head review follows. DB09 is unchanged.
+- **The run of record:** as decided above.
+- **AM5-14** is logged; its prevention is a line in the manager workflow's step 3, which the Dev Manager reads before PR28 merges.
+- **Next:** C1's exact-head review ([prompt](../../ephemeral/2026-09-29-p06-db-c1-review-prompt.md)), of `ea21ac8`, offline, reading job 109295439073's log.

@@ -75,6 +75,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-11 | 29 Sep 2026 | accuracy | Created a Work Register row for P06.DB without searching for an existing one; the register already held P06.DB's planned-stage row, "Planned", so it had two | Dev Manager 2, DM-08 section 8 |
 | AM5-12 | 29 Sep 2026 | accuracy | The P06.DB verification named API artifact checks as the job already using the upload pin (it is Mobile checks), and repeated the session's "all three `***` are checkout's" without deriving it (line 152 is setup-python's) | The P06.DB exact-head review (F6 and its log confirmation) |
 | AM5-13 | 29 Sep 2026 | accuracy | Two pick-recording batches, the review's (`49525a6`) and C1's, marked the session in flight in the P06.DB brief's Sessions but left its headline saying the session was next. It repeats AM5-10 | App Manager 5, in its supersession sweep before pushing the C1 pick |
+| AM5-14 | 29 Sep 2026 | accuracy | The P06.DB-C1 prompt had the session push its records after its code, with the push run of its code commit as the evidence, but did not tell it to wait for that run to finish. The records push started a second run on the branch, and the code run, whose eight jobs all passed, was marked `cancelled` | The P06.DB-C1 session, which reported the label and its cause; Nathan then asked why |
 
 ## App Manager 2
 
@@ -518,3 +519,11 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on any decision. The first slip stood on the pushed branch until `4511bbc` rewrote the headline the same morning. The second was never pushed. In both batches the brief's own Sessions and the handoff said in flight.
 - **Correction:** the headline now says C1 is in flight. The first slip needed none, since `4511bbc` had replaced the line.
 - **Prevention:** it repeats AM5-10, whose prevention (at a status change, read each changed document's status lines) was written only in this log. It is now part of the supersession-sweep item in the manager workflow's step 5, "Verify and integrate", which also says to run the sweep before each records commit.
+
+### AM5-14 — The C1 prompt did not say to wait for the code run before pushing again (accuracy)
+
+- **What happened:** the P06.DB-C1 prompt (section 4, item 6) made the push run of the session's last code commit its evidence and expected records commits after it. It did not tell the session to wait for that run to finish before pushing again, although the CI policy records that runs of the same branch cancel each other. The session pushed its records 50 seconds after its code. The second run waited until the code run's gate had finished, then started, and the code run, whose eight jobs had all passed, was marked `cancelled`. No earlier session prompt carried the rule either.
+- **Caught by:** the P06.DB-C1 session, which reported the label and its cause and asked for a decision; Nathan then asked whether the cloud environment was the cause.
+- **Effect:** the run of record's run-level status reads `cancelled`, although every job passed. It needed a decision and an explanation, and it raised the question of whether the proof needs another environment; it does not. No result changes.
+- **Correction:** the manager accepted the run's job results as C1's run of record and recorded the label as a limit (the evidence record, "Manager verification of P06.DB-C1"). PR28's pull-request run on the integrated head runs every job again.
+- **Prevention:** it repeats the mechanism of AM5-04, a later push cancelling a code run, this time through a session's pushes. The rule is now a checklist item in the manager workflow's step 3, "Say when a session may push again": a prompt whose session pushes code and then records tells it to push nothing more until the code run has finished.
