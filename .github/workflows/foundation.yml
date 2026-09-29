@@ -193,10 +193,130 @@ jobs:
       - run: for f in client/*.cjs; do node --check "$f"; done
       - run: python checks/run_plan.py
 
+  database:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    name: Database proof checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: proofs/postgres-ordering
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.14'
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip check
+      # The offline tests need no database. They run in a clean environment and show the
+      # settings' refusals of forbidden connection names and of every PG* name.
+      - run: env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 python -m unittest discover -s tests -t . -v
+      - run: ruff check . && ruff format --check . && mypy
+      # P06.DB (OD-17; brief D3): a disposable PostgreSQL 17.11 that exists only in this job,
+      # on loopback, with credentials generated here. No repository secret, no PG* or
+      # DATABASE_URL name, no docker inspect, and nothing that prints a connection option.
+      - name: Generate the disposable database's credentials (masked before anything prints)
+        id: credentials
+        shell: bash
+        run: |
+          set +x
+          umask 077
+          superuser_password=$(python -c 'import secrets; print(secrets.token_hex(24))')
+          role_password=$(python -c 'import secrets; print(secrets.token_hex(24))')
+          echo "::add-mask::$superuser_password"
+          echo "::add-mask::$role_password"
+          dir=$(mktemp -d "$RUNNER_TEMP/glow-proof-db.XXXXXX")
+          printf '%s\n' "$superuser_password" > "$dir/superuser-password"
+          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\n" "$role_password" > "$dir/create-role.sql"
+          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n' "$role_password" > "$dir/passfile"
+          chmod 600 "$dir"/*
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "container=glow-proof-db-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          echo "credentials generated into a directory readable only by this job's user"
+      - name: Start PostgreSQL 17.11 (official image pinned by digest) on loopback with commit timestamps
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+          IMAGE: postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        run: |
+          docker pull "$IMAGE"
+          docker run --detach --name "$CONTAINER" \
+            --publish 127.0.0.1:5433:5432 \
+            --mount "type=bind,source=$DIR/superuser-password,target=/run/secrets/superuser-password,readonly" \
+            --env POSTGRES_PASSWORD_FILE=/run/secrets/superuser-password \
+            "$IMAGE" -c track_commit_timestamp=on
+          ready=0
+          for attempt in $(seq 1 60); do
+            if docker exec "$CONTAINER" pg_isready -q -h 127.0.0.1 -p 5432 -U postgres; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1 || { echo "PostgreSQL did not become ready within 60 s"; exit 1; }
+          docker exec "$CONTAINER" pg_isready -h 127.0.0.1 -p 5432 -U postgres
+      - name: Create the non-superuser proof role and its database
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          # psql inside the container uses its Unix socket (trust); the statement is read from
+          # the file and its output is kept out of the log, because it could carry the statement.
+          docker exec -i "$CONTAINER" psql -q -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            < "$DIR/create-role.sql" > "$DIR/create-role.log" 2>&1 \
+            || { echo "role creation failed (diagnostics withheld)"; exit 1; }
+          rm -f "$DIR/create-role.sql"
+          echo "role glow_proof (NOSUPERUSER) and database glow_proof created"
+      - name: Apply the reviewed migrations from zero, check them against the models, record the server
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          proof() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings "$@"
+          }
+          proof python -m django migrate --verbosity 1
+          proof python -m django makemigrations --check --dry-run
+          proof python -m glow_ordering_proof facts
+      - name: Run the suite, the stress run, the negative controls and the commit-order oracle
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          mkdir -p .work
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings \
+            python -m glow_ordering_proof run --seed 20260929 --results .work/results.json
+      - name: Save the results table's JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p06-db-proof-results
+          path: proofs/postgres-ordering/.work/results.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove the disposable database and its credential files
+        if: always()
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          if [ -n "$CONTAINER" ] && docker rm --force --volumes "$CONTAINER" >/dev/null 2>&1; then
+            echo "container removed: $CONTAINER"
+          else
+            echo "no container to remove"
+          fi
+          if [ -n "$DIR" ]; then rm -rf "$DIR"; echo "credential files removed"; fi
+          remaining=$(docker ps --all --filter "name=glow-proof-db" --format '{{.Names}}')
+          test -z "$remaining" || { echo "a proof container remains: $remaining"; exit 1; }
+          echo "no proof container remains"
+
   gate:
     name: Foundation gate
     if: always()
-    needs: [scope, api, mobile, smoke, artifact, proof]
+    needs: [scope, api, mobile, smoke, artifact, proof, database]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -211,7 +331,7 @@ jobs:
           full = results["scope"]["outputs"].get("full")
           assert full in {"true", "false"}, "Missing classification output"
           expected = "success" if full == "true" else "skipped"
-          for job in ("api", "mobile", "smoke", "artifact", "proof"):
+          for job in ("api", "mobile", "smoke", "artifact", "proof", "database"):
               assert results[job]["result"] == expected, f"Unexpected {job} result"
           print("Application checks passed" if full == "true" else "Ordinary documentation: application jobs intentionally skipped")
           PYTHON

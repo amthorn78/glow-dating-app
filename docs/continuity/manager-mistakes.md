@@ -61,6 +61,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-04 | 27 Sep 2026 | process | Overrode Nathan's six-rung ladder, left max unreachable, and presented the manager's own model judgement as a recommendation | Nathan |
 | AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
 | AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
+| AM4-07 | 27 Sep 2026 | accuracy | Integrating I2b, which added the fifth application job, updated the CI policy's counts but left the build-and-deploy runbook's "All four must pass". Recorded by App Manager 5 | App Manager 5, in its supersession sweep for P06.DB's sixth job |
 | AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
 | AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
 | AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
@@ -70,6 +71,11 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-07 | 28 Sep 2026 | accuracy | Four link properties of two Work Register rows left stale in Notion: D10's *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig` and its *Evidence* at PR26; M03's *Plan Reference* and *Evidence* pointed at the charter and the review log on the same old branch. The takeover batch replaced the old branch's links in page bodies, and AM5-03's old-wording query read only the rows' *Next Action* text. A repeat of AM5-03 | Dev Manager 2, its start note and DM-06 (finding 6), for D10; App Manager 5's new link query, for M03 |
 | AM5-08 | 28 Sep 2026 | accuracy | Wrote that the dashboard's Chat count was "within 7%" of the sessions' ledgers; the bound it had computed, 162 calls, is 7.2% of the ledgers | Dev Manager 2, DM-07 item 5 |
 | AM5-09 | 29 Sep 2026 | accuracy | Syncing the batch that recorded DM-07 (`c775f39`), updated the P06.1 row's *Next Action* but left its page body saying "The Dev Manager's close-out read (DM-07) is next." A repeat of AM5-03 | App Manager 5, fetching the whole row while syncing the next batch |
+| AM5-10 | 29 Sep 2026 | accuracy | The post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and status paragraph but left its headline "Status: in progress." The supersession sweep ran after the commit, not before | App Manager 5, in its supersession sweep before that batch's Notion sync |
+| AM5-11 | 29 Sep 2026 | accuracy | Created a Work Register row for P06.DB without searching for an existing one; the register already held P06.DB's planned-stage row, "Planned", so it had two | Dev Manager 2, DM-08 section 8 |
+| AM5-12 | 29 Sep 2026 | accuracy | The P06.DB verification named API artifact checks as the job already using the upload pin (it is Mobile checks), and repeated the session's "all three `***` are checkout's" without deriving it (line 152 is setup-python's) | The P06.DB exact-head review (F6 and its log confirmation) |
+| AM5-13 | 29 Sep 2026 | accuracy | Two pick-recording batches, the review's (`49525a6`) and C1's, marked the session in flight in the P06.DB brief's Sessions but left its headline saying the session was next. It repeats AM5-10 | App Manager 5, in its supersession sweep before pushing the C1 pick |
+| AM5-14 | 29 Sep 2026 | accuracy | The P06.DB-C1 prompt had the session push its records after its code, with the push run of its code commit as the evidence, but did not tell it to wait for that run to finish. The records push started a second run on the branch, and the code run, whose eight jobs all passed, was marked `cancelled` | The P06.DB-C1 session, which reported the label and its cause; Nathan then asked why |
 
 ## App Manager 2
 
@@ -402,6 +408,16 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Correction:** the disposition bullet is corrected in place and marked. P06.1-C4 corrects I2b's own two sentences, marked.
 - **Prevention:** a verification derives every count it repeats from its source, and compares each of its own check outputs with the figure the report under verification gives for the same check.
 
+### AM4-07 — A job count left at four when I2b added the fifth (accuracy)
+
+Recorded by App Manager 5, at P06.DB's integration.
+
+- **What happened:** I2b added the Foundation job "Stream proof checks", integrated at `55b2238`. App Manager 4's integration updated the CI policy's job list and counts, but `docs/operations/build-and-deploy.md` kept "All four must pass on the actual proposed candidate before merge", naming P03's four jobs.
+- **Caught by:** App Manager 5's supersession sweep when P06.DB added the sixth job.
+- **Effect:** one runbook sentence understated the jobs a merge needs. The CI policy, which governs, was right, and the gate required every job.
+- **Correction:** the sentence now defers to the CI policy's list (`541ec99`).
+- **Prevention:** when a job is added, the sweep searches every document that names a job or counts them (for example "API artifact checks", "Stream proof checks", "four", "five"), not only the CI policy.
+
 ## App Manager 5
 
 ### AM5-01 — The classifier given a short SHA again (execution)
@@ -469,3 +485,45 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision. The row's properties, Implementation Control and the repository were right; the body was stale for about 17 minutes.
 - **Correction:** the body now says that DM-07 is done and that Nathan answered the close-out; read back.
 - **Prevention:** it repeats AM5-03, whose item in the Notion checklist already names page bodies; the readback that missed it used a query. A row whose status changes is read back by fetching its whole page, body included.
+
+### AM5-10 — The P06.1 brief's headline left "in progress" after the merge (accuracy)
+
+- **What happened:** the post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and at the end of its status paragraph, but left the brief's first line, "**Status: in progress.**", unchanged.
+- **Caught by:** App Manager 5, in its supersession sweep before the Notion sync of that batch.
+- **Effect:** none on any decision. The brief contradicted itself for about ten minutes; the evidence record, the handoff and the register were right, and nothing had yet been sent that reads the brief.
+- **Correction:** the headline now says done, with the merge commit and the receipt.
+- **Prevention:** the supersession sweep already covers it, since the headline treated the old state as current; the sweep ran after the commit instead of before it. It now runs before each records commit, and for a status change it searches each changed document's status lines as well as the old wording.
+
+### AM5-11 — A second Work Register row for P06.DB (accuracy)
+
+- **What happened:** syncing the post-merge batch (`041a081`), App Manager 5 created a row for P06.DB in the Work Register without searching it first. An earlier manager had already added P06.DB's planned-stage row, "Planned", when Nathan approved the item (OD-17), so a query by Work ID returned two rows.
+- **Caught by:** Dev Manager 2, DM-08 section 8.
+- **Effect:** none on any decision. The new row was the one kept current; the older row stayed "Planned" for under an hour after the item started.
+- **Correction:** the older row now sits under the current row as a page, its text kept in its body, so the Work Register holds one P06.DB row.
+- **Prevention:** the manager workflow's Notion checklist now asks for a search of the database by Work ID before a row is created, and the old-wording query also looks for duplicate Work IDs (DM-08 section 8).
+
+### AM5-12 — Two unchecked attributions in the P06.DB verification (accuracy)
+
+- **What happened:** App Manager 5's verification of P06.DB, in its evidence record, made two attributions without checking them:
+  - it said the results upload used the `actions/upload-artifact` commit that API artifact checks already used. The job that already used it is Mobile checks, in its step "Save empty-form layout evidence";
+  - it repeated the session's statement that the log's three `***` were all `actions/checkout`'s token masking. Line 152 is `actions/setup-python`'s `token` input.
+- **Caught by:** the P06.DB exact-head review: F6 names Mobile checks, and its log confirmation names setup-python. The manager then found both slips when checking the review's statements.
+- **Effect:** two wrong attributions in the record. No verdict rests on either: the pin is the same commit, and no mask stands for a password. The review prompt, given as written, repeats the second one.
+- **Correction:** both verification bullets are corrected in place and marked; the session's statement is added to the verification's "Corrections to this record".
+- **Prevention:** a verification states which job or step a line belongs to only after reading it there. It is the same rule as AM4-06's, which asks for every count to be derived from its source.
+
+### AM5-13 — The P06.DB brief's headline left at "next" after two picks (accuracy)
+
+- **What happened:** recording Nathan's pick for the P06.DB exact-head review (`49525a6`), App Manager 5 marked the review in flight in the brief's Sessions and in the handoff. The brief's headline status still said "its exact-head review is next". Recording his pick for P06.DB-C1 repeated it before the push: the headline said C1 "is next".
+- **Caught by:** App Manager 5, in its supersession sweep before pushing the C1 pick.
+- **Effect:** none on any decision. The first slip stood on the pushed branch until `4511bbc` rewrote the headline the same morning. The second was never pushed. In both batches the brief's own Sessions and the handoff said in flight.
+- **Correction:** the headline now says C1 is in flight. The first slip needed none, since `4511bbc` had replaced the line.
+- **Prevention:** it repeats AM5-10, whose prevention (at a status change, read each changed document's status lines) was written only in this log. It is now part of the supersession-sweep item in the manager workflow's step 5, "Verify and integrate", which also says to run the sweep before each records commit.
+
+### AM5-14 — The C1 prompt did not say to wait for the code run before pushing again (accuracy)
+
+- **What happened:** the P06.DB-C1 prompt (section 4, item 6) made the push run of the session's last code commit its evidence and expected records commits after it. It did not tell the session to wait for that run to finish before pushing again, although the CI policy records that runs of the same branch cancel each other. The session pushed its records 50 seconds after its code. The second run waited until the code run's gate had finished, then started, and the code run, whose eight jobs had all passed, was marked `cancelled`. No earlier session prompt carried the rule either.
+- **Caught by:** the P06.DB-C1 session, which reported the label and its cause and asked for a decision; Nathan then asked whether the cloud environment was the cause.
+- **Effect:** the run of record's run-level status reads `cancelled`, although every job passed. It needed a decision and an explanation, and it raised the question of whether the proof needs another environment; it does not. No result changes.
+- **Correction:** the manager accepted the run's job results as C1's run of record and recorded the label as a limit (the evidence record, "Manager verification of P06.DB-C1"). PR28's pull-request run on the integrated head runs every job again.
+- **Prevention:** it repeats the mechanism of AM5-04, a later push cancelling a code run, this time through a session's pushes. The rule is now a checklist item in the manager workflow's step 3, "Say when a session may push again": a prompt whose session pushes code and then records tells it to push nothing more until the code run has finished.

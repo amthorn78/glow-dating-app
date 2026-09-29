@@ -1,0 +1,4 @@
+# The same Django as services/api/requirements.in (5.2.17); tests/test_django_pin.py fails if they differ.
+Django==5.2.17
+# Django 5.2's supported PostgreSQL driver, with its bundled libpq (D2).
+psycopg[binary]==3.3.6

@@ -4792,3 +4792,13 @@ Dev Manager 2 read the manager branch at `89a8d01` ([report](../../continuity/de
   - (b) the development secret is replaced as OD-28 directs, as soon as Nathan can; nothing needs it until P06.2's first live session;
   - (c) answered by Nathan on 29 September (OD-36): two environments, assigned per session.
 - **Nathan's answer on (a) and (b)** (29 September, OD-37): *"Stop worrying so much about this secret. I want to move forward with dev"*. The development application stays locked down for P06.2, the recommended option, which needs no action; the secret's replacement is no longer a close-out item.
+
+## P06.1 merge receipt (App Manager 5, 29 September 2026)
+
+- **Close-out:** Nathan's answer to the close-out message (OD-37): *"Stop worrying so much about this secret. I want to move forward with dev"*. The development application stays locked down for P06.2; the development secret's replacement is no longer a close-out item.
+- **The final head:** `c57de50f6ae2cb9effa6226d82c3ef646a51ac0f`. Every commit after C5's reviewed code head `11b5771` is Markdown-only (the trusted classifier on `11b5771..c57de50`: ordinary documentation only), and no governing file changed after `c775f39`, the commit that applied DM-07's conditions.
+- **CI on the final head:** [PR run 36510118431](https://github.com/amthorn78/glow-dating-app/actions/runs/36510118431) ran all seven jobs, "Stream proof checks" included, and passed; the rendered suite passed, and the gate log says `Application checks passed`. Push run 36510114608, Markdown-only against `c775f39`, skipped the application jobs by design, and its gate passed.
+- **Codex:** App Manager 5 marked PR27 ready at about 01:55 UTC. Codex's code review completed at 01:57 UTC and its security review at 02:03 UTC, both on `c57de50`, with no findings: no review or comment, and its "no findings" reaction on the PR.
+- **Merge:** a merge commit at about 02:07 UTC, with the expected head pinned to `c57de50`. The merge commit is `47db18dfec3f62626f4e09f65f52c7a2e10c9e3e`, with parents `0f45e648099b415217938c25d7369164c0101def` and `c57de50f6ae2cb9effa6226d82c3ef646a51ac0f`. Its tree, `d5d4bbe486559897305b70cfcc2f9af510286c91`, is the final head's tree.
+- **CI on `main` after the merge:** [push run 36511117659](https://github.com/amthorn78/glow-dating-app/actions/runs/36511117659) on `47db18d` ran all seven jobs and passed; its gate log says `Application checks passed`.
+- **After the merge:** the manager branch `claude/magical-wozniak-yfmmx2` restarts from `main` for the next item, P06.DB (OD-17). The P06.1 prompts in `docs/ephemeral/` stay until a later records batch replaces their links with commit-pinned ones and prunes them; Git history keeps their text either way.
