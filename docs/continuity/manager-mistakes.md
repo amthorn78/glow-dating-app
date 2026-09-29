@@ -70,6 +70,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-07 | 28 Sep 2026 | accuracy | Four link properties of two Work Register rows left stale in Notion: D10's *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig` and its *Evidence* at PR26; M03's *Plan Reference* and *Evidence* pointed at the charter and the review log on the same old branch. The takeover batch replaced the old branch's links in page bodies, and AM5-03's old-wording query read only the rows' *Next Action* text. A repeat of AM5-03 | Dev Manager 2, its start note and DM-06 (finding 6), for D10; App Manager 5's new link query, for M03 |
 | AM5-08 | 28 Sep 2026 | accuracy | Wrote that the dashboard's Chat count was "within 7%" of the sessions' ledgers; the bound it had computed, 162 calls, is 7.2% of the ledgers | Dev Manager 2, DM-07 item 5 |
 | AM5-09 | 29 Sep 2026 | accuracy | Syncing the batch that recorded DM-07 (`c775f39`), updated the P06.1 row's *Next Action* but left its page body saying "The Dev Manager's close-out read (DM-07) is next." A repeat of AM5-03 | App Manager 5, fetching the whole row while syncing the next batch |
+| AM5-10 | 29 Sep 2026 | accuracy | The post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and status paragraph but left its headline "Status: in progress." The supersession sweep ran after the commit, not before | App Manager 5, in its supersession sweep before that batch's Notion sync |
 
 ## App Manager 2
 
@@ -469,3 +470,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision. The row's properties, Implementation Control and the repository were right; the body was stale for about 17 minutes.
 - **Correction:** the body now says that DM-07 is done and that Nathan answered the close-out; read back.
 - **Prevention:** it repeats AM5-03, whose item in the Notion checklist already names page bodies; the readback that missed it used a query. A row whose status changes is read back by fetching its whole page, body included.
+
+### AM5-10 — The P06.1 brief's headline left "in progress" after the merge (accuracy)
+
+- **What happened:** the post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and at the end of its status paragraph, but left the brief's first line, "**Status: in progress.**", unchanged.
+- **Caught by:** App Manager 5, in its supersession sweep before the Notion sync of that batch.
+- **Effect:** none on any decision. The brief contradicted itself for about ten minutes; the evidence record, the handoff and the register were right, and nothing had yet been sent that reads the brief.
+- **Correction:** the headline now says done, with the merge commit and the receipt.
+- **Prevention:** the supersession sweep already covers it, since the headline treated the old state as current; the sweep ran after the commit instead of before it. It now runs before each records commit, and for a status change it searches each changed document's status lines as well as the old wording.

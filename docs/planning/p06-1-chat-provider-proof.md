@@ -1,6 +1,6 @@
 # P06.1 — Chat-provider permissions and economics proof
 
-**Status: in progress.** Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
+**Status: done.** PR27 merged at `47db18d` on 29 September 2026 (the evidence record, "P06.1 merge receipt"). Nathan resumed P06.1 on 25 September 2026: *"resume P06.1, yes to reconfiguring the test app"*. The first implementation session, P06.1-I1, ran the same day; see "P06.1-I1 result".
 
 - It found one bypass that configuration did not close, S15. **Nathan decided S15 the same day:** the display rule, together with a wider product principle. The exact-head review confirmed S15 live on 25 September, so the display rule stands as S15's answer. The principle is in force (DM-03 G4), and Nathan confirmed its exceptions (OD-16). See "S15: decided".
 - The Dev Manager's first reviews, DM-01 and DM-02, are in and considered. This brief applies the accepted changes: I2 is split into I2a and I2b, economics becomes a dashboard discovery, and the harness's checks join CI. See the [review log](../continuity/dev-manager/README.md).
