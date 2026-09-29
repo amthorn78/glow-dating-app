@@ -61,6 +61,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM4-04 | 27 Sep 2026 | process | Overrode Nathan's six-rung ladder, left max unreachable, and presented the manager's own model judgement as a recommendation | Nathan |
 | AM4-05 | 27 Sep 2026 | accuracy | Two slips in the handover records: the start procedure said its placeholders were filled in, and AM4-03 and AM4-04 had no summary rows. Recorded by App Manager 5 | App Manager 5, reading the handover commit |
 | AM4-06 | 27 Sep 2026 | accuracy | The verification of I2b repeated I2b's underivable "the plan's eleven" in its own disposition, and did not flag I2b's mypy count of 55 although its own run printed 53. Recorded by App Manager 5 | The exact-head review of I2b (nits 5 and 6) |
+| AM4-07 | 27 Sep 2026 | accuracy | Integrating I2b, which added the fifth application job, updated the CI policy's counts but left the build-and-deploy runbook's "All four must pass". Recorded by App Manager 5 | App Manager 5, in its supersession sweep for P06.DB's sixth job |
 | AM5-01 | 27 Sep 2026 | execution | Ran the trusted classifier with a short base SHA while checking its own records batch; it answered `missing-or-invalid-comparison`, and the re-run with full SHAs gave `ordinary-docs-only`. A repeat of AM3-14 | The classifier itself |
 | AM5-02 | 27 Sep 2026 | accuracy | Recording Nathan's pick for C4 in the TypeSafe uses table, set the *Nathan's pick* column but left the row's *PR* text saying "Nathan's pick pending" | App Manager 5, while writing the C4 review's row |
 | AM5-03 | 27 Sep 2026 | accuracy | Two Work Register texts left stale in Notion: the P06.1 row's body still said I2b's review was in flight after the review was recorded, and the D10 row still said "until PR26 merges" after PR27 replaced PR26. A repeat of AM5-02 | App Manager 5, querying the Work Register for old wording after AM5-02 |
@@ -403,6 +404,16 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** two wrong numbers in the record. No verdict or decision rests on either.
 - **Correction:** the disposition bullet is corrected in place and marked. P06.1-C4 corrects I2b's own two sentences, marked.
 - **Prevention:** a verification derives every count it repeats from its source, and compares each of its own check outputs with the figure the report under verification gives for the same check.
+
+### AM4-07 — A job count left at four when I2b added the fifth (accuracy)
+
+Recorded by App Manager 5, at P06.DB's integration.
+
+- **What happened:** I2b added the Foundation job "Stream proof checks", integrated at `55b2238`. App Manager 4's integration updated the CI policy's job list and counts, but `docs/operations/build-and-deploy.md` kept "All four must pass on the actual proposed candidate before merge", naming P03's four jobs.
+- **Caught by:** App Manager 5's supersession sweep when P06.DB added the sixth job.
+- **Effect:** one runbook sentence understated the jobs a merge needs. The CI policy, which governs, was right, and the gate required every job.
+- **Correction:** the sentence now defers to the CI policy's list (`541ec99`).
+- **Prevention:** when a job is added, the sweep searches every document that names a job or counts them (for example "API artifact checks", "Stream proof checks", "four", "five"), not only the CI policy.
 
 ## App Manager 5
 
