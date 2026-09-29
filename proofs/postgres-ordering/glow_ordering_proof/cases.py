@@ -106,6 +106,27 @@ def send_request(
 
 # -- judging ------------------------------------------------------------------------
 
+# What kind of failure a case recorded, so a negative control is judged by the signal
+# its broken switch must produce and not by any failure (P06.DB-C1, F3).
+WAIT_NOT_OBSERVED = "wait_not_observed"  # the arriver was not seen waiting on the holder
+COMMIT_AFTER_REVOCATION = "commit_after_revocation"  # the send committed after it
+REFUSAL_MISSING = "refusal_missing"  # a send expected refused was authorized or replayed
+DEADLOCK = "deadlock"  # a writer's transaction was a deadlock victim
+DATABASE_ERROR = "database_error"  # a writer returned another database error
+HARNESS_ERROR = "harness_error"  # the case raised: its judgement is incomplete
+OTHER = "other"  # any other expectation that did not hold
+CASE_SIGNALS = frozenset(
+    {
+        WAIT_NOT_OBSERVED,
+        COMMIT_AFTER_REVOCATION,
+        REFUSAL_MISSING,
+        DEADLOCK,
+        DATABASE_ERROR,
+        HARNESS_ERROR,
+        OTHER,
+    }
+)
+
 
 @dataclass
 class CaseResult:
@@ -116,6 +137,7 @@ class CaseResult:
     waits: list[ObservedWait] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
+    signals: frozenset[str] = frozenset()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -126,6 +148,7 @@ class CaseResult:
             "waits": [w.summary() for w in self.waits],
             "notes": self.notes,
             "failures": self.failures,
+            "signals": sorted(self.signals),
         }
 
 
@@ -135,10 +158,15 @@ class Judge:
         self.failures: list[str] = []
         self.notes: list[str] = []
         self.waits: list[ObservedWait] = []
+        self.signals: set[str] = set()
 
-    def expect(self, ok: bool, message: str) -> bool:
+    def fail(self, message: str, signal: str = OTHER) -> None:
+        self.failures.append(message)
+        self.signals.add(signal)
+
+    def expect(self, ok: bool, message: str, *, signal: str = OTHER) -> bool:
         if not ok:
-            self.failures.append(message)
+            self.fail(message, signal)
         return ok
 
     def outcome(
@@ -147,7 +175,9 @@ class Judge:
         ok = result.outcome in outcomes and (not reasons or result.reason in reasons)
         if not ok:
             wanted = "/".join(outcomes) + (f" ({'|'.join(sorted(reasons))})" if reasons else "")
-            self.failures.append(f"{what}: {result.label()}, expected {wanted}")
+            self.fail(
+                f"{what}: {result.label()}, expected {wanted}", outcome_signal(result, outcomes)
+            )
         else:
             self.notes.append(f"{what}: {result.label()}")
         return ok
@@ -155,7 +185,10 @@ class Judge:
     def wait(self, observed: ObservedWait, *, required: bool = True) -> None:
         self.waits.append(observed)
         if required and not observed.observed:
-            self.failures.append("the second connection was not observed waiting on a lock")
+            self.fail(
+                "the second connection was not observed waiting on the holder's lock",
+                WAIT_NOT_OBSERVED,
+            )
 
     def note(self, message: str) -> None:
         self.notes.append(message)
@@ -169,7 +202,19 @@ class Judge:
             self.waits,
             self.notes,
             self.failures,
+            frozenset(self.signals),
         )
+
+
+def outcome_signal(result: Result, expected: Collection[str]) -> str:
+    """The signal of an unexpected outcome."""
+    if result.outcome == "deadlock":
+        return DEADLOCK
+    if result.outcome == "error":
+        return DATABASE_ERROR
+    if "refused" in expected and result.outcome in ("authorized", "replayed"):
+        return REFUSAL_MISSING
+    return OTHER
 
 
 @dataclass(frozen=True)
@@ -186,7 +231,7 @@ def run_case(ctx: Context, case: Case) -> CaseResult:
     try:
         case.run(ctx, judge)
     except Exception as exc:  # noqa: BLE001 - a harness error fails the case visibly
-        judge.failures.append(f"harness error: {type(exc).__name__}: {exc}")
+        judge.fail(f"harness error: {type(exc).__name__}: {exc}", HARNESS_ERROR)
     finally:
         ctx.log.context.case_id = None
     return judge.finish()
@@ -219,27 +264,28 @@ def forced(
     wait_required: bool = True,
 ) -> tuple[Result, Result, ObservedWait]:
     """The holder runs on one connection to its hold point; the arriver starts on a
-    second connection and is observed waiting (pg_stat_activity, pg_locks); then the
-    holder is released and both finish."""
+    second connection and is observed waiting on the holder's backend (pg_stat_activity,
+    pg_locks, pg_blocking_pids); then the holder is released and both finish."""
     hold = Hold()
     pid = PidSlot()
+    holder_pid = PidSlot()
     hooks_holder = (
-        Hooks(after_first_lock=hold.point)
+        Hooks(on_begin=holder_pid.set, after_first_lock=hold.point)
         if hold_at == "after_first_lock"
-        else Hooks(after_locks=hold.point)
+        else Hooks(on_begin=holder_pid.set, after_locks=hold.point)
     )
     first = ctx.workers[0].submit(lambda: holder(hooks_holder))
     if not _wait_held(hold, first):
         hold.release.set()
         result = first.result(timeout=budget.HOLD_SECONDS)
-        judge.failures.append(f"the holder finished before its hold point: {result.label()}")
+        judge.fail(f"the holder finished before its hold point: {result.label()}")
         return (
             result,
             Result("error", "arriver_not_started"),
             ObservedWait(0, False, None, None, None, None, 0, 0),
         )
     second = ctx.workers[1].submit(lambda: arriver(Hooks(on_begin=pid.set)))
-    observed = observe_lock_wait(pid.wait(), finished=second.done)
+    observed = observe_lock_wait(pid.wait(), holder_pid=holder_pid.wait(), finished=second.done)
     judge.wait(observed, required=wait_required)
     if before_release is not None and observed.pid:
         before_release(observed.pid)
@@ -427,6 +473,7 @@ def _forced_cases(rev: Revocation) -> list[Case]:
                 rev_at is not None and send_at < rev_at,
                 f"commit order: send {send_at.isoformat()} vs revocation"
                 f" {rev_at.isoformat() if rev_at else None}",
+                signal=COMMIT_AFTER_REVOCATION,
             )
             judge.note("commit timestamps: send before the revocation")
 
@@ -683,7 +730,9 @@ def opposing_first_lock_block_high_vs_send(ctx: Context, judge: Judge) -> None:
     judge.outcome(
         sent, "send by the lower account", "refused", reasons={"match_not_active", "blocked"}
     )
-    judge.expect(blocked.outcome != "deadlock" and sent.outcome != "deadlock", "deadlock")
+    judge.expect(
+        blocked.outcome != "deadlock" and sent.outcome != "deadlock", "deadlock", signal=DEADLOCK
+    )
     judge.expect(match_row(world.match) == ("restricted", 2), "match not restricted")
 
 
@@ -748,7 +797,7 @@ def opposing_four_writers(ctx: Context, judge: Judge) -> None:
         ):
             judge.expect(result.outcome == "applied", f"{label}: {result.label()}")
         judge.expect(match_row(world.match)[0] == "restricted", "match not restricted")
-    judge.expect(deadlocks == 0, f"{deadlocks} deadlocks")
+    judge.expect(deadlocks == 0, f"{deadlocks} deadlocks", signal=DEADLOCK)
     judge.note("40 writers in 10 rounds, no deadlock")
 
 
