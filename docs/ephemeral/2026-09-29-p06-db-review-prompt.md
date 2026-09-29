@@ -7,6 +7,7 @@
 - **Where the result goes:** the manager records the verified review in the evidence record, under a new heading "Exact-head review of P06.DB". The outcome goes into the brief's "Sessions" and decides whether the P11 plan's DB06 and DB09 marks stand as worded.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Fable 5.1, max.** Effort score 3.93 (confidence 0.94); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.05, max 0.93, ultracode 0.01. Model probabilities Fable 5.1 0.94, Opus 5.5 0.06 (confidence 0.88). Sent 2026-09-29T04:57:55Z. Nathan picks the cell.
+  - **Nathan's pick: Fable 5.1 at max**, started 29 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action, and the session starts no database.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). After it: corrections, if any, each with its own review; then the Dev Manager's read of PR28's governing changes, Codex's review and the merge.
