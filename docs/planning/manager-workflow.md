@@ -114,6 +114,7 @@ Nathan's direction, 24 September 2026:
 - In a rows-mode query, wrap the filters in a group (AM3-01).
 - Read back every write and compare it with what was intended.
 - When a status changes (a session done, a review recorded, a pick made, a PR replaced), update every property and page body that states it, then query the touched databases for the old wording before the batch ends (AM5-02, AM5-03). The query reads every property, links and URLs included, not only text; when a branch or PR is replaced, it looks for the old branch name and PR number in each (AM5-07).
+- Before creating a row, search the database for its Work ID; the old-wording query also looks for duplicate Work IDs (AM5-11; DM-08 section 8).
 
 ## Branches and pushes
 

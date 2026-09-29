@@ -71,6 +71,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-08 | 28 Sep 2026 | accuracy | Wrote that the dashboard's Chat count was "within 7%" of the sessions' ledgers; the bound it had computed, 162 calls, is 7.2% of the ledgers | Dev Manager 2, DM-07 item 5 |
 | AM5-09 | 29 Sep 2026 | accuracy | Syncing the batch that recorded DM-07 (`c775f39`), updated the P06.1 row's *Next Action* but left its page body saying "The Dev Manager's close-out read (DM-07) is next." A repeat of AM5-03 | App Manager 5, fetching the whole row while syncing the next batch |
 | AM5-10 | 29 Sep 2026 | accuracy | The post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and status paragraph but left its headline "Status: in progress." The supersession sweep ran after the commit, not before | App Manager 5, in its supersession sweep before that batch's Notion sync |
+| AM5-11 | 29 Sep 2026 | accuracy | Created a Work Register row for P06.DB without searching for an existing one; the register already held P06.DB's planned-stage row, "Planned", so it had two | Dev Manager 2, DM-08 section 8 |
 
 ## App Manager 2
 
@@ -478,3 +479,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision. The brief contradicted itself for about ten minutes; the evidence record, the handoff and the register were right, and nothing had yet been sent that reads the brief.
 - **Correction:** the headline now says done, with the merge commit and the receipt.
 - **Prevention:** the supersession sweep already covers it, since the headline treated the old state as current; the sweep ran after the commit instead of before it. It now runs before each records commit, and for a status change it searches each changed document's status lines as well as the old wording.
+
+### AM5-11 — A second Work Register row for P06.DB (accuracy)
+
+- **What happened:** syncing the post-merge batch (`041a081`), App Manager 5 created a row for P06.DB in the Work Register without searching it first. An earlier manager had already added P06.DB's planned-stage row, "Planned", when Nathan approved the item (OD-17), so a query by Work ID returned two rows.
+- **Caught by:** Dev Manager 2, DM-08 section 8.
+- **Effect:** none on any decision. The new row was the one kept current; the older row stayed "Planned" for under an hour after the item started.
+- **Correction:** the older row now sits under the current row as a page, its text kept in its body, so the Work Register holds one P06.DB row.
+- **Prevention:** the manager workflow's Notion checklist now asks for a search of the database by Work ID before a row is created, and the old-wording query also looks for duplicate Work IDs (DM-08 section 8).

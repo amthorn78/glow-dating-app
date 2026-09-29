@@ -5,6 +5,7 @@
 - **Why:** P06.DB, the next item (OD-17), adds a dependency, a database service in CI and the transaction design P06.2 builds on. Those choices go to the Dev Manager before they are treated as settled ([charter](../planning/dev-manager.md), "When the primary manager consults the Dev Manager").
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`; the manager's disposition in the [review log](../continuity/dev-manager/README.md); the brief's revision 2 and the P06.DB prompt.
 - **Stream variables:** none are needed. Dev Manager 2's container holds the three `STREAM_*` variables (OD-36); it never reads or uses them.
+- **Result:** given to Nathan with `<RECORDS_COMMIT>` as `b75107c3ca135bd7b3a50943fbed4a1bd47d1247`. Dev Manager 2 answered at 02:28 UTC on 29 September (`70f65f0`; [report](../continuity/dev-manager/reviews/2026-09-29-dm-08-p06-db-brief.md)): approved with conditions, no item Nathan's. The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-08"; the [brief](../planning/p06-db-disposable-postgres-proof.md)'s revision 2 applies it as written.
 - **Deletion condition:** prune after P06.DB's PR merges and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
