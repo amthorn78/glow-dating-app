@@ -4791,3 +4791,4 @@ Dev Manager 2 read the manager branch at `89a8d01` ([report](../../continuity/de
   - (a) the development application's lockdown stays for P06.2: Nathan's decision; both managers recommend it;
   - (b) the development secret is replaced as OD-28 directs, as soon as Nathan can; nothing needs it until P06.2's first live session;
   - (c) answered by Nathan on 29 September (OD-36): two environments, assigned per session.
+- **Nathan's answer on (a) and (b)** (29 September, OD-37): *"Stop worrying so much about this secret. I want to move forward with dev"*. The development application stays locked down for P06.2, the recommended option, which needs no action; the secret's replacement is no longer a close-out item.

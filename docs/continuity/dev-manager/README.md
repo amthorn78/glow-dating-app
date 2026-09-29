@@ -210,8 +210,8 @@ Before deciding, the manager checked the cited passages at `89a8d01`: PF01 §7's
 | 4 (a) No live read in P06.1 | Condition for P06.2's brief | **Accepted** | ADR 0003's condition (c); the brief's "Carried to P06.2", item 1; the evidence record's DM-07 section |
 | 4 (b) The activities query and resource roles left open | Not Nathan's now; his before the production application is configured | **Accepted** | The brief's "Carried to P06.2", items 2 and 3: the P06.2 brief puts the question to him in OD-32's form |
 | 5 The economics disposition | Approved; "within about 7%" | **Accepted** | "Within about 7%", with "at most 162 calls", in the brief, the evidence record, this log and Notion (AM5-08). Section 6.2 belongs to P07 (A05) and section 12.5 to A04, each read in Stream's exact words first; Notion's A04 and A05 rows say so, and that the addendum's PDF and the Trust Center stay unverified for A05 |
-| 6 (a) The lockdown stays | Nathan's decision | **Referred to Nathan** | This batch's report, in OD-32's form, with both managers' recommendation |
-| 6 (b) Replace the secret as soon as Nathan can | An action OD-28 directs | **Referred to Nathan** | The same report: an action with no dependency on the merge; the new value goes only into `Glow app` |
+| 6 (a) The lockdown stays | Nathan's decision | **Referred to Nathan** | Put to him in OD-32's form, with both managers' recommendation. His answer (OD-37): *"Stop worrying so much about this secret. I want to move forward with dev"*, read as accepting the recommendation: the development application stays locked down |
+| 6 (b) Replace the secret as soon as Nathan can | An action OD-28 directs | **Referred to Nathan** | Put to him as an action. His answer (OD-37) supersedes the replacement at P06.1's close: it is no longer a close-out item, and the manager stops raising it |
 | 6 (c) The environments | Nathan's | **Answered by Nathan** (OD-36) | His words at `f86f28d`. The register's OD-36, with OD-28's mechanism marked superseded; the environment inventory; local setup; the brief; the next-manager start procedure; and the governing lines listed below. The Dev Manager withdrew its reading that the variables' presence in `Glow app` was a slip |
 | 7 The start prompt | Before the next Dev Manager session | **Accepted** | The report's appendix is the source for the rewrite of [`docs/planning/start-prompts/dev-manager.md`](../../planning/start-prompts/dev-manager.md) (DM-03 E3), with the environment to start in and OD-35's succession line; the handoff lists it |
 | 8 Notion: M03's and D10's texts | Mismatch | **Accepted** | M03's *Next Action* (AM3-23) and D10's (OD-35), corrected and read back |
@@ -229,7 +229,7 @@ Before deciding, the manager checked the cited passages at `89a8d01`: PF01 §7's
 - `CLAUDE.md`'s "Environment" line says app sessions run in "the dedicated app cloud environment". Both app environments are dedicated, hold no HDE variables and have the pinned toolchain (observed in `Glow App - No Stream` on 29 September), so it is not wrong, but it reads as one environment.
 - The workflow's step 3 item on credentials says that a prompt for a session started while the variables were set says "none added". Under OD-36, such a session is one started in `Glow app`.
 
-**What goes to Nathan:** only item 6 (a) and (b), in one message (OD-32). Items 4 (b), 6.2 and 12.5 come to him later: before the production application is configured, at P07 and at A04. Nothing is declined, so nothing goes to him beside the Dev Manager's text (DM-01 P10).
+**What went to Nathan:** only item 6 (a) and (b), in one message (OD-32). He answered the same day (OD-37). Items 4 (b), 6.2 and 12.5 come to him later: before the production application is configured, at P07 and at A04. Nothing is declined, so nothing goes to him beside the Dev Manager's text (DM-01 P10).
 
 ## Nathan's answers and directions (25 September 2026)
 

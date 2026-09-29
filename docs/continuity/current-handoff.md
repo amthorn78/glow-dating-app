@@ -17,7 +17,8 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Done:** OD-33, OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md); request v6 (skill `typesafe-scoring`).
     - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 and its review (changes); C5 and its review, the final delta review: approve, nits recorded; [DM-06](dev-manager/reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md): approved with conditions; the economics discovery, recorded. Prompts: the brief's "Sessions".
     - **Done:** [DM-07](dev-manager/reviews/2026-09-29-dm-07-p06-1-close-out-read.md), the close-out read: its conditions applied; OD-35, OD-36 recorded.
-    - **Next:** Nathan's DM-07 items 6 (a), the lockdown, and 6 (b), the secret's replacement.
+    - **Done:** Nathan's close-out answer (OD-37): move forward; the lockdown stays; the secret's replacement is no longer tracked.
+    - **Next:** Codex's review of PR27, then the merge.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
 - **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 (OD-35); branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-07.
 - **Environments** (OD-36): every prompt names one; `Glow app` only for a session that calls Stream.
@@ -26,11 +27,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | Nathan | DM-07 item 6 (a): keep the lockdown or restore | Ask once more; it stays locked meanwhile |
+| App Manager 5 | Codex | Its review of PR27's final head, started by marking it ready | Tell Nathan the merge waits on it |
 
 ## Next actions
 
-1. Record Nathan's 6 (a) answer, and 6 (b) when he reports it.
+1. Merge PR27 once Codex's summary is in and CI is green; verify `main`.
 2. Close P06.1:
    - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;

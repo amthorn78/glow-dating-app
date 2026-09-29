@@ -309,7 +309,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 
 - **What happened:** the DM-04 consultation told the Dev Manager "The Stream variables are not set for this read", and its header, the handoff and Notion said "No Stream variables" for the read. The Dev Manager's session started on 25 September at 09:00 UTC, while the variables were set in the `Glow app` environment, and a session's environment is fixed when it starts. AM3-17 had found the same for App Manager 3's own container, and the manager did not apply it to the Dev Manager's.
 - **Caught by:** the Dev Manager's names-only check, DM-04 finding 10. The consultation also told it to report any `STREAM_*` name it found and never read or use the value, and it did so.
-- **Effect:** none known. The Dev Manager never read, printed or used the values, and its read needed none. The planned rotation of the secret at P06.1's close covers every container started while the variables were set.
+- **Effect:** none known. The Dev Manager never read, printed or used the values, and its read needed none. The planned rotation of the secret at P06.1's close covers every container started while the variables were set. (OD-37, 29 September, later dropped that rotation as a close-out item.)
 - **Correction:** the consultation's header, the brief, the handoff and Notion now say that none were added for the read, and that the Dev Manager's container holds them.
 - **Prevention:** this repeats AM3-17's lesson, so it is now a checklist item in the manager workflow, step 3 ("Prompt"): a prompt or consultation says which credentials a session holds, not only which it needs, and for a session started while the variables were set it says "none added", never "none present".
 
