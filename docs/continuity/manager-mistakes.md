@@ -69,6 +69,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-06 | 28 Sep 2026 | accuracy | The verification of C5 found "no slip" in C5's section, which, like `README.md:398`, said JSON nested two levels deep in a query value is reachable only through a request-options argument; a `product` step's `params` can carry it too. The verification of C4 had passed the same list to the review untested | The exact-head review of C5 (nit 1) |
 | AM5-07 | 28 Sep 2026 | accuracy | Four link properties of two Work Register rows left stale in Notion: D10's *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig` and its *Evidence* at PR26; M03's *Plan Reference* and *Evidence* pointed at the charter and the review log on the same old branch. The takeover batch replaced the old branch's links in page bodies, and AM5-03's old-wording query read only the rows' *Next Action* text. A repeat of AM5-03 | Dev Manager 2, its start note and DM-06 (finding 6), for D10; App Manager 5's new link query, for M03 |
 | AM5-08 | 28 Sep 2026 | accuracy | Wrote that the dashboard's Chat count was "within 7%" of the sessions' ledgers; the bound it had computed, 162 calls, is 7.2% of the ledgers | Dev Manager 2, DM-07 item 5 |
+| AM5-09 | 29 Sep 2026 | accuracy | Syncing the batch that recorded DM-07 (`c775f39`), updated the P06.1 row's *Next Action* but left its page body saying "The Dev Manager's close-out read (DM-07) is next." A repeat of AM5-03 | App Manager 5, fetching the whole row while syncing the next batch |
 
 ## App Manager 2
 
@@ -460,3 +461,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision: either way the difference is about 0.1% of the plan, and the verification itself said "about".
 - **Correction:** "within about 7%", with "at most 162 calls", in the brief, the evidence record, the review log and Notion; each corrected line says so.
 - **Prevention:** a figure carried from a verification into a summary keeps its hedge ("about", "up to") or its exact value; a bound is never rounded down into "within".
+
+### AM5-09 — The P06.1 row's page body left saying DM-07 was next (accuracy)
+
+- **What happened:** the batch that recorded DM-07 (`c775f39`) rewrote the P06.1 row's *Next Action* and read it back with a database query, which returns properties only. The row's page body, which also states the item's status, kept *"The Dev Manager's close-out read (DM-07) is next."*
+- **Caught by:** App Manager 5, fetching the whole row page while syncing the next batch (`7fac723`).
+- **Effect:** none on any decision. The row's properties, Implementation Control and the repository were right; the body was stale for about 17 minutes.
+- **Correction:** the body now says that DM-07 is done and that Nathan answered the close-out; read back.
+- **Prevention:** it repeats AM5-03, whose item in the Notion checklist already names page bodies; the readback that missed it used a query. A row whose status changes is read back by fetching its whole page, body included.
