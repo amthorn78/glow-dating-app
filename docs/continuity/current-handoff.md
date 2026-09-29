@@ -28,7 +28,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Next actions
 
 1. Verify C1's report against its branch and its run; integrate it; add the manager's verification to its section of the evidence record; settle the P11 plan's DB06 limit from the new per-race counts. Then C1's exact-head review prompt, with the TypeSafe reading (environment `Glow App - No Stream`).
-2. Before PR28 merges: the Dev Manager reads its governing changes (the CI policy, the workflow's Notion checklist line) and confirms the changes the review log's DM-07 section lists; then Codex, the merge and the receipt; then P06.2.
+2. Before PR28 merges: the Dev Manager reads its governing changes (the CI policy, the workflow's Notion checklist line and its supersession-sweep line, AM5-13) and confirms the changes the review log's DM-07 section lists; then Codex, the merge and the receipt; then P06.2.
 3. Standing: before the Stream harness is used live again, the C5 review's nits 2 and 3 and its header-allowlist advice; before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7).
 
 **Recorded follow-ups:** prune the P06.1 prompts in `docs/ephemeral/` once their links are commit-pinned; Setup-script and pin-test hardening ([M02 brief](../planning/claude-setup-optimization.md)); a stale-documentation sweep of `docs/architecture/`, `docs/testing/` and `docs/operations/`.

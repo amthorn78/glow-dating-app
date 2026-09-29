@@ -74,6 +74,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-10 | 29 Sep 2026 | accuracy | The post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and status paragraph but left its headline "Status: in progress." The supersession sweep ran after the commit, not before | App Manager 5, in its supersession sweep before that batch's Notion sync |
 | AM5-11 | 29 Sep 2026 | accuracy | Created a Work Register row for P06.DB without searching for an existing one; the register already held P06.DB's planned-stage row, "Planned", so it had two | Dev Manager 2, DM-08 section 8 |
 | AM5-12 | 29 Sep 2026 | accuracy | The P06.DB verification named API artifact checks as the job already using the upload pin (it is Mobile checks), and repeated the session's "all three `***` are checkout's" without deriving it (line 152 is setup-python's) | The P06.DB exact-head review (F6 and its log confirmation) |
+| AM5-13 | 29 Sep 2026 | accuracy | Two pick-recording batches, the review's (`49525a6`) and C1's, marked the session in flight in the P06.DB brief's Sessions but left its headline saying the session was next. It repeats AM5-10 | App Manager 5, in its supersession sweep before pushing the C1 pick |
 
 ## App Manager 2
 
@@ -509,3 +510,11 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** two wrong attributions in the record. No verdict rests on either: the pin is the same commit, and no mask stands for a password. The review prompt, given as written, repeats the second one.
 - **Correction:** both verification bullets are corrected in place and marked; the session's statement is added to the verification's "Corrections to this record".
 - **Prevention:** a verification states which job or step a line belongs to only after reading it there. It is the same rule as AM4-06's, which asks for every count to be derived from its source.
+
+### AM5-13 — The P06.DB brief's headline left at "next" after two picks (accuracy)
+
+- **What happened:** recording Nathan's pick for the P06.DB exact-head review (`49525a6`), App Manager 5 marked the review in flight in the brief's Sessions and in the handoff. The brief's headline status still said "its exact-head review is next". Recording his pick for P06.DB-C1 repeated it before the push: the headline said C1 "is next".
+- **Caught by:** App Manager 5, in its supersession sweep before pushing the C1 pick.
+- **Effect:** none on any decision. The first slip stood on the pushed branch until `4511bbc` rewrote the headline the same morning. The second was never pushed. In both batches the brief's own Sessions and the handoff said in flight.
+- **Correction:** the headline now says C1 is in flight. The first slip needed none, since `4511bbc` had replaced the line.
+- **Prevention:** it repeats AM5-10, whose prevention (at a status change, read each changed document's status lines) was written only in this log. It is now part of the supersession-sweep item in the manager workflow's step 5, "Verify and integrate", which also says to run the sweep before each records commit.
