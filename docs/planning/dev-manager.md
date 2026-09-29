@@ -46,7 +46,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 **It does not:**
 
-- implement application or harness changes, commission or run other sessions, open or merge PRs, or edit Notion;
+- implement application or harness changes, commission or run other sessions (except its successor, which it creates at Nathan's direction, OD-35), open or merge PRs, or edit Notion;
 - write outside its report files;
 - make calls to Stream or any other provider, a database, HDE or Railway;
 - run `playwright install`, `eas` or `migrate`;
@@ -77,7 +77,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 ## The relay
 
-The Dev Manager runs in its own Claude Code cloud session in the `Glow app` environment. It works from an exact commit of the manager branch and pushes only its own branch, `claude/dev-manager`. A cloud session can receive messages but cannot send any back. So its answers travel through the repository.
+The Dev Manager runs in its own Claude Code cloud session, started in the environment its start prompt names (OD-36): for future Dev Manager sessions, the one without the Stream variables, `Glow App - No Stream` (DM-07 item 6 (c)). It works from an exact commit of the manager branch and pushes only its own branch, `claude/dev-manager`. A cloud session can receive messages but cannot send any back. So its answers travel through the repository.
 
 1. **Consultation.** The primary manager sends the Dev Manager a self-contained consultation: as the first prompt when it creates the session, and afterwards as a paste-ready message that Nathan carries to the Dev Manager's session. Nathan, 25 September 2026 (OD-25): *"create a message for relay, that is how we should do things, reports in repo and messages to relay manually. Make note"*. DM-03 went as a one-time scheduled message into the session before that direction; that route is retired. Each consultation has:
    - an ID (`DM-NN`) and the question;
@@ -97,6 +97,7 @@ The Dev Manager runs in its own Claude Code cloud session in the `Glow app` envi
 
 - The primary manager creates the session with the remote-session tools. It gives the session the [start prompt](start-prompts/dev-manager.md) and the first consultation, and names the exact commit and the `claude/dev-manager` branch.
 - The same session receives later consultations for as long as it stays available. If it has ended, the primary manager starts a new one from the start prompt. The new session reads the review log for continuity.
+- **Succession** (OD-35). At Nathan's direction, the outgoing Dev Manager runs its handover and creates its successor with the remote-session tools. This is the only session a Dev Manager creates. The successor continues `claude/dev-manager` and the review log; the predecessor pushes nothing after its handover commit.
 - A new primary manager finds the session's identity and state in the current handoff and the review log.
 - Every Dev Manager session follows the environment rules of all app sessions: names-only checks, no HDE variables, and the Stream values never printed or used.
 

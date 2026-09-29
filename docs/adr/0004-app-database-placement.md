@@ -42,7 +42,7 @@ The app gets its own logical database on HDE's PostgreSQL service, in the same R
 
 ## Accepted residual risk
 
-- A platform restore of the shared service restores HDE and the app together (DM-03 D1). With the move-out path above, that is accepted.
+- A platform restore of the shared service restores HDE and the app together (DM-03 D1). With the move-out path above, that is accepted. The Dev Manager's close-out read confirmed the acceptance, which is within Nathan's direction and not his to decide again (DM-07 item 3, 29 September 2026; OD-32).
 - DB13's restore proof uses a logical restore of the app's database.
 - A recovery runbook must not use a platform restore for an app-only incident without a review of its effect on HDE (PF01 D08).
 
@@ -58,6 +58,7 @@ The app gets its own logical database on HDE's PostgreSQL service, in the same R
 - PF01 §4, §6, P11C and A02 describe this placement.
 - The migration plan, the resource-ownership record, the domain boundaries and the P11 deferred acceptance cases follow it. The deferred cases gain the move-out case.
 - P06.DB proves send-versus-block ordering and sign-in on a disposable CI database, not on this service.
+- **A restore runs both ways** (DM-07 item 3, 29 September 2026). A platform restore of the shared service made for an HDE incident also rolls the app back, including its safety state (blocks, reports, moderation actions, deletions) and its chat entitlements, while Stream keeps its own state. So any restore of the shared service, whoever starts it, triggers the app's post-restore procedure before the app reopens: it replays deletions and tombstones, reconciles safety state with Stream and re-checks entitlements. P11's runbooks carry that procedure; HDE's own runbook, in HDE's own process, should name the trigger.
 
 ## Revisit when
 

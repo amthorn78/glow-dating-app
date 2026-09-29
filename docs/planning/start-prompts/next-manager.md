@@ -1,11 +1,11 @@
 # Next manager start prompt
 
-- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand; its note on placeholders corrected by App Manager 5 (AM4-05).
+- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand; its note on placeholders corrected by App Manager 5 (AM4-05), and its environment lines on 29 September 2026 (OD-36).
 - **Durable context:** [current handoff](../../continuity/current-handoff.md) and [manager workflow](../manager-workflow.md).
 - **A durable start procedure, not an ephemeral prompt** (DM-01 P9): each manager keeps it current for its successor.
 - **Two ways to start a manager:**
-  - Nathan pastes the text below into a new session in the `Glow app` environment;
-  - or, when Nathan directs it (OD-31), the outgoing manager creates the session with the remote-session tools and sends the text as its first message. It sets the manager PR's head branch as the new session's outcome branch, so the successor pushes that branch and the PR stays. Once the successor starts, the outgoing manager pushes nothing and edits nothing in Notion.
+  - Nathan pastes the text below into a new session in the `Glow App - No Stream` environment, which holds no Stream variables (OD-36);
+  - or, when Nathan directs it (OD-31), the outgoing manager creates the session with the remote-session tools, in the same environment (`env_01GAnJ5Rdi5k1wGvGUxJuDbe`), and sends the text as its first message. It sets the manager PR's head branch as the new session's outcome branch, so the successor pushes that branch and the PR stays. Once the successor starts, the outgoing manager pushes nothing and edits nothing in Notion.
 
 **Nathan or the outgoing manager:** before sending, replace `<N>` with the manager's number and `<BRANCH>` with the manager PR's head branch, which the current handoff names. The text below the line keeps both placeholders (AM4-05).
 
@@ -29,7 +29,7 @@ You are **App Manager <N>**, the Claude implementation manager for Nathan Amthor
 
 1. **Environment check (names only; never print values).**
    - None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` may be set.
-   - `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be absent. Nathan adds them only for a session that calls Stream, then deletes them (OD-28), and a manager never calls Stream. If any is present, your container started while they were set: tell Nathan, and never read, print or use their values (AM3-17).
+   - `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be absent: a manager starts in `Glow App - No Stream`, which holds none, and never calls Stream (OD-36). If any is present, your session started in `Glow app`: tell Nathan, and never read, print or use their values (AM3-17).
    - `command -v node npm python3.12` must resolve to `$HOME/.local/bin`, with v24.19.0, 11.9.0 and Python 3.12.14. Run the app's and the proof harness's commands in clean processes (`env -i`, with `$HOME/.local/bin` first on `PATH`), as `docs/operations/local-development.md` shows.
    - Setup-script ownership check: `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` must print 0. Background: the M02 evidence record, "Setup script verification".
    - If anything is wrong, tell Nathan exactly which environment setting to fix before continuing.

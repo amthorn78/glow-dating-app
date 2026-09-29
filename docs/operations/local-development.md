@@ -100,7 +100,7 @@ Docker is optional locally and used by the hosted artifact gate. See [build-and-
 
 ## Claude Code cloud sessions
 
-Glow app manager, implementation and review sessions run in the dedicated `Glow app` cloud environment. Its settings are recorded in the [environment inventory](environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026): the network allowlist, the Setup script, the Stream development variables and the absence of HDE variables. The owner steps are in the [M02 brief](../planning/claude-setup-optimization.md#owner-action--dedicated-environment-settings). A session's environment is fixed when it starts; switching environments needs a new session.
+Glow app sessions run in one of two dedicated cloud environments, which Nathan assigns per session and each prompt names (OD-36): `Glow app`, which holds the Stream development variables, for a session that calls Stream, and `Glow App - No Stream`, which holds none, for any other. The [environment inventory](environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026) records `Glow app`'s settings (the network allowlist, the Setup script, the Stream development variables and the absence of HDE variables) and what is known of the other's. The owner steps are in the [M02 brief](../planning/claude-setup-optimization.md#owner-action--dedicated-environment-settings). A session's environment is fixed when it starts; switching environments needs a new session.
 
 **Setup script.** The environment's Setup script is the whole of `scripts/bootstrap-toolchain.sh`, pasted unchanged.
 

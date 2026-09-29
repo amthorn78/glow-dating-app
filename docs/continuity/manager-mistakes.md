@@ -53,6 +53,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM3-19 | 26 Sep 2026 | accuracy | The DM-04 consultation told the Dev Manager that the Stream variables were not set for its read, and the records said "No Stream variables"; its container, started before OD-28, holds them, as AM3-17 had found for the manager's own | The Dev Manager, DM-04 finding 10 |
 | AM3-20 | 26 Sep 2026 | accuracy | Told Nathan that TypeSafe "only scores the level and can't pick a model". Its Choice questions can pick one, and the v4 request already asks one | Nathan |
 | AM3-21 | 27 Sep 2026 | accuracy | A Notion usage-log row said the manager had corrected nit 6's line reference in the I2a review; the evidence record keeps that reference | App Manager 3, re-reading the row |
+| AM3-22 | 26 Sep 2026 | accuracy | Recording the I1 review's confirmation of S15, updated OD-14's row and ADR 0003 but left PF01 §7 calling the display rule "conditional on the exact-head review confirming S15". Recorded by App Manager 5 | Dev Manager 2, DM-07 finding 1.2 |
+| AM3-23 | 25 Sep 2026 | accuracy | The Work Register row M03 kept "The Dev Manager's ten questions are with Nathan." after Nathan answered them. Recorded by App Manager 5, which had corrected M03's links on 28 September without reading that text | Dev Manager 2, DM-07 finding 8 |
 | AM4-01 | 27 Sep 2026 | process | The first report to Nathan listed two standing items as "waiting on you" without saying what they were or what he could do; he would not send the I2b prompt while they stood | Nathan |
 | AM4-02 | 27 Sep 2026 | process | Asked Nathan to pick a model and level for I2b when the manager's call and TypeSafe's readings were the same | Nathan |
 | AM4-03 | 27 Sep 2026 | process | Scoring requests too thin for an informed reading: one line per level, no facts about cost or capability on either model | Nathan |
@@ -66,6 +68,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-05 | 27 Sep 2026 | accuracy | The brief's entry for the C4 review listed the classes that get another correction pass without "or DOES NOT MEET", so its "only" excluded a class the prompt includes | App Manager 5, comparing the brief with the prompt |
 | AM5-06 | 28 Sep 2026 | accuracy | The verification of C5 found "no slip" in C5's section, which, like `README.md:398`, said JSON nested two levels deep in a query value is reachable only through a request-options argument; a `product` step's `params` can carry it too. The verification of C4 had passed the same list to the review untested | The exact-head review of C5 (nit 1) |
 | AM5-07 | 28 Sep 2026 | accuracy | Four link properties of two Work Register rows left stale in Notion: D10's *Plan Reference* pointed at the Dev Manager charter on `claude/stoic-carson-66gdig` and its *Evidence* at PR26; M03's *Plan Reference* and *Evidence* pointed at the charter and the review log on the same old branch. The takeover batch replaced the old branch's links in page bodies, and AM5-03's old-wording query read only the rows' *Next Action* text. A repeat of AM5-03 | Dev Manager 2, its start note and DM-06 (finding 6), for D10; App Manager 5's new link query, for M03 |
+| AM5-08 | 28 Sep 2026 | accuracy | Wrote that the dashboard's Chat count was "within 7%" of the sessions' ledgers; the bound it had computed, 162 calls, is 7.2% of the ledgers | Dev Manager 2, DM-07 item 5 |
 
 ## App Manager 2
 
@@ -326,6 +329,22 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 - **Correction:** the note was rewritten from the evidence record at about 01:22 UTC and read back.
 - **Prevention:** write a Notion note from the committed record, not from memory of the work. The Notion checklist's readback step ("compare it with what was intended") compares with that record.
 
+### AM3-22 — PF01 §7 left calling the display rule conditional (accuracy)
+
+- **What happened:** PF01 §7, written at `fa4dc5f` on 25 September, said Nathan accepted the display rule for S15 *"conditional on the exact-head review confirming S15"*. The I1 review confirmed S15 the same day. App Manager 3's batch that recorded the review (`b9df3a2`, 26 September) updated OD-14's row and ADR 0003, but its supersession sweep missed PF01 §7. App Manager 4 and App Manager 5 did not catch it either, and App Manager 5's DM-07 consultation named PF01 among the files to read without finding it.
+- **Caught by:** Dev Manager 2, DM-07 finding 1.2, as a condition before PR27 merges.
+- **Effect:** the manager branch's PF01 stated a condition already met, from 26 to 29 September. It never reached `main`, and no decision rested on it: OD-14's row and ADR 0003 said the rule stands.
+- **Correction:** PF01 1.11 replaces the clause with the Dev Manager's text, "confirmed live by the I1 review on 25 September 2026".
+- **Prevention:** it repeats AM3-08 and AM3-10, supersession sweeps that missed a document, and the manager workflow's step 5 already carries the sweep: search the repository for the old wording. When the decision is that a condition is met, the old wording includes the condition's own words, here "conditional on", not only the rule's name.
+
+### AM3-23 — M03 kept "the ten questions are with Nathan" (accuracy)
+
+- **What happened:** the Work Register row M03's *Next Action*, written after App Manager 3 applied DM-03 on 25 September, ends: *"The Dev Manager's ten questions are with Nathan."* Nathan answered that day; DM-01's questions 2 and 3 were not among his answers (DM-04 finding 12), which the Dev Manager page records. The row was not updated. On 28 September App Manager 5 corrected M03's two links (AM5-07) without reading its *Next Action*.
+- **Caught by:** Dev Manager 2, DM-07 finding 8.
+- **Effect:** none on any decision: the Dev Manager page, the register and the repository gave the answers.
+- **Correction:** M03's *Next Action* now says what Nathan answered, what stays open and that DM-07 made the close-out read; read back.
+- **Prevention:** the Notion checklist's old-wording query already reads every property. A manager that edits a row reads every text property of that row too, not only the one it came to fix.
+
 ## App Manager 4
 
 ### AM4-01 — Two unexplained items put to Nathan (process)
@@ -433,3 +452,11 @@ Recorded by App Manager 5, after I2b's exact-head review.
 - **Effect:** none on any decision. The old branch still exists, so every link resolved, to the superseded head; Implementation Control, the rows' other fields and the repository named the manager branch and PR27.
 - **Correction:** D10's *Plan Reference* now points at the charter on `claude/magical-wozniak-yfmmx2`, and its *Evidence* at PR27; M03's two links point at the charter and the review log on the same branch; all read back.
 - **Prevention:** it repeats AM5-03, so the manager workflow's checklist item for "Writing to Notion" now says that the old-wording query reads every property, links and URLs included, not only text: when a branch or PR is replaced, it looks for the old branch name and PR number in each.
+
+### AM5-08 — "Within 7%" for a bound of 7.2% (accuracy)
+
+- **What happened:** the economics discovery's verification computed that, if the dashboard's Chat count excludes I2b's Video and Feeds requests, Stream counted up to 162 more calls than the sessions' ledgers, "about 7%". The disposition, the brief, the review log's DM-06 section, the DM-07 consultation, Notion's P06.1 row and App Manager 5's report to Nathan then said "within 7%". 162 is 7.2% of the ledgers' 2,261 calls.
+- **Caught by:** Dev Manager 2, DM-07 item 5, as a wording nit.
+- **Effect:** none on any decision: either way the difference is about 0.1% of the plan, and the verification itself said "about".
+- **Correction:** "within about 7%", with "at most 162 calls", in the brief, the evidence record, the review log and Notion; each corrected line says so.
+- **Prevention:** a figure carried from a verification into a summary keeps its hedge ("about", "up to") or its exact value; a bound is never rounded down into "within".

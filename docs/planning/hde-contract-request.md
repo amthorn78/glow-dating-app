@@ -118,7 +118,7 @@ HDE can rely on these, whatever the answers:
 1. **Nathan** takes this request into HDE's own process and sets the delivery date there. Until then, A01 and A07 stay blocked with "date not yet set".
 2. **HDE's own sessions and canon** produce the versioned contract. HDE governs its text.
 3. **Nathan receives it** as the app's integration owner, and also as the Product Owner.
-4. **The app records a receipt** in repository Markdown (section 6). If a verbatim copy is wanted, it goes under `docs/planning/sources/`, marked non-governing.
+4. **The app records a receipt** in repository Markdown (section 6), with a verbatim copy of the contract under `docs/planning/sources/`, marked non-governing. The copy is the default because OD-23 asks for *"the contract recorded in repository Markdown"*, and an app session may not be able to open HDE's text at all (DM-07 item 2). If HDE's process forbids a copy, the receipt pins the exact HDE commit and path of each passage it cites instead.
 5. **Adapter work and the P11B live checks start only after the receipt,** and only within the access it names.
 
 ## 5. When the app treats the contract as delivered
@@ -137,7 +137,7 @@ When the contract arrives, the app creates `docs/architecture/hde-contract-recei
 - the environments;
 - the authorized access, by name only, with no secret values;
 - the delivery date, and the delivery itself: from Nathan, as HDE owner, to Nathan, as integration owner and Product Owner;
-- each answer from section 2, cited by its place in HDE's text, not rewritten;
+- each answer from section 2, cited by its place in HDE's text, not rewritten: in the verbatim copy, or at the pinned HDE commit and path where no copy is allowed (section 4, step 4);
 - the adapter mapping against the four ports, and any gaps.
 
 This file then records the delivery in its status line and links the receipt.

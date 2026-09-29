@@ -1,4 +1,4 @@
-# Current handoff — App Manager 5 (28 September 2026)
+# Current handoff — App Manager 5 (29 September 2026)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); the earlier handoff is [archived](history/m02-p06-1-handoff.md).
 
@@ -16,29 +16,30 @@ This file only routes: the current item, what happens next and who waits on whom
     - **Done:** DM-05; I2b (merged at `55b2238`): Video and Feeds locked down; removal and deactivation MEET the history policy; the [architecture document](../architecture/chat-provider-permissions.md) is written.
     - **Done:** OD-33, OD-34: the [reasoning-strength matrix](../planning/reasoning-level-matrix.md); request v6 (skill `typesafe-scoring`).
     - **Done:** the I2b review (approve; ADR 0003's conditions updated); C4 and its review (changes); C5 and its review, the final delta review: approve, nits recorded; [DM-06](dev-manager/reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md): approved with conditions; the economics discovery, recorded. Prompts: the brief's "Sessions".
-    - **Next:** [DM-07](../ephemeral/2026-09-28-dm-07-p06-1-close-out-read.md), the Dev Manager's close-out read.
+    - **Done:** [DM-07](dev-manager/reviews/2026-09-29-dm-07-p06-1-close-out-read.md), the close-out read: its conditions applied; OD-35, OD-36 recorded.
+    - **Next:** Nathan's DM-07 items 6 (a), the lockdown, and 6 (b), the secret's replacement.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
-- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 at Nathan's direction on 28 September; branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-07.
+- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 (OD-35); branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-07.
+- **Environments** (OD-36): every prompt names one; `Glow app` only for a session that calls Stream.
 
-## Waiting checkpoint (28 September 2026, App Manager 5)
+## Waiting checkpoint (29 September 2026, App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | Dev Manager 2, via Nathan | DM-07's report (given 28 September) | Tell Nathan PR27 waits on it |
+| App Manager 5 | Nathan | DM-07 item 6 (a): keep the lockdown or restore | Ask once more; it stays locked meanwhile |
 
 ## Next actions
 
-1. Verify and record DM-07's report (the review log).
+1. Record Nathan's 6 (a) answer, and 6 (b) when he reports it.
 2. Close P06.1:
-   - put DM-07's item 6 to Nathan in one message (OD-32): the lockdown, the secret, the environments;
    - complete the pre-merge checklist in PR27 (workflow step 7);
    - mark the PR ready and wait for Codex;
    - merge and verify `main`;
    - record the receipt, this handoff and Notion;
-   - rotate the development Stream secret (DM-02 B8).
-   - before the harness is used live again: the C5 review's nits 2 and 3, and its header-allowlist advice.
-   - before the next Dev Manager session: rewrite its start prompt (DM-03 E3; Dev Manager 1's handover, section 7).
-3. **Next item after P06.1:** P06.DB, the early disposable-PostgreSQL proof (OD-17, PF01 §6). Then P06.2.
+   - before the harness is used live again: the C5 review's nits 2 and 3, and its header-allowlist advice;
+   - before the next Dev Manager session: rewrite its start prompt (DM-03 E3; DM-07 item 7);
+   - next consultation: confirm the governing changes the review log's DM-07 section lists.
+3. **Next item after P06.1:** P06.DB, the early disposable-PostgreSQL proof (OD-17, PF01 §6). Then P06.2, with the brief's "Carried to P06.2".
 
 **Recorded follow-ups** (after P06.1): Setup-script and pin-test hardening ([M02 brief](../planning/claude-setup-optimization.md)); a stale-documentation sweep of `docs/architecture/`, `docs/testing/` and `docs/operations/`.
 

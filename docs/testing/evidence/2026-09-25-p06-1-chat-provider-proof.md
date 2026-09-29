@@ -3492,7 +3492,7 @@ The session committed nothing, so there is no branch to check. The manager check
   - removal and deactivation meet the history policy under the 404 code 16 rule;
   - what a user token can and cannot do in Video and Feeds before and after the lockdown, as the architecture document's sections 2, 3 and 6 record it.
 
-  The manager marks I2b's claims in the architecture document's "Review" columns as confirmed, in this batch. The activities query stays open for the Dev Manager's close-out consultation, as App Manager 4's verification decided.
+  The manager marks I2b's claims in the architecture document's "Review" columns as confirmed, in this batch. The activities query stays open for the Dev Manager's close-out consultation, as App Manager 4's verification decided. DM-07 left it open and recorded, for P06.2; see "The Dev Manager's close-out read" at the end of this record.
 - **Finding 1 is in the review prompt's class,** narrowly: a harness request could escape the deny-lists. So an offline correction pass, **P06.1-C4**, fixes it before P06.1 closes. Required:
   - no request to the Video or the Feeds host, or to a path under `/api/v2/video` or `/api/v2/feeds` once case, percent-encoding and dot segments are normalized, leaves the runner unless the product op's check allows it, whatever op sent it; a product path sent in a non-normalized form is refused outright. The check runs in the request interceptor, before the request is counted;
   - a `validate` rule that refuses a matrix step that reaches a product path through any op but `product`;
@@ -3508,7 +3508,7 @@ The session committed nothing, so there is no branch to check. The manager check
 - **Finding 2's live read** (the review: "the manager's call"): none now.
   - No verdict rests on it, and every lockdown body named only client roles (`is_lockdown_body`).
   - A read is a live command, and the Dev Manager reads its prompt first.
-  - The question goes to the Dev Manager's close-out consultation; a read would run C4's corrected comparison. Until then, the records say that the other roles and the settings are unchanged on Stream's documentation, not by a re-read.
+  - The question goes to the Dev Manager's close-out consultation; a read would run C4's corrected comparison. Until then, the records say that the other roles and the settings are unchanged on Stream's documentation, not by a re-read. DM-07 chose no read in P06.1: P06.2's first live step runs the comparison; see "The Dev Manager's close-out read" at the end of this record.
 - **C4's exact-head review is P06.1's final delta review** (the brief's review plan). It covers C4's change and the manager's records since `55b2238`.
 - **Manager-owned, in this batch:** ADR 0003's conditions and "Revisit when" (DM-05 finding 5 (b)); App Manager 4's disposition bullet above, corrected in place (AM4-06).
 
@@ -4757,7 +4757,7 @@ The report, as relayed, verbatim:
 - **The discovery is recorded, and it answers the economics outcome (the brief's outcome 5) as far as a read-only look can:**
   - **the plan's real limits:** the eight Chat limits on the dashboard, with the Feeds allowances and no Video limit;
   - **the costs that would apply:** Stream's public plans and the Fair Usage overage rates;
-  - **the usage the proof caused:** the September figures above, within 7% of the sessions' ledgers;
+  - **the usage the proof caused:** the September figures above, within about 7% of the sessions' ledgers (at most 162 calls, 7.2% of the ledgers; this line said "within 7%" until DM-07 item 5 corrected it);
   - **the approvals P06.2 needs:** none. P06.2 works on the same development application, and the proof's use was about 0.1% of the plan;
   - **the approvals launch needs:** a billing decision before any real traffic, as the brief already says (A04). The free plan allows 1,000 monthly active users and 100 concurrent connections; the Maker program, if approved, 2,000 and 100 with hard limits while Glow qualifies; Stream's Start plan costs $399 a month billed annually, for 10,000 monthly active users. No payment method is on file, and the budget is $0 (OD-12).
 - **The deviations are accepted:**
@@ -4768,7 +4768,26 @@ The report, as relayed, verbatim:
 - **Two terms bear on later phases.** They are recorded here, not decided:
   - **Section 6.2:** the customer limits End User access to people who agree to its own terms, and makes commercially reasonable efforts to detect, address and remove content that breaks them. This is for P07's moderation plan (A05).
   - **Section 12.5:** Stream may show the customer's name and logo in its client lists and marketing. Outside the app, this bears on Nathan's principle that nothing should indicate anything outside Glow (A04).
-  - The close-out consultation asks the Dev Manager whether either is Nathan's to decide now (OD-32).
+  - The close-out consultation asks the Dev Manager whether either is Nathan's to decide now (OD-32). DM-07: neither is; see the next section.
 - **Where the facts live:** this section and the brief's "Sessions", with Notion's A04 and A05 rows. PF01 is not changed: it changes only when a rule does (DM-01 P3), and no rule changed. R04 is unchanged: its cost trigger, a price above the approved budget, is the launch decision A04 already records.
 - **Maker:** the dashboard shows no status, so OD-22's "pending" stands.
 - **Nathan's pick** for this session was not stated; the uses table keeps "pending".
+
+## The Dev Manager's close-out read (DM-07, 29 September 2026)
+
+Dev Manager 2 read the manager branch at `89a8d01` ([report](../../continuity/dev-manager/reviews/2026-09-29-dm-07-p06-1-close-out-read.md); the manager's disposition is in the [review log](../../continuity/dev-manager/README.md), "DM-07"). What bears on this record:
+
+- **The live read (item 4 (a)): none in P06.1.** No recorded verdict rests on the other roles or settings, and every lockdown body named only client roles. **Condition for P06.2:** the harness's first live use in P06.2 runs `products.verify`, the full comparison P06.1-C4 added, before any other live command. Its result closes ADR 0003 condition (c) and the architecture document's section 5 caveat, or stops P06.2 if it differs. This settles what the I2b review's disposition left to the close-out.
+- **The activities query and the resource roles (item 4 (b)): left open and recorded.** The design constraint closes both paths: the server creates no call, feed or activity for a user, and the harness preflight refuses unowned ones in a proof run. Before the production application is configured (P09 or P11), Nathan decides whether production relies on that constraint alone, or also closes the paths in configuration: emptying `call_member` and the feed-creator grants, or disabling Video and Feeds if Stream allows it. The P06.2 brief carries the question in OD-32's form. It is not his now.
+- **The economics disposition (item 5): approved.**
+  - 5 (d) confirmed, with the wording "within about 7%": if the Chat count excludes I2b's Video and Feeds requests, Stream counted up to 162 more calls than the ledgers, 7.2% of the ledgers or 6.7% of Stream's total; either way the difference is immaterial, about 0.1% of the plan. The stored-data comparison could not be made; I2b's last `verify-clean` stands.
+  - 5 (e) confirmed: nothing goes to Nathan.
+  - **Section 6.2:** not Nathan's now; it belongs to P07 (A05). Before the P07 brief relies on it, the clause is read in Stream's exact words.
+  - **Section 12.5:** not Nathan's now; it belongs to A04, the billing and launch decision, where it goes to him in OD-32's form if it survives an exact reading. Before A04, the exact text is read, including whether it allows opting out by written notice; if it does, the A04 item gives Nathan that option.
+  - PF01 left unchanged: agreed.
+  - **The paraphrase** is enough to record the facts, not to decide on them. Before a decision rests on Stream's exact words, that page is read again: terms 4.5, 4.6, 6.2 and 12.5, the Fair Usage rates, the Maker criteria and the data-processing addendum. For A05, the addendum's PDF and the Trust Center are unread, so the transfer mechanism and the hosting regions stay "unverified" until a later read, under a Dev Manager-approved prompt if it acts in Nathan's signed-in browser.
+  - The account menu and the two unfocused typing actions: accepted as disclosed.
+- **Nathan's close-out items (item 6):**
+  - (a) the development application's lockdown stays for P06.2: Nathan's decision; both managers recommend it;
+  - (b) the development secret is replaced as OD-28 directs, as soon as Nathan can; nothing needs it until P06.2's first live session;
+  - (c) answered by Nathan on 29 September (OD-36): two environments, assigned per session.

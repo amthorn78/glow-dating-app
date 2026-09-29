@@ -5,6 +5,7 @@
 - **Why:** P06.1's work is done. PR27 merges only after the review log records a disposition for the governing Markdown it carries, with reads that cover its final text ([charter](../planning/dev-manager.md), "Read before it takes effect"; DM-03 G2). DM-03's read covered `fa4dc5f`, so every governing change since needs this read. The records also defer to it the close-out questions in items 2 to 4 below.
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`, and the manager's disposition in the [review log](../continuity/dev-manager/README.md). PR27's pre-merge checklist cites both.
 - **Stream variables:** none are added for this read. Dev Manager 2's container, started at 16:16 UTC on 28 September, holds the three `STREAM_*` variables; it never reads or uses them.
+- **Result:** given to Nathan with `<RECORDS_COMMIT>` as `89a8d018d6bdfba0fe41fa0b54964f33775ddaac`. Dev Manager 2 answered at 00:57 UTC on 29 September (`a60d8c1`; [report](../continuity/dev-manager/reviews/2026-09-29-dm-07-p06-1-close-out-read.md)). Nathan then answered item 6 (c) in its session (`f86f28d`; OD-36). The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-07". Item 5 below keeps the words as given, "within 7%"; the records now say "within about 7%" (AM5-08).
 - **Deletion condition:** prune after PR27 merges and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
