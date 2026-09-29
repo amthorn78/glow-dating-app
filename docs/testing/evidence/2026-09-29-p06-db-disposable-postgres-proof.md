@@ -177,7 +177,7 @@ App Manager 5 checked the relayed report against the pushed branch, the code and
 - **Classification:** the trusted policy from `main` (`47db18d`, sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs: `8651652` → `074eea1` is full scope (`behavior-or-empty`), 31 paths; `dff83d4` → `074eea1` is `ordinary-docs-only` (this record only); `47db18d` → `6f5866d` is full scope, and its only non-Markdown path outside `proofs/postgres-ordering/` is the workflow.
 - **The workflow,** read whole, as the CI policy's rule for workflow changes requires. The diff is the new job `database` and the gate's `needs` and job tuple, nothing else:
   - the job's condition is the other application jobs' condition; its checkout and setup-python pins are theirs, with `persist-credentials: false`; its timeout is 20 minutes; it references no secret and sets no `env:` of secrets; the workflow's permissions stay `contents: read`;
-  - the results upload uses `actions/upload-artifact` at `ea165f8d…`, the commit API artifact checks already uses (the CI policy's action table). The job's one warning is GitHub's: that action targets Node.js 20 and is forced to run on Node.js 24; the step succeeded;
+  - the results upload uses `actions/upload-artifact` at `ea165f8d…`, the commit Mobile checks already uses (the CI policy's action table). (Corrected after the exact-head review, F6: this said API artifact checks; AM5-12.) The job's one warning is GitHub's: that action targets Node.js 20 and is forced to run on Node.js 24; the step succeeded;
   - the credential step runs with `set +x` and `umask 077`, masks both generated passwords before anything else prints, and writes them only to files. The password reaches the container through `POSTGRES_PASSWORD_FILE` on a read-only mount, and the proof through the passfile that `PROOF_DB_PASSFILE` names. The role step reads its statement from a file, keeps psql's output in a file and then deletes the statement. The removal step runs `if: always()` and fails if a proof container remains.
 - **Code read,** not line by line, which is the exact-head review's work: `reference.py` (the send and every revocation), `design.py`, `controls.py`, `oracle.py`, `environment.py`, `settings.py`, `budget.py` and `__main__.py`, and the parts of `cases.py`, `observe.py`, `stress.py` and the tests that the observations below rest on. The reference takes no state filter into the locked read and refuses a missing row (`_lock`), and reads `clock_timestamp()` after the locks (`_time`).
 - **Offline re-run** in a scratch worktree of `dff83d4`, with Python 3.12.14, every command in a clean process (`env -i`), the install with the proxy and CA variables by reference:
@@ -187,17 +187,18 @@ App Manager 5 checked the relayed report against the pushed branch, the code and
 - **Hosted CI:** Foundation run [36520940933](https://github.com/amthorn78/glow-dating-app/actions/runs/36520940933) on `dff83d4`, a push run: all eight jobs succeeded (Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks, Foundation gate), and the gate printed `Application checks passed`. Database proof checks (job 109253447793) ran its fourteen steps, from set-up to the removal of the database, and its post steps, each `success`.
 - **The database job's log, read whole** (756 lines), against this record:
   - the image digest `sha256:d74eeac9…` on the pull; PostgreSQL 17.11 (`Debian 17.11-1.pgdg13+2`), `superuser` false, `track_commit_timestamp` on, `read committed` inside a writer's transaction; the sixteen migrations; `No changes detected`;
-  - `cases: 55/55 passed`; the twelve races at 200 iterations and 200 overlaps each, with the outcome counts this record gives; the ten controls `failed as intended`; the oracle: 573 submissions and 2,694 revocation rows, `violations in the design's rows: 0`, `== VERDICT: PASS ==`; the artifact (ID 11013181409, 5,941 bytes);
-  - **no password:** the log's only `***` are on lines 38, 94 and 152, `actions/checkout`'s masking of its own token, before the credential step, and no 48-character hexadecimal string appears. The credential and role steps print one line each, as this record says;
+  - `cases: 55/55 passed`; the twelve races at 200 iterations and 200 overlaps each, with the outcome counts this record gives (the log's figures: the exact-head review's F1 found the overlap counts of races 2 to 12 not established by the run); the ten controls `failed as intended`; the oracle: 573 submissions and 2,694 revocation rows, `violations in the design's rows: 0`, `== VERDICT: PASS ==`; the artifact (ID 11013181409, 5,941 bytes);
+  - **no password:** the log's only `***` are on lines 38, 94 and 152, the masking of the token that `actions/checkout` (lines 38 and 94) and `actions/setup-python` (line 152) each receive, before the credential step (corrected after the exact-head review: this said all three were checkout's; AM5-12), and no 48-character hexadecimal string appears. The credential and role steps print one line each, as this record says;
   - **each forced wait observed:** the 25 cases that call the forced helper each show `wait_event_type=Lock wait_event=transactionid` and a not-granted `transactionid/ShareLock`, and none of them passes `wait_required=False`;
   - disposal: `container removed: glow-proof-db-36520940933-1`, `credential files removed`, `no proof container remains`.
 
 #### Corrections to this record
 
-The implementation section above is left as the session wrote it. Two statements in it are wrong:
+The implementation section above is left as the session wrote it. Three statements in it are wrong (the third added after the exact-head review):
 
 - **"every one of the 26 cases with a held first transaction"** (the cases bullet): the cases it lists are 25, the twenty `send_holds` and `revocation_holds` cases and five named cases, and the log shows those 25 with an observed wait. No held case lacks one.
 - **`no_version_check`, "oracle O6"** (the controls table): the oracle found no violation under `control:no_version_check`; its two submissions were examined and neither broke a rule. The control failed through its case's expected refusals only. See observation 3 below.
+- **"all `actions/checkout`'s masking of its own token"** (the log bullet): line 152 is `actions/setup-python`'s `token` input; lines 38 and 94 are checkout's. None is a password (added after the exact-head review; AM5-12).
 
 #### Observations for the exact-head review
 
@@ -219,3 +220,131 @@ None of these blocks integration. The exact-head review assesses each and says w
 - **The P11 plan's DB06 and DB09** are marked "partially evidenced in CI (P06.DB)" in D6's words, with observation 1's limit on DB09, pending the exact-head review.
 - **The CI policy** now names Database proof checks, counts six application jobs and describes the job's disposable database (DM-08 7.1). It is governing: the Dev Manager reads it before PR28 merges.
 - **Next: the exact-head code and security review** of `6f5866d`, offline, reading run 36520940933's logs (the brief's review plan; DM-08 7.2).
+
+### Exact-head review of P06.DB (29 September 2026)
+
+Nathan ran the review session from revision 1 of the [review prompt](../../ephemeral/2026-09-29-p06-db-review-prompt.md) (records commit `dda1ed4`), in `Glow App - No Stream`, on Fable 5.1 at max, the cell TypeSafe v6 read. He relayed its report to App Manager 5 the same day. It reviewed the exact head `6f5866d505c5fd94ad9224ab9b23ba4e3bafaef5`.
+
+- **Verdict: changes required, narrowly.** The design, the job and its credential handling are sound, and nothing in the run is a false pass of the ordering guarantees.
+- **One should-fix finding is in a correction class** (F1, "make DB06's mark claim more than the run shows"): the stress run's per-race overlap count reads every race's log rows at the same iteration number, so only the first race's count is established.
+- **One should-fix finding outside the classes** (F2): the oracle's O2 misses a send stored at the version a revocation set. **Four nits** (F3 to F6).
+- **Everything else is confirmed:** DM-08 7.2's three log checks, the workflow, the artifact's contents, the scope, and all of the manager's corrections, observations and dispositions.
+
+#### The report, as relayed
+
+The session's notes before its report, as relayed, verbatim:
+
+> I'll start with the environment check (names only), then the start gate and the three classifications, before reading the change and running the offline checks.
+>
+> Environment check passed — none of the sensitive env vars (DATABASE_URL, HD_API_KEY, GEO_API_KEY, PG*, PROOF_DB_*, STREAM_*) are set, and Python 3.12.14 is available. Moving on to the start gate now.
+>
+> All start-gate checks pass. Now the three classifications with the trusted base policy.
+>
+> All three classifications matched expectations. Moving on to the reading phase, starting with the file list, modes, and governing documents.
+>
+> I'm reading the DM-08 report and the manager's disposition, then the evidence record, the data-model rules and the code. Continuing with the rest of DM-08 and the DM README section.
+>
+> I've wrapped up the governing documents and session evidence. Now I'll pull the workflow diff/full workflow, proof package sources/tests, persistence models/migrations, API forbidden list/pin test, and the later commit's records all together.
+>
+> I'll read through the proof package's sources, including the saved reference design, other modules, tests, persistence models, and related records in parallel.
+>
+> I'll pull in the remaining independent modules—cases, observation, oracle, stress, control, result, tests, persistence models, and later records—together now.
+
+The report, verbatim, with its headings moved down to fit this record:
+
+**Review report: P06.DB exact-head review of `6f5866d505c5fd94ad9224ab9b23ba4e3bafaef5`**
+
+Prompt received: revision 1, from commit `dda1ed4135acb914791b0eb6ce7ae8a5203c1d67`.
+
+Environment check, names only: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` is set. No `PG*`, `PROOF_DB_*` or `STREAM_*` name is set. `command -v python3.12` printed `/root/.local/bin/python3.12`, Python 3.12.14, with `$HOME/.local/bin` first on PATH in every proof process.
+
+Head reviewed: `git rev-parse HEAD` printed `6f5866d505c5fd94ad9224ab9b23ba4e3bafaef5`. `HEAD^2` is `074eea18a04cf60d8e5235f52442879262eb5fa2`, `HEAD^1` is `9768fcc42909551786784c561a869d3cc7fa20f6`, the one merge base with `origin/main` is `47db18dfec3f62626f4e09f65f52c7a2e10c9e3e`, `dda1ed4` descends from the head, the diff is 31 files, 5,072 insertions, 2 deletions, and the diff of `proofs .github services scripts apps packages` against `dff83d4` is empty. The trusted policy from `main`, sha256 `dec69a26…`, run with `python3 -I` outside the tree:
+
+1. `47db18d` → `6f5866d`: `{"full": true, "reason": "behavior-or-empty", …}`, 42 paths. The only non-Markdown paths are `proofs/postgres-ordering/**` and `.github/workflows/foundation.yml`; the exclusion command printed nothing.
+2. `47db18d` → `9768fcc`: `{"full": false, "reason": "ordinary-docs-only", …}`, 11 Markdown paths.
+3. `6f5866d` → `dda1ed4`: `{"full": false, "reason": "ordinary-docs-only", …}`, 10 Markdown paths.
+
+PR28's head has since moved to `49525a6` (one records-only commit after `dda1ed4`). I fetched it and classified `6f5866d` → `49525a6`: `ordinary-docs-only`, the same 10 Markdown paths, no non-Markdown change. This review still covers the exact head `6f5866d`.
+
+##### Verdict and findings
+
+**Verdict: changes required, narrowly.** The proof's design, the job and its credential handling are sound, and nothing in the run is a false pass of the ordering guarantees. One should-fix finding falls in a correction class: the stress run's per-race overlap count is contaminated across races, so the evidence record's stress numbers claim a measurement the run did not make. Correct that code and the record, then PR28 can go to the Dev Manager's read and the merge. No finding is blocking.
+
+**F1. Should fix, in class "make DB06's mark claim more than the run shows".** `proofs/postgres-ordering/glow_ordering_proof/stress.py:111` to `131`. `_intervals` selects the log rows by `run_tag` and `iteration` only, never by the race (`case_id`), and `_overlapped` needs one `send*` interval and one non-send interval. Every design race runs under the one tag `design:stress` with iterations 1 to 200, so race k at iteration N also sees the rows of races 1 to k−1 at iteration N. An iteration counts as overlapped if any earlier race's iteration N overlapped. The 10-overlap floor of the brief's item 6.3 is therefore enforced for the first race only. `race.racing_duplicates` cannot measure its own overlap at all, because both of its rows are `send` and `send_attempt`, yet it reports 200 of 200; those are inherited. I confirmed this offline against the installed package: a duplicates iteration with plainly concurrent intervals returns `False`, and a disjoint iteration plus an earlier race's overlapping rows returns `True`; the SQL's `WHERE` clause is `run_tag = %s AND iteration = %s AND kind <> 'sign_in'`. Fix: add `AND case_id = %s` with the race id, and for the duplicates race count an overlap when any two writers' intervals intersect. Record: the DB06 summary bullet ("each completed 200 iterations with 200 measured overlaps"), the stress table's overlaps column and the "How an overlap is measured" paragraph must say that the per-race counts for races 2 to 12 are not established by the run, that the first race's 200 of 200 is clean, and that the duplicates race's overlap was never measured; the README's "How a pass is judged" bullet on the stress run and its limits line need the same. Whether to rerun the two-minute job with the fix before the mark stands is the manager's call; I recommend it, since the corrected code yields real per-race numbers. The interleaving of the construction itself is independently shown: both stress controls, using the same barrier start and seeded head start, produced a stale commit at iteration 1.
+
+**F2. Should fix, not in a correction class.** `oracle.py:187` to `196`. O2 flags a contact revocation of S's match only when its version exceeds S's. The send stores the locked match's version, so a send that committed after a block or unmatch at that match's new version passes O2 and O6. I showed this offline with constructed rows: a submission at v2 committed after a block at v2 yields no violation. Under the reference design this cannot occur, and the named and forced cases catch a design that ignores match state (`sequential_send_first` sends at the new version and expects `match_not_active`; `unblock_no_resurrect`), so the suite fails. But the oracle "over every row" does not encode the brief's invariant that no send commits after any revocation that invalidates it, and when P06.2 runs this suite's stress races against the adapter, an adapter that checks versions but not match state would pass the oracle. Fix: in O2, flag any contact revocation with a version of S's match that committed before or with S, regardless of the version comparison; keep O6. Not in a class because the suite as it stands would still fail.
+
+**F3. Nit.** `controls.py:163` and `186`. A forced control counts as "failed as intended" on any case failure, a harness error included, and a stress control on any harness failure, not only its intended signal. In this run every control's recorded signal is the intended one: unobserved waits with commit order and oracle violations, expected-refusal mismatches, the deadlock, and O2/O6, O3, O4, O5 violations. Fix: require the expected signal, such as an oracle violation or the named expectation. Not in a class.
+
+**F4. Nit.** `observe.py:168` to `223`. The wait observation confirms `wait_event_type = 'Lock'` and a not-granted `pg_locks` entry for the arriver, but not which backend blocks it. Only two writer connections exist in a forced case, so the wait can only be on the holder; `pg_blocking_pids(pid)` would record that explicitly. Not in a class.
+
+**F5. Nit, records.** The brief's D5 says the account locks "and each account's `blocks_version`" order a first block against a send. The send never reads `blocks_version`; the account locks alone do the ordering in P06.DB, which is sufficient, and the counter is bumped for discovery's snapshot use. Not in a class.
+
+**F6. Nit, records.** The results upload's pin `actions/upload-artifact@ea165f8d…` targets Node.js 20 and GitHub warns it is forced onto Node.js 24. It is the pin Mobile checks already uses, and the step succeeded. Track it in the CI policy's action table. Not in a class.
+
+##### Checks and confirmations
+
+**DM-08 7.2 from the database job's log,** job 109253447793, read whole, 756 lines:
+
+- **No password: confirmed.** The three `***` are on lines 38, 94 and 152, `actions/checkout`'s and `setup-python`'s token masking, before the credential step at line 289. No 48-character hexadecimal string appears; the only long hex runs are 40 characters (action SHAs) and 64 (the image digest, the container id, the artifact zip digest). The credential step prints one line, the role step one line, and no connection option, passfile content or connection string appears.
+- **Each forced wait observed: confirmed.** 25 cases hold a first transaction: the twenty `send_holds` and `revocation_holds` cases, `racing_duplicates`, `session_expires_during_wait` and the three pairwise opposing-writer cases. Each shows `pid 98 wait_event_type=Lock wait_event=transactionid pg_locks not granted: transactionid/ShareLock` after 1 or 2 polls. The artifact lists 25 cases with waits and none unobserved, and `wait_required` is never passed as `False`.
+- **Ten controls failed in the same run: confirmed,** with `no_locks.stress` and `no_account_lock.stress` at first failing iteration 1 and 1, and the oracle's violations by tag exactly as the record's oracle summary says.
+
+**The workflow: confirmed** as exactly the new `database` job plus the gate's `needs` and job tuple. The six application jobs share one `if:` string; the job has the other jobs' checkout and setup-python pins, `persist-credentials: false`, `python-version '3.12.14'`, `timeout-minutes: 20`, no job-level `env:`, and no `secrets.` reference; permissions stay `contents: read`; the gate's documentation-only message is unchanged. Run 36520940933 on `dff83d4`: all eight jobs `success`, and the gate printed `Application checks passed` with `database: success` in `RESULTS`. PR28's latest pull-request run is 36529602797, event `pull_request`, head `49525a6`, which contains `6f5866d`: all eight jobs `success`, and Database proof checks, job 109280113746, ran its fourteen steps through the database removal, not skipped.
+
+**The results artifact:** I downloaded artifact 11013181409 through the API, 5,941 bytes, zip sha256 `e0efe199…` matching the log. `results.json` holds no password, passfile path, `PROOF_DB_` name, host, port, runner path or connection string, and no hex run of 32 or more characters. Its verdict is PASS with no reasons, and its cases, races, controls and oracle counts match the log and the record.
+
+**Checks run, exact results:**
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | clean, exit 0 |
+| The three classifications, plus `6f5866d` → `49525a6` | as listed above |
+| `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock` in `env -i` with proxy and CA variables by reference; `pip check` | installed 12 packages; `No broken requirements found.` |
+| `env -i PATH HOME LANG .venv/bin/python -m unittest discover -s tests -t .` | `Ran 40 tests`, `OK` |
+| `.venv/bin/ruff check .`; `.venv/bin/ruff format --check .`; `.venv/bin/mypy` | `All checks passed!`; `23 files already formatted`; `Success: no issues found in 23 source files` |
+| `cd services/api && python3.12 -m unittest tests.test_toolchain_pins` | `Ran 3 tests`, `OK` |
+| Secret scan over `git diff HEAD^1 HEAD` | no value of any kind; the 49 lines matching secret words are variable names, comments, the credential step's own text, test fixtures with `x`, and the placeholder `SECRET_KEY`; no email address; long hex outside the locks is the three action pins, the image digest and commit SHAs in the record; every lock line is a pin, a `--hash=sha256:` line, a comment or blank, 420 hash lines |
+| Locks | Django 5.2.17 with hashes byte-identical to `services/api/requirements.lock` in both proof locks; Ruff 0.16.8 and mypy 2.3.1 as the API's dev lock; `psycopg[binary]` 3.3.6 is the one new runtime dependency, no allauth |
+| Throwaway offline tests, no connection opened | `_overlapped` behaviour as F1 states; the oracle on constructed rows flags O1 to O8 as documented and shows F2's gap |
+| Scope | 31 paths, all mode 100644, no symlink; nothing under `services/`, `scripts/`, `apps/`, `packages/` or `.gitignore` changed; the package imports nothing from the API but `glow_persistence` |
+
+##### Records, marks, dispositions and limits
+
+**Areas reviewed with no findings.** The send's pre-lock reads are the match pair and the session's account only, immutable in the models and untouched by every writer. The lock order is lower account, higher account, match, session, each by primary key with `FOR UPDATE`, time is `clock_timestamp()` after the locks, checks run on the rows as locked in the stated order, authorization precedes deduplication, and the submission, its outbox event and the log row commit in one transaction. Every revocation takes locks the send takes in a consistent global order, so no interleaving under `READ COMMITTED` lets a send pass on a replaced row version, no writer can deadlock the design, and no contact revocation skips a lock. The block check reads unlocked rows only under the account locks every block writer takes. Deletion is the lifecycle transition with its job and tombstone. The four retry rules behave as D5 says, and the racing duplicates yield one row with no constraint error. The settings refuse every forbidden and `PG*` name at import, accept loopback or an absolute socket path only, and give an explicit passfile with SSL and GSS disabled and no service name, so no libpq default file applies. The credential step, the container's loopback publish, the read-only password mount, the digest pin, `track_commit_timestamp=on`, the `NOSUPERUSER` role with `superuser false`, and the `if: always()` removal that fails if a proof container remains are as the brief requires. Bindings are never revoked in the package, which is the provider half left to P06.2.
+
+**The manager's two corrections:** agree with both. 25 held cases, not 26, as the log and artifact show. `no_version_check` produced no oracle violation; its `oracle_violations` is 0 in the artifact and its signal carries no oracle suffix.
+
+**The manager's five observations:** agree with all five. On observation 1, `session_epoch_stale` occurs nowhere in the log or the artifact. On observation 2, I checked each guarantee without its own control: the idempotency conflict, the identical replay, the single row under racing duplicates, unblock without resurrection, deletion as a lifecycle transition and the repeated unmatch would each be caught deterministically by their named case, not by the oracle; the epoch check alone would not be caught by anything, which the DB09 limit already states; and a control that drops only the match lock would not fail, because the account locks alone order every writer here, so that gap is expected. Nothing there changes DB06's mark. On observation 3, agree, and recording the request's version in the log row would let O6 see it. On observation 4, the artifact carries no connection data, confirmed by download. **Dispositions:** agree with all, subject to F1's correction.
+
+**The marks.** DB06 is accurate as worded, but the evidence record behind it must carry F1's correction; if the manager prefers a limit line: "the stress run's per-race overlap counts are not established for eleven of the twelve races; the randomized construction's interleaving is shown by the stress controls failing at their first iteration". DB09 is accurate as worded with its limit; an optional addition: "O7 checks the stored epoch's consistency, but no case or control exercises the epoch check as the deciding refusal".
+
+**The records.** The session's section agrees with the code and the run apart from the two corrected statements and F1's overlap numbers, which the run does not establish. The README matches the code, with F1's stress bullet needing the same correction. The CI policy at `dda1ed4` describes the job as built.
+
+**Limits.** No database was started, and the run was not repeated; the log, the artifact and the runs were read through the GitHub API. PostgreSQL's ordering of commit timestamps behind lock release, which makes ties impossible in the design's rows, rests on documented behaviour and was not tested here. The local iteration runs on PostgreSQL 16.13 cannot be verified and count for nothing. Notion was not read. I changed nothing in the repository, on GitHub or in Notion; only the ignored `.venv/` and my scratchpad hold scratch work.
+
+#### Manager verification of the review (App Manager 5, 29 September 2026)
+
+- **F1: confirmed in the code.**
+  - `stress.py:111` to `125`: `_intervals` selects `WHERE run_tag = %s AND iteration = %s AND kind <> 'sign_in'`, although `run_race` sets `case_id = race.id` for every log row it writes (`:234`) and restarts `iteration` at 1 for each race (`:233`).
+  - Every design race runs under one tag. From the second race on, an iteration's intervals therefore include the earlier races' rows at the same iteration number, and `_overlapped` (`:128` to `:131`) counts the iteration if any pair among them overlapped.
+  - `race.block_by_low` runs first, so its 200 of 200 is clean. The other eleven races' counts are not established.
+  - `race.racing_duplicates`'s two writers are both sends (`:180` to `:183`), so its own rows can never count.
+  - Not affected: the per-race oracle attribution (`attach_oracle`, `:287` to `:293`, which filters by `case_id`), and each race's outcome counts, which come from its own results.
+- **F2: confirmed.** `oracle.py:190` flags O2 only when the revocation's version exceeds the send's, and the send stores the locked match's version (`reference.py:250` to `252`).
+- **F3 and F4:** as the review describes; both are nits.
+- **F5: confirmed.** The brief's D5 says the account locks "and each account's `blocks_version`" order a first block against a send. The send reads no `blocks_version`. The block writers bump it (`reference.py:350`, `:414`), the cases check the bump (`cases.py:274`, `:617`), and the account locks do the ordering.
+- **F6: confirmed, and it corrects the manager's verification.** The upload pin was already used by Mobile checks, in its step "Save empty-form layout evidence" (`foundation.yml:112`), not by API artifact checks as the verification said.
+- **The log's three `***`:** lines 38 and 94 are `actions/checkout`'s; line 152 is `actions/setup-python`'s `token` input. The session's record said all three were checkout's, and the manager's verification repeated that without deriving it. None is a password, so no conclusion changes. This slip and F6's are AM5-12.
+- **The review's other statements** agree with the manager's own reading: the start gate, the classifications, DM-08 7.2's three checks, the workflow, CI on `49525a6` and the scope. The review downloaded the artifact; the manager did not.
+
+#### Disposition
+
+- **F1 is in a correction class.** P06.DB-C1, an offline correction pass, fixes the measurement with a test. It reruns the job on its head for real per-race overlap counts, and corrects in place the record's statements that rest on the old counts: the DB06 summary bullet, the stress table's overlaps and the overlap paragraph, and the README's stress bullet and limits line. Until C1's run, the randomized part of DB06's evidence rests on the first race and on the two stress controls failing at their first iteration. The P11 plan's DB06 mark carries that limit.
+- **F2 goes into C1.** O2 is to flag any applied contact revocation of the send's match that committed before or with the send, whatever its version; O6 stays. In P06.DB a block or unmatch is never undone for its match (an unblock leaves the match `restricted`, and there is no rematch), so the stronger rule holds for every row the design writes.
+- **F3 and F4 go into C1,** each with a test. A control counts as failed as intended only by its own expected signal. A forced case records the blocking backend with `pg_blocking_pids` and requires it to be the holder's.
+- **F5:** the manager corrected D5's sentence in the brief. The account locks order a first block against a send; each block also bumps the blocking account's `blocks_version`, the persistent account revision, which the send does not need to read because it holds both account locks. The design is unchanged.
+- **F6:** the CI policy's action table now records the Node.js 20 warning, and that Mobile checks and Database proof checks share the pin. A newer pin is a later change, not P06.DB's. The manager's verification is corrected in place (AM5-12).
+- **Observation 3** (the oracle cannot see a stale client version) stays a recorded limit. The named case and the `no_version_check` control catch a missing version check deterministically, as the review confirms.
+- **The marks:** DB06 stands as worded, pending C1, with F1's interim limit. DB09 stands, and its limit takes the review's more precise wording.
+- **Next:** the P06.DB-C1 correction prompt, then C1's exact-head review. After that come the Dev Manager's read of PR28's governing changes, Codex's review and the merge.

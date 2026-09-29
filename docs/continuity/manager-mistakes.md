@@ -73,6 +73,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-09 | 29 Sep 2026 | accuracy | Syncing the batch that recorded DM-07 (`c775f39`), updated the P06.1 row's *Next Action* but left its page body saying "The Dev Manager's close-out read (DM-07) is next." A repeat of AM5-03 | App Manager 5, fetching the whole row while syncing the next batch |
 | AM5-10 | 29 Sep 2026 | accuracy | The post-merge batch (`041a081`) marked P06.1 done in the brief's Work ID line and status paragraph but left its headline "Status: in progress." The supersession sweep ran after the commit, not before | App Manager 5, in its supersession sweep before that batch's Notion sync |
 | AM5-11 | 29 Sep 2026 | accuracy | Created a Work Register row for P06.DB without searching for an existing one; the register already held P06.DB's planned-stage row, "Planned", so it had two | Dev Manager 2, DM-08 section 8 |
+| AM5-12 | 29 Sep 2026 | accuracy | The P06.DB verification named API artifact checks as the job already using the upload pin (it is Mobile checks), and repeated the session's "all three `***` are checkout's" without deriving it (line 152 is setup-python's) | The P06.DB exact-head review (F6 and its log confirmation) |
 
 ## App Manager 2
 
@@ -498,3 +499,13 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on any decision. The new row was the one kept current; the older row stayed "Planned" for under an hour after the item started.
 - **Correction:** the older row now sits under the current row as a page, its text kept in its body, so the Work Register holds one P06.DB row.
 - **Prevention:** the manager workflow's Notion checklist now asks for a search of the database by Work ID before a row is created, and the old-wording query also looks for duplicate Work IDs (DM-08 section 8).
+
+### AM5-12 — Two unchecked attributions in the P06.DB verification (accuracy)
+
+- **What happened:** App Manager 5's verification of P06.DB, in its evidence record, made two attributions without checking them:
+  - it said the results upload used the `actions/upload-artifact` commit that API artifact checks already used. The job that already used it is Mobile checks, in its step "Save empty-form layout evidence";
+  - it repeated the session's statement that the log's three `***` were all `actions/checkout`'s token masking. Line 152 is `actions/setup-python`'s `token` input.
+- **Caught by:** the P06.DB exact-head review: F6 names Mobile checks, and its log confirmation names setup-python. The manager then found both slips when checking the review's statements.
+- **Effect:** two wrong attributions in the record. No verdict rests on either: the pin is the same commit, and no mask stands for a password. The review prompt, given as written, repeats the second one.
+- **Correction:** both verification bullets are corrected in place and marked; the session's statement is added to the verification's "Corrections to this record".
+- **Prevention:** a verification states which job or step a line belongs to only after reading it there. It is the same rule as AM4-06's, which asks for every count to be derived from its source.
