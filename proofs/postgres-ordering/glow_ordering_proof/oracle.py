@@ -9,16 +9,24 @@ never call order or what the harness believes happened.
 Rules, for every ``MessageSubmission`` S:
 
 - O1 S has exactly one ``send`` log row, committed in the same transaction.
-- O2 no ``contact_revoked``-writing revocation of S's match with a version above S's
-  contact version committed before S.
-- O3 no sign-out or expiry of S's session committed before S.
-- O4 no suspension or deletion of either member of S's match committed before S.
+- O2 no applied contact revocation of S's match committed before or with S, whatever
+  its version: a block or unmatch whose log row carries a contact version (the one that
+  turned the match ``restricted`` or ``unmatched``). In P06.DB a block or unmatch is
+  never undone for its match (an unblock leaves the match ``restricted``, and there is
+  no rematch), so this rule must hold for every row the design writes. The rule does
+  not compare versions: a send stored at the version the revocation set is still a send
+  after the revocation (P06.DB-C1, the exact-head review's F2). O6 stays beside it.
+- O3 no sign-out or expiry of S's session committed before or with S.
+- O4 no suspension or deletion of either member of S's match committed before or with S.
 - O5 S committed before its session's expiry time.
 - O6 S's contact version is the match's version as of S's commit: one plus the number
   of contact revocations of the match committed before S.
 - O7 S's epoch is the actor's epoch as of S's commit: one plus the number of account
   revocations of the actor committed before S; and the session's own epoch.
 - O8 one row per (actor, idempotency key).
+
+Equal commit timestamps count as violations. ``evaluate`` reads the rows from the
+database; ``judge`` applies the rules to them, so the rules are testable offline.
 """
 
 from __future__ import annotations
@@ -80,7 +88,9 @@ class OracleReport:
 
 
 @dataclass(frozen=True)
-class _Submission:
+class SubmissionRow:
+    """A ``MessageSubmission`` with its send log row, as the oracle reads it."""
+
     id: UUID
     actor: UUID
     contact_version: int
@@ -99,7 +109,9 @@ class _Submission:
 
 
 @dataclass(frozen=True)
-class _Revocation:
+class RevocationRow:
+    """A revocation's log row, as the oracle reads it."""
+
     kind: str
     match: UUID | None
     actor: UUID | None
@@ -113,13 +125,21 @@ def _fetch(cursor: Any, sql: str, params: list[object] | None = None) -> list[tu
     return list(cursor.fetchall())
 
 
-def evaluate(*, run_tag: str | None = None, iteration: int | None = None) -> OracleReport:
-    """Every row, or the rows of one run_tag (and one iteration) when given."""
+def evaluate(
+    *, run_tag: str | None = None, case_id: str | None = None, iteration: int | None = None
+) -> OracleReport:
+    """Every submission, or those of one run_tag, one case or race (``case_id``) and one
+    iteration when given. A race's per-iteration check names its own ``case_id``, since
+    races share a run tag and number their iterations from 1 (P06.DB-C1, F1). The
+    revocations and sessions are always read whole."""
     where = []
     params: list[object] = []
     if run_tag is not None:
         where.append("l.run_tag = %s")
         params.append(run_tag)
+    if case_id is not None:
+        where.append("l.case_id = %s")
+        params.append(case_id)
     if iteration is not None:
         where.append("l.iteration = %s")
         params.append(iteration)
@@ -143,7 +163,7 @@ def evaluate(*, run_tag: str | None = None, iteration: int | None = None) -> Ora
             """,
             params,
         )
-        submissions = [_Submission(*row) for row in rows]
+        submissions = [SubmissionRow(*row) for row in rows]
         revocation_rows = _fetch(
             cursor,
             f"""
@@ -153,7 +173,7 @@ def evaluate(*, run_tag: str | None = None, iteration: int | None = None) -> Ora
             WHERE kind IN ('block', 'unmatch', 'suspend', 'delete', 'sign_out', 'expire')
             """,
         )
-        revocations = [_Revocation(*row) for row in revocation_rows if row[5] is not None]
+        revocations = [RevocationRow(*row) for row in revocation_rows if row[5] is not None]
         sessions = {
             row[0]: (row[1], row[2], row[3])
             for row in _fetch(
@@ -161,13 +181,23 @@ def evaluate(*, run_tag: str | None = None, iteration: int | None = None) -> Ora
                 "SELECT id, account_id, epoch, expires_at FROM glow_persistence_accountsession",
             )
         }
+    return judge(submissions, revocations, sessions)
+
+
+def judge(
+    submissions: list[SubmissionRow],
+    revocations: list[RevocationRow],
+    sessions: dict[UUID, tuple[UUID, int, datetime]],
+) -> OracleReport:
+    """The rules O1 to O8 over rows already read; ``sessions`` maps a session id to its
+    (account id, epoch, expires_at)."""
     report = OracleReport(len(submissions), len(revocations))
     keys: Counter[tuple[UUID, str]] = Counter()
     for s in submissions:
         report.by_tag[s.run_tag] = report.by_tag.get(s.run_tag, 0) + 1
         keys[(s.actor, s.idempotency_key)] += 1
 
-        def flag(rule: str, detail: str, s: _Submission = s) -> None:
+        def flag(rule: str, detail: str, s: SubmissionRow = s) -> None:
             report.violations.append(
                 Violation(rule, s.run_tag, s.case_id, s.iteration, s.id, detail)
             )
@@ -187,7 +217,7 @@ def evaluate(*, run_tag: str | None = None, iteration: int | None = None) -> Ora
             if r.kind in CONTACT_KINDS and r.match == s.match and r.contact_version is not None:
                 if r.committed < s.committed:
                     contact_before += 1
-                if r.contact_version > s.contact_version and r.committed <= s.committed:
+                if r.committed <= s.committed:
                     flag(
                         "O2",
                         f"{r.kind} v{r.contact_version} committed {r.committed.isoformat()}"

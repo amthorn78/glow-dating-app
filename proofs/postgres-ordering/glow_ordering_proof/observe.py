@@ -142,8 +142,10 @@ class ProofLog:
 
 @dataclass(frozen=True)
 class ObservedWait:
-    """A second connection observed waiting on a lock, from pg_stat_activity and
-    pg_locks (item 6.2)."""
+    """A second connection observed waiting on a lock, from pg_stat_activity, pg_locks
+    and pg_blocking_pids (item 6.2). ``holder_pid`` is the backend that holds the locks;
+    ``blocking_pids`` is what ``pg_blocking_pids`` returned for the waiting backend at
+    the last poll that found it waiting on a lock (P06.DB-C1, F4)."""
 
     pid: int
     observed: bool
@@ -154,71 +156,97 @@ class ObservedWait:
     polls: int
     elapsed_ms: int
     ended_first: bool = False
+    holder_pid: int | None = None
+    blocking_pids: tuple[int, ...] = ()
 
     def summary(self) -> str:
+        blockers = ",".join(str(p) for p in self.blocking_pids) or "none"
         if not self.observed:
-            return "no wait observed" + (" (writer finished first)" if self.ended_first else "")
+            text = "no wait observed" + (" (writer finished first)" if self.ended_first else "")
+            if self.wait_event_type == "Lock":
+                text += (
+                    f" (pid {self.pid} waited on a lock, blocked by [{blockers}],"
+                    f" not by the holder pid {self.holder_pid})"
+                )
+            return text
         return (
             f"pid {self.pid} wait_event_type={self.wait_event_type} wait_event={self.wait_event}"
-            f" pg_locks not granted: {self.locktype}/{self.mode} after {self.polls} polls,"
-            f" {self.elapsed_ms} ms"
+            f" pg_locks not granted: {self.locktype}/{self.mode}"
+            f" pg_blocking_pids=[{blockers}] (holder pid {self.holder_pid})"
+            f" after {self.polls} polls, {self.elapsed_ms} ms"
         )
+
+
+def waits_on_holder(
+    wait_event_type: str | None, blocking_pids: tuple[int, ...], holder_pid: int
+) -> bool:
+    """The decision for a forced case: the arriver waits on a lock, and the holder's
+    backend is among the backends ``pg_blocking_pids`` names. A wait on any other
+    backend is not the forced interleaving and does not count as observed."""
+    return wait_event_type == "Lock" and holder_pid in blocking_pids
 
 
 def observe_lock_wait(
     pid: int,
     *,
+    holder_pid: int,
     finished: Callable[[], bool],
     timeout: float = budget.WAIT_OBSERVATION_SECONDS,
 ) -> ObservedWait:
-    """Poll pg_stat_activity for ``pid`` until its wait_event_type is 'Lock', it finishes,
-    or the timeout passes. Uses this thread's own connection (autocommit)."""
+    """Poll pg_stat_activity for ``pid`` until it waits on a lock that the holder's
+    backend (``holder_pid``) holds, it finishes, or the timeout passes. Uses this
+    thread's own connection (autocommit)."""
     started = time.monotonic()
     polls = 0
+    last: tuple[str | None, str | None, tuple[int, ...]] = (None, None, ())
+
+    def elapsed() -> int:
+        return int((time.monotonic() - started) * 1000)
+
     with connection.cursor() as cursor:
         while True:
             polls += 1
             cursor.execute(
-                "SELECT wait_event_type, wait_event FROM pg_stat_activity WHERE pid = %s", [pid]
+                "SELECT wait_event_type, wait_event, pg_blocking_pids(pid)"
+                " FROM pg_stat_activity WHERE pid = %s",
+                [pid],
             )
             row = cursor.fetchone()
             if row is not None and row[0] == "Lock":
-                cursor.execute(
-                    "SELECT locktype, mode FROM pg_locks WHERE pid = %s AND NOT granted", [pid]
-                )
-                lock = cursor.fetchone() or (None, None)
-                return ObservedWait(
-                    pid,
-                    True,
-                    row[0],
-                    row[1],
-                    lock[0],
-                    lock[1],
-                    polls,
-                    int((time.monotonic() - started) * 1000),
-                )
-            if finished():
-                return ObservedWait(
-                    pid,
-                    False,
-                    None,
-                    None,
-                    None,
-                    None,
-                    polls,
-                    int((time.monotonic() - started) * 1000),
-                    ended_first=True,
-                )
-            if time.monotonic() - started > timeout:
+                blockers = tuple(int(p) for p in (row[2] or ()))
+                last = (row[0], row[1], blockers)
+                if waits_on_holder(row[0], blockers, holder_pid):
+                    cursor.execute(
+                        "SELECT locktype, mode FROM pg_locks WHERE pid = %s AND NOT granted",
+                        [pid],
+                    )
+                    lock = cursor.fetchone() or (None, None)
+                    return ObservedWait(
+                        pid,
+                        True,
+                        row[0],
+                        row[1],
+                        lock[0],
+                        lock[1],
+                        polls,
+                        elapsed(),
+                        holder_pid=holder_pid,
+                        blocking_pids=blockers,
+                    )
+            ended = finished()
+            if ended or time.monotonic() - started > timeout:
                 return ObservedWait(
                     pid,
                     False,
-                    None,
-                    None,
+                    last[0],
+                    last[1],
                     None,
                     None,
                     polls,
-                    int((time.monotonic() - started) * 1000),
+                    elapsed(),
+                    ended_first=ended,
+                    holder_pid=holder_pid,
+                    blocking_pids=last[2],
                 )
             time.sleep(0.002)
 

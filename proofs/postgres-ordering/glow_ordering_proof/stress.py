@@ -4,9 +4,13 @@ budget, with a measured overlap count.
 An overlap is measured from the database: each writer's transaction interval is
 [``now()`` inside its transaction, its commit timestamp] when it committed, or
 [``now()``, ``clock_timestamp()`` read just before its rollback] when it was refused
-(recorded afterwards as an attempt row). An iteration overlapped when the send's
-interval and a revocation's interval intersect. A race whose iterations never
-overlapped proves nothing, so the floors in ``budget`` apply.
+(recorded afterwards as an attempt row). Each race reads only its own rows: the run
+tag, the race's ``case_id`` and the iteration, since every design race shares one run
+tag and numbers its iterations from 1. An iteration overlapped when two of its own
+writers' intervals intersect: in a two-writer race the send's and the revocation's; in
+``race.racing_duplicates`` the two sends'; in ``race.opposing_writers`` the send's and
+any revocation's. A race whose iterations never overlapped proves nothing, so the
+floors in ``budget`` apply.
 """
 
 from __future__ import annotations
@@ -108,8 +112,12 @@ class RaceResult:
         }
 
 
-def _intervals(run_tag: str, iteration: int) -> list[tuple[str, datetime, datetime]]:
-    """Each writer's [start, end] of this iteration, from the log."""
+Interval = tuple[str, datetime, datetime]
+
+
+def _intervals(run_tag: str, case_id: str, iteration: int) -> list[Interval]:
+    """Each writer's [start, end] of this race's iteration, from the log: only the rows
+    of this run tag, this race (``case_id``) and this iteration (P06.DB-C1, F1)."""
     with connection.cursor() as cursor:
         cursor.execute(
             f"""
@@ -117,18 +125,32 @@ def _intervals(run_tag: str, iteration: int) -> list[tuple[str, datetime, dateti
                    coalesce(attempt_start, xact_start),
                    coalesce(ended_at, pg_xact_commit_timestamp(xmin))
             FROM {LOG_TABLE}
-            WHERE run_tag = %s AND iteration = %s AND kind <> 'sign_in'
+            WHERE run_tag = %s AND case_id = %s AND iteration = %s AND kind <> 'sign_in'
             """,
-            [run_tag, iteration],
+            [run_tag, case_id, iteration],
         )
         rows = cursor.fetchall()
     return [(str(k), s, e) for k, s, e in rows if s is not None and e is not None]
 
 
-def _overlapped(intervals: list[tuple[str, datetime, datetime]]) -> bool:
+def _intersect(a: tuple[datetime, datetime], b: tuple[datetime, datetime]) -> bool:
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def _overlapped(race_kind: str, intervals: list[Interval]) -> bool:
+    """Whether two of the iteration's own writers' database intervals intersect.
+
+    ``revocation`` and ``opposing``: the send's and any revocation's. ``duplicates``:
+    both writers are sends, so any two of the sends'."""
     sends = [(s, e) for k, s, e in intervals if k.startswith("send")]
+    if race_kind == "duplicates":
+        return any(
+            _intersect(sends[i], sends[j])
+            for i in range(len(sends))
+            for j in range(i + 1, len(sends))
+        )
     others = [(s, e) for k, s, e in intervals if not k.startswith("send")]
-    return any(s1 < e2 and s2 < e1 for s1, e1 in sends for s2, e2 in others)
+    return any(_intersect(send, other) for send in sends for other in others)
 
 
 def _gated(barrier: Barrier, delay: float, writer: Callable[[], Result]) -> Callable[[], Result]:
@@ -269,10 +291,10 @@ def run_race(
                 result.harness_failures.append(
                     f"iteration {iteration}: {len(rows)} rows for one key"
                 )
-        if _overlapped(_intervals(run_tag, iteration)):
+        if _overlapped(race.kind, _intervals(run_tag, race.id, iteration)):
             result.overlaps += 1
         if stop_at_first_violation:
-            report = oracle.evaluate(run_tag=run_tag, iteration=iteration)
+            report = oracle.evaluate(run_tag=run_tag, case_id=race.id, iteration=iteration)
             if report.violations or result.harness_failures:
                 result.violations.extend(report.violations)
                 result.first_failing_iteration = iteration

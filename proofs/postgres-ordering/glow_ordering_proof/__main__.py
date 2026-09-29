@@ -84,8 +84,12 @@ def run(seed: int, results_path: Path | None) -> int:
         for control in CONTROLS:
             outcome = run_control(control, log=log, workers=workers, seed=seed)
             report.controls.append(outcome)
-            verdict = "failed as intended" if outcome.failed_as_intended else "DID NOT FAIL"
-            print(f"control {control.id}: {verdict}", flush=True)
+            verdict = (
+                "failed as intended" if outcome.failed_as_intended else "DID NOT FAIL AS INTENDED"
+            )
+            print(
+                f"control {control.id}: declared signal {outcome.declared}: {verdict}", flush=True
+            )
         report.oracle = oracle.evaluate()
         for race_result in report.races:
             stress.attach_oracle(race_result, report.oracle, "design:stress")

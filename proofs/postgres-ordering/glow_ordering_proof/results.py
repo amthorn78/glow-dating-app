@@ -52,7 +52,10 @@ class Report:
                 )
         not_failing = [c.control_id for c in self.controls if not c.failed_as_intended]
         if not_failing:
-            reasons.append(f"controls that never failed: {', '.join(not_failing)}")
+            reasons.append(
+                "controls that did not fail as intended (declared signal absent):"
+                f" {', '.join(not_failing)}"
+            )
         if self.design_violations():
             reasons.append(
                 f"oracle violations in the design's rows: {len(self.design_violations())}"
@@ -160,7 +163,7 @@ def render(report: Report) -> str:
         )
     )
     out.append("")
-    out.append("-- Negative controls (each must fail) --")
+    out.append("-- Negative controls (each must fail by its declared signal) --")
     out.append(
         table(
             (
@@ -168,6 +171,7 @@ def render(report: Report) -> str:
                 "variant",
                 "mode",
                 "target",
+                "declared signal",
                 "failed as intended",
                 "first failing iteration",
                 "signal",
@@ -178,6 +182,7 @@ def render(report: Report) -> str:
                     c.variant,
                     c.mode,
                     c.target,
+                    c.declared or "-",
                     "yes" if c.failed_as_intended else "NO",
                     c.first_failing_iteration if c.first_failing_iteration is not None else "-",
                     c.signal[:200],

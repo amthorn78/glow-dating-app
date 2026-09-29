@@ -15,7 +15,7 @@ The implementation session. It built the proof package, its Django settings and 
 ### Summary
 
 - **Setup, not acceptance: holds.** On PostgreSQL 17.11 in the job, Django's `contenttypes` and `auth` migrations and the reviewed `glow_persistence` migrations `0001_event_infrastructure` and `0002_app_domain` applied from an empty database, and `makemigrations --check --dry-run` printed `No changes detected`. The ledger below is read from `django_migrations`.
-- **DB06, partially evidenced in CI (P06.DB), in D6's words:** on PostgreSQL 17, the reference design orders send authorizations against block, unmatch, suspension, deletion and sign-out, with the guarantees listed in the brief's item 2, under forced and randomized races. All 55 cases passed; every "while it holds the locks" case was observed waiting in `pg_stat_activity` and `pg_locks`; the commit-order oracle found zero violations over every row the design wrote; the twelve stress races each completed 200 iterations with 200 measured overlaps and zero violations; all ten negative controls failed in the same run.
+- **DB06, partially evidenced in CI (P06.DB), in D6's words:** on PostgreSQL 17, the reference design orders send authorizations against block, unmatch, suspension, deletion and sign-out, with the guarantees listed in the brief's item 2, under forced and randomized races. All 55 cases passed; every "while it holds the locks" case was observed waiting in `pg_stat_activity` and `pg_locks`; the commit-order oracle found zero violations over every row the design wrote; the twelve stress races each completed 200 iterations with zero violations, and the log printed 200 measured overlaps for each (corrected in P06.DB-C1; the exact-head review's F1): the run established the first race's count only, `race.block_by_low`'s 200 of 200, because the measure read every race's rows at the same iteration number; it did not establish the other eleven races' counts, and `race.racing_duplicates`'s own overlap was never measured. The corrected per-race counts are in "P06.DB-C1 corrections" at the end of this record; all ten negative controls failed in the same run.
 - **DB09, partially evidenced in CI (P06.DB), in D6's words:** the app-side session and epoch revocation ordering against sends, with a stand-in session reference; not maintained authentication, verification, recovery, linking, credential revocation or allauth, which stay with the item that serves authentication and with P11.
 - **What it does not claim:** that the app enforces any of it (the design is in the proof, not the app, until P06.2 carries it and tests it again); DB06's provider half (channel membership, and a send the provider has already accepted), which stays with P06.2 and P11; the P11 target, its roles, pooling or load; maintained authentication. P11A and P11B still rerun DB06 and DB09 on the real target; DB01, the move-out path and every other deferred case stay with P11. No app route, served feature or provider call changes.
 
@@ -45,7 +45,7 @@ The implementation session. It built the proof package, its Django settings and 
 
 **How the password was generated, masked, passed and discarded.** The credential step runs with `set +x` and `umask 077`. Two passwords come from `python -c 'import secrets; print(secrets.token_hex(24))'` into shell variables; the step's first two outputs are `::add-mask::` for each. The superuser's password is written to `superuser-password`, the role's into `create-role.sql` (`CREATE ROLE glow_proof LOGIN PASSWORD '…' NOSUPERUSER NOCREATEDB NOCREATEROLE; CREATE DATABASE glow_proof OWNER glow_proof;`) and into the libpq passfile (`127.0.0.1:5433:glow_proof:glow_proof:…`), all `0600` in a `mktemp -d` directory under `$RUNNER_TEMP`. The container reads the superuser's file through `POSTGRES_PASSWORD_FILE` from a read-only bind mount; the role is created by `docker exec -i … psql` reading the SQL file from stdin, with stdout and stderr kept in a file (never printed), and the SQL file is removed at once. The proof reads the passfile through Django's `OPTIONS["passfile"]`; no `PG*`, `DATABASE_URL` or `GLOW_*` name carries it. The `if: always()` step removes the container with `docker rm --force --volumes` and the directory with `rm -rf`. No password is stored as a repository secret, printed, or present in this record.
 
-**How an overlap is measured (6.3).** Each writer's transaction interval is read from the database: its start is `now()` inside the transaction (the proof-log row's `xact_start` default) and its end is `pg_xact_commit_timestamp(xmin)` of the row it wrote; a writer that was refused rolled back, so its start (`now()`) and end (`clock_timestamp()` read just before the rollback) are recorded afterwards in an attempt row. An iteration overlapped when the send's interval and a revocation's interval intersect (`start1 < end2 and start2 < end1`). Observed lock waits are the forced cases' measure, not the stress run's.
+**How an overlap is measured (6.3).** Each writer's transaction interval is read from the database: its start is `now()` inside the transaction (the proof-log row's `xact_start` default) and its end is `pg_xact_commit_timestamp(xmin)` of the row it wrote; a writer that was refused rolled back, so its start (`now()`) and end (`clock_timestamp()` read just before the rollback) are recorded afterwards in an attempt row. An iteration overlapped when the send's interval and a revocation's interval intersect (`start1 < end2 and start2 < end1`). Observed lock waits are the forced cases' measure, not the stress run's. (corrected in P06.DB-C1; the exact-head review's F1) The rows were read by run tag and iteration only, not by race, and every design race shares the tag `design:stress` and numbers its iterations from 1. From the second race on, an iteration therefore counted if any earlier race's rows at the same iteration number overlapped, and `race.racing_duplicates`, whose two writers are both sends, could never count its own rows. The run established the first race's count only, `race.block_by_low`'s 200 of 200; the other eleven races' counts were not established, and the duplicates race's own overlap was never measured. P06.DB-C1 reads each race's own rows (by `case_id` too) and counts, in the duplicates race, the two sends' intervals; its corrected counts are in "P06.DB-C1 corrections" at the end of this record.
 
 **The oracle's rules** (over every `MessageSubmission` S, partitioned by the run tag of its log row): O1 exactly one `send` log row committed in S's transaction; O2 no contact revocation of S's match with a version above S's committed before or with S; O3 no sign-out or expiry of S's session committed before or with S; O4 no suspension or deletion of either member committed before or with S; O5 S committed before its session's `expires_at`; O6 S's contact version equals one plus the contact revocations of the match committed before S; O7 S's epoch equals one plus the account revocations of the actor committed before S and the session's own epoch; O8 one row per `(actor, idempotency_key)`. Equal commit timestamps count as violations.
 
@@ -71,20 +71,22 @@ Push run 401, `https://github.com/amthorn78/glow-dating-app/actions/runs/3652094
 - **The cases:** `cases: 55/55 passed`. Each of the ten revocations (`block_by_low`, `block_by_high`, `unmatch_by_low`, `unmatch_by_high`, `suspend_low`, `suspend_high`, `delete_low`, `delete_high`, `sign_out_sender`, `expire_sender`) passed its four interleavings (`sequential_send_first`, `sequential_revocation_first`, `send_holds`, `revocation_holds`), and the fifteen named cases passed (`positive_send`, `stale_contact_version`, `retry_identical`, `retry_different_request`, `retry_after_revocation`, `racing_duplicates`, `unblock_no_resurrect`, `session_expires_during_wait`, `opposing_first_lock_block_high_vs_send`, `opposing_first_lock_suspend_high_vs_block_low`, `opposing_blocks_both_sides`, `opposing_four_writers`, `sign_in_revocations`, `deletion_keeps_authorization`, `unmatch_repeat_is_safe`). **Observed waits:** every one of the 26 cases with a held first transaction (the twenty `send_holds` and `revocation_holds` cases, `racing_duplicates`, `session_expires_during_wait`, the three pairwise opposing-writer cases) recorded `pid 98 wait_event_type=Lock wait_event=transactionid pg_locks not granted: transactionid/ShareLock` after one or two polls of `pg_stat_activity`. In each `send_holds` case the case also compared the commit timestamps and found the send's before the revocation's; in each `revocation_holds` case the send was refused and no submission row existed. `opposing_four_writers`: 40 writers in 10 rounds, no deadlock.
 - **The stress run** (seed 20260929; budget 200 iterations or 30 s per race; floors 50 iterations and 10 overlaps), every race with 0 violations and 0 harness failures:
 
-| Race | Iterations | Overlaps | Seconds | Outcomes |
+| Race | Iterations | Overlaps (as printed; see the correction below) | Seconds | Outcomes |
 |---|---|---|---|---|
-| `race.block_by_low` | 200 | 200 | 4.5 | send authorized 41, refused `match_not_active` 159; block applied 200 |
-| `race.block_by_high` | 200 | 200 | 6.1 | send authorized 44, refused 156; block applied 200 |
-| `race.unmatch_by_low` | 200 | 200 | 4.5 | send authorized 54, refused 146; unmatch applied 200 |
-| `race.unmatch_by_high` | 200 | 200 | 4.3 | send authorized 50, refused 150; unmatch applied 200 |
-| `race.suspend_low` | 200 | 200 | 5.8 | send authorized 36, refused `account_not_active` 164; suspend applied 200 |
-| `race.suspend_high` | 200 | 200 | 4.5 | send authorized 19, refused 181; suspend applied 200 |
-| `race.delete_low` | 200 | 200 | 5.0 | send authorized 42, refused 158; delete applied 200 |
-| `race.delete_high` | 200 | 200 | 5.5 | send authorized 24, refused 176; delete applied 200 |
-| `race.sign_out_sender` | 200 | 200 | 4.1 | send authorized 6, refused `session_not_valid` 194; sign-out applied 200 |
-| `race.expire_sender` | 200 | 200 | 4.4 | send authorized 14, refused 186; expiry applied 200 |
-| `race.racing_duplicates` | 200 | 200 | 7.6 | one authorized and one replayed in every iteration (first request authorized 122 times, second 78); one row per key |
-| `race.opposing_writers` | 200 | 200 | 6.3 | send refused 200 (`match_not_active` 192, `account_not_active` 8); both blocks and the suspension applied 200; no deadlock |
+| `race.block_by_low` | 200 | 200 (established) | 4.5 | send authorized 41, refused `match_not_active` 159; block applied 200 |
+| `race.block_by_high` | 200 | 200 (not established) | 6.1 | send authorized 44, refused 156; block applied 200 |
+| `race.unmatch_by_low` | 200 | 200 (not established) | 4.5 | send authorized 54, refused 146; unmatch applied 200 |
+| `race.unmatch_by_high` | 200 | 200 (not established) | 4.3 | send authorized 50, refused 150; unmatch applied 200 |
+| `race.suspend_low` | 200 | 200 (not established) | 5.8 | send authorized 36, refused `account_not_active` 164; suspend applied 200 |
+| `race.suspend_high` | 200 | 200 (not established) | 4.5 | send authorized 19, refused 181; suspend applied 200 |
+| `race.delete_low` | 200 | 200 (not established) | 5.0 | send authorized 42, refused 158; delete applied 200 |
+| `race.delete_high` | 200 | 200 (not established) | 5.5 | send authorized 24, refused 176; delete applied 200 |
+| `race.sign_out_sender` | 200 | 200 (not established) | 4.1 | send authorized 6, refused `session_not_valid` 194; sign-out applied 200 |
+| `race.expire_sender` | 200 | 200 (not established) | 4.4 | send authorized 14, refused 186; expiry applied 200 |
+| `race.racing_duplicates` | 200 | 200 (not established; its own overlap never measured) | 7.6 | one authorized and one replayed in every iteration (first request authorized 122 times, second 78); one row per key |
+| `race.opposing_writers` | 200 | 200 (not established) | 6.3 | send refused 200 (`match_not_active` 192, `account_not_active` 8); both blocks and the suspension applied 200; no deadlock |
+
+  The overlaps column (corrected in P06.DB-C1; the exact-head review's F1): only `race.block_by_low`'s 200 of 200 is established by this run; the other eleven counts are the log's figures and are not established, and `race.racing_duplicates`'s own overlap was never measured. The corrected per-race counts are in "P06.DB-C1 corrections" at the end of this record. The iterations, seconds, outcomes and violations of every race are unaffected.
 
   Both orders occurred in every two-writer race (the send committed first in 6 to 54 of 200 iterations, the revocation first in the rest). In `race.opposing_writers` the send never won against three revocations in 200 iterations; its ordering guarantee is judged by the oracle over the rows that did commit, and the pairwise forced cases cover the send winning against each writer.
 
@@ -114,8 +116,8 @@ PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1), the throwaway cluster of D4 ab
 
 | Run | Result |
 |---|---|
-| Run 1 (before the `no_locks.forced` control was retargeted from `block_by_high.send_holds` to `unmatch_by_high.send_holds`) | PASS: 55/55 cases; twelve races at 200 iterations and 200 overlaps each, 4.1 to 7.9 s per race; ten controls failed as intended (stress controls at iteration 1); 593 submissions and 2,694 revocation rows examined, zero design violations; 1 min 15 s |
-| Run 2 (the pushed code, same database, rows accumulating) | PASS: 55/55 cases; twelve races at 200 iterations and 200 overlaps each, 4.5 to 8.6 s per race; ten controls failed as intended, `no_locks.forced` now with a committed violation (send committed after the unmatch) and the wait not observed; 1,190 submissions and 5,388 revocation rows examined, zero design violations; 1 min 26 s |
+| Run 1 (before the `no_locks.forced` control was retargeted from `block_by_high.send_holds` to `unmatch_by_high.send_holds`) | PASS: 55/55 cases; twelve races at 200 iterations and 200 overlaps each as printed (corrected in P06.DB-C1; the exact-head review's F1): only the first race's 200 is established, the other eleven counts are not, and the duplicates race's own overlap was never measured; the corrected counts are in "P06.DB-C1 corrections"; 4.1 to 7.9 s per race; ten controls failed as intended (stress controls at iteration 1); 593 submissions and 2,694 revocation rows examined, zero design violations; 1 min 15 s |
+| Run 2 (the pushed code, same database, rows accumulating) | PASS: 55/55 cases; twelve races at 200 iterations and 200 overlaps each as printed (corrected in P06.DB-C1; the exact-head review's F1): only the first race's 200 is established, the other eleven counts are not, and the duplicates race's own overlap was never measured; the corrected counts are in "P06.DB-C1 corrections"; 4.5 to 8.6 s per race; ten controls failed as intended, `no_locks.forced` now with a committed violation (send committed after the unmatch) and the wait not observed; 1,190 submissions and 5,388 revocation rows examined, zero design violations; 1 min 26 s |
 
 The retarget's reason: under `block_by_high.send_holds` the no-locks send re-read the `Block` table after the block committed and was refused `blocked`, so the control failed only through the unobserved wait; under `unmatch_by_high.send_holds` there is no block row and the stale send commits, so the control also fails through the oracle.
 
@@ -155,7 +157,7 @@ The same checks ran in the job: `pip install --require-hashes`, `pip check`, the
 - **Fixture accounts start `active`** and their users have no password and no email address; verification and credentials are outside P06.DB.
 - **Sends in `race.opposing_writers` never committed first** in 200 iterations (three revocations against one send); the send's ordering against each writer when it wins is covered by the forced `send_holds` cases and the two-writer races.
 - **Open question for the manager:** none that blocks integration. The manager's items at integration are the CI policy's job list (now six application jobs), the P11 plan's DB06 and DB09 marks in D6's words, and Notion.
-- **Limits:** the oracle treats equal commit timestamps as violations and none occurred; overlaps are measured from database-clock intervals, not from observed lock waits; the controls are broken variants of this package's own reference design and show what the suite detects, not every way an adapter could be wrong; the design is proven in the proof package, not in the app.
+- **Limits:** the oracle treats equal commit timestamps as violations and none occurred; overlaps are measured from database-clock intervals, not from observed lock waits (corrected in P06.DB-C1; the exact-head review's F1): the run's per-race overlap counts rest on a measure that read every race's rows at the same iteration number, so only the first race's 200 of 200 is established, the other eleven races' counts are not, and `race.racing_duplicates`'s own overlap was never measured; the corrected counts are in "P06.DB-C1 corrections" at the end of this record; the controls are broken variants of this package's own reference design and show what the suite detects, not every way an adapter could be wrong; the design is proven in the proof package, not in the app.
 
 ### What the exact-head review must know
 
@@ -348,3 +350,151 @@ PR28's head has since moved to `49525a6` (one records-only commit after `dda1ed4
 - **Observation 3** (the oracle cannot see a stale client version) stays a recorded limit. The named case and the `no_version_check` control catch a missing version check deterministically, as the review confirms.
 - **The marks:** DB06 stands as worded, pending C1, with F1's interim limit. DB09 stands, and its limit takes the review's more precise wording.
 - **Next:** the P06.DB-C1 correction prompt, then C1's exact-head review. After that come the Dev Manager's read of PR28's governing changes, Codex's review and the merge.
+
+## P06.DB-C1 corrections
+
+The correction pass on P06.DB: the exact-head review's F1 to F4, each with an offline test, and a rerun of the job for real per-race overlap counts.
+
+- **Prompt:** revision 1, from commit `4511bbc65382617dc58461394351763d114a832b` (`docs/ephemeral/2026-09-29-p06-db-c1-correction-prompt.md`).
+- **Session:** branch `claude/confident-knuth-b9d0c2`, started from `4511bbc65382617dc58461394351763d114a832b` (fast-forwarded from the manager branch `claude/magical-wozniak-yfmmx2`); `git diff --stat 6f5866d… HEAD -- proofs/ .github/` printed nothing at the start.
+- **Code head:** `42807705d374a4d532b1c4fb203d3f4be1cef438`. **New run of record:** Foundation run 36534514283 on that head (push run 411). Its jobs and the run-level conclusion are below.
+- **Records commits:** `60b6b70` (the in-place corrections above) and the commit that adds this section. Both change only this Markdown file, so their push runs are documentation-only by the CI policy's design.
+- **Times:** 29 September 2026, UTC.
+
+### Environment check (names only)
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | none present (the loop printed nothing) |
+| `PG*`, `PROOF_DB_*`, `STREAM_*` names | none (`compgen -e \| grep -E …` printed nothing) |
+| `command -v python3.12` | `/root/.local/bin/python3.12`, Python 3.12.14 (`$HOME/.local/bin` first on PATH) |
+| `docker info` | exit status 1 |
+| `command -v initdb pg_ctl postgres pg_isready psql` | `pg_isready` and `psql` at `/usr/bin`; `initdb`, `pg_ctl`, `postgres` not on PATH, present in `/usr/lib/postgresql/16/bin/` (PostgreSQL 16.13) |
+
+### F1 to F4
+
+| Finding | Fixed where | Test (offline, no database) |
+|---|---|---|
+| **F1** each race measures its own overlaps | `stress.py:118` `_intervals(run_tag, case_id, iteration)` selects `WHERE run_tag = %s AND case_id = %s AND iteration = %s` (`:128`); `stress.py:140` `_overlapped(race_kind, intervals)`: a two-writer or opposing race counts the send's interval against any revocation's, `race.racing_duplicates` any two sends'; `run_race` passes the race (`:294`), and the stop-at-first-violation oracle check passes `case_id=race.id` (`:297`), which `oracle.evaluate` applies as `l.case_id = %s` (`oracle.py:141`). The floors (50 iterations, 10 overlaps) and the budget (200 iterations or 30 s) are unchanged | `tests/test_stress_overlap.py`: `_overlapped` for each race kind, the duplicates race intersecting and disjoint, revocations that overlap only each other; the per-race selection through a cursor stand-in that applies the query's own `column = %s` conditions (rows of two races at iteration 1 count only for their own race); the per-iteration oracle query names the race |
+| **F2** O2 catches any send after a contact revocation | `oracle.py:220`: O2 flags every applied contact revocation of the send's match (a block or unmatch whose log row carries a contact version) that committed before or with the send, whatever its version; O6 stays. The rules are split from the fetches (`oracle.py:187`, `judge`). The docstring (`oracle.py:12`) and the README say why the stronger rule must hold for every row the design writes: a block or unmatch is never undone for its match in P06.DB | `tests/test_oracle_rules.py`, with the oracle's fetches replaced by constructed rows: a submission at v2 committed after a block at v2 is an O2 violation; committed before the block, it is not; an unmatch at any version; equal timestamps; a block without a contact version is not a contact revocation; and O1 to O8 still flag what they flagged |
+| **F3** a control fails as intended only by its own signal | `cases.py:111` onwards: the case judge records a signal with each failure (`wait_not_observed`, `commit_after_revocation`, `refusal_missing`, `deadlock`, `database_error`, `harness_error`, `other`; `outcome_signal` at `:209`). `controls.py:46` `Signal`: each control declares the case signals it must show and the oracle rules one of whose violations must appear under its tag; `judge_forced` (`:224`) and `judge_stress` (`:242`) count a control only when its declared signal is present, and never with a harness error, a database error or a stress harness failure (`DISQUALIFYING`, `:42`). The table and the JSON print each control's declared signal | `tests/test_control_signals.py`: each control's declared signal is one its broken switch can produce (a table in the test, derived from the reference design; `no_version_check` declares no oracle rule, observation 3); forced controls declare a case signal and stress controls an oracle rule; a case failing by a harness error, a database error, any other failure or the wrong signal is not counted; every part of a signal is required; a stress harness failure or a violation of another rule is not counted |
+| **F4** a forced case records which backend blocks the waiter | `cases.py:271` captures the holder's pid through `on_begin`, as the arriver's is captured; `observe.py:189` `observe_lock_wait(pid, holder_pid=…)` reads `pg_blocking_pids(pid)` with the wait state (`:210`), records the blockers, and counts the wait as observed only when `waits_on_holder` (`observe.py:180`) finds the holder among them (`:218`); a wait on another backend keeps polling until the arriver finishes or the timeout | `tests/test_lock_wait.py`: the decision (a wait whose blockers do not include the holder is not observed; no lock wait is not observed), and the polling loop against a scripted cursor: blocked by another backend, not observed; blocked by the holder, observed, with the blockers recorded |
+
+**Without the fix,** run against the package at `4511bbc` with the new tests: the four F2 tests that name the gap fail by assertion (`'O2' not found in []` and `['O6']`); the F1, F3 and F4 tests fail because the corrected functions and parameters do not exist there (`TypeError: _overlapped() takes 1 positional argument`, `_intervals() takes 2 positional arguments`, `evaluate() got an unexpected keyword argument 'case_id'`, `ImportError: cannot import name 'CASE_SIGNALS'`, `AttributeError: … 'waits_on_holder'`). All pass at the code head.
+
+### The records corrected
+
+Each marked "(corrected in P06.DB-C1; the exact-head review's F1)", each saying that run 36520940933 established the first race's count only (`race.block_by_low`, 200 of 200), that it did not establish the other eleven races' counts, that `race.racing_duplicates`'s own overlap was never measured, and pointing to this section:
+
+- this record's "P06.DB implementation" section: the DB06 bullet of "Summary"; "How an overlap is measured (6.3)"; the stress table's overlaps column (with a note under the table); both local-runs rows' "200 overlaps each"; and the limits bullet under "Deviations, open questions and limits";
+- the package README: the stress run's bullet under "How a pass is judged" and the overlap line under "Limits". The README also describes F2's rule, F3's declared signals and F4's blocking-backend check, and records observation 3 (the oracle cannot see a stale client version) as a limit.
+
+"Manager verification of P06.DB" and "Exact-head review of P06.DB", with everything under them, are byte-identical to `4511bbc`.
+
+### The new run of record: Foundation run 36534514283 on `42807705d374a4d532b1c4fb203d3f4be1cef438`
+
+Push run 411, `https://github.com/amthorn78/glow-dating-app/actions/runs/36534514283`, started 07:04:34 UTC.
+
+| Job | Conclusion |
+|---|---|
+| Change scope | success (job 109295401195; full scope) |
+| API checks | success (job 109295438911) |
+| Mobile checks | success (job 109295439059) |
+| API mobile smoke | success (job 109295439067) |
+| API artifact checks | success (job 109295439026) |
+| Stream proof checks | success (job 109295439180) |
+| Database proof checks | success (job 109295439073; 07:04:44 to 07:06:06 UTC; the suite step 48 s) |
+| Foundation gate | success (job 109296705850, finished 07:09:03); its log line: `Application checks passed`, with every job, `database` included, `success` in its `RESULTS` |
+
+**The run-level conclusion reads `cancelled`.** The workflow's `concurrency` group (`foundation-${{ github.ref }}`, `cancel-in-progress: true`) did this after the records push `60b6b70` at 07:05:20 queued run 36534597575 on the same branch. That run's jobs were created at 07:09:04, after run 36534514283's gate had finished at 07:09:03, and the earlier run was marked `cancelled` at 07:09:05. Every job of run 36534514283 had already completed with `success`, and no step was interrupted. Run 36534597575 (the records commit) succeeded as documentation-only: Change scope success, the six application jobs skipped, the gate success. I re-ran and dispatched nothing (the prompt forbids it). Whether a run whose jobs all succeeded but whose run-level status reads `cancelled` is acceptable as the run of record is the manager's call; see "Deviations and limits".
+
+**From the database job's log** (797 lines, read whole):
+
+- **The image and the server.** `Digest: sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`, the pinned digest. `SELECT version()`: `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit`. `track_commit_timestamp` `on`; `default_transaction_isolation` `read committed`, and `read committed` inside a writer's transaction; `superuser` `false`. The sixteen migrations applied from zero, 07:05:12.14 to 07:05:13.57; `makemigrations --check --dry-run`: `No changes detected`. The offline tests in the job: `Ran 82 tests`, OK.
+- **The cases:** `cases: 55/55 passed`. **Observed waits with their blocking backends:** each of the 25 held cases (the twenty `send_holds` and `revocation_holds` cases, `racing_duplicates`, `session_expires_during_wait` and the three pairwise opposing-writer cases) shows `pid 98 wait_event_type=Lock wait_event=transactionid pg_locks not granted: transactionid/ShareLock pg_blocking_pids=[97] (holder pid 97)` after 1 or 2 polls: the waiting backend was blocked by the holder's backend and by no other. In each `send_holds` case the commit timestamps put the send before the revocation.
+- **The stress run** (seed 20260929; budget 200 iterations or 30 s per race; floors 50 iterations and 10 overlaps), each race counting only its own rows, every race with 0 violations and 0 harness failures and its floors met:
+
+| Race | Iterations | Measured overlaps | Seconds | Outcomes |
+|---|---|---|---|---|
+| `race.block_by_low` | 200 | 200 | 3.3 | send authorized 44, refused `match_not_active` 156; block applied 200 |
+| `race.block_by_high` | 200 | 200 | 3.3 | send authorized 46, refused `match_not_active` 154; block applied 200 |
+| `race.unmatch_by_low` | 200 | 199 | 3.1 | send authorized 56, refused `match_not_active` 144; unmatch applied 200 |
+| `race.unmatch_by_high` | 200 | 199 | 3.1 | send authorized 52, refused `match_not_active` 148; unmatch applied 200 |
+| `race.suspend_low` | 200 | 178 | 2.7 | send authorized 38, refused `account_not_active` 162; suspend applied 200 |
+| `race.suspend_high` | 200 | 183 | 2.7 | send authorized 24, refused `account_not_active` 176; suspend applied 200 |
+| `race.delete_low` | 200 | 191 | 3.0 | send authorized 48, refused `account_not_active` 152; delete applied 200 |
+| `race.delete_high` | 200 | 192 | 3.0 | send authorized 28, refused `account_not_active` 172; delete applied 200 |
+| `race.sign_out_sender` | 200 | 174 | 2.7 | send authorized 16, refused `session_not_valid` 184; sign-out applied 200 |
+| `race.expire_sender` | 200 | 177 | 2.9 | send authorized 21, refused `session_not_valid` 179; expiry applied 200 |
+| `race.racing_duplicates` | 200 | 200 | 4.0 | one authorized and one replayed in every iteration (`send_a` authorized 120, `send_b` 80); one row per key |
+| `race.opposing_writers` | 200 | 200 | 4.6 | send authorized 1, refused `match_not_active` 192, `account_not_active` 7; both blocks and the suspension applied 200; no deadlock |
+
+  The counts now differ between races (174 to 200), as a per-race measure would; the lowest, `race.sign_out_sender`'s 174, is well above the floor of 10. `race.racing_duplicates`'s 200 is now its own two sends' intersecting intervals. The head start and the budget were not changed.
+
+- **The negative controls,** each with its declared signal, all ten `failed as intended` (the signal met):
+
+| Control | Declared signal | Signal in the run |
+|---|---|---|
+| `no_locks.forced` (`unmatch_by_high.send_holds`) | `wait_not_observed` + `commit_after_revocation` + oracle O2/O6 | the unmatch not observed waiting on the holder; the send committed 07:05:57.025615 after the unmatch at 07:05:57.021920; oracle 2 violations (O2, O6) |
+| `no_locks.stress` (`race.block_by_high`) | oracle O2/O6 | first failing iteration 1: the block (v2) committed 07:05:57.080272, the send at v1 07:05:57.080445; oracle O2, O6 |
+| `no_version_check` (`named.stale_contact_version`) | `refusal_missing` | sends at versions ahead and behind authorized; oracle 0 violations (observation 3) |
+| `no_session_lock` (`sign_out_sender.send_holds`) | `wait_not_observed` + `commit_after_revocation` + oracle O3 | the sign-out not observed waiting; the send committed 07:05:57.196364 after the sign-out at 07:05:57.191552; oracle 1 violation (O3) |
+| `transaction_start_time` (`named.session_expires_during_wait`) | `refusal_missing` + oracle O5 | the send whose session expired while it waited was authorized; oracle 1 violation (O5) |
+| `dedup_before_authorize` (`named.retry_after_revocation`) | `refusal_missing` | the retry after the block was `replayed` with the old receipt |
+| `inverted_lock_order` (`named.opposing_first_lock_block_high_vs_send`) | `deadlock` | `deadlock:DeadlockDetected` for the send |
+| `no_account_lock.forced` (`suspend_high.send_holds`) | `wait_not_observed` + `commit_after_revocation` + oracle O4 | the suspension not observed waiting; the send committed 07:06:01.427917 after the suspension at 07:06:01.423348; oracle 1 violation (O4) |
+| `no_account_lock.stress` (`race.suspend_high`) | oracle O4 | first failing iteration 1: the suspension committed 07:06:01.496925, the send 07:06:01.500259; oracle O4 |
+| `filter_state_in_lock` (`unmatch_by_high.revocation_holds`) | `refusal_missing` + oracle O2/O6 | the send that arrived while the unmatch held was authorized and committed; oracle 2 violations (O2, O6) |
+
+- **The oracle over every row,** with the stronger O2: 617 submissions and 2,694 revocation rows examined; `design:forced` 32, `design:stress` 574, the controls 1 or 2 each; **violations in the design's rows: 0**. Violations only under control tags: `no_locks.forced` 2, `no_locks.stress` 2, `filter_state_in_lock` 2, `no_session_lock` 1, `no_account_lock.forced` 1, `no_account_lock.stress` 1, `transaction_start_time` 1, as in run 36520940933. Every control that the oracle caught before still shows its oracle violations. `== VERDICT: PASS ==`.
+- **Disposal:** `container removed: glow-proof-db-36534514283-1`, `credential files removed`, `no proof container remains`.
+- **The results JSON:** artifact `p06-db-proof-results`, ID 11017908859, 6,179 bytes, digest `sha256:2be4f793…`, expires 13 October 2026. I did not download it.
+- **No password, and no mask where a password would be.** The log's only `***` are on lines 38 and 152 (the `token` inputs of `actions/checkout` and `actions/setup-python`) and line 94 (checkout's git `AUTHORIZATION: basic ***` header), all before the credential step. The credential step prints one line (`credentials generated into a directory readable only by this job's user`) and the role step one line. The only long hexadecimal runs are 40 characters (action commits, 15) and 64 (digests and IDs, 7), with no standalone 48-character run. The words "password" and "passfile" appear only in the workflow's own script text and in the names of the offline tests. No connection option, passfile content or connection string appears.
+
+### Local runs (iteration, not evidence)
+
+Docker does not work in the sandbox, so I started a throwaway cluster from `/usr/lib/postgresql/16/bin/initdb`: PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1), run as the `postgres` OS user, in a `mktemp -d` directory under `/tmp`. It listened only on a Unix socket (`listen_addresses = ''`), with `track_commit_timestamp = on`, port 5433. The superuser's password was generated and passed through `--pwfile`, and that file was removed after initdb. The non-superuser role `glow_proof` got a generated password through a SQL file that I removed after use, and the passfile was `0600`. `pg_hba` allowed `peer` for postgres and `scram-sha-256` for everyone else, and no forbidden or `PG*` name was present. `migrate` applied the sixteen migrations and `makemigrations --check --dry-run` printed `No changes detected`.
+
+| Run | Result |
+|---|---|
+| Local run 1 (before the forced controls' signal text put the oracle first) | PASS: 55/55 cases; each wait blocked by the holder (`pg_blocking_pids=[…] (holder pid …)`, 25 cases); races at 200 iterations with 200, 200, 200, 200, 200, 199, 200, 200, 198, 200, 200 and 200 overlaps; ten controls failed as intended by their declared signals; 544 submissions and 2,694 revocation rows, zero design violations; 1 min 43 s |
+| Local run 2 (the pushed code, same database, rows accumulating) | PASS: 55/55; every race 200 of 200 overlaps; ten controls failed as intended; 1,084 submissions and 5,388 revocation rows, zero design violations; 115 s |
+
+At the end I stopped the cluster (`pg_ctl stop -m fast` printed `server stopped`, and `pg_isready` then got `no response`) and removed its directory; no cluster directory and no postgres process remained. The package's `.venv/` and `.work/` are gitignored and stay only in the sandbox.
+
+### Checks
+
+| Check | Command | Result |
+|---|---|---|
+| 1 | `git diff --check 4511bbc… HEAD` | clean |
+| 1 | `git diff --name-only 4511bbc… HEAD` | `proofs/postgres-ordering/README.md`, seven files under `glow_ordering_proof/` (`__main__.py`, `cases.py`, `controls.py`, `observe.py`, `oracle.py`, `results.py`, `stress.py`), six under `tests/` (`fakes.py`, `test_control_signals.py`, `test_lock_wait.py`, `test_oracle_rules.py`, `test_results.py`, `test_stress_overlap.py`), and this record; nothing else. No dependency file, workflow or `services/` path changed |
+| 2 | trusted policy from `main` (`47db18d`, sha256 `dec69a26…`) extracted to a temporary directory, `python3 -I <tmp>/change_scope.py --base 4511bbc… --head 4280770… --merge-base`, run from the repository root | `{"full": true, "reason": "behavior-or-empty", …}`, 14 paths: full scope. (A first attempt run with the temporary directory as the working directory printed `comparison-unavailable`, because no repository was there; the rerun from the root is the result) |
+| 3 | `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock` in `env -i` with the proxy and CA variables by reference; `pip check` | installed; `No broken requirements found.` |
+| 4 | `env -i PATH HOME LANG .venv/bin/python -m unittest discover -s tests -t .` | 40 tests at the start; at the head `Ran 82 tests`, `OK` (new: overlap 8, oracle rules 15, control signals 14, lock wait 5) |
+| 4 | `.venv/bin/ruff check .`; `.venv/bin/ruff format --check .` | `All checks passed!`; `28 files left unchanged` |
+| 4 | `.venv/bin/mypy` | `Success: no issues found in 28 source files` |
+| 4 | the Django pin test | in the 82 (`tests/test_django_pin.py`, 4 tests) |
+| 4 | `cd services/api && python3.12 -m unittest tests.test_toolchain_pins` | `Ran 3 tests`, `OK` |
+| 5 | local runs | above, iteration, not evidence |
+| 6 | the Foundation run on the code head | run 36534514283 above |
+| 7 | secret scan over `git diff 4511bbc… HEAD` (added lines; password, secret, token, API key, private-key markers, connection strings, email addresses, hex runs of 32 or more) | no match in the code commit's added lines; this record's added lines carry only digests, commit SHAs and the words of this section |
+
+### Deviations and limits
+
+- **The run of record's run-level conclusion is `cancelled`,** although every one of its eight jobs, the gate included, concluded `success` and the gate printed `Application checks passed`. My records push `60b6b70`, 50 seconds after the code push, queued a run in the same `cancel-in-progress` concurrency group. The fix for future pushes is to wait for the code run to finish before pushing records; I did not re-run or push a code change only to trigger CI. If the manager needs a run whose run-level conclusion is `success`, a re-run of 36534514283 (or PR28's pull-request run after integration) gives one.
+- **Control signals are declared from what each switch can produce,** and the run met every declaration. I changed the text of the `no_version_check` expectation, which named O6, to say that the case's expected refusal is its signal and that the oracle cannot see a stale client version (the manager's correction and observation 3).
+- **The wait is now observed only when the holder blocks the arriver.** A wait on another backend keeps the observer polling until the arriver finishes or the 15 s timeout passes, and then the wait counts as not observed. In the run, every held case was blocked by the holder alone.
+- **Local iteration ran on PostgreSQL 16.13,** not 17.11, from the sandbox's binaries (D4 condition 3), under `/tmp` because the postgres OS user cannot traverse the scratchpad's parents.
+- **Observation 3 stays a limit**: the oracle cannot see a stale client version. **Observation 1 stays**: the epoch check is never the deciding refusal.
+- **Not found:** anything more in the four correction classes.
+
+### What the exact-head review must know
+
+- The code to review is `42807705d374a4d532b1c4fb203d3f4be1cef438`; its run is 36534514283 (read job 109295439073's log). The later commits change only this record.
+- **The rules that changed:**
+  - the overlap measure is per race: rows by run tag, `case_id` and iteration, and the duplicates race counts its two sends;
+  - O2 no longer compares versions: any applied contact revocation of the match before or with the send is a violation;
+  - a control counts as failed as intended only by its declared signal, never by a harness error, a database error or a stress harness failure;
+  - a forced wait counts as observed only when `pg_blocking_pids` of the waiting backend names the holder's backend.
+- `oracle._Submission` and `oracle._Revocation` are renamed `SubmissionRow` and `RevocationRow`, and the rules moved into `oracle.judge`; `evaluate` reads the rows as before and calls it.
+- The offline tests replace Django's connection with stand-ins in `tests/fakes.py`; no test opens a database.

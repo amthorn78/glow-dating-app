@@ -121,7 +121,12 @@ class ReportTests(unittest.TestCase):
         report.controls[1].failed_as_intended = False
         ok, reasons = report.verdict()
         self.assertFalse(ok)
-        self.assertTrue(any("controls that never failed: no_locks.stress" in r for r in reasons))
+        self.assertTrue(
+            any(
+                "did not fail as intended (declared signal absent): no_locks.stress" in r
+                for r in reasons
+            )
+        )
 
     def test_design_violation_fails_and_control_violation_does_not(self) -> None:
         report = passing_report()
