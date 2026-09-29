@@ -1,0 +1,121 @@
+# Historical handoff — M02 close-out to the first Dev Manager reviews (superseded)
+
+Archived by App Manager 3 on 25 September 2026 from `docs/continuity/current-handoff.md` as it stood at `c893022`, when the Dev Manager's DM-01 review (finding P3) reduced the current handoff to routing. Its original title was "Current handoff — App Manager 3, P06.1 in progress, Dev Manager reviewing (25 September 2026)". Everything below is historical: its status, next actions and "now" statements describe that moment, and its reasoning-level table is superseded by the Notion usage log. Use the [current handoff](../current-handoff.md) for execution. Relative links are adjusted for this directory, and the next-manager start prompt's link points to its new home in `docs/planning/start-prompts/`. Ephemeral prompts it links may later be pruned; Git history keeps them.
+
+**Process: manual relay** (Nathan, 24 September 2026).
+
+- The manager gives Nathan prompts for implementers. Nathan runs each implementation or review session himself and relays its findings back. The manager follows up as needed.
+- Nathan reinitiates managers manually.
+- The manager never starts implementation or review work itself (no subagents or remote-session tools for that work).
+- Implementation and review sessions may use any tools, subagents or wake-ups they need.
+- **The Dev Manager** (Nathan, 25 September 2026) is the one exception. The manager creates this second-layer review session itself and relays to it; see the [charter](../../planning/dev-manager.md).
+
+The full procedure is in [manager workflow](../../planning/manager-workflow.md). Nathan remains product and account owner. Nathan resumed P06.1 on 25 September 2026; other feature work stays paused until his recorded direction resumes it.
+
+## Status — 25 September 2026
+
+**At a glance:**
+
+- **Phase:** P01–P05 are complete at fixture scope. The documentation migration (M01) and the Claude setup (M02) are complete. **Nathan resumed P06.1 on 25 September 2026:** *"resume P06.1, yes to reconfiguring the test app"*. Other feature work stays paused until his recorded direction resumes it.
+- **Current work item: P06.1**, the chat-provider permissions and economics proof. Its [brief](../../planning/p06-1-chat-provider-proof.md) holds the proposal, Nathan's answers, the Stream dashboard baseline, the session plan and the results so far.
+  - **P06.1-I1 is done.** App Manager 3 verified it, integrated it and opened draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26).
+  - Outcomes 1 and 2 hold. Outcome 3 does not: **S15**, a member's own membership data reaching the other member, was a design blocker.
+  - **Nathan decided S15 on 25 September:** *"I accept your recommendation on S15. There should never be any indication that there is anything happening outside Glow."* The design is the display rule. The brief's "S15: decided" records the principle and its consequences; the Dev Manager reviews the manager's reading of the principle.
+  - The exact-head review of I1 is commissioned. See "Next actions".
+- **Dev Manager (Nathan, 25 September 2026):** a persistent second-layer management and review session; see the [charter](../../planning/dev-manager.md). App Manager 3 prepared the [status and State of the App](../state-of-the-app.md), in the repository and in Notion, and initialized the Dev Manager with two reviews: DM-01, process, and DM-02, build. The session is `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager"), created at 09:00 UTC from `3888e8f`; it pushes its reports to `claude/dev-manager`. The reviews' state is in the [review log](../dev-manager/README.md). **Per Nathan, no new implementation task is created until the Dev Manager has responded and its reviews have been considered.**
+- **Manager:** App Manager 3 is active on session branch `claude/stoic-carson-66gdig`. It started in the `Glow app` environment from the [start prompt](../../planning/start-prompts/next-manager.md), which a later manager also uses.
+- **Setup script:** verified. Nathan's 25 September paste has taken effect; see below.
+- **Mistakes:** the [manager mistakes log](../manager-mistakes.md) records every manager mistake (Nathan, 25 September). Read it at the start, and add your own when they are found.
+
+**M02 is merged.** [PR18](https://github.com/amthorn78/glow-dating-app/pull/18) merged on 24 September 2026 at 23:59 UTC as merge commit `2b6c7dfdd10114407c610cce9f38a88ec35cd3ff`. That commit has the tree of the exact reviewed head `5e3fb2f`.
+
+- **Records:** the [M02 evidence record](../../testing/evidence/2026-09-24-m02-claude-setup.md) holds every session's results, both reviews, the CI evidence and the merge receipt. The [M02 brief](../../planning/claude-setup-optimization.md) holds the review dispositions and, in its last sections, the recorded follow-ups.
+- **Close-out, all ordinary documentation:** [PR19](https://github.com/amthorn78/glow-dating-app/pull/19) (the receipt, three documentation nits and the pruned M02 prompts), [PR20](https://github.com/amthorn78/glow-dating-app/pull/20) (Codex's post-merge finding), [PR21](https://github.com/amthorn78/glow-dating-app/pull/21) (this handoff aligned with the plan) and the PR that added the mistakes log.
+- **Codex review after the merge.** Marking PR18 ready started Codex's automatic review of `5e3fb2f`, and it finished five minutes after the merge. It reported one P2 in the Setup script's linking step, which the manager verified. It does not affect the paste here. Its fix is a recorded follow-up; see the brief.
+
+- **Setup script: pasted by Nathan and verified on 25 September.**
+  - Nathan pasted `scripts/bootstrap-toolchain.sh` from `main` into the `Glow app` environment's Setup script. It is blob `450b3cf6504dd0ab13ae2932d8da5a5346319c81`.
+  - App Manager 2's session had resumed on its old disk, where 3401 entries under `$HOME/.local/share/glow-app-toolchain` were not root-owned, from the old script's uid-1000 Node tree.
+  - App Manager 3, a new session, verified the paste: `find "$HOME/.local/share/glow-app-toolchain" ! -user 0 | wc -l` printed 0 of 9837 entries, and the tree had been built fresh that day. The details are in the [M02 evidence record](../../testing/evidence/2026-09-24-m02-claude-setup.md#setup-script-verification-app-manager-3-25-september-2026).
+  - Every new session in the `Glow app` environment should pass the same check.
+- **The documentation exemption is live.** CI loads the classifier from `main`. A change made only of Markdown files is ordinary documentation, so it runs no application jobs and needs no code or security review. Two cases stay full scope: any path with a `.claude` component, and a comparison with more than one merge base.
+- **Environment (names only):**
+  - No HDE variables.
+  - The three `STREAM_*` names are present for Nathan's development Stream application; see below.
+  - The TypeSafe API credential is attached by the proxy for `api.typesafe.ai`; see the [environment inventory](../../operations/environment-inventory.md).
+- **Decisions and policy (Nathan, 24 September):**
+  - **One work item at a time.** No new work item starts until the current item's CI and review are clear. Corrections, re-reviews and the merge close-out belong to the current item.
+  - **`.claude/**` stays full scope.**
+  - **Branch and PR discretion:** *"I will trust you to manage the branches and PRs as you see fit."* Merges still need the gates in the [CI policy](../../operations/ci-and-branch-policy.md).
+- **Reasoning levels.** Each prompt gets the manager's level and the TypeSafe effort scorer v4 reading, tracked in the Notion page *TypeSafe effort scorer — Glow app usage log*. The procedure is step 3 of the [manager workflow](../../planning/manager-workflow.md).
+
+  | Session | Manager | TypeSafe | Nathan ran | Outcome | Better call |
+  |---|---|---|---|---|---|
+  | M02-I1 | high | extra high | extra high | adequate | TypeSafe |
+  | Review | extra high | high | extra high | adequate | Manager |
+  | M02-C1 | extra high | extra high | extra high | adequate | both |
+  | Delta review | extra high | extra high, ultracode flagged | extra high, no ultracode | adequate | both |
+  | P06.1-I1 | extra high | extra high | extra high | adequate, provisional until the review | both |
+  | Review of I1 | max; ultracode if flagged | extra high, ultracode flagged | pending | pending | pending |
+
+  - The delta review had the first ultracode flag: P(`single_session`) was 0.43. The manager did not recommend ultracode; one session sufficed.
+  - P06.1-I1's shape reading was single_session at P 0.53, just above the 0.5 rule, so no ultracode; the runner-up was new_silent_guard at 0.31.
+  - The review of I1 has the second ultracode flag: P(`single_session`) is 0.37. Before the reading, the manager had committed to recommend max, or ultracode if the scorer flagged it, so it recommends ultracode. The effort score was 3.33, with P 0.35 for max.
+  - The pre-registered comparison comes after 10 relayed sessions; 5 of 10 have outcomes.
+- **CI on main.** Main's application code last changed with PR18 (`2b6c7df`); every later merge is Markdown only and passed through the documentation exemption. On 25 September App Manager 2's branch push run [36081899675](https://github.com/amthorn78/glow-dating-app/actions/runs/36081899675) ran every application job on `b8ca009`'s tree: all six jobs passed, and the gate log says `Application checks passed`.
+- **CI reliability.** Three intermittent rendered failures of one kind have occurred: a form submit that does not advance. The manager's GitHub integration cannot re-run Actions jobs (403), so Nathan re-runs them when needed.
+- **Branches.** Apart from P06.1's branches, every remote branch except one is fully merged into `main`. That includes App Manager 2's branch `claude/fervent-darwin-idyko3`, the M02 session branches `claude/ecstatic-goodall-qajdh4`, `claude/eager-goodall-1zjgey` and `claude/vigilant-einstein-i95w78`, and the earlier `app-builder-1/*`, `app-planner-1/*` and `docs/*` branches.
+  - P06.1's branches: the manager branch `claude/stoic-carson-66gdig`, which is PR26's head, and I1's branch `claude/compassionate-lamport-531vtk`, integrated into it by fast-forward. Both merge with PR26.
+  - A cloud session cannot delete another session's branch. Nathan may delete merged branches on GitHub.
+  - `app-builder-1/p05-1-birth-diagnostics` is deliberately unmerged; its history is in the [P05.2 handoff](p05-2-handoff.md). Keep it.
+- **Open PRs:** draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26), P06.1. On I1's head `9ff600f` the manager branch's push run [36109949498](https://github.com/amthorn78/glow-dating-app/actions/runs/36109949498) passed all six jobs, and its gate log says `Application checks passed`.
+
+## Next actions
+
+Follow the plan: PF01's sequence and D09, and the [initiation](../../planning/claude-code-initiation.md) assignment, which ends: *"Complete the optimization before proposing whether to resume P06.1."* M02 was that optimization, and it is complete.
+
+1. **Verify the environment (names only).**
+   - None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` should be present. `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` should be present.
+   - `command -v node npm python3.12` should resolve to `$HOME/.local/bin`, with v24.19.0, 11.9.0 and Python 3.12.14.
+   - Run the Setup-script ownership check above. It should print 0 in any session started after Nathan's paste; if it does not, tell Nathan before continuing.
+   - If anything differs, tell Nathan exactly which setting to fix. Never print values.
+2. **Verify the repository and the record.** Check `main`, open PRs and the worktree. Reconcile Implementation Control and the Work Register, as PF00's "Start here" requires.
+3. **P06.1, the current work item (resumed by Nathan on 25 September).** Its [brief](../../planning/p06-1-chat-provider-proof.md) holds the proposal, Nathan's answers and permission, the Stream dashboard baseline and the session plan.
+   - **P06.1-I1 is done** ([prompt](../../ephemeral/2026-09-25-p06-1-i1-implementation-prompt.md)). Nathan ran it at extra high. App Manager 3 verified the report against the pushed branch, re-ran the offline checks, integrated the head `9ff600f` by fast-forward and opened draft [PR26](https://github.com/amthorn78/glow-dating-app/pull/26). The results and the verification are in the brief's "P06.1-I1 result" and at the end of the [evidence record](../../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md).
+   - **Now, in parallel:**
+     - Nathan runs the exact-head review ([prompt](../../ephemeral/2026-09-25-p06-1-i1-review-prompt.md)) of `c0a34f8ace5cef2337ac382c23243a00895ffe29` and relays the report. Later commits on the branch are ordinary documentation. The recommendation is max with ultracode: TypeSafe flagged ultracode, and the manager had committed to recommend it on a flag.
+     - The Dev Manager's DM-01 and DM-02 reviews. When its reports arrive on `claude/dev-manager`, integrate them, record each disposition in the [review log](../dev-manager/README.md), relay the conclusions to Nathan, and apply the documentation changes.
+   - S15 is decided: the display rule (see the brief's "S15: decided").
+   - Then: verify the I1 review, and commission corrections if needed. Only after the Dev Manager's reviews have been considered, write P06.1-I2's prompt. It covers revocation and history under Nathan's policy, outage, economics, the architecture document, I1's follow-ups (Video and Feeds, the G2 and S10 reruns, the existence check) and what the S15 decision needs. Its head gets a delta review.
+   - Close: pass every Foundation job on PR26's final head, mark it ready, wait for Codex's reviews, merge, verify `main`, and record the receipt, the handoff and Notion.
+   - Keep the application's configuration as I1 left it; I2 builds on it. Nathan accepted its side effect on the dashboard user's admin role. The brief records it.
+4. **Recorded follow-ups: presented with the proposal on 25 September; Nathan schedules them.** They are outside PF01's sequence, so none starts without his direction, and only after P06.1's CI and review are clear:
+   - the intermittent rendered-test failures, three so far, where a form submit does not advance. Earlier birth-journey diagnostics are on the unmerged branch `app-builder-1/p05-1-birth-diagnostics`;
+   - the Setup-script and pin-test hardening: review nits N1, N2 and N6, Codex's P2 on directory-shaped link destinations, and an optional completion stamp. A script change needs another paste;
+   - App Manager 1's stale-documentation sweep of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`.
+
+The Notion reconciliation App Manager 1 flagged is done: Plan References point to the repository, A03 is Done and M01 has a row. Implementation Control records it. App Manager 3's reconciliation on 25 September found Implementation Control and the Work Register in line with this handoff except the P05.3 row, whose next action still routed to App Planner 1; it corrected that row.
+
+## Environment and history
+
+App Manager 1 was the first Claude manager. It ran in the environment shared with HDE, which injects `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` and `PORT` (names observed; values never read). Nathan then created the dedicated `Glow app` cloud environment. Its settings are in the [environment inventory](../../operations/environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026). App Manager 2 was the first session in it; it took M02 over from PR17 and replaced it with PR18. The environment also provides Nathan's **development** Stream application:
+
+- `STREAM_APP_ID=1729640`
+- `STREAM_API_KEY=qdstwyevnyea`
+- `STREAM_API_SECRET` (secret; name only; never print or record it)
+
+No application code reads these. P06.1's sandbox harness reads them on the server side only; the app's loader adopts them in P06.2. A session's environment is fixed at start, so switching environments requires a new session.
+
+The application behavior baseline is unchanged since PR14 (`ea39454…`). P01–P05 are complete only at fixture scope; see the [migration receipt](../migration-publication.md).
+
+## Accepted baseline and limits
+
+The app has fixture onboarding/profiles/media, eligibility/discovery and interactions, an API smoke runtime, contracts and static model/migration definitions. Not established:
+
+- real authentication or persistence;
+- Stream or HDE calls;
+- provider delivery;
+- a signed native build;
+- release readiness.
+
+Readiness stays 503, provider sending stays unavailable, and database integration stays with P11. The [database audit](../../planning/database-audit-2026-09-23.md) is dated evidence, not permission to connect. HDE and shared infrastructure remain protected by effect. Stream remains preferred; secret slots are future definitions, not loaders. Outstanding owner inputs are in the [Claude handoff](../claude-code-handoff.md#prioritized-inputs-nathan-must-supply).

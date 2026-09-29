@@ -1,14 +1,14 @@
 # ADR 0002: App-owned services in the existing HDE Railway project
 
 Date: 2026-09-23
-Status: Selected by direct owner instruction; infrastructure activation pending
+Status: Selected by direct owner instruction; infrastructure activation pending. Its shared-logical-database preference is superseded by [ADR 0004](0004-app-database-placement.md) (25 September 2026).
 Work item: P03.1 — Prepare environments and Railway resource disposition
 
 ## Decision and authority
 
 During the P03 implementation session Nathan directed: **“the app should be in the same project as the HD Engine”**.
 
-Use the verified existing Railway project `ample-illumination`, ID `ce01529f-679f-4f52-a979-23113299a59b`, in workspace `amthorn78's Projects`, ID `ae7d1e62-8a2d-4055-b637-ec56536a7239`. App services and credentials remain separately owned. The owner's subsequent direction prefers app-owned schema/tables in the **same logical PostgreSQL database as HDE**, with maximum appropriate reuse unless a strong concrete counterargument is established. Do not create a separate Railway project for the dating app.
+Use the verified existing Railway project `ample-illumination`, ID `ce01529f-679f-4f52-a979-23113299a59b`, in workspace `amthorn78's Projects`, ID `ae7d1e62-8a2d-4055-b637-ec56536a7239`. App services and credentials remain separately owned. The owner's subsequent direction prefers app-owned schema/tables in the **same logical PostgreSQL database as HDE**, with maximum appropriate reuse unless a strong concrete counterargument is established. (Superseded on 25 September 2026: the app gets its own logical database on the same PostgreSQL service; see ADR 0004.) Do not create a separate Railway project for the dating app.
 
 These directions supersede the separate-project and separate-app-database infrastructure defaults in [ADR 0001](0001-isolated-application-foundation.md), the original P01 [resource assessment](../operations/resource-ownership.md#historical-p01-assessment--preserved-separate-project-disposition-superseded), and the P03 continuation prompt. The fresh application repository/stack, HDE protection, D08 authority, and P11 database-last sequence are preserved. The no-copy foundation was the historical P01 result, not a prohibition on later reviewed reuse under the current owner direction. Historical assessments remain labeled so their observations are not rewritten as current facts.
 
@@ -23,6 +23,8 @@ Current API runtime serves development/test fixtures only; staging/production st
 The [environment map](../operations/environments.md) proposes an empty app-specific staging environment in this same project when a real staging runtime exists. Its label is a proposal, not a provisioned identity. App production's environment remains unselected. No HDE production environment is duplicated to initialize app services.
 
 ## Shared logical database and object reuse
+
+> **Superseded in part (25 September 2026).** Nathan's direction OD-18 gives the app its own logical database on HDE's PostgreSQL service ([ADR 0004](0004-app-database-placement.md)). The paragraphs below stay as the record of the earlier preference. Their audit facts remain dated evidence, and their caution about shared objects still applies to the shared service.
 
 The latest [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) records Nathan's preference for the same logical PostgreSQL database as HDE, separate app-owned schema/tables and maximum appropriate reuse. It also records that legacy backend/frontend user information is irrelevant to this app and requires no migration. Removing the need for a legacy user-data migration does not authorize deletion of shared objects or HDE data.
 

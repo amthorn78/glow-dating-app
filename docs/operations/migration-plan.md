@@ -8,6 +8,8 @@ It is not a staging or production settings module.
 
 ## P03 owner direction and audit dependency
 
+> **Superseded in part (25 September 2026; OD-18).** The app gets its own logical database on HDE's PostgreSQL service, with its own roles; see [ADR 0004](../adr/0004-app-database-placement.md). The paragraph below records the earlier same-logical-database preference.
+
 The current [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c)
 records Nathan's preference for clean app storage in the **same logical database
 as HDE**, with a separate app schema and restricted app runtime/migration roles,
@@ -25,7 +27,7 @@ The planner reports documentary HDE schema `hde` and the source-defined
 `public.hde_body_graphs_current` object; neither is a verified live catalog, and
 `public` is not an app-only deletion boundary.
 
-[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles is the audited direction. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
+[Completed database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) record the separate read-only inspection on 23 September. HDE and legacy backend used logical database `railway` and privileged `postgres`; preserve HDE objects, including the view in `public`. No existing physical table was approved for reuse by the 32 provisional app models. A clean app-owned schema with restricted roles was the audited direction; [ADR 0004](../adr/0004-app-database-placement.md) has since given the app its own logical database on the same service. No DDL, role/grant change, deletion or wiring was performed. Reverify ownership/capacity and implement isolation at P11; A02 is not closed by this dated audit.
 
 ## Committed schema order
 
@@ -75,10 +77,11 @@ No migration command or live-target preflight executor is added in P02.
 ## P11 target and role isolation
 
 P11 begins only after P10 prerequisites. P11A uses a newly verified disposable
-PostgreSQL target; P11B uses staging; P11C uses the verified app schema and roles
-in the preferred shared logical database after effect review. An alternative
-needs a concrete documented reason. Do not turn shared storage into a fixture.
-A02 remains unresolved for protected HDE/legacy logical database/role ownership.
+PostgreSQL target, and proves the app's database can move to its own service by
+dump and restore; P11B uses staging; P11C uses the app's own logical database and
+roles on HDE's PostgreSQL service (ADR 0004) after effect review. Do not turn shared
+storage into a fixture. A02's open parts are the capacity and operational-limits
+inspection before P11C, the roles' implementation and the legacy disposition.
 
 Before any P11 connection/action, prepare and review a non-secret target manifest:
 application repository/candidate and migration files; actual Railway project,

@@ -207,7 +207,7 @@ remain outside D08 and require separate explicit authority.
 |---|---|
 | A01, P11B | Supported release/contract, authorized operation scope, accepted uncertain-birth semantics and timezone source; chart identity/update/idempotency; allowed output fields, directionality, cache rights and invalidation; deletion/shared-chart ownership and completion evidence. |
 | A07, P11B | Supported request granularity, actual throughput/rate limits, timeout/retry budgets and measured bounded workload behavior. Fixture cap/retries prove none of these. |
-| A02, before P11 target mutation | Exact app/HDE/legacy logical database, migration/runtime role and storage ownership. P02 opens no database connection. |
+| A02, before P11 target mutation | Exact app/HDE/legacy logical database, migration/runtime role and storage ownership; the app's own logical database on HDE's service is decided ([ADR 0004](../adr/0004-app-database-placement.md)). P02 opens no database connection. |
 | P11A | Real repository/UOW conformance on disposable PostgreSQL, CAS under concurrent consent/input/block/deletion changes, mapping/event rollback, deduplication, durable outbox crash recovery and migration/restore proofs. |
 | P11B | Authorized sandbox conformance for malformed/version/stale output, outages, partial responses, retry deadlines, replay semantics, auth/rate-limit enforcement, real cache invalidation and provider lifecycle evidence. |
 | P11C | Verified isolated production app target/roles and bounded authorized live smoke after staging evidence. No HDE mutation inferred from app deployment authority. |

@@ -34,7 +34,9 @@ npm ci --ignore-scripts --prefix apps/mobile
 npm ci --ignore-scripts --prefix packages/contracts
 ```
 
-Do not dump your environment to diagnose a configuration refusal. The API rejects even empty reserved secret/connection variables by presence. Use a dedicated process environment instead of copying HDE/Railway configuration. The full inventory is in [the handoff](../continuity/claude-code-handoff.md#environment-variable-inventory); the Claude cloud environment's settings are in the [environment inventory](environment-inventory.md).
+Install `apps/mobile` before running `packages/contracts`' checks. The contracts corpus test imports mobile source, so it fails until the mobile dependencies are installed. CI uses the same order (DM-02 B10).
+
+Do not dump your environment to diagnose a configuration refusal. The API rejects even empty reserved secret/connection variables by presence. Use a dedicated process environment instead of copying HDE/Railway configuration. The full inventory, and the Claude cloud environment's settings, are in the [environment inventory](environment-inventory.md#environment-variable-inventory).
 
 ## API
 
@@ -98,7 +100,7 @@ Docker is optional locally and used by the hosted artifact gate. See [build-and-
 
 ## Claude Code cloud sessions
 
-Glow app manager, implementation and review sessions run in the dedicated `Glow app` cloud environment. Its settings are recorded in the [environment inventory](environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026): the network allowlist, the Setup script, the Stream development variables and the absence of HDE variables. The owner steps are in the [M02 brief](../planning/claude-setup-optimization.md#owner-action--dedicated-environment-settings). A session's environment is fixed when it starts; switching environments needs a new session.
+Glow app sessions run in one of two dedicated cloud environments, which Nathan assigns per session and each prompt names (OD-36): `Glow app`, which holds the Stream development variables, for a session that calls Stream, and `Glow App - No Stream`, which holds none, for any other. The [environment inventory](environment-inventory.md#claude-cloud-environment-glow-app-nathans-settings-24-september-2026) records `Glow app`'s settings (the network allowlist, the Setup script, the Stream development variables and the absence of HDE variables) and what is known of the other's. The owner steps are in the [M02 brief](../planning/claude-setup-optimization.md#owner-action--dedicated-environment-settings). A session's environment is fixed when it starts; switching environments needs a new session.
 
 **Setup script.** The environment's Setup script is the whole of `scripts/bootstrap-toolchain.sh`, pasted unchanged.
 

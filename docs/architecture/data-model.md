@@ -66,10 +66,12 @@ P11 rechecks the actual selected release and configuration.
 
 ## Data groups and ownership
 
-All rows below are application-owned. The audited storage direction is a dedicated
-app schema with restricted owner/migrator/runtime roles in HDE's same logical
-PostgreSQL database, `railway`. The audit maps all 32 provisional models to new
-app-owned relations if retained; none reuses a legacy or HDE physical table.
+All rows below are application-owned. The storage direction is the app's own
+logical database on HDE's PostgreSQL service, with restricted owner, migration and
+runtime roles (OD-18, [ADR 0004](../adr/0004-app-database-placement.md)). It
+supersedes the audited app schema in HDE's logical database, `railway`. The audit
+maps all 32 provisional models to new app-owned relations if retained; none reuses
+a legacy or HDE physical table.
 The final P11 design may consolidate provisional models. Engine references are
 opaque external identifiers, never foreign keys into engine tables. A FK targets
 only an app model or the app's maintained auth table. Index names shown are

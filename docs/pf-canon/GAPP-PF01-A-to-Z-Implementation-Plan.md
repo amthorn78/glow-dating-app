@@ -1,9 +1,9 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.7 · **Date:** 25 September 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.11 · **Date:** 29 September 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
-**Current direction:** P01–P05 completed at recorded preparation/fixture scope. The repository documentation migration (M01) and the Claude Code setup (M02) are complete. On 25 September 2026 Nathan resumed P06.1, the chat-provider permissions and economics proof; other new features stay paused until his recorded direction resumes them. Current evidence is in the repository handoff and Notion coordination records.
-**Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. App Planner 1 prepares the transition. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
+**Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
+**Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
 
 ## Repository authority note — P01.2
 
@@ -27,7 +27,7 @@ This plan supersedes the earlier research report's suggestion that all applicati
 - Reciprocal preferences and visibility rules; accessible swipe alternatives; likes, passes, mutual matches and unmatch.
 - One-to-one text chat after mutual match; notifications with privacy-safe content and user controls.
 - Block, report, moderation, appeals, support, profile pause, data export and account deletion.
-- WordPress as the operator interface and public policy/support site, with the dating API enforcing permissions and domain rules.
+- WordPress as the public sales landing page, the public policy and support site, and the staff admin and support interfaces (OD-19). Its staff tools use only scoped Django APIs. WordPress is never a second backend and never touches app or HDE tables. Django owns the application API, permissions, business rules and application state.
 - PostgreSQL as application domain persistence; Railway for application services; Cloudflare private media where suitable.
 - HDE integration through the supported engine boundary. Paid features are conditional on a real product decision and provider approval.
 
@@ -37,7 +37,7 @@ Voice/video, public feeds, consumer web parity, custom chat infrastructure, spec
 
 | Surface | Established location | What it owns |
 |---|---|---|
-| Operational control | [Glow Dating App — Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) | Current state, active work, blockers, next action and exact authoritative links |
+| Operational control | [Glow Dating App — Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) | Current state, active work, blockers, next action and exact authoritative links. It also carries a matching copy of the operational guidance and of the owner-direction register (OD-26). Where a copy differs from the repository, the repository wins and Notion is corrected (OD-27) |
 | Work register | [Glow Dating App — Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) | Task/decision/dependency/risk status and evidence pointers; never a second technical specification |
 | Persistent planning | `docs/planning/` | Durable plans, briefs, source snapshots, decisions and database audit evidence |
 | Separate application canon | `docs/pf-canon/` | Current GAPP-PF00 and GAPP-PF01, in Markdown |
@@ -115,7 +115,7 @@ The prior research sampled legacy SQL-parameter logging, development-secret/sess
 | Media | Cloudflare Images/private R2 as appropriate | Reuse upload/storage/delivery; build authorization, quarantine, moderation and lifecycle state |
 | Chat | Stream Chat is preferred, subject to permission and cost proof | Reuse transport/history/native UI where safe; build app-controlled mutual-match and block enforcement |
 | Billing | RevenueCat/store SDKs if monetization is selected | Reuse purchase/receipt lifecycle; build entitlement rules, reconciliation and support surfaces |
-| Operations | WordPress plugin calling scoped application admin APIs | Reuse WordPress staff UI/CMS; app API owns dating authorization, moderation state and audit history |
+| Operations | WordPress plugin calling scoped application admin APIs | Reuse WordPress staff UI/CMS, which also hosts the public sales landing page; app API owns dating authorization, moderation state and audit history. WordPress is never a second backend and never reads or writes app or HDE tables (OD-19) |
 | Quality/operations | CI, standard test runners, error/metric tooling | Configure reproducible checks, redaction, alerts and release evidence; no custom orchestration platform |
 
 Pin exact framework, runtime, native SDK and package versions together in P01 after checking current official support and compatibility. The research snapshot recommended a stable Expo release and Django LTS; repository `main`, preview SDKs and unconstrained “latest” are not release pins. The implementation lockfiles, container image digests, native build settings and SBOM become the reproducible authority. Paid services remain choices subject to their specific access/budget gates, not purchases made by this document.
@@ -130,7 +130,13 @@ PostgreSQL is the system of record for dating-domain state. Managed chat may own
 
 On 23 September 2026, during AP1-P03-001 execution, Nathan directed: “the app should be in the same project as the HD Engine”. The application therefore belongs in existing Railway project `ample-illumination` (`ce01529f-679f-4f52-a979-23113299a59b`). This supersedes the earlier separate-project default and P01 disposition. Use separate app-owned services and service/environment-scoped configuration and secrets. Project placement does not grant permission to alter HDE or shared settings. Services in the same environment share private networking; service ownership is not network isolation. Exact app environments, domains and resource IDs must be verified when provisioned. P03 may finish preparation without idle services. See [same-project decision](../adr/0002-same-project-application-services.md) and [resource ownership](../operations/resource-ownership.md).
 
-The newer owner direction recorded in [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) prefers the **same logical PostgreSQL database as HDE**, with app-owned schema/tables and restricted app runtime/migration roles, unless assessment establishes a strong concrete reason against it. No legacy user information needs migration. Appropriate existing app structures may be reused or repurposed after object-level ownership/dependency review; the 32 provisional P02 models are not a decision to create 32 new tables. Map HDE-owned, reusable app-owned, obsolete app-owned and new-required objects before committing a physical layout, with exactly one migration owner per table and explicit allowed reads/writes. HDE schema/data/behavior, credentials, grants and actual dependencies remain protected; shared capacity and deployment effects must be assessed. Neither a shared database nor `public` is an app-only cleanup boundary.
+**The app's database** (Nathan, 25 September 2026; OD-18). The app gets its own logical database on HDE's PostgreSQL service, as [ADR 0004](../adr/0004-app-database-placement.md) records. This supersedes the earlier preference for the same logical database as HDE (OD-03).
+
+- The app has its own owner, migration and runtime roles. No role has a grant across the two databases, and the app never touches HDE's tables; HDE data arrives only through HDE's supported interface (§5).
+- The service's capacity and operational limits are verified before P11C.
+- The app's database stays movable to its own service without redesign.
+
+No legacy user information needs migration. HDE schema, data, behavior, credentials, grants and actual dependencies remain protected, and shared capacity and deployment effects must be assessed. Neither the shared service nor `public` is an app-only cleanup boundary.
 
 The [completed 23 September database audit](../planning/database-audit-2026-09-23.md) and [catalog/model map](../planning/database-catalog-2026-09-23.md) resolve the dated logical-database/ownership inspection: HDE and legacy backend use database `railway` with privileged `postgres`; protect `hde` and `public.hde_body_graphs_current`. None of the 32 provisional app models maps to an approved reusable physical legacy relation. The audit recommends a clean app-owned schema and restricted roles; no role/DDL/runtime change has occurred. These dated observations require reverification before P11 mutation. A02 remains open for implemented isolation, capacity, effects and acceptance. The audit’s early read-only exception does not authorize new database connections during this migration.
 
@@ -191,18 +197,35 @@ Define identifiers, nullability, timezone semantics, unique/check/foreign-key co
 
 Database-dependent Django/allauth behavior cannot responsibly be certified with an in-memory domain repository. That is why P11 begins with disposable PostgreSQL before staging and production. Fakes must implement the same narrow repository contract and be run against the same conformance cases as the real adapter later; they are not an alternate production backend. Do not build a shadow SQL engine or spend weeks simulating PostgreSQL.
 
-WordPress itself needs a database to boot. If native plugin validation is required before P11, a disposable local CMS database is permitted as temporary development storage; it does not connect the application or HDE production database. Record that limited use. Other requests to bring real database integration forward require a concrete technical reason and an explicit plan amendment; development convenience alone is insufficient.
+WordPress itself needs a database to boot. If native plugin validation is required before P11, a disposable local CMS database is permitted as temporary development storage; it does not connect the application or HDE production database. Record that limited use. **Early disposable-PostgreSQL proof** (Nathan, 25 September 2026; OD-17). This plan amendment is approved:
+
+- Before P06.2, a disposable PostgreSQL instance in CI proves send-versus-block ordering and sign-in against real database behavior. This is work item P06.DB, which starts after P06.1's CI and review are clear.
+- It has no connection to a shared or production database. It uses CI-generated credentials, and the runtime guards stay in place.
+- The evidence records what the proof tested and its result. The database is disposed of with the job.
+- Applying migrations is setup there, not DB01 acceptance. The proof partially evidences DB06 and DB09, and P11A and P11B still rerun them on the real target.
+
+Other requests to bring real database integration forward require a concrete technical reason and an explicit plan amendment; development convenience alone is insufficient.
 
 ### Migration and connection safety
 
 - Design forward/expand-contract migrations and separate data backfills; keep compatible application rollback possible. Do not describe database rollback as simply reverting a Git commit.
 - At P11, inspect the actual app objects and migration ledger before applying anything. A blank shared database is not presumed. Nathan requires no legacy-user migration; clean app data does not authorize deleting legacy or HDE dependencies.
-- Application migrations may affect only verified app-owned objects. In the preferred shared logical database, distinguish exact app schema, object ownership, runtime/migration roles and dependencies from HDE; reject ambiguous scope. Never alter HDE objects/data/grants or restore/reset the shared database or volume under an app-only migration action.
+- Application migrations may affect only verified app-owned objects. On the shared PostgreSQL service they run only in the app's own logical database, with its own roles (ADR 0004); reject ambiguous scope. Never alter HDE objects, data or grants, or restore or reset the shared service or volume, under an app-only migration action.
 - Use separate runtime and migration privileges, environment-specific credentials, TLS/private networking as supported, bounded connection pools, transaction/statement timeouts and secret references. Keep credentials out of repo, Notion, Drive, logs and chat.
 - Establish and test backup/restore, recovery objectives and deletion-tombstone replay. Backup configuration or a “successful backup” status is not a restore proof. Do not assume PITR or high availability is enabled because a platform offers it.
 - Before production connection, stage evidence, credentials, approved budget, target identity, migration set, backup/recovery proof, owner-resolved production authorization and a bounded smoke/rollback procedure must all exist.
 
 ## 7. Product behavior and security requirements
+
+**Product presentation.** Nathan, 25 September 2026: *"There should never be any indication that there is anything happening outside Glow."* Users never see a sign that anything happens outside Glow. No provider's name, branding, identifiers, error text, notifications or data reaches them, and everything they see comes from Glow's API in Glow's own wording.
+
+- **Scope:** the in-app experience and every communication Glow sends: push, email, in-app errors, deep links and the links users share.
+- **Consumers:** the rule binds server and operator consumers too. Provider data a user could write is never forwarded into exports, staff views, push or analytics.
+- **Exceptions** (Nathan, 25 September 2026; OD-16): legally required disclosures, licence notices and essential system screens. The list is narrow, explicit and exhaustive.
+  - Each exception names its basis and keeps its screen clear and usable. ADR 0003 has the detail.
+  - *"An optional product screen should not be classified as an exception merely because it is convenient to do so."*
+
+The first application of the rule is the chat display rule in [ADR 0003](../adr/0003-chat-display-rule.md).
 
 **Identity and onboarding.** Start with verified email and supported recovery. Add social login only with safe linking and platform-policy review. Use platform secure storage for native secrets, short-lived access credentials and server-side revocation of refresh/session state. Logout, password change, lost-device recovery, account suspension and deletion revoke the appropriate sessions. Test enumeration resistance, token replay, expired links, wrong-account linking and deep-link interception. Fixture sign-in is development-only and is never production authentication evidence.
 
@@ -210,7 +233,7 @@ WordPress itself needs a database to boot. If native plugin validation is requir
 
 **Media.** Issue short-lived upload grants; enforce ownership, size/count/type limits and safe decoding. Strip metadata, quarantine originals, moderate before publication and expose only approved variants through authorized delivery. Handle abandoned uploads, reordering, retries, removal and downstream purge. Neither an uploaded filename nor a successful vendor upload proves that an image is safe or publicly eligible.
 
-**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, stale tokens, existing channels, retries, reconnect and cross-device behavior. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default.
+**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, stale tokens, existing channels, retries, reconnect and cross-device behavior. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default. On 25 September 2026 Nathan accepted the display rule for P06.1's finding S15: the app never displays chat-provider user or member data ([ADR 0003](../adr/0003-chat-display-rule.md); confirmed live by the I1 review on 25 September 2026). The [P06.1 brief](../planning/p06-1-chat-provider-proof.md) records the finding and its consequences for P06.1's later sessions and P06.2.
 
 **Safety, privacy and operations.** Block/report are available from profile and chat, including after unmatch. Moderation actions, evidence retention, appeal and urgent escalation have named operational owners. WordPress staff authentication is distinct from dating-user authentication; privileged API calls enforce scope and audit the staff actor. Draft real public community/child-safety/support policies, then have the owner confirm the actual operating responsibilities. Configure least privilege and redaction; no raw birth data, chat bodies, tokens or SQL parameters in routine logs.
 
@@ -239,6 +262,8 @@ The following phases are checkpoints, not separate required sessions or automati
 | P10 | Pre-integration readiness evidence | P01–P09 | Entire phase; explicitly records deferred real-integration evidence |
 | P11 | Disposable/staging persistence, live integration, final production connection | P10 plus actual external gates | Substages proceed independently where prerequisites permit |
 | P12 | Verified release-candidate handoff | P11 mandatory acceptance | Verification and readiness record; public release remains separate |
+
+**P06.DB** (OD-17) is the early disposable-PostgreSQL proof in §6. It runs after P06.1 closes and before P06.2.
 
 Logical parallel work is possible: P03 operations preparation can overlap P04 UI; P05 domain rules and P06 provider capability work can progress independently once contracts agree; public policy/support drafting can overlap P07; P09 checks run incrementally throughout. This is scheduling flexibility for one session, not authorization or a requirement to spawn agents. Keep one active work item in the register unless a concrete asynchronous operation is being tracked.
 
@@ -380,9 +405,9 @@ Logical parallel work is possible: P03 operations preparation can overlap P04 UI
 - **Inputs:** P10 packet; exact app target/role; HDE contract/release/environment and authorized credentials; provider accounts; approved spending; migration/restore plan and production-action authority.
 - **Dependencies/HDE:** P10 readiness is required before this stage; the supported engine contract and permitted test/production access are required before live HDE checks. Independent disposable/app-persistence work may proceed while that external dependency remains unresolved.
 - **Operations:** verify all identities against current state, including HDE/legacy/app database ownership. Configure isolated app database roles, connections, backups and monitoring. Preserve the existing HDE database. Record actual settings without secret values.
-- **Development — P11A:** use disposable PostgreSQL, apply migrations from zero and supported upgrade state, exercise ORM/auth/repository conformance, real constraints/locking, outbox durability and query plans. Repair defects here before staging.
+- **Development — P11A:** use disposable PostgreSQL, apply migrations from zero and supported upgrade state, exercise ORM/auth/repository conformance, real constraints/locking, outbox durability and query plans. Prove the move-out path: dump the app's database and restore it into a separate disposable instance, with a configuration change as the only application change (ADR 0004). Repair defects here before staging.
 - **Development — P11B:** connect staging app persistence and approved provider sandboxes; run real user journeys, HDE adapter conformance, media lifecycle, chat safety, notifications, moderation, deletion, billing if in scope, queue recovery and restore drills. Never use real users as test fixtures. If no HDE test environment exists, obtain a narrowly authorized read/test-data protocol for the protected engine before any live call.
-- **Development — P11C:** only after stage evidence and real gates pass, verify production target identity, apply reviewed app migrations with the restricted app migration role, connect the app service using its runtime role, connect the supported HDE service and perform bounded private smoke checks. In the preferred shared logical database, app migrations may affect only verified app-owned objects; they must not alter HDE objects, grants, data or behavior. Shared effects require their concrete review before action. A production connection is not permission to open public traffic.
+- **Development — P11C:** only after stage evidence and real gates pass, verify production target identity, apply reviewed app migrations with the restricted app migration role, connect the app service using its runtime role, connect the supported HDE service and perform bounded private smoke checks. In the app's own logical database on the shared service (ADR 0004), app migrations affect only app-owned objects; they must not alter HDE objects, grants, data or behavior. Shared effects require their concrete review before action. A production connection is not permission to open public traffic.
 - **Documentation:** exact database/role/service identities, applied migration ledger, contract versions, HDE deployment, provider evidence, backup/restore proof, measured performance, incident/rollback record and final limitations.
 - **Validation:** true concurrent reciprocal likes; transactional outbox crash recovery; auth revocation; block-versus-send race; deletion across providers; connection exhaustion/timeout; queue retry/dedup; HDE version/failure responses; restore including deletion replay; real index/query latency under stated load.
 - **Completion:** all mandatory real-integration cases pass in their specified environments. If HDE or production authorization is missing, stop only that substage, retain verified earlier work, and mark the release candidate blocked. Never collapse staging success into production proof.
@@ -430,7 +455,7 @@ App Builder 1 owns implementation, tests, repository documentation and accurate 
 
 ### Claude Code transition — D09
 
-On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code and paused new feature implementation. All documentation needed to plan, implement, review and hand off work must be repository Markdown. Notion remains coordination/status; Drive is historical provenance only. Persistent plans live in `docs/planning/`, disposable prompts in `docs/ephemeral/`, and the existing PF canon stays here. The receiving Claude session is the manager and commissions bounded one-off implementation sessions. Its first work is code/instruction/docs/CI/environment audit followed by a bounded setup and workflow optimization, not P06 feature work. No external prompt library is imported as governing workflow. Follow the [manager workflow](../planning/manager-workflow.md), [initiation](../planning/claude-code-initiation.md) and [migration record](../planning/claude-code-migration.md). D08’s protected boundary, ordinary app authorization and P11 sequencing remain unchanged. The earlier named-session grant is applied to this explicitly directed replacement environment, not an expansion to HDE. The same day Nathan fixed the operating process as a **manual relay**. The manager gives Nathan prompts for implementers. Nathan starts every implementation or review session himself, relays its findings back, and reinitiates managers manually. The manager never starts implementation or review work itself through subagents or remote-session tools. Implementation and review sessions may use any tools, subagents or scheduled wake-ups they need.
+On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code and paused new feature implementation. All documentation needed to plan, implement, review and hand off work must be repository Markdown. Notion remains coordination/status; Drive is historical provenance only. Persistent plans live in `docs/planning/`, disposable prompts in `docs/ephemeral/`, and the existing PF canon stays here. The receiving Claude session is the manager and commissions bounded one-off implementation sessions. Its first work is code/instruction/docs/CI/environment audit followed by a bounded setup and workflow optimization, not P06 feature work. No external prompt library is imported as governing workflow. Follow the [manager workflow](../planning/manager-workflow.md), [initiation](../planning/claude-code-initiation.md) and [migration record](../planning/claude-code-migration.md). D08’s protected boundary, ordinary app authorization and P11 sequencing remain unchanged. The earlier named-session grant is applied to this explicitly directed replacement environment, not an expansion to HDE. The same day Nathan fixed the operating process as a **manual relay**. The manager gives Nathan prompts for implementers. Nathan starts every implementation or review session himself, relays its findings back, and reinitiates managers manually. The manager never starts implementation or review work itself through subagents or remote-session tools, except the Dev Manager under D10. Implementation and review sessions may use any tools, subagents or scheduled wake-ups they need.
 
 ### Initial decisions
 
@@ -439,24 +464,25 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | D01 | Fresh application foundation with maintained component reuse; existing assets assessed, not automatically inherited | Owner chose the scratch-build direction and clarified optional reuse |
 | D02 | Preserve current HDE and its database; no app-side engine reimplementation | Owner's explicit integration priority |
 | D03 | Production DB connection/database-dependent integration in P11; data design early | Owner's implementation brief |
-| D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09 | Owner brief and 24 September transition direction |
+| D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09. Notion also carries a matching copy of the operational guidance and the owner-direction register (OD-26); where they differ, the repository wins (OD-27) | Owner brief and 24 September transition direction |
 | D05 | Separate GAPP-PF canon; one capable session; no automatic approval at each phase | Owner's implementation brief |
 | D06 | Expo/RN + modular Django/DRF baseline, managed capabilities behind adapters | Selected planning design from research; exact pins and bounded reuse ADR in P01 |
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
 | D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; current controlling permission record |
 | D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions run as Nathan's manual relay; feature pause and setup optimization first | Owner direction, 24 September 2026 |
+| D10 | Dev Manager: a persistent second-layer management and review session that the manager creates and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions and keeps documentation chains traceable; no scoring. The primary manager keeps coordination; Nathan decides disagreements. See the [Dev Manager charter](../planning/dev-manager.md) | Owner direction, 25 September 2026 |
 
 ### Provisional assumptions and dependencies
 
 | ID | Unresolved item | Needed by | Action / fallback |
 |---|---|---|---|
-| A01 | Final HDE chart, compatibility, version/cache and deletion contract | P11B | Build fixtures/adapter now; live HDE acceptance stays blocked until supported contract exists |
-| A02 | HDE/legacy/app logical DB and role ownership, existing production users/data | Before any P11 target mutation or retirement | Inspect source/config metadata early; verify protected target at P11; no automatic import, overwrite or deletion |
+| A01 | Final HDE chart, compatibility, version/cache and deletion contract | P11B | Build fixtures/adapter now; live HDE acceptance stays blocked until supported contract exists. Owner: Nathan, who holds the Product Owner, HDE owner and integration owner roles (OD-23). The app's contract-requirements document goes into HDE's own process, where Nathan sets the delivery date (not yet set). The app records the delivered contract as a receipt; HDE governs its text |
+| A02 | HDE/legacy/app logical DB and role ownership, existing production users/data | Before any P11 target mutation or retirement | Inspect source/config metadata early; verify protected target at P11; no automatic import, overwrite or deletion. Placement decided: the app's own logical database on HDE's service (OD-18, ADR 0004). Still open: the capacity and operational-limits inspection before P11C, the roles' implementation and the legacy disposition |
 | A03 | Reusable old app code and preferred repo/resource placement | P01 | Bounded evidence-based assessment; fresh private app base is default |
-| A04 | Provider accounts, budget, signing credentials, domain ownership and admin access | P03/P06/P09/P11 as used | Prepare code/config first; request only the exact missing access or spend when action is ready |
-| A05 | Launch geography/language, preference policy, moderation/support ownership and retention | P05/P07/P08 before final policy/launch | Use explicitly recorded provisional fixtures; owner resolves product/operating commitments |
+| A04 | Provider accounts, budget, signing credentials, domain ownership and admin access | P03/P06/P09/P11 as used | Prepare code/config first; request only the exact missing access or spend when action is ready. Stream: the Maker Account application was submitted by 25 September 2026 and is pending; Stream estimates about two weeks, which is not an approval date (OD-22). The $0 budget stands (OD-12) |
+| A05 | Launch geography/language, preference policy, moderation/support ownership and retention | P05/P07/P08 before final policy/launch | Use explicitly recorded provisional fixtures; owner resolves product/operating commitments. One person, Nathan, holds every human role (OD-23), so P07 plans moderation, escalation, child-safety duties, support and appeals for a single operator |
 | A06 | Paid launch and entitlement product scope | P08 | Default no active paid feature; do not buy a plan or invent pricing |
-| A07 | HDE throughput and supported recommendation granularity | P11B before release acceptance | Bounded candidate strategy; measure actual contract; band ordering if that is all permitted |
+| A07 | HDE throughput and supported recommendation granularity | P11B before release acceptance | Bounded candidate strategy; measure actual contract; band ordering if that is all permitted. Owner and date as A01 (OD-23) |
 | A08 | Chat provider can enforce app-owned match/block send authorization | P06 capability proof; rerun P11 | Prove SDK/permission behavior; change design/provider if bypass cannot be closed |
 
 ### Autonomy and real gates
@@ -495,7 +521,7 @@ Required final acceptance covers the complete account-to-profile-to-recommendati
 | R02 — HDE contract changes or remains unfinished | Versioned adapter, honest fixture states, bounded application-owned presentation | Final supported contract unavailable or requires app product change |
 | R03 — Shared legacy/HDE infrastructure is accidentally changed | Exact identity map, protected service/volume list, no shared credentials or blanket cleanup | Ownership/consumer mapping ambiguous before a mutation |
 | R04 — Managed chat safety bypass or unacceptable cost | Early permission proof and quote; app-owned entitlement; vendor-independent port | Direct client path can bypass block/match checks or price exceeds approved budget |
-| R05 — Store/safety/operations gap | Build policy/UGC/deletion/support matrix early; native builds and named operators | Missing accountable safety operation or unresolved release-policy requirement |
+| R05 — Store/safety/operations gap | Build policy/UGC/deletion/support matrix early; native builds and named operators. With one human operator (OD-23), P07 plans capacity explicitly: what is automated, what response times one person can meet, and what must be in place before launch | Missing accountable safety operation or unresolved release-policy requirement |
 | R06 — Duplicate docs and misleading progress | Single authority transfer, linked evidence, Notion live status, explicit claim levels | Plan, repository and deployed behavior disagree; stop affected work and reconcile |
 
 No calendar delivery promise is made from the earlier research's team-based estimates. The first implementation checkpoints provide actual task throughput, access constraints and defect rates. Reforecast from completed evidence, preserve scope priorities, and distinguish hands-on effort from external waiting time.
@@ -536,3 +562,31 @@ Current continuation is `docs/continuity/current-handoff.md`; D09 pauses feature
 1.6 — records in the current-direction line that the documentation migration (M01) and the Claude Code setup (M02) are complete. The feature pause continues until Nathan resumes it, and the next step is a proposal on whether to resume P06.1 (25 September 2026). No product scope, phase acceptance, D08 authority or HDE boundary changes.
 
 1.7 — records Nathan's direction of 25 September 2026 resuming P06.1 ("resume P06.1"); other feature work stays paused. No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.8 — records two directions of Nathan's on 25 September 2026: his S15 decision and principle (section 7), and the Dev Manager (D10), with the matching exception in D09. No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.9 — after the Dev Manager's DM-01, DM-02 and DM-03 reviews (25 September 2026):
+
+- Section 7 opens with Nathan's presentation principle as a product-wide rule, with its scope, its reach to server and operator consumers, and proposed carve-outs awaiting his confirmation. Until he confirms, no session hides a legally required disclosure or treats a mandated system screen as a defect (DM-03 G3). The chat display rule moves to ADR 0003.
+- The header no longer restates status. It points to the new owner-direction register and to the current handoff.
+- The execution model names App Planner 1 and App Builder 1 as historical roles (DM-03 E4).
+
+No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.10 — records Nathan's answers of 25 September 2026 to the Dev Manager's questions, and his Notion direction:
+
+- Section 7's presentation exceptions are confirmed: narrow, explicit and exhaustive (OD-16).
+- Section 6 adds the approved early disposable-PostgreSQL proof, P06.DB, before P06.2 (OD-17). Section 8 places it after P06.1.
+- Section 4, §6, P11A, P11C and A02 describe the app's own logical database on HDE's PostgreSQL service, which supersedes the same-logical-database preference (OD-18, ADR 0004).
+- Section 1 and section 4 give WordPress the public sales landing page and the staff interfaces, through scoped Django APIs only (OD-19).
+- A01, A04, A05, A07 and R05 record that Nathan holds every human role, the HDE contract route and the Stream Maker application (OD-22, OD-23).
+- Section 2 and D04 record that Notion carries a matching copy of the operational guidance, and that the repository wins on any difference (OD-26, OD-27).
+
+The product scope changes only by the landing page. No phase acceptance, D08 authority or HDE boundary changes.
+
+1.11 — after the Dev Manager's DM-07 read (29 September 2026):
+
+- Section 7 no longer calls the chat display rule conditional on the S15 review: the I1 review confirmed S15 live on 25 September 2026 (DM-07 finding 1.2).
+- Section 4's Operations row says WordPress never reads or writes app or HDE tables (OD-19; DM-07 finding 1.2).
+
+No product scope, phase acceptance, D08 authority or HDE boundary changes.

@@ -1,0 +1,3678 @@
+{
+  "app_id": "1729640",
+  "feeds": {
+    "availability": "available",
+    "feed_groups": {
+      "foryou": {
+        "default_follower_role": null,
+        "default_visibility": "visible"
+      },
+      "notification": {
+        "default_follower_role": null,
+        "default_visibility": "private"
+      },
+      "stories": {
+        "default_follower_role": null,
+        "default_visibility": "visible"
+      },
+      "story": {
+        "default_follower_role": null,
+        "default_visibility": "visible"
+      },
+      "timeline": {
+        "default_follower_role": null,
+        "default_visibility": "visible"
+      },
+      "user": {
+        "default_follower_role": null,
+        "default_visibility": "visible"
+      }
+    },
+    "feed_groups_read": {
+      "availability": "available",
+      "code": null,
+      "message": null,
+      "status": 200
+    },
+    "feed_visibilities": {
+      "followers": {
+        "grants": {
+          "admin": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed",
+            "follow",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities",
+            "update-bookmark-owner",
+            "update-comment",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "anonymous": [],
+          "feed_follower": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "feed_member_viewer": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activity-reaction",
+            "add-comment-reaction",
+            "delete-activity-reaction-owner",
+            "delete-comment-reaction-owner",
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "guest": [],
+          "moderator": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "user": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ]
+        }
+      },
+      "members": {
+        "grants": {
+          "admin": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed",
+            "follow-owner",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities",
+            "update-bookmark-owner",
+            "update-comment",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "anonymous": [],
+          "feed_follower": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity-owner",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "feed_member_viewer": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activity-reaction",
+            "add-comment-reaction",
+            "delete-activity-reaction-owner",
+            "delete-comment-reaction-owner",
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "guest": [],
+          "moderator": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "user": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity-owner",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ]
+        }
+      },
+      "private": {
+        "grants": {
+          "admin": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed",
+            "follow-owner",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities",
+            "update-bookmark-owner",
+            "update-comment",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "anonymous": [],
+          "feed_follower": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity-owner",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member_viewer": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activity-reaction",
+            "add-comment-reaction",
+            "delete-activity-reaction-owner",
+            "delete-comment-reaction-owner",
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_moderator": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "guest": [],
+          "moderator": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "user": [
+            "activity-cast-vote-owner",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction-owner",
+            "add-bookmark-owner",
+            "add-comment-owner",
+            "add-comment-reaction-owner",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow-owner",
+            "pin-activity-owner",
+            "query-feed-members-owner",
+            "query-follows-owner",
+            "read-activities-owner",
+            "read-feed-owner",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ]
+        }
+      },
+      "public": {
+        "grants": {
+          "admin": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow",
+            "update-activities",
+            "update-bookmark-owner",
+            "update-comment",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "anonymous": [
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_follower": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "feed_member_viewer": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activity-reaction",
+            "add-comment-reaction",
+            "delete-activity-reaction-owner",
+            "delete-comment-reaction-owner",
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "guest": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-comment",
+            "add-comment-reaction",
+            "read-activities",
+            "read-feed"
+          ],
+          "moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "user": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ]
+        }
+      },
+      "visible": {
+        "grants": {
+          "admin": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities",
+            "update-bookmark-owner",
+            "update-comment",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "anonymous": [
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_follower": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "feed_member": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "feed_member_viewer": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activity-reaction",
+            "add-comment-reaction",
+            "delete-activity-reaction-owner",
+            "delete-comment-reaction-owner",
+            "read-activities",
+            "read-feed"
+          ],
+          "feed_moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members",
+            "update-feed-owner"
+          ],
+          "guest": [
+            "read-activities",
+            "read-feed"
+          ],
+          "moderator": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "ban-user",
+            "delete-activities",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "restore-comment",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ],
+          "user": [
+            "activity-cast-vote",
+            "activity-query-votes",
+            "add-activities-owner",
+            "add-activity-reaction",
+            "add-bookmark-owner",
+            "add-comment",
+            "add-comment-reaction",
+            "delete-activities-owner",
+            "delete-activity-reaction-owner",
+            "delete-bookmark-owner",
+            "delete-comment-owner",
+            "delete-comment-reaction-owner",
+            "delete-feed-owner",
+            "follow",
+            "pin-activity-owner",
+            "query-feed-members",
+            "query-follows",
+            "read-activities",
+            "read-feed",
+            "unfollow-owner",
+            "update-activities-owner",
+            "update-bookmark-owner",
+            "update-comment-owner",
+            "update-feed-followers-owner",
+            "update-feed-members-owner",
+            "update-feed-owner"
+          ]
+        }
+      }
+    },
+    "read": {
+      "code": null,
+      "message": null,
+      "status": 200
+    }
+  },
+  "video": {
+    "availability": "available",
+    "call_types": {
+      "audio_room": {
+        "grants": {
+          "admin": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "mute-users",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions-owner",
+            "send-event",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "anonymous": [
+            "join-call",
+            "read-call"
+          ],
+          "call_member": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call-owner",
+            "join-backstage-owner",
+            "join-call",
+            "join-call-any-team",
+            "join-ended-call-owner",
+            "mute-users-owner",
+            "read-call",
+            "remove-call-member-owner",
+            "send-audio-owner",
+            "send-closed-captions-owner",
+            "send-event",
+            "start-broadcasting-owner",
+            "start-closed-captions-owner",
+            "start-frame-recording",
+            "start-recording-owner",
+            "start-transcription-owner",
+            "stop-broadcasting-owner",
+            "stop-closed-captions-owner",
+            "stop-frame-recording",
+            "stop-recording-owner",
+            "stop-transcription-owner",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner",
+            "update-call-settings-owner"
+          ],
+          "global_admin": [
+            "block-user-any-team",
+            "block-user-owner",
+            "create-call-any-team",
+            "create-call-reaction-any-team",
+            "enable-noise-cancellation-any-team",
+            "end-call-any-team",
+            "end-call-owner",
+            "join-backstage-any-team",
+            "join-call-any-team",
+            "join-ended-call-any-team",
+            "mute-users-any-team",
+            "mute-users-owner",
+            "read-call-any-team",
+            "read-call-stats-any-team",
+            "remove-call-member-any-team",
+            "remove-call-member-owner",
+            "screenshare-any-team",
+            "send-audio-any-team",
+            "send-audio-owner",
+            "send-closed-captions-owner",
+            "send-event-any-team",
+            "start-broadcasting-any-team",
+            "start-broadcasting-owner",
+            "start-closed-captions-any-team",
+            "start-closed-captions-owner",
+            "start-frame-recording-any-team",
+            "start-recording-any-team",
+            "start-recording-owner",
+            "start-transcription-any-team",
+            "start-transcription-owner",
+            "stop-broadcasting-any-team",
+            "stop-broadcasting-owner",
+            "stop-closed-captions-any-team",
+            "stop-closed-captions-owner",
+            "stop-frame-recording-any-team",
+            "stop-recording-any-team",
+            "stop-recording-owner",
+            "stop-transcription-any-team",
+            "stop-transcription-owner",
+            "update-call-any-team",
+            "update-call-member-any-team",
+            "update-call-member-owner",
+            "update-call-member-role-any-team",
+            "update-call-member-role-owner",
+            "update-call-permissions-any-team",
+            "update-call-permissions-owner",
+            "update-call-settings-any-team"
+          ],
+          "global_read_only": [
+            "list-recordings",
+            "list-transcriptions",
+            "read-call",
+            "read-call-stats"
+          ],
+          "host": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call-owner",
+            "mute-users",
+            "read-call",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions-owner",
+            "send-event",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "speaker": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call-owner",
+            "join-backstage-owner",
+            "join-call",
+            "join-ended-call-owner",
+            "mute-users-owner",
+            "read-call",
+            "remove-call-member-owner",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions-owner",
+            "send-event",
+            "start-broadcasting-owner",
+            "start-closed-captions-owner",
+            "start-frame-recording",
+            "start-recording-owner",
+            "start-transcription-owner",
+            "stop-broadcasting-owner",
+            "stop-closed-captions-owner",
+            "stop-frame-recording",
+            "stop-recording-owner",
+            "stop-transcription-owner",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner",
+            "update-call-settings-owner"
+          ],
+          "user": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call-owner",
+            "join-backstage-owner",
+            "join-call",
+            "join-ended-call-owner",
+            "mute-users-owner",
+            "read-call",
+            "remove-call-member-owner",
+            "send-audio-owner",
+            "send-closed-captions-owner",
+            "send-event",
+            "start-broadcasting-owner",
+            "start-closed-captions-owner",
+            "start-frame-recording",
+            "start-recording-owner",
+            "start-transcription-owner",
+            "stop-broadcasting-owner",
+            "stop-closed-captions-owner",
+            "stop-frame-recording",
+            "stop-recording-owner",
+            "stop-transcription-owner",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner",
+            "update-call-settings-owner"
+          ]
+        },
+        "notification_settings": {
+          "call_live_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} is live now{{ else }}A call is live now{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_missed": {
+            "apns": {
+              "body": "",
+              "title": "Missed call from {{ user.display_name }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_notification": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_ring": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "enabled": true,
+          "session_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} started{{ else }}A call started{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          }
+        },
+        "settings": {
+          "audio": {
+            "access_request_enabled": true,
+            "default_device": "speaker",
+            "hifi_audio_enabled": true,
+            "mic_default_on": false,
+            "noise_cancellation": {
+              "mode": "auto-on"
+            },
+            "opus_dtx_enabled": true,
+            "redundant_coding_enabled": true,
+            "speaker_default_on": true
+          },
+          "backstage": {
+            "enabled": true
+          },
+          "broadcasting": {
+            "enabled": true,
+            "hls": {
+              "auto_on": false,
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality_tracks": [
+                "720p"
+              ]
+            },
+            "rtmp": {
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality": "720p"
+            }
+          },
+          "encryption": {
+            "mode": "available"
+          },
+          "frame_recording": {
+            "capture_interval_in_seconds": 0,
+            "mode": "disabled"
+          },
+          "geofencing": {
+            "names": []
+          },
+          "individual_recording": {
+            "mode": "available",
+            "output_types": [
+              "audio_only",
+              "screenshare_audio_only"
+            ]
+          },
+          "ingress": {
+            "audio_encoding_options": {
+              "bitrate": 128000,
+              "channels": 2,
+              "enable_dtx": false
+            },
+            "enabled": true,
+            "video_encoding_options": {
+              "1280x720x30": {
+                "layers": [
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1800000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  },
+                  {
+                    "bitrate": 700000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 640,
+                    "min_dimension": 360
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 720,
+                  "width": 1280
+                }
+              },
+              "1920x1080x30": {
+                "layers": [
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1600000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1080,
+                  "width": 1920
+                }
+              },
+              "2560x1440x30": {
+                "layers": [
+                  {
+                    "bitrate": 9000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 2560,
+                    "min_dimension": 1440
+                  },
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1440,
+                  "width": 2560
+                }
+              },
+              "3840x2160x30": {
+                "layers": [
+                  {
+                    "bitrate": 18000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 3840,
+                    "min_dimension": 2160
+                  },
+                  {
+                    "bitrate": 8000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 2160,
+                  "width": 3840
+                }
+              }
+            }
+          },
+          "limits": {
+            "max_duration_seconds": null,
+            "max_participants": null,
+            "max_participants_exclude_roles": []
+          },
+          "raw_recording": {
+            "audio_only": true,
+            "mode": "available"
+          },
+          "recording": {
+            "audio_only": true,
+            "layout": {
+              "external_app_url": "",
+              "external_css_url": "",
+              "name": ""
+            },
+            "mode": "available",
+            "quality": ""
+          },
+          "ring": {
+            "auto_cancel_timeout_ms": 0,
+            "incoming_call_timeout_ms": 0,
+            "missed_call_timeout_ms": 0
+          },
+          "screensharing": {
+            "access_request_enabled": true,
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 1080,
+              "width": 1920
+            }
+          },
+          "session": {
+            "inactivity_timeout_seconds": 30
+          },
+          "thumbnails": {
+            "enabled": false
+          },
+          "transcription": {
+            "closed_caption_mode": "available",
+            "language": "en",
+            "languages": [
+              "en"
+            ],
+            "mode": "available",
+            "speech_segment_config": {
+              "max_speech_caption_ms": 9000,
+              "silence_duration_ms": 700
+            },
+            "translation": {
+              "enabled": false,
+              "languages": [
+                "en"
+              ]
+            }
+          },
+          "video": {
+            "access_request_enabled": false,
+            "camera_default_on": false,
+            "camera_facing": "front",
+            "enabled": false,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 720,
+              "width": 1280
+            }
+          }
+        }
+      },
+      "default": {
+        "grants": {
+          "admin": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "delete-call",
+            "delete-recording",
+            "delete-transcription",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-call-any-team",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "call_member": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-call",
+            "join-call-any-team",
+            "join-ended-call",
+            "kick-user-owner",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users-owner",
+            "pin-call-track-owner",
+            "read-call",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call-member",
+            "update-call-owner",
+            "update-call-permissions-owner",
+            "update-call-settings-owner"
+          ],
+          "global_admin": [
+            "block-user-any-team",
+            "block-user-owner",
+            "create-call-any-team",
+            "create-call-reaction-any-team",
+            "delete-call-any-team",
+            "delete-recording-any-team",
+            "delete-transcription-any-team",
+            "enable-noise-cancellation-any-team",
+            "end-call-any-team",
+            "join-backstage-any-team",
+            "join-call-any-team",
+            "join-ended-call-any-team",
+            "kick-user-any-team",
+            "kick-user-owner",
+            "list-recordings-any-team",
+            "list-transcriptions-any-team",
+            "mute-users-any-team",
+            "mute-users-owner",
+            "pin-call-track-any-team",
+            "read-call-any-team",
+            "read-call-stats-any-team",
+            "remove-call-member-any-team",
+            "screenshare-any-team",
+            "send-audio-any-team",
+            "send-closed-captions-any-team",
+            "send-event-any-team",
+            "send-video-any-team",
+            "start-broadcasting-any-team",
+            "start-closed-captions-any-team",
+            "start-frame-recording-any-team",
+            "start-recording-any-team",
+            "start-transcription-any-team",
+            "stop-broadcasting-any-team",
+            "stop-closed-captions-any-team",
+            "stop-frame-recording-any-team",
+            "stop-recording-any-team",
+            "stop-transcription-any-team",
+            "update-call-any-team",
+            "update-call-member-any-team",
+            "update-call-member-role-any-team",
+            "update-call-permissions-any-team",
+            "update-call-permissions-owner",
+            "update-call-settings-any-team"
+          ],
+          "global_read_only": [
+            "list-recordings",
+            "list-transcriptions",
+            "read-call",
+            "read-call-stats"
+          ],
+          "guest": [
+            "enable-noise-cancellation-any-team",
+            "join-call",
+            "read-call",
+            "send-audio",
+            "send-event",
+            "send-video"
+          ],
+          "user": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-call",
+            "join-ended-call",
+            "kick-user-owner",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users-owner",
+            "pin-call-track-owner",
+            "read-call",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call-member",
+            "update-call-owner",
+            "update-call-permissions-owner",
+            "update-call-settings-owner"
+          ]
+        },
+        "notification_settings": {
+          "call_live_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} is live now{{ else }}A call is live now{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_missed": {
+            "apns": {
+              "body": "",
+              "title": "Missed call from {{ user.display_name }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_notification": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_ring": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "enabled": true,
+          "session_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} started{{ else }}A call started{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          }
+        },
+        "settings": {
+          "audio": {
+            "access_request_enabled": true,
+            "default_device": "earpiece",
+            "hifi_audio_enabled": false,
+            "mic_default_on": true,
+            "noise_cancellation": {
+              "mode": "auto-on"
+            },
+            "opus_dtx_enabled": true,
+            "redundant_coding_enabled": true,
+            "speaker_default_on": true
+          },
+          "backstage": {
+            "enabled": false
+          },
+          "broadcasting": {
+            "enabled": true,
+            "hls": {
+              "auto_on": false,
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality_tracks": [
+                "720p"
+              ]
+            },
+            "rtmp": {
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality": "720p"
+            }
+          },
+          "encryption": {
+            "mode": "available"
+          },
+          "frame_recording": {
+            "capture_interval_in_seconds": 3,
+            "mode": "available",
+            "quality": "720p"
+          },
+          "geofencing": {
+            "names": []
+          },
+          "individual_recording": {
+            "mode": "available"
+          },
+          "ingress": {
+            "audio_encoding_options": {
+              "bitrate": 128000,
+              "channels": 2,
+              "enable_dtx": false
+            },
+            "enabled": true,
+            "video_encoding_options": {
+              "1280x720x30": {
+                "layers": [
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1800000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  },
+                  {
+                    "bitrate": 700000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 640,
+                    "min_dimension": 360
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 720,
+                  "width": 1280
+                }
+              },
+              "1920x1080x30": {
+                "layers": [
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1600000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1080,
+                  "width": 1920
+                }
+              },
+              "2560x1440x30": {
+                "layers": [
+                  {
+                    "bitrate": 9000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 2560,
+                    "min_dimension": 1440
+                  },
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1440,
+                  "width": 2560
+                }
+              },
+              "3840x2160x30": {
+                "layers": [
+                  {
+                    "bitrate": 18000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 3840,
+                    "min_dimension": 2160
+                  },
+                  {
+                    "bitrate": 8000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 2160,
+                  "width": 3840
+                }
+              }
+            }
+          },
+          "limits": {
+            "max_duration_seconds": null,
+            "max_participants": null,
+            "max_participants_exclude_roles": []
+          },
+          "raw_recording": {
+            "mode": "available"
+          },
+          "recording": {
+            "audio_only": false,
+            "layout": {
+              "detect_orientation": false,
+              "external_app_url": "",
+              "external_css_url": "",
+              "name": "spotlight",
+              "options": {
+                "grid.cell_padding": 10,
+                "grid.columns": 5,
+                "grid.margin": 10,
+                "grid.position": "bottom",
+                "grid.rows": 1,
+                "grid.screenshare_layout": "spotlight",
+                "grid.size_percentage": 20,
+                "layout.background_color": "#f2f2f2",
+                "layout.background_image": "",
+                "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                "layout.background_repeat": "repeat",
+                "layout.background_size": "24px 24px",
+                "layout.grid.page_size": 20,
+                "layout.single-participant.mode": "default",
+                "layout.single-participant.padding_block": 0,
+                "layout.single-participant.padding_inline": "0%",
+                "layout.single-participant.shuffle_delay": 0,
+                "layout.spotlight.participants_bar_limit": 5,
+                "layout.spotlight.participants_bar_position": "top",
+                "logo.height": "80px",
+                "logo.horizontal_position": "center",
+                "logo.image_url": "",
+                "logo.margin_block": ".875rem",
+                "logo.margin_inline": ".875rem",
+                "logo.vertical_position": "top",
+                "logo.width": "120px",
+                "participant.border_radius": "35px",
+                "participant.outline_color": "#000000",
+                "participant.outline_width": "3px",
+                "participant.placeholder_background_color": "#000000",
+                "participant.video_border_color": "#CCCCCC",
+                "participant.video_border_radius": "5px",
+                "participant.video_border_rounded": true,
+                "participant.video_border_width": true,
+                "participant.video_highlight_border_color": "#7CFC00",
+                "participant_label.background_color": "#00000000",
+                "participant_label.border_color": "#CCCCCC",
+                "participant_label.border_radius": "5px",
+                "participant_label.border_rounded": true,
+                "participant_label.border_width": "0px",
+                "participant_label.display": true,
+                "participant_label.display_border": true,
+                "participant_label.horizontal_position": "left",
+                "participant_label.text_color": "#000000",
+                "participant_label.vertical_position": "bottom",
+                "title.color": "#000000",
+                "title.font_size": "20px",
+                "title.horizontal_position": "center",
+                "title.margin_block": 10,
+                "title.margin_inline": 10,
+                "title.text": "",
+                "title.vertical_position": "top",
+                "video.background_color": "#000000",
+                "video.scale_mode": "fill",
+                "video.screenshare_scale_mode": "fit"
+              }
+            },
+            "mode": "available",
+            "quality": "720p"
+          },
+          "ring": {
+            "auto_cancel_timeout_ms": 15000,
+            "incoming_call_timeout_ms": 15000,
+            "missed_call_timeout_ms": 18000
+          },
+          "screensharing": {
+            "access_request_enabled": true,
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 1080,
+              "width": 1920
+            }
+          },
+          "session": {
+            "inactivity_timeout_seconds": 30
+          },
+          "thumbnails": {
+            "enabled": false
+          },
+          "transcription": {
+            "closed_caption_mode": "available",
+            "language": "en",
+            "languages": [
+              "en"
+            ],
+            "mode": "available",
+            "speech_segment_config": {
+              "max_speech_caption_ms": 9000,
+              "silence_duration_ms": 700
+            },
+            "translation": {
+              "enabled": false,
+              "languages": [
+                "en"
+              ]
+            }
+          },
+          "video": {
+            "access_request_enabled": true,
+            "camera_default_on": true,
+            "camera_facing": "front",
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 720,
+              "width": 1280
+            }
+          }
+        }
+      },
+      "development": {
+        "grants": {
+          "admin": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "anonymous": [
+            "join-call",
+            "read-call"
+          ],
+          "call_member": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-call-any-team",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "global_admin": [
+            "block-user-any-team",
+            "create-call-any-team",
+            "create-call-reaction-any-team",
+            "enable-noise-cancellation-any-team",
+            "end-call-any-team",
+            "join-backstage-any-team",
+            "join-call-any-team",
+            "join-ended-call-any-team",
+            "kick-user-any-team",
+            "list-recordings-any-team",
+            "list-transcriptions-any-team",
+            "mute-users-any-team",
+            "pin-call-track-any-team",
+            "read-call-any-team",
+            "read-call-stats-any-team",
+            "remove-call-member-any-team",
+            "screenshare-any-team",
+            "send-audio-any-team",
+            "send-closed-captions-any-team",
+            "send-event-any-team",
+            "send-video-any-team",
+            "start-broadcasting-any-team",
+            "start-closed-captions-any-team",
+            "start-frame-recording-any-team",
+            "start-recording-any-team",
+            "start-transcription-any-team",
+            "stop-broadcasting-any-team",
+            "stop-closed-captions-any-team",
+            "stop-frame-recording-any-team",
+            "stop-recording-any-team",
+            "stop-transcription-any-team",
+            "update-call-any-team",
+            "update-call-member-any-team",
+            "update-call-member-role-any-team",
+            "update-call-permissions-any-team",
+            "update-call-settings-any-team"
+          ],
+          "global_read_only": [
+            "list-recordings",
+            "list-transcriptions",
+            "read-call",
+            "read-call-stats"
+          ],
+          "guest": [
+            "enable-noise-cancellation-any-team",
+            "join-call",
+            "read-call",
+            "send-audio",
+            "send-event",
+            "send-video"
+          ],
+          "host": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "speaker": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "user": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "kick-user",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-closed-captions",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-closed-captions",
+            "start-frame-recording",
+            "start-recording",
+            "start-transcription",
+            "stop-broadcasting",
+            "stop-closed-captions",
+            "stop-frame-recording",
+            "stop-recording",
+            "stop-transcription",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ]
+        },
+        "notification_settings": {
+          "call_live_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} is live now{{ else }}A call is live now{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_missed": {
+            "apns": {
+              "body": "",
+              "title": "Missed call from {{ user.display_name }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_notification": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_ring": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "enabled": true,
+          "session_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} started{{ else }}A call started{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          }
+        },
+        "settings": {
+          "audio": {
+            "access_request_enabled": true,
+            "default_device": "earpiece",
+            "hifi_audio_enabled": false,
+            "mic_default_on": true,
+            "noise_cancellation": {
+              "mode": "auto-on"
+            },
+            "opus_dtx_enabled": true,
+            "redundant_coding_enabled": true,
+            "speaker_default_on": true
+          },
+          "backstage": {
+            "enabled": false
+          },
+          "broadcasting": {
+            "enabled": true,
+            "hls": {
+              "auto_on": false,
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality_tracks": [
+                "720p"
+              ]
+            },
+            "rtmp": {
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality": "720p"
+            }
+          },
+          "encryption": {
+            "mode": "available"
+          },
+          "frame_recording": {
+            "capture_interval_in_seconds": 3,
+            "mode": "available",
+            "quality": "720p"
+          },
+          "geofencing": {
+            "names": []
+          },
+          "individual_recording": {
+            "mode": "available"
+          },
+          "ingress": {
+            "audio_encoding_options": {
+              "bitrate": 128000,
+              "channels": 2,
+              "enable_dtx": false
+            },
+            "enabled": true,
+            "video_encoding_options": {
+              "1280x720x30": {
+                "layers": [
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1800000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  },
+                  {
+                    "bitrate": 700000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 640,
+                    "min_dimension": 360
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 720,
+                  "width": 1280
+                }
+              },
+              "1920x1080x30": {
+                "layers": [
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1600000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1080,
+                  "width": 1920
+                }
+              },
+              "2560x1440x30": {
+                "layers": [
+                  {
+                    "bitrate": 9000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 2560,
+                    "min_dimension": 1440
+                  },
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1440,
+                  "width": 2560
+                }
+              },
+              "3840x2160x30": {
+                "layers": [
+                  {
+                    "bitrate": 18000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 3840,
+                    "min_dimension": 2160
+                  },
+                  {
+                    "bitrate": 8000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 2160,
+                  "width": 3840
+                }
+              }
+            }
+          },
+          "limits": {
+            "max_duration_seconds": null,
+            "max_participants": null,
+            "max_participants_exclude_roles": []
+          },
+          "raw_recording": {
+            "mode": "available"
+          },
+          "recording": {
+            "audio_only": false,
+            "layout": {
+              "detect_orientation": false,
+              "external_app_url": "",
+              "external_css_url": "",
+              "name": "spotlight",
+              "options": {
+                "grid.cell_padding": 10,
+                "grid.columns": 5,
+                "grid.margin": 10,
+                "grid.position": "bottom",
+                "grid.rows": 1,
+                "grid.screenshare_layout": "spotlight",
+                "grid.size_percentage": 20,
+                "layout.background_color": "#f2f2f2",
+                "layout.background_image": "",
+                "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                "layout.background_repeat": "repeat",
+                "layout.background_size": "24px 24px",
+                "layout.grid.page_size": 20,
+                "layout.single-participant.mode": "default",
+                "layout.single-participant.padding_block": 0,
+                "layout.single-participant.padding_inline": "0%",
+                "layout.single-participant.shuffle_delay": 0,
+                "layout.spotlight.participants_bar_limit": 5,
+                "layout.spotlight.participants_bar_position": "top",
+                "logo.height": "80px",
+                "logo.horizontal_position": "center",
+                "logo.image_url": "",
+                "logo.margin_block": ".875rem",
+                "logo.margin_inline": ".875rem",
+                "logo.vertical_position": "top",
+                "logo.width": "120px",
+                "participant.border_radius": "35px",
+                "participant.outline_color": "#000000",
+                "participant.outline_width": "3px",
+                "participant.placeholder_background_color": "#000000",
+                "participant.video_border_color": "#CCCCCC",
+                "participant.video_border_radius": "5px",
+                "participant.video_border_rounded": true,
+                "participant.video_border_width": true,
+                "participant.video_highlight_border_color": "#7CFC00",
+                "participant_label.background_color": "#00000000",
+                "participant_label.border_color": "#CCCCCC",
+                "participant_label.border_radius": "5px",
+                "participant_label.border_rounded": true,
+                "participant_label.border_width": "0px",
+                "participant_label.display": true,
+                "participant_label.display_border": true,
+                "participant_label.horizontal_position": "left",
+                "participant_label.text_color": "#000000",
+                "participant_label.vertical_position": "bottom",
+                "title.color": "#000000",
+                "title.font_size": "20px",
+                "title.horizontal_position": "center",
+                "title.margin_block": 10,
+                "title.margin_inline": 10,
+                "title.text": "",
+                "title.vertical_position": "top",
+                "video.background_color": "#000000",
+                "video.scale_mode": "fill",
+                "video.screenshare_scale_mode": "fit"
+              }
+            },
+            "mode": "available",
+            "quality": "720p"
+          },
+          "ring": {
+            "auto_cancel_timeout_ms": 15000,
+            "incoming_call_timeout_ms": 0,
+            "missed_call_timeout_ms": 0
+          },
+          "screensharing": {
+            "access_request_enabled": true,
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 1080,
+              "width": 1920
+            }
+          },
+          "session": {
+            "inactivity_timeout_seconds": 30
+          },
+          "thumbnails": {
+            "enabled": true
+          },
+          "transcription": {
+            "closed_caption_mode": "available",
+            "language": "en",
+            "languages": [
+              "en"
+            ],
+            "mode": "available",
+            "speech_segment_config": {
+              "max_speech_caption_ms": 9000,
+              "silence_duration_ms": 700
+            },
+            "translation": {
+              "enabled": false,
+              "languages": [
+                "en"
+              ]
+            }
+          },
+          "video": {
+            "access_request_enabled": true,
+            "camera_default_on": true,
+            "camera_facing": "front",
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 720,
+              "width": 1280
+            }
+          }
+        }
+      },
+      "livestream": {
+        "grants": {
+          "admin": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage",
+            "join-call",
+            "join-ended-call",
+            "kick-user-owner",
+            "list-recordings",
+            "list-transcriptions",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats",
+            "remove-call-member",
+            "screenshare",
+            "send-audio",
+            "send-event",
+            "send-video",
+            "start-broadcasting",
+            "start-frame-recording",
+            "start-recording",
+            "stop-broadcasting",
+            "stop-frame-recording",
+            "stop-recording",
+            "update-call",
+            "update-call-member",
+            "update-call-member-role",
+            "update-call-permissions",
+            "update-call-settings"
+          ],
+          "anonymous": [
+            "join-call",
+            "read-call"
+          ],
+          "call_member": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call-owner",
+            "join-backstage-owner",
+            "join-call",
+            "join-call-any-team",
+            "join-ended-call-owner",
+            "kick-user-owner",
+            "mute-users-owner",
+            "pin-call-track-owner",
+            "read-call",
+            "remove-call-member-owner",
+            "screenshare-owner",
+            "send-audio-owner",
+            "send-event",
+            "send-video-owner",
+            "start-broadcasting-owner",
+            "start-frame-recording",
+            "start-recording-owner",
+            "stop-broadcasting-owner",
+            "stop-frame-recording",
+            "stop-recording-owner",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner"
+          ],
+          "global_admin": [
+            "block-user-any-team",
+            "block-user-owner",
+            "create-call-any-team",
+            "create-call-reaction-any-team",
+            "enable-noise-cancellation-any-team",
+            "end-call-any-team",
+            "end-call-owner",
+            "join-backstage-any-team",
+            "join-call-any-team",
+            "join-ended-call-any-team",
+            "kick-user-owner",
+            "list-recordings-any-team",
+            "list-transcriptions-any-team",
+            "mute-users-any-team",
+            "mute-users-owner",
+            "pin-call-track-any-team",
+            "read-call-any-team",
+            "read-call-stats-any-team",
+            "remove-call-member-any-team",
+            "remove-call-member-owner",
+            "screenshare-any-team",
+            "screenshare-owner",
+            "send-audio-any-team",
+            "send-audio-owner",
+            "send-event-any-team",
+            "send-video-any-team",
+            "send-video-owner",
+            "start-broadcasting-any-team",
+            "start-broadcasting-owner",
+            "start-frame-recording-any-team",
+            "start-recording-any-team",
+            "start-recording-owner",
+            "stop-broadcasting-any-team",
+            "stop-broadcasting-owner",
+            "stop-frame-recording-any-team",
+            "stop-recording-any-team",
+            "stop-recording-owner",
+            "update-call-any-team",
+            "update-call-member-any-team",
+            "update-call-member-owner",
+            "update-call-member-role-any-team",
+            "update-call-member-role-owner",
+            "update-call-permissions-any-team",
+            "update-call-permissions-owner",
+            "update-call-settings-any-team"
+          ],
+          "global_read_only": [
+            "list-recordings",
+            "list-transcriptions",
+            "read-call",
+            "read-call-stats"
+          ],
+          "host": [
+            "block-user",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call",
+            "join-backstage-owner",
+            "join-call",
+            "join-ended-call-owner",
+            "kick-user-owner",
+            "mute-users",
+            "pin-call-track",
+            "read-call",
+            "read-call-stats-owner",
+            "remove-call-member-owner",
+            "screenshare",
+            "send-audio",
+            "send-event",
+            "send-video-owner",
+            "start-broadcasting",
+            "start-frame-recording",
+            "start-recording",
+            "stop-broadcasting",
+            "stop-frame-recording",
+            "stop-recording",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner"
+          ],
+          "user": [
+            "block-user-owner",
+            "create-call",
+            "create-call-reaction",
+            "enable-noise-cancellation-any-team",
+            "end-call-owner",
+            "join-backstage-owner",
+            "join-call",
+            "join-ended-call-owner",
+            "kick-user-owner",
+            "mute-users-owner",
+            "pin-call-track-owner",
+            "read-call",
+            "remove-call-member-owner",
+            "screenshare-owner",
+            "send-audio-owner",
+            "send-event",
+            "send-video-owner",
+            "start-broadcasting-owner",
+            "start-frame-recording",
+            "start-recording-owner",
+            "stop-broadcasting-owner",
+            "stop-frame-recording",
+            "stop-recording-owner",
+            "update-call-member-owner",
+            "update-call-member-role-owner",
+            "update-call-owner",
+            "update-call-permissions-owner"
+          ]
+        },
+        "notification_settings": {
+          "call_live_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} is live now{{ else }}A call is live now{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_missed": {
+            "apns": {
+              "body": "",
+              "title": "Missed call from {{ user.display_name }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_notification": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "call_ring": {
+            "apns": {
+              "body": "",
+              "title": "{{ user.display_name }} is calling you"
+            },
+            "enabled": true,
+            "fcm": {}
+          },
+          "enabled": true,
+          "session_started": {
+            "apns": {
+              "body": "",
+              "title": "{{# if call.display_name }}{{ call.display_name }} started{{ else }}A call started{{/ if }}"
+            },
+            "enabled": true,
+            "fcm": {}
+          }
+        },
+        "settings": {
+          "audio": {
+            "access_request_enabled": false,
+            "default_device": "speaker",
+            "hifi_audio_enabled": true,
+            "mic_default_on": false,
+            "noise_cancellation": {
+              "mode": "auto-on"
+            },
+            "opus_dtx_enabled": true,
+            "redundant_coding_enabled": true,
+            "speaker_default_on": true
+          },
+          "backstage": {
+            "enabled": true
+          },
+          "broadcasting": {
+            "enabled": true,
+            "hls": {
+              "auto_on": false,
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality_tracks": [
+                "720p"
+              ]
+            },
+            "rtmp": {
+              "enabled": true,
+              "layout": {
+                "detect_orientation": false,
+                "external_app_url": "",
+                "external_css_url": "",
+                "name": "spotlight",
+                "options": {
+                  "grid.cell_padding": 10,
+                  "grid.columns": 5,
+                  "grid.margin": 10,
+                  "grid.position": "bottom",
+                  "grid.rows": 1,
+                  "grid.screenshare_layout": "spotlight",
+                  "grid.size_percentage": 20,
+                  "layout.background_color": "#f2f2f2",
+                  "layout.background_image": "",
+                  "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                  "layout.background_repeat": "repeat",
+                  "layout.background_size": "24px 24px",
+                  "layout.grid.page_size": 20,
+                  "layout.single-participant.mode": "default",
+                  "layout.single-participant.padding_block": 0,
+                  "layout.single-participant.padding_inline": "0%",
+                  "layout.single-participant.shuffle_delay": 0,
+                  "layout.spotlight.participants_bar_limit": 5,
+                  "layout.spotlight.participants_bar_position": "top",
+                  "logo.height": "80px",
+                  "logo.horizontal_position": "center",
+                  "logo.image_url": "",
+                  "logo.margin_block": ".875rem",
+                  "logo.margin_inline": ".875rem",
+                  "logo.vertical_position": "top",
+                  "logo.width": "120px",
+                  "participant.border_radius": "35px",
+                  "participant.outline_color": "#000000",
+                  "participant.outline_width": "3px",
+                  "participant.placeholder_background_color": "#000000",
+                  "participant.video_border_color": "#CCCCCC",
+                  "participant.video_border_radius": "5px",
+                  "participant.video_border_rounded": true,
+                  "participant.video_border_width": true,
+                  "participant.video_highlight_border_color": "#7CFC00",
+                  "participant_label.background_color": "#00000000",
+                  "participant_label.border_color": "#CCCCCC",
+                  "participant_label.border_radius": "5px",
+                  "participant_label.border_rounded": true,
+                  "participant_label.border_width": "0px",
+                  "participant_label.display": true,
+                  "participant_label.display_border": true,
+                  "participant_label.horizontal_position": "left",
+                  "participant_label.text_color": "#000000",
+                  "participant_label.vertical_position": "bottom",
+                  "title.color": "#000000",
+                  "title.font_size": "20px",
+                  "title.horizontal_position": "center",
+                  "title.margin_block": 10,
+                  "title.margin_inline": 10,
+                  "title.text": "",
+                  "title.vertical_position": "top",
+                  "video.background_color": "#000000",
+                  "video.scale_mode": "fill",
+                  "video.screenshare_scale_mode": "fit"
+                }
+              },
+              "quality": "720p"
+            }
+          },
+          "encryption": {
+            "mode": "available"
+          },
+          "frame_recording": {
+            "capture_interval_in_seconds": 3,
+            "mode": "available",
+            "quality": "720p"
+          },
+          "geofencing": {
+            "names": []
+          },
+          "individual_recording": {
+            "mode": "available"
+          },
+          "ingress": {
+            "audio_encoding_options": {
+              "bitrate": 128000,
+              "channels": 2,
+              "enable_dtx": false
+            },
+            "enabled": true,
+            "video_encoding_options": {
+              "1280x720x30": {
+                "layers": [
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1800000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  },
+                  {
+                    "bitrate": 700000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 640,
+                    "min_dimension": 360
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 720,
+                  "width": 1280
+                }
+              },
+              "1920x1080x30": {
+                "layers": [
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 3000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  },
+                  {
+                    "bitrate": 1600000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 800,
+                    "min_dimension": 600
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1080,
+                  "width": 1920
+                }
+              },
+              "2560x1440x30": {
+                "layers": [
+                  {
+                    "bitrate": 9000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 2560,
+                    "min_dimension": 1440
+                  },
+                  {
+                    "bitrate": 6000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 1440,
+                  "width": 2560
+                }
+              },
+              "3840x2160x30": {
+                "layers": [
+                  {
+                    "bitrate": 18000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 3840,
+                    "min_dimension": 2160
+                  },
+                  {
+                    "bitrate": 8000000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1920,
+                    "min_dimension": 1080
+                  },
+                  {
+                    "bitrate": 2500000,
+                    "codec": "h264",
+                    "frame_rate_limit": 30,
+                    "max_dimension": 1280,
+                    "min_dimension": 720
+                  }
+                ],
+                "source": {
+                  "fps": 30,
+                  "height": 2160,
+                  "width": 3840
+                }
+              }
+            }
+          },
+          "limits": {
+            "max_duration_seconds": null,
+            "max_participants": null,
+            "max_participants_exclude_roles": []
+          },
+          "raw_recording": {
+            "mode": "available"
+          },
+          "recording": {
+            "audio_only": false,
+            "layout": {
+              "detect_orientation": false,
+              "external_app_url": "",
+              "external_css_url": "",
+              "name": "spotlight",
+              "options": {
+                "grid.cell_padding": 10,
+                "grid.columns": 5,
+                "grid.margin": 10,
+                "grid.position": "bottom",
+                "grid.rows": 1,
+                "grid.screenshare_layout": "spotlight",
+                "grid.size_percentage": 20,
+                "layout.background_color": "#f2f2f2",
+                "layout.background_image": "",
+                "layout.background_position": "12px 0, 12px 0, 0 0, 0 0",
+                "layout.background_repeat": "repeat",
+                "layout.background_size": "24px 24px",
+                "layout.grid.page_size": 20,
+                "layout.single-participant.mode": "default",
+                "layout.single-participant.padding_block": 0,
+                "layout.single-participant.padding_inline": "0%",
+                "layout.single-participant.shuffle_delay": 0,
+                "layout.spotlight.participants_bar_limit": 5,
+                "layout.spotlight.participants_bar_position": "top",
+                "logo.height": "80px",
+                "logo.horizontal_position": "center",
+                "logo.image_url": "",
+                "logo.margin_block": ".875rem",
+                "logo.margin_inline": ".875rem",
+                "logo.vertical_position": "top",
+                "logo.width": "120px",
+                "participant.border_radius": "35px",
+                "participant.outline_color": "#000000",
+                "participant.outline_width": "3px",
+                "participant.placeholder_background_color": "#000000",
+                "participant.video_border_color": "#CCCCCC",
+                "participant.video_border_radius": "5px",
+                "participant.video_border_rounded": true,
+                "participant.video_border_width": true,
+                "participant.video_highlight_border_color": "#7CFC00",
+                "participant_label.background_color": "#00000000",
+                "participant_label.border_color": "#CCCCCC",
+                "participant_label.border_radius": "5px",
+                "participant_label.border_rounded": true,
+                "participant_label.border_width": "0px",
+                "participant_label.display": true,
+                "participant_label.display_border": true,
+                "participant_label.horizontal_position": "left",
+                "participant_label.text_color": "#000000",
+                "participant_label.vertical_position": "bottom",
+                "title.color": "#000000",
+                "title.font_size": "20px",
+                "title.horizontal_position": "center",
+                "title.margin_block": 10,
+                "title.margin_inline": 10,
+                "title.text": "",
+                "title.vertical_position": "top",
+                "video.background_color": "#000000",
+                "video.scale_mode": "fill",
+                "video.screenshare_scale_mode": "fit"
+              }
+            },
+            "mode": "available",
+            "quality": "720p"
+          },
+          "ring": {
+            "auto_cancel_timeout_ms": 0,
+            "incoming_call_timeout_ms": 0,
+            "missed_call_timeout_ms": 0
+          },
+          "screensharing": {
+            "access_request_enabled": false,
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 1500000,
+              "height": 1080,
+              "width": 1920
+            }
+          },
+          "session": {
+            "inactivity_timeout_seconds": 30
+          },
+          "thumbnails": {
+            "enabled": true
+          },
+          "transcription": {
+            "closed_caption_mode": "available",
+            "language": "en",
+            "languages": [
+              "en"
+            ],
+            "mode": "available",
+            "speech_segment_config": {
+              "max_speech_caption_ms": 9000,
+              "silence_duration_ms": 700
+            },
+            "translation": {
+              "enabled": false,
+              "languages": [
+                "en"
+              ]
+            }
+          },
+          "video": {
+            "access_request_enabled": false,
+            "camera_default_on": true,
+            "camera_facing": "front",
+            "enabled": true,
+            "target_resolution": {
+              "bitrate": 3000000,
+              "height": 1080,
+              "width": 1920
+            }
+          }
+        }
+      }
+    },
+    "read": {
+      "code": null,
+      "message": null,
+      "status": 200
+    }
+  }
+}

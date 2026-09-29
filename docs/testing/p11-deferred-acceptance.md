@@ -8,7 +8,7 @@ commands, observed outcomes and cleanup. No live endpoint is supplied here.
 
 | Case | Stage and test | Required observable result |
 |---|---|---|
-| DB01 | P11A: apply reviewed app migrations to disposable PostgreSQL from zero | Actual migration ledger equals the reviewed set; models/SQL agree; no protected target accessed |
+| DB01 | P11A: apply reviewed app migrations to disposable PostgreSQL from zero; then move the app's database to a separate disposable instance by dump and restore ([ADR 0004](../adr/0004-app-database-placement.md)) | Actual migration ledger equals the reviewed set; models/SQL agree; no protected target accessed. The application runs against the moved copy with a configuration change only, and no dependency on an HDE-owned role, extension or object appears |
 | DB02 | P11A: upgrade a supported prior schema and separately execute backfill | Existing rows preserved or explicitly quarantined; counts/invariants checked; both compatible app versions tested during expand-contract |
 | DB03 | P11A: target/role preflight with wrong database, owner or migration role | Operation refuses before any DDL/DML; app runtime cannot change schema; protected HDE target never used as test destination |
 | DB04 | P11A: malformed direct writes against every declared check/unique/FK constraint | PostgreSQL rejects invalid state, self-pairs, duplicate logical identities and orphan rows as specified; application maps expected errors safely |
@@ -20,7 +20,7 @@ commands, observed outcomes and cleanup. No live endpoint is supplied here.
 | DB10 | P11A: two-account eligibility read/recheck and policy changes during action | Actual trusted adapter obtains one consistent pair/version view or rejects/reloads; withdrawn consent, both block/preference directions and pause/delete changes invalidate prior evidence |
 | DB11 | P11A/B: bounded recommendation queries/cursors under state changes | Stable scope-bound pagination, no duplicate or unauthorized candidate leakage, expiry/version invalidation, bounded query count and measured plans |
 | DB12 | P11A/B: timeout, connection exhaustion and worker contention | Bounded failures/retries, lease recovery and no partial permission grant; actual latency/queue measurements recorded without mock capacity extrapolation |
-| DB13 | P11B: restore an actual backup then replay retained deletion tombstones | Deleted identities remain inaccessible and do not regain provider access; restored jobs reconcile; measured recovery outcome recorded |
+| DB13 | P11B: restore an actual backup then replay retained deletion tombstones | Deleted identities remain inaccessible and do not regain provider access; restored jobs reconcile; measured recovery outcome recorded. The restore is a logical restore of the app's own database; a platform restore of the shared service is not used for an app-only incident without a review of its effect on HDE (ADR 0004) |
 | PV01 | P11B: supported HDE adapter versus the shared conformance cases | Exact release/input/output/version mapping and allowed data scope verified; pending/ambiguous/timeout/partial/unsupported results remain honest; A01/A07 resolved for tested scope |
 | PV02 | P11B: HDE input change, cache reuse and shared-chart deletion | Rights and identity/version invalidation proven against the supported contract; shared chart is not destroyed through assumed ownership; completion requires actual evidence |
 | PV03 | P06 capability proof, repeated P11B: selected chat permissions | Direct SDK send, wrong channel, stale token, reconnect and hook outage cannot bypass match/block authorization; provider failure cannot silently allow contact |
@@ -32,6 +32,8 @@ commands, observed outcomes and cleanup. No live endpoint is supplied here.
 | PR01 | P11C: isolated app production migration/connection and bounded private smoke | Exact target/roles and stage evidence checked; reviewed migration set applied only to app storage; supported protected-engine operations have separate explicit authority |
 | N01 | P09/P12: signed iOS and Android builds on the named device matrix | Native install, secure storage, deep links, permission denial, accessibility/large text, offline recovery and real device performance observed |
 | R01 | P12: reconcile candidate, public policies, operators, recovery and release packet | All mandatory results linked to actual build/commit; open issues explicit; public distribution remains a separate authorized action |
+
+**Early partial evidence** (Nathan, 25 September 2026; OD-17). Before P06.2, work item P06.DB proves DB06's send-versus-block ordering and a minimal DB09 sign-in on a disposable CI database. When it has run, its evidence record marks DB06 and DB09 as partially evidenced in CI. P11A and P11B still rerun both on the real target. Applying migrations there is setup, not DB01 acceptance.
 
 No retry limit, service capacity, retention duration, geography, history policy or
 moderation owner is approved by this matrix. Resolve the existing A01/A02/A04–A08
@@ -144,6 +146,6 @@ sequential fixture calls cannot stand in for those races.
 P06.1 must establish provider permission/economics proof with A04/A08; fixture
 match/contact state does not establish a Stream account, channel, token, history
 right, Maker entitlement or paid activation. P11 must map these boundaries into
-the reviewed app schema/restricted roles in the shared logical database without
-altering HDE or legacy objects. A05 still owns resurfacing/rematch/history and
+the app's own logical database and restricted roles on HDE's PostgreSQL service
+(ADR 0004), without altering HDE or legacy objects. A05 still owns resurfacing/rematch/history and
 retention choices; no test case selects them for launch.

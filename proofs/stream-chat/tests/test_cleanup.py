@@ -1,0 +1,405 @@
+"""Nits 5, 12 and 13: cleanup is guarded and judged, has enough budget, and
+removes the polls and user groups a client managed to create."""
+
+import unittest
+from typing import Any
+
+import tests  # noqa: F401
+from glow_stream_proof import matrix, proof_run
+from glow_stream_proof.client_bridge import Reply
+from glow_stream_proof.proof_run import cleanup_problems
+from glow_stream_proof.server_api import ApiResult
+from glow_stream_proof.usage import UsageLedger
+from tests.fakes import PREFIX, FakeSession, NoSettle, error, make_run, ok, record, set_up
+from tests.test_preflight import dashboard_user
+
+CLEAN: dict[str, Any] = {
+    "errors": [],
+    "polls": [200],
+    "user_groups": [200],
+    "channels_delete": 201,
+    "channels_task": "completed",
+    "users_delete": 201,
+    "users_task": "completed",
+    "remaining_proof_users": [],
+    "remaining_channels": [],
+    "remaining_polls": [],
+    "remaining_user_groups": [],
+    # P06.1-I2b: the Video and Feeds objects.
+    "remaining_calls": [],
+    "remaining_feeds": [],
+    "remaining_activities": [],
+    "deleted_user_artifacts_remaining": 0,
+}
+
+
+class CleanupProblemsTest(unittest.TestCase):
+    def test_clean(self) -> None:
+        self.assertEqual(cleanup_problems(CLEAN), [])
+
+    def test_each_problem_is_reported(self) -> None:
+        cases = {
+            "errors": (["users: RuntimeError: boom"], "cleanup error"),
+            "polls": ([200, 404], "polls delete statuses [404]"),
+            "channels_task": ("running", "channels_task is 'running'"),
+            "users_delete": (500, "users_delete got 500"),
+            "remaining_proof_users": (["p061i1-x-ua"], "remaining_proof_users"),
+            "remaining_polls": (["poll-1"], "remaining_polls"),
+            "deleted_user_artifacts_remaining": (1, "deleted-user artifacts remaining"),
+        }
+        for key, (value, expected) in cases.items():
+            problems = cleanup_problems({**CLEAN, key: value})
+            self.assertTrue(any(expected in p for p in problems), (key, problems))
+
+    def test_unlisted_or_unchecked_leftovers_are_problems(self) -> None:
+        listing = {**CLEAN, "remaining_polls": None, "polls_listing": "not verified: HTTP 400"}
+        self.assertIn("remaining_polls: not verified: HTTP 400", cleanup_problems(listing))
+        unchecked = {k: v for k, v in CLEAN.items() if k != "remaining_channels"}
+        self.assertIn("remaining_channels: not checked", cleanup_problems(unchecked))
+
+
+class GuardedCleanupTest(unittest.TestCase):
+    def test_a_failing_step_does_not_stop_the_others(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        run.polls.append(("p-1", run.ctx["B"]))
+
+        def broken_poll_delete(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "DELETE" and path.startswith("/polls/"):
+                raise RuntimeError("connection reset")
+            return None
+
+        server.handlers.append(broken_poll_delete)
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(out["users_task"], "completed")
+        self.assertEqual(out["remaining_proof_users"], [])
+        self.assertTrue(any("polls: RuntimeError" in e for e in out["errors"]))
+        self.assertTrue(any("cleanup error" in p for p in cleanup_problems(out)))
+
+    def test_a_deactivated_user_with_the_prefix_is_found_and_deleted(self) -> None:
+        # P06.1-I2a, DM-04 finding 9(c): Stream's listing leaves deactivated users out
+        # unless asked; a suspended user the run did not record must not survive.
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        stray = f"{PREFIX}-suspended"
+        server.users[stray] = {"id": stray, "deactivated_at": "2026-09-26T10:00:00Z"}
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(out["users_found_by_prefix_not_recorded"], 1)
+        self.assertNotIn(stray, server.users)
+
+    def test_task_that_does_not_complete_is_a_problem(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        server.task_status = "failed"
+        with NoSettle():
+            problems = cleanup_problems(run.cleanup())
+        self.assertIn("channels_task is 'failed', not 'completed'", problems)
+
+
+class CleanupReserveTest(unittest.TestCase):
+    def test_reserve_covers_the_worst_case_end_of_run(self) -> None:
+        """Every delete task polled to its limit, polls, groups and a journal restore."""
+        ledger = UsageLedger()
+        run, server = make_run(ledger=ledger)
+        with NoSettle():
+            set_up(run)
+        run.polls += [("p-1", run.ctx["B"]), ("p-2", run.ctx["A"])]
+        run.ctx["ctl_poll"] = "p-3"
+        run.groups.append("g-1")
+        run.ctx["ctl_group"] = "g-2"
+        # P06.1-I2b: one object of every Video and Feeds kind, whose deletes, the call's
+        # delete task (polled to its limit) and the users' Feeds data deletes the end of
+        # the run pays for too.
+        state = server.products
+        call, feed, timeline = f"{PREFIX}-call", f"user:{run.ctx['A']}", f"timeline:{run.ctx['B']}"
+        state.calls[f"default:{call}"] = {
+            "id": call,
+            "type": "default",
+            "custom": {},
+            "members": [run.ctx["A"]],
+            "created_by": run.ctx["A"],
+        }
+        state.feeds[feed] = {"user_id": run.ctx["A"], "custom": {}}
+        state.feeds[timeline] = {"user_id": run.ctx["B"], "custom": {}}
+        state.activities["a-1"] = {
+            "type": "post",
+            "text": "t",
+            "feeds": [feed],
+            "user_id": run.ctx["A"],
+            "custom": {},
+        }
+        state.comments["c-1"] = {"object_id": "a-1", "text": "c", "user_id": run.ctx["B"]}
+        state.reactions.add(("a-1", "like", run.ctx["B"]))
+        state.follows.add((timeline, feed))
+        run.calls.append(("default", call))
+        run.feeds += [feed, timeline]
+        run.activities.add("a-1")
+        run.comments.add("c-1")
+        run.reactions.append(("a-1", "like", run.ctx["B"]))
+        run.follows.append((timeline, feed))
+        run.journal.append(run._guest_creation_change())
+        server.task_status = "running"
+        artifact = f"deleted-user-{run.credentials.app_id}-abc"
+
+        def refuse_guest_restore(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "PATCH" and path == "/api/v2/app":
+                return error(method, path, 500, -1)  # every restore attempt fails
+            return None
+
+        server.handlers.append(refuse_guest_restore)
+
+        def artifact_user(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "GET" and path == "/api/v2/users":
+                user = {"id": artifact, "created_at": run.started_ns + 1}
+                return ok(method, path, {"users": list(server.users.values()) + [user]}, 200)
+            return None
+
+        server.handlers.append(artifact_user)
+        before = ledger.run.api_calls
+        with NoSettle():
+            run.finish(cleanup=True)
+        used = ledger.run.api_calls - before
+        self.assertGreater(used, 100)
+        self.assertLessEqual(used, proof_run.CLEANUP_RESERVE, used)
+
+
+class ClientCreatedDataTest(unittest.TestCase):
+    def test_client_created_poll_and_group_are_deleted(self) -> None:
+        def a(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            method = params.get("method")
+            if op == "call" and method == "createPoll":
+                body = {"poll": {"id": "client-poll", "created_by_id": f"{PREFIX}-ua"}}
+                return Reply(True, {}, None, [record(201, body, path="/polls")], api_calls=1)
+            if op == "call" and method == "createUserGroup":
+                body = {"user_group": {"id": "client-group"}}
+                return Reply(True, {}, None, [record(201, body, path="/usergroups")], api_calls=1)
+            return None
+
+        run, server = make_run(behaviours={"A": a})
+        with NoSettle():
+            set_up(run)
+            run.run_matrix({"S9", "S16"})
+            run.cleanup()
+        verdicts = {c.case_id: c.verdict for c in run.case_results}
+        self.assertEqual(verdicts, {"S9": matrix.FAIL, "S16": matrix.FAIL})
+        deleted = {path for method, path, _ in server.calls if method == "DELETE"}
+        self.assertIn("/polls/client-poll", deleted)
+        self.assertIn("/api/v2/usergroups/client-group", deleted)
+
+    def test_verify_clean_lists_polls_and_user_groups(self) -> None:
+        run, server = make_run()
+
+        def leftovers(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query":
+                return ok(method, path, {"polls": [{"id": "left-poll"}]}, 201)
+            if path == "/api/v2/usergroups" and method == "GET":
+                return error(method, path, 400, 4, "not supported")
+            return None
+
+        server.handlers.append(leftovers)
+        out = run.verify_clean()
+        self.assertEqual(out["remaining_polls"], ["left-poll"])
+        self.assertIsNone(out["remaining_user_groups"])
+        problems = cleanup_problems({**CLEAN, **out})
+        self.assertIn("remaining_polls: ['left-poll']", problems)
+        # Stream's message is kept, so the record says why (P06.1-I2a).
+        self.assertIn(
+            "remaining_user_groups: not verified: HTTP 400 code 4: not supported", problems
+        )
+
+
+class PollListingTest(unittest.TestCase):
+    """P06.1-I2b, the poll listing (the manager's decision on I2a): the run lists polls
+    as each of its own users before their delete, and reads each recorded poll by ID."""
+
+    def test_polls_are_listed_as_each_run_user_and_read_by_id(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        server.polls.add("p-left")
+        run.polls.append(("p-left", run.ctx["A"]))
+        run.ctx["ctl_poll"] = "p-ctl"
+        server.polls.add("p-ctl")
+        with NoSettle():
+            out = run.cleanup()
+        listings = [
+            (path, params)
+            for method, path, _body in server.calls
+            if path == "/api/v2/polls/query"
+            for params in [None]
+        ]
+        # As A, B, X and D, before the users are deleted, plus the standalone listing of
+        # verify-clean (which Stream refuses without a user).
+        self.assertEqual(len(listings), 5)
+        self.assertEqual(
+            out["polls_listed_as_run_users"],
+            {
+                "users": 4,
+                "deactivated_left_out": 0,
+                "listing": "verified",
+            },
+        )
+        self.assertEqual(
+            out["recorded_polls_after_delete"],
+            # The control poll's ID is generalized like the run's other identifiers.
+            {"p-left": "404 / code 16", "{ctl_poll}": "404 / code 16"},
+        )
+        # The standalone listing needs a user, so the listing as the run's users stands in.
+        self.assertEqual(out["remaining_polls"], [])
+        self.assertIn("listed as each of the run's own users", out["polls_listing"])
+        self.assertEqual(cleanup_problems(out), [])
+        # The listings came before the users' delete.
+        order = [path for _m, path, _b in server.calls]
+        self.assertLess(order.index("/api/v2/polls/query"), order.index("/api/v2/users/delete"))
+
+    def test_a_poll_that_survives_its_delete_is_a_problem(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+
+        def keep(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if method == "DELETE" and path == "/polls/p-stuck":
+                return ok(method, path, {}, 200)  # accepted, but the poll stays
+            return None
+
+        server.handlers.append(keep)
+        server.polls.add("p-stuck")
+        run.polls.append(("p-stuck", run.ctx["A"]))
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(out["recorded_polls_after_delete"], {"p-stuck": "200"})
+        self.assertEqual(out["remaining_polls"], ["p-stuck"])
+        problems = cleanup_problems(out)
+        self.assertTrue(
+            any("recorded poll p-stuck still answers after its delete: 200" in p for p in problems)
+        )
+        self.assertTrue(any("remaining_polls: ['p-stuck']" in p for p in problems))
+
+    def test_a_listing_stream_refuses_leaves_the_polls_not_verified(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+
+        def refuse(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query" and (params or {}).get("user_id") == run.ctx["B"]:
+                return error(method, path, 403, 17, "QueryPolls not allowed")
+            return None
+
+        server.handlers.append(refuse)
+        with NoSettle():
+            out = run.cleanup()
+        self.assertEqual(
+            out["polls_listed_as_run_users"]["listing"],
+            "not verified: HTTP 403 code 17: QueryPolls not allowed",
+        )
+        self.assertIsNone(out["remaining_polls"])
+        self.assertTrue(any("remaining_polls: not verified" in p for p in cleanup_problems(out)))
+
+    def test_no_listing_is_made_as_a_deactivated_user(self) -> None:
+        run, server = make_run()
+        with NoSettle():
+            set_up(run)
+        run.deactivated_users.add(run.ctx["D"])
+        with NoSettle():
+            out = run.cleanup()
+        asked = [
+            params
+            for method, path, _b in server.calls
+            if path == "/api/v2/polls/query"
+            for params in [None]
+        ]
+        self.assertEqual(len(asked), 4)  # three users, plus the standalone listing
+        self.assertEqual(out["polls_listed_as_run_users"]["deactivated_left_out"], 1)
+        self.assertEqual(out["polls_listed_as_run_users"]["users"], 3)
+
+
+class PreexistingPollsAndGroupsTest(unittest.TestCase):
+    """The review's point 4: only polls and groups that appeared during the run count."""
+
+    def test_only_new_ones_are_leftovers(self) -> None:
+        run, server = make_run()
+        polls = [{"id": "older-poll"}]
+
+        def listing(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query":
+                return ok(method, path, {"polls": list(polls)}, 201)
+            return None
+
+        server.handlers.append(listing)
+        server.users["owner"] = dashboard_user("owner")
+        result = run.preflight()
+        self.assertEqual(result["polls_before_run"], 1)
+        polls.append({"id": "run-poll"})
+        out = run.verify_clean()
+        self.assertEqual(out["remaining_polls"], ["run-poll"])
+        self.assertEqual(out["polls_present_before_run"], 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class ProductDeletesTest(unittest.TestCase):
+    """P06.1-I2b: every Video or Feeds object's delete must be 2xx, or 404 for one already
+    gone, with its task completed; a listing a product does not answer is a problem unless
+    the product is not available."""
+
+    def test_delete_statuses(self) -> None:
+        out = {
+            **CLEAN,
+            "product_deletes": [
+                {"kind": "call", "status": 200, "code": None, "task": "completed"},
+                {"kind": "feed", "status": 404, "code": 16},
+                {"kind": "activity", "status": 500, "code": -1},
+                {"kind": "call", "status": 200, "code": None, "task": "running"},
+                {"kind": "comment", "status": 403, "code": 17},
+            ],
+        }
+        self.assertEqual(
+            cleanup_problems(out),
+            [
+                "activity delete got 500",
+                "call delete task is 'running', not 'completed'",
+                "comment delete got 403",
+            ],
+        )
+
+    def test_listings(self) -> None:
+        clean = {
+            **CLEAN,
+            "remaining_calls": None,
+            "calls_listing": "not available: HTTP 404 code 16: Not Found",
+        }
+        self.assertEqual(cleanup_problems(clean), [])
+        unverified = {
+            **CLEAN,
+            "remaining_feeds": None,
+            "feeds_listing": "not verified: HTTP 500 code -1: internal",
+        }
+        self.assertEqual(
+            cleanup_problems(unverified),
+            ["remaining_feeds: not verified: HTTP 500 code -1: internal"],
+        )
+        left = {**CLEAN, "remaining_activities": ["a-1"]}
+        self.assertEqual(cleanup_problems(left), ["remaining_activities: ['a-1']"])
+        missing = {k: v for k, v in CLEAN.items() if k != "remaining_calls"}
+        self.assertEqual(cleanup_problems(missing), ["remaining_calls: not checked"])

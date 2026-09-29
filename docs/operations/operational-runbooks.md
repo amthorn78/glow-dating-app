@@ -127,8 +127,11 @@ programming errors require correction, not unbounded retry or synthetic success.
 ## Backup and restore preparation
 
 No app schema/role or separate app database/volume has been provisioned by this
-execution. The owner prefers an app schema in HDE's logical database, pending
-the separately assigned ownership audit and shared-effect review. No backup schedule, encryption
+execution. The app gets its own logical database on HDE's PostgreSQL service
+(OD-18, [ADR 0004](../adr/0004-app-database-placement.md)). A platform restore of
+that service also restores HDE, so DB13 uses a logical restore of the app's
+database, and no runbook uses a platform restore for an app-only incident without
+a review of its effect on HDE. No backup schedule, encryption
 key, retention duration, PITR, recovery-time objective or recovery-point objective
 is configured or asserted. A05 supplies retention and accountable owners; actual
 platform capability and cost must be checked on the selected app target at P11.

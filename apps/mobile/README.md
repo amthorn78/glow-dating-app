@@ -346,7 +346,8 @@ Routes `/matches` and `/match` remain fixed, query-free Router destinations.
 Selected IDs stay inside the current scoped store, and the service rechecks
 participant access. Navigation guards are presentation safeguards, not backend
 authorization. Web action buttons preserve keyboard focus during pending work;
-committed/error feedback receives focus only on the active route. The rendered
+committed/error feedback receives focus only on the active route, and on web
+never while a shown text field has focus. The rendered
 suite covers these states at 320px as well as the 69 inherited cases. One inherited
 refresh case now explicitly checks that navigation creates no committed result
 while the new Like/Pass controls remain available; its finite-queue assertions

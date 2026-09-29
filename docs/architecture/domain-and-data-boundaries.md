@@ -44,9 +44,9 @@ contracts/cases; Python remains the domain implementation. Neither installs a
 production mutation route or supplies provider contact. P06 consumes the current
 match/contact revision and must prove actual provider enforcement independently.
 
-The audited P11 direction is clean application-owned schema/roles in HDE's same
-logical database `railway`. Isolation means bounded app ownership and privileges,
-not a new logical database requirement. Existing HDE/legacy relations, grants
+The P11 direction is the app's own logical database on HDE's PostgreSQL service,
+with its own roles (Nathan, 25 September 2026; [ADR 0004](../adr/0004-app-database-placement.md)).
+It supersedes the audited same-logical-database direction (`railway`). Existing HDE/legacy relations, grants
 and shared-resource effects remain protected; this fixture task connects no
 database and applies no migration.
 

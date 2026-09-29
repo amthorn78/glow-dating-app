@@ -1,6 +1,6 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.6 · **Recorded:** 25 September 2026
+**Identity:** GAPP-PF00 · **Revision:** 1.10 · **Recorded:** 29 September 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
@@ -11,7 +11,7 @@
 
 ## Current session authority
 
-Nathan's 24 September direction paused new features for the migration to Claude Code. The migration (M01) and the Claude setup (M02) are complete. On 25 September 2026 Nathan resumed P06.1; other feature work stays paused until his recorded direction resumes it. Claude work runs as Nathan's manual relay. A manager session writes briefs and prompts. Nathan starts each implementation or review session himself and relays its report back. The manager reviews that evidence and maintains continuity. Nathan reinitiates managers manually. The manager never starts implementation or review work itself; those sessions may use whatever tools they need. App Planner 1 prepares the migration; App Builder 1's earlier reports remain historical evidence. [Manager workflow](../planning/manager-workflow.md) implements the owner's high-trust experiment without importing prompt libraries. PF01 D08's app-only authority and effect-based HDE protection remain; D09 records the documentation/environment transition.
+Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status is in the [current handoff](../continuity/current-handoff.md); this index does not restate it (DM-01 P3). Claude work runs as Nathan's manual relay. A manager session writes briefs and prompts. Nathan starts each implementation or review session himself and relays its report back. The manager reviews that evidence and maintains continuity. Nathan reinitiates managers manually or directs a manager to create its successor (OD-31). The manager never starts implementation or review work itself; those sessions may use whatever tools they need. The one exception is the Dev Manager (PF01 D10, 25 September 2026), a second-layer review session that the manager creates and relays to itself. App Planner 1 prepared the migration, and App Builder 1's earlier reports remain historical evidence; both are historical roles. [Manager workflow](../planning/manager-workflow.md) implements the owner's high-trust experiment without importing prompt libraries. PF01 D08's app-only authority and effect-based HDE protection remain; D09 records the documentation/environment transition.
 
 ## Canon registry
 
@@ -27,6 +27,8 @@ The plan owns the initial governing direction, phase acceptance, architectural b
 | Information | Owner |
 |---|---|
 | Current task, blocker, next action and execution status | Notion coordination plus repository current handoff; durable scope/evidence in Markdown |
+| Nathan's standing directions, with dates and quotes | [Owner-direction register](../continuity/owner-directions.md); Notion carries a copy |
+| Operational guidance: the relay, review paths, one item at a time, records | Repository Markdown: `AGENTS.md`, `CLAUDE.md`, the manager workflow, the Dev Manager charter and the CI policy. Notion's Implementation Control carries a matching copy (OD-26); where they differ, the repository wins and Notion is corrected (OD-27) |
 | Governing implementation sequence and project-level constraints | Current GAPP-PF01 |
 | Implementation contracts, code, runtime configuration definitions, tests and runbooks | Application repository after recorded establishment |
 | Durable architectural rationale | Repository ADRs once established; initial decisions remain in GAPP-PF01 until transferred |
@@ -60,3 +62,11 @@ Use stable titles and document IDs for durable references. Record the concrete s
 1.5 — records that the migration (M01) and the Claude setup (M02) are complete while the feature pause continues (25 September 2026). No authority change.
 
 1.6 — records Nathan's direction of 25 September 2026 resuming P06.1; other feature work stays paused. No authority change.
+
+1.7 — records the Dev Manager (PF01 D10, Nathan, 25 September 2026) and its exception to the rule that the manager starts no sessions. No change to the authority map.
+
+1.8 — status leaves the canon (DM-01 P3). This index points to the owner-direction register and the current handoff instead. The authority map adds the register, and App Planner 1 and App Builder 1 are named as historical roles (DM-03 E4). No change to authority.
+
+1.9 — the authority map records that Notion carries a matching copy of the operational guidance and of the owner-direction register, and that the repository wins on any difference (OD-26, OD-27, 25 September 2026). No other change to authority.
+
+1.10 — the current session authority adds that Nathan may direct a manager to create its successor (OD-31), as `AGENTS.md` does (DM-07, 29 September 2026). No other change to authority.

@@ -1,0 +1,1402 @@
+"""The commands, against a fake server: nothing is sent to Stream or written to ``.work``.
+
+- Finding 2 and nit 5: every run ends with the journal restored, cleanup and
+  ``configuration.verify()``; any difference or cleanup problem makes the run
+  exit non-zero, and so does Ctrl-C, after which the results are still written.
+- Nit 8: ``baseline`` writes no other user's identifier or name.
+- Nit 10: ``restore --apply`` re-reads and verifies.
+"""
+
+import contextlib
+import io
+import json
+import unittest
+from collections.abc import Callable
+from typing import Any
+from unittest import mock
+
+import jwt
+
+import tests  # noqa: F401
+from glow_stream_proof import cli, configuration, products
+from glow_stream_proof.client_bridge import Reply
+from glow_stream_proof.credentials import ServerCredentials
+from glow_stream_proof.proof_run import ProofRun, RunStopped, TemporaryChange
+from glow_stream_proof.redaction import Redactor
+from glow_stream_proof.server_api import ApiResult
+from glow_stream_proof.usage import GuardrailStop, UsageLedger, charge_signal, is_rate_limit
+from glow_stream_proof.workdir import PROOF_ROOT, LeakRefused
+from tests.fake_products import (
+    BASELINE,
+    BEFORE_LOCKDOWN_CALL_TYPE_GRANTS,
+    BEFORE_LOCKDOWN_VISIBILITY_GRANTS,
+)
+from tests.fakes import SECRET, FakeServer, FakeSession, NoSettle, make_run
+from tests.test_configuration import _type
+from tests.test_preflight import dashboard_user
+
+
+class FakeContext:
+    def __init__(self, server: FakeServer) -> None:
+        self.credentials = ServerCredentials("1729640", "k", SECRET)
+        self.secrets = [SECRET]
+        self.redactor = Redactor(self.secrets)
+        self.ledger = server.ledger
+        self.api = server
+        self.lines: list[str] = []
+
+    def say(self, text: str) -> None:
+        self.lines.append(text)
+
+
+class CommandTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.written: dict[str, Any] = {}
+
+        def write_json(name: str, data: Any, secrets: Any) -> Any:
+            self.written[name] = json.loads(json.dumps(data, default=str))
+            return PROOF_ROOT / ".work" / name
+
+        def write_text(name: str, text: str, secrets: Any) -> Any:
+            self.written[name] = text
+            return PROOF_ROOT / ".work" / name
+
+        for name, fake in (("write_json", write_json), ("write_text", write_text)):
+            patcher = mock.patch.object(cli, name, fake)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.settle = NoSettle()
+        self.settle.__enter__()
+        self.addCleanup(self.settle.__exit__)
+
+    def run_command(self, adjust: Callable[[ProofRun, FakeServer], None] | None = None) -> int:
+        """``cmd_run`` for case S1 only, with the run built on a fake server."""
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")  # as in the live application
+        if adjust is not None:
+            adjust(run, server)
+        self.proof, self.server = run, server
+
+        def factory(*_args: Any, **_kwargs: Any) -> ProofRun:
+            return run
+
+        with mock.patch.object(cli, "ProofRun", factory):
+            return cli.cmd_run(FakeContext(server), True, {"S1"})  # type: ignore[arg-type]
+
+    def results(self) -> dict[str, Any]:
+        name = next(
+            n
+            for n in self.written
+            if n.startswith("run-") and n.endswith(".json") and "progress" not in n
+        )
+        data: dict[str, Any] = self.written[name]
+        return data
+
+    def test_clean_run_exits_zero(self) -> None:
+        self.assertEqual(self.run_command(), 0)
+        self.assertEqual(self.results()["post_run_problems"], [])
+
+    def test_configuration_difference_after_the_run_exits_non_zero(self) -> None:
+        def drift(run: ProofRun, server: FakeServer) -> None:
+            matrix_run = run.run_matrix
+
+            def run_then_drift(*args: Any, **kwargs: Any) -> None:
+                matrix_run(*args, **kwargs)
+                server.app["member_custom_on_messages_enabled"] = True
+
+            run.run_matrix = run_then_drift  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(drift), cli.EXIT_AFTER_RUN_PROBLEMS)
+        problems = self.results()["post_run_problems"]
+        self.assertIn(
+            "configuration differs after the run: "
+            "member_custom_on_messages_enabled is True, want False",
+            problems,
+        )
+
+    def test_cleanup_problem_exits_non_zero(self) -> None:
+        def keep_users(run: ProofRun, server: FakeServer) -> None:
+            def refuse(
+                method: str, path: str, body: Any, params: dict[str, str] | None
+            ) -> ApiResult | None:
+                if path == "/api/v2/users/delete":
+                    return ApiResult(method, path, 500, -1, "internal", {})
+                return None
+
+            server.handlers.append(refuse)
+
+        self.assertEqual(self.run_command(keep_users), cli.EXIT_AFTER_RUN_PROBLEMS)
+        problems = " | ".join(self.results()["post_run_problems"])
+        self.assertIn("users_delete got 500", problems)
+        self.assertIn("remaining_proof_users", problems)
+
+    def test_ctrl_c_restores_cleans_up_writes_results_and_exits_non_zero(self) -> None:
+        def interrupt(run: ProofRun, server: FakeServer) -> None:
+            def interrupted(*_args: Any, **_kwargs: Any) -> None:
+                server.app["guest_user_creation_disabled"] = False
+                run.journal.append(run._guest_creation_change())
+                raise KeyboardInterrupt
+
+            run.run_matrix = interrupted  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(interrupt), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertEqual(results["stop_reason"], "interrupted (Ctrl-C)")
+        self.assertEqual(results["journal_not_restored"], [])
+        self.assertIs(self.server.app["guest_user_creation_disabled"], True)
+        self.assertIn("users_task", results["cleanup"])
+        self.assertEqual(results["post_run_problems"], [])
+
+    def test_second_ctrl_c_inside_finish_keeps_the_results_file(self) -> None:
+        # P06.1-C2, the C1 review's nit 8: the first Ctrl-C stops the matrix with a
+        # temporary change journalled; a second one interrupts finish().
+        def interrupt_twice(run: ProofRun, server: FakeServer) -> None:
+            def interrupted(*_args: Any, **_kwargs: Any) -> None:
+                server.app["guest_user_creation_disabled"] = False
+                run.journal.append(run._guest_creation_change())
+                raise KeyboardInterrupt
+
+            def finish_interrupted(**_kwargs: Any) -> list[str]:
+                raise KeyboardInterrupt
+
+            run.run_matrix = interrupted  # type: ignore[method-assign]
+            run.finish = finish_interrupted  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(interrupt_twice), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertEqual(results["stop_reason"], "interrupted (Ctrl-C)")
+        self.assertEqual(results["journal_not_restored"], ["guest user creation enabled"])
+        self.assertTrue(
+            results["post_run_problems"][0].startswith("the end of the run was interrupted")
+        )
+        self.assertNotIn("end_of_run", results)  # the final write replaced the early one
+
+    def test_results_are_written_before_the_end_of_the_run(self) -> None:
+        def record_early_write(run: ProofRun, server: FakeServer) -> None:
+            finish = run.finish
+
+            def finish_after_checking(**kwargs: Any) -> list[str]:
+                early = self.results()
+                self.assertIn("end_of_run", early)
+                self.assertEqual(len(early["cases"]), 1)  # S1's row is already there
+                return finish(**kwargs)
+
+            run.finish = finish_after_checking  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(record_early_write), 0)
+
+    def test_ctrl_c_during_the_early_write_still_restores(self) -> None:
+        writes = vars(cli)["write_json"]  # the fixture's fake
+
+        def interrupt_first_run_write(name: str, data: Any, secrets: Any) -> Any:
+            if name.startswith("run-") and "progress" not in name and "end_of_run" in data:
+                raise KeyboardInterrupt
+            return writes(name, data, secrets)
+
+        def interrupted(run: ProofRun, server: FakeServer) -> None:
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                server.app["guest_user_creation_disabled"] = False
+                run.journal.append(run._guest_creation_change())
+                raise KeyboardInterrupt
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        with mock.patch.object(cli, "write_json", interrupt_first_run_write):
+            self.assertEqual(self.run_command(interrupted), cli.EXIT_STOPPED)
+        self.assertIs(self.server.app["guest_user_creation_disabled"], True)
+        self.assertEqual(self.results()["journal_not_restored"], [])
+
+    def test_second_ctrl_c_keeps_the_problems_finish_found(self) -> None:
+        # The C2 review's nit 4: finish() had found a restore it could not make before
+        # the second Ctrl-C (during the cleanup); the results keep that problem.
+        def interrupt_twice(run: ProofRun, server: FakeServer) -> None:
+            def stuck() -> str:
+                raise RunStopped("still on")
+
+            def interrupted(*_args: Any, **_kwargs: Any) -> None:
+                run.journal.append(TemporaryChange("stuck change", stuck))
+                raise KeyboardInterrupt
+
+            def cleanup_interrupted() -> dict[str, Any]:
+                raise KeyboardInterrupt
+
+            run.run_matrix = interrupted  # type: ignore[method-assign]
+            run.cleanup = cleanup_interrupted  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(interrupt_twice), cli.EXIT_STOPPED)
+        problems = self.results()["post_run_problems"]
+        self.assertTrue(problems[0].startswith("the end of the run was interrupted"))
+        self.assertIn("temporary change not restored: still on", problems)
+
+    def test_second_ctrl_c_closes_the_client_sessions(self) -> None:
+        # The C2 review's nit 4: the client processes are closed after a second Ctrl-C.
+        def interrupt_twice(run: ProofRun, server: FakeServer) -> None:
+            def interrupted(*_args: Any, **_kwargs: Any) -> None:
+                raise KeyboardInterrupt
+
+            def finish_interrupted(**_kwargs: Any) -> list[str]:
+                raise KeyboardInterrupt
+
+            run.run_matrix = interrupted  # type: ignore[method-assign]
+            run.finish = finish_interrupted  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(interrupt_twice), cli.EXIT_STOPPED)
+        self.assertEqual(self.proof.sessions, {})
+
+    def test_the_early_write_failure_note_is_redacted(self) -> None:
+        # P06.1-C3, the C2 review's nit 10.
+        token = jwt.encode({"user_id": "x"}, SECRET, "HS256")
+        writes = vars(cli)["write_json"]  # the fixture's fake
+
+        def failing_early_write(name: str, data: Any, secrets: Any) -> Any:
+            if name.startswith("run-") and "progress" not in name and "end_of_run" in data:
+                raise RuntimeError(f"refused near {token} and {SECRET}")
+            return writes(name, data, secrets)
+
+        with mock.patch.object(cli, "write_json", failing_early_write):
+            self.assertEqual(self.run_command(), 0)
+        notes = [n for n in self.results()["notes"] if n.startswith("results not written")]
+        self.assertEqual(len(notes), 1)
+        self.assertIn("RuntimeError: refused near <redacted-jwt> and <redacted-secret>", notes[0])
+        self.assertNotIn(token, notes[0])
+        self.assertNotIn(SECRET, notes[0])
+
+    # -- P06.1-C3, the C2 review's finding 2: a charge or limit signal met anywhere in
+    # the run means nothing of the run's is deleted.
+
+    def test_a_signal_met_by_the_end_of_run_restore_skips_the_cleanup(self) -> None:
+        # The review's reproduction: the run stopped on a failed restore, and the end
+        # of the run's retry got HTTP 402.
+        def stopped_on_a_failed_restore(run: ProofRun, server: FakeServer) -> None:
+            attempts: list[int] = []
+
+            def restore() -> str:
+                attempts.append(1)
+                if len(attempts) == 1:
+                    raise RunStopped("could not restore glow-match features: PUT 500")
+                raise GuardrailStop("server PUT /x: HTTP 402; stopping at once", at_once=True)
+
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                change = TemporaryChange("glow-match features ['custom_events']", restore)
+                run.journal.append(change)
+                run._restore(change)  # the case's own restore fails: the run stops
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(stopped_on_a_failed_restore), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertTrue(results["stop_reason"].startswith("stopped: could not restore"))
+        self.assert_nothing_deleted(results)
+        self.assertEqual(results["stop_signals"], ["server PUT /x: HTTP 402; stopping at once"])
+        # The configuration was still re-read at the end (preflight read it once before).
+        reads = [
+            p for m, p, _b in self.server.calls if m == "GET" and p == "/api/v2/chat/channeltypes"
+        ]
+        self.assertEqual(len(reads), 2)
+
+    def test_rate_limited_restores_at_the_end_skip_the_cleanup(self) -> None:
+        # The review: three rate-limited retries also ended in a cleanup.
+        attempts: list[int] = []
+
+        def rate_limited_at_the_end(run: ProofRun, server: FakeServer) -> None:
+            def restore() -> str:
+                attempts.append(1)
+                raise GuardrailStop("server PUT /x: HTTP 429; stopping at once", rate_limited=True)
+
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                run.journal.append(TemporaryChange("a change", restore))
+                raise KeyboardInterrupt
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(rate_limited_at_the_end), cli.EXIT_STOPPED)
+        self.assertEqual(len(attempts), 3)  # a rate limit is still retried
+        self.assert_nothing_deleted(self.results())
+
+    def test_a_signal_as_the_runs_own_stop_skips_the_cleanup(self) -> None:
+        # cmd_run adds its own stop to the run's record; finish() decides from it.
+        def charged(run: ProofRun, server: FakeServer) -> None:
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                raise GuardrailStop("client A: HTTP 402; stopping at once", at_once=True)
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(charged), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assert_nothing_deleted(results)
+        self.assertEqual(results["stop_signals"], ["client A: HTTP 402; stopping at once"])
+
+    def test_a_signal_whose_stop_a_ctrl_c_replaced_skips_the_cleanup(self) -> None:
+        # The independent review of P06.1-C3: E5's own client session met a charge
+        # signal, and a Ctrl-C arrived while E5's `finally` closed that session. The
+        # Ctrl-C became the run's stop; the signal was recorded where it was met.
+        interrupted: list[int] = []
+        real_close = FakeSession.close
+
+        def close(session: FakeSession, **_kwargs: Any) -> None:
+            if session.label == "A-role" and not interrupted:
+                interrupted.append(1)
+                raise KeyboardInterrupt
+            real_close(session)
+
+        def e5_charged_on_connect(run: ProofRun, server: FakeServer) -> None:
+            make_session, matrix_run = run._session, run.run_matrix
+
+            def charged(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+                if op == "connect":
+                    raise run.ledger.stop_at_once(
+                        "client A-role: HTTP 402; stopping at once", rate_limited=False
+                    )
+                return None
+
+            def session(label: str, token: str | None, **kwargs: Any) -> Any:
+                created: Any = make_session(label, token, **kwargs)
+                if label == "A-role":
+                    created.behaviour = charged
+                return created
+
+            def e5_only(
+                only: set[str] | None = None, progress: Callable[[], None] | None = None
+            ) -> None:
+                matrix_run({"E5"}, progress)
+
+            run._session = session  # type: ignore[method-assign]
+            run.run_matrix = e5_only  # type: ignore[method-assign]
+
+        with mock.patch.object(FakeSession, "close", close):
+            self.assertEqual(self.run_command(e5_charged_on_connect), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertEqual(results["stop_reason"], "interrupted (Ctrl-C)")
+        self.assertEqual(results["stop_signals"], ["client A-role: HTTP 402; stopping at once"])
+        self.assert_nothing_deleted(results)
+
+    def test_a_budget_stop_still_cleans_up(self) -> None:
+        def budget(run: ProofRun, server: FakeServer) -> None:
+            def matrix(*_args: Any, **_kwargs: Any) -> None:
+                raise GuardrailStop(
+                    "guardrail: api_calls would be passed; stopping before the call"
+                )
+
+            run.run_matrix = matrix  # type: ignore[method-assign]
+
+        self.assertEqual(self.run_command(budget), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertEqual(results["stop_signals"], [])
+        self.assertIn("users_task", results["cleanup"])
+        self.assertEqual(results["post_run_problems"], [])
+
+    def assert_nothing_deleted(self, results: dict[str, Any]) -> None:
+        self.assertEqual(results["cleanup"], {})
+        self.assertEqual([p for _m, p, _b in self.server.calls if p.endswith("/delete")], [])
+        skipped = [p for p in results["post_run_problems"] if p.startswith("cleanup skipped")]
+        self.assertEqual(len(skipped), 1, results["post_run_problems"])
+        self.assertIn("a charge or limit signal stopped the run at once", skipped[0])
+        self.assertEqual(self.proof.sessions, {})  # the client processes are still closed
+
+    def test_preflight_stop_exits_non_zero_without_cleanup(self) -> None:
+        def second_dashboard_user(run: ProofRun, server: FakeServer) -> None:
+            server.users["second"] = dashboard_user("second")
+
+        self.assertEqual(self.run_command(second_dashboard_user), cli.EXIT_STOPPED)
+        results = self.results()
+        self.assertIn("exactly one is accepted", results["stop_reason"])
+        self.assertEqual(results["post_run_problems"], [])
+        self.assertEqual(results["cleanup"], {})
+        self.assertEqual(results["checks"], [])
+
+    def test_baseline_writes_no_other_users_identifier_or_name(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.users["private-user-id"] = {
+            "id": "private-user-id",
+            "name": "Private Person",
+            "role": "admin",
+            "custom": {"dashboard_user": True, "first_name": "Private"},
+        }
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_baseline(ctx), 0)  # type: ignore[arg-type]
+        name = next(n for n in self.written if n.startswith("snapshot-"))
+        text = json.dumps(self.written[name])
+        for private in ("private-user-id", "Private Person", "Private"):
+            self.assertNotIn(private, text)
+        written = self.written[name]
+        self.assertEqual(written["users"]["dashboard_users"], 1)
+        raw = {
+            "app": {"app": server.app},
+            "channel_types": server.state["channel_types"],
+        }
+        self.assertEqual(configuration.baseline_record(written), configuration.baseline_record(raw))
+
+    def test_restore_apply_verifies_what_it_restored(self) -> None:
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        # The fake accepts every request but applies no grants: the check must see it.
+        self.assertEqual(cli.cmd_restore(ctx, True, False), 1)  # type: ignore[arg-type]
+        self.assertTrue(any("grants for user" in line for line in ctx.lines))
+
+        applying = FakeServer(UsageLedger())
+
+        def apply_grants(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            types = applying.state["channel_types"]["channel_types"]
+            if path == "/api/v2/app" and method == "PATCH":
+                applying.app["guest_user_creation_disabled"] = body["guest_user_creation_disabled"]
+                applying.app["grants"].update(body["grants"])
+                return ApiResult(method, path, 201, None, None, {})
+            name = path.rsplit("/", 1)[-1]
+            if method == "PUT" and name in configuration.DEFAULT_TYPES:
+                types.setdefault(name, _type(name)).update(body)
+                return ApiResult(method, path, 201, None, None, {})
+            return None
+
+        applying.handlers.append(apply_grants)
+        ctx = FakeContext(applying)
+        self.assertEqual(cli.cmd_restore(ctx, True, False), 0)  # type: ignore[arg-type]
+        self.assertIn("differences from the recorded baseline after restore: []", ctx.lines)
+
+    def test_verify_clean_lists_polls_and_user_groups(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.poll_listing_needs_user = False
+
+        def leftover_poll(
+            method: str, path: str, body: Any, params: dict[str, str] | None
+        ) -> ApiResult | None:
+            if path == "/api/v2/polls/query":
+                return ApiResult(method, path, 201, None, None, {"polls": [{"id": "left"}]})
+            return None
+
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 0)  # type: ignore[arg-type]
+        server.handlers.append(leftover_poll)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
+        self.assertIn("polls remaining: ['left']", ctx.lines)
+
+    def test_verify_clean_says_why_the_poll_listing_is_not_verified(self) -> None:
+        # As Stream answers the standalone listing (P06.1-I2b): a user is needed, which
+        # the standalone command has none of; a run's cleanup lists as its own users.
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
+        listing = next(line for line in ctx.lines if line.startswith("polls remaining:"))
+        self.assertIn("not verified: HTTP 400 code 4", listing)
+        self.assertIn("either user or user_id must be provided", listing)
+        self.assertTrue(
+            any(line.startswith("polls: the standalone listing needs a user") for line in ctx.lines)
+        )
+
+
+class AtomicWriteTest(unittest.TestCase):
+    """P06.1-C2: an interrupted write never leaves a results file truncated."""
+
+    def test_a_failed_write_leaves_the_previous_file_whole(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from glow_stream_proof import workdir
+
+        with (
+            tempfile.TemporaryDirectory() as scratch,
+            mock.patch.object(workdir, "WORK_DIR", Path(scratch)),
+        ):
+            workdir.write_json("run-x.json", {"cases": [1]}, [SECRET])
+            with mock.patch.object(Path, "replace", side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    workdir.write_json("run-x.json", {"cases": [1, 2]}, [SECRET])
+            self.assertEqual(json.loads((Path(scratch) / "run-x.json").read_text()), {"cases": [1]})
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+# -- P06.1-I2b: the Video and Feeds commands --------------------------------------------
+
+
+class _WritesTest(unittest.TestCase):
+    """Nothing is written to ``.work``: the writes are kept in ``self.written``."""
+
+    def setUp(self) -> None:
+        self.written: dict[str, Any] = {}
+
+        def write_json(name: str, data: Any, secrets: Any) -> Any:
+            self.written[name] = json.loads(json.dumps(data, default=str))
+            return PROOF_ROOT / ".work" / name
+
+        def write_text(name: str, text: str, secrets: Any) -> Any:
+            self.written[name] = text
+            return PROOF_ROOT / ".work" / name
+
+        for name, fake in (("write_json", write_json), ("write_text", write_text)):
+            patcher = mock.patch.object(cli, name, fake)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+
+def puts(server: FakeServer) -> list[tuple[str, str, Any]]:
+    return [
+        (m, p, b)
+        for m, p, b in server.calls
+        if m in ("PUT", "PATCH", "POST", "DELETE")
+        and not p.endswith(("/query", "/calls", "/channels"))
+    ]
+
+
+CT = "/api/v2/video/calltypes"
+FV = "/api/v2/feeds/feed_visibilities"
+# I2b's live dry run and apply (commands 3, 10 and 11): the nine PUTs the committed products
+# baseline gives, as (product, scope, client roles named).
+LIVE_PLAN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("v", "audio_room", ("user", "anonymous")),
+    ("v", "default", ("user", "guest")),
+    ("v", "development", ("user", "guest", "anonymous")),
+    ("v", "livestream", ("user", "anonymous")),
+    ("f", "followers", ("user",)),
+    ("f", "members", ("user",)),
+    ("f", "private", ("user",)),
+    ("f", "public", ("user", "guest", "anonymous")),
+    ("f", "visible", ("user", "guest", "anonymous")),
+)
+
+
+class ScopedConfigureTest(_WritesTest):
+    """DM-05 finding 1: ``configure --products video,feeds`` is a difference of Video and
+    Feeds configuration writes only, and its ``--apply`` refuses in code."""
+
+    def test_the_dry_run_prints_the_plan_and_the_chat_verification(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, False, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        self.assertIn("differences before: []", ctx.lines)
+        self.assertIn("video: available", ctx.lines)
+        plan_lines = [line for line in ctx.lines if line.startswith("- ")]
+        # The fake models the committed products baseline (P06.1-C4), so the plan is the
+        # nine PUTs of I2b's live dry run (its command 3).
+        want = []
+        for product, name, roles in LIVE_PLAN:
+            path, label = (
+                (f"{CT}/{name}", "video: remove the call type")
+                if product == "v"
+                else (f"{FV}/{name}", "feeds: remove the feed visibility")
+            )
+            want.append(f"- PUT {path}: {label} {name} grants of {', '.join(roles)}")
+        self.assertEqual(plan_lines, want)
+        self.assertFalse(any("/api/v2/app" in line or "channeltypes" in line for line in ctx.lines))
+        self.assertEqual(puts(server), [])  # nothing sent
+        self.assertEqual(self.written, {})
+
+    def test_apply_refuses_while_the_chat_configuration_does_not_verify(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        server.app["guest_user_creation_disabled"] = False
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
+        self.assertIn("refused: the chat configuration does not verify; nothing applied", ctx.lines)
+        self.assertEqual(puts(server), [])
+        self.assertEqual(
+            server.products.call_type_grants["default"]["user"],
+            BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"]["user"],
+        )
+
+    def test_apply_refuses_a_planned_request_outside_the_configuration_families(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        bad = configuration.ApiRequest(
+            "PATCH", "/api/v2/app", {"grants": {"user": []}}, "video: not this"
+        )
+        with mock.patch.object(products, "lockdown_plan", return_value=[bad]):
+            self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
+        self.assertTrue(
+            any(
+                line.startswith(
+                    "refused: a planned request is outside the Video and Feeds configuration "
+                    "families: ['PATCH /api/v2/app']"
+                )
+                for line in ctx.lines
+            ),
+            ctx.lines,
+        )
+        self.assertEqual(puts(server), [])
+
+    def test_apply_sends_only_the_difference_and_verifies_both_products(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        sent = puts(server)
+        self.assertEqual(
+            sent,
+            [
+                ("PUT", f"{CT if p == 'v' else FV}/{n}", {"grants": {role: [] for role in r}})
+                for p, n, r in LIVE_PLAN
+            ],
+        )
+        grants = server.products.call_type_grants["default"]
+        self.assertEqual((grants["user"], grants["guest"]), ([], []))
+        # Untouched: narrower than I1's.
+        for role in ("admin", "call_member", "global_admin", "global_read_only"):
+            self.assertEqual(grants[role], BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"][role])
+        self.assertIn("differences after: []", ctx.lines)
+        record = next(v for k, v in self.written.items() if k.startswith("configure-products-"))
+        self.assertEqual(record["problems_after"], [])
+        # The full after-state, every role and setting, in baseline_record's shape (P06.1-C4;
+        # the I2b review's finding 2).
+        after = record["after"]
+        self.assertEqual(set(after), {"app_id", "video", "feeds"})
+        self.assertEqual(
+            after["video"]["call_types"]["default"]["grants"],
+            {**BEFORE_LOCKDOWN_CALL_TYPE_GRANTS["default"], "user": [], "guest": []},
+        )
+        self.assertEqual(
+            after["video"]["call_types"]["audio_room"]["settings"],
+            BASELINE["video"]["call_types"]["audio_room"]["settings"],
+        )
+        self.assertEqual(after["feeds"]["feed_groups"], BASELINE["feeds"]["feed_groups"])
+        self.assertEqual(record["before"]["video"]["call_types"], BASELINE["video"]["call_types"])
+        self.assertEqual(record["scope"], ["feeds", "video"])
+        # A second apply has nothing to send.
+        ctx2 = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx2, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        self.assertIn("video and feeds plan: nothing to change", ctx2.lines)
+        self.assertIn("nothing to apply", ctx2.lines)
+        self.assertEqual(len(puts(server)), 9)
+
+    def test_apply_is_guarded_by_the_configure_scope(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        cli.cmd_configure(ctx, True, ["video"])  # type: ignore[arg-type]
+        self.assertIsNotNone(server.guard)
+        assert server.guard is not None
+        self.assertIsNotNone(
+            server.guard("POST", "/api/v2/video/call/default/x/delete", {"hard": True}, {})
+        )
+        self.assertIsNone(
+            server.guard("PUT", "/api/v2/video/calltypes/default", {"grants": {"user": []}}, {})
+        )
+        # Only Video was in scope: the feed visibilities were not touched.
+        self.assertTrue(all(p.startswith("/api/v2/video/") for _m, p, _b in puts(server)))
+        self.assertEqual(
+            server.products.visibility_grants["public"]["user"],
+            BEFORE_LOCKDOWN_VISIBILITY_GRANTS["public"]["user"],
+        )
+
+    def test_the_apply_is_gated_by_the_chat_verification_alone(self) -> None:
+        """The independent check, nit 5: once the lockdown is recorded as applied, the
+        products' own drift is what the apply is for, not a reason to refuse it."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
+            self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        self.assertIn("differences before: []", ctx.lines)
+        self.assertEqual(len(puts(server)), 9)
+        self.assertIn("differences after: []", ctx.lines)
+
+    def test_unknown_products_are_refused(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, False, ["chat"]), cli.EXIT_REFUSED)  # type: ignore[arg-type]
+        self.assertEqual(cli.cmd_configure(ctx, False, []), cli.EXIT_REFUSED)  # type: ignore[arg-type]
+        self.assertEqual(server.calls, [])
+
+    def test_a_product_that_is_not_available_is_left_out_of_the_plan(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        server.products.available["feeds"] = False
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
+        self.assertTrue(
+            any(line.startswith("feeds: not available: HTTP 403 code 17") for line in ctx.lines)
+        )
+        self.assertTrue(all(p.startswith("/api/v2/video/") for _m, p, _b in puts(server)))
+        self.assertIn("differences after: []", ctx.lines)
+
+
+def failing_write(
+    server: FakeServer,
+    nth: int,
+    status: int,
+    code: int,
+    message: str,
+    *,
+    replace: bool = False,
+    replace_with: BaseException | None = None,
+) -> list[int]:
+    """Answer the ``nth`` configuration write (PUT or PATCH) with ``status``, as the real
+    server client would: a charge or limit signal is recorded in the ledger and its stop
+    raised (``ServerApi._result``); ``replace`` then raises a Ctrl-C in its place, and
+    ``replace_with`` that error (P06.1-C5), as a signal whose stop is replaced in flight.
+    Returns, for each write, how many calls the fake had counted when it answered, that
+    write included."""
+    seen: list[int] = []
+
+    def handler(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+        if method not in ("PUT", "PATCH"):
+            return None
+        seen.append(len(server.calls))
+        if len(seen) != nth:
+            return None
+        signal = charge_signal(status, code, message)
+        if signal is not None:
+            stop = server.ledger.stop_at_once(
+                f"server {method} {path}: {signal}; stopping at once",
+                rate_limited=is_rate_limit(status, code),
+            )
+            if replace:
+                raise KeyboardInterrupt
+            if replace_with is not None:
+                raise replace_with
+            raise stop
+        return ApiResult(method, path, status, code, message, {"code": code, "message": message})
+
+    server.handlers.append(handler)
+    return seen
+
+
+class ConfigureRecordTest(_WritesTest):
+    """P06.1-C4, the I2b review's nit 8 with the manager's addition: a configuration write
+    that fails mid-plan still leaves the command's record (the steps applied so far, the
+    failure and the after-state); after a charge or limit signal nothing more is sent, and
+    the record says the after-state was not read. The command exits non-zero either way."""
+
+    def record(self, prefix: str) -> dict[str, Any]:
+        records = [v for k, v in self.written.items() if k.startswith(prefix)]
+        self.assertEqual(len(records), 1, sorted(self.written))
+        return dict(records[0])
+
+    def test_scoped_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 1)  # type: ignore[arg-type]
+        record = self.record("configure-products-")
+        self.assertEqual([s["status"] for s in record["applied"]], [201, 201, 400])
+        self.assertEqual(
+            record["failure"],
+            "StepRefused: PUT /api/v2/video/calltypes/development failed; stopping",
+        )
+        # The re-read ran: the full after-state, with what the failure left undone.
+        after = record["after"]
+        self.assertEqual(after["video"]["call_types"]["default"]["grants"]["user"], [])
+        self.assertTrue(after["video"]["call_types"]["development"]["grants"]["user"])
+        self.assertTrue(record["problems_after"])
+        self.assertTrue(any(m == "GET" for m, _p, _b in server.calls[-3:]), server.calls[-3:])
+
+    def assert_nothing_after_the_signal(
+        self, server: FakeServer, seen: list[int], prefix: str
+    ) -> dict[str, Any]:
+        # The signalling write was the last request (the fake counts a call before its
+        # handlers answer it).
+        self.assertEqual(len(server.calls), seen[-1])
+        self.assertEqual(len(server.ledger.signals), 1)
+        record = self.record(prefix)
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertIsNone(record["problems_after"])
+        return record
+
+    def test_scoped_a_402_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 3, 402, 4, "payment required")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        # The signalling step is kept with what stopped it (C4's own review).
+        self.assertEqual([s["status"] for s in record["applied"]], [201, 201, None])
+        self.assertTrue(record["applied"][-1]["stopped"].startswith("GuardrailStop: server PUT"))
+        self.assertIn("HTTP 402", record["applied"][-1]["stopped"])
+        self.assertTrue(record["failure"].startswith("GuardrailStop: server PUT"), record)
+        self.assertIn("HTTP 402", record["failure"])
+        self.assertIn(cli.AFTER_NOT_READ_SIGNAL, ctx.lines[-1])
+
+    def test_scoped_a_429_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 5, 429, 9, "Too many requests")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(len(record["applied"]), 5)
+        self.assertIn("HTTP 429", record["applied"][-1]["stopped"])
+
+    def test_the_signal_is_read_from_the_ledger_not_the_exception(self) -> None:
+        """A signal whose stop a Ctrl-C replaced: still no re-read, and the record says a
+        signal was met; the Ctrl-C reaches main."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        seen = failing_write(server, 2, 402, 4, "payment required", replace=True)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(record["failure"], "KeyboardInterrupt: ")
+
+    def assert_the_signal_left(
+        self, raised: BaseException, server: FakeServer, replaced: BaseException
+    ) -> None:
+        """The ledger's signal is what left the command (exit 3 in main), with the error that
+        replaced its stop in flight chained to it (C5's own review: until then the error
+        left, and main exited 1). GuardrailStop is a RuntimeError, so the identity counts."""
+        self.assertIs(raised, server.ledger.signals[0])
+        self.assertIs(raised.__cause__, replaced)
+
+    def test_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(self) -> None:
+        """P06.1-C5, the C4 review's nit 5: an ordinary error, not a Ctrl-C, replaces the
+        signal's stop, so only the ledger tells that a signal was met (a Ctrl-C alone already
+        skips the re-read): no re-read is sent, and the record says a signal was met."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        replaced = RuntimeError("an error in place of the stop")
+        seen = failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
+        ctx = FakeContext(server)
+        with self.assertRaises(BaseException) as caught:
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-products-")
+        self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
+
+    def test_general_the_signal_is_read_from_the_ledger_when_an_ordinary_error_replaced_it(
+        self,
+    ) -> None:
+        server = FakeServer(UsageLedger())
+        replaced = RuntimeError("an error in place of the stop")
+        seen = failing_write(server, 2, 429, 9, "Too many requests", replace_with=replaced)
+        ctx = FakeContext(server)
+        with self.assertRaises(BaseException) as caught:
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-")
+        self.assertEqual(record["failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
+
+    def test_a_signal_in_the_reread_whose_stop_an_error_replaced_still_leaves(self) -> None:
+        """C5's own review: after a refused step, the re-read meets a signal and an ordinary
+        error replaces its stop in flight. The signal, not the refusal (exit 1), leaves the
+        command, with the error chained; nothing more is sent."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        replaced = RuntimeError("an error in place of the stop")
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+                raise replaced
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(BaseException) as caught:
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertEqual(record["reread_failure"], "RuntimeError: an error in place of the stop")
+        self.assert_the_signal_left(caught.exception, server, replaced)
+
+    def test_a_ctrl_c_without_a_signal_sends_nothing_more(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        count: list[int] = []
+
+        def interrupt(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if method == "PUT":
+                count.append(len(server.calls))
+                if len(count) == 2:
+                    raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(server.calls), count[-1])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+
+    def test_a_ctrl_c_during_the_reread_still_writes_the_record(self) -> None:
+        """C4's own review: an interrupt in the re-read no longer loses the record."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+
+        def interrupt_the_reread(method: str, path: str, body: Any, params: Any) -> None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+        self.assertEqual(len(record["applied"]), 9)
+        self.assertEqual(record["failure"], "KeyboardInterrupt: ")
+
+    def test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
+        """C4's own review (re-check): after a refused step, a signal met by the re-read is
+        not swallowed: the record says so and keeps both failures, and the stop reaches
+        main (exit 3 there), with nothing more sent."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                raise server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(gets), 1)
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertTrue(record["reread_failure"].startswith("GuardrailStop: "), record)
+
+    def test_a_ctrl_c_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
+        server = FakeServer(UsageLedger())
+        failing_write(server, 3, 400, 4, "bad request")
+
+        def interrupt_the_reread(method: str, path: str, body: Any, params: Any) -> None:
+            if any(m == "PATCH" for m, _p, _b in server.calls) and method == "GET":
+                raise KeyboardInterrupt
+            return None
+
+        server.handlers.append(interrupt_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(KeyboardInterrupt):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.record("configure-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
+        self.assertEqual(record["reread_failure"], "KeyboardInterrupt: ")
+
+    def test_general_a_refused_write_mid_plan_keeps_the_record_and_the_reread(self) -> None:
+        server = FakeServer(UsageLedger())
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_configure(ctx, True), 1)  # type: ignore[arg-type]
+        record = self.record("configure-")
+        self.assertEqual([s["status"] for s in record["applied"]][-1], 400)
+        self.assertEqual(len(record["applied"]), 3)
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertIn("settings", record["after"])
+        self.assertIsInstance(record["problems_after"], list)
+
+    def test_general_a_402_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        seen = failing_write(server, 3, 402, 4, "payment required")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        record = self.assert_nothing_after_the_signal(server, seen, "configure-")
+        self.assertEqual(len(record["applied"]), 3)
+        self.assertIsNone(record["applied"][-1]["status"])
+        self.assertNotIn("after_match_type", record)
+
+    def test_general_a_429_mid_plan_sends_nothing_more_and_keeps_the_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        seen = failing_write(server, 2, 429, 9, "Too many requests")
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+        self.assert_nothing_after_the_signal(server, seen, "configure-")
+
+    def test_a_signal_in_the_reread_is_recorded_and_sends_nothing_more(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        gets: list[int] = []
+
+        def limit_the_reread(method: str, path: str, body: Any, params: Any) -> ApiResult | None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                raise server.ledger.stop_at_once(
+                    f"server GET {path}: HTTP 429; stopping at once", rate_limited=True
+                )
+            return None
+
+        server.handlers.append(limit_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop):
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertEqual(len(gets), 1)
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
+        self.assertEqual(len(record["applied"]), 9)
+
+
+class ClosingContext(FakeContext):
+    """A fake context ``main`` can use and close (P06.1-C5)."""
+
+    def close(self) -> None:
+        pass
+
+
+class RecordWriteAfterASignalTest(_WritesTest):
+    """P06.1-C5, the C4 review's nit 4: after a charge or limit signal mid-plan, a record
+    write that raises (the leak check refuses the record, or the disk write fails) no
+    longer hides the signal. Its stop still reaches main, which exits 3 and names it; the
+    write's error is printed and chained to the stop; nothing is sent after the signal."""
+
+    def apply(
+        self,
+        scope: list[str] | None,
+        error: BaseException,
+        replace_with: BaseException | None = None,
+    ) -> tuple[FakeContext, FakeServer, list[int], BaseException]:
+        """A 402 on the second configuration write (its stop replaced in flight by
+        ``replace_with``, if given), then a record write that raises."""
+        server = FakeServer(UsageLedger())
+        if scope is not None:
+            server.products.grant_before_lockdown()
+        seen = failing_write(server, 2, 402, 4, "payment required", replace_with=replace_with)
+        ctx = FakeContext(server)
+        with mock.patch.object(cli, "write_json", side_effect=error):
+            with self.assertRaises(BaseException) as caught:
+                if scope is None:
+                    cli.cmd_configure(ctx, True)  # type: ignore[arg-type]
+                else:
+                    cli.cmd_configure(ctx, True, scope)  # type: ignore[arg-type]
+        return ctx, server, seen, caught.exception
+
+    def assert_the_stop_is_kept(self, scope: list[str] | None, error: BaseException) -> None:
+        ctx, server, seen, raised = self.apply(scope, error)
+        # The signal's stop leaves the command, not the write's error ...
+        self.assertIsInstance(raised, GuardrailStop)
+        self.assertIn("HTTP 402", str(raised))
+        # ... with the write's error chained to it, and printed on a line naming the signal.
+        self.assertIs(raised.__cause__, error)
+        lines = [line for line in ctx.lines if "record was not written" in line]
+        self.assertEqual(len(lines), 1, ctx.lines)
+        self.assertTrue(
+            lines[0].startswith(
+                f"the configuration record was not written: {type(error).__name__}: {error}; "
+                "a charge or limit signal was met: server P"
+            ),
+            lines[0],
+        )
+        self.assertIn("HTTP 402", lines[0])
+        # Nothing was sent after the signalling write.
+        self.assertEqual(len(server.calls), seen[-1])
+
+    def test_scoped_the_leak_check_refusing_the_record(self) -> None:
+        self.assert_the_stop_is_kept(
+            ["video", "feeds"], LeakRefused("refused output: contains a known secret")
+        )
+
+    def test_scoped_a_disk_write_that_fails(self) -> None:
+        self.assert_the_stop_is_kept(["video", "feeds"], OSError(28, "No space left on device"))
+
+    def test_general_the_leak_check_refusing_the_record(self) -> None:
+        self.assert_the_stop_is_kept(None, LeakRefused("refused output: contains a known secret"))
+
+    def test_general_a_disk_write_that_fails(self) -> None:
+        self.assert_the_stop_is_kept(None, OSError(28, "No space left on device"))
+
+    def test_an_ordinary_error_in_place_of_the_stop_and_a_failed_write(self) -> None:
+        """C5's own review: an ordinary error replaced the signal's stop in flight, and the
+        record's write fails. The signal's stop still leaves the command, with the write's
+        error chained, and the line names the signal and the error that replaced its stop."""
+        for scope in (["video", "feeds"], None):
+            with self.subTest(scope=scope):
+                error = OSError(28, "No space left on device")
+                replaced = RuntimeError("an error in place of the stop")
+                ctx, server, seen, raised = self.apply(scope, error, replace_with=replaced)
+                self.assertIs(raised, server.ledger.signals[0])
+                self.assertIs(raised.__cause__, error)
+                lines = [line for line in ctx.lines if "record was not written" in line]
+                self.assertEqual(len(lines), 1, ctx.lines)
+                self.assertTrue(
+                    lines[0].endswith(
+                        "; the apply stopped on RuntimeError: an error in place of the stop"
+                    ),
+                    lines[0],
+                )
+                self.assertIn("; a charge or limit signal was met: server P", lines[0])
+                self.assertEqual(len(server.calls), seen[-1])
+
+    def test_main_exits_3_when_an_ordinary_error_replaced_the_stop(self) -> None:
+        """C5's own review: whether the record's write succeeds or fails, a signal whose stop
+        an ordinary error replaced ends the command through the guardrail stop (exit 3)."""
+        for argv in (
+            ["configure", "--apply", "--products", "video,feeds"],
+            ["configure", "--apply"],
+        ):
+            for write_fails in (False, True):
+                with self.subTest(argv=argv, write_fails=write_fails):
+                    server = FakeServer(UsageLedger())
+                    server.products.grant_before_lockdown()
+                    replaced = RuntimeError("an error in place of the stop")
+                    failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
+                    ctx = ClosingContext(server)
+                    stderr = io.StringIO()
+                    writes = (
+                        mock.patch.object(cli, "write_json", side_effect=OSError(28, "full"))
+                        if write_fails
+                        else contextlib.nullcontext()
+                    )
+                    with (
+                        mock.patch.object(cli, "Context", return_value=ctx),
+                        writes,
+                        contextlib.redirect_stderr(stderr),
+                    ):
+                        try:
+                            code: int | BaseException = cli.main(argv)
+                        except BaseException as exc:  # an exception main did not handle
+                            code = exc
+                    self.assertEqual(code, 3)
+                    self.assertTrue(stderr.getvalue().startswith("guardrail stop: server P"))
+
+    def test_main_exits_3_and_names_the_signal(self) -> None:
+        for argv in (
+            ["configure", "--apply", "--products", "video,feeds"],
+            ["configure", "--apply"],
+        ):
+            with self.subTest(argv=argv):
+                server = FakeServer(UsageLedger())
+                server.products.grant_before_lockdown()
+                failing_write(server, 2, 402, 4, "payment required")
+                ctx = ClosingContext(server)
+                stderr = io.StringIO()
+                error = OSError(28, "No space left on device")
+                with (
+                    mock.patch.object(cli, "Context", return_value=ctx),
+                    mock.patch.object(cli, "write_json", side_effect=error),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    try:
+                        code: int | BaseException = cli.main(argv)
+                    except BaseException as exc:  # an exception main did not handle
+                        code = exc
+                self.assertEqual(code, 3)
+                self.assertTrue(stderr.getvalue().startswith("guardrail stop: server P"))
+                self.assertIn("HTTP 402", stderr.getvalue())
+
+    def test_without_a_signal_the_writes_error_is_raised_and_printed(self) -> None:
+        """A refused step (no signal) and a failed write: the write's error leaves the
+        command, as before, and is printed too."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        ctx = FakeContext(server)
+        error = OSError(28, "No space left on device")
+        with mock.patch.object(cli, "write_json", side_effect=error):
+            with self.assertRaises(OSError) as caught:
+                cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertIs(caught.exception, error)
+        self.assertIn(
+            "the configuration record was not written: OSError: [Errno 28] No space left on device",
+            ctx.lines,
+        )
+
+
+class ProbeAndBaselineTest(_WritesTest):
+    def test_probe_products(self) -> None:
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_probe_products(ctx), 0)  # type: ignore[arg-type]
+        self.assertIn(
+            "video: available (GET /api/v2/video/calltypes -> HTTP 200 code None)", ctx.lines
+        )
+        self.assertIn(
+            "video call types: ['audio_room', 'default', 'development', 'livestream']", ctx.lines
+        )
+        self.assertIn(
+            "feed groups: ['foryou', 'notification', 'stories', 'story', 'timeline', 'user']",
+            ctx.lines,
+        )
+        probe = next(v for k, v in self.written.items() if k.startswith("probe-products-"))
+        self.assertEqual(probe["feeds"]["availability"], "available")
+        # Reads only: the guard has nothing to refuse and nothing changed.
+        self.assertTrue(all(m == "GET" for m, _p, _b in server.calls))
+
+    def test_probe_records_a_product_that_is_not_available(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.products.available["video"] = False
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_probe_products(ctx), 0)  # type: ignore[arg-type]
+        self.assertTrue(
+            any(
+                line.startswith("video: not available: HTTP 403 code 17: Video is not enabled")
+                for line in ctx.lines
+            ),
+            ctx.lines,
+        )
+        self.assertIn("video call types: []", ctx.lines)
+
+    def test_baseline_and_the_products_baseline_record(self) -> None:
+        server = FakeServer(UsageLedger())
+        # A name no grant contains ("owner" is part of grant names such as
+        # "block-user-owner" in the committed baseline, which the fake models since P06.1-C4).
+        server.users["dashboard-person"] = dashboard_user("dashboard-person")
+        server.products.grant_before_lockdown()  # a baseline taken before the lockdown
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_baseline(ctx), 0)  # type: ignore[arg-type]
+        name, snapshot = next((k, v) for k, v in self.written.items() if k.startswith("snapshot-"))
+        self.assertIn("products", snapshot)
+        self.assertEqual(snapshot["products"]["video"]["availability"], "available")
+        self.assertNotIn("dashboard-person", json.dumps(snapshot["products"]))
+        # The 18 client-role grants of I2b's live baseline read (its command 7).
+        self.assertIn("video and feeds differences from the lockdown target: 18", ctx.lines)
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot_path = Path(tmp) / name
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            with mock.patch.object(cli, "BASELINE_DIR", Path(tmp) / "baseline"):
+                self.assertEqual(cli.cmd_record_products_baseline(ctx, snapshot_path), 0)  # type: ignore[arg-type]
+                written = list((Path(tmp) / "baseline").glob("video-feeds-1729640-*.json"))
+            self.assertEqual(len(written), 1)
+            record = json.loads(written[0].read_text(encoding="utf-8"))
+        self.assertEqual(record["app_id"], "1729640")
+        self.assertEqual(sorted(record), ["app_id", "feeds", "video"])
+        # The fake models the committed products baseline before the lockdown (P06.1-C4), so
+        # the record written from its read is that baseline.
+        self.assertEqual(record, BASELINE)
+        # The chat baseline is untouched.
+        self.assertEqual(cli.BASELINE_RECORD.name, "application-1729640-2026-09-25.json")
+
+    def test_record_refuses_a_snapshot_without_products(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        server = FakeServer(UsageLedger())
+        ctx = FakeContext(server)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "snapshot.json"
+            path.write_text(json.dumps({"app": {}}), encoding="utf-8")
+            self.assertEqual(cli.cmd_record_products_baseline(ctx, path), cli.EXIT_REFUSED)  # type: ignore[arg-type]
+
+
+class ProductLeftoversTest(_WritesTest):
+    def test_verify_clean_lists_calls_feeds_and_activities(self) -> None:
+        server = FakeServer(UsageLedger())
+        server.users["owner"] = dashboard_user("owner")
+        server.poll_listing_needs_user = False  # the poll listing is another test's
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 0)  # type: ignore[arg-type]
+        self.assertIn("calls remaining: []", ctx.lines)
+        self.assertIn("feeds remaining: []", ctx.lines)
+        self.assertIn("activities remaining: []", ctx.lines)
+        server.products.calls["default:left"] = {
+            "id": "left",
+            "type": "default",
+            "custom": {},
+            "members": [],
+            "created_by": "x",
+        }
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 1)  # type: ignore[arg-type]
+        self.assertIn("calls remaining: ['default:left']", ctx.lines)
+        # A product that is not available can hold no object: still clean.
+        server.products.calls.clear()
+        server.products.available["feeds"] = False
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_verify_clean(ctx), 0)  # type: ignore[arg-type]
+        self.assertTrue(
+            any(
+                line.startswith("feeds remaining: not available: HTTP 403 code 17")
+                for line in ctx.lines
+            ),
+            ctx.lines,
+        )
+
+    def test_cleanup_apply_deletes_the_proofs_calls_and_feeds_only(self) -> None:
+        server = FakeServer(UsageLedger())
+        state = server.products
+        state.calls["default:p061i1-x-call"] = {
+            "id": "p061i1-x-call",
+            "type": "default",
+            "custom": {},
+            "members": [],
+            "created_by": "p061i1-x-ua",
+        }
+        state.calls["default:someone-elses"] = {
+            "id": "someone-elses",
+            "type": "default",
+            "custom": {},
+            "members": [],
+            "created_by": "x",
+        }
+        state.feeds["user:p061i1-x-ua"] = {"user_id": "p061i1-x-ua", "custom": {}}
+        state.feeds["user:someone-else"] = {"user_id": "someone-else", "custom": {}}
+        state.activities["a-1"] = {
+            "type": "post",
+            "text": "t",
+            "feeds": ["user:p061i1-x-ua"],
+            "user_id": "p061i1-x-ua",
+            "custom": {},
+        }
+        server.users["p061i1-x-ua"] = {"id": "p061i1-x-ua", "role": "user", "created_at": 0}
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_cleanup(ctx, False), 0)  # type: ignore[arg-type]
+        self.assertTrue(
+            any(
+                line.startswith(
+                    "proof calls: ['default:p061i1-x-call']; proof feeds: ['user:p061i1-x-ua']; "
+                    "activities present: 1"
+                )
+                for line in ctx.lines
+            ),
+            ctx.lines,
+        )
+        self.assertEqual(
+            sorted(state.calls), ["default:p061i1-x-call", "default:someone-elses"]
+        )  # a dry run
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_cleanup(ctx, True), 0)  # type: ignore[arg-type]
+        self.assertEqual(sorted(state.calls), ["default:someone-elses"])
+        self.assertEqual(sorted(state.feeds), ["user:someone-else"])
+        self.assertEqual(state.activities, {})  # the proof user's Feeds data delete
+        self.assertEqual(state.user_data_deleted, ["p061i1-x-ua"])
+        self.assertIn("call delete -> 200", ctx.lines)
+        self.assertIn("feed delete -> 200", ctx.lines)
+        self.assertIn("feeds user data delete -> 200", ctx.lines)
+
+
+class LeanRunTest(_WritesTest):
+    def run_with(self, only: set[str]) -> tuple[int, dict[str, Any], list[str]]:
+        run, server = make_run()
+        server.users["owner"] = dashboard_user("owner")
+        seen: dict[str, Any] = {}
+
+        def factory(*_args: Any, **kwargs: Any) -> ProofRun:
+            seen.update(kwargs)
+            run.lean = bool(kwargs.get("lean"))
+            return run
+
+        ctx = FakeContext(server)
+        with mock.patch.object(cli, "ProofRun", factory), NoSettle():
+            code = cli.cmd_run(ctx, True, only)  # type: ignore[arg-type]
+        return code, seen, ctx.lines
+
+    def test_a_product_only_run_is_lean(self) -> None:
+        code, seen, lines = self.run_with({"VD-create", "FD-feed"})
+        self.assertEqual(code, 0)
+        self.assertTrue(seen["lean"])
+        self.assertIn("a Video and Feeds run: lean setup (users A and B, no channel)", lines)
+
+    def test_a_chat_run_is_not(self) -> None:
+        code, seen, lines = self.run_with({"S1"})
+        self.assertEqual(code, 0)
+        self.assertFalse(seen["lean"])
+        self.assertNotIn("a Video and Feeds run: lean setup (users A and B, no channel)", lines)
