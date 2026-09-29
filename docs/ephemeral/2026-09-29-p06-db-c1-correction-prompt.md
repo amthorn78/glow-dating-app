@@ -10,6 +10,7 @@
   - the manager adds its verification there, records the outcome in the brief's "Sessions", and settles the P11 plan's DB06 limit.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, high.** Effort score 2.22 (confidence 0.82); rung probabilities low 0.00, medium 0.02, high 0.74, extra high 0.24, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-09-29T06:39:25Z. Nathan picks the cell.
+  - **Nathan's pick: Opus 5.5 at high**, started 29 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the job's generated password is not credential use in the charter's sense (DM-08 7.2), the session takes no live provider action, and nothing here departs from the brief's D3, D4 or D5.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows.
