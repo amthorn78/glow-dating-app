@@ -9,6 +9,7 @@
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Fable 5.1, max.** Effort score 3.63 (confidence 0.74); rung probabilities low 0.00, medium 0.00, high 0.03, extra high 0.30, max 0.66, ultracode 0.01. Model probabilities Fable 5.1 0.86, Opus 5.5 0.14 (confidence 0.72). Sent 2026-09-29T03:07:43Z. Nathan picks the cell.
   - **Nathan's pick: Fable 5.1 at ultracode**, in his words *"Fable Max Ultracode"*, started 29 September. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+- **Result:** done on 29 September. Branch `claude/epic-maxwell-e4zomh`, code head `dff83d4`, final head `074eea1`; Foundation run 36520940933 on the code head passed every job. The manager verified the report and integrated it into PR28 at `6f5866d`; the verification is in the evidence record, "Manager verification of P06.DB".
 - **No Dev Manager read is needed** (DM-08 7.2): the password the job generates is not credential use in the charter's sense (no external system, no stored secret), and the session takes no live provider action. A prompt that departs from the brief and DM-08 on D3, D4 or D5 would go back to the Dev Manager; this one does not.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). Its exact-head code and security review follows.

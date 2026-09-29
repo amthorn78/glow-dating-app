@@ -165,3 +165,57 @@ The same checks ran in the job: `pip install --require-hashes`, `pip check`, the
 - The proof's settings add `services/api` to `sys.path` to import `glow_persistence` unchanged; they import nothing else from the API. The forbidden-name set is a copy of the API's, guarded by a test that reads the API's source.
 - The reference design's switches (`design.py`) exist only so the controls can break one guarantee each; the reference is `Design()` and the suite runs it first under `design:*` tags, then each control under its `control:*` tag, and the oracle partitions by tag.
 - The results JSON artifact (`p06-db-proof-results`) holds the same data as the printed table, with case notes, waits, per-race outcomes and every oracle violation's detail.
+
+### Manager verification of P06.DB (App Manager 5, 29 September 2026)
+
+App Manager 5 checked the relayed report against the pushed branch, the code and hosted CI. The manager started no database: its re-run below is the offline checks only.
+
+- **Identity:**
+  - branch `claude/epic-maxwell-e4zomh`, head `074eea18a04cf60d8e5235f52442879262eb5fa2`, tree `916655737a103c0e4bba92db6b562c26bc7ababc`, as reported. Two commits on the start `8651652`: `dff83d4` (the code) and `074eea1` (this record only). One merge base with `main` (`47db18d`);
+  - 31 files, +5,072 and −2: 29 under `proofs/postgres-ordering/`, `.github/workflows/foundation.yml` and this record. Every path is owned. Nothing under `services/`, `scripts/`, `apps/`, `packages/` or `.gitignore` changed, and the root README is unchanged. Every file has mode 100644, there is no symlink, and `git diff --check` is clean;
+  - **integrated** into the manager branch with a merge commit, `6f5866d505c5fd94ad9224ab9b23ba4e3bafaef5` (first parent `9768fcc`, the manager branch; second parent `074eea1`). Its proof package and workflow are byte-identical to `dff83d4`'s: `git diff dff83d4 6f5866d -- proofs .github services scripts apps packages` is empty.
+- **Classification:** the trusted policy from `main` (`47db18d`, sha256 `dec69a26…`), outside the tree, with `python3 -I` and full SHAs: `8651652` → `074eea1` is full scope (`behavior-or-empty`), 31 paths; `dff83d4` → `074eea1` is `ordinary-docs-only` (this record only); `47db18d` → `6f5866d` is full scope, and its only non-Markdown path outside `proofs/postgres-ordering/` is the workflow.
+- **The workflow,** read whole, as the CI policy's rule for workflow changes requires. The diff is the new job `database` and the gate's `needs` and job tuple, nothing else:
+  - the job's condition is the other application jobs' condition; its checkout and setup-python pins are theirs, with `persist-credentials: false`; its timeout is 20 minutes; it references no secret and sets no `env:` of secrets; the workflow's permissions stay `contents: read`;
+  - the results upload uses `actions/upload-artifact` at `ea165f8d…`, the commit API artifact checks already uses (the CI policy's action table). The job's one warning is GitHub's: that action targets Node.js 20 and is forced to run on Node.js 24; the step succeeded;
+  - the credential step runs with `set +x` and `umask 077`, masks both generated passwords before anything else prints, and writes them only to files. The password reaches the container through `POSTGRES_PASSWORD_FILE` on a read-only mount, and the proof through the passfile that `PROOF_DB_PASSFILE` names. The role step reads its statement from a file, keeps psql's output in a file and then deletes the statement. The removal step runs `if: always()` and fails if a proof container remains.
+- **Code read,** not line by line, which is the exact-head review's work: `reference.py` (the send and every revocation), `design.py`, `controls.py`, `oracle.py`, `environment.py`, `settings.py`, `budget.py` and `__main__.py`, and the parts of `cases.py`, `observe.py`, `stress.py` and the tests that the observations below rest on. The reference takes no state filter into the locked read and refuses a missing row (`_lock`), and reads `clock_timestamp()` after the locks (`_time`).
+- **Offline re-run** in a scratch worktree of `dff83d4`, with Python 3.12.14, every command in a clean process (`env -i`), the install with the proxy and CA variables by reference:
+  - `pip install --require-hashes -r requirements-dev.lock`; `pip check`: "No broken requirements found.";
+  - `python -m unittest discover -s tests -t .`: `Ran 40 tests`, `OK`. Ruff check: "All checks passed!"; Ruff format: "23 files already formatted"; mypy: "Success: no issues found in 23 source files";
+  - at `6f5866d`, `services/api`'s `python3.12 -m unittest tests.test_toolchain_pins`: `Ran 3 tests`, `OK`. The Django pin and its hashes in both proof locks equal `services/api/requirements.lock`'s.
+- **Hosted CI:** Foundation run [36520940933](https://github.com/amthorn78/glow-dating-app/actions/runs/36520940933) on `dff83d4`, a push run: all eight jobs succeeded (Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks, Foundation gate), and the gate printed `Application checks passed`. Database proof checks (job 109253447793) ran its fourteen steps, from set-up to the removal of the database, and its post steps, each `success`.
+- **The database job's log, read whole** (756 lines), against this record:
+  - the image digest `sha256:d74eeac9…` on the pull; PostgreSQL 17.11 (`Debian 17.11-1.pgdg13+2`), `superuser` false, `track_commit_timestamp` on, `read committed` inside a writer's transaction; the sixteen migrations; `No changes detected`;
+  - `cases: 55/55 passed`; the twelve races at 200 iterations and 200 overlaps each, with the outcome counts this record gives; the ten controls `failed as intended`; the oracle: 573 submissions and 2,694 revocation rows, `violations in the design's rows: 0`, `== VERDICT: PASS ==`; the artifact (ID 11013181409, 5,941 bytes);
+  - **no password:** the log's only `***` are on lines 38, 94 and 152, `actions/checkout`'s masking of its own token, before the credential step, and no 48-character hexadecimal string appears. The credential and role steps print one line each, as this record says;
+  - **each forced wait observed:** the 25 cases that call the forced helper each show `wait_event_type=Lock wait_event=transactionid` and a not-granted `transactionid/ShareLock`, and none of them passes `wait_required=False`;
+  - disposal: `container removed: glow-proof-db-36520940933-1`, `credential files removed`, `no proof container remains`.
+
+#### Corrections to this record
+
+The implementation section above is left as the session wrote it. Two statements in it are wrong:
+
+- **"every one of the 26 cases with a held first transaction"** (the cases bullet): the cases it lists are 25, the twenty `send_holds` and `revocation_holds` cases and five named cases, and the log shows those 25 with an observed wait. No held case lacks one.
+- **`no_version_check`, "oracle O6"** (the controls table): the oracle found no violation under `control:no_version_check`; its two submissions were examined and neither broke a rule. The control failed through its case's expected refusals only. See observation 3 below.
+
+#### Observations for the exact-head review
+
+None of these blocks integration. The exact-head review assesses each and says whether it needs a correction before PR28 merges.
+
+1. **The epoch check is never the deciding refusal.** Every `session_epoch` bump is a suspension or deletion (`reference.py:499`), in the transaction that moves the account out of `active`, and the send checks both accounts' state before the session's epoch (`reference.py:203` to `213`). So `session_epoch_stale` never occurs in the run's log, `named.sign_in_revocations` accepts either reason, and no control removes the epoch check. The brief's item 3 ("suspension and deletion revoke every session of the account, on every device, through the epoch") is shown through the account-state check, with the epoch bumped beside it. The epoch check itself is exercised only once an account can be `active` again after a bump, which P06.DB has no path for. DB09's mark in the P11 plan carries this limit.
+2. **Not every guarantee has its own control.** The brief's item 2 says each guarantee has a deliberately broken variant. The ten controls break the locks (all of them, the accounts', the session's), the version check, the time source, authorize-before-deduplicate, the canonical lock order and the state filter. None breaks the idempotency conflict (the same key with a different request), the identical replay, the single row under racing duplicates, unblock without resurrection, the epoch check (observation 1), deletion as a lifecycle transition, the repeated unmatch, or the match lock alone. `test_the_guarantees_have_controls` checks that eight broken designs are present, not that every guarantee has one. Some of these rest on a schema constraint (a second row for the same actor and key would break the unique constraint, and O8 counts rows), and deletion and expiry share their code paths with suspension and sign-out, which have controls.
+3. **The oracle cannot see a stale client version.** The send stores the locked match's contact version on the submission, not the request's (`reference.py:250` to `252`), so O6 compares the match's own version with the revocations before it. A stale version is refused by the send's check, and only the case's expected outcome shows that; the correction above follows from it.
+4. **The results artifact.** The upload step was not named in the brief. It reuses a pinned action already in the workflow, and `results.py` states that nothing it writes sees a connection option, a password or a passfile path. The review confirms that the JSON carries no connection data.
+5. **Local iteration ran on PostgreSQL 16.13,** a throwaway cluster under `/tmp`, as D4's third condition allows; this record lists it as iteration, not evidence.
+
+#### Dispositions
+
+- **P06.DB is verified and integrated** into PR28 at `6f5866d`. Its code is the code of run 36520940933.
+- **The deviations are accepted:**
+  - **the final head's push run is documentation-only,** by the CI policy's design; the evidence of record is run 36520940933 on `dff83d4`, and PR28's run on the manager branch runs every job again on the integrated code;
+  - **the `no_locks.forced` control retargeted** from `block_by_high.send_holds` to `unmatch_by_high.send_holds`: the prompt named the controls by example, and under the new target the control also fails through the oracle, not only through the unobserved wait;
+  - **the results upload** (observation 4), **`SERIALIZABLE` not run** (optional under D5), **the image digest read first from the registry** and confirmed by the job's pull, and **local iteration on 16.13** (observation 5).
+- **The P11 plan's DB06 and DB09** are marked "partially evidenced in CI (P06.DB)" in D6's words, with observation 1's limit on DB09, pending the exact-head review.
+- **The CI policy** now names Database proof checks, counts six application jobs and describes the job's disposable database (DM-08 7.1). It is governing: the Dev Manager reads it before PR28 merges.
+- **Next: the exact-head code and security review** of `6f5866d`, offline, reading run 36520940933's logs (the brief's review plan; DM-08 7.2).
