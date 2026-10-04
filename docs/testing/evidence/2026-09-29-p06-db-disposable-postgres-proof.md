@@ -560,3 +560,54 @@ App Manager 5 checked the relayed report against the pushed branch, the code and
 - **The run of record:** as decided above.
 - **AM5-14** is logged; its prevention is a line in the manager workflow's step 3, which the Dev Manager reads before PR28 merges.
 - **Next:** C1's exact-head review ([prompt](../../ephemeral/2026-09-29-p06-db-c1-review-prompt.md)), of `ea21ac8`, offline, reading job 109295439073's log.
+
+### A second run of the C1 correction prompt (App Manager 5, 4 October 2026)
+
+On 4 October Nathan started a session on Opus 5.5 at extra high, the cell TypeSafe v6 read for C1's exact-head review, and relayed its report the same day. The session had been given the C1 correction prompt (revision 1, from `4511bbc`), not the review prompt. Its start gate checks only that commit, so nothing told it that C1 was already done and integrated (AM5-15). It made the whole correction pass again, independently, on its own branch. **C1's exact-head review has not run.**
+
+- **Checked against GitHub.** The branch is not integrated, so the manager re-ran no offline check, and it started no database.
+  - Branch `claude/magical-goldberg-ie0j16`, on `4511bbc`: code head `335eff51190da8431d639e7dd869857cf1943708`, final head `767b852a3494e0296b28924cf90726b0b39cff2d` (that branch's copy of this record only), tree `54207a8f4b289f920a1fff4f0fb5063ac5dc8b13`, as reported. 14 paths: 13 under `proofs/postgres-ordering/`, four of them new test files with mode 100644, and this record. No workflow, dependency, `services/` or `scripts/` path changed. The session opened no pull request, and the manager branch and `main` are unchanged.
+  - Foundation run [37209125365](https://github.com/amthorn78/glow-dating-app/actions/runs/37209125365) on `335eff5`: all eight jobs `success`. Its records push, run 37209596956 on `767b852`, started after the code run had finished and skipped the application jobs.
+  - The database job's log (job 111456521968, 810 lines), against the report:
+    - the image digest `sha256:d74eeac9…`; PostgreSQL 17.11, `superuser` false, `track_commit_timestamp` on; `No changes detected`; `Ran 93 tests`;
+    - `cases: 55/55 passed`, each of the 25 held cases `blocked by [97] (holder pid 97)`;
+    - the twelve races at 200 iterations, with 196 to 200 measured overlaps;
+    - the ten controls failed as intended by their declared signals, the two stress controls at iteration 1;
+    - the oracle: 524 submissions and 2,694 revocation rows, `violations in the design's rows: 0`, `== VERDICT: PASS ==`;
+    - `container removed: glow-proof-db-37209125365-1`;
+    - the only `***` are on lines 38, 94 and 152, and no 48-character hexadecimal string appears.
+
+    The report's figures match the log.
+
+#### What it showed about PR28's code
+
+Two points in the second run's report hold for C1's code too. C1's exact-head review classifies them (revision 2 of its prompt, focus area 10).
+
+**1. A race can miss one commit order.** The stress floors count iterations and measured overlaps, not which writer committed first. The sends authorized, that is, committed before the revocation, in each run:
+
+| Run | Head | Code | `race.sign_out_sender` | `race.expire_sender` | `race.opposing_writers` |
+|---|---|---|---|---|---|
+| 36520940933 | `dff83d4` | the implementation | 6 | 14 | 0 |
+| 36534514283 | `4280770` | C1, the run of record | 16 | 21 | 1 |
+| 36599961669 (pull request) | `fcc4992` | C1 | 0 | 0 | 1 |
+| 37208329912 (pull request) | `d27519b` | C1 | 5 | 13 | 1 |
+| 37209125365 | `335eff5` | the second run's | 0 | 0 | 0 |
+
+- In one of the three runs of C1's code, neither sign-out race had an iteration in which the send committed first.
+- In all five runs, each of the other eight two-writer races had at least 14.
+- In the sign-out races, the forced cases `send_holds` and `sequential_send_first` put the send first, and they passed in every run.
+- DB06's wording, "under forced and randomized races", names no order.
+
+**2. One run per database.** The stress run's run tag is fixed (`design:stress`, `__main__.py:75` to `77`). `_intervals` and the per-iteration oracle check select by that tag, the race and the iteration. In a database that already holds an earlier run, they also read that run's rows, and the final oracle reads every row. The job's database is new in each run, so no run of record is affected. C1's own local run 2 shows the effect (below).
+
+#### A correction to C1's section
+
+C1's section stays as the session wrote it. Its local-runs table gives run 2 ("the pushed code, same database, rows accumulating") every race at 200 of 200 overlaps. With the fixed tag, each of run 2's per-iteration reads also returned run 1's rows for the same race and iteration. So an iteration counted as an overlap when either run's writers overlapped, and those are not run 2's own counts. Local runs are iteration, not evidence, and no claim rests on them. The manager's verification of C1 did not notice this (AM5-16).
+
+#### Dispositions
+
+- **Recorded, not integrated.** PR28 keeps C1 as integrated at `ea21ac8`, verified above, with run 36534514283 as its run of record. The second run is a separate implementation of the same four fixes. It is not PR28's code, so its run is evidence for neither DB06 nor DB09. Its branch stays as pushed and unmerged, and its own section of this record exists only there; the handoff lists the branch for retirement after PR28 merges.
+- **The two points above** go to C1's exact-head review, with the correction to local run 2.
+- **The pick recorded on 4 October** (`d27519b`) was this session's, not the review's. The review prompt's header, the brief's "Sessions", the handoff and the uses table now say so.
+- **AM5-15 and AM5-16** are logged. AM5-15's prevention is a line in the manager workflow's step 3, which the Dev Manager reads before PR28 merges.
+- **Next:** C1's exact-head review, from revision 2 of its [prompt](../../ephemeral/2026-09-29-p06-db-c1-review-prompt.md).

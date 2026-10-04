@@ -1,13 +1,13 @@
 # P06.DB-C1 review prompt — exact-head review of the correction pass
 
 - **Owner:** App Manager 5. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 29 September 2026.**
+- **Revision 2, 4 October 2026.** Revision 1 (29 September, from `fcc4992`) never ran: the session Nathan started on 4 October from its pick had been given the C1 correction prompt instead (the evidence record, "A second run of the C1 correction prompt"; AM5-15). Revision 2 adds focus area 10, the two points that second run raised, and a start-gate check that stops a stale prompt.
 - **Durable brief:** [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md), revision 2, and its "Sessions".
-  - Evidence: the [P06.DB evidence record](../testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md): "P06.DB-C1 corrections" (the session's own record) and the manager's verification under it.
+  - Evidence: the [P06.DB evidence record](../testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md): "P06.DB-C1 corrections" (the session's own record), the manager's verification under it, and "A second run of the C1 correction prompt".
 - **Where the result goes:** the manager records the verified review in the evidence record, under a new heading "Exact-head review of P06.DB-C1". The outcome goes into the brief's "Sessions" and decides whether the P11 plan's DB06 entry stands as settled.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v6: Opus 5.5, extra high.** Effort score 2.81 (confidence 0.86); rung probabilities low 0.00, medium 0.01, high 0.18, extra high 0.80, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.99). Sent 2026-09-29T16:37:14Z. Nathan picks the cell.
-  - **Nathan's pick: Opus 5.5 at extra high**, reported on 4 October. This line was added after the prompt was given; the body Nathan pasted is unchanged.
+  - **TypeSafe v6: Opus 5.5, extra high.** Effort score 2.82 (confidence 0.86); rung probabilities low 0.00, medium 0.01, high 0.18, extra high 0.80, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-10-04T16:40:48Z. Nathan picks the cell.
+  - Revision 1's reading, sent 2026-09-29T16:37:14Z, was the same cell (score 2.81). The pick reported for it on 4 October, Opus 5.5 at extra high, went to the second run of the C1 correction prompt, not to this review.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action, and the session starts no database.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). After it: a correction, if any, with its own review; then the Dev Manager's read of PR28's governing changes, Codex's review and the merge.
@@ -17,7 +17,7 @@
 
 ---
 
-You are the **review session for P06.DB-C1**, the correction pass on P06.DB, the early disposable-PostgreSQL proof of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 1, from commit `<RECORDS_COMMIT>`.
+You are the **review session for P06.DB-C1**, the correction pass on P06.DB, the early disposable-PostgreSQL proof of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 2, from commit `<RECORDS_COMMIT>`.
 
 P06.DB built two things:
 
@@ -33,6 +33,8 @@ The first exact-head review, of `6f5866d`, confirmed the design, the job and its
 
 It added 42 offline tests and corrected the README and the evidence record in place. It then reran the job: Foundation run 36534514283 on the code head `4280770` is the run of record. Every job in it passed, but the run-level status reads `cancelled`. The session's records push started a second run on the same branch, and the workflow's concurrency group marked the first run cancelled after its jobs had finished. The manager accepted the job results as the run of record and recorded the label as a limit. It verified the branch and integrated it with a merge commit.
 
+On 4 October a second session was started from the C1 correction prompt, in place of this review, and made the whole pass again on its own branch, `claude/magical-goldberg-ie0j16` (Foundation run 37209125365). The manager recorded it and did not integrate it. It is not under review, and nothing on that branch is evidence for PR28. Its report raised two points that hold for PR28's code too; they are focus area 10.
+
 - **You review one exact head:** `ea21ac8577b83158be1f941b93dbef411bece41f`, that merge commit.
   - Its first parent, `82c3883`, is the manager branch before the merge. Its second parent, `24e716b`, is the session's head.
   - The code head is `42807705d374a4d532b1c4fb203d3f4be1cef438`, and the merge's proof package and workflow are byte-identical to it. The session's two later commits changed only the evidence record.
@@ -40,7 +42,7 @@ It added 42 offline tests and corrected the README and the evidence record in pl
 - **Your scope is C1's change:** the whole of `git diff HEAD^1 HEAD`. Read it against the package as it stands at `HEAD`, because a fix can break code it did not touch.
   - The first review covered the rest of the package at `6f5866d`. Re-read that code where a fix depends on it.
   - Later commits are Markdown-only manager records, which you read at `<RECORDS_COMMIT>`.
-- **The database run is not repeated here.** You start no database. The review is offline and reads the job's log. You check two things: that the corrected code could not produce a false pass, and that each fix does what its finding needed.
+- **The database run is not repeated here.** You start no database. The review is offline and reads the job's log. You check that the corrected code could not produce a false pass and that each fix does what its finding needed, and you classify the two points in focus area 10.
 - **What comes after this review.** Report every finding with its severity, as usual. Some findings get another correction pass before PR28 merges: any blocking finding, and any should-fix finding that could:
   - let a send authorization commit after a revocation that invalidates it without the suite failing;
   - let a password or connection value reach a log, an artifact or a file outside the job's temporary directory;
@@ -74,11 +76,14 @@ git rev-parse HEAD                      # must print ea21ac8577b83158be1f941b93d
 git rev-parse HEAD^2                    # must print 24e716b643b0ad0bd3f969d5c0351862a4a66321
 git merge-base --all origin/main HEAD   # expected: one line, 47db18dfec3f62626f4e09f65f52c7a2e10c9e3e
 git merge-base --is-ancestor HEAD <RECORDS_COMMIT> && echo "records build on the head"
+git merge-base --is-ancestor <RECORDS_COMMIT> origin/claude/magical-wozniak-yfmmx2 && echo "this prompt's commit is on the live branch"
+git diff --quiet <RECORDS_COMMIT> origin/claude/magical-wozniak-yfmmx2 -- proofs .github services scripts apps packages && echo "no code after this prompt's commit"
+git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md | grep -c -E '^#+ Exact-head review of P06\.DB-C1'   # must print 0: this review is not yet recorded
 git diff --stat HEAD^1 HEAD             # expected: 15 files, 1250 insertions, 122 deletions
 git diff --quiet 42807705d374a4d532b1c4fb203d3f4be1cef438 HEAD -- proofs .github services scripts apps packages && echo "the code of run 36534514283"
 ```
 
-If any check fails, stop and report.
+If any check fails, stop and report. The three checks on `origin/claude/magical-wozniak-yfmmx2` read the live manager branch: if this prompt's commit is not on it, code landed after that commit, or this review is already recorded, the prompt is stale.
 
 Classify three times, as root `AGENTS.md` requires. The trusted base policy runs outside the candidate tree, every run uses the same policy file, and every SHA is a full one (a short SHA fails closed):
 
@@ -113,6 +118,7 @@ Then read, completely.
 **At `<RECORDS_COMMIT>`,** with `git show <RECORDS_COMMIT>:<path>`:
 
 - the evidence record's "Manager verification of P06.DB-C1": its identity checks, its reversal table, the section on the run-level `cancelled` status with the manager's decision, its three observations and its dispositions;
+- the evidence record's "A second run of the C1 correction prompt": its checks, the two points about PR28's code with the commit-order table, the correction to C1's local run 2 and its dispositions;
 - the brief's "Sessions";
 - `docs/testing/p11-deferred-acceptance.md`: "Early partial evidence", with the DB06 and DB09 entries.
 
@@ -159,6 +165,11 @@ The focus areas are in order of risk.
 9. **Scope and dependencies.**
    - Only the 15 paths named changed. No dependency file, workflow, `services/`, `scripts/`, `apps/`, `packages/` or `.gitignore` path changed.
    - Every file has mode 100644, there are no symlinks, and the locks are unchanged.
+10. **The two points the second run raised** (the evidence record, "A second run of the C1 correction prompt"). Classify each, with its severity and whether it falls in a correction class.
+    - **Commit orders.** The stress floors count iterations and measured overlaps, not which writer committed first. In PR run 36599961669, on `fcc4992` with C1's code, the send never committed first in `race.sign_out_sender` or `race.expire_sender`; in `race.opposing_writers` it committed first at most once in any run. Check the counts in the logs of the runs the record's table lists, and read the head start in `run_race`.
+      - The brief's "What P06.DB proves", item 2, "Forced and random", asks for each interleaving forced and a randomized stress run with zero violations; DB06's entry says "under forced and randomized races".
+      - Given the forced cases, is a recorded limit enough? Or does the stress run need a floor on each commit order, or a different head start?
+    - **One run per database.** The run tag `design:stress` is fixed (`__main__.py:75` to `77`), so `_intervals`, the per-iteration oracle check and the final oracle would read an earlier run's rows in the same database. Confirm that the job's database is new in each run. Is a recorded limit enough, or should the proof refuse a database that already holds proof rows? Assess the manager's correction to C1's local run 2.
 
 **Out of scope:**
 
@@ -166,7 +177,8 @@ The focus areas are in order of risk.
 - `services/api`;
 - governing Markdown (the CI policy and the manager workflow), which the Dev Manager reads;
 - P06.2, and anything in HDE;
-- the parts of the package C1 did not change, except where a fix depends on them.
+- the parts of the package C1 did not change, except where a fix depends on them or focus area 10 asks;
+- the branch `claude/magical-goldberg-ie0j16`, the second run, except its run's log as focus area 10 cites it.
 
 ## 4. Checks to run
 
@@ -187,7 +199,7 @@ Report the exact commands and results.
 
 Your final message is the report Nathan relays:
 
-- the prompt revision you received (revision 1, from commit `<RECORDS_COMMIT>`);
+- the prompt revision you received (revision 2, from commit `<RECORDS_COMMIT>`);
 - the environment check's result (names only);
 - the head you reviewed (`git rev-parse HEAD`) and the three classification outputs;
 - **verdict:** "approve" (C1's corrections, the run of record and the records are sound, and PR28 can go on to the Dev Manager's read and the merge) or "changes required";
@@ -196,6 +208,7 @@ Your final message is the report Nathan relays:
 - the manager's decision on the run of record: agree or not, with the reason;
 - for each of the manager's observations and dispositions in its verification of C1: agree, or disagree with the reason;
 - the DB06 and DB09 entries: accurate as worded, or your wording;
+- focus area 10's two points, each with its severity and class, and your view of the correction to C1's local run 2;
 - PR28's latest pull-request run: the result of "Database proof checks" and its per-race counts;
 - the areas you reviewed with no findings;
 - every check you ran, with its exact result;
