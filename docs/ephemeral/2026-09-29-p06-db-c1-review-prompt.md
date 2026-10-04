@@ -8,6 +8,7 @@
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, extra high.** Effort score 2.82 (confidence 0.86); rung probabilities low 0.00, medium 0.01, high 0.18, extra high 0.80, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-10-04T16:40:48Z. Nathan picks the cell.
   - Revision 1's reading, sent 2026-09-29T16:37:14Z, was the same cell (score 2.81). The pick reported for it on 4 October, Opus 5.5 at extra high, went to the second run of the C1 correction prompt, not to this review.
+  - **Nathan's pick for revision 2: Opus 5.5 at extra high**, reported on 4 October. This line was added after the prompt was given; the body Nathan pasted is unchanged.
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action, and the session starts no database.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). After it: a correction, if any, with its own review; then the Dev Manager's read of PR28's governing changes, Codex's review and the merge.
