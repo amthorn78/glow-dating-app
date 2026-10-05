@@ -5,7 +5,7 @@
 - **Why:** DM-10 approved the run's marker on conditions and said that the C2 prompt needs no further read if it applies 2.1 to 2.4 as written, and that "a departure on the marker's form, the hook, the CI step or the suite comes back to me". The C2 prompt departs from 2.3's query in one point, so it comes back before Nathan runs it.
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`, and the manager's disposition in the [review log](../continuity/dev-manager/README.md). The C2 prompt runs as revision 1 if the read approves it, or as a revision 2 that applies the read.
 - **Stream variables:** none are needed. Dev Manager 2's container holds the three `STREAM_*` variables (OD-36); it never reads or uses them.
-- **Result:** not yet sent.
+- **Result:** given to Nathan with `<RECORDS_COMMIT>` as `d50f334b57a26c559ccf7fea541bafe35fc3b381`. Dev Manager 2 answered at 03:20 UTC on 5 October (`91c5c2c`; [report](../continuity/dev-manager/reviews/2026-10-05-dm-11-p06-db-c2-prompt-read.md)): the departure approved with conditions, in words that replace its two bullets; the rest of the prompt confirmed, with one note for C2's exact-head review; Notion matched. Revision 1 of the C2 prompt does not run; revision 2 applies the report's words as written, so it needs no further read. No item is Nathan's. The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-11".
 - **Deletion condition:** prune after PR28 merges and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.

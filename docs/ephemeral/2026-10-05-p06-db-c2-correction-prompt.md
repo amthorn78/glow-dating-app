@@ -1,17 +1,18 @@
 # P06.DB-C2 prompt — correction pass: the run's marker (Codex's CX3)
 
 - **Owner:** App Manager 5. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 5 October 2026.**
-- **Durable brief:** [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md), revision 4: D1's "The run's marker" and "DM-10's conditions", D3's item 5, D4's condition 2, and "Sessions" (P06.DB-C2).
-  - Work list: the [P06.DB evidence record](../testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md), "Codex's second code review, of `9bcec21`": the finding, the manager's verification and the disposition; and the [DM-10 report](../continuity/dev-manager/reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md), item 2.
+- **Revision 2, 5 October 2026.** Revision 1 (`d50f334`) never ran: DM-11 approved its one departure from DM-10 with conditions, and revision 2 replaces the departure with DM-11's words (section 3, item 3) and quotes DM-11's note on 2.4 (section 3, item 4).
+- **Durable brief:** [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md), revision 5: D1's "The run's marker" and "DM-10's conditions" with DM-11's notes, D3's item 5, D4's condition 2, and "Sessions" (P06.DB-C2).
+  - Work list: the [P06.DB evidence record](../testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md), "Codex's second code review, of `9bcec21`": the finding, the manager's verification and the disposition; the [DM-10 report](../continuity/dev-manager/reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md), item 2; and the [DM-11 report](../continuity/dev-manager/reviews/2026-10-05-dm-11-p06-db-c2-prompt-read.md), items 1 and 2.
 - **Where the result goes:**
   - the session changes the proof package, its README and the Foundation workflow's `database` job, and adds a section at the end of the evidence record, "P06.DB-C2 corrections";
   - the Foundation run on the session's last code commit becomes the run of record;
   - the manager adds its verification there, records the outcome in the brief's "Sessions", and applies the CI policy's sentence that DM-10 item 4 gives.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v6: Opus 5.5, high.** Effort score 1.92 (confidence 0.79); rung probabilities low 0.00, medium 0.20, high 0.69, extra high 0.11, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99 (confidence 0.98). Sent 2026-10-05T01:58:22Z. Nathan picks the cell.
+  - **TypeSafe v6: Opus 5.5, high.** Effort score 2.03 (confidence 0.81); rung probabilities low 0.00, medium 0.13, high 0.72, extra high 0.14, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.02, Opus 5.5 0.98 (confidence 0.97). Sent 2026-10-05T03:28:30Z. Nathan picks the cell.
+  - Revision 1's reading, sent 2026-10-05T01:58:22Z, was the same cell (score 1.92). Revision 1 was never given to Nathan to run.
   - **Nathan's pick:** pending.
-- **The Dev Manager's read:** DM-10 approved the design with conditions 2.1 to 2.5, and this prompt quotes 2.1 to 2.4 as written. One point departs from 2.3, its query (section 3, item 3), so DM-11 reads this prompt before Nathan runs it (DM-10: "A departure on the marker's form, the hook, the CI step or the suite comes back to me").
+- **The Dev Manager's read:** DM-10 approved the design with conditions 2.1 to 2.5, and this prompt quotes 2.1 to 2.4 as written. Its one departure, from 2.3's query (section 3, item 3), is in DM-11's words, and section 3, item 4 quotes DM-11's note on 2.4. DM-11 approved them: applied as written, this prompt needs no further read (DM-03 G2).
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows.
 - **Deletion condition:** prune after P06.DB's PR merges and the evidence record holds the result.
@@ -20,7 +21,7 @@
 
 ---
 
-You are the **implementation session for P06.DB-C2**, the second correction pass on P06.DB, the early disposable-PostgreSQL proof of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 1, from commit `<START_SHA>`.
+You are the **implementation session for P06.DB-C2**, the second correction pass on P06.DB, the early disposable-PostgreSQL proof of the Glow dating app, private repository `amthorn78/glow-dating-app`. This prompt is revision 2, from commit `<START_SHA>`.
 
 P06.DB built `proofs/postgres-ordering/`, a proof package that orders message-send authorizations against every revocation of contact on a real PostgreSQL 17 database, and the Foundation job "Database proof checks", which starts that database inside the job and runs the proof. Two exact-head reviews approved it, the second at `ea21ac8` (C1). Then Codex's code review of the pull request found a P1, **CX3**, which the manager confirmed:
 
@@ -70,9 +71,9 @@ git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-09-29-p
 Then read, completely:
 
 - root `AGENTS.md` and `CLAUDE.md`;
-- the P06.DB brief, `docs/planning/p06-db-disposable-postgres-proof.md` (revision 4): D1 with "The run's marker" and "DM-10's conditions", D3 with its item 5, D4, D5, item 6, the brief's rules and "Sessions";
+- the P06.DB brief, `docs/planning/p06-db-disposable-postgres-proof.md` (revision 5): D1 with "The run's marker" and "DM-10's conditions", D3 with its item 5, D4, D5, item 6, the brief's rules and "Sessions";
 - the evidence record, `docs/testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md`: "Codex's review of PR28's final head" with its subsection "Codex's second code review, of `9bcec21`", and "P06.DB-C1 corrections", whose run of record your run must match;
-- the DM-10 report, `docs/continuity/dev-manager/reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md`;
+- the DM-10 report, `docs/continuity/dev-manager/reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md`, and the DM-11 report, `docs/continuity/dev-manager/reviews/2026-10-05-dm-11-p06-db-c2-prompt-read.md`;
 - `proofs/postgres-ordering/README.md` and the whole package under `proofs/postgres-ordering/`;
 - `.github/workflows/foundation.yml`, the `database` job.
 
@@ -91,10 +92,18 @@ The Dev Manager's conditions 2.1 to 2.4, quoted from the brief's D1, are require
      - a different comment, a comment with anything before or after the expected string, a null comment and no row each refuse, close the connection and end with a non-zero status;
      - no refusal message contains a value.
 3. **The CI step** (DM-10, 2.3): *"Before the migrations, the step runs `migrate` with a different well-formed marker; it requires a non-zero exit and the refusal message; and, as the superuser inside the container, it checks that the proof's database has no relation in its schemas: zero rows in `pg_class` joined to `pg_namespace`, excluding `pg_catalog` and `information_schema`; in particular, no `django_migrations`. A step that only checks the exit code would pass if `migrate` failed for another reason after creating a table."*
-   - **The one departure, which DM-11 reads before this prompt runs.** Every PostgreSQL database keeps the toast tables of its own catalogs in the schema `pg_toast`, so the query as quoted counts PostgreSQL's relations even in a new database. The query therefore excludes `information_schema` and every schema whose name starts with `pg_`: `pg_catalog`, `pg_toast` and the temporary schemas. The `pg_` prefix is reserved for system schemas, and no role can create one. Everything else stands, `django_migrations` included.
-   - The step prints, once, the number of relations in each schema of the new database before the wrong-marker `migrate`, so the review can see what the exclusion leaves out. It prints no name of a role, password or marker.
+   - **The one departure, which DM-11 approved with these words.** Every PostgreSQL database keeps the toast tables of its own catalogs in the schema `pg_toast`, so the query as quoted counts PostgreSQL's relations even in a new database. The step therefore runs, as the superuser inside the container and with `psql -d` naming the proof's database (never `postgres`), a count of `pg_class` rows joined to `pg_namespace` per schema, before and after the wrong-marker `migrate`. It requires:
+     - every schema's count after equals its count before, `pg_toast` included;
+     - the count over every schema except `information_schema` and those for which `starts_with(nspname, 'pg_')` is true is zero, before and after;
+     - `to_regclass('public.django_migrations')` is null after.
+
+     The step prints both per-schema tables once. It prints no name of a role, password or marker.
 4. **The marker in the job** (DM-10, 2.4): *"It is generated in the credentials step and masked with `::add-mask::` as that step's first output (cheap, and it keeps logs uniform). It reaches the proof only through `PROOF_DB_MARKER` on the steps that need it. The README's local recipe sets it with `COMMENT ON DATABASE` right after creating the database, with a new marker for each new database. It says the marker does not replace the reused-database guard carried to P06.2."*
    - The step that creates the role and its database also sets the database's comment, as the superuser inside the container, from the file it already reads, so that nothing prints the statement.
+   - **DM-11's note on 2.4,** in its words, which C2's exact-head review checks in the workflow diff. 2.4 says the marker reaches the proof "only through `PROOF_DB_MARKER` on the steps that need it". In GitHub Actions, that means:
+     - each step that needs the marker reads it from the job's protected temporary directory into the variable for its own commands;
+     - never through `$GITHUB_ENV`, which would hand it to every later step, the upload step included;
+     - never through a step output (`$GITHUB_OUTPUT`), which the runner withholds once the value is masked.
    - Only the `database` job changes. Every other job, and the gate, stay byte-identical.
    - The removal step also removes any file that holds the marker.
 5. **The README:** the local recipe (2.4), the settings' variables, the CI job's description and a line in "Limits" saying that the marker ties the proof to the database created for the run. The marker does not replace the reused-database guard carried to P06.2.
@@ -150,7 +159,7 @@ Report the exact commands and results.
    - **Wait before pushing again.** After pushing your last code commit, push nothing more to your branch until that commit's Foundation run has finished. Runs of the same branch cancel each other (the CI policy), so an early records push can cancel the code run or leave it marked `cancelled` (the manager workflow, step 3; AM5-14).
    - A push that changes only Markdown skips the application jobs by the CI policy's design. If your last commit changes only the record, the evidence of record is the push run of your last code commit, and your record says so.
    - From the database job's log:
-     - the wrong-marker step: its exit status, the refusal line and the relation counts per schema;
+     - the wrong-marker step: its exit status, the refusal line and the relation counts per schema, before and after;
      - the image digest and `SELECT version()`, and `makemigrations --check`;
      - each case with its observed waits and blocking backends;
      - the oracle's result over every row;
@@ -171,18 +180,18 @@ Report the exact commands and results.
 - **Your section of the evidence record,** "P06.DB-C2 corrections", at its end:
   - the start SHA, your head, your branch and the new run of record;
   - for items 1 to 5 of section 3: done (`file:line` and its test) or left (the reason);
-  - the wrong-marker step's result, with the relation counts per schema;
+  - the wrong-marker step's result, with the relation counts per schema, before and after;
   - the new run's numbers against C1's run of record: cases, controls, each race's iterations, measured overlaps and seconds, the oracle, and the observed waits with their blocking backends;
   - local runs, marked "iteration, not evidence";
   - every check, with its exact results;
   - deviations and limits;
-  - what the exact-head review must know, with DM-10's 2.5.
+  - what the exact-head review must know, with DM-10's 2.5 and DM-11's note on 2.4.
 
 ## 6. Report
 
 Your final message is the report Nathan relays:
 
-- the prompt revision you received (revision 1, from commit `<START_SHA>`);
+- the prompt revision you received (revision 2, from commit `<START_SHA>`);
 - the environment check, and what a local database could use;
 - your branch, head SHA and tree, and the changed paths;
 - for items 1 to 5 of section 3: done (`file:line` and the test) or left (the reason);
