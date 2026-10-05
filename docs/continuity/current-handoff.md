@@ -7,7 +7,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager:** App Manager 6, `session_01MxuepyycrEWf5uFjpwEird`, created by App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`) on 5 October at Nathan's direction (OD-38, OD-31), in `Glow App - No Stream`. It holds the manager branch `claude/magical-wozniak-yfmmx2` and the draft [PR29](https://github.com/amthorn78/glow-dating-app/pull/29). App Manager 5 pushes nothing after `a1eb9dc`.
-- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A's [prompt](../ephemeral/2026-10-05-p06-2-stage-a-implementation-prompt.md) is with Nathan; P06.2 is done only when Stage C merges.
+- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A's [session](../ephemeral/2026-10-05-p06-2-stage-a-implementation-prompt.md) is in flight (Nathan started it on 5 October, Opus 5.5 at extra high); P06.2 is done only when Stage C merges.
   - **Carried to P06.2:** the sections "Carried to P06.2" in the [P06.1 brief](../planning/p06-1-chat-provider-proof.md) and the [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md). P06.DB's items 1 and 6, the reused-database guard and the refusal of `dbshell`, come before P06.2's first run of the suite on any database (DM-09, DM-12).
 - **Next item: M04**, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
 - **Done:** P06.1 (`47db18d`) and P06.DB (`3afffb3`), each with its merge receipt.
@@ -18,7 +18,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | Stage A's report, from the session he starts in `Glow App - No Stream` | Nothing else starts (OD-29); App Manager 6 verifies the report against the pushed branch when it arrives |
+| App Manager 6 | Nathan | Stage A's report, from the session he started in `Glow App - No Stream` | Nothing else starts (OD-29); App Manager 6 verifies the report against the pushed branch when it arrives |
 
 ## Next actions (App Manager 6)
 
