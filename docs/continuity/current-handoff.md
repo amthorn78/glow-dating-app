@@ -7,7 +7,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager:** App Manager 6, `session_01MxuepyycrEWf5uFjpwEird`, created by App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`) on 5 October at Nathan's direction (OD-38, OD-31), in `Glow App - No Stream`. It holds the manager branch `claude/magical-wozniak-yfmmx2` and the draft [PR29](https://github.com/amthorn78/glow-dating-app/pull/29). App Manager 5 pushes nothing after `a1eb9dc`.
-- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A's [session](../ephemeral/2026-10-05-p06-2-stage-a-implementation-prompt.md) is in flight (Nathan started it on 5 October, Opus 5.5 at extra high); P06.2 is done only when Stage C merges.
+- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A is done and integrated at `e8eb5d3` (the evidence record, "Manager verification of Stage A"); P06.2 is done only when Stage C merges.
   - **Carried to P06.2:** the sections "Carried to P06.2" in the [P06.1 brief](../planning/p06-1-chat-provider-proof.md) and the [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md). P06.DB's items 1 and 6, the reused-database guard and the refusal of `dbshell`, come before P06.2's first run of the suite on any database (DM-09, DM-12).
 - **Next item: M04**, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
 - **Done:** P06.1 (`47db18d`) and P06.DB (`3afffb3`), each with its merge receipt.
@@ -18,12 +18,12 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | Stage A's report, from the session he started in `Glow App - No Stream` | Nothing else starts (OD-29); App Manager 6 verifies the report against the pushed branch when it arrives |
+| App Manager 6 | GitHub | PR29's run on `e8eb5d3`, Stage A's run of record (push run 37372546600's gate failed: no runner) | If runners stay unavailable, Nathan uses "Re-run failed jobs" on that run |
 
 ## Next actions (App Manager 6)
 
-1. **Stage A** (with Nathan): verify its report against the pushed branch, integrate it, then write its exact-head review prompt. Stages B and C follow, each after the previous stage merges; the Dev Manager reads B's and C's prompts.
-2. **PR29's governing changes** (the AM5-23 sentence, step 7's branch-state report) were read by DM-13 at `a8db520`.
+1. **Stage A**: when the run of record passes, update the P11 plan's DB06 and DB09 entries, then give Nathan Stage A's exact-head review prompt. Stages B and C follow, each after the previous stage merges; the Dev Manager reads B's and C's prompts.
+2. **PR29's governing changes:** DM-13 read the AM5-23 sentence and step 7 at `a8db520`; the OD-40 sentence (step 3) is unread.
 3. **M04, after P06.2 merges:** brief, then the Dev Manager's read, then the implementation prompt for `Glow App - No Stream`. Starting points: push to `main` and manual dispatch only, never a pull-request event; `contents: write` for that job only, no secrets, pinned actions; delete only a branch whose head is in `main`, off a keep-list held on `main` (`main`, the manager branch, and `claude/dev-manager` by name, DM-13 item 10) and heading no open PR; dry-run mode and a job summary; selection tests and a run of record; the CI policy updated, classified with the pre-change policy, the whole workflow diff read; exact-head review, Codex and the Dev Manager's read.
 4. **Standing:** before the Stream harness is used live again, the C5 review's nits 2 and 3 and its header-allowlist advice; before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7), which still names `claude/stoic-carson-66gdig`.
 
