@@ -943,3 +943,160 @@ The push of `9bcec21`, the commit that records CX1 and CX2, started a second Cod
 - **CX1 and CX2** stay as recorded above, unless DM-10 says otherwise.
 - **The brief's guard was the manager's:** D1 and D4 took loopback as the database boundary (AM5-18).
 - **Next:** DM-10. (Done the same day: Dev Manager 2 approved the classification and the marker, with conditions 2.1 to 2.5, at `9f2e79d`; brief revision 4 applies them, and the review log has the disposition, "DM-10". The C2 prompt departs from 2.3's query in one point, so DM-11 read it first: Dev Manager 2 approved the departure with conditions at `91c5c2c`, in words that replace it, and the C2 prompt runs as revision 2 in those words; brief revision 5 records them, and the review log has the disposition, "DM-11". Then the correction pass P06.DB-C2.)
+
+## P06.DB-C2 corrections
+
+The second correction pass on P06.DB: Codex's CX3, corrected with the run's marker under DM-10's conditions 2.1 to 2.4 and DM-11's words for 2.3's check, and a rerun of the job.
+
+- **Prompt:** revision 2, from commit `ad3323da9beb56a366f307561507fe38557e7b17` (`docs/ephemeral/2026-10-05-p06-db-c2-correction-prompt.md`).
+- **Session:** branch `claude/ecstatic-feynman-749ccu`, fast-forwarded to `ad3323da9beb56a366f307561507fe38557e7b17`. At the start, `git diff --stat ea21ac8… HEAD -- proofs/postgres-ordering/glow_ordering_proof proofs/postgres-ordering/tests .github/` and `git diff --stat ad3323d… origin/claude/magical-wozniak-yfmmx2 -- proofs/ .github/` printed nothing, and the live manager branch's record had no "P06.DB-C2 corrections" heading (`grep -c` printed `0`).
+- **Code head:** `43d8ca428ea25aef485af0e7d5f3a1840a2ae0c6` (tree `b1d74ade790e1bd57c24254e72f8d53313746cdf`). **New run of record:** Foundation run 37262466651 on that head (push run 439).
+- **Records commit:** the commit that adds this section. It changes only this Markdown file, so its push run is documentation-only by the CI policy's design; the evidence of record is the push run of the code head. I pushed it only after run 37262466651 had finished (AM5-14).
+- **Times:** 5 October 2026, UTC.
+
+### Environment check (names only)
+
+| Check | Result |
+|---|---|
+| `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` | none present (the loop printed nothing) |
+| `PG*`, `PROOF_DB_*`, `STREAM_*` names | none (`compgen -e \| grep -E …` printed nothing) |
+| `command -v python3.12` | `/root/.local/bin/python3.12`, Python 3.12.14 (`$HOME/.local/bin` first on PATH) |
+| `docker info` | exit status 1 |
+| `command -v initdb pg_ctl postgres pg_isready psql` | `pg_isready` and `psql` at `/usr/bin`; `initdb`, `pg_ctl`, `postgres` not on PATH, present in `/usr/lib/postgresql/16/bin/` (PostgreSQL 16.14) |
+
+### Items 1 to 5
+
+| Item | Done where | Test (offline, no database) |
+|---|---|---|
+| **1. The marker's form** (DM-10 2.1) | `environment.py:55` `MARKER = "PROOF_DB_MARKER"`, in `PROOF_NAMES` (`:56`), so a missing marker is refused with the other missing names; `:59` `MARKER_FORM` (`[0-9a-f]{32}`, matched with `fullmatch`); `:138` `database_marker` refuses a missing or malformed value, naming the variable and no value; `:152` `expected_comment` is `glow-ordering-proof:` (`:61`) followed by the marker. The settings call it at import (`settings.py:34`) | `tests/test_marker.py`, `MarkerFormTests`: twenty `token_hex(16)` values accepted; refused, each naming `PROOF_DB_MARKER` and no value: missing, empty, 31 and 33 characters, upper case, non-hex, a leading or trailing space, a trailing newline, `0x`-prefixed, the comment prefix plus the marker, and the bare prefix. `SettingsMarkerTests.test_settings_refuse_a_missing_or_malformed_marker_at_import`: the settings module refuses at import (missing, empty, short, padded) |
+| **2. The check** (DM-10 2.2) | `marker.py`: `install` (`:51`) connects `verify_new_connection` to Django's `connection_created` with a `dispatch_uid` and `weak=False` (`:55`), and the settings call it at import (`settings.py:34`), so every command that loads the settings registers it before its first connection; `__main__.py` does not mention it. `verify_new_connection` (`:67`) runs `QUERY` (`:29`): `pg_backend_pid()` and `shobj_description(d.oid, 'pg_database')` for `d.datname = current_database()`. A missing row, a null comment or any comment that is not the whole expected string closes the connection through Django (`connection.close()`, `:59`) and raises `RefusedDatabase` (`:39`), which is deliberately not a `django.db.DatabaseError`, because `makemigrations` turns an `OperationalError` into a warning and carries on. A failing query also closes the connection (`:77`). The refusal (`REFUSAL`, `:36`) names `PROOF_DB_MARKER` and no value. A pass prints one line with the backend pid and thread (`:86`), so a run's log shows when each connection was opened (2.5). Django 5.2.17's `connect()` sends the signal after `get_new_connection`, `set_autocommit` and `init_connection_state` only; for this backend the last runs `SET TIME ZONE` when the server's differs and `SET ROLE` only with `assume_role`, which the proof does not configure | `tests/test_marker.py`, `ConnectionCheckTests`, with a fake connection and cursor: a matching comment passes with exactly one statement and no close; a different marker, the bare prefix, the marker alone, anything before or after the expected string, upper case, an empty comment, a null comment and no row each refuse, close once, ran only the marker query, and carry no value; no installed marker refuses without a statement; a failing query closes and propagates; the refusal is not a `DatabaseError`. `SettingsMarkerTests`: importing the settings registers the receiver under its `dispatch_uid` with the run's comment, and the registration is in `settings.py`, not `__main__.py`. `tests/test_marker_commands.py` runs `migrate`, `makemigrations --check --dry-run`, `facts` and `run` each in a clean subprocess through `tests/command_harness.py`: Django's real `connect()`, signal, settings and commands, with only the backend's driver-facing methods replaced by a fake server. For five wrong comments each command exits non-zero with the refusal and no value, the marker query was the connection's only statement, and the connection was closed and not kept; with the matching comment each command passes the check and reaches its own first statement |
+| **3. The CI step** (DM-10 2.3, in DM-11's words) | `.github/workflows/foundation.yml:283` to `333`, "Show that a wrong marker is refused and leaves the proof's database unchanged", after the role step and before the migrations. As the superuser inside the container, with `psql -d glow_proof`, it counts `pg_class` rows per schema (`pg_namespace` left-joined, so a schema with none shows `0`) before and after `migrate` run with the other well-formed marker; it requires a non-zero exit, the refusal line, every schema's count unchanged (`cmp` of the two tables, `pg_toast` included), zero relations outside `information_schema` and the schemas for which `starts_with(nspname, 'pg_')` is true, before and after, and `to_regclass('public.django_migrations') IS NULL` after. It prints both tables once and no name of a role, password or marker; on an unexpected outcome it withholds `migrate`'s diagnostics | CI only (the step is workflow shell). Its queries were tried on the local cluster (below): unchanged and zero after a refused `migrate`; after a real `migrate`, `public` 184, `pg_toast` 110, 184 outside, and `django_migrations` present, so each of the three checks would fail |
+| **4. The marker in the job** (DM-10 2.4, with DM-11's note) | `foundation.yml:233` to `247`: the credentials step generates the run's marker and a different one with `secrets.token_hex(16)`, masks both with `::add-mask::` (`:239`, `:240`) right after the passwords' masks and before any other output, refuses if the two are equal, and writes them to `marker` and `wrong-marker` in the job's `mktemp -d` directory, mode `0600`. `create-role.sql` gains `COMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:<marker>'` (`:244`), which the role step already pipes into `psql` as the superuser with its output kept out of the log (`:278` to `281`) and then deletes. Each step that needs a marker reads it with `PROOF_DB_MARKER="$(cat "$DIR/…")"` for its own commands (`:302`, `:341`, `:354`); nothing writes it to `$GITHUB_ENV` or `$GITHUB_OUTPUT`, and the upload step sees only `.work/results.json`. The wrong-marker step removes `wrong-marker` and its log (`:331`); the removal step removes the whole directory, `marker` included (`:377`). Only the `database` job changed: the other seven jobs, the gate and the workflow's top level parse identical to `ad3323d`'s | The run's log (below): the marker step's masks precede any output, no marker or password appears, and `credential and marker files removed` |
+| **5. The README** | `README.md`: the brief line (`:5`); the layout's settings, environment and new marker rows (`:23` to `25`); the offline checks (`:80`); "The run's marker" with the local recipe, `COMMENT ON DATABASE` right after `CREATE DATABASE`, a new marker per database, and the reused-database guard (`:93` to `100`); `PROOF_DB_MARKER` in the command (`:108`); why loopback is not enough (`:117`); the CI job (`:119`); the local recipe (`:121`); a "Limits" line: the marker ties the proof to the database created for the run and does not replace the reused-database guard carried to P06.2 (`:132`) | Documentation |
+
+**Without the change:** at `ad3323d` the new tests cannot import `environment.MARKER`. Mutating the new code shows each test group bites (the whole suite run each time): settings not calling `install`, 26 failures; a prefix comparison (`startswith`), 7; no `connection.close()` on refusal, 23; `strip()` before the form check, 4; `search` instead of `fullmatch`, 6; `RefusedDatabase` as an `OperationalError`, 6 (among them `makemigrations` in the command harness, which then carries on); a null comment passing, 5; the comment in the refusal message, 15. The unmutated copy passes.
+
+### The wrong-marker step's result (run 37262466651)
+
+Exit status `1`, and the refusal line:
+
+> `refusal: glow_ordering_proof.marker.RefusedDatabase: refusing this database: its comment is not the run's marker (PROOF_DB_MARKER): the database's comment is different. The proof runs only against the disposable database created for this run, whose comment the creator set with that run's PROOF_DB_MARKER; the connection is closed`
+
+| Schema | Relations before | Relations after |
+|---|---|---|
+| `information_schema` | 69 | 69 |
+| `pg_catalog` | 266 | 266 |
+| `pg_toast` | 80 | 80 |
+| `public` | 0 | 0 |
+
+Relations outside `information_schema` and the `pg_` schemas: 0 before, 0 after. `to_regclass('public.django_migrations') IS NULL` after: `t`. The step ended with `a wrong marker was refused, and the proof's database is unchanged and holds no table`.
+
+### The new run of record: Foundation run 37262466651 on `43d8ca428ea25aef485af0e7d5f3a1840a2ae0c6`
+
+Push run 439, `https://github.com/amthorn78/glow-dating-app/actions/runs/37262466651`, started 04:12:07 UTC.
+
+| Job | Conclusion |
+|---|---|
+| Change scope | success (job 111612382380; full scope) |
+| API checks | success (job 111612413259) |
+| Mobile checks | success (job 111612413210) |
+| API mobile smoke | success (job 111612413181) |
+| API artifact checks | success (job 111612413261) |
+| Stream proof checks | success (job 111612413193) |
+| Database proof checks | success (job 111612413204; 04:12:19 to 04:14:14 UTC; the wrong-marker step 1 s, the suite step 72 s) |
+| Foundation gate | success (job 111613560771, finished 04:17:45); its log line: `Application checks passed`, with every job, `database` included, `success` in its `RESULTS` |
+
+**The run-level conclusion is `success`** (completed 04:17:46 UTC). I pushed nothing while it ran.
+
+**From the database job's log** (904 lines, read whole):
+
+- **The image and the server.** `Digest: sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`, the pinned digest. `SELECT version()`: `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit`. `track_commit_timestamp` `on`; `default_transaction_isolation` `read committed`, and `read committed` inside a writer's transaction; `superuser` `false`. The sixteen migrations applied from zero, 04:12:54.39 to 04:12:56.76; `makemigrations --check --dry-run`: `No changes detected`. The offline tests in the job: `Ran 98 tests`, OK; Ruff `All checks passed!`; mypy `Success: no issues found in 32 source files`.
+- **The marker on every connection.** `database marker verified on a new connection` once for `migrate` (backend pid 130), once for `makemigrations` (131), once for `facts` (132), and five times for `run`, all before `cases: 55/55 passed`: the main thread (133) and `proof-writer-0` to `proof-writer-3` (134, 135, 137, 136). No such line appears after them, so no connection was opened inside a case, a race or a control.
+- **The cases:** `cases: 55/55 passed`. **Observed waits with their blocking backends:** each of the 25 held cases (the twenty `send_holds` and `revocation_holds` cases, `racing_duplicates`, `session_expires_during_wait` and the three pairwise opposing-writer cases) shows `pid 135 wait_event_type=Lock wait_event=transactionid pg_locks not granted: transactionid/ShareLock pg_blocking_pids=[134] (holder pid 134)`, after 1 poll (9 cases), 2 (14) or 3 (2): the waiting backend was blocked by the holder's backend and by no other, as in C1's run (pids 98 and 97 there).
+- **The stress run** (seed 20260929; budget 200 iterations or 30 s per race; floors 50 iterations and 10 overlaps), every race with 0 violations and 0 harness failures and its floors met, against C1's run of record (Foundation run 36534514283):
+
+| Race | Iterations (C1 → C2) | Measured overlaps (C1 → C2) | Seconds (C1 → C2) | C2 outcomes |
+|---|---|---|---|---|
+| `race.block_by_low` | 200 → 200 | 200 → 200 | 3.3 → 5.2 | send authorized 34, refused `match_not_active` 166; block applied 200 |
+| `race.block_by_high` | 200 → 200 | 200 → 200 | 3.3 → 5.2 | send authorized 41, refused 159; block applied 200 |
+| `race.unmatch_by_low` | 200 → 200 | 199 → 200 | 3.1 → 4.9 | send authorized 55, refused 145; unmatch applied 200 |
+| `race.unmatch_by_high` | 200 → 200 | 199 → 200 | 3.1 → 5.0 | send authorized 45, refused 155; unmatch applied 200 |
+| `race.suspend_low` | 200 → 200 | 178 → 199 | 2.7 → 4.4 | send authorized 37, refused `account_not_active` 163; suspend applied 200 |
+| `race.suspend_high` | 200 → 200 | 183 → 199 | 2.7 → 4.3 | send authorized 14, refused 186; suspend applied 200 |
+| `race.delete_low` | 200 → 200 | 191 → 200 | 3.0 → 4.7 | send authorized 38, refused 162; delete applied 200 |
+| `race.delete_high` | 200 → 200 | 192 → 200 | 3.0 → 4.5 | send authorized 18, refused 182; delete applied 200 |
+| `race.sign_out_sender` | 200 → 200 | 174 → 197 | 2.7 → 4.2 | send refused `session_not_valid` 200 (authorized 0); sign-out applied 200 |
+| `race.expire_sender` | 200 → 200 | 177 → 199 | 2.9 → 4.3 | send authorized 1, refused 199; expiry applied 200 |
+| `race.racing_duplicates` | 200 → 200 | 200 → 200 | 4.0 → 6.3 | one authorized and one replayed in every iteration (`send_a` authorized 115, `send_b` 85); one row per key |
+| `race.opposing_writers` | 200 → 200 | 200 → 200 | 4.6 → 7.1 | send refused `match_not_active` 189, `account_not_active` 11 (authorized 0); both blocks and the suspension applied 200; no deadlock |
+
+  The plan is unchanged: twelve races, the same seed, budget and floors. Every race ran its full 200 iterations again and measured 197 to 200 overlaps (C1: 174 to 200). The races ran slower (4.2 to 7.1 s against 2.7 to 4.6 s; the suite step 72 s against 48 s); see "Deviations and limits". In `race.sign_out_sender` the send never committed first and in `race.expire_sender` once, the commit order the recorded R1 limit says the stress run does not guarantee; the forced cases `sequential_send_first` and `send_holds` cover it, and passed.
+
+- **The negative controls,** each with its declared signal, all ten `failed as intended` (the signal met), as in C1's run:
+
+| Control | Declared signal | Signal in the run |
+|---|---|---|
+| `no_locks.forced` (`unmatch_by_high.send_holds`) | `commit_after_revocation` + `wait_not_observed` + oracle O2/O6 | not observed waiting on the holder; the send committed 04:14:03.340569 after the revocation at 04:14:03.333853; oracle 2 violations (O2, O6) |
+| `no_locks.stress` (`race.block_by_high`) | oracle O2/O6 | first failing iteration 1: the block (v2) committed 04:14:03.432092, the send at v1 04:14:03.432346; oracle O2, O6 |
+| `no_version_check` (`named.stale_contact_version`) | `refusal_missing` | sends at versions ahead and behind authorized; oracle 0 violations (observation 3) |
+| `no_session_lock` (`sign_out_sender.send_holds`) | `commit_after_revocation` + `wait_not_observed` + oracle O3 | not observed waiting; the send committed 04:14:03.631258 after the sign-out at 04:14:03.625194; oracle 1 violation (O3) |
+| `transaction_start_time` (`named.session_expires_during_wait`) | `refusal_missing` + oracle O5 | the send whose session expired while it waited was authorized; oracle 1 violation (O5) |
+| `dedup_before_authorize` (`named.retry_after_revocation`) | `refusal_missing` | the retry after the revocation was `replayed` with the old receipt |
+| `inverted_lock_order` (`named.opposing_first_lock_block_high_vs_send`) | `deadlock` | `deadlock:DeadlockDetected` for the send |
+| `no_account_lock.forced` (`suspend_high.send_holds`) | `commit_after_revocation` + `wait_not_observed` + oracle O4 | not observed waiting; the send committed 04:14:07.997618 after the suspension at 04:14:07.991642; oracle 1 violation (O4) |
+| `no_account_lock.stress` (`race.suspend_high`) | oracle O4 | first failing iteration 1: the suspension committed 04:14:08.082819, the send 04:14:08.087643; oracle O4 |
+| `filter_state_in_lock` (`unmatch_by_high.revocation_holds`) | `refusal_missing` + oracle O2/O6 | the send that arrived while the unmatch held was authorized and committed; oracle 2 violations (O2, O6) |
+
+- **The oracle over every row:** 526 submissions (C1: 617) and 2,694 revocation rows (C1: 2,694) examined; `design:forced` 32 (C1: 32), `design:stress` 483 (C1: 574, the count of authorized sends, which the races decide), the controls 1 or 2 each; **violations in the design's rows: 0**. Violations only under control tags, the same as C1's: `no_locks.forced` 2, `no_locks.stress` 2, `filter_state_in_lock` 2, `no_session_lock` 1, `no_account_lock.forced` 1, `no_account_lock.stress` 1, `transaction_start_time` 1. `== VERDICT: PASS ==`.
+- **Disposal:** `container removed: glow-proof-db-37262466651-1`, `credential and marker files removed`, `no proof container remains`.
+- **The results JSON:** artifact `p06-db-proof-results`, ID 11324438345, 6,188 bytes, zip digest `sha256:81b6810d…`. I did not download it.
+- **No password, no marker, and no mask where either would be.** The log's only `***` are on lines 38 and 152 (the `token` inputs of `actions/checkout` and `actions/setup-python`) and line 94 (checkout's git `AUTHORIZATION: basic ***` header), all before the credential step. The credential step prints one line, the role step one line, and the wrong-marker step its two tables, its counts, its exit status, the refusal line and its verdict. The only long hexadecimal runs are 40 characters (action commits, 15) and 64 (digests and IDs, 7): no standalone 32- or 48-character run. The words "password", "passfile" and "marker" appear only in the workflow's own script text, the names of the offline tests, the steps' fixed messages and the refusal and verification lines, none with a value. The step headers show the workflow's script text and the `DIR` path, as in C1's run; no connection option, passfile content, connection string or marker value appears.
+
+### Local runs (iteration, not evidence)
+
+Docker does not work in the sandbox, so I started a throwaway cluster from `/usr/lib/postgresql/16/bin/initdb`: PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1), not CI's 17.11, run as the `postgres` OS user in a `mktemp -d` directory under `/tmp`, listening only on a Unix socket (`listen_addresses = ''`), port 5433, `track_commit_timestamp = on`, and `log_statement = 'all'` for this iteration only. The superuser's and the role's passwords and both markers were generated with `secrets`; the superuser's password went through `--pwfile`, removed after `initdb`; the role, its database and the comment came from one SQL file, removed after use; `pg_hba` allowed `peer` for `postgres` and `scram-sha-256` for everyone else (the first attempt used initdb's default `peer` for all, and the proof's role was refused until I changed it). No forbidden or `PG*` name was present.
+
+- **The wrong-marker step's logic:** `migrate` with the other marker exited 1 with the refusal line; the per-schema counts were unchanged (`information_schema` 69, `pg_catalog` 264, `pg_toast` 80, `public` 0), 0 outside the `pg_` schemas, and no `django_migrations`. After the real `migrate`, the same queries gave `public` 184, `pg_toast` 110, 184 outside and `django_migrations` present.
+- **The proof with the run's marker:** `migrate` applied the sixteen migrations, `makemigrations --check --dry-run` printed `No changes detected`, `facts` ran, and `run` passed: 55/55 cases; twelve races at 200 iterations with 200 overlaps each; ten controls failed as intended by their declared signals; 531 submissions and 2,694 revocation rows, zero design violations; 106 s.
+- **What each connection ran, from the server's statement log:** every proof connection ran `SELECT set_config('TimeZone', 'UTC', false)` (Django's session setting), then the marker query, then its own work; the refused connection ran those two and nothing else. `run` opened five connections, all before the cases.
+- No marker or password appeared in the run's output, the results JSON or the refused `migrate`'s output (counted with `grep -c -F -f` against the files, never printed). The server's statement log held the role's creation statement and the comment, as `log_statement = 'all'` records them; it stayed in the cluster's directory, was never printed, and was removed with it.
+
+At the end I stopped the cluster (`pg_ctl stop -m fast` printed `server stopped`; `pg_isready` then printed `no response`) and removed its directory. No cluster directory and no live postgres process remained; one `<defunct>` entry from the failed first start (its log file was not writable by the `postgres` user) stays in the sandbox's process table. The package's `.venv/` is gitignored and stays only in the sandbox; `.work/` was removed.
+
+### Checks
+
+| Check | Command | Result |
+|---|---|---|
+| 1 | `git diff --check ad3323d… HEAD` | clean |
+| 1 | `git diff --name-only ad3323d… HEAD` (code head) | `.github/workflows/foundation.yml`; `proofs/postgres-ordering/README.md`; `glow_ordering_proof/environment.py`, `marker.py` (new), `settings.py`; `tests/command_harness.py` (new), `test_marker.py` (new), `test_marker_commands.py` (new), `test_settings_refusals.py` (its `GOOD` gains a marker made with `secrets.token_hex(16)`); and, in the records commit, this record. Nothing else: no dependency file, no `services/` path, no other job |
+| 2 | trusted policy from `main` (`47db18d`, sha256 `dec69a26…`) extracted to a temporary directory, `python3 -I <tmp>/change_scope.py --base ad3323d… --head 43d8ca4… --merge-base`, from the repository root | `{"full": true, "reason": "behavior-or-empty", …}`, 9 paths: full scope |
+| 3 | `python3.12 -m venv .venv`; `pip install --require-hashes -r requirements-dev.lock` in `env -i` with the proxy and CA variables by reference; `pip check` | installed; `No broken requirements found.` |
+| 4 | `env -i PATH HOME LANG=C.UTF-8 .venv/bin/python -m unittest discover -s tests -t .` | 82 tests at the start (C1's count); at the head `Ran 98 tests`, `OK` (new: `test_marker` 14, `test_marker_commands` 2) |
+| 4 | `.venv/bin/ruff check .`; `.venv/bin/ruff format --check .` | `All checks passed!`; `32 files already formatted` |
+| 4 | `.venv/bin/mypy` | `Success: no issues found in 32 source files` |
+| 4 | the Django pin test (`python -m unittest tests.test_django_pin`) | `Ran 4 tests`, `OK` |
+| 4 | `cd services/api && python3.12 -m unittest tests.test_toolchain_pins` | `Ran 3 tests`, `OK` |
+| 5 | local runs | above, iteration, not evidence |
+| 6 | the Foundation run on the code head | run 37262466651 above |
+| 7 | secret scan over `git diff ad3323d… HEAD` (added lines: password, secret, token, API key, private-key markers, connection strings, email addresses, hex runs of 32 or more) | no secret, password, marker value or email address; the matches are the words in the workflow's variable names and comments, `token_hex` and `import secrets` |
+
+### Deviations and limits
+
+- **The marker's masks are the credentials step's third and fourth lines of output,** after the two passwords' masks; all four masks come before any other output. DM-10 2.4 says "as that step's first output"; I read the masks together as that output.
+- **The check prints one line per new connection** (`database marker verified on a new connection: backend pid …, thread …`), with no value. It is not in DM-10's conditions; I added it so the log shows, as 2.5 asks the review to confirm, that no worker reconnected inside a race.
+- **The per-schema count left-joins `pg_class`,** so a schema with no relation (`public`) is printed with `0` rather than left out. The counts are still of `pg_class` rows joined to `pg_namespace`.
+- **The check's `SELECT` runs in autocommit** (Django sets autocommit before the signal, and `atomic()` turns it off only after the connection exists). It assigns no transaction ID and takes no row lock; like any `SELECT` it holds `AccessShareLock` on the catalogs it reads for the statement's duration. The local statement log shows no `BEGIN` before it.
+- **The races ran slower than in C1's run** (each race 4.2 to 7.1 s against 2.7 to 4.6 s; the suite step 72 s against 48 s) and measured more overlaps (197 to 200 against 174 to 200). The marker query cannot cause either: the log shows it ran on five connections, all before the cases. A different runner is the likely cause; I did not establish it. The budget's 30-second cap per race was not approached.
+- **R1 is visible in this run:** in `race.sign_out_sender` the send never committed first, and in `race.expire_sender` once. This is the recorded limit (the README's "Limits", R1), and the forced cases cover that order.
+- **Local iteration ran on PostgreSQL 16.14,** not 17.11 (D4 condition 3), with `log_statement = 'all'`, which the CI job does not set.
+- **The marker does not replace the reused-database guard** (R2), carried to P06.2, nor CX1, CX2, R1 or the tests for R3 and R4.
+- **Not found:** anything more in the prompt's four "fix here only if" classes.
+
+### What the exact-head review must know
+
+- The code to review is `43d8ca428ea25aef485af0e7d5f3a1840a2ae0c6`; its run is 37262466651 (the database job's log, job 111612413204). The later commit changes only this record.
+- **DM-10's 2.5:** the plan is `ea21ac8`'s: 55 cases, 10 controls, the same twelve races, seed, budget and floors. The run shows 55 of 55, every control failed as intended by its declared signal, 0 violations in the design's rows, and each of the 25 held cases observed waiting on its holder. No race, case, control, floor or reference-design file changed (`git diff --name-only ea21ac8… 43d8ca4 -- proofs/postgres-ordering/glow_ordering_proof` lists only `environment.py`, `marker.py` and `settings.py`). The marker query runs only in the `connection_created` receiver, that is, at connection creation (`marker.py:55`, `:67`), and the log's eight verification lines, the last five all before `cases: 55/55 passed`, show that no worker reconnected inside a race.
+- **DM-11's note on 2.4:** in the workflow diff, each step that needs a marker reads it from the job's `mktemp -d` directory with `$(cat "$DIR/…")` into `PROOF_DB_MARKER` for its own command (`foundation.yml:302`, `:341`, `:354`); the role step reads the comment from `create-role.sql` (`:244`, `:278`). Nothing writes a marker to `$GITHUB_ENV` or `$GITHUB_OUTPUT`; the step outputs are still only `dir` and `container`.
+- **DM-11's three precisions** are in the step: `starts_with(n.nspname, 'pg_')`, not `LIKE`; `psql -d glow_proof`, never `postgres`; per-schema counts compared before and after with `cmp`, `pg_toast` included.
+- `RefusedDatabase` is not a `DatabaseError` on purpose; the command harness's `makemigrations` case and the mutation run show why.
+- The offline tests replace only the backend's driver-facing methods in a subprocess (`tests/command_harness.py`); no test opens a database.

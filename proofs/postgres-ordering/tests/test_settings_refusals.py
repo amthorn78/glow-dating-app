@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import secrets
 import sys
 import unittest
 from pathlib import Path
@@ -20,6 +21,8 @@ GOOD = {
     environment.NAME: "glow_proof",
     environment.USER: "glow_proof",
     environment.PASSFILE: "/tmp/example/passfile",
+    # A marker made for the test run, never a literal in the source.
+    environment.MARKER: secrets.token_hex(16),
 }
 
 
