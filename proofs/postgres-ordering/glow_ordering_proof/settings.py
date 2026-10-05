@@ -3,7 +3,9 @@
 Never imports the API's settings or ``glow_persistence.static_settings``. It refuses
 to start when a forbidden connection name or any ``PG*`` name is present, and it
 connects only to the disposable database named by the proof's own variables, with
-every libpq option explicit and the password read from a passfile.
+every libpq option explicit and the password read from a passfile. Every new connection
+must find its database's comment equal to the run's marker (``PROOF_DB_MARKER``), or
+it is closed and the command fails (``glow_ordering_proof.marker``).
 
 Run with ``DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings`` in a clean process
 (``env -i PATH=... HOME=... LANG=C.UTF-8 PROOF_DB_...``).
@@ -17,7 +19,7 @@ from pathlib import Path
 
 from psycopg import IsolationLevel
 
-from glow_ordering_proof import environment
+from glow_ordering_proof import environment, marker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 API_ROOT = REPO_ROOT / "services" / "api"
@@ -27,6 +29,9 @@ if str(API_ROOT) not in sys.path:
 
 environment.require_clean_environment(os.environ)
 _options = environment.connection_options(os.environ)
+# The run's marker (brief D1; DM-10 2.1 and 2.2): refused at import unless well formed,
+# then checked on every new connection before any statement but its session settings.
+marker.install(environment.expected_comment(environment.database_marker(os.environ)))
 
 # Django insists on a SECRET_KEY. The proof signs nothing and serves nothing; this is a
 # fixed placeholder, not a secret.

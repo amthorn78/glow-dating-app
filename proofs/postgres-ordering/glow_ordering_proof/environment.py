@@ -7,6 +7,7 @@ database. Names are inspected; values are never read except for the proof's own
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -49,7 +50,15 @@ PORT = "PROOF_DB_PORT"
 NAME = "PROOF_DB_NAME"
 USER = "PROOF_DB_USER"
 PASSFILE = "PROOF_DB_PASSFILE"
-PROOF_NAMES = (HOST, PORT, NAME, USER, PASSFILE)
+# The run's marker (brief D1; DM-10 2.1): generated for the run by whoever creates the
+# disposable database, which carries it as its comment. Not a libpq option.
+MARKER = "PROOF_DB_MARKER"
+PROOF_NAMES = (HOST, PORT, NAME, USER, PASSFILE, MARKER)
+
+# secrets.token_hex(16): exactly 32 lowercase hexadecimal characters, nothing around them.
+MARKER_FORM = re.compile(r"[0-9a-f]{32}")
+# The database's whole comment must be this prefix followed by the marker.
+MARKER_COMMENT_PREFIX = "glow-ordering-proof:"
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
@@ -124,6 +133,25 @@ def connection_options(environ: Mapping[str, str]) -> ConnectionOptions:
         if not value or not value.replace("_", "").isalnum():
             raise RefusedConnection(f"{name} must be a plain identifier")
     return ConnectionOptions(host, port, environ[NAME], environ[USER], passfile)
+
+
+def database_marker(environ: Mapping[str, str]) -> str:
+    """The run's marker from ``PROOF_DB_MARKER``: exactly 32 lowercase hexadecimal
+    characters (``secrets.token_hex(16)``). An empty, short, long, padded, prefixed or
+    upper-case value is refused, so an empty marker can never match the bare prefix."""
+    if MARKER not in environ:
+        raise RefusedConnection("connection options missing: " + MARKER)
+    if MARKER_FORM.fullmatch(environ[MARKER]) is None:
+        raise RefusedConnection(
+            f"{MARKER} must be exactly 32 lowercase hexadecimal characters"
+            " (secrets.token_hex(16)); refusing this value"
+        )
+    return environ[MARKER]
+
+
+def expected_comment(marker: str) -> str:
+    """The comment the run's database must carry, compared as a whole string."""
+    return MARKER_COMMENT_PREFIX + marker
 
 
 def django_database(options: ConnectionOptions) -> dict[str, object]:
