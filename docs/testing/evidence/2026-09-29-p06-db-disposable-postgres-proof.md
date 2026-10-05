@@ -942,7 +942,7 @@ The push of `9bcec21`, the commit that records CX1 and CX2, started a second Cod
 - **PR28 is a draft again** until C2, its exact-head review and Codex's review of the final head are done.
 - **CX1 and CX2** stay as recorded above, unless DM-10 says otherwise.
 - **The brief's guard was the manager's:** D1 and D4 took loopback as the database boundary (AM5-18).
-- **Next:** DM-10. (Done the same day: Dev Manager 2 approved the classification and the marker, with conditions 2.1 to 2.5, at `9f2e79d`; brief revision 4 applies them, and the review log has the disposition, "DM-10". The C2 prompt departs from 2.3's query in one point, so DM-11 read it first: Dev Manager 2 approved the departure with conditions at `91c5c2c`, in words that replace it, and the C2 prompt runs as revision 2 in those words; brief revision 5 records them, and the review log has the disposition, "DM-11". Then the correction pass P06.DB-C2.)
+- **Next:** DM-10. (Done the same day: Dev Manager 2 approved the classification and the marker, with conditions 2.1 to 2.5, at `9f2e79d`; brief revision 4 applies them, and the review log has the disposition, "DM-10". The C2 prompt departs from 2.3's query in one point, so DM-11 read it first: Dev Manager 2 approved the departure with conditions at `91c5c2c`, in words that replace it, and the C2 prompt runs as revision 2 in those words; brief revision 5 records them, and the review log has the disposition, "DM-11". Then the correction pass P06.DB-C2, done the same day: "P06.DB-C2 corrections" and "Manager verification of P06.DB-C2", below.)
 
 ## P06.DB-C2 corrections
 
@@ -1100,3 +1100,63 @@ At the end I stopped the cluster (`pg_ctl stop -m fast` printed `server stopped`
 - **DM-11's three precisions** are in the step: `starts_with(n.nspname, 'pg_')`, not `LIKE`; `psql -d glow_proof`, never `postgres`; per-schema counts compared before and after with `cmp`, `pg_toast` included.
 - `RefusedDatabase` is not a `DatabaseError` on purpose; the command harness's `makemigrations` case and the mutation run show why.
 - The offline tests replace only the backend's driver-facing methods in a subprocess (`tests/command_harness.py`); no test opens a database.
+
+### Manager verification of P06.DB-C2 (App Manager 5, 5 October 2026)
+
+App Manager 5 checked the relayed report against the pushed branch, the code and hosted CI. The manager started no database: its re-run below is the offline checks only.
+
+- **Identity:**
+  - branch `claude/ecstatic-feynman-749ccu`, final head `1178dfa450cce88daf354de8b7b2f0434800fc05`, tree `d22b6f7174d8e889f876299299b55246cdde225a`, as reported. Two commits on the start `ad3323d`: `43d8ca4` (the code; tree `b1d74ade790e1bd57c24254e72f8d53313746cdf`), then `1178dfa` (this record only);
+  - 10 paths. The code commit changes 9: the workflow, the README, `environment.py`, `marker.py` (new) and `settings.py` under `glow_ordering_proof/`, and `command_harness.py`, `test_marker.py`, `test_marker_commands.py` (all new) and `test_settings_refusals.py` under `tests/`; +683 and −18. The records commit appends the section above, 157 lines; every earlier line of this record is byte-identical. No dependency file, `services/`, `scripts/`, `apps/` or `packages/` path changed, and `git diff --check` is clean;
+  - **integrated** with a merge commit, `369d03c5cd1ed3537e044335bfb6ecc4cbc25f9a` (first parent `ad3323d`, the manager branch; second parent `1178dfa`). Its tree is `1178dfa`'s.
+- **Classification:** the trusted policy from `main`, outside the tree, with `python3 -I` and full SHAs: `ad3323d` → `43d8ca4` is full scope (`behavior-or-empty`), 9 paths; `ad3323d` → `1178dfa` is full scope, 10 paths; `43d8ca4` → `1178dfa` is `ordinary-docs-only`.
+- **The workflow change,** checked as the CI policy requires for one: classified with the pre-change policy (`main`'s; PR28 does not change the classifier), the whole diff read, and the job's actual steps and results read from run 37262466651.
+  - Only the `database` job changed. The diff has no hunk outside it, so the other six application jobs, the scope job and the gate are byte-identical.
+  - The credentials step generates the run's marker and a second well-formed one with `secrets.token_hex(16)`, masks both right after the passwords' masks, refuses if they are equal, and writes them to `marker` and `wrong-marker` in the job's `mktemp -d` directory, mode `0600`. `create-role.sql` gains the `COMMENT ON DATABASE` statement, which the role step pipes into `psql` with its output withheld, then deletes.
+  - The new step, before the migrations, runs `psql -d glow_proof` as the superuser inside the container. It counts relations per schema with a left join, counts relations outside `information_schema` and the schemas for which `starts_with(n.nspname, 'pg_')` is true, and asks `to_regclass('public.django_migrations') IS NULL`. It fails on an exit status of 0, a missing refusal line, any changed count (`cmp` of the two tables), any relation outside, or a ledger. DM-11's three precisions hold.
+  - DM-11's note on 2.4 holds: each step that needs a marker takes it from the directory with `$(cat "$DIR/…")` into `PROOF_DB_MARKER` for its own command. Nothing writes a marker to `$GITHUB_ENV` or `$GITHUB_OUTPUT`; the step outputs are still `dir` and `container`. The removal step deletes the directory.
+- **The code, read whole.**
+  - `environment.py`: `PROOF_DB_MARKER` is in `PROOF_NAMES`; `MARKER_FORM` is `[0-9a-f]{32}`, applied with `fullmatch`; `database_marker` refuses a missing or malformed value by name; `expected_comment` is the prefix and the marker.
+  - `marker.py`: `install` connects the receiver to `connection_created` with a `dispatch_uid` and `weak=False`. The receiver reads `pg_backend_pid()` and `shobj_description(d.oid, 'pg_database')` for `current_database()`, and refuses with no installed marker, no row, a null comment or any other comment, closing the connection through Django first. A failing query closes the connection and re-raises. `RefusedDatabase` is not a `DatabaseError`.
+  - `settings.py` calls `marker.install` at import. No package code opens a connection outside Django: `psycopg.connect` appears nowhere, and `connection_created` only in `marker.py`.
+- **Offline re-run** in a scratch worktree of `43d8ca4`, with Python 3.12.14 and every command in a clean process (`env -i`). The environment was the one installed from the locks for C1's verification; no dependency file changed since `ea21ac8` (Django 5.2.17, psycopg 3.3.6, Ruff 0.16.8, mypy 2.3.1). `python -m unittest discover -s tests -t .`: `Ran 98 tests`, `OK`. Ruff check: "All checks passed!"; Ruff format check: "32 files already formatted"; mypy: "Success: no issues found in 32 source files". The command harness replaces only the backend's driver-facing methods (its `get_new_connection` returns a plain object) and opens no socket.
+- **Fix reversals,** in the manager's own run: each change undone alone in the worktree, then the whole suite.
+
+  | Reversal | Result |
+  |---|---|
+  | The package's code back to `ad3323d`'s, the new tests kept | 3 errors: the new test modules cannot import the marker's names |
+  | The settings do not install the check | 26 failures |
+  | A refusal does not close the connection | 23 failures |
+  | The comment compared by prefix (`startswith`) | 7 failures |
+  | The marker's form checked with `match`, not `fullmatch` | 4 failures |
+  | `RefusedDatabase` as a Django `OperationalError` | 6 failures |
+
+  The unchanged copy passes, before and after. The manager's first pass at this table restored the worktree wrongly after the first reversal, so the later results tested a reverted tree; they were discarded and the reversals redone (AM5-20).
+- **Hosted CI:**
+  - Foundation run [37262466651](https://github.com/amthorn78/glow-dating-app/actions/runs/37262466651) on `43d8ca4`, a push run: all eight jobs succeeded, and the gate (job 111613560771) printed `Application checks passed`.
+  - The records push run 37263032448 on `1178dfa`: the six application jobs were skipped, and its gate printed `Ordinary documentation: application jobs intentionally skipped`, as the CI policy designs. The session had not opened it.
+- **The database job's log, read whole** (job 111612413204; 905 lines as the API returns them, where the session counted 904), against the section above:
+  - the wrong-marker step: exit status `1`; the refusal line, which carries no value; the per-schema counts identical before and after (`information_schema` 69, `pg_catalog` 266, `pg_toast` 80, `public` 0); 0 relations outside, before and after; `django_migrations` absent (`t`);
+  - the image digest `sha256:d74eeac9…`; PostgreSQL 17.11; `superuser` false; `track_commit_timestamp` on; `read committed`; the sixteen migrations; `No changes detected`; `Ran 98 tests`, `OK`;
+  - eight `database marker verified on a new connection` lines: one each for `migrate` (backend pid 130), `makemigrations` (131) and `facts` (132), and five for `run` (133 to 137), the main thread's and one per writer thread. `run` opened no other connection, so none was re-created inside a case, race or control;
+  - `cases: 55/55 passed`, and each of the 25 held cases shows `pg_blocking_pids=[134] (holder pid 134)`;
+  - the twelve races, the ten controls and the oracle (526 submissions, 2,694 revocation rows, 0 violations in the design's rows, the control tags' violations as C1's), exactly as the section's tables give them; `== VERDICT: PASS ==`;
+  - **no password and no marker:** the only `***` are on lines 38 and 94 (`actions/checkout`) and 152 (`actions/setup-python`), all before the credentials step (line 344). No 32- or 48-character hexadecimal string appears; the long ones are 40-character commit SHAs and 64-character digests and IDs. The passwords and the comment appear only in the step's script text, as `%s` templates;
+  - disposal: `container removed: glow-proof-db-37262466651-1`, `credential and marker files removed`, `no proof container remains`.
+- **The section's comparison with C1:** its C1 column matches "P06.DB-C1 corrections" (each race's overlaps and seconds, 617 submissions, `design:stress` 574, the controls' violations, pids 98 and 97).
+
+#### Observations for the exact-head review
+
+1. **The races ran slower in this run, with more overlaps:** 4.2 to 7.1 s against 2.7 to 4.6 s, and 197 to 200 overlaps against 174 to 200. The same day, PR run 37260032996 on `ad3323d`, the code before C2, gave 2.6 to 4.6 s and 174 to 200 (job 111605158228, Azure region `westus3`); C2's run ran in `westus`. The marker query ran only on `run`'s five connections. A slower runner fits both differences but is not established. PR28's pull-request run on the integrated head runs C2's code again.
+2. **The masks' order** (the section's first deviation). DM-10's 2.4 says the marker is masked "as that step's first output". The step's first four outputs are the four `::add-mask::` lines, the passwords' first; its only other output is its closing line. The manager reads this as within 2.4.
+3. **The verification line** (the section's second deviation): one line per new connection, with its backend pid and thread and no value. It is not in DM-10's conditions. The hook still runs one `SELECT` and nothing else, and the line gives 2.5's reconnect check a direct record. The manager reads it as within 2.2.
+4. **A failing marker query.** If the query itself raises, for example on a dropped connection or a server that is not PostgreSQL, the receiver closes the connection and re-raises the driver's error as Django wraps it. That ends `migrate`, `facts` and `run`. `makemigrations` alone turns a Django `OperationalError` from its consistency check into a warning and carries on; `makemigrations --check --dry-run` changes no database, and in the job it runs after `migrate`. Not in a correction class, in the manager's reading.
+5. **R1 again:** in `race.sign_out_sender` the send never committed first, in `race.expire_sender` once and in `race.opposing_writers` never. The P11 plan's R1 limit now cites this run as well.
+
+#### Dispositions
+
+- **CX3 is corrected:** the proof refuses any database whose comment is not the run's marker, under DM-10's conditions 2.1 to 2.4 and DM-11's words for 2.3's check. The manager found nothing in the four correction classes.
+- **The run of record** for the final code is run 37262466651 (the C2 prompt). The P11 plan's DB06 and DB09 entries cite it; the marks stand as worded.
+- **The CI policy** takes DM-10's sentence, as written (its item 4), in the batch that records this verification.
+- **AM5-20** is logged, a summary row: the slip reached no record.
+- **Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-05-p06-db-c2-review-prompt.md)), of `369d03c`, offline, reading job 111612413204's log; it checks DM-10's 2.5 and DM-11's note on 2.4.

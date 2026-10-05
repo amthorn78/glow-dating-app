@@ -11,8 +11,9 @@
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, high.** Effort score 2.03 (confidence 0.81); rung probabilities low 0.00, medium 0.13, high 0.72, extra high 0.14, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.02, Opus 5.5 0.98 (confidence 0.97). Sent 2026-10-05T03:28:30Z. Nathan picks the cell.
   - Revision 1's reading, sent 2026-10-05T01:58:22Z, was the same cell (score 1.92). Revision 1 was never given to Nathan to run.
-  - **Nathan's pick:** pending.
+  - **Nathan's pick:** not recorded: the relay of the session's report did not name it.
 - **The Dev Manager's read:** DM-10 approved the design with conditions 2.1 to 2.5, and this prompt quotes 2.1 to 2.4 as written. Its one departure, from 2.3's query (section 3, item 3), is in DM-11's words, and section 3, item 4 quotes DM-11's note on 2.4. DM-11 approved them: applied as written, this prompt needs no further read (DM-03 G2).
+- **Result:** done on 5 October, from revision 2. Branch `claude/ecstatic-feynman-749ccu`, code head `43d8ca4`, final head `1178dfa`; Foundation run 37262466651 on the code head is the run of record. The manager verified it and integrated it at `369d03c`: the evidence record, "P06.DB-C2 corrections" and "Manager verification of P06.DB-C2".
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). Its exact-head review follows.
 - **Deletion condition:** prune after P06.DB's PR merges and the evidence record holds the result.

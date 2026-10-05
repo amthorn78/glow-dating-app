@@ -312,6 +312,8 @@ Before deciding, the manager checked the report's two claims about the code at `
 
 **Governing changes in this batch:** none. The CI policy's sentence changes at C2's integration, in the report's words.
 
+**Applied at C2's integration** (5 October, the records batch after the merge `369d03c`): the CI policy's sentence, in the report's words (item 4), so it needs no further read (DM-03 G2). It is the only governing change since `ee25d1d`, and the next consultation or the close-out read confirms it.
+
 **After the disposition:** writing the C2 prompt, the manager found that condition 2.3's query cannot be met as written: every PostgreSQL database keeps the toast tables of its own catalogs in `pg_toast`. The prompt also excludes the `pg_`-prefixed system schemas, and DM-11 reads that departure before the prompt runs, as DM-10 asks. (It did, and replaced the departure with its own words: see "DM-11".)
 
 **What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
