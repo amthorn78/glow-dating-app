@@ -78,6 +78,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-14 | 29 Sep 2026 | accuracy | The P06.DB-C1 prompt had the session push its records after its code, with the push run of its code commit as the evidence, but did not tell it to wait for that run to finish. The records push started a second run on the branch, and the code run, whose eight jobs all passed, was marked `cancelled` | The P06.DB-C1 session, which reported the label and its cause; Nathan then asked why |
 | AM5-15 | 4 Oct 2026 | accuracy | The P06.DB-C1 prompt's start gate checked only its own start commit, so it could not tell that its work was already done and integrated. A session started from it on 4 October, in place of C1's review, passed the gate and made the whole correction pass again; reading Nathan's "ran in opus 5.5 extra high" as the review's start, the manager recorded the review as in flight (`d27519b`) | App Manager 5, verifying the second session's report |
 | AM5-16 | 4 Oct 2026 | accuracy | The verification of P06.DB-C1 passed over its local run 2 ("same database, rows accumulating"), whose overlap counts include run 1's rows because the stress run's run tag is fixed, and so did not raise the one-run-per-database limit for C1's review | App Manager 5, checking the second session's "one run per database" limit against C1's code |
+| AM5-17 | 5 Oct 2026 | accuracy | The correction for AM5-16 (`cbb3ff7`) named only C1's local run 2's overlap counts, not its controls, and left the implementation's local run 2, which had also reused its database, saying its first race's 200 was established. It repeats AM5-16 | C1's exact-head review (R5) |
 
 ## App Manager 2
 
@@ -545,3 +546,11 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on evidence. Local runs are iteration, not evidence, and the job's database is new in each run. C1's section carried counts that are not run 2's own, and revision 1 of C1's review prompt did not ask about the limit.
 - **Correction:** the evidence record's section "A second run of the C1 correction prompt" corrects the statement and records the limit, and revision 2 of C1's review prompt asks about it (focus area 10).
 - **Prevention:** when a fix narrows a read to its own rows, the verification checks every way other rows can still reach it: other races, other iterations, and other runs in the same database.
+
+### AM5-17 — The correction for AM5-16 stopped at the overlap counts (accuracy)
+
+- **What happened:** correcting C1's local run 2 (`cbb3ff7`), the manager said that its overlap counts took in run 1's rows. The same rows reach that run's stress controls and the oracle parts of its forced controls, which the correction did not name. The implementation's local run 2 had also reused its database, and the in-place correction in its row still said its first race's 200 was established; neither the verification of C1 nor the correction noticed.
+- **Caught by:** C1's exact-head review, R5.
+- **Effect:** none on evidence, since local runs are iteration, not evidence. Two record statements were incomplete or wrong for a day.
+- **Correction:** the evidence record's "Exact-head review of P06.DB-C1", under "Corrections to this record".
+- **Prevention:** it repeats AM5-16, so the prevention is now a checklist item in the manager workflow's step 5, "Follow a stray read to every result": a verification or correction that finds such a read lists every result computed from those rows and every record that reports one, and checks each.

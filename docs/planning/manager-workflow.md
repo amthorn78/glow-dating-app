@@ -68,6 +68,7 @@ Nathan's direction, 24 September 2026:
 5. **Verify and integrate.**
    - Fetch the implementer branch and review `git diff <start>..<head>` completely.
    - Re-run cheap checks where useful.
+   - **Follow a stray read to every result** (AM5-16, AM5-17). When a verification or a correction finds a read that can take in rows from outside what it measures, such as another race, another iteration or an earlier run in the same database, it lists every result computed from those rows (counts, controls, the oracle) and every record that reports one, and checks each.
    - Classify the whole change (command below).
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.

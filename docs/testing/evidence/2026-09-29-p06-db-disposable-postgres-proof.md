@@ -602,7 +602,7 @@ Two points in the second run's report hold for C1's code too. C1's exact-head re
 
 #### A correction to C1's section
 
-C1's section stays as the session wrote it. Its local-runs table gives run 2 ("the pushed code, same database, rows accumulating") every race at 200 of 200 overlaps. With the fixed tag, each of run 2's per-iteration reads also returned run 1's rows for the same race and iteration. So an iteration counted as an overlap when either run's writers overlapped, and those are not run 2's own counts. Local runs are iteration, not evidence, and no claim rests on them. The manager's verification of C1 did not notice this (AM5-16).
+C1's section stays as the session wrote it. Its local-runs table gives run 2 ("the pushed code, same database, rows accumulating") every race at 200 of 200 overlaps. With the fixed tag, each of run 2's per-iteration reads also returned run 1's rows for the same race and iteration. So an iteration counted as an overlap when either run's writers overlapped, and those are not run 2's own counts. Local runs are iteration, not evidence, and no claim rests on them. The manager's verification of C1 did not notice this (AM5-16). (Extended after C1's exact-head review, R5: see "Exact-head review of P06.DB-C1", "Corrections to this record".)
 
 #### Dispositions
 
@@ -611,3 +611,275 @@ C1's section stays as the session wrote it. Its local-runs table gives run 2 ("t
 - **The pick recorded on 4 October** (`d27519b`) was this session's, not the review's. The review prompt's header, the brief's "Sessions", the handoff and the uses table now say so.
 - **AM5-15 and AM5-16** are logged. AM5-15's prevention is a line in the manager workflow's step 3, which the Dev Manager reads before PR28 merges.
 - **Next:** C1's exact-head review, from revision 2 of its [prompt](../../ephemeral/2026-09-29-p06-db-c1-review-prompt.md).
+
+### Exact-head review of P06.DB-C1 (4 October 2026)
+
+Nathan ran the review session from revision 2 of the [review prompt](../../ephemeral/2026-09-29-p06-db-c1-review-prompt.md) (records commit `cbb3ff7`), in `Glow App - No Stream`, on Opus 5.5 at extra high, the cell TypeSafe v6 read. He started it on 4 October and relayed its report to App Manager 5 on 5 October. It reviewed the exact head `ea21ac8577b83158be1f941b93dbef411bece41f`.
+
+- **Verdict: approve.** C1's four fixes do what their findings needed, none can produce a false pass in CI, and the run of record and the records are sound.
+- **No finding is blocking or in a correction class.** Two should-fix findings go into the records: R1, the stress run does not reliably produce the order where the send commits first; R2, the proof assumes one run per database and does not check it. Four nits, R3 to R6.
+- **Everything else is confirmed:** DM-08 7.2's three log checks on job 109295439073, the run-of-record decision, the manager's observations and dispositions, the record of the second run with its commit-order table, and PR28's latest pull-request run.
+
+#### The report, as relayed
+
+The session's notes before its report, as relayed, verbatim:
+
+> I'm now checking the concurrency helpers (the holder-pid slot F4 depends on) and fixtures, then the README.
+>
+> README read. Now the offline checks: install from the locks in a clean process, then tests, Ruff, mypy and the toolchain pin test.
+>
+> Both are ignored (the first check ran on non-existent directories). Installing now.
+>
+> All offline checks pass. Now `git diff --check`, scope, locks, modes and the secret scan.
+>
+> Secret scan is clean. Now hosted CI: loading the GitHub tools to read run 36534514283 and its database job's log.
+>
+> The workflow confirms each job starts a fresh container (no named volume; anonymous volume removed). Now the run's metadata and jobs.
+>
+> All eight jobs completed `success` by 07:09:03; the run was marked `cancelled` at 07:09:05. Now the database job's whole log.
+>
+> The log is 798 lines (`wc -l` counts 797 newlines, which reconciles the session's 797 with the manager's 798). Reading it whole in chunks.
+>
+> Read the whole log (798 lines). Now the mechanical checks on it: masks, 48-hex runs, held-case count.
+>
+> Every `***` is a checkout or setup-python token (lines 38, 94, 152); no 48-character hex run; all 25 held cases show `pg_blocking_pids=[97] (holder pid 97)`. Now PR28 and its latest pull-request run.
+>
+> PR28's head is now `c846d50`, newer than the `cbb3ff7` my start gate fetched. Re-checking the live branch before going on.
+>
+> One records-only commit landed after the prompt's commit (Nathan's pick for this review). Classifying it with the same trusted policy.
+>
+> The new commit is records-only (`ordinary-docs-only`) and records this review as in flight; the gate conditions still hold, so the prompt is not stale. Now PR28's latest pull-request runs.
+>
+> The latest completed PR run is 37217951614 on `cbb3ff7`; a newer one (37218684874 on `c846d50`) is still in progress. Reading 37217951614's jobs.
+>
+> Database proof checks ran all 14 steps there and passed. Now its per-race counts, and the database job IDs for the other runs the commit-order table lists.
+>
+> Database jobs found (109514555200, 111454162459). Fetching those logs plus the two other runs' the commit-order table cites, to check the counts.
+>
+> Commit-order counts match across all five runs in the manager's table, and the newer PR run on `cbb3ff7` adds a second run of C1's code showing zero send-first iterations in both sign-out races. Next I'll look at the run that cancelled the run of record.
+>
+> The P11 entries are read. Now my own reversal experiments in a scratch copy (offline, no connection): each fix undone alone, then its tests run, to check the manager's table and look for gaps.
+>
+> My reversal results match the manager's table exactly, with six of seven cases caught and the per-iteration oracle call site uncaught; I also found that removing the empty-signal guard and the pre-existing sign_in exclusion are both uncaught and currently behavior-neutral. Next I'll verify the two earlier sections are byte-identical to 4511bbc.
+>
+> The hash mismatch is my extraction's artifact (at `4511bbc` the section runs to end of file). Comparing properly:
+>
+> Sections confirmed unchanged (the diff from `4511bbc` only appends after line 350). Quick check of the manager's identity figures for C1.
+>
+> Identity figures check out (433 source lines changed, 739 test lines added, tree `c3c9bac`). Next, I'll confirm no control, case expectation, or floor was loosened between the first review's head and this one.
+>
+> That "identical" line was a false positive (both outputs were empty: the module path was missing). Rerunning with the package on the path.
+>
+> This plan matches `6f5866d`: 55 cases, 10 controls, same designs, targets, races, budget, and floors. Next, I'll run an offline demonstration of focus area 10's second point using a reused database, applying the package's own functions to constructed rows.
+>
+> I confirmed offline that an existing database with a prior run can already satisfy both the overlap count and a stress control's signal using those earlier rows—though this doesn't apply to CI since each database there starts fresh. Next I'll check the gate logs and controls from the latest PR run.
+>
+> Latest completed PR run is clean. Checking whether the newest PR run (on `c846d50`) has finished.
+>
+> It finished `success`, so it is now PR28's latest pull-request run. Reading its database job.
+>
+> `held: 0` here is likely different backend pids in this run, not missing waits. Checking.
+>
+> All 25 held cases consistently show the holder as the only blocker, and the latest PR run on c846d50 passed cleanly across all eight jobs. I'll load the workspace's reporting skill before drafting the report for Nathan.
+
+The report, verbatim, with its headings moved down to fit this record:
+
+**Verdict: approve.** C1's four fixes do what their findings needed, none can produce a false pass in CI, and the run of record and the records are sound. There is no blocking finding and nothing in a correction class. Two points need record changes (R1, R2) that the manager can make without another correction pass.
+
+- **Prompt:** revision 2, from `cbb3ff78687f1f78561649088460331b57023756`.
+- **Environment (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set, and no `PG*`, `PROOF_DB_*` or `STREAM_*` name is set. `command -v python3.12` gives `/root/.local/bin/python3.12`, Python 3.12.14.
+- **Head reviewed:** `ea21ac8577b83158be1f941b93dbef411bece41f`. `HEAD^2` is `24e716b`, there is one merge base (`47db18d`), and the diff is 15 files, +1,250/−122. The code is identical to `4280770`.
+- **Live branch:** it moved after my start gate, from `cbb3ff7` to `c846d50`. That one commit is Markdown-only (`ordinary-docs-only`, 3 paths) and records Nathan's pick for this review. The gate conditions still hold: no code landed after the prompt's commit, and this review is not yet recorded.
+- **Classifications** (trusted policy from `main`, sha256 `dec69a26…`, `python3 -I`, full SHAs):
+  1. `47db18d`→`ea21ac8`: `{"full": true, "reason": "behavior-or-empty"}`, 52 paths. The exclusion command printed nothing.
+  2. `6f5866d`→`82c3883`: `ordinary-docs-only`, 12 paths.
+  3. `ea21ac8`→`cbb3ff7`: `ordinary-docs-only`, 9 paths.
+
+##### Findings (most severe first; none blocking, none in a correction class)
+
+| # | Severity | Where | Correction class? |
+|---|---|---|---|
+| R1 | Should fix (records only) | `stress.py:264-267`, `budget.py:183-184` | No |
+| R2 | Should fix | `__main__.py:75-77`, `stress.py:118-133` and `:296-297`, `controls.py:275` | No |
+| R3 | Nit | `stress.py:297` | No |
+| R4 | Nit | `controls.py:61-62`, `stress.py:128` | No |
+| R5 | Nit (records) | evidence record line 120; the manager's correction to C1's local run 2 | No |
+| R6 | Nit | `README.md:32` | No |
+
+**R1. The stress run does not reliably produce the order where the send commits first.**
+- **Cause:** a sign-out or expiry is a short transaction that locks only the session row, and the send locks that row last. The head start is at most 3 ms, and only on half the iterations, so the revocation almost always gets there first. The floors count iterations and overlaps, not which writer committed first.
+- **Counts of send-first iterations** (sign-out / expiry / opposing writers):
+  - run of record 36534514283: 16 / 21 / 1
+  - PR runs on C1's code:
+    - `fcc4992`: 0 / 0 / 1
+    - `d27519b`: 5 / 13 / 1
+    - `cbb3ff7`: 0 / 0 / 0
+    - `c846d50`: 3 / 12 / 1
+- **Effect:** in 2 of the 5 runs of C1's code, neither sign-out race had a single send-first iteration, and the job still passed. The forced cases `sequential_send_first` and `send_holds` cover that order deterministically and passed in every run, with the wait observed on the holder.
+- **Fix:** record the limit in the P11 DB06 and DB09 entries and in the README's "Limits" (wording below).
+  - Do not add a floor on each commit order: the construction cannot guarantee both orders, so the job would become flaky (OD-21).
+  - Optional later, with P06.2: a seeded delay for the revocation in the session races, and printed counts per order.
+- **Why not in a class:** DB06's mark rests on run 36534514283, where both orders occurred in every two-writer race.
+
+**R2. The proof assumes one run per database and does not check it.**
+- **Cause:** the run tags are fixed (`design:stress`, `control:<id>`), so the per-iteration reads also return an earlier run's rows for the same race and iteration.
+- **Effect,** shown offline with the package's own functions on constructed rows:
+  - an iteration counts as overlapped when an earlier run's writers overlapped;
+  - a stress control counts as "failed as intended" on an earlier run's violation even when this run's iteration is clean;
+  - a forced control's oracle part can be met the same way;
+  - the final oracle can only gain violations from old rows, so that part fails safe.
+- **CI is unaffected:** each job starts a new container from the image, removes it with its anonymous volume, and applies all 16 migrations from zero in every log I read (7 runs).
+- **Fix:** have `run` refuse a database whose `proof_writer_log` already holds rows (one query, with an offline test), or add a per-run nonce to the run tags, and add a README line. A recorded limit is enough for PR28. The guard should land before P06.2 runs this suite against the adapter.
+
+**R3. The per-iteration oracle call has no test that fails without `case_id`** (the manager's observation 1). I agree it is behavior-neutral today: only the two stress controls use that check, each under its own tag with one race. A call-site test is optional. R2 also shows `case_id` gives no protection across runs.
+
+**R4. Two guards have no test that fails without them:** the empty-signal guard in `Signal.met`, and the pre-existing `kind <> 'sign_in'` exclusion. Both are neutral today: a test asserts that every control declares a signal, and the sign-in rows commit before the writers start.
+
+**R5. The local-run corrections miss the reused database.**
+- The implementation's local run 2 reused run 1's database, so even its first race's 200 was not its own; the in-place correction at line 120 says that count is established.
+- The manager's correction to C1's local run 2 is accurate about overlaps, but that run's stress controls, and the oracle parts of its forced controls, could also have read run 1's rows.
+- Local runs count for nothing.
+
+**R6.** The README's layout row for `observe.py` omits `pg_blocking_pids`.
+
+##### Focus areas 1 to 5: the fixes and the tests
+
+- **F1:**
+  - Each race now reads only its own rows; no other per-iteration read spans races.
+  - An intersection of two database intervals is real concurrency. It cannot count by construction:
+    - the head start sleeps before `BEGIN`, so it only shortens overlap;
+    - an attempt row's end is `clock_timestamp()` inside the writer's own transaction;
+    - sign-in rows are excluded and finish before the writers start.
+  - The counts fit each race:
+    - the short revocations (sign-out 174, expiry 177, suspension 178–183) are lowest;
+    - blocks and unmatches are at 199–200;
+    - the duplicates race is at 200 because its second send waits on the first's locks.
+  - The floors and the budget are unchanged.
+- **F2:**
+  - The refactor into `judge` is exact: the queries are the same and only the O2 condition changed. Ties still count as violations.
+  - The stronger rule holds for every row the design writes:
+    - a log row carries a contact version only when it moves the match out of `active` or to `unmatched`;
+    - an unblock leaves the match `restricted`;
+    - a repeated unmatch writes no row;
+    - there is no rematch.
+- **F3:**
+  - Each control's declared signal is the deterministic product of its broken switch.
+  - A harness or database error disqualifies a control, and every declared case signal is required.
+  - A failure with the signal `other` beside the declared signal still counts. That is correct: such failures are side effects of the break.
+  - For `no_version_check`, `refusal_missing` is enough, because the named case names the exact refusal reason.
+- **F4:**
+  - The holder's pid comes from its own transaction's first statement, through `on_begin`.
+  - Requiring the holder to be among the blockers is equivalent to requiring it to be the only blocker here. No other connection holds locks during a forced case, and every log shows exactly `[holder]`.
+  - The observer cannot time out falsely, because the holder is not released until the wait is observed.
+- **Nothing is looser:** case ids, controls (id, design, mode, target), races, budget and floors are byte-identical to `6f5866d` in a generated plan, and case expectations only gained signal tags.
+- **The tests are real:** I undid each fix in a scratch copy, and my results match the manager's seven reversals exactly; six are caught. Three more reversals I added were also caught, and two guards were not (R4).
+
+##### DM-08 7.2: the three checks from job 109295439073 (798 lines, read whole)
+
+- **No password: confirmed.** The only `***` are on lines 38 and 94 (`actions/checkout`) and line 152 (`actions/setup-python`), all before the credential step at line 352. There are no 48-character hexadecimal runs: the long hex runs are 15 of 40 characters and 7 of 64.
+- **Each forced wait observed with its blocking backend: confirmed.** All 25 held cases show `pg_blocking_pids=[97] (holder pid 97)`.
+- **The ten controls met their declared signals: confirmed.** The two stress controls failed at iteration 1.
+- **C1's section matches the log:** every race's overlaps, seconds and outcomes, the controls' timestamps, and the oracle's figures (617 submissions, 2,694 revocation rows, 0 design violations).
+
+##### The manager's records
+
+**Run of record:** I agree with the decision.
+- All eight jobs and all their steps completed `success`, and the gate printed `Application checks passed` at 07:09:00.
+- The last job ended at 07:09:03, and the run was marked `cancelled` at 07:09:05 by the concurrency group of the records run 36534597575 (created 07:05:24).
+- The gate's job-level evidence is what the CI policy uses. The same proof code has since passed four PR runs with run-level `success`.
+
+| Item | View |
+|---|---|
+| Observation 1: the call-site test | Agree: neutral today; a test is optional (R3) |
+| Observation 2: "left unchanged"; 797 vs 798 lines | Agree, no effect. The log says "28 files already formatted"; `wc -l` counts 797 newlines in a 798-line log |
+| Observation 3: the "without the fix" paragraph | Agree; the reversals show the behavior is caught |
+| Dispositions: F1–F4 fixed, nothing in a class, the run of record, AM5-14 | Agree |
+| DB06 settled on run 36534514283 | Agree, with R1's limit added |
+| Second run: recorded, not integrated, not evidence for PR28 | Agree. The commit-order table matches all five logs, including "at least 14" for the other eight races |
+| Correction to C1's local run 2 | Accurate, but incomplete (R5) |
+| "Manager verification of P06.DB" and "Exact-head review of P06.DB" unchanged from `4511bbc` | Confirmed: the record's diff only appends after line 350 |
+
+**DB06 and DB09:** both entries are accurate as worded for run 36534514283. I propose adding one limit line to each:
+- **DB06:** "In the stress run, the overlap is the intersection of two writers' database intervals, not an observed lock wait, and the construction does not guarantee each commit order. Against sign-out, expiry and the opposing writers the send rarely commits first (16, 21 and 1 of 200 in run 36534514283; none in either sign-out race in two of five runs of the same code), so that order rests on the forced cases. Each run needs a new database, which the job always provides."
+- **DB09:** "In the sign-out and expiry stress races the send commits first rarely or never; that order rests on the forced `sequential_send_first` and `send_holds` cases."
+
+**Focus area 10:**
+1. **Commit orders:** R1, should fix in the records, not in a class. A recorded limit is enough; I don't recommend a floor on each order.
+2. **One run per database:** R2, should fix, not in a class. A recorded limit is enough for PR28; the refusal should come before P06.2 reuses the suite.
+
+##### PR28's latest pull-request run
+
+Run 37218684874 on `c846d50`, which contains `ea21ac8`:
+- all eight jobs `success`, and the gate printed `Application checks passed`;
+- Database proof checks (job 111484403665) ran all 14 steps, with 55 of 55 cases, 25 waits blocked by the holder, 10 controls met, and 0 design violations over 565 submissions;
+- per-race overlaps: 200, 200, 200, 200, 191, 189, 200, 200, 184, 188, 200, 200.
+
+The previous run, 37217951614 on `cbb3ff7`, also passed: 200, 200, 200, 200, 199, 199, 200, 200, 198, 199, 200, 200.
+
+##### Areas with no findings
+
+- F1 to F4 as described above, and the 82 tests.
+- Scope: only the 15 paths named changed. No dependency file, workflow, `services/`, `scripts/`, `apps/`, `packages/` or `.gitignore` path changed. Every file is mode 100644, there are no symlinks, and the locks and workflow are unchanged since `6f5866d`.
+- The workflow's database job: a new container per run, loopback only, credential handling as before.
+- The README matches the corrected code, apart from R6.
+- The in-place corrections carry the required mark and say what the first run established, what it did not, and where the corrected counts are.
+- The manager's identity figures for C1: tree `c3c9bac`, 433 source lines changed and 739 test lines added.
+
+##### Checks run
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | clean, exit 0 |
+| Three classifications | as listed above |
+| `pip install --require-hashes -r requirements-dev.lock`, `pip check` (`env -i`, proxy and CA variables by reference) | installed; `No broken requirements found.` |
+| Unit tests (`env -i`) | `Ran 82 tests`, `OK` |
+| `ruff check .` / `ruff format --check .` / `mypy` | `All checks passed!` / `28 files already formatted` / `Success: no issues found in 28 source files` |
+| `services/api`: `python3.12 -m unittest tests.test_toolchain_pins` | `Ran 3 tests`, `OK` |
+| Secret scan over the diff's added lines | no secret, password, token, connection string or email address; the hex strings are two commit SHAs (`4280770`, `4511bbc`) and the pinned image digest |
+| Fix reversals in scratch copies | 13 reversals; F1c, F3f and the `sign_in` exclusion uncaught, the rest caught |
+| Plan comparison against `6f5866d` | identical |
+| Offline demonstration of a reused database | overlap and stress-control false counts shown |
+| Hosted CI | runs 36534514283, 36534597575, 37217951614 and 37218684874 read through the GitHub API |
+
+##### Limits
+
+- I started no database and opened no connection.
+- I read only job 109295439073's log line by line. For the other six database logs I extracted the race tables, verdicts, migrations, waits, masks and hex runs by search.
+- I did not download the results artifact 11017908859. From reading `results.py`, the JSON gains only signal labels and pids.
+- GitHub's concurrency mechanics are inferred from the timestamps.
+- Notion was not read.
+- I changed nothing in the repository, on GitHub or in Notion. The checkout is left detached at `ea21ac8` with a clean tree, and scratch work is in the ignored `.venv/` and my scratchpad.
+
+**NOTHING NEEDED** beyond relaying this report to App Manager 5.
+
+#### Manager verification of the review (App Manager 5, 5 October 2026)
+
+- **The classifications,** rerun with the trusted policy (sha256 `dec69a26…`) and full SHAs: `47db18d` → `ea21ac8` is full scope, 52 paths, and its only non-Markdown paths are under `proofs/postgres-ordering/` or the workflow; `6f5866d` → `82c3883` and `ea21ac8` → `cbb3ff7` are `ordinary-docs-only`, 12 and 9 paths; `cbb3ff7` → `c846d50`, the commit that landed during the review, is `ordinary-docs-only`, 3 paths. `budget.py`, `design.py` and `reference.py` are unchanged from `6f5866d`.
+- **R1: confirmed.**
+  - The send locks the lower account, the higher account, the match and then its session (`reference.py:187` to `192`); a sign-out locks only the session (`reference.py:582`). The head start delays each writer but the first by nothing or by up to 3 ms, chosen by the seed (`stress.py:264` to `267`).
+  - The send-first counts match the five logs of C1's code; the manager's own download of the latest, job 111484403665 on `c846d50`, gives 3, 12 and 1. In two of the five runs (`fcc4992` and `cbb3ff7`) neither sign-out race had an iteration in which the send committed first. In run 36534514283 every two-writer race had both orders.
+  - One citation slip, with no effect: the review cites `budget.py:183-184` for the floors. `budget.py` has 24 lines; the floors are at `:11` and `:12`, checked at `:24`.
+- **R2: confirmed in the code.** The run tags are fixed (`__main__.py:70` and `:75` to `77`; each control's tag, `controls.py:91`), and the per-iteration reads select by tag, race and iteration (`stress.py:118` to `133` and `:296` to `297`; `controls.py:275`). The job starts a new container in every run (the manager's verification of P06.DB, and every log read since).
+- **R4:** the empty-signal guard is `controls.py:61` to `62`, and the sign-in exclusion is `stress.py:128`.
+- **R5: confirmed.** The implementation's local-runs table gives run 2 as "same database, rows accumulating", and its in-place correction says that only the first race's 200 is established. The manager's correction to C1's local run 2 names only its overlap counts. Both are corrected below (AM5-17).
+- **R6: confirmed.** The README's layout row for `observe.py` (line 32) names `pg_stat_activity` and `pg_locks` only.
+- **PR28's latest pull-request run,** 37218684874 on `c846d50`: the database job's log (job 111484403665) gives `cases: 55/55 passed`, 25 waits each `pg_blocking_pids=[103] (holder pid 103)`, overlaps 200, 200, 200, 200, 191, 189, 200, 200, 184, 188, 200 and 200, 565 submissions, `violations in the design's rows: 0` and `== VERDICT: PASS ==`. The previous run's overlaps (37217951614 on `cbb3ff7`) are as the review gives them.
+- **The rest** agrees with the manager's own verification of C1: the run of record's timeline, DM-08 7.2's three checks and C1's identity figures.
+
+#### Corrections to this record
+
+Local runs are iteration, not evidence, so neither correction changes a claim. The sections they correct stay as written.
+
+- **The implementation's local runs, run 2** ("the pushed code, same database, rows accumulating"): its in-place correction says only the first race's 200 is established. In the same database, under the same run tag, that run's reads also took in run 1's rows, so none of its counts, the first race's included, is its own.
+- **The manager's correction to C1's local run 2** (in "A second run of the C1 correction prompt"): besides the overlap counts, that run's stress controls and the oracle parts of its forced controls could have been met by run 1's rows, so its "ten controls failed as intended" is not run 2's own result either (AM5-17).
+
+#### Disposition
+
+- **Approved.** C1 stands as integrated at `ea21ac8`. No finding is blocking or in a correction class, so, by the prompt's rule, there is no further correction pass and the rest goes into the records.
+- **R1:** the P11 plan's DB06 and DB09 entries carry the limit in the review's wording, and the README's "Limits" carries it too. No floor on each commit order: the construction cannot guarantee both, so the job would become flaky (OD-21). The optional seeded delay and per-order counts are carried to P06.2 (the brief, "Carried to P06.2").
+- **R2:** the README's "Limits" and DB06's entry carry the limit. The refusal of a database that already holds proof rows is carried to P06.2, to land before P06.2 runs the suite against the app's adapter.
+- **R3 and R4:** recorded; both are behavior-neutral today, and R3 is the manager's observation 1.
+- **R5:** corrected above, and AM5-17 is logged. It repeats AM5-16, so its prevention is now a checklist item in the manager workflow's step 5, which the Dev Manager reads before PR28 merges.
+- **R6:** the README's layout row now names `pg_blocking_pids`.
+- **The marks:** DB06 and DB09 stand as worded, each with its new limit line.
+- **Next:** the Dev Manager's read of PR28's governing changes (DM-09), then Codex's review, the merge and the receipt.

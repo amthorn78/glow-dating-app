@@ -29,7 +29,7 @@ This is proof tooling, not application code. The API's settings, configuration g
 | `glow_ordering_proof/stress.py` | The seeded stress run and its overlap measure |
 | `glow_ordering_proof/oracle.py` | The commit-order oracle over every row |
 | `glow_ordering_proof/controls.py` | The negative controls |
-| `glow_ordering_proof/observe.py` | The proof log table, lock-wait observation (`pg_stat_activity`, `pg_locks`), server facts, the migration ledger |
+| `glow_ordering_proof/observe.py` | The proof log table, lock-wait observation (`pg_stat_activity`, `pg_locks`, `pg_blocking_pids`), server facts, the migration ledger |
 | `glow_ordering_proof/budget.py` | The stress budget and floors, fixed in code |
 | `glow_ordering_proof/results.py` | The report, its JSON and the printed table |
 | `tests/` | Offline tests: no database |
@@ -115,5 +115,7 @@ The Foundation job "Database proof checks" does all of this on every change that
 - `auth_session_ref` is a stand-in; credentials, verification and the maintained session are not exercised.
 - The provider is never called; the `ChatBinding` is created locally with a stand-in channel reference.
 - The stress run's overlaps are measured from database-clock intervals, not from observed lock waits; the forced cases observe the waits. (Corrected in P06.DB-C1; the exact-head review's F1.) The first run of record (Foundation run 36520940933) established the overlap count of its first race only, `race.block_by_low`'s 200 of 200; the other eleven races' counts were not established, and `race.racing_duplicates`'s own overlap was never measured. The corrected per-race counts are in the evidence record, "P06.DB-C1 corrections".
+- The stress run does not guarantee each commit order. The send locks its session row last, and a sign-out or an expiry locks only that row, so in those two races the send rarely commits first, and in some runs never; against the opposing writers it commits first at most once in 200. That order rests on the forced cases `sequential_send_first` and `send_holds`. The floors count iterations and overlaps, not orders. (Added after C1's exact-head review, R1.)
+- One run per database. The run tags are fixed (`design:forced`, `design:stress`, `control:<id>`), so a second run in the same database would also read the first run's rows: an overlap, a stress control's signal or a forced control's oracle part could come from the earlier run. The CI job starts a new database in every run. A local run needs a new cluster until the proof refuses a used database, which is carried to P06.2. (Added after C1's exact-head review, R2.)
 - The oracle cannot see a stale client version: the send stores the locked match's version, not the request's. The named case `stale_contact_version` and the `no_version_check` control catch a missing version check through the case's expected refusal.
 - The negative controls are broken variants of this package's own reference design; they show what this suite detects, not every way an adapter could be wrong.
