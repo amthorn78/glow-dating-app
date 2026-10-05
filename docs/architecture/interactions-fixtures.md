@@ -222,10 +222,38 @@ must prove actual permissions, direct-SDK/stale-token/reconnect/outage behavior
 and economics under A04/A08. Stream remains preferred; this task establishes no
 account, Maker entitlement, credit or paid activation.
 
+What P06 now holds (5 October 2026):
+
+- **P06.1** proved Stream Chat's permission model on the development application
+  and left the design constraints in the [chat-provider architecture
+  document](chat-provider-permissions.md); ADR 0003 sets the display rule.
+- **P06.DB** proved, on a disposable PostgreSQL, a reference design that orders a send
+  authorization against every revocation of contact (`proofs/postgres-ordering`).
+- **P06.2 Stage A** carries that design into the app: the contact port
+  (`glow_domain/chat.py`), its persistence adapter over `glow_persistence`'s models
+  (`glow_chat/contact.py`), match activation with random channel and provider user IDs,
+  the outbox delivery to a chat provider port with a fixture adapter only, and the token
+  rules (see the [data model](data-model.md), "Chat contact and the outbox"). The
+  proof's race suite runs against the adapter as its second subject, so the ordering is
+  a check on the app's code. A paused or restricted profile and a withdrawn onboarding
+  consent refuse a send. These fixture interactions are unchanged: their contact
+  decision still always denies send, and no fixture path calls the adapter.
+
+What stays with later work: the Stream adapter and its live conformance run (P06.2
+Stage B); the mobile chat interface under the display rule (Stage C); push and
+notifications (P06.3); allauth and the real session identifier, which the adapter
+takes as given (the item that serves authentication); and wiring the adapter, the
+delivery worker and the migrations into a runtime with a real database (P11). The API
+runtime has no database, real authentication or live provider, and imports none of
+`glow_chat`.
+
 [Deferred acceptance](../testing/p11-deferred-acceptance.md) retains real
 multi-connection reciprocal/dedup/absent-block races, send-versus-revocation,
 pre/post-commit worker crashes, redelivery and restore cases. The P11
 storage direction is now the app's own logical database and restricted roles on
 HDE's PostgreSQL service ([ADR 0004](../adr/0004-app-database-placement.md), 25 September 2026). HDE/legacy objects and shared effects stay
 protected. P05.3 opens no database, runs no SQL/applied migration and activates
-no HDE/provider, infrastructure or deployment.
+no HDE/provider, infrastructure or deployment. P06.DB and P06.2 Stage A ran the
+send-versus-revocation races and the outbox delivery on a disposable database in
+CI; P11A and P11B still rerun DB06 and DB09 on the real target, with the crash,
+redelivery and restore cases.

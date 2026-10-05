@@ -34,6 +34,8 @@ QUERY = (
 )
 
 REFUSAL = "refusing this database: its comment is not the run's marker"
+# DM-12: dbshell starts psql outside Django, where this check never runs.
+DBSHELL_REFUSAL = "refusing dbshell under the proof's settings"
 
 
 class RefusedDatabase(Exception):
@@ -61,6 +63,15 @@ def _refuse(connection: Any, reason: str) -> RefusedDatabase:
         f"{REFUSAL} ({MARKER}): {reason}. The proof runs only against the disposable"
         " database created for this run, whose comment the creator set with that run's"
         f" {MARKER}; the connection is closed"
+    )
+
+
+def refuse_dbshell() -> RefusedDatabase:
+    """The refusal of ``dbshell``, before any connection: ``psql`` would connect with
+    the proof's options outside Django, so the marker could not be checked."""
+    return RefusedDatabase(
+        f"{DBSHELL_REFUSAL} ({MARKER}): it starts psql outside Django, where the run's"
+        " marker is never checked; no connection was opened and no client was started"
     )
 
 

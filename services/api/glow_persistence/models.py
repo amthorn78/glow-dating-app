@@ -567,6 +567,52 @@ class MessageSubmission(Record):
         ]
 
 
+class ChatIdentity(Record):
+    """An account's opaque chat-provider user ID (P06.2 D7, migration 0003).
+
+    ``user_ref`` is random (``secrets.token_hex``), never derived from an account ID,
+    name or email, and never shown or logged. The provider owns no other field of it:
+    no name, image or custom data is ever set. PROTECT keeps the mapping until the
+    provider deletion step that needs it has run (deletion and export, P07/P08).
+    """
+
+    account = models.ForeignKey(AppAccount, on_delete=models.PROTECT)
+    provider = models.CharField(max_length=32)
+    user_ref = models.CharField(max_length=64)
+    state = models.CharField(
+        max_length=16, choices=choices("active", "deactivated"), default="active"
+    )
+    # The cut-off of the latest per-user token revocation the provider confirmed.
+    tokens_revoked_before = models.DateTimeField(null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            state_check("active", "deactivated"),
+            models.UniqueConstraint(fields=["account", "provider"], name="chat_identity_account"),
+            models.UniqueConstraint(fields=["provider", "user_ref"], name="chat_identity_ref"),
+        ]
+
+
+class ChatReadCursor(Record):
+    """A member's read position in a match's conversation (P06.2 item 5, migration 0003).
+
+    Unread is counted from Glow's own accepted ``MessageSubmission`` rows after
+    ``last_read``; the provider's read state is not used. That the account is a member
+    of the match is a repository check, not a constraint.
+    """
+
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
+    account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    last_read = models.ForeignKey(
+        MessageSubmission, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.UniqueConstraint(fields=["match", "account"], name="chat_read_cursor_member")
+        ]
+
+
 class DeviceRegistration(Record):
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
     installation_id = models.UUIDField(unique=True)

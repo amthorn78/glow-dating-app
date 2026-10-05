@@ -3,16 +3,24 @@
 Every case is judged by what the database recorded: rows, commit timestamps and lock
 waits. A forced "while it holds the locks" case passes only if the second connection
 was observed waiting (item 6.2). The suite drives the ``OrderingSubject`` interface
-only, so P06.2 can run it against the app's adapter.
+only, so P06.2 runs it against the app's adapter too (D3): each subject's evidence is
+read where that subject writes it (``evidence``).
+
+P06.2 adds CX2's boundary (``named.session_expires_after_check``, both subjects) and
+D5's three revocations of contact (a paused or restricted profile, a withdrawn
+onboarding consent), each with its four interleavings, for the adapter only: the
+reference design excludes them (P06.DB 5.6).
 """
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import Callable, Collection
 from concurrent.futures import Future
 from dataclasses import dataclass, field
 from functools import partial
+from typing import cast
 from uuid import UUID
 
 from glow_ordering_proof import budget
@@ -20,15 +28,18 @@ from glow_ordering_proof.concurrency import Barrier, Hold, PidSlot, Worker
 from glow_ordering_proof.dbreads import (
     account_row,
     block_state,
+    consent_row,
     deletion_recorded,
-    log_commit,
     match_row,
     outbox_count,
+    profile_row,
     session_row,
     submission_commit,
     submissions_of,
 )
+from glow_ordering_proof.evidence import Evidence
 from glow_ordering_proof.interface import (
+    ContactStateSubject,
     FixtureFactory,
     Hooks,
     OrderingSubject,
@@ -53,6 +64,18 @@ class Context:
     fixtures: FixtureFactory
     log: ProofLog
     workers: list[Worker]
+    evidence: Evidence
+    # The subject's name in the world table, and whether it carries D5's writers.
+    name: str = "reference"
+    d5: bool = False
+
+    @property
+    def state_subject(self) -> ContactStateSubject:
+        if not self.d5:
+            raise RuntimeError("this subject carries no D5 writer")
+        subject = self.subject
+        assert isinstance(subject, ContactStateSubject)
+        return subject
 
 
 @dataclass
@@ -76,6 +99,7 @@ def make_world(ctx: Context, *, ttl: float = SESSION_TTL) -> World:
     first, second = ctx.fixtures.create_account(), ctx.fixtures.create_account()
     low, high = sorted((first, second))
     match = ctx.fixtures.create_match(low, high)
+    ctx.log.record_world(ctx.name, match, low, high)
     sessions = []
     for account in (low, high):
         signed = ctx.subject.sign_in(account, ttl_seconds=ttl)
@@ -306,6 +330,8 @@ class Revocation:
     act: Callable[[World, OrderingSubject, Hooks | None], Result]
     refusals: frozenset[str]
     effect: Callable[[World, Judge], None]
+    # What it revokes: the match, an account or the session (the adapter's witness).
+    aggregate: Callable[[World], UUID] = lambda world: world.match
 
 
 def _block(by: str) -> Revocation:
@@ -375,6 +401,7 @@ def _account_wide(op: str, which: str) -> Revocation:
         act,
         frozenset({"account_not_active"}),
         effect,
+        lambda world: world.low if which == "low" else world.high,
     )
 
 
@@ -399,6 +426,7 @@ def _session_end(op: str) -> Revocation:
         act,
         frozenset({"session_not_valid"}),
         effect,
+        lambda world: world.session_low,
     )
 
 
@@ -414,7 +442,71 @@ REVOCATIONS: tuple[Revocation, ...] = (
     _session_end("sign_out"),
     _session_end("expire"),
 )
-REVOCATION_BY_ID = {r.id: r for r in REVOCATIONS}
+
+
+def _profile(op: str, which: str) -> Revocation:
+    """P06.2 D5: a pause or a restriction of a member's profile."""
+
+    def account_of(world: World) -> UUID:
+        return world.low if which == "low" else world.high
+
+    def act(world: World, subject: OrderingSubject, hooks: Hooks | None) -> Result:
+        state = cast(ContactStateSubject, subject)
+        writer = state.pause_profile if op == "pause" else state.restrict_profile
+        return writer(account_of(world), hooks=hooks)
+
+    def effect(world: World, judge: Judge) -> None:
+        wanted = "paused" if op == "pause" else "restricted"
+        state, version, events = profile_row(account_of(world), f"profile_{wanted}")
+        judge.expect((state, version) == (wanted, 2), f"profile {state} v{version}")
+        judge.expect(events == 1, f"{events} profile_{wanted} events")
+
+    who = "the sender's" if which == "low" else "the other member's"
+    return Revocation(
+        f"{op}_{which}",
+        f"{'a pause' if op == 'pause' else 'a restriction'} of {who} profile",
+        op,
+        act,
+        frozenset({"profile_unavailable"}),
+        effect,
+        account_of,
+    )
+
+
+def _consent(which: str) -> Revocation:
+    """P06.2 D5: a withdrawal of a member's onboarding consent."""
+
+    def account_of(world: World) -> UUID:
+        return world.low if which == "low" else world.high
+
+    def act(world: World, subject: OrderingSubject, hooks: Hooks | None) -> Result:
+        return cast(ContactStateSubject, subject).withdraw_consent(account_of(world), hooks=hooks)
+
+    def effect(world: World, judge: Judge) -> None:
+        latest = consent_row(account_of(world))
+        judge.expect(latest == ("withdrawn", 2), f"latest consent {latest}")
+
+    who = "the sender's" if which == "low" else "the other member's"
+    return Revocation(
+        f"withdraw_{which}",
+        f"a withdrawal of {who} onboarding consent",
+        "withdraw",
+        act,
+        frozenset({"consent_not_current"}),
+        effect,
+        account_of,
+    )
+
+
+D5_REVOCATIONS: tuple[Revocation, ...] = (
+    _profile("pause", "low"),
+    _profile("pause", "high"),
+    _profile("restrict", "low"),
+    _profile("restrict", "high"),
+    _consent("low"),
+    _consent("high"),
+)
+REVOCATION_BY_ID = {r.id: r for r in (*REVOCATIONS, *D5_REVOCATIONS)}
 
 
 def _forced_cases(rev: Revocation) -> list[Case]:
@@ -468,7 +560,7 @@ def _forced_cases(rev: Revocation) -> list[Case]:
         judge.expect(len(rows) == 1 and rows[0][1] == 1, f"submissions {rows}, expected one at v1")
         if sent.receipt and revoked.outcome == "applied":
             send_at = submission_commit(sent.receipt.submission_id)
-            rev_at = log_commit(ctx.log, rev.kind)
+            rev_at = ctx.evidence.revocation_commit(world, rev)
             judge.expect(
                 rev_at is not None and send_at < rev_at,
                 f"commit order: send {send_at.isoformat()} vs revocation"
@@ -500,6 +592,9 @@ def _forced_cases(rev: Revocation) -> list[Case]:
         "delete": "DB06/DB09 deletion (lifecycle, epoch)",
         "sign_out": "DB09 sign-out (5.1)",
         "expire": "DB09 administrative expiry (5.1)",
+        "pause": "P06.2 D5 profile pause (DM-13 4.1)",
+        "restrict": "P06.2 D5 profile restriction (DM-13 4.1)",
+        "withdraw": "P06.2 D5 consent withdrawal (DM-13 4.1)",
     }[rev.kind]
     return [
         Case(
@@ -920,6 +1015,103 @@ def unmatch_repeat_is_safe(ctx: Context, judge: Judge) -> None:
     )
 
 
+def session_expires_after_check(ctx: Context, judge: Judge) -> None:
+    """CX2 (the brief's D4, confirmed by DM-13): the send's checks pass before its
+    session expires, and a delay between the checks and the commit carries the commit
+    past the expiry. The design authorizes it, since expiry is checked at a time read
+    after the locks (P06.DB 5.2); O5, narrowed to match, must not count it. The delay is
+    the subject's hold point before its commit: the adapter's ``before_commit``, and for
+    the reference design the proof log's call just before its send row."""
+    world = make_world(ctx)
+    short = ctx.subject.sign_in(world.low, ttl_seconds=3.0)
+    judge.outcome(short, "short-lived sign-in", "applied")
+    assert short.session_id is not None
+    expires_at = session_row(short.session_id)[2]
+    request = send_request(world, session=short.session_id, key="k-boundary")
+    hold = Hold()
+    pid = PidSlot()
+    ctx.log.before_send_record = hold.point
+    try:
+        future = ctx.workers[0].submit(
+            lambda: ctx.subject.send(
+                request, hooks=Hooks(on_begin=pid.set, before_commit=hold.point)
+            )
+        )
+        if not _wait_held(hold, future):
+            hold.release.set()
+            judge.fail(
+                f"the send reached no hold point before its commit: {future.result().label()}"
+            )
+            return
+        started = xact_start_of(pid.wait())
+        judge.expect(
+            started is not None and started < expires_at,
+            "not forced: the send's transaction began after the session's expiry",
+        )
+        while db_clock() <= expires_at:
+            time.sleep(0.01)
+        judge.note("released after the database clock passed the session's expiry")
+        hold.release.set()
+        sent = future.result(timeout=budget.HOLD_SECONDS)
+    finally:
+        ctx.log.before_send_record = None
+    judge.outcome(sent, "the send whose checks ran before the expiry", "authorized")
+    if sent.receipt is not None:
+        committed = submission_commit(sent.receipt.submission_id)
+        judge.expect(
+            committed >= expires_at,
+            f"the boundary was not crossed: committed {committed.isoformat()},"
+            f" expiry {expires_at.isoformat()}",
+        )
+        judge.note(f"committed {committed.isoformat()} after the expiry {expires_at.isoformat()}")
+
+
+def d5_restored(ctx: Context, judge: Judge) -> None:
+    """P06.2 D5, the positive side: resuming a paused profile and accepting consent again
+    let the member send again; a restriction is not lifted by a resume."""
+    subject = ctx.state_subject
+    world = make_world(ctx)
+    judge.outcome(subject.pause_profile(world.high), "pause the other member's profile", "applied")
+    judge.outcome(subject.pause_profile(world.high), "repeated pause", "no_change")
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k1")),
+        "send while paused",
+        "refused",
+        reasons={"profile_unavailable"},
+    )
+    judge.outcome(subject.resume_profile(world.high), "resume", "applied")
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k2")), "send after resume", "authorized"
+    )
+    judge.outcome(subject.withdraw_consent(world.low), "withdraw the sender's consent", "applied")
+    judge.outcome(subject.withdraw_consent(world.low), "repeated withdrawal", "no_change")
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k3")),
+        "send after withdrawal",
+        "refused",
+        reasons={"consent_not_current"},
+    )
+    judge.outcome(subject.accept_consent(world.low), "accept again", "applied")
+    judge.expect(consent_row(world.low) == ("accepted", 3), f"consent {consent_row(world.low)}")
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k4")), "send after re-acceptance", "authorized"
+    )
+    judge.outcome(subject.restrict_profile(world.low), "restrict the sender's profile", "applied")
+    judge.outcome(
+        subject.resume_profile(world.low),
+        "a resume does not lift a restriction",
+        "refused",
+        reasons={"profile_unavailable"},
+    )
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k5")),
+        "send while restricted",
+        "refused",
+        reasons={"profile_unavailable"},
+    )
+    judge.expect(len(submissions_of(world.match)) == 2, "expected two submissions")
+
+
 NAMED_CASES: tuple[Case, ...] = (
     Case("named.positive_send", "positive control", "sends that must be authorized", positive_send),
     Case(
@@ -1006,21 +1198,37 @@ NAMED_CASES: tuple[Case, ...] = (
         "a repeated unmatch and a block after an unmatch change nothing",
         unmatch_repeat_is_safe,
     ),
+    Case(
+        "named.session_expires_after_check",
+        "CX2 expiry checked at a time read after the locks (P06.2 D4)",
+        "a session that expires between the send's checks and its commit",
+        session_expires_after_check,
+    ),
+)
+D5_NAMED_CASES: tuple[Case, ...] = (
+    Case(
+        "named.d5_restored",
+        "P06.2 D5 resume and re-acceptance",
+        "resuming a profile and accepting consent again restore sending; a resume does not"
+        " lift a restriction",
+        d5_restored,
+    ),
 )
 
 
-def all_cases() -> tuple[Case, ...]:
-    forced_cases = [case for rev in REVOCATIONS for case in _forced_cases(rev)]
-    return (*forced_cases, *NAMED_CASES)
+def all_cases(*, d5: bool = False) -> tuple[Case, ...]:
+    revocations = (*REVOCATIONS, *D5_REVOCATIONS) if d5 else REVOCATIONS
+    forced_cases = [case for rev in revocations for case in _forced_cases(rev)]
+    return (*forced_cases, *NAMED_CASES, *(D5_NAMED_CASES if d5 else ()))
 
 
-CASE_BY_ID = {case.id: case for case in all_cases()}
+CASE_BY_ID = {case.id: case for case in all_cases(d5=True)}
 
 
-def plan() -> list[dict[str, str]]:
+def plan(*, d5: bool = False) -> list[dict[str, str]]:
     """The case plan, offline: id, guarantee and title of every case."""
-    return [{"id": c.id, "guarantee": c.guarantee, "title": c.title} for c in all_cases()]
+    return [{"id": c.id, "guarantee": c.guarantee, "title": c.title} for c in all_cases(d5=d5)]
 
 
 def run_all(ctx: Context, cases: Collection[Case] | None = None) -> list[CaseResult]:
-    return [run_case(ctx, case) for case in (cases or all_cases())]
+    return [run_case(ctx, case) for case in (cases or all_cases(d5=ctx.d5))]

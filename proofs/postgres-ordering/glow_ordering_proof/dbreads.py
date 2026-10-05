@@ -93,6 +93,30 @@ def log_commit(log: ProofLog, kind: str) -> datetime | None:
     return value
 
 
+def profile_row(account_id: UUID, event_type: str) -> tuple[str, int, int]:
+    """(the profile's state, its version, how many ``event_type`` events name it)."""
+    from glow_persistence.models import OutboxEvent, Profile
+
+    state, version, profile_id = (
+        Profile.objects.filter(account_id=account_id).values_list("state", "version", "id").get()
+    )
+    events = OutboxEvent.objects.filter(event_type=event_type, aggregate_id=profile_id).count()
+    return str(state), int(version), int(events)
+
+
+def consent_row(account_id: UUID) -> tuple[str, int] | None:
+    """The latest onboarding consent decision: (state, version), or None."""
+    from glow_persistence.models import ConsentDecision
+
+    row = (
+        ConsentDecision.objects.filter(account_id=account_id, purpose="onboarding")
+        .order_by("-version")
+        .values_list("state", "version")
+        .first()
+    )
+    return None if row is None else (str(row[0]), int(row[1]))
+
+
 def deletion_recorded(account_id: UUID) -> tuple[bool, bool, bool]:
     """(DeletionJob with access revoked, DeletionTombstone, the account row still exists)."""
     from glow_persistence.models import AppAccount, DeletionJob, DeletionTombstone

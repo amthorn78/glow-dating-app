@@ -3,11 +3,16 @@
 Nothing here ever sees a connection option, a password or a passfile path: the report
 holds what the database answered and what the cases judged, and the renderer prints
 only that.
+
+P06.2 (D3): one ``Report`` per subject, the reference design and the app's adapter,
+each judged and printed separately, and the delivery phase's report beside them in a
+``RunReport``. The run passes only when every part does.
 """
 
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -28,6 +33,7 @@ class Report:
     controls: list[Any] = field(default_factory=list)  # ControlResult
     oracle: Any = None  # OracleReport over every row
     problems: list[str] = field(default_factory=list)
+    subject: str = "reference"
 
     def design_violations(self) -> list[Any]:
         if self.oracle is None:
@@ -67,6 +73,7 @@ class Report:
     def to_dict(self) -> dict[str, object]:
         ok, reasons = self.verdict()
         return {
+            "subject": self.subject,
             "verdict": "PASS" if ok else "FAIL",
             "reasons": reasons,
             "seed": self.seed,
@@ -100,10 +107,17 @@ def table(headers: Sequence[str], rows: Iterable[Sequence[object]]) -> str:
     return "\n".join(lines)
 
 
+SUBJECT_TITLES = {
+    "reference": "the reference design (proofs/postgres-ordering)",
+    "adapter": "the app's adapter (services/api glow_chat)",
+}
+
+
 def render(report: Report) -> str:
     ok, reasons = report.verdict()
     out: list[str] = []
-    out.append("== P06.DB disposable-PostgreSQL proof ==")
+    title = SUBJECT_TITLES.get(report.subject, report.subject)
+    out.append(f"== P06.DB disposable-PostgreSQL proof: {title} ==")
     out.append("")
     out.append("-- Server (from the database) --")
     out.append(table(("fact", "value"), sorted(report.facts.items())))
@@ -114,7 +128,7 @@ def render(report: Report) -> str:
     out.append("-- Migrations applied (django_migrations) --")
     out.append(table(("app", "name", "applied"), report.ledger))
     out.append("")
-    out.append("-- Cases (the reference design) --")
+    out.append(f"-- Cases ({title}) --")
     out.append(
         table(
             ("case", "result", "waits observed", "notes"),
@@ -145,6 +159,7 @@ def render(report: Report) -> str:
                 "harness failures",
                 "seconds",
                 "floors",
+                "orders",
                 "outcomes",
             ),
             (
@@ -156,6 +171,7 @@ def render(report: Report) -> str:
                     len(r.harness_failures),
                     f"{r.elapsed_seconds:.1f}",
                     "met" if r.floors_met else "NOT MET",
+                    ", ".join(f"{k}:{v}" for k, v in sorted(getattr(r, "orders", {}).items())),
                     ", ".join(f"{k}:{v}" for k, v in sorted(r.outcomes.items())),
                 )
                 for r in report.races
@@ -163,7 +179,10 @@ def render(report: Report) -> str:
         )
     )
     out.append("")
-    out.append("-- Negative controls (each must fail by its declared signal) --")
+    out.append(
+        "-- Negative controls (each must fail by its declared signal; planted: the oracle must"
+        " flag the rows) --"
+    )
     out.append(
         table(
             (
@@ -212,7 +231,100 @@ def render(report: Report) -> str:
                 f"  {v.rule} {v.run_tag} {v.case_id} it={v.iteration} {v.submission_id}: {v.detail}"
             )
     out.append("")
-    out.append(f"== VERDICT: {'PASS' if ok else 'FAIL'} ==")
+    out.append(f"== VERDICT: {'PASS' if ok else 'FAIL'} ({report.subject}) ==")
     for reason in reasons:
         out.append(f"  - {reason}")
     return "\n".join(out)
+
+
+@dataclass
+class Check:
+    name: str
+    passed: bool
+    detail: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {"name": self.name, "passed": self.passed, "detail": self.detail}
+
+
+@dataclass
+class DeliveryReport:
+    drained: int = 0
+    seconds: float = 0.0
+    outcomes: Counter[str] = field(default_factory=Counter)
+    dead_letters: Counter[str] = field(default_factory=Counter)
+    checks: list[Check] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return bool(self.checks) and all(c.passed for c in self.checks)
+
+    def check(self, name: str, passed: bool, detail: str) -> None:
+        self.checks.append(Check(name, passed, detail))
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "drained": self.drained,
+            "seconds": round(self.seconds, 2),
+            "outcomes": dict(sorted(self.outcomes.items())),
+            "dead_letters": dict(sorted(self.dead_letters.items())),
+            "checks": [c.to_dict() for c in self.checks],
+            "passed": self.ok,
+        }
+
+
+@dataclass
+class RunReport:
+    """The whole run: each subject's report and the delivery phase's."""
+
+    subjects: list[Report]
+    delivery: Any = None  # DeliveryReport
+    problems: list[str] = field(default_factory=list)
+
+    def verdict(self) -> tuple[bool, list[str]]:
+        reasons = list(self.problems)
+        for report in self.subjects:
+            ok, why = report.verdict()
+            reasons.extend(f"{report.subject}: {reason}" for reason in why)
+        if self.delivery is None:
+            reasons.append("the delivery phase did not run")
+        elif not self.delivery.ok:
+            failed = [c.name for c in self.delivery.checks if not c.passed]
+            reasons.append(f"delivery checks failed: {', '.join(failed) or 'none ran'}")
+        return (not reasons, reasons)
+
+    def to_json(self) -> str:
+        ok, reasons = self.verdict()
+        data = {
+            "verdict": "PASS" if ok else "FAIL",
+            "reasons": reasons,
+            "subjects": {report.subject: report.to_dict() for report in self.subjects},
+            "delivery": self.delivery.to_dict() if self.delivery is not None else None,
+        }
+        return json.dumps(data, indent=2, sort_keys=True, default=str)
+
+
+def render_delivery(delivery: Any) -> str:
+    out = ["== The delivery phase: the app's outbox against the fixture provider =="]
+    out.append(
+        f"drained {delivery.drained} events in {delivery.seconds:.1f} s;"
+        f" outcomes: {', '.join(f'{k}:{v}' for k, v in sorted(delivery.outcomes.items()))}"
+    )
+    dead = ", ".join(f"{k}:{v}" for k, v in sorted(delivery.dead_letters.items())) or "none"
+    out.append(f"dead letters (the planted controls' worlds only): {dead}")
+    out.append(
+        table(
+            ("check", "result", "detail"),
+            ((c.name, "PASS" if c.passed else "FAIL", c.detail[:240]) for c in delivery.checks),
+        )
+    )
+    return "\n".join(out)
+
+
+def render_run(run: RunReport) -> str:
+    sections = [render(report) for report in run.subjects]
+    if run.delivery is not None:
+        sections.append(render_delivery(run.delivery))
+    ok, reasons = run.verdict()
+    verdict = [f"== VERDICT: {'PASS' if ok else 'FAIL'} ==", *(f"  - {r}" for r in reasons)]
+    return "\n\n".join(sections) + "\n\n" + "\n".join(verdict)

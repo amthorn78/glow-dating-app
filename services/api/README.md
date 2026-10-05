@@ -55,6 +55,17 @@ See [interaction semantics](../../docs/architecture/interactions-fixtures.md),
 [P05.3 evidence](../../docs/testing/p05-3-checkpoint.md) and the
 [P11 obligations](../../docs/testing/p11-deferred-acceptance.md).
 
+P06.2 Stage A adds the chat contact port (`glow_domain/chat.py`), the chat provider
+port with an in-memory fixture adapter (`glow_domain/chat_provider*.py`), the token rules
+(`glow_domain/chat_tokens.py`) and the `glow_chat` package: an ORM persistence adapter
+that carries P06.DB's send-versus-revocation design onto `glow_persistence`'s models,
+and the outbox delivery to the provider port. Migration `0003` adds `ChatIdentity` and
+`ChatReadCursor`; it is applied only to the disposable proof database. `glow_chat` needs
+a database and runs only under `proofs/postgres-ordering`'s settings, which test it on
+PostgreSQL in CI; this runtime imports none of it and keeps the dummy backend
+(`tests/test_chat_sealed_runtime.py`). No route, served feature or provider call is added.
+See the [data model](../../docs/architecture/data-model.md), "Chat contact and the outbox".
+
 ## Reproduce locally
 
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:

@@ -331,6 +331,27 @@ jobs:
           rm -f "$DIR/wrong-marker" "$DIR/wrong-marker.log" "$DIR/relations-before.txt" "$DIR/relations-after.txt"
           test "$fail" = 0
           echo "a wrong marker was refused, and the proof's database is unchanged and holds no table"
+      - name: Show that dbshell is refused under the proof's settings, before any connection
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          # P06.DB's carried item 6 (DM-12): the proof's own dbshell refuses with the marker's
+          # refusal and opens no connection, so psql never starts with the proof's settings.
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/marker")" \
+            DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings \
+            python -m django dbshell < /dev/null > "$DIR/dbshell.log" 2>&1
+          status=$?
+          set -e
+          refusal=$(grep -m 1 -F 'RefusedDatabase: refusing dbshell' "$DIR/dbshell.log" || true)
+          rm -f "$DIR/dbshell.log"
+          echo "dbshell exit status: $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: dbshell exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the dbshell refusal is missing (diagnostics withheld)"; exit 1; fi
+          echo "refusal: $refusal"
       - name: Apply the reviewed migrations from zero, check them against the models, record the server
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
@@ -344,7 +365,7 @@ jobs:
           proof python -m django migrate --verbosity 1
           proof python -m django makemigrations --check --dry-run
           proof python -m glow_ordering_proof facts
-      - name: Run the suite, the stress run, the negative controls and the commit-order oracle
+      - name: Run the suite on both subjects (the reference design and the app's adapter), then the delivery phase
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
         run: |
@@ -354,6 +375,37 @@ jobs:
             PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/marker")" \
             DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings \
             python -m glow_ordering_proof run --seed 20260929 --results .work/results.json
+      - name: Show that a second run on the used database is refused before it writes
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          # P06.DB's carried item 1 (R2): run refuses a database whose proof tables or app
+          # accounts already hold rows; the counts, read as the superuser inside the
+          # container, are unchanged by the refused run.
+          counts() {
+            docker exec "$CONTAINER" psql -X -q -At -v ON_ERROR_STOP=1 -U postgres -d glow_proof -c \
+              "SELECT (SELECT count(*) FROM proof_writer_log) || ' ' || (SELECT count(*) FROM proof_adapter_call) || ' ' || (SELECT count(*) FROM proof_world) || ' ' || (SELECT count(*) FROM glow_persistence_appaccount) || ' ' || (SELECT count(*) FROM glow_persistence_outboxevent)"
+          }
+          before=$(counts)
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/marker")" \
+            DJANGO_SETTINGS_MODULE=glow_ordering_proof.settings \
+            python -m glow_ordering_proof run --seed 20260929 > "$DIR/rerun.log" 2>&1
+          status=$?
+          set -e
+          after=$(counts)
+          refusal=$(grep -m 1 -F 'refusing a used database' "$DIR/rerun.log" || true)
+          rm -f "$DIR/rerun.log"
+          echo "rows (proof log, adapter calls, worlds, app accounts, outbox events) before: $before; after: $after"
+          echo "second run exit status: $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: a second run on the used database exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
+          if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
+          echo "refusal: $refusal"
       - name: Save the results table's JSON
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -1,10 +1,16 @@
 # Static application data model
 
 P02.2 defines 32 app-owned Django models and two migration files in
-`services/api/glow_persistence/`. These are **unapplied design artifacts**. The
-fixture API does not install this app. No ORM repository, database driver,
-database connection, real authentication or durable queue is implemented by them.
-The P11 [migration plan](../operations/migration-plan.md) owns activation order.
+`services/api/glow_persistence/`. P06.2 Stage A adds two models, `ChatIdentity` and
+`ChatReadCursor`, in a third migration, `0003_chat_identity_read_cursor`, which only
+creates them; `0001` and `0002` are byte-identical to P02's. These are **unapplied
+design artifacts**: the fixture API does not install this app, and no migration is
+applied anywhere but a disposable proof database. P06.2 Stage A adds the first ORM
+code over them, the chat contact adapter and its outbox delivery (`services/api/glow_chat`,
+below), which run only under the disposable-PostgreSQL proof's settings; the API's
+runtime imports none of it and keeps its dummy backend. No real authentication or
+deployed queue exists. The P11 [migration plan](../operations/migration-plan.md) owns
+activation order.
 
 ## Identity, time and field semantics
 
@@ -91,6 +97,7 @@ migration is activated by this fixture work.
 | `CompatibilitySnapshot` | Ordered viewer/candidate, both engine references, birth/mapping revisions, full eligibility vector, engine/contract/adapter provenance and expiry. Unique directional revision tuple; viewer/expiry index. | Account-private metadata only; no HDE result body/score/band column. `ready` means internal metadata state, not permission to expose an HDE result. Cache/output rights remain A01. |
 | `RecommendationBatch`, `RecommendationEntry` | Owner, policy and own three eligibility revisions in batch; each candidate's three revisions in entry. Limit 1–100; positions 0–99; unique candidate and position per batch. Nullable snapshot FK can clear when removed. Owner/time/ID cursor index. | Bounded account-private candidate queue. API page maximum 50 is smaller than batch maximum. Repositories enforce count ≤ batch limit, entry position < limit, no self-candidate and correct snapshot pair. |
 | `ChatBinding`, `MessageSubmission` | One binding per match; provider/channel unique when known; active binding requires reference. Actor/idempotency key unique; accepted message requires provider receipt, pending message requires private text. | Provider owns retained conversation history. App temporarily owns bounded delivery spool (4000 code points), clears per approved retention/receipt policy. Only reference/version enters outbox. No provider membership alone grants send permission. |
+| `ChatIdentity`, `ChatReadCursor` (P06.2, migration 0003) | One provider user ID per account and provider; provider/user reference unique; active or deactivated; the cut-off of the latest per-user token revocation the provider confirmed. Account FK is PROTECT. One read cursor per match and member, pointing at the last read `MessageSubmission` (PROTECT). | The user reference is `secrets.token_hex(16)`, never derived from an account ID, name or email, never shown or logged; no name, image or custom field exists to send. The mapping outlives the account row until the provider deletion step that needs it has run (P07/P08); purge removes cursors before the submissions they name. Unread is counted from Glow's own accepted submissions after the cursor; the provider's read state is not used. |
 | `DeviceRegistration`, `NotificationSettings` | Unique installation ID and private token-store reference; account FK; iOS/Android and active/revoked checks. One notification preference row per owner, defaults off. | Provider-managed secret reference, not plaintext token. Installation transfer/rotation requires old owner revocation in UOW. Wire provider token goes into the supported secure store before this reference is saved. |
 | `SafetyReport`, `ModerationCase`, `Appeal`, `StaffAudit` | Reporter/subject nullable `SET_NULL`; preserved subject marker. Protected report/case relationships. Resolved case/appeal requires outcome. Unique audit request ID; object/time audit and moderation queue indexes. | Safety-restricted description/evidence and immutable audit. Evidence-ref JSON shape/ownership validated before save. Staff subject is external authenticated operator identity, distinct from dating accounts. No support-to-moderation privilege inheritance. |
 | `SupportRequest` | Optional account or secure contact reference, bounded subject/description, explicit lifecycle and retention metadata. | Account-private/support-restricted. Public requests get generic acknowledgment; contact verification precedes account action. Category is server-classified, not an undeclared mandatory client field. |
@@ -147,6 +154,90 @@ No event relies on rereading a body already erased by deletion. Leases/retries h
 configured finite limits and dead-letter reconciliation; no retry duration is
 selected by schema defaults.
 
+## Chat contact and the outbox (P06.2 Stage A)
+
+The [P06.2 brief](../planning/p06-2-chat-integration.md), revision 2, items 1 to 4.
+The domain port is `glow_domain/chat.py` (`ContactPersistence`); the persistence
+adapter that implements it is `glow_chat/contact.py` (`OrmContactPersistence`); the
+outbox delivery is `glow_chat/delivery.py`; the chat provider port and its fixture
+adapter are `glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the token
+rules are `glow_domain/chat_tokens.py`. The adapter is a new package rather than code in
+`glow_persistence`, so that the model registry stays definitions only (its static check
+still forbids every connection) and the runtime's seal names one package it must never
+import. The disposable-PostgreSQL proof (`proofs/postgres-ordering`) runs P06.DB's race
+suite against this adapter as its second subject; that run, not this page, is the
+evidence ([evidence record](../testing/evidence/2026-10-05-p06-2-chat-integration.md)).
+
+**The transaction design** is P06.DB's reference design (its brief, D5), carried as
+written: `READ COMMITTED`; row locks by primary key with `SELECT ... FOR UPDATE` in one
+canonical order (the lower account, the higher account, the match, the sending session);
+every check in code under the locks, with the time read after them; authorize, then
+deduplicate; a locked read that finds no row refuses; deletion is the lifecycle
+transition. The send writes its `MessageSubmission` and its `OutboxEvent` in one
+transaction. The adapter has no test switch; a caller may observe a writer's hold points
+(`TransactionProbe`), which only signal and wait.
+
+**The send's checks beyond P06.DB's** (D5): both profiles must be `visible`, and both
+accounts' latest onboarding consent decision must be `accepted`. The consent is F02's
+`ConsentIntent`, held as `ConsentDecision` rows with **`purpose` `onboarding`**
+(`glow_domain.chat.ONBOARDING_CONSENT_PURPOSE`); decisions are append-only, and the
+latest is the highest version. The pause, the restriction and the consent withdrawal
+each lock the account row first and bump the version of the row the send reads (the
+profile's, or a new decision's), so the send, holding both account locks, reads them
+current. A resume restores a paused profile; nothing in Stage A lifts a restriction
+(P07). Until P07 sets Nathan's policy, an unknown or paused state denies contact (F06).
+
+**Provider identifiers** are random and committed before any provider call: a match's
+activation creates the match, each member's `ChatIdentity` if it has none, and the
+`ChatBinding` with a random `channel_ref` (state `pending`), with the channel's outbox
+event, in one transaction under both account locks. A send stores its provider message
+ID in `MessageSubmission.provider_message_ref` when it is authorized; acceptance by the
+provider moves the submission to `accepted`. A send is accepted into a `pending` or
+`active` binding: its event queues behind the channel's creation.
+
+**Outbox events** (schema version `glow-chat-1`). Each carries only its aggregate, its
+version and a payload reference. Five are delivered, each as exactly one provider call:
+
+| Event (aggregate) | Written by | Provider call on delivery | Receipt recorded |
+|---|---|---|---|
+| `match_activated` (match; payload the binding) | match activation | create the channel with exactly the two members | `ChatBinding.state` `active` |
+| `message_submitted` (submission) | an authorized send | send the message on the member's behalf, with its committed ID | `MessageSubmission.state` `accepted` |
+| `contact_revoked` (match, new contact version) | a block of an active match, an unmatch | remove both members; history stays at the provider (D6) | `ChatBinding.state` `revoked` |
+| `access_revoked` (account, new epoch) | suspension, deletion | deactivate the provider user | `ChatIdentity.state` `deactivated` |
+| `session_epoch_bumped` (account, new epoch) | every session-epoch bump (today suspension and deletion) | revoke the user's tokens issued before the event's time (DM-13 5.1) | `ChatIdentity.tokens_revoked_before` |
+
+`block_changed`, `session_revoked`, `session_expired`, `profile_paused`,
+`profile_resumed`, `profile_restricted`, `consent_accepted` and `consent_withdrawn` are
+logical events for later consumers and make no provider call. An unmatch or a block
+does not revoke tokens per user: removal suffices, and a per-user revocation would cut
+the user's other matches. A single-device sign-out bumps no epoch; that device's token
+lives until it expires (one hour), a residual recorded beside DB09.
+
+**Delivery** is first in, first out over the chat events, by `(available_at,
+created_at, id)`: the due events are read in that order and each, in turn, is leased by
+its key in one transaction that reads what the call needs; one provider call follows
+outside any transaction; a second transaction records the receipt and marks the event
+`delivered`. Per channel and per user the order is the
+commit order, because every writer whose events concern the same provider object locks
+a common account row. A failed event that may be retried returns to the head with its
+`available_at` unchanged, so nothing overtakes it, and is repeated with the same
+committed identifiers, so the provider never gets a second channel, message or member.
+After five attempts, or on a final code, the event is dead-lettered and the binding or
+submission it concerns is marked `failed`. A message is never delivered into a binding
+that is `revoked` or `failed`. Every provider error is kept only as a Glow code
+(`provider_unavailable`, `provider_rejected`, `channel_unavailable`,
+`member_unavailable`); no provider text is stored, logged or shown, and no column holds
+the last error code in Stage A. A message authorized before a revocation committed is
+delivered into the channel's history first and the members are removed after it: it stays
+`accepted` in Glow's record, no member can read the channel, and nothing re-sends it.
+Stage A runs delivery in-process under the proof; there is no deployed worker before P11,
+and one deliverer at a time is assumed.
+
+**Token rules** (D6): `grant_chat_token` grants one hour only for a `valid`, unexpired
+session at its account's current epoch, of an `active` account with an active chat
+identity; it refuses after suspension or deletion. It signs nothing; P11 serves the
+endpoint and Stage B's adapter signs.
+
 ## Erasure, retention and restore
 
 Retention categories and unresolved A05 decisions are governed by
@@ -182,5 +273,7 @@ from the fixture API registry. They block connection/cursor/schema calls.
 
 These results establish no SQL syntax acceptance, enforced database constraint,
 atomic repository, actual allauth behavior, index performance, provider purge,
-encryption configuration or restore outcome. The exact remaining cases are
+encryption configuration or restore outcome. (P06.DB's and P06.2's disposable-database
+runs apply the migrations to PostgreSQL and exercise the chat adapter's transactions
+there; they are proofs on a throwaway database, not P11's acceptance.) The exact remaining cases are
 [DB01–DB13, PV01–PV08 and PR01](../testing/p11-deferred-acceptance.md).

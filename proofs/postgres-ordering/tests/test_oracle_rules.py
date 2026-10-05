@@ -73,8 +73,9 @@ class World:
 def run(
     world: World, submissions: list[tuple[Any, ...]], revocations: list[tuple[Any, ...]]
 ) -> oracle.OracleReport:
-    """``oracle.evaluate`` with its three fetches answered from constructed rows."""
-    answers = iter([submissions, revocations, world.sessions])
+    """``oracle.evaluate`` for one run tag, with its fetches answered from constructed
+    rows: the submissions, the revocations, the sessions and no other writer."""
+    answers = iter([submissions, revocations, world.sessions, []])
 
     def fetch(cursor: Any, sql: str, params: list[object] | None = None) -> list[Any]:
         return list(next(answers))
@@ -83,7 +84,7 @@ def run(
         mock.patch.object(oracle, "_fetch", fetch),
         mock.patch.object(oracle, "connection", FakeConnection(object())),
     ):
-        return oracle.evaluate()
+        return oracle.evaluate(run_tag="design:stress", case_id="race.block_by_high")
 
 
 def rules(report: oracle.OracleReport) -> list[str]:
@@ -210,8 +211,10 @@ class ExistingRulesTests(unittest.TestCase):
         self.assertEqual(rules(report), [])
 
     def test_o5(self) -> None:
+        # Narrowed in P06.2 (CX2): a commit at or after the expiry alone is not a
+        # violation; tests/test_oracle_p06_2.py shows what is.
         world = World()
-        self.assertEqual(rules(run(world, [world.submission(60_000)], [])), ["O5"])
+        self.assertEqual(rules(run(world, [world.submission(60_000)], [])), [])
         report = run(world, [world.submission(5, session=uuid4())], [])
         self.assertIn("O5", rules(report))
 

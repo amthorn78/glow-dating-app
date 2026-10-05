@@ -265,11 +265,13 @@ def judge_stress(control: Control, race_result: stress.RaceResult) -> tuple[bool
 def run_control(
     control: Control, *, log: ProofLog, workers: list[Worker], seed: int
 ) -> ControlResult:
+    from glow_ordering_proof.evidence import ReferenceEvidence
     from glow_ordering_proof.fixtures import DjangoFixtures
     from glow_ordering_proof.reference import ReferenceSubject
 
     log.context = LogContext(run_tag=control.run_tag, variant=control.design.describe())
-    ctx = Context(ReferenceSubject(log, control.design), DjangoFixtures(), log, workers)
+    subject = ReferenceSubject(log, control.design)
+    ctx = Context(subject, DjangoFixtures(), log, workers, ReferenceEvidence(log))
     if control.mode == "forced":
         case_result = run_case(ctx, CASE_BY_ID[control.target])
         report = oracle.evaluate(run_tag=control.run_tag)
