@@ -82,6 +82,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-18 | 5 Oct 2026 | accuracy | The P06.DB brief took loopback as the proof's database boundary: D1 gives the settings a loopback host as their guard, and D4 says a local run "connects to no other database". A loopback host names a route, not a disposable database, so a misdirected local `migrate` could change a database that is not the proof's | Codex's second code review of PR28 (CX3) |
 | AM5-19 | 5 Oct 2026 | accuracy | The C2 prompt's revision 1 replaced DM-10's 2.3 query with one that named no database to run in. `pg_class` holds one database's relations, so a step that ran the query from another database would pass whatever the wrong-marker `migrate` did to the proof's database. It also gave the prefix test in words only, which did not exclude `LIKE 'pg_%'`, where `_` is a wildcard | Dev Manager 2, DM-11 item 1, before the prompt ran |
 | AM5-20 | 5 Oct 2026 | execution | Verifying C2, restored the scratch worktree after the first fix reversal with `git checkout -- .`, which kept the reverted files that `git checkout <sha> -- <files>` had also staged; the next five reversals and the control ran on a reverted tree. The results were discarded and the reversals redone after a hard reset; no record carried them | App Manager 5, when the unchanged control failed |
+| AM5-21 | 5 Oct 2026 | accuracy | Recording C2's run of record at its integration (`dd67696`), the P11 plan said run 37262466651 "reran the whole plan with the same results". Its outcome was the same; its numbers were not (526 submissions against 617, and 197 to 200 overlaps per race against 174 to 200) | C2's exact-head review (F3) |
+| AM5-22 | 5 Oct 2026 | accuracy | The handoff's current-item line kept calling the P06.DB brief "revision 2" through revisions 3 to 5, although three records batches changed the handoff and the brief. It repeats the mechanism of AM5-10 and AM5-13 | App Manager 5, in the supersession sweep for revision 6 |
 
 ## App Manager 2
 
@@ -573,3 +575,19 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on evidence or code: revision 1 never ran.
 - **Correction:** revision 2 of the C2 prompt replaces the departure with DM-11's words: the query runs with `psql -d` naming the proof's database, the prefix test is `starts_with(nspname, 'pg_')`, and every schema's count must be the same before and after the wrong-marker `migrate`.
 - **Prevention:** when a prompt specifies a database check, it names the database the check runs in and gives the exact SQL test, and asks of the check what 2.3 asks of the exit code: whether it could pass for the wrong reason.
+
+### AM5-21 — The P11 plan said C2's run had "the same results" (accuracy)
+
+- **What happened:** recording C2's run of record at its integration (`dd67696`), the manager wrote in the P11 plan's "Early partial evidence" that Foundation run 37262466651 "reran the whole plan with the same results". Its outcome was the same: 55 of 55 cases, every control failing by its declared signal, and zero violations in the design's rows. Its numbers were not: 526 submissions against C1's 617, and 197 to 200 overlaps per race against 174 to 200.
+- **Caught by:** C2's exact-head review (F3).
+- **Effect:** none on a mark: DB06's entry gives each run's own overlap counts, and the marks stand as worded. A reader could have taken the counts to repeat.
+- **Correction:** the sentence now says "the same outcome" and names it, in the review's words.
+- **Prevention:** a record that compares two runs of a timing-dependent suite says what is the same (the plan, the outcome) and gives each run's own counts; "the same results" is not used for them.
+
+### AM5-22 — The handoff kept naming the brief's revision 2 (accuracy)
+
+- **What happened:** the handoff's current-item line, written on 29 September, says the P06.DB brief is "revision 2, which applies the Dev Manager's read (DM-08) as written". Revisions 3 (CX3's marker), 4 (DM-10's conditions) and 5 (DM-11's words) followed on 5 October, each in a records batch that also changed the handoff, and the line stayed.
+- **Caught by:** App Manager 5, in the supersession sweep for revision 6, which looked for the brief's revision numbers in living documents.
+- **Effect:** none on a decision or a prompt: the line links the brief, whose status line names its current revision, and every prompt names the revision it read. A successor reading only the handoff would have taken revision 2 as current.
+- **Correction:** the line now names revision 6 and points to the brief's status line for the others.
+- **Prevention:** it repeats the mechanism of AM5-10 and AM5-13, a status fact left behind in another document. The supersession sweep in the manager workflow's step 5 already requires a search for the old wording; when a brief's revision changes, the old wording includes its previous revision number, so the sweep searches the living documents for it.

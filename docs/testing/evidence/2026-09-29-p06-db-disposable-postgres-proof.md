@@ -969,7 +969,7 @@ The second correction pass on P06.DB: Codex's CX3, corrected with the run's mark
 | Item | Done where | Test (offline, no database) |
 |---|---|---|
 | **1. The marker's form** (DM-10 2.1) | `environment.py:55` `MARKER = "PROOF_DB_MARKER"`, in `PROOF_NAMES` (`:56`), so a missing marker is refused with the other missing names; `:59` `MARKER_FORM` (`[0-9a-f]{32}`, matched with `fullmatch`); `:138` `database_marker` refuses a missing or malformed value, naming the variable and no value; `:152` `expected_comment` is `glow-ordering-proof:` (`:61`) followed by the marker. The settings call it at import (`settings.py:34`) | `tests/test_marker.py`, `MarkerFormTests`: twenty `token_hex(16)` values accepted; refused, each naming `PROOF_DB_MARKER` and no value: missing, empty, 31 and 33 characters, upper case, non-hex, a leading or trailing space, a trailing newline, `0x`-prefixed, the comment prefix plus the marker, and the bare prefix. `SettingsMarkerTests.test_settings_refuse_a_missing_or_malformed_marker_at_import`: the settings module refuses at import (missing, empty, short, padded) |
-| **2. The check** (DM-10 2.2) | `marker.py`: `install` (`:51`) connects `verify_new_connection` to Django's `connection_created` with a `dispatch_uid` and `weak=False` (`:55`), and the settings call it at import (`settings.py:34`), so every command that loads the settings registers it before its first connection; `__main__.py` does not mention it. `verify_new_connection` (`:67`) runs `QUERY` (`:29`): `pg_backend_pid()` and `shobj_description(d.oid, 'pg_database')` for `d.datname = current_database()`. A missing row, a null comment or any comment that is not the whole expected string closes the connection through Django (`connection.close()`, `:59`) and raises `RefusedDatabase` (`:39`), which is deliberately not a `django.db.DatabaseError`, because `makemigrations` turns an `OperationalError` into a warning and carries on. A failing query also closes the connection (`:77`). The refusal (`REFUSAL`, `:36`) names `PROOF_DB_MARKER` and no value. A pass prints one line with the backend pid and thread (`:86`), so a run's log shows when each connection was opened (2.5). Django 5.2.17's `connect()` sends the signal after `get_new_connection`, `set_autocommit` and `init_connection_state` only; for this backend the last runs `SET TIME ZONE` when the server's differs and `SET ROLE` only with `assume_role`, which the proof does not configure | `tests/test_marker.py`, `ConnectionCheckTests`, with a fake connection and cursor: a matching comment passes with exactly one statement and no close; a different marker, the bare prefix, the marker alone, anything before or after the expected string, upper case, an empty comment, a null comment and no row each refuse, close once, ran only the marker query, and carry no value; no installed marker refuses without a statement; a failing query closes and propagates; the refusal is not a `DatabaseError`. `SettingsMarkerTests`: importing the settings registers the receiver under its `dispatch_uid` with the run's comment, and the registration is in `settings.py`, not `__main__.py`. `tests/test_marker_commands.py` runs `migrate`, `makemigrations --check --dry-run`, `facts` and `run` each in a clean subprocess through `tests/command_harness.py`: Django's real `connect()`, signal, settings and commands, with only the backend's driver-facing methods replaced by a fake server. For five wrong comments each command exits non-zero with the refusal and no value, the marker query was the connection's only statement, and the connection was closed and not kept; with the matching comment each command passes the check and reaches its own first statement |
+| **2. The check** (DM-10 2.2) | `marker.py`: `install` (`:51`) connects `verify_new_connection` to Django's `connection_created` with a `dispatch_uid` and `weak=False` (`:55`), and the settings call it at import (`settings.py:34`), so every command that loads the settings registers it before its first connection; `__main__.py` does not mention it. `verify_new_connection` (`:67`) runs `QUERY` (`:29`): `pg_backend_pid()` and `shobj_description(d.oid, 'pg_database')` for `d.datname = current_database()`. A missing row, a null comment or any comment that is not the whole expected string closes the connection through Django (`connection.close()`, `:59`) and raises `RefusedDatabase` (`:39`), which is deliberately not a `django.db.DatabaseError`, because `makemigrations` turns an `OperationalError` into a warning and carries on. A failing query also closes the connection (`:77`). The refusal (`REFUSAL`, `:36`) names `PROOF_DB_MARKER` and no value. A pass prints one line with the backend pid and thread (`:86`), so a run's log shows when each connection was opened (2.5). Django 5.2.17's `connect()` sends the signal after `get_new_connection`, `set_autocommit` and `init_connection_state` only; for this backend the last runs `SET TIME ZONE` when the server's differs and `SET ROLE` only with `assume_role`, which the proof does not configure. (Correction after C2's exact-head review, F3: it runs `SELECT set_config('TimeZone', %s, false)`, not `SET TIME ZONE`, as the local runs below record.) | `tests/test_marker.py`, `ConnectionCheckTests`, with a fake connection and cursor: a matching comment passes with exactly one statement and no close; a different marker, the bare prefix, the marker alone, anything before or after the expected string, upper case, an empty comment, a null comment and no row each refuse, close once, ran only the marker query, and carry no value; no installed marker refuses without a statement; a failing query closes and propagates; the refusal is not a `DatabaseError`. `SettingsMarkerTests`: importing the settings registers the receiver under its `dispatch_uid` with the run's comment, and the registration is in `settings.py`, not `__main__.py`. `tests/test_marker_commands.py` runs `migrate`, `makemigrations --check --dry-run`, `facts` and `run` each in a clean subprocess through `tests/command_harness.py`: Django's real `connect()`, signal, settings and commands, with only the backend's driver-facing methods replaced by a fake server. For five wrong comments each command exits non-zero with the refusal and no value, the marker query was the connection's only statement, and the connection was closed and not kept; with the matching comment each command passes the check and reaches its own first statement |
 | **3. The CI step** (DM-10 2.3, in DM-11's words) | `.github/workflows/foundation.yml:283` to `333`, "Show that a wrong marker is refused and leaves the proof's database unchanged", after the role step and before the migrations. As the superuser inside the container, with `psql -d glow_proof`, it counts `pg_class` rows per schema (`pg_namespace` left-joined, so a schema with none shows `0`) before and after `migrate` run with the other well-formed marker; it requires a non-zero exit, the refusal line, every schema's count unchanged (`cmp` of the two tables, `pg_toast` included), zero relations outside `information_schema` and the schemas for which `starts_with(nspname, 'pg_')` is true, before and after, and `to_regclass('public.django_migrations') IS NULL` after. It prints both tables once and no name of a role, password or marker; on an unexpected outcome it withholds `migrate`'s diagnostics | CI only (the step is workflow shell). Its queries were tried on the local cluster (below): unchanged and zero after a refused `migrate`; after a real `migrate`, `public` 184, `pg_toast` 110, 184 outside, and `django_migrations` present, so each of the three checks would fail |
 | **4. The marker in the job** (DM-10 2.4, with DM-11's note) | `foundation.yml:233` to `247`: the credentials step generates the run's marker and a different one with `secrets.token_hex(16)`, masks both with `::add-mask::` (`:239`, `:240`) right after the passwords' masks and before any other output, refuses if the two are equal, and writes them to `marker` and `wrong-marker` in the job's `mktemp -d` directory, mode `0600`. `create-role.sql` gains `COMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:<marker>'` (`:244`), which the role step already pipes into `psql` as the superuser with its output kept out of the log (`:278` to `281`) and then deletes. Each step that needs a marker reads it with `PROOF_DB_MARKER="$(cat "$DIR/…")"` for its own commands (`:302`, `:341`, `:354`); nothing writes it to `$GITHUB_ENV` or `$GITHUB_OUTPUT`, and the upload step sees only `.work/results.json`. The wrong-marker step removes `wrong-marker` and its log (`:331`); the removal step removes the whole directory, `marker` included (`:377`). Only the `database` job changed: the other seven jobs, the gate and the workflow's top level parse identical to `ad3323d`'s | The run's log (below): the marker step's masks precede any output, no marker or password appears, and `credential and marker files removed` |
 | **5. The README** | `README.md`: the brief line (`:5`); the layout's settings, environment and new marker rows (`:23` to `25`); the offline checks (`:80`); "The run's marker" with the local recipe, `COMMENT ON DATABASE` right after `CREATE DATABASE`, a new marker per database, and the reused-database guard (`:93` to `100`); `PROOF_DB_MARKER` in the command (`:108`); why loopback is not enough (`:117`); the CI job (`:119`); the local recipe (`:121`); a "Limits" line: the marker ties the proof to the database created for the run and does not replace the reused-database guard carried to P06.2 (`:132`) | Documentation |
@@ -1147,7 +1147,7 @@ App Manager 5 checked the relayed report against the pushed branch, the code and
 
 #### Observations for the exact-head review
 
-1. **The races ran slower in this run, with more overlaps:** 4.2 to 7.1 s against 2.7 to 4.6 s, and 197 to 200 overlaps against 174 to 200. The same day, PR run 37260032996 on `ad3323d`, the code before C2, gave 2.6 to 4.6 s and 174 to 200 (job 111605158228, Azure region `westus3`); C2's run ran in `westus`. The marker query ran only on `run`'s five connections. A slower runner fits both differences but is not established. PR28's pull-request run on the integrated head runs C2's code again.
+1. **The races ran slower in this run, with more overlaps:** 4.2 to 7.1 s against 2.7 to 4.6 s, and 197 to 200 overlaps against 174 to 200. The same day, PR run 37260032996 on `ad3323d`, the code before C2, gave 2.6 to 4.6 s and 174 to 200 (job 111605158228, Azure region `westus3`); C2's run ran in `westus`. The marker query ran only on `run`'s five connections. A slower runner fits both differences but is not established. PR28's pull-request run on the integrated head runs C2's code again. (Settled by C2's exact-head review, F2: runs of C1's code, without the marker, ran as slowly, and C2's code ran slowly in a region where C1's ran fast; see "Exact-head review of P06.DB-C2".)
 2. **The masks' order** (the section's first deviation). DM-10's 2.4 says the marker is masked "as that step's first output". The step's first four outputs are the four `::add-mask::` lines, the passwords' first; its only other output is its closing line. The manager reads this as within 2.4.
 3. **The verification line** (the section's second deviation): one line per new connection, with its backend pid and thread and no value. It is not in DM-10's conditions. The hook still runs one `SELECT` and nothing else, and the line gives 2.5's reconnect check a direct record. The manager reads it as within 2.2.
 4. **A failing marker query.** If the query itself raises, for example on a dropped connection or a server that is not PostgreSQL, the receiver closes the connection and re-raises the driver's error as Django wraps it. That ends `migrate`, `facts` and `run`. `makemigrations` alone turns a Django `OperationalError` from its consistency check into a warning and carries on; `makemigrations --check --dry-run` changes no database, and in the job it runs after `migrate`. Not in a correction class, in the manager's reading.
@@ -1159,4 +1159,260 @@ App Manager 5 checked the relayed report against the pushed branch, the code and
 - **The run of record** for the final code is run 37262466651 (the C2 prompt). The P11 plan's DB06 and DB09 entries cite it; the marks stand as worded.
 - **The CI policy** takes DM-10's sentence, as written (its item 4), in the batch that records this verification.
 - **AM5-20** is logged, a summary row: the slip reached no record.
-- **Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-05-p06-db-c2-review-prompt.md)), of `369d03c`, offline, reading job 111612413204's log; it checks DM-10's 2.5 and DM-11's note on 2.4.
+- **Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-05-p06-db-c2-review-prompt.md)), of `369d03c`, offline, reading job 111612413204's log; it checks DM-10's 2.5 and DM-11's note on 2.4. (Done the same day: approve, with F1's classification going to the Dev Manager; see below.)
+
+### Exact-head review of P06.DB-C2 (5 October 2026)
+
+Nathan ran the review session from revision 1 of the [review prompt](../../ephemeral/2026-10-05-p06-db-c2-review-prompt.md) (records commit `dd67696`), in `Glow App - No Stream`, on Opus 5.5 at extra high, the cell TypeSafe v6 read. He started it and relayed its report to App Manager 5 on 5 October. It reviewed the exact head `369d03c5cd1ed3537e044335bfb6ecc4cbc25f9a`.
+
+- **Verdict: approve.** C2's correction, its run of record and the records are sound.
+- **No finding is blocking or in a correction class.** One should-fix finding, F1: Django's `dbshell` starts `psql` outside Django, so the marker is never checked for it, and the README says every command is checked. Two nits: F2, the slower races of C2's runs also appear in runs of C1's code, without the marker; F3, two loose phrases in the records.
+- **Everything else is confirmed:** DM-10's conditions 2.1 to 2.5 (2.2 for every connection made through Django), DM-11's precisions and its note on 2.4, DM-08 7.2's three log checks on job 111612413204, the manager's five observations and its dispositions, the DB06 and DB09 entries, and PR28's latest pull-request run.
+
+#### The report, as relayed
+
+The session's notes before its report, as relayed, verbatim:
+
+> Start gate and classifications pass; now reading the C2 diff and the package files.
+>
+> Reviewed the code, tests and harness; next the workflow job, then the records and CI logs.
+>
+> Installing the proof's locked dependencies in a clean process and running the offline checks next.
+>
+> Verifying Django 5.2.17's connection path against the marker's claims.
+>
+> Running offline mutation checks on a scratch copy to confirm each part of the fix has a test that catches its removal.
+>
+> Reading the brief and the evidence record's C2 and verification sections now.
+>
+> Now the manager's verification of C2 at `dd67696`, then the CI logs.
+>
+> Records read. Now loading the GitHub tools to read run 37262466651's database job log and PR28's latest run.
+>
+> Reading the database job's log (905 lines) in chunks; lines 1–340 done.
+>
+> Log of run 37262466651 read whole (905 lines): it matches the record, and no password or marker appears. Next is PR28's latest pull-request run.
+>
+> Fetching that PR run's database job log (job 111618588875).
+>
+> Both runs of C2's code ran in Azure `westus` and the pre-C2 run in `westus3`, so region and code change together. Checking an earlier pre-C2 run to separate them.
+>
+> While that runs: testing the manager's observation 4 offline with a throwaway variant of the command harness whose fake server fails the marker query.
+>
+> The subagent's figures need a spot check before I rely on them. Checking one of its saved logs directly.
+>
+> Checking the PR run's merge commit parents, so the run is tied to C2's code.
+
+The report, verbatim, with its title line left out and its headings moved down to fit this record:
+
+- **Prompt:** revision 1, from commit `dd67696b1549ce1246aed05f641e8546f05be9a4`.
+- **Reviewed head:** `369d03c5cd1ed3537e044335bfb6ecc4cbc25f9a` (`git rev-parse HEAD`). `HEAD^2` is `1178dfa450cce88daf354de8b7b2f0434800fc05`.
+- **Verdict: approve.** No finding is blocking, and none falls in a class that needs a correction before PR28 merges. One should-fix and two nits go into the records. C2's correction, its run of record and the records are sound. PR28 can go on to Codex's review of its final head and the merge.
+
+##### Environment check (names only)
+
+- `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`: none present.
+- No `PG*`, `PROOF_DB_*` or `STREAM_*` name is set (`compgen` printed nothing).
+- `command -v python3.12` gives `/root/.local/bin/python3.12`, Python 3.12.14, with `$HOME/.local/bin` first on PATH.
+
+##### Start gate and classification
+
+- Every gate check passed:
+  - `HEAD^2` is as expected, and there is one merge base, `47db18d…`.
+  - The records commit builds on the head, and the prompt's commit is the live branch's tip.
+  - No code changed after the prompt's commit, and the review is not yet recorded (count `0`).
+  - The C2 diff is 10 files, +840/−18, and the code is identical to `43d8ca4`'s.
+- The trusted policy came from `main` (`47db18d`, sha256 `dec69a26…`), run outside the tree with `python3 -I`, full SHAs and `--merge-base`:
+
+| Run | Output |
+|---|---|
+| `main` → `369d03c` | `{"full": true, "reason": "behavior-or-empty"}`, 64 paths. The non-Markdown filter printed nothing. |
+| `ea21ac8` → `ad3323d` | `{"full": false, "reason": "ordinary-docs-only"}`, 18 paths |
+| `369d03c` → `dd67696` | `{"full": false, "reason": "ordinary-docs-only"}`, 10 paths |
+
+##### Findings, most severe first
+
+**F1. Should fix; in none of the four classes. `dbshell` skips the marker, and the README says every command is checked.**
+- **Where:** `proofs/postgres-ordering/README.md:100` ("Every command that uses the proof's settings checks the comment on each new connection") and `:132` ("every command refuses it").
+- **Scenario:** an operator runs `python -m django dbshell` (or `dbshell -- -c "…"`) with the proof's variables pointed at an SSH-forwarded server on loopback.
+  - Django's `dbshell` starts `psql` as a subprocess with the settings' host, port, name, user and `PGPASSFILE` (`django/db/backends/postgresql/client.py`). It never calls `connect()`, so `connection_created` never fires.
+  - The shell opens on that server with no marker check.
+  - I showed this offline with a fake `psql` first on PATH and a nonexistent socket directory: `dbshell` exited 0 and launched the fake psql, and no connection was opened.
+- **Why it is outside the classes:** neither the job nor any documented proof command runs `dbshell`, and it takes a deliberate interactive step. Every connection made through Django is checked.
+- **Fix:** records only. In the README at `:100` and `:132`, say the check covers every connection opened through Django (`migrate`, `makemigrations`, `facts`, `run` and any other command that queries through Django), and that `dbshell` starts `psql` outside Django, is not checked, and must not be run with the proof's settings. A code guard is optional and not needed before the merge.
+
+**F2. Nit, records; in none of the classes. Observation 1's explanation can now be settled: the slowdown is not C2's.**
+- **Where:** the evidence record at `dd67696`, lines 1150 and on (observation 1), and the session's "Deviations and limits".
+- Five PR28 runs of C1's code (no marker) on 5 October ran as slowly as C2's runs:
+
+  | Run | Region | Seconds per race | Overlaps |
+  |---|---|---|---|
+  | 37247069322 | eastus | 4.1–7.1 | 196–200 |
+  | 37248312801 | eastus2 | 4.2–7.2 | 199–200 |
+  | 37249533664 | eastus2 | 4.2–7.1 | 198–200 |
+  | 37250476485 | northcentralus | 4.0–6.9 | 190–200 |
+  | 37253751070 | eastus2 | 4.3–7.2 | 199–200 |
+
+- The fast runs are the outliers: C1's run of record 36534514283 (centralus, 2.7–4.6 s) and 37260032996 (westus3, 2.6–4.6 s). Region is not the variable.
+- **Fix:** add one sentence to the record saying the same timing appears without the marker.
+
+**F3. Nit, records; in none of the classes. Two loose phrases.**
+- `docs/testing/p11-deferred-acceptance.md:36` at `dd67696` says run 37262466651 "reran the whole plan with the same results". The numbers differ (526 against 617 submissions; 197–200 against 174–200 overlaps).
+  - Suggested wording: "…reran the whole plan with the same outcome: 55 of 55 cases, every control failing by its declared signal, and zero violations in the design's rows."
+  - The DB06 and DB09 marks themselves are unaffected.
+- The evidence record, line 972 (item 2), says Django "runs `SET TIME ZONE`". It actually runs `SELECT set_config('TimeZone', %s, false)` (`postgresql/operations.py:205`), as the session's local-run paragraph correctly says.
+
+##### DM-10's conditions and DM-11's points
+
+- **2.1, confirmed.**
+  - `MARKER_FORM` is `[0-9a-f]{32}`, applied with `fullmatch` (`environment.py:59`, `:144`). `PROOF_DB_MARKER` is in `PROOF_NAMES` (`:56`).
+  - Refusals name the variable and no value. The settings refuse at import (`settings.py:34`).
+  - The comparison is of the whole string (`marker.py:73`).
+- **2.2, confirmed for every connection made through Django** (`dbshell` aside, F1).
+  - The receiver is registered in the settings, on `connection_created`, for every sender. Django 5.2.17's `connect()` (`base/base.py:237–259`) sends the signal after `get_new_connection`, `set_autocommit` and `init_connection_state` only.
+  - For this backend, `init_connection_state` reads the version from `connection.info` and runs at most `set_config('TimeZone', …)` in autocommit. `assume_role` is not configured, and there is no pool. Nothing writes or takes a row lock.
+  - On a refusal the receiver closes the connection, and because `in_atomic_block` is reset in `connect()`, the wrapper's `connection` becomes `None`. `RefusedDatabase` is not a driver error, so neither `wrap_database_errors`, `run_from_argv` nor `_nodb_cursor` converts or catches it.
+  - **Worker threads:** a refusal there would be caught by `reference._run`'s `except Exception` and become `Result("error")`. That fails the case or the race (harness failure), so the verdict is FAIL. No statement ever runs on a refused connection.
+  - **A null comment, no row, or an empty comment:** each is refused. PostgreSQL stores an empty comment as null, and the code also refuses `""`.
+- **2.3, in DM-11's words, confirmed.**
+  - The step uses `starts_with(n.nspname, 'pg_')` and `psql -d glow_proof`, and compares the per-schema tables whole with `cmp`, `pg_toast` included. `to_regclass(…) IS NULL` is `t` after.
+  - **Could it pass for the wrong reason?**
+    - A `migrate` that failed for another cause after creating a relation would change the counts, which are checked.
+    - The refusal string appears only in `RefusedDatabase`'s traceback line. The log shows the reason "the database's comment is different".
+    - `set +e`/`set -e` bracket only the wrong-marker command.
+  - The step prints both tables, the counts, the exit status and the refusal line, and no role name, password or marker.
+- **2.4 and DM-11's note, confirmed.**
+  - Both markers are generated and masked before any output; the log's only output from the step is its closing line.
+  - Each of the three steps that needs a marker reads it with `$(cat "$DIR/…")` for its own command (`foundation.yml:302`, `:341`, `:354`). There is no `$GITHUB_ENV` anywhere in the job, and the outputs are only `dir` and `container`.
+  - `create-role.sql` is removed after use, and the removal step deletes `$DIR`. The upload step sees only `.work/results.json`, which carries no settings or comment.
+  - Only the `database` job changed: I parsed every job at `HEAD^1` and `HEAD`, and the scope job, the other five jobs, the gate and the top level are identical.
+- **2.5, confirmed.**
+  - The plan is `ea21ac8`'s: no race, case, control, floor or reference-design file changed.
+  - The run shows 55/55, ten controls failed as intended, 0 design violations, and all 25 held cases observed waiting on holder pid 134.
+  - The marker query runs only in the receiver. Eight verification lines appear (pids 130 to 137), the last five all before `cases: 55/55 passed`, and none after. So no worker reconnected.
+
+##### DM-08 7.2's checks (job 111612413204, 905 lines, read whole)
+
+| Check | Result |
+|---|---|
+| No password or marker | **Confirmed.** `***` appears only on lines 38, 94 and 152: the checkout token, checkout's auth header, and setup-python's token. No standalone 32- or 48-character hex string; only 40-character SHAs (15) and 64-character digests (7). |
+| Each forced wait observed with its blocking backend | **Confirmed.** 25 of 25 show `pg_blocking_pids=[134] (holder pid 134)`, after 1, 2 or 3 polls (9, 14 and 2 cases). |
+| The ten controls met their declared signals | **Confirmed**, each with the signal shown. |
+
+##### The manager's observations and dispositions
+
+1. **Timing: agree** the marker cannot cause it. The code queries only at connection creation, and the log shows five connections, all before the cases. The explanation can be stronger (F2): runs of C1's code show the same timing without the marker.
+2. **The masks' order: agree.** All four masks come before any output, and the log shows nothing until the step's closing line. That is within 2.4.
+3. **The verification line: agree,** within 2.2. It carries the pid and thread name, no value, and it is what makes 2.5's reconnection check direct.
+4. **A failing marker query: agree, and it does not matter.** I reproduced it offline with a harness variant whose fake server raises `psycopg.OperationalError` on the marker query:
+   - `makemigrations --check --dry-run` gives a RuntimeWarning, prints "No changes detected" and exits 0;
+   - `migrate` and `facts` exit 1;
+   - in all three, only the marker query ran and the connection was closed and not kept.
+
+   A refusal is never turned into a warning, `makemigrations` changes no database, and the job runs it after `migrate`.
+5. **R1 again: agree.** PR run 37264580408 shows 0, 0 and 0 sends committing first in those three races, within the recorded limit.
+
+**Dispositions: agree with all.**
+- CX3 is corrected, and the run of record is 37262466651.
+- The CI policy's sentence matches DM-10's item 4 word for word. That file is governing Markdown, which the Dev Manager reads.
+- AM5-20 needs no comment from me.
+
+##### DB06 and DB09
+
+The marks are accurate as worded. The cited numbers are correct: 197 to 200 overlaps, and 0, 1 and 0 sends committing first in run 37262466651. The only change I suggest is the "same results" wording in F3.
+
+##### PR28's latest pull-request run
+
+- **Run 37264580408** on `dd67696` (merge commit `1c91ccd`, which merges `dd67696` into `47db18d`): all eight jobs succeeded. "Database proof checks" (job 111618588875) **ran and passed**.
+- The wrong-marker step: identical tables, exit 1, refused because the database's comment is different.
+- Eight verification lines, all before the cases; 55/55; ten controls; oracle 515 submissions and 2,694 revocation rows, 0 design violations; no 32- or 48-character hex string.
+
+| Race | Seconds | Overlaps |
+|---|---|---|
+| `race.block_by_low` | 5.4 | 200 |
+| `race.block_by_high` | 5.4 | 200 |
+| `race.unmatch_by_low` | 5.2 | 200 |
+| `race.unmatch_by_high` | 5.3 | 200 |
+| `race.suspend_low` | 4.7 | 199 |
+| `race.suspend_high` | 4.6 | 200 |
+| `race.delete_low` | 4.9 | 200 |
+| `race.delete_high` | 4.8 | 200 |
+| `race.sign_out_sender` | 4.4 | 200 |
+| `race.expire_sender` | 4.4 | 200 |
+| `race.racing_duplicates` | 6.6 | 200 |
+| `race.opposing_writers` | 7.8 | 200 |
+
+##### Areas with no findings
+
+- **The tests are real.** The harness keeps Django's `connect()`, the signal, the settings and the commands, and replaces only driver methods. I undid 18 parts of the fix one at a time (among them the close on refusal, the close on a failing query, a prefix or substring comparison, a null comment or no row passing, `OperationalError` as the base class, no install, `search`/`match` instead of `fullmatch`, a looser form, a fixed database name, and a value leaking into the refusal). Every one failed the suite (1 to 39 failures).
+  - The receiver's own close is shown through `facts` and `run`. For `migrate` and `makemigrations`, Django's `close_all` in `run_from_argv` would also satisfy the harness's "not kept" check.
+- **CX3 is closed** for every connection made through Django; F1 is the one exception, `dbshell`. The README's "Limits" covers marker reuse and the R2 guard.
+- **The session's section agrees with the log** on every table: wrong-marker, races, controls, oracle and the log checks. Its `file:line` references are correct.
+- **The manager's identity checks and reversal table agree** with what I found.
+- **Scope:** 10 paths, all mode 100644, no symlinks; locks, `pyproject.toml`, `.gitignore`, `services/`, `scripts/`, `apps/` and `packages/` unchanged.
+
+##### Checks run
+
+| Check | Result |
+|---|---|
+| `git diff --check HEAD^1 HEAD` | clean |
+| The three classifications | as above |
+| `pip install --require-hashes -r requirements-dev.lock`, in `env -i` with the proxy and CA variables by reference | exit 0 |
+| `pip check` | `No broken requirements found.` |
+| Unit tests, `env -i` | `Ran 98 tests`, `OK` |
+| `ruff check .` | `All checks passed!` |
+| `ruff format --check .` | `32 files already formatted` |
+| `mypy` | `Success: no issues found in 32 source files` |
+| `services/api`: `python3.12 -m unittest tests.test_toolchain_pins` | `Ran 3 tests`, `OK` |
+| Secret scan of the diff's 840 added lines | no email, connection string, key, token or password assignment. Long hex strings are only `ad3323d…` and `43d8ca4…` (commits), `b1d74ad…` (a tree) and the image digest `d74eeac9…` |
+| Hosted CI | run 37262466651 (all 8 jobs succeeded) and PR run 37264580408, as above |
+| Offline extras | the `dbshell` demonstration (F1), the 18 reversals, and observation 4's harness variant. All ran on a copy in the scratchpad, and none opened a connection. |
+
+##### Limits
+
+- I started no database. Django's pre-signal behaviour comes from reading 5.2.17's source and from the session's local statement log, which I did not see.
+- The seven earlier runs' timings (F2) were read by a helper agent; I spot-checked each saved log's region and its minimum and maximum race seconds myself.
+- I did not download the results artifact.
+- The CI policy sentence is governing Markdown and outside this review; I only compared its wording with DM-10's.
+- I changed nothing in the repository, on GitHub or in Notion. The only local residue is gitignored caches and `.venv/`; the checkout is detached at `369d03c`.
+
+#### Manager verification of the review (App Manager 5, 5 October 2026)
+
+- **The prompt and the head:** the report names revision 1 from `dd67696`, the prompt Nathan was given, and the head `369d03c`. When the report arrived the live branch was still at `dd67696`, and no run of PR28's branch had been re-run.
+- **The classifications,** rerun with the trusted policy (sha256 `dec69a26…`) and full SHAs: `47db18d` → `369d03c` is full scope, 64 paths; `ea21ac8` → `ad3323d` and `369d03c` → `dd67696` are `ordinary-docs-only`, 18 and 10 paths.
+- **F1: confirmed in Django 5.2.17's source.** `dbshell` calls `connection.client.runshell` (`core/management/commands/dbshell.py`). For PostgreSQL that builds `psql`'s arguments and environment from the settings (`-U`, `-h`, `-p`, the database name, `PGPASSFILE`; `db/backends/postgresql/client.py`) and runs it with `subprocess.run` (`db/backends/base/client.py:23` to `28`). It never calls `connect()`, so `connection_created` is never sent and the marker is never read. No other command under the proof's settings runs a client: among the commands of Django and its installed apps, only `dbshell` does, and neither the proof nor `glow_persistence` has a command of its own. The README's two sentences (`:100` and `:132`) say every command is checked. The manager agrees that F1 is outside the correction classes: it needs a person to start `dbshell` with the proof's settings and type statements into it, and no proof command or job step runs it.
+- **F2: confirmed.** The manager read the database job's log of each run itself:
+
+  | Run | Code | Region | Seconds per race | Overlaps | Submissions |
+  |---|---|---|---|---|---|
+  | 36534514283 (29 September; C1's run of record) | C1 | centralus | 2.7–4.6 | 174–200 | 617 |
+  | 37247069322 | C1 | eastus | 4.1–7.1 | 196–200 | 530 |
+  | 37248312801 | C1 | eastus2 | 4.2–7.2 | 199–200 | 523 |
+  | 37249533664 | C1 | eastus2 | 4.2–7.1 | 198–200 | 525 |
+  | 37250476485 | C1 | northcentralus | 4.0–6.9 | 190–200 | 529 |
+  | 37253751070 | C1 | eastus2 | 4.3–7.2 | 199–200 | 520 |
+  | 37260032996 | C1 | westus3 | 2.6–4.6 | 174–200 | 607 |
+  | 37262466651 (C2's run of record) | C2 | westus | 4.2–7.1 | 197–200 | 526 |
+  | 37264576075 (push run on `dd67696`) | C2 | centralus | 4.2–7.3 | 197–200 | 524 |
+  | 37264580408 (pull-request run on `dd67696`) | C2 | westus | 4.4–7.8 | 199–200 | 515 |
+
+  Every run passed 55 of 55 cases and ended `== VERDICT: PASS ==`, and no log has a 32- or 48-character hexadecimal string. The push run 37264576075 adds one point to the review's: C2's code ran slowly in `centralus`, where C1's run of record ran fast. C1's code, without the marker, ran fast in two runs and slowly in five, and C2's three runs fall among its slow ones. So neither the marker nor the region explains the timing.
+- **F3: confirmed.** The P11 plan's sentence is the manager's, written at C2's integration (`dd67696`): AM5-21. The session's item 2 says Django "runs `SET TIME ZONE`". Django 5.2.17 runs `SELECT set_config('TimeZone', %s, false)` (`postgresql/operations.py:205`), and only when the connection's time zone differs from the settings' (`postgresql/base.py:351` to `357`). The session's local runs record that statement.
+- **A refusal in a worker thread:** the connection opens inside `reference._run`'s `transaction.atomic()`, so `RefusedDatabase` is caught by its `except Exception` and returned as `Result("error", "RefusedDatabase")` (`reference.py:85` to `107`). A case judges that as a database error (`cases.py:213`), and a race does not allow it (`stress.py:234`), so the run fails. `run` opens its main thread's connection before it starts the workers (`__main__.py:51` and `:67`), so a wrong database stops `run` there first.
+- **The rest:** PR run 37264580408's per-race table, its 515 submissions and 2,694 revocation rows and its eight verification lines are as the report gives them. Django's `run_from_argv` does close every connection (`core/management/base.py:433`). One citation slip, with no effect: `marker.py:73` is the cursor's line; the whole-string comparison is at `:84`.
+
+#### Corrections to this record
+
+- **The session's item 2** ("P06.DB-C2 corrections", "Items 1 to 5") said Django's `init_connection_state` runs `SET TIME ZONE`. It runs `SELECT set_config('TimeZone', %s, false)` when the time zone differs, as the session's local runs record. The item carries a note in place (F3).
+- **Observation 1** of the manager's verification of C2 said a slower runner "is not established". The table above settles it, and the observation carries a note in place (F2).
+
+#### Disposition
+
+- **Approved; F1's classification goes to the Dev Manager first.** C2 stands as integrated at `369d03c`. No finding is blocking, and the review puts none in a correction class, so by the prompt's rule there is no further correction pass and the rest goes into the records.
+- **F1:** the README now says that the check covers every connection the proof's settings open through Django, and that `dbshell` starts `psql` outside Django, is not checked, and is never run with the proof's settings (its "The run's marker" and "Limits"). The brief records F1 under DM-10's 2.2 and carries a guard that refuses `dbshell` to P06.2 as optional (item 6).
+  - DM-10's 2.2 says the check is wired "so no command can skip it", and DM-10 sends a departure on the hook back to the Dev Manager. `dbshell` is a command that skips it.
+  - So the Dev Manager reads F1's classification and this disposition (DM-12, [consultation](../../ephemeral/2026-10-05-dm-12-p06-db-dbshell-read.md)) before PR28 goes ready for Codex. The manager's recommendation: outside the correction classes, with the README's rule and the optional guard.
+- **F2:** observation 1 carries a note in place: runs of C1's code, without the marker, ran as slowly, and C2's code ran slowly in a region where C1's code ran fast.
+- **F3:** the P11 plan's sentence now says "the same outcome" and names it, in the review's words, and AM5-21 is logged. The session's item 2 carries its correction.
+- **Nathan's pick** for this review, Opus 5.5 at extra high, is in the prompt's header and the uses table.
+- **Next:** DM-12. Then PR28 goes ready at its final head for Codex, then the pre-merge checklist, the merge and the receipt.

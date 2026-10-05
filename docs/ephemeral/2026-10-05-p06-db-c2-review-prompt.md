@@ -7,8 +7,9 @@
 - **Where the result goes:** the manager records the verified review in the evidence record, under a new heading "Exact-head review of P06.DB-C2". The outcome goes into the brief's "Sessions" and decides whether PR28 goes on to Codex's review of its final head and the merge.
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34). The reading is the recommendation; it gates nothing, and Nathan picks.
   - **TypeSafe v6: Opus 5.5, extra high.** Effort score 2.83 (confidence 0.79); rung probabilities low 0.00, medium 0.01, high 0.23, extra high 0.68, max 0.08, ultracode 0.00. Model probabilities Fable 5.1 0.04, Opus 5.5 0.96 (confidence 0.93). Sent 2026-10-05T04:38:01Z. Nathan picks the cell.
-  - **Nathan's pick:** pending.
+  - **Nathan's pick:** Opus 5.5 at extra high, the reading's cell (reported on 5 October).
 - **No Dev Manager read is needed:** the prompt authorizes no credential use and no live provider action, and the session starts no database.
+- **Result:** done on 5 October, from revision 1 (records commit `dd67696`): **approve**, of `369d03c`. No finding is blocking, and the review puts none in a correction class. F1, should fix: Django's `dbshell` starts `psql` outside Django, so the marker is never checked for it; the README now says so, and the Dev Manager reads F1's disposition (DM-12) before PR28 goes ready for Codex. F2 and F3 are nits in the records, applied (AM5-21). The manager verified the report and recorded it in the evidence record, "Exact-head review of P06.DB-C2".
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and the session calls no provider.
 - **It runs alone** (OD-29, the linear process). After it: a correction, if any, with its own review; then Codex's review of the final head, the pre-merge checklist and the merge.
 - **Deletion condition:** prune after P06.DB's PR merges and the evidence record holds the result.
