@@ -5,6 +5,7 @@
 - **Why:** P06.DB's code is reviewed. C1's exact-head review approved `ea21ac8`, the head that carries the proof, with no finding in a correction class. PR28 merges only after the review log records a disposition for the governing Markdown it carries, with reads that cover its final text ([charter](../planning/dev-manager.md), "Read before it takes effect"). DM-08's disposition sends the CI policy's change here (7.1), and DM-07's leaves its applied changes and three items for this read to confirm.
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`, and the manager's disposition in the [review log](../continuity/dev-manager/README.md). PR28's pre-merge checklist cites both.
 - **Stream variables:** none are needed. Dev Manager 2's container holds the three `STREAM_*` variables (OD-36); it never reads or uses them.
+- **Result:** given to Nathan with `<RECORDS_COMMIT>` as `ee25d1d3deaef4b3d73b97f7f9012ed7208dbc3c`. Dev Manager 2 answered at 00:31 UTC on 5 October (`bc0306c`; [report](../continuity/dev-manager/reviews/2026-10-05-dm-09-p06-db-governing-read.md)): both files approved, nothing blocks PR28's merge, and no item is Nathan's. The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-09".
 - **Deletion condition:** prune after PR28 merges and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
