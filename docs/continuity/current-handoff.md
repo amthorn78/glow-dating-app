@@ -18,7 +18,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | GitHub | PR29's run on `e8eb5d3`, Stage A's run of record (push run 37372546600's gate failed: no runner) | If runners stay unavailable, Nathan uses "Re-run failed jobs" on that run |
+| App Manager 6 | The Stage A session, through Nathan | Its run of record (PR29's runs on `8bbad57`, which hold its code) | Nathan asks in the Stage A session; no watching (AM6-01) |
 
 ## Next actions (App Manager 6)
 
