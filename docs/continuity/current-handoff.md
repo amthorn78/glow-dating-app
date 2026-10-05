@@ -31,6 +31,6 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches (checked on GitHub, 5 October 2026, after Nathan's deletion)
 
-- **4 remote branches remain:** `main` (`3afffb3`); `claude/magical-wozniak-yfmmx2` (PR29, 3 commits ahead); and two fully merged, deletable: `claude/stoic-carson-66gdig` (App Manager 4's branch, `2a86c8e`) and `claude/ecstatic-goodall-qajdh4` (`a335c4f`, 24 September).
-- **`claude/dev-manager` was deleted** with the old branches, though it was on the keep-list. Nothing is lost: its head `b06fe29` (DM-12) is in `main`. Dev Manager 2's next push recreates it; DM-13 says so.
+- **4 remote branches remain:** `main` (`3afffb3`); `claude/magical-wozniak-yfmmx2` (PR29, 3 commits ahead); and two fully merged, deletable: `claude/stoic-carson-66gdig` (`2a86c8e`) and `claude/ecstatic-goodall-qajdh4` (`a335c4f`).
+- **`claude/dev-manager` was deleted** with the old branches, though it was on the keep-list. Nothing is lost: its head `b06fe29` (DM-12) is in `main`. Dev Manager 2's next push recreates it.
 - **Deleted on 5 October:** `claude/magical-goldberg-ie0j16` (the second run of C1's prompt, never integrated) and App Manager 5's list of 34, including `app-builder-1/p05-1-birth-diagnostics` (AM5-24).
