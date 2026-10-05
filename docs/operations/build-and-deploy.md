@@ -83,8 +83,9 @@ Check its actual outcome for the candidate before claiming a built image.
 ## CI and candidate operation
 
 `Foundation` preserves **API checks**, **Mobile checks** and **API mobile smoke**
-and adds **API artifact checks**. All four must pass on the actual proposed
-candidate before merge under the [branch policy](ci-and-branch-policy.md).
+and adds **API artifact checks**. They, and every other application job the
+[branch policy](ci-and-branch-policy.md) lists (six since P06.DB), must pass on
+the actual proposed candidate before merge.
 API tests include runtime configuration, worker, webhook and telemetry cases;
 P02 contract/model/static tests and deterministic contract generation remain.
 The image job has a 15-minute limit and never authenticates to a registry or

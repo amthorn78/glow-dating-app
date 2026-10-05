@@ -1,0 +1,4 @@
+-r requirements.in
+-c requirements.lock
+ruff==0.16.8
+mypy==2.3.1

@@ -56,6 +56,8 @@ Nathan's direction, 24 September 2026:
    - **Say where the result goes.** Each prompt names the file and heading where its result will be recorded, so that a later manager finds it without reconstruction (DM-01 P6).
    - **A Dev Manager read first** for any prompt that authorizes credential use or live provider actions, before Nathan runs it (DM-01 P1; [charter](dev-manager.md)).
    - **Say which credentials a session holds, not only which it needs** (AM3-17, AM3-19). A session's environment is fixed when it starts: one started while the `STREAM_*` variables were set holds them until it ends. Its prompt or consultation then says "none added", never "none present", and tells it to check names only and never read or use the values.
+   - **Say when a session may push again** (AM5-04, AM5-14). A prompt whose session pushes code and then records tells it to push nothing more to its branch until the Foundation run on its code commit has finished. Runs of the same branch cancel each other (the CI policy), so an early records push can cancel the code run or leave it marked `cancelled`.
+   - **Make a stale prompt stop at its start gate** (AM5-15). A gate that checks only the prompt's own commit passes however late the prompt is run, so a prompt pasted again by mistake repeats its work. The gate also checks the live manager branch and stops if the prompt's work has already landed there: for an implementation or correction prompt, any change since the prompt's commit to a path the session would change; for a review prompt, a non-Markdown change after the reviewed head, or the review's own heading in its evidence record.
    - **Every prompt names the environment to start in** (OD-36): `Glow app`, which holds the Stream variables, only for a session that calls Stream; `Glow App - No Stream` for managers, the Dev Manager and offline sessions (DM-07 item 6 (c)).
    - **Give the TypeSafe reading with every prompt** (OD-10, OD-30, OD-33, OD-34). Run the Claude skill `typesafe-scoring` (installed in Nathan's skill library; the request body is recorded in the matrix file): it sends the session's one- or two-sentence description with the request v6 and prints the cell (a model, Opus 5.5 or Fable 5.1, and a rung of the six-rung ladder: low, medium, high, extra high, max, ultracode), the score, every rung probability, both model probabilities, the confidences and the flags. That printed line goes in the prompt header and is the recommendation. Nathan has said the manager's own judgement of model strength carries no weight; if the manager records a call for later comparison, it goes into the uses table before the run and is not put to him.
    - **Write the description to the skill's template.** The rungs read the cost of a miss, whether a later gate follows, whether the object is new or already reviewed once, its size in round units, and whether many independent readers are needed; a description that omits these facts reads lower than the work deserves.
@@ -66,11 +68,12 @@ Nathan's direction, 24 September 2026:
 5. **Verify and integrate.**
    - Fetch the implementer branch and review `git diff <start>..<head>` completely.
    - Re-run cheap checks where useful.
+   - **Follow a stray read to every result** (AM5-16, AM5-17). When a verification or a correction finds a read that can take in rows from outside what it measures, such as another race, another iteration or an earlier run in the same database, it lists every result computed from those rows (counts, controls, the oracle) and every record that reports one, and checks each.
    - Classify the whole change (command below).
    - Integrate with `git merge --ff-only <head>`, or a merge commit if the manager branch moved.
    - Push the manager branch and read the actual CI job steps and results.
    - **Batching records** (DM-01 P2). While a code PR is under review, every manager push to its head branch starts a full PR run and moves the branch head. So batch the manager's records: push them only when a session needs them (a brief or prompt it must read) and at close-out, not after each step. Integrate Dev Manager reports in the same batches. End every batch with the repository–Notion match check below.
-   - **Supersession sweep** (AM3-08, AM3-10). When a batch applies a decision that replaces an earlier one, or freezes or moves a document, search the repository for the old wording and for links to the old home, for example `grep -rn '<old phrase>' docs`. Fix every living document that still treats the old state as current. Dated records and snapshots keep their history, with a supersession note where they would otherwise mislead.
+   - **Supersession sweep** (AM3-08, AM3-10, AM5-10, AM5-13). Run it before each records commit. When a batch applies a decision that replaces an earlier one, or freezes or moves a document, search the repository for the old wording and for links to the old home, for example `grep -rn '<old phrase>' docs`. When a batch changes a status, such as a session starting or ending, also read the status lines of each document it changes, headline first. Fix every living document that still treats the old state as current. Dated records and snapshots keep their history, with a supersession note where they would otherwise mislead.
    - **No acceptance on a rerun alone** (OD-21). A head whose run failed intermittently is not accepted because a rerun passed. The failure needs a diagnosis, and then either a fix or a recorded, reviewed explanation. Reliable CI is a prerequisite for accepting the affected work.
    - **Push runs as evidence.** A push run counts as evidence for code only if its Foundation gate log says `Application checks passed`. Otherwise use the PR run, which compares from the merge base. The reason: push runs compare against the previous push and share a cancel-in-progress group per ref, so a Markdown-only push can cancel a code run and then skip every application job itself.
 6. **Review and follow up.** For full-scope changes, write a bounded review prompt for an exact head; Nathan runs it in a separate session. Findings go back as correction prompts (same or new implementation session). Every new head needs its own checks and review; an earlier-head review never certifies a later head.
@@ -114,6 +117,7 @@ Nathan's direction, 24 September 2026:
 - In a rows-mode query, wrap the filters in a group (AM3-01).
 - Read back every write and compare it with what was intended.
 - When a status changes (a session done, a review recorded, a pick made, a PR replaced), update every property and page body that states it, then query the touched databases for the old wording before the batch ends (AM5-02, AM5-03). The query reads every property, links and URLs included, not only text; when a branch or PR is replaced, it looks for the old branch name and PR number in each (AM5-07).
+- Before creating a row, search the database for its Work ID; the old-wording query also looks for duplicate Work IDs (AM5-11; DM-08 section 8).
 
 ## Branches and pushes
 
@@ -170,7 +174,7 @@ A prompt contains:
 - Header: owner, brief link, deletion condition.
 - Role line: "You are an implementation (or review) session started manually by Nathan; you are not the manager."
 - Environment check and credential rule.
-- Start gate: fetch, fast-forward to the named SHA, verify.
+- Start gate: fetch, fast-forward to the named SHA, verify; then check the live manager branch, so that a stale prompt stops (step 3, AM5-15).
 - Deliverables limited to owned paths, with the explicit exclusions.
 - Checks to run.
 - Push rule: own session branch only.

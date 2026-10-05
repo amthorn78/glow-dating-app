@@ -11,7 +11,7 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 | Session | Created | By | Branch | Basis commit | State |
 |---|---|---|---|---|---|
 | Dev Manager 1, `session_01MrcrmqtuENZ345mKfmsSWv` ("Glow Dev Manager") | 25 September 2026, 09:00 UTC | App Manager 3, at Nathan's direction | `claude/dev-manager` | `3888e8f635c4efdaf31cf074e1e423ff5f98de29` | DM-01 and DM-02 answered at 09:09 UTC (`0f55891`); DM-03 answered at 09:36 UTC (`23951c4`); Nathan's answers and directions recorded (`574ee0e` to `d945478`); DM-04 answered at 17:21 UTC on 26 September (`51deb3d`), integrated at `d0c7ffd`; DM-05 given to Nathan to carry on 27 September; he sent it the same day, and the session ran it on Fable 5.1 at extra high; answered at about 01:40 UTC (`a80d81d`), read from the branch by App Manager 4 (OD-31) and integrated at its first records batch. DM-06 given to Nathan to carry on 28 September, from App Manager 5. Its container, started before OD-28, holds the three `STREAM_*` variables; it never reads or uses them (DM-04 finding 10, AM3-19). **Handed over** on 28 September at Nathan's direction: [handover](reviews/2026-09-28-dev-manager-1-handover.md) at `3ec0fac`, the successor recorded at `87b3c48`; it pushes nothing after `87b3c48` |
-| Dev Manager 2, `session_015DxVkL8PXn2YaauE6RdSWN` ("Glow Dev Manager 2") | 28 September 2026, 16:16 UTC | Dev Manager 1, at Nathan's direction (the OD-31 pattern) | `claude/dev-manager` | `87b3c48c30aa8ed9388fa16d8ecad64609b76c8a`; manager branch read at `b729340` | [Start note](reviews/2026-09-28-dev-manager-2-start.md) at 16:25 UTC (`0773eaa`); DM-06, which Nathan carried to this session, answered at 17:19 UTC (`8ba418a`); both integrated at App Manager 5's merge `5704250`. DM-07, the close-out read, which Nathan carried to this session, answered at 00:57 UTC on 29 September (`a60d8c1`); Nathan's answer on the environments, given in this session, recorded at 01:14 UTC (`f86f28d`); both integrated at App Manager 5's merge `0704199`. It runs in the `Glow app` environment; its container, started at 16:16 UTC on 28 September, holds the three `STREAM_*` variables, as OD-36 expects, and it never reads or uses them (start note, section 1) |
+| Dev Manager 2, `session_015DxVkL8PXn2YaauE6RdSWN` ("Glow Dev Manager 2") | 28 September 2026, 16:16 UTC | Dev Manager 1, at Nathan's direction (the OD-31 pattern) | `claude/dev-manager` | `87b3c48c30aa8ed9388fa16d8ecad64609b76c8a`; manager branch read at `b729340` | [Start note](reviews/2026-09-28-dev-manager-2-start.md) at 16:25 UTC (`0773eaa`); DM-06, which Nathan carried to this session, answered at 17:19 UTC (`8ba418a`); both integrated at App Manager 5's merge `5704250`. DM-07, the close-out read, which Nathan carried to this session, answered at 00:57 UTC on 29 September (`a60d8c1`); Nathan's answer on the environments, given in this session, recorded at 01:14 UTC (`f86f28d`); both integrated at App Manager 5's merge `0704199`. DM-08, the P06.DB brief, which Nathan carried to this session, answered at 02:28 UTC on 29 September (`70f65f0`), integrated at App Manager 5's merge `145502e`. DM-09, PR28's governing read, which Nathan carried to this session, answered at 00:31 UTC on 5 October (`bc0306c`), integrated at App Manager 5's merge `c49175c`. DM-10, CX3 and the design of its correction, which Nathan carried to this session, answered at 01:50 UTC on 5 October (`9f2e79d`), integrated at App Manager 5's merge `2152463`. DM-11, the C2 prompt's departure from DM-10, which Nathan carried to this session, answered at 03:20 UTC on 5 October (`91c5c2c`), integrated at App Manager 5's merge `a9eae28`. DM-12, `dbshell` and condition 2.2, which Nathan carried to this session, answered on 5 October (`b06fe29`), integrated at App Manager 5's merge `8a94904`. It runs in the `Glow app` environment; its container, started at 16:16 UTC on 28 September, holds the three `STREAM_*` variables, as OD-36 expects, and it never reads or uses them (start note, section 1) |
 
 ## Consultations
 
@@ -24,6 +24,11 @@ This is the index of every consultation with the Dev Manager, its verdicts and t
 | DM-05 | 27 September 2026, given to Nathan to carry (OD-25); he sent it the same day | App Manager 3 | **Read before effect:** revision 1 of the P06.1-I2b implementation prompt, written at `84715ec11eb5926e94f39d7e3369b1ebd515923b` ([consultation](../../ephemeral/2026-09-27-dm-05-i2b-prompt-read.md)). The consultation names the commit that adds this row, which holds the same prompt. It authorizes the Stream secret, live, destructive actions on the run's own data, user-token requests to Video and Feeds, a lasting lockdown of those two products, and a workflow change | [DM-05 report](reviews/2026-09-27-dm-05-i2b-prompt-read.md) | Approved with conditions: six conditions for a revision 2 (findings 1 to 6), finding 9 optional; items 2 and 4 option (a); no questions for Nathan | Below |
 | DM-06 | 28 September 2026, given to Nathan to carry (OD-25); he carried it to Dev Manager 2 | App Manager 5 | **Read before effect:** revision 1 of the P06.1 economics discovery prompt ([consultation](../../ephemeral/2026-09-28-dm-06-economics-discovery-prompt-read.md)); the consultation names the commit that adds this row. It authorizes a Claude in Chrome session in Nathan's browser, signed in to the Stream dashboard: a read-only lookup of the plan, limits, usage, overage, region, attribution, the data-processing agreement and the Maker application, plus Stream's public pricing and terms | [DM-06 report](reviews/2026-09-28-dm-06-economics-discovery-prompt-read.md) | Approved with conditions; option (a), one session: three conditions for a revision 2 (findings 1 to 3), findings 4 and 5 (a) to (c) optional; Notion matches `b729340` apart from D10's two links; no questions for Nathan | Below |
 | DM-07 | 28 September 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Close-out read** ([consultation](../../ephemeral/2026-09-28-dm-07-p06-1-close-out-read.md)); the consultation names the commit that adds this row. The governing Markdown changed after `fa4dc5f` (seven files) and ADR 0003's update; the HDE contract request; ADR 0004's accepted restore risk; the live read and the open Video and Feeds items; the economics discovery's disposition; views on Nathan's three close-out decisions; the start prompt's text; Notion | [DM-07 report](reviews/2026-09-29-dm-07-p06-1-close-out-read.md); [Nathan's answer on the environments](reviews/2026-09-29-nathan-answer-environments.md) | Governing Markdown approved with conditions (findings 1.1 and 1.2), ADR 0003 approved; the HDE contract request approved and ADR 0004's restore risk confirmed, one *soon* item each; 4 (a) and 4 (b) option (i), neither Nathan's now; the economics disposition approved, one wording nit; item 6: agree on (a) and (b), (c) Nathan's, since answered (OD-36); Notion matches `89a8d01` apart from M03 and D10 | Below |
+| DM-08 | 29 September 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Brief read:** the P06.DB brief, revision 1 ([consultation](../../ephemeral/2026-09-29-dm-08-p06-db-brief-read.md)); the consultation names the commit it was sent at. The proof's isolation, its dependencies, the CI job, local runs, the transaction design and the proof's own honesty | [DM-08 report](reviews/2026-09-29-dm-08-p06-db-brief.md) | Approved with conditions: D1 approved; D2, D3 (1 to 4), D4 (1 to 4; within OD-17), D5 (5.1 to 5.6) and item 6 (6.1 to 6.3) approved with conditions; item 7 changes requested (7.1, the CI policy; 7.2, the review plan); Notion: a duplicate P06.DB row; no item is Nathan's | Below |
+| DM-09 | 5 October 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Governing read before PR28 merges** ([consultation](../../ephemeral/2026-10-05-dm-09-p06-db-governing-read.md)); the consultation names the commit it was sent at. The CI policy's and the manager workflow's changes in PR28, DM-07's carried items, and the dispositions of C1's exact-head review | [DM-09 report](reviews/2026-10-05-dm-09-p06-db-governing-read.md) | The CI policy and the manager workflow approved; DM-07's changes confirmed as applied and its three items as they stand; the dispositions of C1's exact-head review approved, with one *soon* wording change to DB09's mark and the guard carried to P06.2; Notion matched `ee25d1d`; nothing blocks PR28's merge, and no item is Nathan's | Considered by App Manager 5; every item accepted, the *consider* items included; nothing declined and nothing for Nathan. See "DM-09" below |
+| DM-10 | 5 October 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Design read before a correction** ([consultation](../../ephemeral/2026-10-05-dm-10-p06-db-cx3-design-read.md)); the consultation names the commit it was sent at. Codex's CX3 (a P1 in a correction class: the proof's host check accepts any database on loopback), the P06.DB brief's revision 3 (the run's marker in D1, D3 and D4), the dispositions of CX1 and CX2, and the CI policy's database sentence | [DM-10 report](reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md) | CX3's classification and the correction before the merge approved; the run's marker approved with conditions 2.1 to 2.4 for the C2 prompt and 2.5 for C2's exact-head review; CX1 and CX2 approved as carried to P06.2; the CI policy: changes requested, narrowly (name the marker, in its words); Notion matched `cd9fa03`; no item is Nathan's | Considered by App Manager 5; every item accepted; nothing declined and nothing for Nathan. See "DM-10" below |
+| DM-11 | 5 October 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Read before a prompt runs** ([consultation](../../ephemeral/2026-10-05-dm-11-p06-db-c2-prompt-read.md)); the consultation names the commit it was sent at. The C2 prompt's one departure from DM-10's condition 2.3 (its query counts PostgreSQL's own `pg_toast` relations in a new database) and the rest of the prompt against DM-10 | [DM-11 report](reviews/2026-10-05-dm-11-p06-db-c2-prompt-read.md) | The departure approved with conditions, in words that replace its two bullets: a literal `pg_` prefix test, the query run in the proof's database, and each schema's count unchanged before and after the wrong-marker `migrate`; the rest of the prompt confirmed, with one note for C2's exact-head review; Notion matched `d50f334`; revision 1 does not run, and a revision 2 in these words needs no further read; no item is Nathan's | Considered by App Manager 5; every item accepted; nothing declined and nothing for Nathan. See "DM-11" below |
+| DM-12 | 5 October 2026, given to Nathan to carry to Dev Manager 2 (OD-25) | App Manager 5 | **Read of a finding against a condition** ([consultation](../../ephemeral/2026-10-05-dm-12-p06-db-dbshell-read.md)); the consultation names the commit it was sent at. C2's exact-head review's F1 (Django's `dbshell` starts `psql` outside Django, so the marker is never checked for it) against DM-10's condition 2.2; its disposition (outside the correction classes, the README's rule, brief revision 6's note and an optional guard carried to P06.2); and the CI policy's sentence applied at C2's integration | [DM-12 report](reviews/2026-10-05-dm-12-p06-db-dbshell-read.md) | F1 approved as outside the correction classes, so no correction pass before the merge; the README's rule and the brief's note approved, with item 6 required before P06.2's first run of the suite on any database, in its words; the CI policy's sentence confirmed as DM-10 item 4 word for word; Notion matched `16c9450`; no item is Nathan's | Considered by App Manager 5; every item accepted; nothing declined and nothing for Nathan. See "DM-12" below |
 
 Both reviews are based on the [status and State of the App](../state-of-the-app.md) of 25 September 2026, at the basis commit above. The consultation text is the Dev Manager start prompt as it stood at that commit (`docs/ephemeral/2026-09-25-dev-manager-start-prompt.md`), with the commit filled in. The prompt now lives at [`docs/planning/start-prompts/dev-manager.md`](../../planning/start-prompts/dev-manager.md). Per Nathan, no new implementation task is created until the Dev Manager has responded and its reviews have been considered.
 
@@ -230,6 +235,134 @@ Before deciding, the manager checked the cited passages at `89a8d01`: PF01 §7's
 - The workflow's step 3 item on credentials says that a prompt for a session started while the variables were set says "none added". Under OD-36, such a session is one started in `Glow app`.
 
 **What went to Nathan:** only item 6 (a) and (b), in one message (OD-32). He answered the same day (OD-37). Items 4 (b), 6.2 and 12.5 come to him later: before the production application is configured, at P07 and at A04. Nothing is declined, so nothing goes to him beside the Dev Manager's text (DM-01 P10).
+
+### DM-08 (App Manager 5, 29 September 2026)
+
+**The read covered** `b75107c3ca135bd7b3a50943fbed4a1bd47d1247`, the manager branch's head when the Dev Manager fetched it. Nathan carried the consultation to Dev Manager 2; its report is `70f65f0` on `claude/dev-manager`, merged into the manager branch at `145502e`.
+
+**Verdict: the brief approved with conditions.** D1 is approved; D2, D3, D4, D5 and item 6 are approved with conditions; item 7 asks for two narrow changes. D4 is within OD-17. No item is Nathan's. A brief revision 2 and a prompt that apply the conditions as written need no further read (G2); any other change to D3, D4 or D5 would need one. The CI policy's change is read before PR28 merges (7.1).
+
+Before deciding, the manager checked the cited passages at `b75107c`: the data model's `auth_session_ref` paragraph (*"an adapter-provided **non-secret** library session identifier"*; *"does not revoke a credential"*) and its UOW table (the send row's *"Same revocation lock boundary, current two-party eligibility/contact version"*; the block, unmatch, suspend and delete row's *"deletion job+tombstone when deleting"*); the P11 plan's row 90 (*"unblock/resume must not resurrect a historical match"*) and row 138 (*"An identical retry by a currently authorized actor recovers the original immutable receipt"*); the gate's `needs` list and its loop over five jobs; the CI policy's *"five application jobs"*; `MessageSubmission.actor`'s `CASCADE`; and PF01 §6's WordPress sentence. Each is as the report says. The Notion duplicate was there: the Work Register held an older P06.DB row, "Planned", beside the one the manager created on 29 September.
+
+| Item | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| D1 Isolation | Approved | **Accepted** | Brief revision 2, D1: explicit connection options with a `passfile` and no service name, so no libpq default applies; the refusal of any `PG*` name stays |
+| D1 A Django pin test | Consider | **Accepted** | Brief D1 and the prompt: an offline test fails if the proof's Django differs from `services/api`'s |
+| D1 `makemigrations --check --dry-run` | Consider | **Accepted** | Brief D1 and the prompt: run in the job against the disposable database |
+| D2 The DB09 claim | Condition | **Accepted** | Brief D2 and D6: DB09 is partially evidenced only for the app-side session and epoch revocation ordering against sends, with a stand-in `auth_session_ref`, not for maintained authentication; the stand-in generator is not carried into the app |
+| D3 1 to 4 | Conditions | **Accepted** | Brief D3, as written: the password generated under `set +x` and masked first, passed by a file; loopback, a unique name, `pg_isready` with a limit, `timeout-minutes`, `if: always()` removal, no `env:` of secrets, read-only permissions; `-c track_commit_timestamp=on` and `SELECT version()` with the digest; the gate's `needs` and required list |
+| D3 A non-superuser role | Consider | **Accepted** | Brief D3 and the prompt: the proof connects as a role created in the job that owns the proof's database and is not a superuser |
+| D4 1 to 4 | Conditions; within OD-17 | **Accepted** | Brief D4, as written: only the final-head CI run is evidence; the same recipe; a throwaway local cluster if Docker does not work; the report says which was used. Not put to Nathan (OD-32) |
+| D5 5.1 to 5.6 | Conditions | **Accepted** | Brief D5, as written, with the two choices the conditions leave to the brief: the send locks its `AccountSession` row after the accounts and the match, and sign-out and an administrative expiry lock that row (5.1); suspension and deletion lock the account row and bump its session epoch, not each match (5.3). A paused or restricted profile and a withdrawn consent are recorded as excluded, because A05 has not set their effect on an existing conversation (5.6) |
+| D5 Unblock does not resurrect | Soon or consider | **Accepted** | A case in brief D5 and the prompt |
+| D5 `SERIALIZABLE` | Soon or consider | **Accepted** | `READ COMMITTED` with row locks is the design P06.2 takes; `SERIALIZABLE` runs, if at all, only as a recorded comparison with its own negative control |
+| D5 The outbox | Consider | **Accepted** | The send's transaction inserts its `OutboxEvent`, so the proof shows it commits or rolls back with the authorization |
+| 6 6.1 to 6.3, and what "partially" claims | Conditions | **Accepted** | Brief item 6 and D6, as written: the commit-order oracle over every row, each forced wait observed, the controls failing in the same final-head run, the stress run's seed, iterations and overlap count; the claims and non-claims in the report's words |
+| 6 A race suite against a small interface | Consider | **Accepted** | Brief item 6 and the prompt: the suite drives send, block, unmatch, suspend, delete and sign-out through one interface, so P06.2 can run it against the app's adapter |
+| 7.1 The CI policy | Changes requested | **Accepted** | `docs/operations/` joins the manager-owned paths. At integration the manager updates the CI policy's job list, "the five application jobs" and anything else that names the jobs; the Dev Manager reads that change before PR28 merges |
+| 7.2 The review plan | Changes requested | **Accepted** | The brief says the prompt needs no Dev Manager read: the generated password is not credential use in the charter's sense and no provider action is taken. A prompt that departs from the brief and DM-08 on D3, D4 or D5 goes back to it. The exact-head review checks, from the job's logs, that no password appears, that each forced wait was observed and that the controls failed in the same run |
+| 7 The stress run's size | Consider | **Accepted** | The prompt fixes iterations per race and a wall-clock cap under the job's timeout (OD-21) |
+| 8 Notion: the duplicate P06.DB row | Mismatch | **Accepted** | The older "Planned" row now sits under the current row as a page, its text kept in its body, so the Work Register holds one P06.DB row (AM5-11). The Notion checklist now asks for a search by Work ID before a row is created, and the old-wording query looks for duplicate IDs too |
+
+**Governing changes in this batch:** one line in the manager workflow's Notion checklist, applying the report's own sentence (*"The AM5-07 link query should also cover duplicate IDs"*) with the search before creating a row that AM5-11 adds. It goes to the Dev Manager's read before PR28 merges, with the CI policy's change (7.1) and the changes the DM-07 section above lists.
+
+**What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
+
+### DM-09 (App Manager 5, 5 October 2026)
+
+**The read covered** `ee25d1d3deaef4b3d73b97f7f9012ed7208dbc3c`, the manager branch's head when the Dev Manager fetched it. Nathan carried the consultation to Dev Manager 2; its report is `bc0306c` on `claude/dev-manager`, merged into the manager branch at `c49175c`.
+
+**Verdict: the CI policy and the manager workflow approved; nothing blocks PR28's merge.** DM-07's changes after `89a8d01` are confirmed as applied, and its three items as they stand. The dispositions of C1's exact-head review are approved: no correction pass, the guard carried to P06.2, and one *soon* wording change to DB09's mark. Notion matched `ee25d1d`. No item is Nathan's. The read covers `ee25d1d`: a later change to either governing file before the merge needs a new read, and a records-only change elsewhere does not.
+
+Before deciding, the manager checked the cited passages at `ee25d1d`: the gate's `needs` list in `foundation.yml` (`[scope, api, mobile, smoke, artifact, proof, database]`), `CLAUDE.md`'s line 16 and the manager workflow's line 14. Each is as the report says.
+
+| Item | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| 1 The CI policy | Approved | **Accepted** | None |
+| 1 A newer upload-artifact pin | Consider | **Accepted** | The handoff's recorded follow-ups |
+| 1 The manager workflow | Approved; no change adds a rule Nathan did not direct | **Accepted** | None |
+| 2 (a) DM-07's changes after `89a8d01` | Confirmed as applied | **Noted** | None |
+| 2 (b) The three items left as they are | Confirmed as they stand | **Noted** | None |
+| 2 (b) `CLAUDE.md`'s environment phrase, the inventory's No Stream Setup script and a pointer to OD-35 in PF01's D10 | Consider, at the next change to those files | **Accepted** | The handoff's recorded follow-ups, for the next change to `CLAUDE.md`, the environment inventory and PF01 |
+| 3 No correction pass after C1's review | Approved | **Accepted** | None |
+| 3 DB09's lead wording | Soon | **Accepted** | The P11 plan's DB09 entry and the brief's D6, in the report's words: *"the app-side session revocation ordering against sends (sign-out, expiry, and account-state revocation, which bumps the epoch); the epoch's consistency is checked but not exercised as the deciding refusal"* |
+| 3 The guard, carried | Approved, sharpened | **Accepted** | The brief's "Carried to P06.2", item 1: before P06.2's first run of the suite on any database, local or CI |
+| 3 Tests for R3 and R4 | Consider, for P06.2's brief | **Accepted** | The brief's "Carried to P06.2", item 3 |
+| 4 Notion | Matches `ee25d1d` | **Noted** | None |
+
+**Governing changes in this batch:** none. DB09's new wording is in non-governing files and needs no read (the report, item 3).
+
+**What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
+
+### DM-10 (App Manager 5, 5 October 2026)
+
+**The read covered** `cd9fa03fcb62ab5279b17665865d5222434183e6`, the manager branch's head when the Dev Manager fetched it. Nathan carried the consultation to Dev Manager 2; its report is `9f2e79d` on `claude/dev-manager`, merged into the manager branch at `2152463`.
+
+**Verdict: CX3 is corrected before the merge, with the run's marker as revision 3 states it, on conditions.** The CI policy names the marker. CX1 and CX2 stay carried to P06.2. Notion matched `cd9fa03`. No item is Nathan's.
+
+Before deciding, the manager checked the report's two claims about the code at `cd9fa03`. The package opens no connection outside Django: `psycopg.connect` and `connection_created` appear nowhere. Each worker thread keeps one Django connection across its tasks and closes it only when it stops (`concurrency.py:23` to `44`).
+
+| Item | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| 1 CX3 in the correction class; correct before the merge | Approved | **Accepted** | None: the evidence record's disposition stands |
+| 2 The run's marker | Approved with conditions | **Accepted** | Brief revision 4 quotes conditions 2.1 to 2.5 in D1 and applies them to D3 and D4. The C2 prompt applies 2.1 to 2.4 as written, so it needs no further read (DM-03 G2); C2's exact-head review checks 2.5 |
+| 2 A departure on the marker's form, the hook, the CI step or the suite | Comes back to the Dev Manager | **Accepted** | The C2 prompt tells the session to stop and report any such departure |
+| 3 CX1 and CX2 carried to P06.2 | Approved | **Accepted** | None: the brief's "Carried to P06.2", items 4 and 5 |
+| 4 The CI policy's database sentence | Changes requested, narrowly | **Accepted** | The report's words, applied as written at C2's integration (its section 6), so that the policy describes the job as it then runs; no further read |
+| 5 Notion | Matches `cd9fa03` | **Noted** | None |
+
+**Governing changes in this batch:** none. The CI policy's sentence changes at C2's integration, in the report's words.
+
+**Applied at C2's integration** (5 October, the records batch after the merge `369d03c`): the CI policy's sentence, in the report's words (item 4), so it needs no further read (DM-03 G2). It is the only governing change since `ee25d1d`, and the next consultation or the close-out read confirms it.
+
+**After the disposition:** writing the C2 prompt, the manager found that condition 2.3's query cannot be met as written: every PostgreSQL database keeps the toast tables of its own catalogs in `pg_toast`. The prompt also excludes the `pg_`-prefixed system schemas, and DM-11 reads that departure before the prompt runs, as DM-10 asks. (It did, and replaced the departure with its own words: see "DM-11".)
+
+**What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
+
+### DM-11 (App Manager 5, 5 October 2026)
+
+**The read covered** `d50f334b57a26c559ccf7fea541bafe35fc3b381`, the manager branch's head when the Dev Manager fetched it. Nathan carried the consultation to Dev Manager 2; its report is `91c5c2c` on `claude/dev-manager`, merged into the manager branch at `a9eae28`.
+
+**Verdict: the C2 prompt runs as revision 2, with the departure in the report's words.** Revision 1 does not run. The rest of the prompt is confirmed. Notion matched `d50f334`. No item is Nathan's.
+
+**Whose error.** DM-10's 2.3 query was the Dev Manager's error, caught by the manager while writing the C2 prompt; the report says so (item 1). The departure that replaced it was the manager's, and it had a gap of its own: it named no database for the query, so a step could have run it from another database and passed. It gave the prefix test in words ("starts with `pg_`"), not in SQL: the report's "its prefix test is a wildcard" describes the test written as `LIKE 'pg_%'`, which those words did not exclude. That is AM5-19.
+
+| Item | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| 1 The departure from 2.3 | Approved with conditions | **Accepted** | C2 prompt revision 2 replaces the departure's two bullets with the report's words (section 3, item 1), as written. Brief revision 5: D1's note under 2.3 points to them, and D3's item 5 describes the check they give |
+| 2 The rest of the prompt | Confirmed; one note for C2's exact-head review | **Accepted** | Revision 2 also quotes the note under 2.4, in the report's words, so that the session knows it, and brief revision 5 records it under 2.4; C2's exact-head review checks it in the workflow diff |
+| 3 Notion | Matches `d50f334` | **Noted** | None |
+
+**What revision 2 changes, besides the report's words** (each applies them; DM-03 G2):
+
+- the header: its revision, why revision 1 did not run, the brief's revision, the work list, a new TypeSafe reading and the Dev Manager's read;
+- the reading list: the DM-11 report, and brief revision 5, which records DM-11's words in D1 and D3;
+- what the session reports and records from the wrong-marker step: the relation counts per schema, before and after, as the report's words require;
+- what its record tells the exact-head review: DM-11's note on 2.4, beside DM-10's 2.5;
+- its start line and its report: revision 2.
+
+**Governing changes in this batch:** none. The CI policy's sentence still changes at C2's integration, in DM-10's words (item 4); the report's check leaves the proof's database without a table, so those words still describe the step.
+
+**What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
+
+### DM-12 (App Manager 5, 5 October 2026)
+
+**The read covered** `16c94500eb6a008d7466f84a3dffa7f150dbdc9c`, the manager branch's head when the Dev Manager fetched it. Nathan carried the consultation to Dev Manager 2; its report is `b06fe29` on `claude/dev-manager`, merged into the manager branch at `8a94904`.
+
+**Verdict: F1 needs no correction pass before the merge, and nothing blocks PR28 going ready for Codex.** The guard that refuses `dbshell` is required before P06.2's first run of the suite on any database, not optional. The CI policy's sentence is confirmed. Notion matched `16c9450`. No item is Nathan's.
+
+**Whose words.** DM-10's 2.2 heading, "wired so no command can skip it", was the Dev Manager's, and the report says it overstated what the condition's body requires: the connection path through Django. It did not name `dbshell`, the one Django command that bypasses that path. C2's exact-head review tested the heading literally, as it should.
+
+| Item | Dev Manager's weight | Disposition | Action |
+|---|---|---|---|
+| 1 F1's classification | Approved: outside the correction classes; no C3 | **Accepted** | None: the evidence record's disposition stands, with a note in place |
+| 2 The README's rule, the brief's note and item 6 | Approved with conditions: item 6 required before P06.2's first run of the suite on any database, in its words | **Accepted** | Brief revision 7 replaces "Carried to P06.2" item 6 with the report's words, and replaces "carried to P06.2 as optional" in the F1 note under 2.2 and in "Sessions"; the README's "Limits" line takes the same words. Applied as written, so no further read (DM-03 G2). The report's design note (a proof-local command needs the package as an installed app, which it is not today) is under item 6, for P06.2's brief |
+| 3 The CI policy's sentence | Confirmed, word for word | **Noted** | None: the only governing change since `ee25d1d` is confirmed |
+| 4 Notion | Matches `16c9450` | **Noted** | The Work Register's P06.DB row and *Implementation Control* drop "optional" in this batch |
+
+**Governing changes in this batch:** none.
+
+**What went to Nathan:** nothing. No item is his, and nothing is declined (DM-01 P10).
 
 ## Nathan's answers and directions (25 September 2026)
 
