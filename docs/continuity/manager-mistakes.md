@@ -589,5 +589,5 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **What happened:** the handoff's current-item line, written on 29 September, says the P06.DB brief is "revision 2, which applies the Dev Manager's read (DM-08) as written". Revisions 3 (CX3's marker), 4 (DM-10's conditions) and 5 (DM-11's words) followed on 5 October, each in a records batch that also changed the handoff, and the line stayed.
 - **Caught by:** App Manager 5, in the supersession sweep for revision 6, which looked for the brief's revision numbers in living documents.
 - **Effect:** none on a decision or a prompt: the line links the brief, whose status line names its current revision, and every prompt names the revision it read. A successor reading only the handoff would have taken revision 2 as current.
-- **Correction:** the line now names revision 6 and points to the brief's status line for the others.
+- **Correction:** the line named revision 6, the current one at the correction, and points to the brief's status line for the others.
 - **Prevention:** it repeats the mechanism of AM5-10 and AM5-13, a status fact left behind in another document. The supersession sweep in the manager workflow's step 5 already requires a search for the old wording; when a brief's revision changes, the old wording includes its previous revision number, so the sweep searches the living documents for it.
