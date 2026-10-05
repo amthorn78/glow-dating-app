@@ -9,6 +9,11 @@ Everything a writer returns is a ``Result``. A writer never raises for a refusal
 raises only for a harness error. ``Hooks`` let the harness observe a writer from
 inside its transaction: the backend pid when it begins, and hold points after its
 first lock and after all its locks, which the forced interleavings use.
+
+P06.2 adds a fourth hold point, ``before_commit`` (after every check and write), for
+CX2's boundary; the reference design takes it through the proof log instead (its code
+is unchanged), and the app's adapter through its ``TransactionProbe``. It adds
+``ContactStateSubject``, the D5 writers only the app's adapter carries.
 """
 
 from __future__ import annotations
@@ -17,7 +22,7 @@ import hashlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 Outcome = Literal["authorized", "replayed", "applied", "no_change", "refused", "deadlock", "error"]
@@ -83,6 +88,7 @@ class Hooks:
     on_begin: Callable[[int], None] | None = None
     after_first_lock: Callable[[], None] | None = None
     after_locks: Callable[[], None] | None = None
+    before_commit: Callable[[], None] | None = None
 
 
 class OrderingSubject(Protocol):
@@ -119,3 +125,20 @@ class FixtureFactory(Protocol):
     def create_match(self, first: UUID, second: UUID) -> UUID:
         """An active match between two accounts with an active ``ChatBinding``, created
         locally with a stand-in channel reference; no provider is called."""
+
+
+@runtime_checkable
+class ContactStateSubject(OrderingSubject, Protocol):
+    """P06.2 D5: a paused or restricted profile and a withdrawn onboarding consent refuse
+    a send. The reference design excludes them (P06.DB 5.6), so only the app's adapter
+    implements these writers."""
+
+    def pause_profile(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
+
+    def resume_profile(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
+
+    def restrict_profile(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
+
+    def withdraw_consent(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
+
+    def accept_consent(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...

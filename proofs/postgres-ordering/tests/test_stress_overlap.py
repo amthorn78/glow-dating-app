@@ -148,7 +148,8 @@ class PerRaceSelectionTests(unittest.TestCase):
             oracle.evaluate(run_tag="design:stress", case_id="race.block_by_high", iteration=3)
         sql, params = captured[0]
         self.assertIn("l.case_id = %s", sql)
-        self.assertEqual(params, ["design:stress", "race.block_by_high", 3])
+        # The reference design's rows only (its bindings' provider), then the filters.
+        self.assertEqual(params, ["proof", "design:stress", "race.block_by_high", 3])
 
 
 if __name__ == "__main__":

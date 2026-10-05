@@ -42,7 +42,7 @@ from glow_persistence.static_check import inspect_definitions
 loader, state = inspect_definitions()
 assert loader.connection is None
 assert not loader.applied_migrations
-assert len([key for key in state.models if key[0] == 'glow_persistence']) == 32
+assert len([key for key in state.models if key[0] == 'glow_persistence']) == 34
 assert connections['default'].connection is None
 """)
 
@@ -150,6 +150,77 @@ for field in ('result_ref', 'result_version', 'outcome_code'):
 assert completed['result_version__gte'] == 1
 assert completed['result_version__lte'] == 9007199254740991
 assert set(completed['outcome_code__in']) == codes
+""")
+
+    def test_migration_0003_is_additive_and_0001_0002_are_unchanged(self):
+        # P06.2 D7 (DM-13 item 6): 0003 only adds the two new models; the reviewed
+        # migrations stay byte-identical to P02's.
+        import hashlib
+
+        migrations = API_ROOT / "glow_persistence" / "migrations"
+        pinned = {
+            "0001_event_infrastructure.py": (
+                "817c1c763b53f9af8e5291c7c511d73e9684b9665b9efac4dde7ce3c1a434d58"
+            ),
+            "0002_app_domain.py": (
+                "862bac8b81aa76f74fd88743a36ab5a4b2e9261651251b94398c274350a31335"
+            ),
+        }
+        for name, digest in pinned.items():
+            with self.subTest(migration=name):
+                content = (migrations / name).read_bytes()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), digest)
+        self.check_script("""
+from django.db.migrations.operations.models import CreateModel
+loader = MigrationLoader(None)
+added = loader.disk_migrations[('glow_persistence', '0003_chat_identity_read_cursor')]
+assert added.dependencies == [('glow_persistence', '0002_app_domain')]
+assert [type(op).__name__ for op in added.operations] == ['CreateModel', 'CreateModel']
+assert {op.name for op in added.operations} == {'ChatIdentity', 'ChatReadCursor'}
+leaves = loader.graph.leaf_nodes('glow_persistence')
+assert leaves == [('glow_persistence', '0003_chat_identity_read_cursor')], leaves
+identity = m.ChatIdentity._meta
+names = {c.name for c in identity.constraints}
+assert {'chat_identity_account', 'chat_identity_ref'} <= names
+assert identity.get_field('account').remote_field.on_delete is models.PROTECT
+assert identity.get_field('user_ref').max_length == 64
+assert {f.name for f in identity.get_fields()} >= {'account', 'provider', 'user_ref', 'state',
+    'tokens_revoked_before'}
+assert not {f.name for f in identity.get_fields()} & {'name', 'image', 'email', 'display_name'}
+cursor = m.ChatReadCursor._meta
+assert 'chat_read_cursor_member' in {c.name for c in cursor.constraints}
+assert cursor.get_field('last_read').remote_field.model is m.MessageSubmission
+""")
+
+    def test_makemigrations_check_passes_without_a_database(self):
+        # P06.2 D7: makemigrations --check --dry-run under the static registry, with the
+        # same guard that rejects every connection, cursor and schema editor.
+        self.check_script("""
+from django.core.management import call_command
+call_command('makemigrations', '--check', '--dry-run', verbosity=1)
+assert connections['default'].connection is None
+""")
+
+    def test_the_chat_adapter_loads_without_a_connection_and_has_no_switch(self):
+        # P06.2 D2 and DM-13 2.1: the adapter imports the models; its only constructor
+        # input is the provider's name, and nothing in it is a test-only switch.
+        self.check_script("""
+import inspect
+from glow_chat import contact, delivery, events
+parameters = list(inspect.signature(contact.OrmContactPersistence.__init__).parameters)
+assert parameters == ['self', 'provider'], parameters
+adapter = contact.OrmContactPersistence(provider='fixture')
+assert vars(adapter) == {'provider': 'fixture'}, vars(adapter)
+source = inspect.getsource(contact)
+for word in ('Design(', 'design.', 'lock_accounts', 'check_contact_version', 'filter_state'):
+    assert word not in source, word
+ref = contact.new_provider_ref()
+assert len(ref) == 32 and int(ref, 16) >= 0 and ref != contact.new_provider_ref()
+assert set(events.DELIVERED.values()) == {'create_channel', 'send_message', 'remove_members',
+    'deactivate_user', 'revoke_user_tokens'}
+assert events.CHAT_SCHEMA_VERSION == 'glow-chat-1'
+assert delivery.MAX_ATTEMPTS == 5
+assert connections['default'].connection is None
 """)
 
     def test_model_registry_does_not_leak_into_fixture_runtime(self):

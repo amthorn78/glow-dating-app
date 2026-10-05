@@ -15,6 +15,10 @@ ran is written to ``HARNESS_RECORD`` as JSON before the command's outcome propag
     python -m tests.command_harness makemigrations --check --dry-run
     python -m tests.command_harness proof facts
     python -m tests.command_harness proof run --seed 1
+    python -m tests.command_harness dbshell
+
+``dbshell`` would start ``psql`` through the backend's client; the harness replaces the
+client's ``runshell`` and records whether it was reached (``shell_started``).
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ class HarnessStop(Exception):
 
 STATEMENTS: list[str] = []
 CLOSED: list[int] = []
+SHELLS: list[int] = []
 
 
 class FakeServerCursor:
@@ -70,6 +75,13 @@ def install_fake_server(row: tuple[Any, ...] | None) -> None:
     def close(self: Any) -> None:
         CLOSED.append(1)
 
+    def runshell(self: Any, parameters: object) -> None:
+        # Django's own dbshell would start psql here; the harness records it instead.
+        SHELLS.append(1)
+
+    from django.db.backends.postgresql.client import DatabaseClient
+
+    DatabaseClient.runshell = runshell
     DatabaseWrapper.get_new_connection = get_new_connection
     DatabaseWrapper._set_autocommit = set_autocommit
     DatabaseWrapper.init_connection_state = init_connection_state
@@ -100,6 +112,7 @@ def main(argv: list[str]) -> int:
                     "statements": STATEMENTS,
                     "closed": len(CLOSED),
                     "kept": connections["default"].connection is not None,
+                    "shell_started": bool(SHELLS),
                 },
                 record,
             )

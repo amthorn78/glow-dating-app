@@ -18,5 +18,5 @@ strict = true
 files = ["glow_ordering_proof", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["django.*", "glow_persistence.*", "psycopg.*"]
+module = ["django.*", "glow_persistence.*", "psycopg.*", "glow_chat.*", "glow_domain.*"]
 ignore_missing_imports = true

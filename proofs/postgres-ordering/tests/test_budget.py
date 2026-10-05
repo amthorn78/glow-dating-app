@@ -21,13 +21,17 @@ class BudgetTests(unittest.TestCase):
         self.assertFalse(budget.floors_met(0, 0))
 
     def test_whole_database_step_fits_the_job(self) -> None:
-        # Twelve design races and two stress controls at the wall-clock cap, plus the
-        # forced cases and the forced controls, stay well under the job's 20 minutes.
+        # P06.2 (DM-13 2.2): both subjects keep the budget. The reference design's twelve
+        # races and two stress controls, and the adapter's twelve races and three D5
+        # races, all at the wall-clock cap, take 14.5 minutes; the forced cases, the
+        # controls and the delivery phase have the rest of the job's 20 minutes. A
+        # measured run is far below the cap (C2's twelve races took 4 to 7 s each).
         from glow_ordering_proof import controls, stress
 
         stress_controls = sum(c.mode == "stress" for c in controls.CONTROLS)
-        worst = (len(stress.RACES) + stress_controls) * budget.MAX_SECONDS
-        self.assertLess(worst, 12 * 60)
+        races = len(stress.races()) + stress_controls + len(stress.races(d5=True))
+        self.assertEqual(races, 12 + 2 + 15)
+        self.assertLess(races * budget.MAX_SECONDS, 15 * 60)
 
 
 if __name__ == "__main__":

@@ -102,5 +102,55 @@ class CommandRefusalTests(unittest.TestCase):
                 self.assertNotEqual(record["statements"][1], marker.QUERY)
 
 
+class DbshellRefusalTests(unittest.TestCase):
+    """P06.DB's carried item 6 (DM-12): dbshell under the proof's settings refuses with
+    the marker's refusal, opening no connection and starting no client, whatever the
+    database's comment."""
+
+    def test_dbshell_is_refused_before_any_connection(self) -> None:
+        other = environment.MARKER_COMMENT_PREFIX + secrets.token_hex(16)
+        rows: dict[str, tuple[Any, ...] | None] = {
+            "the run's marker": (4242, EXPECTED),
+            "a different marker": (4242, other),
+            "no row": None,
+        }
+        for label, row in rows.items():
+            for argv in (["dbshell"], ["dbshell", "--", "-c", "SELECT 1"]):
+                with self.subTest(comment=label, argv=argv):
+                    status, output, record = run_command(argv, row)
+                    self.assertNotEqual(status, 0, output)
+                    self.assertIn("RefusedDatabase", output)
+                    self.assertIn(marker.DBSHELL_REFUSAL, output)
+                    self.assertIn(environment.MARKER, output)
+                    self.assertNotIn(MARKER_VALUE, output)
+                    self.assertEqual(record["statements"], [])
+                    self.assertFalse(record["shell_started"])
+                    self.assertFalse(record["kept"])
+
+    def test_the_proof_provides_the_dbshell_command(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import django; django.setup();"
+                " from django.core.management import get_commands;"
+                " print(get_commands()['dbshell'])",
+            ],
+            cwd=PACKAGE,
+            env={
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "LANG": "C.UTF-8",
+                **GOOD,
+                "DJANGO_SETTINGS_MODULE": "glow_ordering_proof.settings",
+            },
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout.strip(), "glow_ordering_proof")
+
+
 if __name__ == "__main__":
     unittest.main()
