@@ -942,4 +942,4 @@ The push of `9bcec21`, the commit that records CX1 and CX2, started a second Cod
 - **PR28 is a draft again** until C2, its exact-head review and Codex's review of the final head are done.
 - **CX1 and CX2** stay as recorded above, unless DM-10 says otherwise.
 - **The brief's guard was the manager's:** D1 and D4 took loopback as the database boundary (AM5-18).
-- **Next:** DM-10.
+- **Next:** DM-10. (Done the same day: Dev Manager 2 approved the classification and the marker, with conditions 2.1 to 2.5, at `9f2e79d`; brief revision 4 applies them, and the review log has the disposition, "DM-10". The C2 prompt departs from 2.3's query in one point, so DM-11 reads it first; then the correction pass P06.DB-C2.)

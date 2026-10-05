@@ -5,7 +5,7 @@
 - **Why:** Codex's second code review of PR28 found a P1, CX3, in a correction class, so PR28 does not merge without a correction pass, P06.DB-C2. Its design changes the brief's D3 and D4, which the brief sends back to the Dev Manager ("A prompt that departs from it on D3, D4 or D5 goes back to the Dev Manager"), and it is a security-boundary decision (the [charter](../planning/dev-manager.md), "Consult before these are treated as settled").
 - **Where the result goes:** the Dev Manager's report in `docs/continuity/dev-manager/reviews/`, and the manager's disposition in the [review log](../continuity/dev-manager/README.md). The C2 prompt applies the read.
 - **Stream variables:** none are needed. Dev Manager 2's container holds the three `STREAM_*` variables (OD-36); it never reads or uses them.
-- **Result:** not yet sent.
+- **Result:** given to Nathan with `<RECORDS_COMMIT>` as `cd9fa03fcb62ab5279b17665865d5222434183e6`. Dev Manager 2 answered at 01:50 UTC on 5 October (`9f2e79d`; [report](../continuity/dev-manager/reviews/2026-10-05-dm-10-p06-db-cx3-design-read.md)): CX3's correction before the merge approved; the run's marker approved with conditions 2.1 to 2.5, which brief revision 4 applies; CX1 and CX2 stay carried; the CI policy names the marker at C2's integration. No item is Nathan's. The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-10".
 - **Deletion condition:** prune after PR28 merges and the review log holds the disposition.
 
 **Manager:** before giving this message to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
