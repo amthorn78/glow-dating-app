@@ -883,3 +883,34 @@ Local runs are iteration, not evidence, so neither correction changes a claim. T
 - **R6:** the README's layout row now names `pg_blocking_pids`.
 - **The marks:** DB06 and DB09 stand as worded, each with its new limit line.
 - **Next:** the Dev Manager's read of PR28's governing changes (DM-09), then Codex's review, the merge and the receipt.
+
+### Codex's review of PR28's final head (5 October 2026)
+
+App Manager 5 marked PR28 ready at about 00:44 UTC, at its final head `a8f09aa4b9dc6ab0fdf4f00cc68ab35a4ffac9ec`, after PR run 37248312801 passed all eight jobs on it. Codex started both reviews at 00:44 UTC. Its code review completed at 00:48 UTC with one review and two inline comments, each marked P2. Its security review completed at 00:49 UTC with no comment. Codex's summary comment shows both reviews completed on `a8f09aa`. The labels CX1 and CX2 are the manager's.
+
+#### The findings, as posted
+
+> **CX1. P2, `proofs/postgres-ordering/glow_ordering_proof/oracle.py:250`: "Verify that the session owns the persisted sender."** When P06.2 reuses this suite, an adapter can authorize with one account's session but persist another account as `MessageSubmission.actor`—or even persist a non-member—and still pass the oracle. The session's account is loaded here but is used only for epoch-revocation counting; it is never compared with `s.actor` or the match members, while the current cases primarily check outcomes and row counts. Add an invariant and a case proving that the session account equals the persisted actor and belongs to the match, otherwise the suite can certify misattributed or unauthorized messages.
+
+> **CX2. P2, `proofs/postgres-ordering/glow_ordering_proof/reference.py:209-210`: "Enforce the session-expiry invariant through commit."** When a session expires after this check but before the transaction commits—for example with a short remaining TTL or a slow outbox/log insert—the submission is still authorized and committed. That contradicts O5, which treats every submission committed at or after `expires_at` as a violation, but the suite only forces expiry while waiting before this check. Either make the transaction design enforce the commit-time invariant or narrow and record the intended authorization-check-time invariant, with a forced post-check delay covering the boundary.
+
+#### Manager verification (App Manager 5, 5 October 2026)
+
+- **CX1: confirmed. The gap is in the suite, not in the reference design.**
+  - The oracle reads each session's account (`oracle.py:250`) and uses it only to count account revocations for O7 (`:257` to `262`). No rule compares a submission's actor with its session's account or with its match's members. O7 also counts the session's account where its docstring says the actor's.
+  - The reference design cannot write such a row. The send reads the session's account, refuses `not_a_member` unless it is one of the match's two accounts, and stores that account as the actor of the submission and of its log row (`reference.py:172` to `184`, `:255`, `:275` and `276`). A send request names no actor (`interface.py:66` to `71`).
+  - No case exercises `not_a_member`, and no control writes a misattributed row, so the suite would not catch another subject that misattributes. That matters when P06.2 runs this suite against the app's adapter, as the brief intends ("One interface for the race suite"). It does not change what the runs show about the reference design.
+- **CX2: confirmed. The design's rule and the oracle's differ.**
+  - The send reads the time once, after its locks (`reference.py:195`, through `clock_timestamp()`, `:74` to `83`), and refuses an expired session against that time (`:209` and `210`). Its outbox and log rows follow, and the transaction commits after them. This is the check the brief's 5.2 asks for: "one time taken after locking".
+  - O5 is stricter: the commit must be before the session's expiry (`oracle.py:251`). A send whose session expires between the check and the commit would be authorized by the design and flagged by O5. The suite would then fail, so it cannot pass falsely at that boundary.
+  - No run comes near that boundary. Every session but one lives 300 seconds (`cases.py:46`), and each case and each stress iteration builds its own (`stress.py:258`). The 3-second session in `session_expires_during_wait` belongs to the send that must be refused (`cases.py:674` to `714`).
+  - The `transaction_start_time` control is caught by its case's expected refusal and by O5, so a narrower O5 must keep that detection.
+- **Against the correction classes of PR28's review prompts:** neither finding lets a send commit after a revocation that invalidates it without the suite failing. Neither touches a credential or a connection, or lets the job reach another database. DB06's entry depends on neither. DB09's "expiry" could be read as ordering a send's commit against time-based expiry, which the design does not do; a limit line closes that reading. Both findings are should-fix, for the suite P06.2 reuses.
+
+#### Disposition
+
+- **No correction pass before the merge.** Neither finding is blocking or in a correction class. This is the rule C1's exact-head review applied to R1 and R2, whose guard DM-09 approved carrying to P06.2.
+- **CX1:** the README's "Limits" records it, and it is carried to P06.2 (the brief, "Carried to P06.2"). Before the suite runs against the app's adapter, the oracle checks that each submission's actor is its session's account and a member of its match, and a control that writes a misattributed row must fail.
+- **CX2:** the P11 plan's DB09 entry and the README's "Limits" record it, and it is carried to P06.2. P06.2 settles the expiry rule as the brief's 5.2 states it, checked at a time read after the locks. It narrows O5 to match, keeps O5's detection of the `transaction_start_time` control, and forces the boundary with a delay between the check and the commit. A design that enforces expiry at commit instead goes to the Dev Manager with P06.2's brief.
+- **The threads:** each Codex thread gets a reply with this disposition.
+- **Next:** CI on the new final head, then the merge and the receipt.
