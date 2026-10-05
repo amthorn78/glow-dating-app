@@ -8,7 +8,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager:** App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`), started by Nathan by hand on 27 September. Its branch `claude/magical-wozniak-yfmmx2` restarted from `main` at `47db18d` after PR27 merged; PR28, ready for review since 5 October, carries the current item.
+- **Manager:** App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`), started by Nathan by hand on 27 September. Its branch `claude/magical-wozniak-yfmmx2` restarted from `main` at `47db18d` after PR27 merged; PR28, a draft again since 01:07 UTC on 5 October, carries the current item.
 - **P06.1 is done** (merged 29 September at `47db18d`): the [brief](../planning/p06-1-chat-provider-proof.md) and the [evidence record](../testing/evidence/2026-09-25-p06-1-chat-provider-proof.md), with its merge receipt. The display rule ([ADR 0003](../adr/0003-chat-display-rule.md)) stands; the development application stays locked down (OD-37). P06.2 inherits the brief's "Carried to P06.2".
 - **Current item: P06.DB**, the early disposable-PostgreSQL proof (OD-17, PF01 §6): the [brief](../planning/p06-db-disposable-postgres-proof.md), revision 2, which applies the Dev Manager's read ([DM-08](dev-manager/reviews/2026-09-29-dm-08-p06-db-brief.md)) as written.
   - **The implementation is done and integrated** into PR28 at `6f5866d` (29 September). Its run of record, Foundation run 36520940933 on `dff83d4`, passed every job. The manager's verification, its corrections and five observations are in the [evidence record](../testing/evidence/2026-09-29-p06-db-disposable-postgres-proof.md). The P11 plan's DB06 and DB09 are marked partially evidenced in CI, DB06's now resting on C1's run, and the CI policy names the new job.
@@ -18,21 +18,22 @@ This file only routes: the current item, what happens next and who waits on whom
   - **C1's exact-head review is done** ([prompt](../ephemeral/2026-09-29-p06-db-c1-review-prompt.md), revision 2), of `ea21ac8`, started by Nathan on 4 October on Opus 5.5 at extra high and relayed on 5 October: **approve.** No finding is blocking or in a correction class. R1 and R2 are limits now in the P11 plan's DB06 and DB09 entries and the README; a guard against a used database and per-order counts are carried to P06.2 (the brief, "Carried to P06.2"). R5 and R6 are corrected; AM5-17 is logged, with a new line in the manager workflow's step 5. The manager's verification and disposition are in the evidence record.
   - **DM-09 is done:** the Dev Manager's read of PR28's governing changes ([consultation](../ephemeral/2026-10-05-dm-09-p06-db-governing-read.md)), answered at 00:31 UTC on 5 October (`bc0306c`, merged at `c49175c`). Both files are approved, DM-07's items confirmed and the review's dispositions approved; DB09's lead is reworded and the guard sharpened. Nothing blocks the merge, and no item is Nathan's.
   - **Codex's review is done** (5 October): App Manager 5 marked PR28 ready at `a8f09aa`, and both reviews completed on it. The security review found nothing. The code review's two P2 findings about the suite, CX1 and CX2, are confirmed, neither is in a correction class, and both are recorded as limits and carried to P06.2 (the evidence record, "Codex's review of PR28's final head").
-  - **Next: the merge.** When CI passes on the new final head, the manager merges, checks main's run and records the receipt (the manager workflow, step 7).
+  - **Codex's second code review** (5 October), of `9bcec21`, which the records push started: one P1, **CX3**. The proof's host check accepts any server on loopback or a Unix socket, so a misdirected local `migrate` could change a database that is not the proof's. It is confirmed and in a correction class, so PR28 does not merge without a correction pass, P06.DB-C2; PR28 is a draft again. Brief revision 3 states the fix (the run's marker, in D1, D3 and D4), and AM5-18 logs the brief's part. See the evidence record, "Codex's second code review, of `9bcec21`".
+  - **Next: DM-10,** the Dev Manager's read of CX3's classification, revision 3's design and the dispositions of CX1 and CX2 ([consultation](../ephemeral/2026-10-05-dm-10-p06-db-cx3-design-read.md)), which Nathan carries to Dev Manager 2. Then the C2 prompt, applying the read; C2's exact-head review; Codex's review of the final head; the merge.
   - **Linear (OD-29):** one session at a time, one prompt per message. Other feature work stays paused.
 - **The [HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6); not a standing item for him (OD-32).
-- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 (OD-35); branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-09, each with its disposition.
+- **Dev Manager 2:** session `session_015DxVkL8PXn2YaauE6RdSWN`, created by Dev Manager 1 (OD-35); branch `claude/dev-manager`; the [review log](dev-manager/README.md) holds DM-01 to DM-09, each with its disposition, and DM-10, pending.
 - **Environments** (OD-36): every prompt names one; `Glow app` only for a session that calls Stream.
 
 ## Waiting checkpoint (5 October 2026, App Manager 5)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 5 | Foundation CI, on PR28 | The pull-request run on PR28's new final head, the commit that records Codex's review | A failed run is diagnosed before anything merges (OD-21) |
+| App Manager 5 | Dev Manager 2, through Nathan (OD-25) | DM-10's report: CX3's classification, brief revision 3's design and the dispositions of CX1 and CX2 | Tell Nathan that PR28 waits on it; the C2 prompt is not written before the read |
 
 ## Next actions
 
-1. When CI passes on PR28's new final head: fill in PR28's pre-merge checklist, merge with a merge commit pinned to the head, check main's push run, and record the receipt in the evidence record on the restarted manager branch. Then P06.2, which waits on Nathan's direction (OD-12 keeps other feature work paused); its brief takes the P06.DB brief's "Carried to P06.2".
+1. When DM-10's report arrives: verify it, merge `claude/dev-manager`, record the disposition in the review log, apply its conditions to brief revision 3, and write the P06.DB-C2 prompt applying the read, with its TypeSafe reading; give it to Nathan alone (OD-29). After C2: its exact-head review, then PR28 ready at its final head for Codex, the pre-merge checklist, a merge commit pinned to the head, main's push run and the receipt. Then P06.2, which waits on Nathan's direction (OD-12 keeps other feature work paused); its brief takes the P06.DB brief's "Carried to P06.2".
 2. Standing: before the Stream harness is used live again, the C5 review's nits 2 and 3 and its header-allowlist advice; before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7).
 
 **Recorded follow-ups:** a newer `actions/upload-artifact` pin, whose Node.js 20 runtime GitHub forces onto Node.js 24 (DM-09 item 1); at the next change to each file, `CLAUDE.md`'s environment phrase ("the app cloud environment its prompt names (OD-36)"), the environment inventory's No Stream Setup script once confirmed, and a pointer to OD-35 in PF01's D10 (DM-09 item 2 (b)); prune the P06.1 prompts in `docs/ephemeral/` once their links are commit-pinned; Setup-script and pin-test hardening ([M02 brief](../planning/claude-setup-optimization.md)); a stale-documentation sweep of `docs/architecture/`, `docs/testing/` and `docs/operations/`.
@@ -40,7 +41,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Branches
 
 - **PR27** merged at `47db18d`: P06.1's code (I1, the flake fix, C1 to C5, I2a, I2b) and its records. PR28 starts from it.
-- **PR28** (ready for review since 5 October) carries P06.DB: its brief, prompts and records, and since the merge commit `6f5866d` the session branch `claude/epic-maxwell-e4zomh` (the proof package and the new Foundation job).
+- **PR28** (a draft again since 5 October, for CX3's correction) carries P06.DB: its brief, prompts and records, and since the merge commit `6f5866d` the session branch `claude/epic-maxwell-e4zomh` (the proof package and the new Foundation job).
 - `claude/dev-manager` merges into the manager branch at each consultation's integration.
 - `claude/magical-goldberg-ie0j16`: the second run of the C1 correction prompt (4 October), recorded and not integrated; retire it after PR28 merges.
 - Retire the unmerged `app-builder-1/p05-1-birth-diagnostics` once its content is confirmed recorded; every other remote branch is merged into `main`.

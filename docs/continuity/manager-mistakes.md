@@ -79,6 +79,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-15 | 4 Oct 2026 | accuracy | The P06.DB-C1 prompt's start gate checked only its own start commit, so it could not tell that its work was already done and integrated. A session started from it on 4 October, in place of C1's review, passed the gate and made the whole correction pass again; reading Nathan's "ran in opus 5.5 extra high" as the review's start, the manager recorded the review as in flight (`d27519b`) | App Manager 5, verifying the second session's report |
 | AM5-16 | 4 Oct 2026 | accuracy | The verification of P06.DB-C1 passed over its local run 2 ("same database, rows accumulating"), whose overlap counts include run 1's rows because the stress run's run tag is fixed, and so did not raise the one-run-per-database limit for C1's review | App Manager 5, checking the second session's "one run per database" limit against C1's code |
 | AM5-17 | 5 Oct 2026 | accuracy | The correction for AM5-16 (`cbb3ff7`) named only C1's local run 2's overlap counts, not its controls, and left the implementation's local run 2, which had also reused its database, saying its first race's 200 was established. It repeats AM5-16 | C1's exact-head review (R5) |
+| AM5-18 | 5 Oct 2026 | accuracy | The P06.DB brief took loopback as the proof's database boundary: D1 gives the settings a loopback host as their guard, and D4 says a local run "connects to no other database". A loopback host names a route, not a disposable database, so a misdirected local `migrate` could change a database that is not the proof's | Codex's second code review of PR28 (CX3) |
 
 ## App Manager 2
 
@@ -554,3 +555,11 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on evidence, since local runs are iteration, not evidence. Two record statements were incomplete or wrong for a day.
 - **Correction:** the evidence record's "Exact-head review of P06.DB-C1", under "Corrections to this record".
 - **Prevention:** it repeats AM5-16, so the prevention is now a checklist item in the manager workflow's step 5, "Follow a stray read to every result": a verification or correction that finds such a read lists every result computed from those rows and every record that reports one, and checks each.
+
+### AM5-18 — The P06.DB brief took loopback as the database boundary (accuracy)
+
+- **What happened:** the brief the manager wrote for P06.DB (revisions 1 and 2) gave the proof's settings an explicit loopback host as their guard against any other database (D1). For local runs it said the recipe "connects to no other database" (D4, condition 2). A loopback host or a Unix socket names a route, not a database. An SSH-forwarded or other local server passes the check, and the documented first command, `migrate`, changes it before `run`'s server checks. The code was built to the brief, and the manager's verification, DM-08 and both exact-head reviews accepted the guard as written.
+- **Caught by:** Codex's second code review of PR28, of `9bcec21` (CX3, P1).
+- **Effect:** no evidence changes: every run of record used the CI job's own container, which is safe by construction. PR28 did not merge. It needs a correction pass, P06.DB-C2, its exact-head review and the Dev Manager's read of the design first (DM-10).
+- **Correction:** brief revision 3 adds the run's marker to D1, D3 and D4. The disposable database's creator sets a marker generated for the run as the database's comment, and the proof refuses any database without it. See the evidence record, "Codex's second code review, of `9bcec21`".
+- **Prevention:** when a brief draws a protected boundary, it says how the code proves the boundary holds, by checking the protected thing itself (here, which database it is) rather than a stand-in for it (the route to it), and the review prompt's classes test that proof.

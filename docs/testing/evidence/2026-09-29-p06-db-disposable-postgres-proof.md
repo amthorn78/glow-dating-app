@@ -913,4 +913,33 @@ App Manager 5 marked PR28 ready at about 00:44 UTC, at its final head `a8f09aa4b
 - **CX1:** the README's "Limits" records it, and it is carried to P06.2 (the brief, "Carried to P06.2"). Before the suite runs against the app's adapter, the oracle checks that each submission's actor is its session's account and a member of its match, and a control that writes a misattributed row must fail.
 - **CX2:** the P11 plan's DB09 entry and the README's "Limits" record it, and it is carried to P06.2. P06.2 settles the expiry rule as the brief's 5.2 states it, checked at a time read after the locks. It narrows O5 to match, keeps O5's detection of the `transaction_start_time` control, and forces the boundary with a delay between the check and the commit. A design that enforces expiry at commit instead goes to the Dev Manager with P06.2's brief.
 - **The threads:** each Codex thread gets a reply with this disposition.
-- **Next:** CI on the new final head, then the merge and the receipt.
+- **Next:** CI on the new final head, then the merge and the receipt. (Superseded the same day: the push of `9bcec21` started a second code review, whose CX3 needs a correction first; see below.)
+
+#### Codex's second code review, of `9bcec21` (5 October 2026)
+
+The push of `9bcec21`, the commit that records CX1 and CX2, started a second Codex code review at 00:58 UTC. It completed at 01:02 UTC with one inline comment, marked P1. The security review did not run again. PR run 37249533664 on `9bcec21` passed all eight jobs. App Manager 5 made PR28 a draft again at 01:07 UTC.
+
+> **CX3. P1, `proofs/postgres-ordering/glow_ordering_proof/environment.py:108-111`: "Prove the target is disposable before allowing migrations."** When the documented local command is given an existing PostgreSQL instance or an SSH-forwarded database on loopback (or any local Unix socket), this check accepts it and `python -m django migrate` mutates it before `glow_ordering_proof run` performs its later server checks. Loopback identifies only the network route, not database provenance, so require a proof-specific marker or freshly generated instance identity before exposing Django settings to migration commands; otherwise a mistaken local invocation can apply the app schema to a shared or production database despite the protected-database boundary. AGENTS.md reference: [AGENTS.md:L5-L5](https://github.com/amthorn78/glow-dating-app/blob/9bcec21059b02ea5ab5811d2741fcd58c643cfce/AGENTS.md#L5-L5)
+
+##### Manager verification (App Manager 5, 5 October 2026)
+
+- **Confirmed.**
+  - The host check accepts `127.0.0.1`, `localhost`, `::1` or any absolute Unix-socket directory, and checks nothing about the server behind it (`environment.py:108` to `112`).
+  - The settings build Django's database from those options when they are imported (`settings.py:28` to `42`), so every management command connects with them, `migrate` included.
+  - The documented sequence runs `migrate` first (the README, "Running against a disposable database"). `run`'s server checks come later. They test for a superuser, `track_commit_timestamp` and the isolation level (`__main__.py:55` to `60`), and none of them tells a disposable database from another.
+- **What limits it today.**
+  - The CI job reaches only the container it starts on `127.0.0.1:5433`, so the job is safe by construction.
+  - The settings refuse `DATABASE_URL`, the HDE keys and every `PG*` name, and the password comes only from a passfile the operator writes.
+  - So a non-disposable database is reached only when a person or session points the proof's variables at one, against the README, D4 and `AGENTS.md`. Nothing in the code stops that mistake.
+- **Against the correction classes:** CX3 falls in "let the job or the proof connect to anything but its own disposable database". The job cannot. The proof can, when misdirected, and its first documented command changes that database. The protected boundary is protected by effect, and a guard that rests on the operator's care does not meet it.
+
+##### Disposition
+
+- **A correction pass before the merge: P06.DB-C2.** CX3 is in a correction class, so PR28 does not merge until it is fixed and the fix is reviewed at its exact head. P06.2's runs of the suite, local or CI, would inherit the same gap.
+- **The design goes to the Dev Manager first.** The fix changes D3 and D4 (the brief: "A prompt that departs from it on D3, D4 or D5 goes back to the Dev Manager"), and it is a security-boundary decision (the charter).
+  - Brief revision 3 states the design in D1, D3 and D4. Whoever creates the disposable database sets a marker generated for the run as the database's comment. The proof refuses any connection whose database does not carry that marker, before it sends any statement but the connection's own session settings.
+  - DM-10 reads it, with CX3's classification and the dispositions of CX1 and CX2. The C2 prompt follows the read.
+- **PR28 is a draft again** until C2, its exact-head review and Codex's review of the final head are done.
+- **CX1 and CX2** stay as recorded above, unless DM-10 says otherwise.
+- **The brief's guard was the manager's:** D1 and D4 took loopback as the database boundary (AM5-18).
+- **Next:** DM-10.
