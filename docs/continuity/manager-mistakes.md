@@ -85,6 +85,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-21 | 5 Oct 2026 | accuracy | Recording C2's run of record at its integration (`dd67696`), the P11 plan said run 37262466651 "reran the whole plan with the same results". Its outcome was the same; its numbers were not (526 submissions against 617, and 197 to 200 overlaps per race against 174 to 200) | C2's exact-head review (F3) |
 | AM5-22 | 5 Oct 2026 | accuracy | The handoff's current-item line kept calling the P06.DB brief "revision 2" through revisions 3 to 5, although three records batches changed the handoff and the brief. It repeats the mechanism of AM5-10 and AM5-13 | App Manager 5, in the supersession sweep for revision 6 |
 | AM5-23 | 5 Oct 2026 | process | The report of PR28's merge put P06.2's start to Nathan as a choice, with "Hold" as the other option, though nothing in the record argues for holding; only his direction was needed (OD-12). It repeats the mechanism of AM4-02, a choice with nothing to choose | Nathan: *"why would I want to hold?"* |
+| AM5-24 | 5 Oct 2026 | follow-through | The retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged (29 September); the handoff carried it without asking Nathan, the only person who can delete a branch, and no manager set up a cleanup of merged branches. Recorded by App Manager 6 | Nathan ("bad branching hygiene"), with 38 branches |
 
 ## App Manager 2
 
@@ -600,3 +601,13 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on the work: nothing had started, and P06.2 still needs his direction. It cost him a message.
 - **Correction:** the answer says that nothing argues for holding and asks for his direction alone.
 - **Prevention:** it repeats AM4-02's mechanism, a choice with nothing to choose, whose prevention covered only the model and level. The manager workflow's rule "Nothing unexplained goes to Nathan" now says that an option goes to him only with what it gains, and that when the record gives no reason for the alternative, the item asks for his direction alone.
+
+### AM5-24 — Merged branches left for Nathan to find (follow-through)
+
+Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relayed message: App Manager 5 writes nothing after its handover commit `a1eb9dc`.
+
+- **What happened:** the retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged, with PR27 at `47db18d` on 29 September (the flake-diagnosis evidence record retired it "after PR26 merges", and PR27 replaced PR26). The handoff carried the retirement without asking Nathan, the only person who can delete a branch. No manager set up a cleanup of merged branches, though OD-09 gives the managers branch management. By 5 October the repository had 38 branches, 33 of them fully merged into `main`.
+- **Caught by:** Nathan on 5 October: *"I am a little concerned about this bad branching hygiene"*.
+- **Effect:** none on code or evidence: no repository link named any of the old branches. Some old Notion pages linked to files through a branch name and needed repointing before the deletion. It cost Nathan the cleanup by hand.
+- **Correction:** App Manager 5 gave Nathan the list of 34 deletable branches and a delete command; he deleted them on GitHub (the current handoff, "Branches", records the result). Notion links through deleted branches were repointed to `main` or commit-pinned URLs.
+- **Prevention:** the manager workflow's step 7 now reports the branch state at each merge, and links Notion only to `main`, a commit ID or the manager branch (OD-39). The work item M04 automates the deletion of merged branches.

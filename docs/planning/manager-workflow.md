@@ -91,6 +91,8 @@ Nathan's direction, 24 September 2026:
    - Verify actual main and record an ordinary-documentation receipt in `docs/testing/evidence/`.
    - Update the current handoff and sync Notion (Implementation Control and the Work Register row).
    - Prune closed prompts once their unique content lives in persistent homes.
+   - **Report the branch state** (OD-09, OD-39; AM5-24). At each merge, list every remote branch: which are fully merged into `main` and can be deleted, and which hold unmerged work, with the reason each is kept. Keep `main`, the manager branch and `claude/dev-manager`. A session cannot delete a branch, so the report goes to Nathan with the names to delete, and the manager checks the remote and records the result once he has. M04 automates the deletion of merged branches.
+   - **Link Notion only to `main`, a commit ID or the manager branch**, never to an implementation or review session's branch, which is deleted once merged.
    - If Notion is unavailable, record the pending sync in the repository.
 
 **Waiting checkpoints** (DM-01 P6). Before any long wait (a relay, a review, a Dev Manager report), the manager records in the current handoff what it waits for, from whom, and what it does if nothing arrives. Compaction or a handover then loses nothing.
