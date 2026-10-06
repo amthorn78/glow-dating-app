@@ -272,3 +272,183 @@ With no reversal applied, the same copy passed: proof `Ran 142 tests`, API `Ran 
   3. the `dbshell` refusal relies on Django resolving a command to the installed proof app before `django.core`; the CI step shows it refuses;
   4. the session's own limit: the oracle alone does not catch a D5 writer that skips the account lock; the forced cases do;
   5. `glow_persistence` is skipped by the API's mypy (`follow_imports = "skip"`), so the adapter's use of the models is not type-checked.
+
+### Stage A run of record
+
+Written by the Stage A session at App Manager 6's direction (5 October 2026), after both runs on the integrated head `8bbad57741708e4767406d54a5592d38d6f7880d` had finished. I read both runs and changed, re-ran or dispatched nothing.
+
+**The run of record is PR29's pull-request run 37383940454** (run 470, `https://github.com/amthorn78/glow-dating-app/actions/runs/37383940454`). Its gate printed `Application checks passed`, which is the condition the direction sets. The manager branch's push run 37383936513 on the same head also concluded `success` with all eight jobs `success`, and its gate printed `Application checks passed` too. I read only its job list and its gate line, not its database job's log.
+
+**What the run tested.** The run checked out GitHub's merge ref `refs/remotes/pull/29/merge` at `0d774c9325a0a332d6f1f1812ce59e7f240f8ffa` (`Merge 8bbad57… into 3afffb30205563932ebd05d5d41cca6d569663a3`).
+- `main` (`3afffb3`) is an ancestor of `8bbad57`.
+- `git diff --quiet 0d774c9 8bbad57` succeeds: the tested tree is `8bbad57`'s.
+- `git diff --quiet 3b92122 8bbad57 -- services proofs .github` succeeds.
+
+So the run tested Stage A's code exactly as it stood at `3b92122`.
+
+| Job | Conclusion |
+|---|---|
+| Change scope | success (job 112012480811, 22:40:20 to 22:40:26). `COMPARE_BASE` `3afffb3…`, `COMPARE_HEAD` `8bbad57…`, `IS_PULL_REQUEST` `true`; the trusted policy printed `{"full": true, "reason": "behavior-or-empty", …}` with 65 paths, 47 of them under `services/`, `proofs/` and `.github/` |
+| API checks | success (job 112012530069, 22:40:28 to 22:40:55) |
+| Mobile checks | success (job 112012530003, 22:40:28 to 22:45:31) |
+| API mobile smoke | success (job 112012529981, 22:40:29 to 22:41:16) |
+| API artifact checks | success (job 112012529965, 22:40:29 to 22:40:52) |
+| Stream proof checks | success (job 112012529857, 22:40:28 to 22:41:41) |
+| Database proof checks | success (job 112012530140, 22:40:28 to 22:44:18; the suite step 22:40:57 to 22:44:13, 3 min 16 s) |
+| Foundation gate | success (job 112014267191, 22:45:34 to 22:45:37). Its `RESULTS` gave `scope` `success` with `full` `"true"` and the six application jobs `success`. Its log line: **`Application checks passed`** |
+
+The run-level conclusion is `success` (created 22:40:17, last updated 22:45:38 UTC). The jobs got runners within seconds.
+
+#### From the database job's log (1,302 lines, read whole)
+
+- **The offline checks.** `pip install --require-hashes` and `pip check` (`No broken requirements found.`); the offline tests under `env -i`: `Ran 142 tests`, `OK`; Ruff `All checks passed!`, `42 files already formatted`; mypy `Success: no issues found in 42 source files`.
+- **The credentials and the role.** The credential step printed one line (`credentials generated into a directory readable only by this job's user`), the role step one line (`role glow_proof (NOSUPERUSER) and database glow_proof created, with the run's marker as its comment`).
+- **The image and the server.**
+  - `Digest: sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`, the pinned digest.
+  - Container `glow-proof-db-37383940454-1`; `127.0.0.1:5432 - accepting connections` inside it.
+  - `SELECT version()`: `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit`.
+  - `track_commit_timestamp` `on`; `default_transaction_isolation` `read committed`, and `read committed` inside a writer's transaction; `deadlock_timeout` `1s`; `current_user` `glow_proof`, `superuser` `false`, `current_database` `glow_proof`. Each subject's report prints the same facts.
+- **The wrong-marker step.**
+  - Relations per schema before and after the `migrate` with the other well-formed marker: `information_schema` 69, `pg_catalog` 266, `pg_toast` 80, `public` 0, both times.
+  - `relations outside information_schema and the pg_ schemas: 0 before, 0 after`; `to_regclass('public.django_migrations') IS NULL after: t`.
+  - `wrong-marker migrate exit status: 1`, with the refusal `glow_ordering_proof.marker.RefusedDatabase: refusing this database: its comment is not the run's marker (PROOF_DB_MARKER): the database's comment is different. …`.
+- **The `dbshell` step.** `dbshell exit status: 1`; `refusal: glow_ordering_proof.marker.RefusedDatabase: refusing dbshell under the proof's settings (PROOF_DB_MARKER): it starts psql outside Django, where the run's marker is never checked; no connection was opened and no client …` (cut at the log's width).
+- **The migrations.** `migrate` applied all seventeen from zero, `glow_persistence.0003_chat_identity_read_cursor... OK` last. The ledger shows `0001_event_infrastructure` 22:40:55.850037, `0002_app_domain` 22:40:57.077418 and `0003_chat_identity_read_cursor` 22:40:57.108284. `makemigrations --check --dry-run`: `No changes detected`.
+- **The marker on every connection.** `database marker verified on a new connection` appears once each for `migrate` (backend pid 129), `makemigrations` (130) and `facts` (131), then five times for `run`: the main thread (132) and `proof-writer-0` to `proof-writer-3` (133, 134, 136, 135). All five come before `[reference] cases: 56/56 passed`, and none comes after.
+
+**The reference design** (`== VERDICT: PASS (reference) ==`; about 54 s, 22:40:57.9 to 22:41:51.9):
+
+- **Cases:** `cases: 56/56 passed`. The 25 held cases are the twenty `send_holds` and `revocation_holds` cases, `racing_duplicates`, `session_expires_during_wait` and the three pairwise opposing-writer cases.
+  - Each shows `pid 134 wait_event_type=Lock wait_event=transactionid pg_locks not granted: transactionid/ShareLock pg_blocking_pids=[133] (holder pid 133)`, after 1 poll (9 cases) or 2 (16).
+  - In each `send_holds` case the commit timestamps put the send before the revocation.
+  - `named.session_expires_after_check` passed: `short-lived sign-in: applied; released after the database clock passed the session's expiry; the send whose checks ran before the expiry: authorized; committed …`.
+- **The ten negative controls,** each `failed as intended` by its declared signal:
+
+| Control | Signal in the run of record |
+|---|---|
+| `no_locks.forced` (`unmatch_by_high.send_holds`) | not observed waiting on the holder; the send committed 22:41:43.518821 after the revocation at 22:41:43.513096; oracle 2 (O2, O6) |
+| `no_locks.stress` (`race.block_by_high`) | first failing iteration 1: the block (v2) committed 22:41:43.681331, the send at v1 22:41:43.681593; O2, O6 |
+| `no_version_check` (`named.stale_contact_version`) | the sends at versions ahead and behind were authorized; oracle 0 |
+| `no_session_lock` (`sign_out_sender.send_holds`) | not observed waiting; the send committed 22:41:43.984808 after the sign-out at 22:41:43.980274; oracle 1 (O3) |
+| `transaction_start_time` (`named.session_expires_during_wait`) | the send whose session expired while it waited was authorized (expected `session_expired`); oracle 1 (O5) |
+| `dedup_before_authorize` (`named.retry_after_revocation`) | the retry after the revocation was `replayed` with the old receipt |
+| `inverted_lock_order` (`named.opposing_first_lock_block_high_vs_send`) | `deadlock:DeadlockDetected` for the send |
+| `no_account_lock.forced` (`suspend_high.send_holds`) | not observed waiting; the send committed 22:41:48.666976 after the suspension at 22:41:48.663058; oracle 1 (O4) |
+| `no_account_lock.stress` (`race.suspend_high`) | first failing iteration 1: the suspension committed 22:41:48.819998, the send 22:41:48.823672; O4 |
+| `filter_state_in_lock` (`unmatch_by_high.revocation_holds`) | the send that arrived while the unmatch held was authorized and committed; oracle 2 (O2, O6) |
+
+- **The planted oracle controls,** each `flagged as intended`: `oracle.misattributed_actor` O9 (1 violation), `oracle.non_member_actor` O9 (2), `oracle.send_after_contact_revocation` O2 (2: O2, O6), `oracle.send_after_session_end` O3 (1), `oracle.send_after_account_revocation` O4 (1), `oracle.send_after_expiry` O5 (1), `oracle.wrong_contact_version` O6 (1), `oracle.witness_in_another_transaction` O1 (1), `oracle.unwitnessed_revocation` O0 (1).
+- **The oracle over every row:** 748 submissions and 2,697 revocation rows examined; `design:forced` 33, `design:stress` 696, the controls 1 or 2 each.
+  - **Violations in the design's rows: 0.**
+  - Violations under control tags only: `no_locks.forced` 2, `no_locks.stress` 2, `filter_state_in_lock` 2, `no_session_lock` 1, `no_account_lock.forced` 1, `no_account_lock.stress` 1, `transaction_start_time` 1, and each planted control's as above.
+
+**The app's adapter** (`== VERDICT: PASS (adapter) ==`; about 103 s, 22:41:51.9 to 22:43:34.4):
+
+- **Cases:** `cases: 81/81 passed`. The 37 held cases are the 25 above and the twelve D5 `send_holds` and `revocation_holds` cases.
+  - Each shows `pid 134 … pg_blocking_pids=[133] (holder pid 133)`, after 1 poll (15 cases) or 2 (22).
+  - Each D5 `revocation_holds` case refused the waiting send: `profile_unavailable` for a pause or a restriction, `consent_not_current` for a withdrawal.
+  - Each D5 `send_holds` case committed the send before the writer.
+  - `named.session_expires_after_check` and `named.d5_restored` passed.
+- **No reference controls on the adapter** (it has no fault switches, D3 2.1).
+- **The planted oracle controls,** each `flagged as intended`: the nine above with the same rules and counts, plus `oracle.send_while_paused` O10 (1) and `oracle.send_after_consent_withdrawn` O10 (1).
+- **The oracle over every row:** 831 submissions and 10,341 revocation witnesses examined; `design:forced` 47, `design:stress` 774, each planted control 1; **violations in the design's rows: 0**. Violations appear under the planted controls' tags only.
+
+**The stress runs** (seed 20260929; budget 200 iterations or 30 s per race; floors 50 iterations and 10 overlaps). Every race on both subjects ran 200 iterations with 0 violations and 0 harness failures, and met its floors. Each pair gives push run 37372546600 → run of record 37383940454; the commit-order column gives (revocation first, send first):
+
+| Race | Reference overlaps | Reference seconds | Reference commit order | Adapter overlaps | Adapter seconds | Adapter commit order |
+|---|---|---|---|---|---|---|
+| `race.block_by_low` | 200 → 200 | 5.5 → 3.4 | (165, 35) → (156, 44) | 200 → 200 | 9.2 → 5.4 | (166, 34) → (159, 41) |
+| `race.block_by_high` | 200 → 200 | 5.4 → 3.3 | (161, 39) → (151, 49) | 200 → 200 | 9.2 → 5.4 | (162, 38) → (153, 47) |
+| `race.unmatch_by_low` | 200 → 200 | 5.1 → 3.2 | (145, 55) → (144, 56) | 200 → 199 | 8.8 → 5.2 | (147, 53) → (145, 55) |
+| `race.unmatch_by_high` | 200 → 199 | 5.0 → 3.1 | (151, 49) → (149, 51) | 200 → 199 | 8.8 → 5.2 | (151, 49) → (147, 53) |
+| `race.suspend_low` | 199 → 181 | 4.5 → 2.9 | (165, 35) → (162, 38) | 200 → 181 | 8.4 → 4.9 | (168, 32) → (162, 38) |
+| `race.suspend_high` | 199 → 182 | 4.4 → 2.7 | (187, 13) → (177, 23) | 200 → 183 | 8.5 → 4.9 | (185, 15) → (179, 21) |
+| `race.delete_low` | 200 → 189 | 4.7 → 2.8 | (162, 38) → (151, 49) | 200 → 195 | 8.8 → 5.3 | (164, 36) → (157, 43) |
+| `race.delete_high` | 200 → 190 | 4.7 → 2.8 | (183, 17) → (174, 26) | 200 → 196 | 8.6 → 5.3 | (183, 17) → (175, 25) |
+| `race.sign_out_sender` | 199 → 155 | 4.7 → 2.8 | (146, 54) → (121, 79) | 199 → 167 | 8.7 → 5.1 | (146, 54) → (127, 73) |
+| `race.expire_sender` | 199 → 164 | 4.7 → 2.8 | (145, 55) → (120, 80) | 199 → 173 | 8.9 → 5.0 | (148, 52) → (121, 79) |
+| `race.racing_duplicates` | 200 → 200 | 6.5 → 3.8 | `send_a` first (128, 72) → (119, 81) | 200 → 200 | 11.5 → 6.8 | (128, 72) → (130, 70) |
+| `race.opposing_writers` | 200 → 200 | 7.6 → 4.4 | (199, 1) → (199, 1) | 200 → 200 | 11.5 → 6.7 | (199, 1) → (199, 1) |
+| `race.pause_high` | | | | 200 → 196 | 9.3 → 5.5 | (178, 22) → (169, 31) |
+| `race.restrict_low` | | | | 200 → 195 | 9.2 → 5.7 | (168, 32) → (165, 35) |
+| `race.withdraw_high` | | | | 200 → 190 | 9.3 → 5.9 | (182, 18) → (168, 32) |
+
+The run of record's outcomes:
+- In every race the writer applied 200 times, and each send that committed first was authorized while each that committed after its revocation was refused: the outcome counts equal the commit-order counts.
+- The refusal codes:
+  - `match_not_active` for blocks and unmatches;
+  - `account_not_active` for suspensions and deletions;
+  - `session_not_valid` for the session races;
+  - `profile_unavailable` for pause and restriction;
+  - `consent_not_current` for withdrawal.
+- `race.racing_duplicates`: one authorized and one replayed in every iteration (`send_a` authorized 119, replayed 81).
+- `race.opposing_writers`: send authorized 1; refused `match_not_active` 192 and `account_not_active` 7 on the reference, 193 and 6 on the adapter (as in 37372546600); no deadlock.
+
+**The delivery phase** (`== VERDICT: PASS ==`; 22:43:34.4 to 22:44:13.7):
+- `drained 7027 events in 33.8 s; outcomes: access_revoked=delivered:1031, contact_revoked=delivered:1033, match_activated=delivered:3101, message_submitted=dead_letter:2, message_submitted=delivered:829, session_epoch_bumped=delivered:1031`.
+- `dead letters (the planted controls' worlds only): message_submitted:channel_unavailable:1, message_submitted:member_unavailable:1`.
+- The seven checks each `PASS`:
+  - drain: `7027 events in 33.8 s; 0 chat events left; 0 stalled passes`;
+  - end state of every design world: `3090 worlds, 6180 accounts (1030 deactivated), 821 messages; as the database says`;
+  - identifiers and members only: `7025 provider calls`, the five operations, no name, image or custom field, and no invite, call, feed or activity;
+  - delivery of each event kind; a retry after a fixture failure; a revocation after the authorization, before the delivery; and a dead letter after the last attempt, each with the same detail text as in 37372546600.
+- 829 delivered and 2 dead-lettered messages are the adapter oracle's 831 submissions; 821 design messages are those less the 10 planted submissions.
+
+**After the suite:**
+- **The used-database step:** `rows (proof log, adapter calls, worlds, app accounts, outbox events) before: 10325 12891 5590 11182 19194; after: 10325 12891 5590 11182 19194`; `second run exit status: 1`; `refusal: refusing a used database: proof_writer_log already holds rows; proof_adapter_call already holds rows; proof_world already holds rows; glow_persistence_appaccount already holds rows. The proof runs once per new disposable database.`
+- **The results JSON:** artifact `p06-db-proof-results`, ID 11375654737, 14,755 bytes. I did not download it.
+- **Disposal:** `container removed: glow-proof-db-37383940454-1`, `credential and marker files removed`, `no proof container remains`.
+- **No password, no marker, and no mask where either would be.**
+  - The log's only `***` are on lines 38 and 164 (the `token` inputs of `actions/checkout` and `actions/setup-python`) and line 94 (checkout's git `AUTHORIZATION: basic ***` header), all before the credential step.
+  - The only long hexadecimal runs are 40 characters (16: the merge ref 3 times, `3afffb3` and `8bbad57` once each, the action commits 10 times, the runner image's commit once) and 64 (7: the image digest 5 times, the container's ID once, the artifact's digest once). There is no standalone 32- or 48-character run.
+  - The only `glow-ordering-proof:` in the log is the credential step's script template (`glow-ordering-proof:%s`).
+  - The words "password", "passfile" and "marker" appear only in the workflow's script text, the offline tests' names, the steps' fixed messages and the refusal and verification lines, none with a value.
+
+#### Compared with push run 37372546600 on `3b92122`
+
+**The same in both runs.** Both ran the same code: `3b92122` under `services/`, `proofs/` and `.github/`.
+
+- **The plan:**
+  - seed 20260929; budget 200 iterations or 30 s per race; floors 50 and 10;
+  - 56 reference and 81 adapter cases, 12 and 15 races;
+  - the ten reference controls, and nine and eleven planted controls.
+- **The outcome:**
+  - every case passed on both subjects, and every held case's waiter was blocked by its holder (pid 134 by pid 133);
+  - every race ran its 200 iterations and met its floors, with 0 violations and 0 harness failures;
+  - every control failed by its declared signal, and every planted control was flagged with the same violation counts;
+  - 0 violations in the design's rows on both subjects;
+  - the delivery phase's seven checks passed;
+  - the wrong-marker, `dbshell` and used-database steps refused, and the container was removed;
+  - no password, marker or mask appeared where either would be.
+- **Counts the plan fixes, equal in both runs:**
+  - revocation rows 2,697 (reference) and witnesses 10,341 (adapter);
+  - `design:forced` 33 and 47;
+  - the delivery's 3,101 activations, 1,033 contact revocations, 1,031 deactivations, 1,031 epoch bumps and 2 dead letters in planted worlds;
+  - the end state's 3,090 worlds and 6,180 accounts (1,030 deactivated);
+  - the used database's proof-log, adapter-call, world and account rows (10,325, 12,891, 5,590, 11,182);
+  - `race.opposing_writers`' outcomes on each subject.
+
+**Different, because the races decide them** (each run's own numbers):
+
+| | Push run 37372546600 | Run of record 37383940454 |
+|---|---|---|
+| Runner region (database job) | eastus | centralus |
+| Suite step | 5 min 20 s (reference about 83 s, adapter about 168 s, delivery about 70 s) | 3 min 16 s (about 54 s, 103 s, 39 s) |
+| Reference races | 4.4 to 7.6 s; overlaps 199 to 200 | 2.7 to 4.4 s; overlaps 155 to 200 |
+| Adapter races | 8.4 to 11.5 s; overlaps 199 to 200 | 4.9 to 6.8 s; overlaps 167 to 200 |
+| Reference submissions (`design:stress`) | 643 (591) | 748 (696) |
+| Adapter submissions (`design:stress`) | 710 (653) | 831 (774) |
+| Session races, send first (reference; adapter) | sign-out 54, expiry 55; 54, 52 | 79, 80; 73, 79 |
+| Held-case polls (reference; adapter) | 1, 2 or 3 polls: 9/14/2; 15/20/2 | 1 or 2 polls: 9/16; 15/22 |
+| Delivery | 6,906 events in 59.1 s; 708 messages delivered; 700 design messages; 6,904 provider calls | 7,027 events in 33.8 s; 829 delivered; 821; 7,025 |
+| Outbox rows after the run | 18,968 | 19,194 |
+
+- The outbox rows differ by 226, which is the extra authorized sends: 105 on the reference (748 − 643) and 121 on the adapter (831 − 710). Each authorized send writes one `message_submitted` event (`reference.py:262`, and the adapter's send).
+- The run of record's runner was faster and measured fewer overlaps, lowest in the session races (155 and 164 on the reference). Every count is far above the 10-overlap floor. The same pattern appeared between P06.DB-C1's run of record (174 to 200) and C2's (197 to 200).
+- More iterations committed the send first in the run of record. The authorized-send counts and the submissions follow from that.
+
+#### Limits and open points
+
+- I read the run of record's database job log whole, its gate's and Change scope's logs, and every job's conclusion. I did not read the other jobs' logs in this run; their conclusions are `success`. For push run 37383936513 I read only the job list and the gate line.
+- The run of record tested the merge ref `0d774c9`, whose tree equals `8bbad57`'s. The comparison above rests on `git diff --quiet 3b92122 8bbad57 -- services proofs .github`; outside those paths the two runs' trees differ only in Markdown.
+- Nothing in this run changes the limits recorded in "Deviations, findings and limits" above, or the manager's points for the exact-head review.
