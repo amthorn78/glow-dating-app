@@ -7,23 +7,23 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager:** App Manager 6, `session_01MxuepyycrEWf5uFjpwEird`, created by App Manager 5 (`session_01Xv2QTYGpc5bSQQoVeWiN4E`) on 5 October at Nathan's direction (OD-38, OD-31), in `Glow App - No Stream`. It holds the manager branch `claude/magical-wozniak-yfmmx2` and the draft [PR29](https://github.com/amthorn78/glow-dating-app/pull/29). App Manager 5 pushes nothing after `a1eb9dc`.
-- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A is done and integrated at `e8eb5d3` (the evidence record, "Manager verification of Stage A"); P06.2 is done only when Stage C merges.
-  - **Carried to P06.2:** the sections "Carried to P06.2" in the [P06.1 brief](../planning/p06-1-chat-provider-proof.md) and the [P06.DB brief](../planning/p06-db-disposable-postgres-proof.md). P06.DB's items 1 and 6, the reused-database guard and the refusal of `dbshell`, come before P06.2's first run of the suite on any database (DM-09, DM-12).
+- **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A is integrated at `e8eb5d3` with its run of record (37383940454); its exact-head review is next; P06.2 is done only when Stage C merges.
+  - **Carried to P06.2:** P06.DB's six items are done in Stage A; the [P06.1 brief](../planning/p06-1-chat-provider-proof.md)'s four remain for Stage B and later.
 - **Next item: M04**, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
 - **Done:** P06.1 (`47db18d`) and P06.DB (`3afffb3`), each with its merge receipt.
 - **[HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6).
 - **Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN` (OD-35); [review log](dev-manager/README.md), DM-01 to DM-13.
 
-## Waiting checkpoint (5 October 2026)
+## Waiting checkpoint (6 October 2026)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | The Stage A session, through Nathan | Its run of record (PR29's runs on `8bbad57`, which hold its code) | Nathan asks in the Stage A session; no watching (AM6-01) |
+| App Manager 6 | Nathan | Stage A's exact-head review report (the [prompt](../ephemeral/2026-10-06-p06-2-stage-a-review-prompt.md), `Glow App - No Stream`) | Nothing else starts (OD-29) |
 
 ## Next actions (App Manager 6)
 
-1. **Stage A**: when the run of record passes, update the P11 plan's DB06 and DB09 entries, then give Nathan Stage A's exact-head review prompt. Stages B and C follow, each after the previous stage merges; the Dev Manager reads B's and C's prompts.
-2. **PR29's governing changes:** DM-13 read the AM5-23 sentence and step 7 at `a8db520`; the OD-40 sentence (step 3) is unread.
+1. **Stage A**: its run of record is 37383940454 (every job passed); the P11 plan's DB06 and DB09 entries are updated. Its exact-head review is with Nathan; then Codex, the Dev Manager's governing read (item 2), and the merge. Stages B and C follow, each after the previous stage merges; the Dev Manager reads B's and C's prompts.
+2. **PR29's governing changes:** DM-13 read the AM5-23 sentence and step 7 at `a8db520`; step 3's OD-40 sentence and step 5's AM6-01 sentence are unread.
 3. **M04, after P06.2 merges:** brief, then the Dev Manager's read, then the implementation prompt for `Glow App - No Stream`. Starting points: push to `main` and manual dispatch only, never a pull-request event; `contents: write` for that job only, no secrets, pinned actions; delete only a branch whose head is in `main`, off a keep-list held on `main` (`main`, the manager branch, and `claude/dev-manager` by name, DM-13 item 10) and heading no open PR; dry-run mode and a job summary; selection tests and a run of record; the CI policy updated, classified with the pre-change policy, the whole workflow diff read; exact-head review, Codex and the Dev Manager's read.
 4. **Standing:** before the Stream harness is used live again, the C5 review's nits 2 and 3 and its header-allowlist advice; before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7), which still names `claude/stoic-carson-66gdig`.
 
