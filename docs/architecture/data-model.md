@@ -237,6 +237,11 @@ and one deliverer at a time is assumed.
 session at its account's current epoch, of an `active` account with an active chat
 identity; it refuses after suspension or deletion. It signs nothing; P11 serves the
 endpoint and Stage B's adapter signs.
+**Gap (Stage A's exact-head review, F1):** the per-user revocation's cut-off is the
+epoch bump's time read before its commit, so an endpoint that reads the account without
+its row lock could grant an old-epoch token after the cut-off, valid for up to an hour.
+The endpoint must close it, by granting under the account row lock or by a cut-off at or
+after the bump's commit; the choice is carried to Stage B and P11.
 
 ## Erasure, retention and restore
 
