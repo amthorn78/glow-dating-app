@@ -12,6 +12,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F, Q
 
+from glow_persistence.fields import SequenceField
+
 
 def choices(*values):
     return [(value, value) for value in values]
@@ -63,6 +65,10 @@ class OutboxEvent(Record):
     available_at = models.DateTimeField()
     lease_expires_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    # P06.2 B1 (DM-15 3.1): the delivery order within one available_at. Assigned by the
+    # database in insertion order, so the events one transaction writes are delivered
+    # in the order it wrote them; neither the app's clock nor the random id decides.
+    sequence = SequenceField()
 
     class Meta(Record.Meta):
         indexes = [models.Index(fields=["state", "available_at"], name="outbox_delivery_queue")]
@@ -525,6 +531,10 @@ class ChatBinding(Record):
     state = models.CharField(
         max_length=16, choices=choices("pending", "active", "revoked", "failed"), default="pending"
     )
+    # P06.2 B1 (F3, CX6): set when a delivery that concerns this channel was dead-lettered,
+    # to the Glow code of its last attempt; the provider may then hold a state Glow's
+    # record does not show, and P11's reconciliation owns the row. Never provider text.
+    reconcile_code = models.CharField(max_length=32, null=True, blank=True)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
@@ -574,20 +584,28 @@ class ChatIdentity(Record):
     name or email, and never shown or logged. The provider owns no other field of it:
     no name, image or custom data is ever set. PROTECT keeps the mapping until the
     provider deletion step that needs it has run (deletion and export, P07/P08).
+
+    The identity is ``pending`` until the provider confirms the user exists (P06.2 B1,
+    CX4; DM-15 3.2): ``active`` means provisioned, and only an ``active`` identity may be
+    named in a channel or granted a token. ``reconcile_code`` marks an identity whose
+    provisioning, deactivation or token revocation was dead-lettered (F3; DM-15 3.3).
     """
 
     account = models.ForeignKey(AppAccount, on_delete=models.PROTECT)
     provider = models.CharField(max_length=32)
     user_ref = models.CharField(max_length=64)
     state = models.CharField(
-        max_length=16, choices=choices("active", "deactivated"), default="active"
+        max_length=16, choices=choices("pending", "active", "deactivated"), default="pending"
     )
     # The cut-off of the latest per-user token revocation the provider confirmed.
     tokens_revoked_before = models.DateTimeField(null=True, blank=True)
+    # The Glow code of a dead-lettered delivery for this user (never provider text); set,
+    # the row needs P11's reconciliation.
+    reconcile_code = models.CharField(max_length=32, null=True, blank=True)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
-            state_check("active", "deactivated"),
+            state_check("pending", "active", "deactivated"),
             models.UniqueConstraint(fields=["account", "provider"], name="chat_identity_account"),
             models.UniqueConstraint(fields=["provider", "user_ref"], name="chat_identity_ref"),
         ]

@@ -9,16 +9,21 @@ read where that subject writes it (``evidence``).
 P06.2 adds CX2's boundary (``named.session_expires_after_check``, both subjects) and
 D5's three revocations of contact (a paused or restricted profile, a withdrawn
 onboarding consent), each with its four interleavings, for the adapter only: the
-reference design excludes them (P06.DB 5.6).
+reference design excludes them (P06.DB 5.6). Stage B1 adds, for the adapter only, the
+match activation against the D5 writers both ways (CX5; DM-15 6.1), the token grant
+against the epoch bump and a sign-out with the app's clock skewed ahead (F1; DM-14
+item 3), and the F2 and F5 nits (``B1_CASES``).
 """
 
 from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator
 from concurrent.futures import Future
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from functools import partial
 from typing import cast
 from uuid import UUID
@@ -27,9 +32,13 @@ from glow_ordering_proof import budget
 from glow_ordering_proof.concurrency import Barrier, Hold, PidSlot, Worker
 from glow_ordering_proof.dbreads import (
     account_row,
+    activation_commit,
     block_state,
     consent_row,
     deletion_recorded,
+    event_times,
+    identity_row,
+    match_between,
     match_row,
     outbox_count,
     profile_row,
@@ -1219,7 +1228,528 @@ D5_NAMED_CASES: tuple[Case, ...] = (
 def all_cases(*, d5: bool = False) -> tuple[Case, ...]:
     revocations = (*REVOCATIONS, *D5_REVOCATIONS) if d5 else REVOCATIONS
     forced_cases = [case for rev in revocations for case in _forced_cases(rev)]
-    return (*forced_cases, *NAMED_CASES, *(D5_NAMED_CASES if d5 else ()))
+    # B1_CASES is defined below; the adapter (d5) is the only subject that carries it.
+    extra = (*D5_NAMED_CASES, *B1_CASES) if d5 else ()
+    return (*forced_cases, *NAMED_CASES, *extra)
+
+
+# -- P06.2 B1: the adapter's match activation against the profile and consent writers
+# (CX5; DM-15 6.1), the token grant against the epoch bump (F1; DM-14 item 3), and the
+# F2 and F5 nits. The adapter only: the reference design has no activation of its own
+# (its fixtures write the match directly), no grant and no D5 writer. ---------------------
+
+
+@dataclass(frozen=True)
+class Pair:
+    """Two accounts ready to match, not yet matched."""
+
+    low: UUID
+    high: UUID
+
+    def account(self, which: str) -> UUID:
+        return self.low if which == "low" else self.high
+
+
+def make_pair(ctx: Context) -> Pair:
+    first, second = ctx.fixtures.create_account(), ctx.fixtures.create_account()
+    low, high = sorted((first, second))
+    return Pair(low, high)
+
+
+def _sessions_for(ctx: Context, pair: Pair, match_id: UUID) -> World:
+    """After an activation applied: its world row (the delivery phase checks it as a
+    design world) and one session per member, for the send that follows."""
+    ctx.log.record_world(ctx.name, match_id, pair.low, pair.high)
+    sessions = []
+    for account in (pair.low, pair.high):
+        signed = ctx.subject.sign_in(account, ttl_seconds=SESSION_TTL)
+        if signed.outcome != "applied" or signed.session_id is None:
+            raise RuntimeError(f"fixture sign-in failed: {signed.label()}")
+        sessions.append(signed.session_id)
+    return World(pair.low, pair.high, match_id, sessions[0], sessions[1])
+
+
+@contextmanager
+def skewed_app_clock(ahead: timedelta = timedelta(hours=1)) -> Iterator[None]:
+    """The app server's clock deliberately ahead of the database's (F1 point 5): what
+    Django writes into ``created_at`` and ``updated_at``. The adapter's issue time and the
+    bump's cut-off come from ``clock_timestamp()`` under the locks, so the skew must not
+    reach them; a case shows it in the rows it reads back."""
+    from django.utils import timezone
+
+    real = timezone.now
+    timezone.now = lambda: real() + ahead
+    try:
+        yield
+    finally:
+        timezone.now = real
+
+
+APP_CLOCK_SKEW = timedelta(hours=1)
+
+
+def _b1_writer(op: str, which: str) -> Callable[[Context, Pair, Hooks | None], Result]:
+    def act(ctx: Context, pair: Pair, hooks: Hooks | None) -> Result:
+        subject = ctx.state_subject
+        method = {
+            "pause": subject.pause_profile,
+            "restrict": subject.restrict_profile,
+            "withdraw": subject.withdraw_consent,
+        }[op]
+        return method(pair.account(which), hooks=hooks)
+
+    return act
+
+
+def _activation_cases(op: str, which: str) -> list[Case]:
+    rev = REVOCATION_BY_ID[f"{op}_{which}"]
+    act = _b1_writer(op, which)
+    refusals = rev.refusals
+    who = "the first member's" if which == "low" else "the second member's"
+    writer = {"pause": "a pause", "restrict": "a restriction", "withdraw": "a withdrawal"}[op]
+    title = f"{writer} of {who} {'onboarding consent' if op == 'withdraw' else 'profile'}"
+
+    def activate(ctx: Context, pair: Pair, hooks: Hooks | None) -> Result:
+        return ctx.state_subject.activate_match(pair.low, pair.high, hooks=hooks)
+
+    def world_of(pair: Pair, match_id: UUID) -> World:
+        # For the evidence reader: the writer's witness is found by the account.
+        return World(pair.low, pair.high, match_id, match_id, match_id)
+
+    def send_refused_after(ctx: Context, judge: Judge, world: World) -> None:
+        judge.outcome(
+            ctx.subject.send(send_request(world, key="k-after")),
+            f"a send after {title}",
+            "refused",
+            reasons=refusals,
+        )
+        judge.expect(submissions_of(world.match) == [], "a submission was committed")
+
+    def sequential_writer_first(ctx: Context, judge: Judge) -> None:
+        pair = make_pair(ctx)
+        judge.outcome(act(ctx, pair, None), title, "applied")
+        judge.outcome(
+            activate(ctx, pair, None), f"activation after {title}", "refused", reasons=refusals
+        )
+        judge.expect(match_between(pair.low, pair.high) is None, "a match was created")
+
+    def sequential_activation_first(ctx: Context, judge: Judge) -> None:
+        pair = make_pair(ctx)
+        activated = activate(ctx, pair, None)
+        judge.outcome(activated, "activation", "applied")
+        found = match_between(pair.low, pair.high)
+        if not judge.expect(found is not None and found[1] == "active", f"match {found}"):
+            return
+        assert found is not None
+        judge.outcome(act(ctx, pair, None), f"{title} after the activation", "applied")
+        rev.effect(world_of(pair, found[0]), judge)
+        send_refused_after(ctx, judge, _sessions_for(ctx, pair, found[0]))
+
+    def activation_holds(ctx: Context, judge: Judge) -> None:
+        pair = make_pair(ctx)
+        activated, written, _ = forced(
+            ctx,
+            judge,
+            lambda hooks: activate(ctx, pair, hooks),
+            lambda hooks: act(ctx, pair, hooks),
+        )
+        judge.outcome(activated, "activation (held its locks)", "applied")
+        judge.outcome(written, f"{title} (arrived while the activation held)", "applied")
+        found = match_between(pair.low, pair.high)
+        if not judge.expect(found is not None, "no match after the activation"):
+            return
+        assert found is not None
+        rev.effect(world_of(pair, found[0]), judge)
+        if activated.outcome == "applied" and written.outcome == "applied":
+            activated_at = activation_commit(found[0])
+            written_at = ctx.evidence.revocation_commit(world_of(pair, found[0]), rev)
+            judge.expect(
+                activated_at is not None and written_at is not None and activated_at < written_at,
+                f"commit order: activation {activated_at} vs the writer {written_at}",
+                signal=COMMIT_AFTER_REVOCATION,
+            )
+            judge.note("commit timestamps: the activation before the writer")
+        send_refused_after(ctx, judge, _sessions_for(ctx, pair, found[0]))
+
+    def writer_holds(ctx: Context, judge: Judge) -> None:
+        pair = make_pair(ctx)
+        written, activated, _ = forced(
+            ctx,
+            judge,
+            lambda hooks: act(ctx, pair, hooks),
+            lambda hooks: activate(ctx, pair, hooks),
+        )
+        judge.outcome(written, f"{title} (held its locks)", "applied")
+        judge.outcome(
+            activated,
+            f"activation (arrived while {title} held)",
+            "refused",
+            reasons=refusals,
+        )
+        judge.expect(match_between(pair.low, pair.high) is None, "a match was created")
+
+    guarantee = f"P06.2 B1 activation's checks (CX5): {rev.kind}"
+    prefix = f"activation.{op}_{which}"
+    return [
+        Case(
+            f"{prefix}.sequential_writer_first",
+            guarantee,
+            f"{title} commits first, sequentially; the activation refuses",
+            sequential_writer_first,
+        ),
+        Case(
+            f"{prefix}.sequential_activation_first",
+            guarantee,
+            f"the activation commits first, sequentially; {title} follows and a send refuses",
+            sequential_activation_first,
+        ),
+        Case(
+            f"{prefix}.activation_holds",
+            guarantee,
+            f"{title} arrives while the activation holds its locks; a send refuses afterwards",
+            activation_holds,
+        ),
+        Case(
+            f"{prefix}.writer_holds",
+            guarantee,
+            f"the activation arrives while {title} holds its locks, and refuses",
+            writer_holds,
+        ),
+    ]
+
+
+B1_ACTIVATION_CASES: tuple[Case, ...] = tuple(
+    case
+    for op in ("pause", "restrict", "withdraw")
+    for which in ("low", "high")
+    for case in _activation_cases(op, which)
+)
+
+
+# -- the token grant ----------------------------------------------------------------------
+
+GRANT_REFUSED_AFTER_BUMP = frozenset({"account_not_active", "session_epoch_stale"})
+TOKEN_GUARANTEE = "P06.2 B1 token grant under the account and session locks (F1)"
+
+
+def _provisioned_world(ctx: Context) -> World:
+    """A world whose first member's identity is provisioned (a fixture write: the
+    delivery phase, which provisions, runs after the cases)."""
+    world = make_world(ctx)
+    provision = getattr(ctx.fixtures, "provision_identity", None)
+    if provision is None:
+        raise RuntimeError("this subject's fixtures cannot provision an identity")
+    provision(world.low)
+    return world
+
+
+def _grant(ctx: Context, world: World, hooks: Hooks | None = None) -> Result:
+    return ctx.state_subject.grant_token(world.session_low, hooks=hooks)
+
+
+def _bump_cutoff(world: World) -> tuple[datetime, datetime]:
+    """The bump's cut-off, the time it read after its account lock (the event's
+    ``available_at``), and the app clock at the event's save (``created_at``)."""
+    times = event_times("session_epoch_bumped", world.low)
+    if times is None:
+        raise RuntimeError("no session_epoch_bumped event")
+    return times
+
+
+def _judge_grant_before_bump(judge: Judge, granted: Result, world: World) -> None:
+    """The grant's issue time precedes the bump's cut-off, both from the database clock,
+    while the app's clock (skewed ahead) shows in the row the app stamped."""
+    issued_at = granted.detail.get("issued_at")
+    if not judge.expect(isinstance(issued_at, datetime), "the grant carries no issue time"):
+        return
+    assert isinstance(issued_at, datetime)
+    cutoff, created_at = _bump_cutoff(world)
+    judge.expect(
+        issued_at < cutoff,
+        f"the issue time {issued_at.isoformat()} is not before the cut-off {cutoff.isoformat()}",
+        signal=COMMIT_AFTER_REVOCATION,
+    )
+    skew = created_at - cutoff
+    judge.expect(
+        skew > APP_CLOCK_SKEW - timedelta(minutes=5),
+        f"the app clock skew did not show: created_at - cut-off = {skew}",
+    )
+    judge.expect(
+        issued_at < cutoff + timedelta(minutes=5),
+        "the issue time followed the skewed app clock, not the database's",
+    )
+    judge.note(
+        f"issued {issued_at.isoformat()} before the cut-off {cutoff.isoformat()}; the app"
+        f" clock, {skew} ahead, stamped created_at and reached neither"
+    )
+
+
+def token_pending_identity_refused(ctx: Context, judge: Judge) -> None:
+    """DM-15 5.1: an identity the provider does not hold yet refuses a grant."""
+    world = make_world(ctx)
+    judge.outcome(
+        _grant(ctx, world),
+        "a grant for a pending identity",
+        "refused",
+        reasons={"no_chat_identity"},
+    )
+    row = identity_row(world.low)
+    judge.expect(row is not None and row[0] == "pending", f"identity {row}")
+
+
+def token_sequential_grant_first(ctx: Context, judge: Judge) -> None:
+    world = _provisioned_world(ctx)
+    with skewed_app_clock(APP_CLOCK_SKEW):
+        granted = _grant(ctx, world)
+        judge.outcome(granted, "grant before the bump", "granted")
+        judge.outcome(ctx.subject.suspend(world.low), "suspension (the epoch bump)", "applied")
+    if granted.outcome == "granted":
+        _judge_grant_before_bump(judge, granted, world)
+    judge.outcome(
+        _grant(ctx, world), "grant after the bump", "refused", reasons=GRANT_REFUSED_AFTER_BUMP
+    )
+
+
+def token_sequential_bump_first(ctx: Context, judge: Judge) -> None:
+    world = _provisioned_world(ctx)
+    with skewed_app_clock(APP_CLOCK_SKEW):
+        judge.outcome(ctx.subject.suspend(world.low), "suspension (the epoch bump)", "applied")
+        judge.outcome(
+            _grant(ctx, world), "grant after the bump", "refused", reasons=GRANT_REFUSED_AFTER_BUMP
+        )
+
+
+def token_grant_holds(ctx: Context, judge: Judge) -> None:
+    """A grant that commits just before a bump: the bump waits on the grant's shared
+    locks, and the issue time precedes the cut-off (F1 point 5, second case)."""
+    world = _provisioned_world(ctx)
+    with skewed_app_clock(APP_CLOCK_SKEW):
+        granted, bumped, _ = forced(
+            ctx,
+            judge,
+            lambda hooks: _grant(ctx, world, hooks),
+            lambda hooks: ctx.subject.suspend(world.low, hooks=hooks),
+        )
+    judge.outcome(granted, "grant (held its shared locks)", "granted")
+    judge.outcome(bumped, "suspension (arrived while the grant held)", "applied")
+    if granted.outcome == "granted" and bumped.outcome == "applied":
+        _judge_grant_before_bump(judge, granted, world)
+
+
+def token_bump_holds(ctx: Context, judge: Judge) -> None:
+    """A grant forced to wait on a bump that holds the account lock refuses after it (F1
+    point 5, first case)."""
+    world = _provisioned_world(ctx)
+    with skewed_app_clock(APP_CLOCK_SKEW):
+        bumped, granted, _ = forced(
+            ctx,
+            judge,
+            lambda hooks: ctx.subject.suspend(world.low, hooks=hooks),
+            lambda hooks: _grant(ctx, world, hooks),
+        )
+    judge.outcome(bumped, "suspension (held the account lock)", "applied")
+    judge.outcome(
+        granted,
+        "grant (arrived while the bump held)",
+        "refused",
+        reasons=GRANT_REFUSED_AFTER_BUMP,
+    )
+    judge.expect(account_row(world.low)[1] == 2, "epoch not bumped")
+
+
+def token_sign_out_holds(ctx: Context, judge: Judge) -> None:
+    """The session row is the grant's second shared lock: a grant that arrives while a
+    sign-out holds it waits, and refuses."""
+    world = _provisioned_world(ctx)
+    ended, granted, _ = forced(
+        ctx,
+        judge,
+        lambda hooks: ctx.subject.sign_out(world.session_low, hooks=hooks),
+        lambda hooks: _grant(ctx, world, hooks),
+    )
+    judge.outcome(ended, "sign-out (held the session row)", "applied")
+    judge.outcome(
+        granted,
+        "grant (arrived while the sign-out held)",
+        "refused",
+        reasons={"session_not_valid"},
+    )
+
+
+B1_TOKEN_CASES: tuple[Case, ...] = (
+    Case(
+        "token.pending_identity_refused",
+        TOKEN_GUARANTEE,
+        "a grant for an identity the provider does not hold yet is refused (DM-15 5.1)",
+        token_pending_identity_refused,
+    ),
+    Case(
+        "token.sequential_grant_first",
+        TOKEN_GUARANTEE,
+        "a grant, then the bump: the issue time precedes the cut-off; a later grant refuses",
+        token_sequential_grant_first,
+    ),
+    Case(
+        "token.sequential_bump_first",
+        TOKEN_GUARANTEE,
+        "the bump, then a grant: refused",
+        token_sequential_bump_first,
+    ),
+    Case(
+        "token.grant_holds",
+        TOKEN_GUARANTEE,
+        "the bump arrives while the grant holds its shared locks: issued before the cut-off",
+        token_grant_holds,
+    ),
+    Case(
+        "token.bump_holds",
+        TOKEN_GUARANTEE,
+        "the grant arrives while the bump holds the account lock: refused after it",
+        token_bump_holds,
+    ),
+    Case(
+        "token.sign_out_holds",
+        TOKEN_GUARANTEE,
+        "the grant arrives while a sign-out holds the session row: refused after it",
+        token_sign_out_holds,
+    ),
+)
+
+
+# -- F2 and F5 ------------------------------------------------------------------------------
+
+
+def _harness_holder(lock_account: UUID, then: Callable[[], None]) -> Writer:
+    """A harness transaction on a worker's connection: it locks one account row FOR
+    UPDATE, holds there, and then, still inside its transaction, makes the change
+    ``then`` writes, which no app writer ever makes (F2): the arriver that waited on the
+    account lock reads the changed key under its own locks."""
+
+    def run(hooks: Hooks | None) -> Result:
+        from django.db import connection, transaction
+
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("SELECT pg_backend_pid()")
+            pid = int(cursor.fetchone()[0])
+            if hooks is not None and hooks.on_begin is not None:
+                hooks.on_begin(pid)
+            cursor.execute(
+                "SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR UPDATE",
+                [lock_account],
+            )
+            if hooks is not None and hooks.after_first_lock is not None:
+                hooks.after_first_lock()
+            if hooks is not None and hooks.after_locks is not None:
+                hooks.after_locks()
+            then()
+        return Result("applied")
+
+    return run
+
+
+def _set_session_account(session_id: UUID, account_id: UUID) -> None:
+    from glow_persistence.models import AccountSession
+
+    AccountSession.objects.filter(pk=session_id).update(account_id=account_id)
+
+
+def _set_match_pair(match_id: UUID, low: UUID, high: UUID) -> None:
+    from glow_persistence.models import Match
+
+    Match.objects.filter(pk=match_id).update(account_low_id=low, account_high_id=high)
+
+
+def f2_session_account_changed_under_wait(ctx: Context, judge: Judge) -> None:
+    """F2: the send re-checks the locked session's account against its pre-lock read. A
+    harness transaction holds the sender's account lock and moves the session to another
+    account before it commits; the send that waited on the lock refuses."""
+    world = make_world(ctx)
+    other = ctx.fixtures.create_account()
+    request = send_request(world, key="k-f2-session")
+    try:
+        held, sent, _ = forced(
+            ctx,
+            judge,
+            _harness_holder(world.low, lambda: _set_session_account(world.session_low, other)),
+            lambda hooks: ctx.subject.send(request, hooks=hooks),
+        )
+        judge.outcome(held, "the harness transaction that moved the session", "applied")
+        judge.outcome(
+            sent,
+            "the send that waited on the account lock",
+            "refused",
+            reasons={"session_changed"},
+        )
+        judge.expect(submissions_of(world.match) == [], "a submission was committed")
+    finally:
+        _set_session_account(world.session_low, world.low)
+    judge.outcome(
+        ctx.subject.send(send_request(world, key="k-f2-session-after")),
+        "a send after the session was moved back",
+        "authorized",
+    )
+
+
+def f2_match_pair_changed_under_wait(ctx: Context, judge: Judge) -> None:
+    """F2: ``unmatch`` re-checks the locked match's pair against its pre-lock read. A
+    harness transaction holds the actor's account lock and points the match at two other
+    accounts before it commits; the unmatch that waited refuses, and changes nothing."""
+    world = make_world(ctx)
+    low, high = sorted((ctx.fixtures.create_account(), ctx.fixtures.create_account()))
+    try:
+        held, unmatched, _ = forced(
+            ctx,
+            judge,
+            _harness_holder(world.low, lambda: _set_match_pair(world.match, low, high)),
+            lambda hooks: ctx.subject.unmatch(world.low, world.match, hooks=hooks),
+        )
+        judge.outcome(held, "the harness transaction that re-paired the match", "applied")
+        judge.outcome(
+            unmatched,
+            "the unmatch that waited on the account lock",
+            "refused",
+            reasons={"match_changed"},
+        )
+    finally:
+        _set_match_pair(world.match, world.low, world.high)
+    judge.expect(match_row(world.match) == ("active", 1), "the refused unmatch changed the match")
+    judge.expect(outbox_count("contact_revoked", world.match) == 0, "a contact_revoked event")
+
+
+def f5_self_block_refused(ctx: Context, judge: Judge) -> None:
+    """F5: a block whose actor is its own target is refused with a Glow code before any
+    write; the no-self constraint is never reached."""
+    world = make_world(ctx)
+    judge.outcome(
+        ctx.subject.block(world.low, world.low), "a self-block", "refused", reasons={"self_target"}
+    )
+    judge.expect(block_state(world.low, world.low) is None, "a Block row was written")
+    judge.expect(account_row(world.low)[2] == 1, "blocks_version bumped")
+    judge.expect(match_row(world.match) == ("active", 1), "the match changed")
+
+
+B1_NAMED_CASES: tuple[Case, ...] = (
+    Case(
+        "named.f2_session_account_changed_under_wait",
+        "P06.2 B1 F2: the locked session's account against the pre-lock read",
+        "a session moved to another account while the send waits is refused",
+        f2_session_account_changed_under_wait,
+    ),
+    Case(
+        "named.f2_match_pair_changed_under_wait",
+        "P06.2 B1 F2: the locked match's pair against the pre-lock read",
+        "a match re-paired while the unmatch waits is refused",
+        f2_match_pair_changed_under_wait,
+    ),
+    Case(
+        "named.f5_self_block_refused",
+        "P06.2 B1 F5: a self-block is refused before the write",
+        "a block whose actor is its target is refused, and nothing is written",
+        f5_self_block_refused,
+    ),
+)
+
+B1_CASES: tuple[Case, ...] = (*B1_ACTIVATION_CASES, *B1_TOKEN_CASES, *B1_NAMED_CASES)
 
 
 CASE_BY_ID = {case.id: case for case in all_cases(d5=True)}

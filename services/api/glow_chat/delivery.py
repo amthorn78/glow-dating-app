@@ -1,26 +1,47 @@
-"""Outbox delivery to the chat provider (P06.2 Stage A, items 2 and 3).
+"""Outbox delivery to the chat provider (P06.2 Stage A, items 2 and 3; Stage B1, CX4,
+CX6, F1 and F3).
 
 Each due event of the chat schema becomes exactly one provider call:
 
 1. **Lease.** The undelivered chat events are read in delivery order, and each in turn
    is locked by its key (``FOR UPDATE``) in one transaction and, when it is due, marked
    ``leased`` with a lease expiry and one more attempt. Everything the call needs is read
-   here: the committed channel ID, the members' provider user IDs, the committed
-   message ID.
+   here: the committed user ID, the committed channel ID, the members' provider user
+   IDs, the committed message ID.
 2. **Call.** One provider call, outside any transaction. A provider error is kept only
    as its Glow code (``glow_domain.chat_provider.error_code``); no provider text is
    stored, logged or returned.
 3. **Receipt.** In a second transaction the event is locked again and, if the lease is
-   still this one, the receipt is recorded (``ChatBinding.state``, the
-   ``MessageSubmission``'s state with its committed ``provider_message_ref``, the
-   ``ChatIdentity``'s state or token cut-off) and the event marked ``delivered``.
+   still this one, the receipt is recorded (the ``ChatIdentity``'s state or token
+   cut-off, ``ChatBinding.state``, the ``MessageSubmission``'s state with its committed
+   ``provider_message_ref``) and the event marked ``delivered``.
 
 A retry repeats the same call with the same committed identifiers, so the provider
-never gets a second channel, message or member. Delivery is first in, first out:
-events are taken in ``(available_at, created_at, id)`` order, and a failed event that
-may be retried stays at the head, so nothing overtakes it. After ``max_attempts``, or
-on a final error code, the event is dead-lettered and the row it concerns is marked
-``failed`` where its model has that state.
+never gets a second user, channel, message or member. Delivery is first in, first out:
+events are taken in ``(available_at, sequence)`` order, where ``sequence`` is the
+database-assigned order column (DM-15 3.1), so the events one transaction wrote are
+delivered in the order it wrote them; a failed event that may be retried stays at the
+head, so nothing overtakes it. After ``max_attempts``, or on a final error code, the
+event is dead-lettered.
+
+**Provisioning before the channel** (CX4; DM-15 3.1 to 3.5): a member's identity is
+``pending`` until its provisioning is delivered. A channel event that finds a member not
+``active`` does not wait: its provisioning, ordered ahead of it, is settled, so the
+channel dead-letters with ``member_unavailable``.
+
+**The reconciliation mark** (F3, CX6; DM-15 4.5): a dead letter whose call may have
+reached the provider marks the row it concerns, the binding or the identity, with
+``reconcile_code``, the Glow code of its last attempt, and the ``pending`` binding it
+failed to create becomes ``failed``. A message is never delivered into a marked,
+``revoked`` or ``failed`` binding. A revocation of such a binding still makes its
+removal, and a channel the provider does not have counts as removed; a deactivation or
+token revocation of a marked identity still makes its call, and a user the provider does
+not have counts as deactivated or revoked. Reconciliation itself is P11's (the data
+model, "Chat contact and the outbox").
+
+**The cut-off** of a per-user token revocation is the epoch bump's time read after its
+account lock (``event.available_at``); it is sent rounded up to the next whole second,
+strictly (DM-15 5.2), and stored exact.
 
 Stage A runs this in-process under the disposable-database proof, against the fixture
 provider; there is no deployed worker before P11 (DM-13 item 9), and one deliverer at a
@@ -45,9 +66,11 @@ from glow_domain.chat_provider import (
     PROVIDER_UNAVAILABLE,
     RETRYABLE,
     ChatProvider,
+    ChatProviderError,
     ProviderReceipt,
     error_code,
 )
+from glow_domain.chat_tokens import revocation_cutoff_sent
 from glow_persistence.models import (
     ChatBinding,
     ChatIdentity,
@@ -77,11 +100,12 @@ class Delivery:
 
 @dataclass(frozen=True)
 class _Plan:
-    """The one call an event needs, read under its lease; ``None`` call: none needed."""
+    """The one call an event needs, read under its lease; ``None`` call: none needed.
+    ``on_dead_letter`` takes the dead letter's Glow code."""
 
     call: Callable[[], ProviderReceipt] | None
     record: Callable[[ProviderReceipt, datetime], None]
-    on_dead_letter: Callable[[], None]
+    on_dead_letter: Callable[[str | None], None]
     code: str | None = None  # set when the event can only be dead-lettered
 
 
@@ -95,6 +119,38 @@ def _clock() -> datetime:
 
 def _nothing(*_: object) -> None:
     return None
+
+
+def _mark_binding(binding_id: UUID, code: str | None, *, fail_pending: bool) -> None:
+    """The reconciliation mark on a binding (F3, CX6): the dead letter's Glow code, and
+    ``failed`` for a channel whose creation was never confirmed."""
+    row = ChatBinding.objects.select_for_update().get(pk=binding_id)
+    fields = ["reconcile_code", "version", "updated_at"]
+    row.reconcile_code = code or PROVIDER_UNAVAILABLE
+    if fail_pending and row.state == "pending":
+        row.state = "failed"
+        fields.append("state")
+    row.version += 1
+    row.save(update_fields=fields)
+
+
+def _mark_identity(identity_id: UUID, code: str | None) -> None:
+    """The reconciliation mark on an identity (F3; DM-15 3.3)."""
+    row = ChatIdentity.objects.select_for_update().get(pk=identity_id)
+    row.reconcile_code = code or PROVIDER_UNAVAILABLE
+    row.version += 1
+    row.save(update_fields=["reconcile_code", "version", "updated_at"])
+
+
+def _counts_as_done(call: Callable[[], ProviderReceipt], ref: str, code: str) -> ProviderReceipt:
+    """A removal, deactivation or revocation whose object the provider does not have
+    counts as done (CX6; DM-15 3.3 and 4.5): only ``code``, only for this plan."""
+    try:
+        return call()
+    except ChatProviderError as error:
+        if error.code == code:
+            return ProviderReceipt(ref, already=True)
+        raise
 
 
 class OutboxDelivery:
@@ -118,7 +174,8 @@ class OutboxDelivery:
             account_id=account_id, provider=self.provider.name
         ).first()
 
-    def _members(self, match_id: UUID) -> tuple[str, str] | None:
+    def _members(self, match_id: UUID) -> list[Any] | None:
+        """Both members' identities, or None when the match or an identity is missing."""
         pair = (
             Match.objects.filter(pk=match_id)
             .values_list("account_low_id", "account_high_id")
@@ -126,14 +183,34 @@ class OutboxDelivery:
         )
         if pair is None:
             return None
-        refs = [self._identity(account_id) for account_id in pair]
-        if any(ref is None for ref in refs):
+        identities = [self._identity(account_id) for account_id in pair]
+        if any(identity is None for identity in identities):
             return None
-        return (refs[0].user_ref, refs[1].user_ref)
+        return identities
 
     def _plan(self, event: Any) -> _Plan:
         kind = event.event_type
         provider = self.provider
+        if kind == events.IDENTITY_CREATED:
+            identity = ChatIdentity.objects.filter(pk=event.payload_ref).first()
+            if identity is None or identity.provider != provider.name:
+                return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
+            identity_id = identity.id
+            user_ref = identity.user_ref
+
+            def provisioned(receipt: ProviderReceipt, now: datetime) -> None:
+                # DM-15 3.2: provisioned only on the provider's receipt.
+                row = ChatIdentity.objects.select_for_update().get(pk=identity_id)
+                if row.state == "pending":
+                    row.state = "active"
+                    row.version += 1
+                    row.save(update_fields=["state", "version", "updated_at"])
+
+            def mark(code: str | None) -> None:
+                _mark_identity(identity_id, code)
+
+            return _Plan(lambda: provider.provision_user(user_ref), provisioned, mark)
+
         if kind == events.MATCH_ACTIVATED:
             binding = ChatBinding.objects.filter(pk=event.payload_ref).first()
             if binding is None or binding.provider != provider.name:
@@ -141,12 +218,14 @@ class OutboxDelivery:
             members = self._members(binding.match_id)
             binding_id = binding.id
 
-            def failed_binding() -> None:
-                ChatBinding.objects.filter(pk=binding_id, state="pending").update(state="failed")
+            def failed_binding(code: str | None) -> None:
+                _mark_binding(binding_id, code, fail_pending=True)
 
-            if members is None:
+            if members is None or any(member.state != "active" for member in members):
+                # DM-15 3.2: a member not provisioned (its provisioning, ordered ahead,
+                # was dead-lettered) or already deactivated: never wait, never call.
                 return _Plan(None, _nothing, failed_binding, MEMBER_UNAVAILABLE)
-            pair: tuple[str, str] = members
+            pair: tuple[str, str] = (members[0].user_ref, members[1].user_ref)
             channel_id = binding.channel_ref
 
             def created(receipt: ProviderReceipt, now: datetime) -> None:
@@ -164,20 +243,25 @@ class OutboxDelivery:
                 return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
             submission_id = submission.id
 
-            def failed_submission() -> None:
+            def failed_submission(code: str | None) -> None:
                 MessageSubmission.objects.filter(pk=submission_id, state="pending").update(
                     state="failed"
                 )
 
             binding = submission.binding
-            if binding.provider != provider.name or binding.state in ("revoked", "failed"):
-                # Never into a channel whose members were removed, or that never existed.
+            if (
+                binding.provider != provider.name
+                or binding.state in ("revoked", "failed")
+                or binding.reconcile_code is not None
+            ):
+                # Never into a channel whose members were removed, that never existed, or
+                # whose state at the provider is in doubt (DM-15 4.5).
                 return _Plan(None, _nothing, failed_submission, CHANNEL_UNAVAILABLE)
             if binding.state != "active":
                 # The channel's creation is still ahead of this message: wait for it.
                 return _Plan(None, _nothing, failed_submission, PROVIDER_UNAVAILABLE)
             sender = self._identity(submission.actor_id)
-            if sender is None or submission.text is None:
+            if sender is None or sender.state != "active" or submission.text is None:
                 return _Plan(None, _nothing, failed_submission, MEMBER_UNAVAILABLE)
             channel_id = binding.channel_ref
             sender_ref = sender.user_ref
@@ -199,35 +283,58 @@ class OutboxDelivery:
 
         if kind == events.CONTACT_REVOKED:
             binding = ChatBinding.objects.filter(match_id=event.aggregate_id).first()
-            if binding is None or binding.state == "failed":
-                # No channel was ever created: nothing to remove.
+            if binding is None:
                 return _Plan(None, _nothing, _nothing)
             if binding.provider != provider.name:
                 return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
             members = self._members(event.aggregate_id)
-            if members is None:
-                return _Plan(None, _nothing, _nothing, MEMBER_UNAVAILABLE)
-            both: tuple[str, str] = members
             binding_id = binding.id
+            if members is None or binding.channel_ref is None:
+                return _Plan(None, _nothing, _nothing, MEMBER_UNAVAILABLE)
+            both: tuple[str, str] = (members[0].user_ref, members[1].user_ref)
             channel_id = binding.channel_ref
 
+            def remove() -> ProviderReceipt:
+                # CX6 (DM-15 4.5): a failed or marked binding may still have its channel
+                # at the provider, so the removal is always made; a channel the provider
+                # does not have counts as removed.
+                return _counts_as_done(
+                    lambda: provider.remove_members(channel_id, both),
+                    channel_id,
+                    CHANNEL_UNAVAILABLE,
+                )
+
             def removed(receipt: ProviderReceipt, now: datetime) -> None:
+                # The mark's reason is kept: the row stays P11's to reconcile.
                 row = ChatBinding.objects.select_for_update().get(pk=binding_id)
                 if row.state != "revoked":
                     row.state = "revoked"
                     row.version += 1
                     row.save(update_fields=["state", "version", "updated_at"])
 
-            return _Plan(lambda: provider.remove_members(channel_id, both), removed, _nothing)
+            def mark(code: str | None) -> None:
+                _mark_binding(binding_id, code, fail_pending=False)
+
+            return _Plan(remove, removed, mark)
 
         if kind in (events.ACCESS_REVOKED, events.SESSION_EPOCH_BUMPED):
             identity = self._identity(event.aggregate_id)
             if identity is None:
-                # No provider user exists for the account: nothing to deactivate or revoke.
+                # No provider user was ever committed for the account: nothing to do.
                 return _Plan(None, _nothing, _nothing)
             identity_id = identity.id
             user_ref = identity.user_ref
+
+            def mark(code: str | None) -> None:
+                _mark_identity(identity_id, code)
+
             if kind == events.ACCESS_REVOKED:
+
+                def deactivate() -> ProviderReceipt:
+                    # DM-15 3.3: a user the provider does not have counts as deactivated.
+                    return _counts_as_done(
+                        lambda: provider.deactivate_user(user_ref), user_ref, MEMBER_UNAVAILABLE
+                    )
 
                 def deactivated(receipt: ProviderReceipt, now: datetime) -> None:
                     row = ChatIdentity.objects.select_for_update().get(pk=identity_id)
@@ -236,8 +343,19 @@ class OutboxDelivery:
                         row.version += 1
                         row.save(update_fields=["state", "version", "updated_at"])
 
-                return _Plan(lambda: provider.deactivate_user(user_ref), deactivated, _nothing)
+                return _Plan(deactivate, deactivated, mark)
+            # F1 (DM-14 item 3, point 4): the cut-off is the bump's time read after its
+            # account lock, kept exact here and sent at the next whole second (point 3).
             cutoff = event.available_at
+            sent = revocation_cutoff_sent(cutoff)
+
+            def revoke() -> ProviderReceipt:
+                # DM-15 3.3: a user the provider does not have counts as revoked.
+                return _counts_as_done(
+                    lambda: provider.revoke_user_tokens(user_ref, sent),
+                    user_ref,
+                    MEMBER_UNAVAILABLE,
+                )
 
             def revoked(receipt: ProviderReceipt, now: datetime) -> None:
                 row = ChatIdentity.objects.select_for_update().get(pk=identity_id)
@@ -246,21 +364,22 @@ class OutboxDelivery:
                     row.version += 1
                     row.save(update_fields=["tokens_revoked_before", "version", "updated_at"])
 
-            return _Plan(lambda: provider.revoke_user_tokens(user_ref, cutoff), revoked, _nothing)
+            return _Plan(revoke, revoked, mark)
 
         return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
 
     # -- one event --------------------------------------------------------------------
 
     def _due_ids(self, count: int) -> list[UUID]:
-        """The first ``count`` undelivered chat events, in delivery order."""
+        """The first ``count`` undelivered chat events, in delivery order: by
+        ``available_at``, then the database-assigned ``sequence`` (DM-15 3.1)."""
         ids = (
             OutboxEvent.objects.filter(
                 schema_version=events.CHAT_SCHEMA_VERSION,
                 event_type__in=tuple(events.DELIVERED),
                 state__in=("pending", "leased"),
             )
-            .order_by("available_at", "created_at", "id")
+            .order_by("available_at", "sequence")
             .values_list("id", flat=True)[:count]
         )
         return list(ids)
@@ -316,7 +435,7 @@ class OutboxDelivery:
         provider_called: bool,
     ) -> Delivery:
         """Inside the event's transaction: record the receipt and mark it delivered, or
-        release it for a retry, or dead-letter it."""
+        release it for a retry, or dead-letter it and mark the row it concerns."""
         if code is None:
             if receipt is not None:
                 plan.record(receipt, now)
@@ -341,7 +460,7 @@ class OutboxDelivery:
             return Delivery(
                 event.id, event.event_type, "retry", event.attempts, code, provider_called
             )
-        plan.on_dead_letter()
+        plan.on_dead_letter(code)
         event.state = "dead_letter"
         event.lease_expires_at = None
         event.version += 1
