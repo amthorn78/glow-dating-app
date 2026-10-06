@@ -4,6 +4,8 @@ import django.core.validators
 import django.db.models.deletion
 from django.db import migrations, models
 
+import glow_persistence.fields
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -11,16 +13,23 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddField(
+            model_name="chatbinding",
+            name="reconcile_code",
+            field=models.CharField(blank=True, max_length=32, null=True),
+        ),
+        migrations.AddField(
+            model_name="outboxevent",
+            name="sequence",
+            field=glow_persistence.fields.SequenceField(),
+        ),
         migrations.CreateModel(
             name="ChatIdentity",
             fields=[
                 (
                     "id",
                     models.UUIDField(
-                        default=uuid.uuid4,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
                     ),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
@@ -28,8 +37,7 @@ class Migration(migrations.Migration):
                 (
                     "version",
                     models.PositiveBigIntegerField(
-                        default=1,
-                        validators=[django.core.validators.MinValueValidator(1)],
+                        default=1, validators=[django.core.validators.MinValueValidator(1)]
                     ),
                 ),
                 ("provider", models.CharField(max_length=32)),
@@ -37,12 +45,17 @@ class Migration(migrations.Migration):
                 (
                     "state",
                     models.CharField(
-                        choices=[("active", "active"), ("deactivated", "deactivated")],
-                        default="active",
+                        choices=[
+                            ("pending", "pending"),
+                            ("active", "active"),
+                            ("deactivated", "deactivated"),
+                        ],
+                        default="pending",
                         max_length=16,
                     ),
                 ),
                 ("tokens_revoked_before", models.DateTimeField(blank=True, null=True)),
+                ("reconcile_code", models.CharField(blank=True, max_length=32, null=True)),
                 (
                     "account",
                     models.ForeignKey(
@@ -59,7 +72,7 @@ class Migration(migrations.Migration):
                         name="glow_persistence_chatidentity_version",
                     ),
                     models.CheckConstraint(
-                        condition=models.Q(("state__in", ("active", "deactivated"))),
+                        condition=models.Q(("state__in", ("pending", "active", "deactivated"))),
                         name="glow_persistence_chatidentity_state",
                     ),
                     models.UniqueConstraint(
@@ -77,10 +90,7 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.UUIDField(
-                        default=uuid.uuid4,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
                     ),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
@@ -88,8 +98,7 @@ class Migration(migrations.Migration):
                 (
                     "version",
                     models.PositiveBigIntegerField(
-                        default=1,
-                        validators=[django.core.validators.MinValueValidator(1)],
+                        default=1, validators=[django.core.validators.MinValueValidator(1)]
                     ),
                 ),
                 (
@@ -112,8 +121,7 @@ class Migration(migrations.Migration):
                 (
                     "match",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        to="glow_persistence.match",
+                        on_delete=django.db.models.deletion.CASCADE, to="glow_persistence.match"
                     ),
                 ),
             ],

@@ -18,7 +18,12 @@ P06.2's D5 adds three revocations, each joining the same protocol (DM-13 4.1): a
 paused or restricted profile and a withdrawn onboarding consent refuse a send. Their
 writers take the account row lock first and bump the version of the row the send
 checks (the profile's, or the consent decision's), and the send reads that state under
-its account locks.
+its account locks. Stage B1 makes match activation run the same profile and consent
+checks under its account locks (CX5), and adds the token grant (F1; DM-14 item 3): the
+account row and the session row locked ``FOR SHARE`` in the send's order, the time from
+``clock_timestamp()`` under those locks, and every check of ``grant_chat_token`` on the
+locked rows, so a grant that waits on an epoch bump refuses after it, and a grant that
+commits before the bump has an issue time before the bump's cut-off, from one clock.
 
 There is no switch here: no test-only branch, flag or hook that changes a lock, a
 check or a write (DM-13 2.1). A ``TransactionProbe`` may observe a writer at its hold
@@ -26,7 +31,9 @@ points; it only signals and waits.
 
 Each new provider identifier (user, channel, message) is ``secrets.token_hex(16)``,
 committed before any provider call so a retry reuses it; it is never derived from an
-account ID, name or email, and never logged.
+account ID, name or email, and never logged. A new ``ChatIdentity`` is ``pending`` and
+gets its own outbox event, written before the channel's (CX4; DM-15 3.1 to 3.5); the
+provider's receipt of its provisioning makes it ``active``.
 """
 
 from __future__ import annotations
@@ -42,7 +49,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 
 from glow_chat import events
-from glow_domain import chat
+from glow_domain import chat, chat_tokens
 from glow_domain.chat import ContactResult, SendCommand, SendReceipt, TransactionProbe
 from glow_domain.chat import TransactionTrace as Trace
 from glow_persistence.models import (
@@ -188,11 +195,47 @@ class OrmContactPersistence:
         account.version += 1
         account.save(update_fields=["eligibility_version", "version", "updated_at"])
 
+    @staticmethod
+    def _contact_state_checks(low_id: UUID, high_id: UUID) -> None:
+        """P06.2 D5, under both account locks: both profiles visible, and both accounts'
+        latest onboarding consent accepted. The send and match activation (CX5) share
+        these checks, so the two refuse the same states."""
+        profiles = dict(
+            Profile.objects.filter(account_id__in=(low_id, high_id)).values_list(
+                "account_id", "state"
+            )
+        )
+        if profiles.get(low_id) != "visible" or profiles.get(high_id) != "visible":
+            raise _Refused(chat.PROFILE_UNAVAILABLE)
+        for account_id in (low_id, high_id):
+            latest = (
+                ConsentDecision.objects.filter(
+                    account_id=account_id, purpose=chat.ONBOARDING_CONSENT_PURPOSE
+                )
+                .order_by("-version")
+                .values_list("state", flat=True)
+                .first()
+            )
+            if latest != "accepted":
+                raise _Refused(chat.CONSENT_NOT_CURRENT)
+
     # -- match activation ----------------------------------------------------------------
 
     def activate_match(
         self, first: UUID, second: UUID, *, probe: TransactionProbe | None = None
     ) -> ContactResult:
+        """The proof's and the conformance run's way to make a match, not F09's
+        activation (CX5; DM-15 6.3). Under both account locks it checks the accounts'
+        state, an active block, an existing pair, and the send's own profile and consent
+        checks (P06.2 B1); reciprocal likes and current two-person eligibility are
+        checked by the activation P11 wires (F09), under the same locks. No runtime path
+        calls this method.
+
+        Each member without a ``ChatIdentity`` gets one, ``pending``, with its own outbox
+        event written before the channel's (CX4; DM-15 3.1 and 3.5): the provisioning is
+        delivered before the channel that names the user, and an identity that already
+        exists from an earlier match gets no second event."""
+
         def body(tx: _Tx) -> ContactResult:
             if first == second:
                 raise _Refused(chat.NOT_A_MEMBER)
@@ -215,6 +258,9 @@ class OrmContactPersistence:
             if Match.objects.filter(account_low_id=low_id, account_high_id=high_id).exists():
                 # One pair record; rematch policy is unset (A05).
                 raise _Refused(chat.MATCH_EXISTS)
+            # CX5: the send's profile and consent checks, on the rows read under the
+            # account locks that every writer of them takes (DM-13 4.1).
+            self._contact_state_checks(low_id, high_id)
             match = Match.objects.create(
                 account_low_id=low_id, account_high_id=high_id, state="active"
             )
@@ -222,8 +268,20 @@ class OrmContactPersistence:
                 if not ChatIdentity.objects.filter(
                     account_id=account.id, provider=self.provider
                 ).exists():
-                    ChatIdentity.objects.create(
-                        account=account, provider=self.provider, user_ref=new_provider_ref()
+                    identity = ChatIdentity.objects.create(
+                        account=account,
+                        provider=self.provider,
+                        user_ref=new_provider_ref(),
+                        state="pending",
+                    )
+                    # Before the channel's event: delivered as the user's provisioning.
+                    self._event(
+                        tx,
+                        events.IDENTITY_CREATED,
+                        aggregate_id=identity.id,
+                        aggregate_version=1,
+                        available_at=now,
+                        payload_ref=identity.id,
                     )
             binding = ChatBinding.objects.create(
                 match=match, provider=self.provider, channel_ref=new_provider_ref(), state="pending"
@@ -237,6 +295,73 @@ class OrmContactPersistence:
                 payload_ref=binding.id,
             )
             return ContactResult("applied", match_id=match.id)
+
+        return self._run(body, probe)
+
+    # -- the token grant (P06.2 B1; F1, DM-14 item 3) -------------------------------------
+
+    @staticmethod
+    def _lock_shared(table: str, pk: UUID, columns: tuple[str, ...], cursor: Any) -> Any:
+        """A row by primary key, ``FOR SHARE``: the grant reads what a bump or a sign-out
+        writes ``FOR UPDATE``, so it waits for a writer in flight and reads its result; it
+        excludes no other reader. An absent row is a refusal (5.5)."""
+        cursor.execute(
+            f"SELECT {', '.join(columns)} FROM {table} WHERE id = %s FOR SHARE",
+            [pk],
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise _Refused(f"{table.removeprefix('glow_persistence_')}_missing")
+        return row
+
+    def grant_token(
+        self, session_id: UUID, *, probe: TransactionProbe | None = None
+    ) -> ContactResult:
+        def body(tx: _Tx) -> ContactResult:
+            # Only the session's account is read before the locks: it never changes, and
+            # the locked row is checked against it (F2).
+            session_account = (
+                AccountSession.objects.filter(pk=session_id)
+                .values_list("account_id", flat=True)
+                .first()
+            )
+            if session_account is None:
+                raise _Refused(chat.SESSION_MISSING)
+            account_id: UUID = session_account
+            # The send's order: the account, then the session (points 1 and 2).
+            account_state, session_epoch = self._lock_shared(
+                "glow_persistence_appaccount", account_id, ("state", "session_epoch"), tx.cursor
+            )
+            self._signal(tx.probe, "after_first_lock")
+            locked_account, session_state, epoch, expires_at = self._lock_shared(
+                "glow_persistence_accountsession",
+                session_id,
+                ("account_id", "state", "epoch", "expires_at"),
+                tx.cursor,
+            )
+            self._signal(tx.probe, "after_locks")
+            now = self._clock(tx.cursor)
+            if locked_account != account_id:
+                raise _Refused(chat.SESSION_CHANGED)
+            identity = (
+                ChatIdentity.objects.filter(account_id=account_id, provider=self.provider)
+                .values_list("user_ref", "state")
+                .first()
+            )
+            user_ref, identity_state = identity if identity is not None else (None, None)
+            # Every check of the rule, on the locked rows, with the database's time (5.1:
+            # "active" means provisioned and not deactivated).
+            granted = chat_tokens.grant_chat_token(
+                account=chat_tokens.TokenAccount(str(account_state), int(session_epoch)),
+                session=chat_tokens.TokenSession(str(session_state), int(epoch), expires_at),
+                user_ref=user_ref,
+                identity_active=identity_state == "active",
+                now=now,
+            )
+            self._signal(tx.probe, "before_commit")
+            if isinstance(granted, chat_tokens.TokenRefusal):
+                raise _Refused(granted.code)
+            return ContactResult("granted", grant=granted, session_id=session_id)
 
         return self._run(body, probe)
 
@@ -350,6 +475,9 @@ class OrmContactPersistence:
                 raise _Refused(chat.MATCH_NOT_ACTIVE)
             if (match.account_low_id, match.account_high_id) != (low_id, high_id):
                 raise _Refused(chat.MATCH_CHANGED)
+            if session.account_id != actor_id:
+                # F2: the locked session's account against the pre-lock read.
+                raise _Refused(chat.SESSION_CHANGED)
             if low.state != "active" or high.state != "active":
                 raise _Refused(chat.ACCOUNT_NOT_ACTIVE)
             if session.state != "valid":
@@ -372,24 +500,7 @@ class OrmContactPersistence:
                 raise _Refused(chat.STALE_CONTACT_VERSION)
             # P06.2 D5: both profiles visible, and both accounts' latest onboarding
             # consent accepted, read under the account locks every writer of them takes.
-            profiles = dict(
-                Profile.objects.filter(account_id__in=(low_id, high_id)).values_list(
-                    "account_id", "state"
-                )
-            )
-            if profiles.get(low_id) != "visible" or profiles.get(high_id) != "visible":
-                raise _Refused(chat.PROFILE_UNAVAILABLE)
-            for account_id in (low_id, high_id):
-                latest = (
-                    ConsentDecision.objects.filter(
-                        account_id=account_id, purpose=chat.ONBOARDING_CONSENT_PURPOSE
-                    )
-                    .order_by("-version")
-                    .values_list("state", flat=True)
-                    .first()
-                )
-                if latest != "accepted":
-                    raise _Refused(chat.CONSENT_NOT_CURRENT)
+            self._contact_state_checks(low_id, high_id)
 
             # 5.4: authorized; now deduplicate.
             existing = MessageSubmission.objects.filter(
@@ -445,6 +556,9 @@ class OrmContactPersistence:
         self, actor_id: UUID, target_id: UUID, *, probe: TransactionProbe | None = None
     ) -> ContactResult:
         def body(tx: _Tx) -> ContactResult:
+            if actor_id == target_id:
+                # F5: refused before any lock or write, not left to the no-self constraint.
+                raise _Refused(chat.SELF_TARGET)
             low_id, high_id = sorted((actor_id, target_id))
             # 5.3: the lower account first, whoever acts.
             accounts = {low_id: self._lock(AppAccount, low_id)}
@@ -566,6 +680,9 @@ class OrmContactPersistence:
             match = self._lock(Match, match_id)
             self._signal(tx.probe, "after_locks")
             now = self._clock(tx.cursor)
+            if (match.account_low_id, match.account_high_id) != (low_id, high_id):
+                # F2: the locked match's pair against the pre-lock read.
+                raise _Refused(chat.MATCH_CHANGED)
             if match.state == "unmatched":
                 return ContactResult("no_change", "already_unmatched", match_id=match.id)
             match.state = "unmatched"
