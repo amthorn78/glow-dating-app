@@ -190,7 +190,12 @@ current. A resume restores a paused profile; nothing in Stage A lifts a restrict
 **Provider identifiers** are random and committed before any provider call: a match's
 activation creates the match, each member's `ChatIdentity` if it has none, and the
 `ChatBinding` with a random `channel_ref` (state `pending`), with the channel's outbox
-event, in one transaction under both account locks. A send stores its provider message
+event, in one transaction under both account locks. **Limits (Codex's review of PR29, CX4 and CX5):** this
+activation checks only the accounts' state, an active block and an existing pair, not
+reciprocal likes, a paused or restricted profile or the onboarding consent, so it is the
+proof's way to make a match, not F09's activation, which P11 wires with those checks
+under the same locks; and the provider port has no user provisioning step (the fixture
+creates users inside `create_channel`). Both are carried to Stage B. A send stores its provider message
 ID in `MessageSubmission.provider_message_ref` when it is authorized; acceptance by the
 provider moves the submission to `accepted`. A send is accepted into a `pending` or
 `active` binding: its event queues behind the channel's creation.

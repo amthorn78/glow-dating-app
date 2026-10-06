@@ -478,4 +478,31 @@ Relayed by Nathan to App Manager 6 on 6 October. The review session ran the [rev
 
 **Manager verification (App Manager 6, 6 October 2026).** The report states the prompt's commit and the head as the prompt names them. F1 reproduced from the code: `_revoke_account` writes `session_epoch_bumped` with `available_at=now`, `now` read by `self._clock` after the account lock and before the commit, and `delivery.py:240` sets `cutoff = event.available_at`. F2's pre-lock reads (`contact.py:320-337`) and the pair-only re-check (`:350`), F3's `_nothing` dead-letter plans (`delivery.py:200-249`) and F4's mapping (`contact.py:147`) read as the review says. Nothing in the findings changes a recorded result.
 
-**Next:** Codex's review of PR29, the Dev Manager's DM-14 (the governing sentences and these dispositions), the pre-merge checklist, then Stage A's merge.
+**Next:** Codex's review of PR29, the Dev Manager's DM-14 (the governing sentences and these dispositions), the pre-merge checklist, then Stage A's merge. (Codex and DM-14 done the same day, below.)
+
+## Codex's review of PR29 (6 October 2026)
+
+App Manager 6 marked PR29 ready at about 01:22 UTC, at `da9fac6a13a815eb08e3c3cd9e71b9e1e626e19b`. Codex's summary comment shows both reviews completed on `da9fac6`: the security review at 01:29:06 UTC with no comment, the code review at 01:29:32 UTC with two inline comments, each marked P1. The labels CX4 and CX5 are the manager's (CX1 to CX3 were PR28's).
+
+### The findings, as posted
+
+> **CX4. P1, `services/api/glow_domain/chat_provider_fixtures.py:145-149`: "Provision provider users before creating their channel."** For a pair's first match, the only provider operation is `create_channel`, while this fixture silently creates both provider users as a side effect. Stream's server guidance says both users must already be present before starting a conversation and provisions them through `upsert_users` ([Stream backend documentation](https://getstream.io/chat/docs/python/backend/)); a real adapter implementing this five-operation port will therefore fail channel creation for new identities or hide extra, partially completed calls inside the claimed single call. Model idempotent user provisioning explicitly and deliver it before the channel event.
+
+> **CX5. P1, `services/api/glow_chat/contact.py:204-208`: "Recheck current pair eligibility before activating a match."** When either profile is paused/restricted, consent has been withdrawn, or reciprocal likes are absent/stale, `activate_match` still creates an active `Match`, provider identities, and a channel-creation event because this transaction checks only account state and blocks. The F09 contract requires reciprocal likes and current two-person eligibility, and checking those in a caller before entering this transaction would leave a race with the account-locked pause/consent writers; recheck the interaction and eligibility inputs under these locks before creating the entitlement.
+
+### Manager verification (App Manager 6, 6 October 2026)
+
+- **CX4: confirmed.** The port (`glow_domain/chat_provider.py:77-93`) has five operations and none creates a user. The fixture's `create_channel` creates each unknown member with `self.users.setdefault(...)` (`chat_provider_fixtures.py:145`), so the delivery path never provisions a user and the fixture cannot show the gap. A Stream adapter on this port must provision users inside `create_channel`, which is the hidden extra call Codex names, or fail. Nothing reaches a live provider before Stage B.
+- **CX5: confirmed.** `activate_match` (`contact.py:192-236`) locks both accounts, then refuses only a non-active account, an active block or an existing pair; it reads no like, profile or consent. The send refuses a paused or restricted profile and a withdrawn consent under the same locks (D5), so such a match cannot carry a message, but its channel is created. No runtime path calls the adapter (the sealed test), and the proof's fixture factory is its only caller; the records call it "match activation" without saying it is not F09's.
+- **Against the correction classes** of the review prompt: neither lets a send commit after a revocation without the suite failing, touches a credential or a connection, makes DB06's or DB09's mark claim more, or sends a name, image, custom field or provider text. Both are design gaps for the live adapter and for P11's activation.
+
+### Disposition
+
+- **No correction pass before the merge**, as for PR28's CX1 and CX2: neither is blocking or in a correction class.
+- **CX4** is carried to Stage B (the brief, "Carried to Stage B and P11", item 4): an idempotent user provisioning operation on the port, delivered before the channel's creation, and a fixture that refuses a channel for an unknown user.
+- **CX5** is carried to Stage B and P11 (item 5): Stage B adds the profile and consent checks under the account locks and says the method is not F09's activation; P11's activation checks reciprocal likes and two-person eligibility under the same locks. The data model records the limit.
+- **The threads:** each gets a reply with this disposition. The Dev Manager reads both with Stage B's prompt.
+
+## DM-14 (6 October 2026)
+
+Dev Manager 2's [report](../../continuity/dev-manager/reviews/2026-10-06-dm-14-p06-2-stage-a-governing-read.md) (`e85bad6`, read covering `da9fac6`) approved the governing sentences (item 2 with replacement words, applied as written; item 1's *consider* clause taken as written), approved the dispositions of F1 to F5 with conditions for Stage B (the brief, items 1 to 3), and confirmed that Stage A may merge once item 2 is applied, Codex's findings are dispositioned, the final head's run passes and the checklist and branch-state report are done. Notion matched `da9fac6`. No item is Nathan's. The disposition is in the review log, "DM-14".
