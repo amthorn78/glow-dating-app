@@ -358,7 +358,7 @@ class OrmContactPersistence:
                 identity_active=identity_state == "active",
                 now=now,
             )
-            self._signal(tx.probe, "before_commit")
+            # ``_run`` signals ``before_commit`` once, after the body, as for every writer.
             if isinstance(granted, chat_tokens.TokenRefusal):
                 raise _Refused(granted.code)
             return ContactResult("granted", grant=granted, session_id=session_id)
