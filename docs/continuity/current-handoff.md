@@ -18,7 +18,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | B1's exact-head review report (the [prompt](../ephemeral/2026-10-06-p06-2-stage-b1-review-prompt.md), `Glow App - No Stream`); the deletion of `claude/dazzling-lovelace-f2mtts` | Nothing else starts (OD-29) |
+| App Manager 6 | Nathan | B1's exact-head review report (the [prompt](../ephemeral/2026-10-06-p06-2-stage-b1-review-prompt.md); in flight, Fable 5.1 at max); the deletion of `claude/dazzling-lovelace-f2mtts` | Nothing else starts (OD-29) |
 
 ## Next actions (App Manager 6)
 
