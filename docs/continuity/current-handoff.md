@@ -10,7 +10,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Current item: P06.2**, the chat integration (PF01 P06), resumed on 5 October (OD-38). Its [brief](../planning/p06-2-chat-integration.md), revision 2, applies DM-13. Stage A is integrated at `e8eb5d3` with its run of record (37383940454); its exact-head review is next; P06.2 is done only when Stage C merges.
   - **Carried to P06.2:** P06.DB's six items are done in Stage A; the [P06.1 brief](../planning/p06-1-chat-provider-proof.md)'s four remain for Stage B and later.
 - **Next item: M04**, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
-- **Done:** P06.1 (`47db18d`) and P06.DB (`3afffb3`), each with its merge receipt.
+- **Done:** P06.1 (`47db18d`), P06.DB (`3afffb3`).
 - **[HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6).
 - **Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN` (OD-35); [review log](dev-manager/README.md), DM-01 to DM-13.
 
@@ -18,7 +18,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | Stage A's exact-head review report (the [prompt](../ephemeral/2026-10-06-p06-2-stage-a-review-prompt.md), `Glow App - No Stream`) | Nothing else starts (OD-29) |
+| App Manager 6 | Nathan | Stage A's exact-head review report (the [prompt](../ephemeral/2026-10-06-p06-2-stage-a-review-prompt.md), `Glow App - No Stream`; in flight, Fable 5.1 at max) | Nothing else starts (OD-29) |
 
 ## Next actions (App Manager 6)
 
@@ -31,6 +31,6 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches (checked on GitHub, 5 October 2026, after Nathan's deletion)
 
-- **3 remote branches, all kept** (checked again later on 5 October): `main` (`3afffb3`); `claude/magical-wozniak-yfmmx2` (PR29); `claude/dev-manager`. `claude/stoic-carson-66gdig` and `claude/ecstatic-goodall-qajdh4`, both fully merged, were deleted by then.
+- **3 remote branches, all kept**: `main` (`3afffb3`); `claude/magical-wozniak-yfmmx2` (PR29); `claude/dev-manager`. `claude/stoic-carson-66gdig` and `claude/ecstatic-goodall-qajdh4`, both fully merged, were deleted by then.
 - **`claude/dev-manager`** was deleted with the old branches on 5 October and recreated by Dev Manager 2's DM-13 push (`80ce6c6`).
 - **Deleted on 5 October:** `claude/magical-goldberg-ie0j16` (the second run of C1's prompt, never integrated) and App Manager 5's list of 34, including `app-builder-1/p05-1-birth-diagnostics` (AM5-24).
