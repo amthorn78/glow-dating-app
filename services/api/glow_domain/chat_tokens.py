@@ -8,7 +8,15 @@ its token for its other matches; removal from the blocked match's channel ends i
 reads there.
 
 This is a domain function with offline tests. It signs nothing, issues no real token
-and calls no provider; P11 serves the endpoint and Stage B's adapter signs.
+and calls no provider; P11 serves the endpoint and Stage B2's adapter signs. The
+persistence adapter (``glow_chat.contact``, Stage B1) runs these checks on the locked
+account and session rows with the database's clock as ``now`` (F1; DM-14 item 3), so the
+issue time and a revocation's cut-off come from one clock.
+
+A provider's per-user token revocation compares a token's issue time with its cut-off in
+whole seconds. ``revocation_cutoff_sent`` is the value sent for a cut-off: the next whole
+second, strictly after the exact time (DM-15 5.2), so every token issued at or before the
+cut-off is covered; Glow keeps the exact time.
 """
 
 from __future__ import annotations
@@ -20,6 +28,16 @@ from . import chat
 
 TOKEN_LIFETIME = timedelta(hours=1)
 NO_CHAT_IDENTITY = "no_chat_identity"
+
+
+def revocation_cutoff_sent(cutoff: datetime) -> datetime:
+    """The cut-off as sent to the provider: the next whole second, strictly greater than
+    the exact cut-off, so a cut-off of exactly 10.000000 s is sent as 11 (DM-15 5.2). A
+    token whose ``iat`` is the issue time truncated to the second is then revoked whenever
+    it was issued at or before the cut-off."""
+    if cutoff.tzinfo is None:
+        raise ValueError("an aware time is required")
+    return cutoff.replace(microsecond=0) + timedelta(seconds=1)
 
 
 @dataclass(frozen=True)
@@ -57,7 +75,9 @@ def grant_chat_token(
     identity_active: bool,
     now: datetime,
 ) -> TokenGrant | TokenRefusal:
-    """A one-hour grant, or the Glow code that refuses it. ``now`` must be aware."""
+    """A one-hour grant, or the Glow code that refuses it. ``now`` must be aware.
+    ``identity_active`` means provisioned and not deactivated (DM-15 5.1): an identity the
+    provider does not hold yet is refused with ``no_chat_identity``."""
     if now.tzinfo is None:
         raise ValueError("an aware time is required")
     if account.state != "active":

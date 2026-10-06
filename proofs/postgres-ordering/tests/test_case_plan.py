@@ -63,12 +63,12 @@ class CasePlanTests(unittest.TestCase):
     def test_the_adapter_plan_adds_d5(self) -> None:
         # P06.2 D5 (DM-13 4.1): each writer's four interleavings, both ways, for the
         # sender's and the other member's account, and the positive case; the adapter
-        # only, since the reference design excludes D5.
+        # only, since the reference design excludes D5. B1 adds its own cases (below).
         reference = {c["id"] for c in cases.plan()}
         adapter = {c["id"] for c in cases.plan(d5=True)}
         self.assertTrue(reference < adapter)
         added = adapter - reference
-        self.assertEqual(len(added), 6 * 4 + 1)
+        self.assertEqual(len(added), 6 * 4 + 1 + len(cases.B1_CASES))
         for writer in ("pause", "restrict", "withdraw"):
             for which in ("low", "high"):
                 for interleaving in (
@@ -79,6 +79,73 @@ class CasePlanTests(unittest.TestCase):
                 ):
                     self.assertIn(f"{writer}_{which}.{interleaving}", added)
         self.assertIn("named.d5_restored", added)
+
+    def test_the_adapter_plan_adds_b1(self) -> None:
+        # P06.2 B1: activation against each D5 writer both ways (DM-15 6.1), the token
+        # grant against the bump and a sign-out (F1), and the F2 and F5 nits; the
+        # adapter only. The reference design's 56 cases are unchanged (6.3).
+        self.assertEqual(len(cases.plan()), 56)
+        self.assertEqual(len(cases.plan(d5=True)), 56 + 25 + 33)
+        ids = {c["id"] for c in cases.plan(d5=True)}
+        self.assertFalse({c.id for c in cases.B1_CASES} & {c["id"] for c in cases.plan()})
+        self.assertEqual(len(cases.B1_ACTIVATION_CASES), 6 * 4)
+        for writer in ("pause", "restrict", "withdraw"):
+            for which in ("low", "high"):
+                for interleaving in (
+                    "sequential_writer_first",
+                    "sequential_activation_first",
+                    "activation_holds",
+                    "writer_holds",
+                ):
+                    self.assertIn(f"activation.{writer}_{which}.{interleaving}", ids)
+        for name in (
+            "token.pending_identity_refused",
+            "token.sequential_grant_first",
+            "token.sequential_bump_first",
+            "token.grant_holds",
+            "token.bump_holds",
+            "token.sign_out_holds",
+            "named.f2_session_account_changed_under_wait",
+            "named.f2_match_pair_changed_under_wait",
+            "named.f5_self_block_refused",
+        ):
+            self.assertIn(name, ids)
+        self.assertEqual(len(ids), len(cases.plan(d5=True)))
+
+    def test_restriction_shares_the_pause_writer(self) -> None:
+        # DM-15 6.1: the pause and the restriction are one writer in the adapter
+        # (``_set_profile``, read from its source: the adapter is not importable without
+        # Django's settings), and activation checks one profile state for both; the
+        # restriction still gets its own activation cases above.
+        import ast
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[3] / "services" / "api" / "glow_chat" / "contact.py"
+        ).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        adapter = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "OrmContactPersistence"
+        )
+        methods = {node.name: node for node in adapter.body if isinstance(node, ast.FunctionDef)}
+        for name in ("pause_profile", "restrict_profile", "resume_profile"):
+            calls = {
+                node.func.attr
+                for node in ast.walk(methods[name])
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            }
+            self.assertEqual(calls, {"_set_profile"}, name)
+        self.assertIn("_set_profile", methods)
+        self.assertIn("_contact_state_checks", methods)
+        for name in ("activate_match", "send"):
+            calls = {
+                node.func.attr
+                for node in ast.walk(methods[name])
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            }
+            self.assertIn("_contact_state_checks", calls, name)
 
     def test_races(self) -> None:
         ids = {r.id for r in stress.RACES}

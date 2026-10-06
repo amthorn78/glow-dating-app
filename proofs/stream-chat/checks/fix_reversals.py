@@ -4527,6 +4527,45 @@ R: list[tuple[str, list[tuple[str, str, str]], list[str]]] = [
         [(MT, "    if not isinstance(args, list | tuple):\n", "    if False:\n")],
         [TCA + "test_arguments_that_are_not_a_list_fail_validation"],
     ),
+    # -- P06.2 B1: the C5 review's nits 2 and 3, and its advice on a header allowlist --
+    (
+        "B1 (C5 nit 2): a budget stop in the re-read after a refused step reaches main",
+        [
+            (
+                C,
+                "        if later is not None and (\n"
+                "            isinstance(later, GuardrailStop) or not isinstance(later, Exception)\n"
+                "        ):\n",
+                "        if later is not None and not isinstance(later, Exception):\n",
+            )
+        ],
+        [TCR + "test_a_budget_stop_in_the_reread_after_a_refused_step_still_reaches_main"],
+    ),
+    (
+        "B1 (C5 nit 3): finish chains only a signal's stop to what replaced it",
+        [
+            (
+                C,
+                "            if ended is not None and ended is not stop and is_signal:\n",
+                "            if ended is not None and ended is not stop:\n",
+            )
+        ],
+        [TCR + "test_without_a_signal_an_apply_failure_keeps_its_own_cause"],
+    ),
+    (
+        "B1 (C5 review's advice): the runner refuses a header name outside the allowlist",
+        [
+            (
+                RN,
+                "  const outside = names.find((h) => !ALLOWED_HEADERS.includes(h));\n"
+                "  if (outside !== undefined) return `a header name outside the allowlist (${outside})`;\n",
+                "",
+            )
+        ],
+        [
+            TRN + "HeaderAllowlistTest.test_a_header_outside_the_allowlist_is_refused_by_name",
+        ],
+    ),
 ]
 
 

@@ -1,5 +1,7 @@
 """P06.2 Stage A's pure domain pieces, offline: the contact port's types, the chat
-provider port and its fixture adapter, and the token rules (item 4, D6)."""
+provider port and its fixture adapter, and the token rules (item 4, D6). Stage B1 adds
+user provisioning to the port and the fixture (CX4; DM-15 3.4) and the whole-second
+cut-off rule (F1; DM-15 5.2)."""
 
 import inspect
 import unittest
@@ -58,6 +60,7 @@ class ContactPortTests(unittest.TestCase):
                 "restrict_profile",
                 "withdraw_consent",
                 "accept_consent",
+                "grant_token",
             },
         )
 
@@ -72,8 +75,13 @@ class ContactPortTests(unittest.TestCase):
     def test_committed_outcomes(self) -> None:
         self.assertTrue(chat.ContactResult("authorized").committed)
         self.assertTrue(chat.ContactResult("applied").committed)
-        for outcome in ("replayed", "no_change", "refused", "deadlock", "error"):
+        # A grant (B1) reads under shared locks and writes nothing.
+        for outcome in ("replayed", "no_change", "granted", "refused", "deadlock", "error"):
             self.assertFalse(chat.ContactResult(outcome).committed)  # type: ignore[arg-type]
+
+    def test_the_f2_and_f5_codes_are_glow_codes(self) -> None:
+        self.assertEqual(chat.SESSION_CHANGED, "session_changed")
+        self.assertEqual(chat.SELF_TARGET, "self_target")
 
 
 class ProviderPortTests(unittest.TestCase):
@@ -90,6 +98,7 @@ class ProviderPortTests(unittest.TestCase):
         self.assertEqual(
             set(chat_provider.OPERATIONS),
             {
+                "provision_user",
                 "create_channel",
                 "send_message",
                 "remove_members",
@@ -97,6 +106,8 @@ class ProviderPortTests(unittest.TestCase):
                 "revoke_user_tokens",
             },
         )
+        # CX4 (DM-15 3.4): provisioning takes the opaque user ID and nothing else.
+        self.assertEqual(chat_provider.OPERATIONS["provision_user"], frozenset({"user_id"}))
         arguments = set().union(*chat_provider.OPERATIONS.values())
         self.assertFalse(arguments & {"name", "image", "data", "custom", "extra_data"})
         for name in chat_provider.OPERATIONS:
@@ -111,12 +122,36 @@ class ProviderPortTests(unittest.TestCase):
 class FixtureProviderTests(unittest.TestCase):
     def setUp(self) -> None:
         self.provider = FixtureChatProvider(environment="test")
+        for user in ("u1", "u2"):
+            self.provider.provision_user(user)
         self.provider.create_channel("c1", ("u1", "u2"))
 
     def test_development_and_test_only(self) -> None:
         for environment in ("production", "staging", ""):
             with self.assertRaises(ValueError):
                 FixtureChatProvider(environment=environment)
+
+    def test_a_channel_names_only_provisioned_users(self) -> None:
+        """CX4 (DM-15 3.4): the fixture no longer creates a member inside create_channel;
+        an unknown member is refused, as Stream refuses one."""
+        with self.assertRaises(ChatProviderError) as raised:
+            self.provider.create_channel("c2", ("u1", "u3"))
+        self.assertEqual(raised.exception.code, "member_unavailable")
+        self.assertNotIn("u3", self.provider.users)
+        self.assertNotIn("c2", self.provider.channels)
+        self.provider.provision_user("u3")
+        self.assertFalse(self.provider.create_channel("c2", ("u1", "u3")).already)
+        self.assertEqual(self.provider.channels["c2"].members, {"u1", "u3"})
+
+    def test_provisioning_is_idempotent_and_carries_the_id_only(self) -> None:
+        self.assertTrue(self.provider.provision_user("u1").already)
+        self.assertFalse(self.provider.provision_user("u9").already)
+        self.assertTrue(self.provider.provision_user("u9").already)
+        self.assertTrue(self.provider.users["u9"].active)
+        provisioning = [c for c in self.provider.calls if c.operation == "provision_user"]
+        outcomes = [c.outcome for c in provisioning]
+        self.assertEqual(outcomes, ["ok", "ok", "already", "ok", "already"])
+        self.assertTrue(all(c.arguments == frozenset({"user_id"}) for c in provisioning))
 
     def test_a_repeated_create_returns_the_channel_and_adds_no_member(self) -> None:
         self.provider.remove_members("c1", ("u1", "u2"))
@@ -149,10 +184,16 @@ class FixtureProviderTests(unittest.TestCase):
         self.provider.revoke_user_tokens("u2", NOW)
         self.assertTrue(self.provider.revoke_user_tokens("u2", NOW).already)
         self.assertEqual(self.provider.users["u2"].token_cutoffs, [NOW])
-        with self.assertRaises(ChatProviderError):
-            self.provider.create_channel("c2", ("u1", "u3"))
-        with self.assertRaises(ChatProviderError):
+        self.provider.provision_user("u3")
+        with self.assertRaises(ChatProviderError) as raised:
+            self.provider.create_channel("c2", ("u1", "u3"))  # u1 is deactivated
+        self.assertEqual(raised.exception.code, "member_unavailable")
+        with self.assertRaises(ChatProviderError) as raised:
             self.provider.deactivate_user("unknown")
+        self.assertEqual(raised.exception.code, "member_unavailable")
+        with self.assertRaises(ChatProviderError) as raised:
+            self.provider.revoke_user_tokens("unknown", NOW)
+        self.assertEqual(raised.exception.code, "member_unavailable")
 
     def test_failures_before_and_after_the_effect(self) -> None:
         self.provider.fail_next("send_message")
@@ -233,6 +274,43 @@ class TokenRuleTests(unittest.TestCase):
     def test_a_naive_time_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             self.grant(now=datetime(2026, 10, 5, 12, 0))
+
+    def test_an_unprovisioned_identity_is_refused(self) -> None:
+        # DM-15 5.1: "active" means provisioned and not deactivated; the adapter passes
+        # identity_active only for an identity in state active.
+        self.assertEqual(
+            self.grant(identity_active=False), chat_tokens.TokenRefusal("no_chat_identity")
+        )
+
+
+class RevocationCutoffTests(unittest.TestCase):
+    """F1 point 3 (DM-15 5.2): the cut-off is sent at the next whole second, strictly
+    greater than the exact time; the stored cut-off keeps the exact time."""
+
+    def test_a_cut_off_with_zero_microseconds_is_sent_as_the_next_second(self) -> None:
+        exact = datetime(2026, 10, 6, 12, 0, 10, 0, tzinfo=UTC)
+        self.assertEqual(
+            chat_tokens.revocation_cutoff_sent(exact), datetime(2026, 10, 6, 12, 0, 11, tzinfo=UTC)
+        )
+
+    def test_a_cut_off_inside_a_second_is_sent_as_the_next_second(self) -> None:
+        for microsecond in (1, 499_999, 500_000, 999_999):
+            with self.subTest(microsecond=microsecond):
+                exact = datetime(2026, 10, 6, 12, 0, 10, microsecond, tzinfo=UTC)
+                sent = chat_tokens.revocation_cutoff_sent(exact)
+                self.assertEqual(sent, datetime(2026, 10, 6, 12, 0, 11, tzinfo=UTC))
+                self.assertGreater(sent, exact)
+                self.assertEqual(sent.microsecond, 0)
+
+    def test_the_sent_cut_off_is_always_strictly_after_the_exact_one(self) -> None:
+        exact = datetime(2026, 10, 6, 23, 59, 59, 0, tzinfo=UTC)
+        self.assertEqual(
+            chat_tokens.revocation_cutoff_sent(exact), datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+        )
+
+    def test_a_naive_cut_off_is_refused(self) -> None:
+        with self.assertRaises(ValueError):
+            chat_tokens.revocation_cutoff_sent(datetime(2026, 10, 6, 12, 0, 10))
 
 
 if __name__ == "__main__":

@@ -11,8 +11,10 @@ After each call, outside the adapter's transaction, it records the call's contex
 ``AdapterFixtures`` creates accounts with the maintained authentication persistence,
 a visible profile and an accepted onboarding consent (through the adapter's own consent
 writer), and matches through the adapter's match activation, which commits the chat
-binding, the random channel and provider user IDs and the channel's outbox event
-together (DM-13 9.4).
+binding, the random channel and provider user IDs, the identities' and the channel's
+outbox events together (DM-13 9.4; B1, CX4). An identity is ``pending`` until the
+delivery phase provisions it; the token cases need a provisioned identity before that
+phase, so ``provision_identity`` marks one ``active`` by a fixture write (B1).
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from glow_chat.contact import OrmContactPersistence
 from glow_domain.chat import ContactResult, SendCommand, TransactionProbe
-from glow_persistence.models import AppAccount, Profile
+from glow_persistence.models import AppAccount, ChatIdentity, Profile
 
 from glow_ordering_proof.interface import Hooks, Receipt, Result, SendRequest, Timing
 from glow_ordering_proof.observe import ProofLog
@@ -50,6 +52,11 @@ def _probe(hooks: Hooks | None) -> TransactionProbe | None:
 def to_result(result: ContactResult) -> Result:
     trace = result.trace
     receipt = result.receipt
+    detail = dict(result.detail)
+    if result.grant is not None:
+        # The grant's times, from the database clock; never the opaque user ID.
+        detail["issued_at"] = result.grant.issued_at
+        detail["expires_at"] = result.grant.expires_at
     return Result(
         result.outcome,
         result.reason,
@@ -60,7 +67,7 @@ def to_result(result: ContactResult) -> Result:
         ),
         timing=Timing(trace.backend_pid, trace.started_at, trace.ended_at) if trace else None,
         session_id=result.session_id,
-        detail=dict(result.detail),
+        detail=detail,
     )
 
 
@@ -163,6 +170,18 @@ class AdapterSubject:
         )
         return self._done("accept", result, actor_id=account_id)
 
+    # -- P06.2 B1 --------------------------------------------------------------------
+
+    def activate_match(self, first: UUID, second: UUID, *, hooks: Hooks | None = None) -> Result:
+        result = self.adapter.activate_match(first, second, probe=_probe(hooks))
+        return self._done(
+            "activate", result, match_id=result.match_id, actor_id=first, target_id=second
+        )
+
+    def grant_token(self, session_id: UUID, *, hooks: Hooks | None = None) -> Result:
+        result = self.adapter.grant_token(session_id, probe=_probe(hooks))
+        return self._done("grant", result, session_id=session_id)
+
 
 class AdapterFixtures:
     """``FixtureFactory`` for the adapter: accounts ready to send, matches activated
@@ -195,3 +214,11 @@ class AdapterFixtures:
         match_id = activated.match_id
         assert isinstance(match_id, UUID)
         return match_id
+
+    @staticmethod
+    def provision_identity(account_id: UUID) -> None:
+        """A fixture write (B1): the account's identity as the provider's receipt would
+        leave it, ``active``, so a grant can be made before the delivery phase. The
+        identity's own event is still delivered in that phase; the receipt then changes
+        nothing."""
+        ChatIdentity.objects.filter(account_id=account_id, provider=PROVIDER).update(state="active")

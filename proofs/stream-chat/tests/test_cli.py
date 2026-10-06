@@ -971,6 +971,105 @@ class ConfigureRecordTest(_WritesTest):
         self.assertTrue(record["failure"].startswith("StepRefused: "), record)
         self.assertTrue(record["reread_failure"].startswith("GuardrailStop: "), record)
 
+    def test_a_budget_stop_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
+        """P06.2 B1 (the C5 review's nit 2): after a refused step, the re-read meets the
+        API-call budget, a GuardrailStop that is no charge or limit signal (nothing in the
+        ledger's signals). It must still reach main (exit 3), not be replaced by the
+        refusal's exit 1; the record keeps both failures, and nothing more is sent."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        failing_write(server, 3, 400, 4, "bad request")
+        gets: list[int] = []
+
+        def budget_in_the_reread(method: str, path: str, body: Any, params: Any) -> None:
+            if any(m == "PUT" for m, _p, _b in server.calls) and method == "GET":
+                gets.append(len(server.calls))
+                raise GuardrailStop(
+                    "guardrail: api_calls would reach 5001 in this session (limit 5000);"
+                    " stopping before it is passed"
+                )
+            return None
+
+        server.handlers.append(budget_in_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(GuardrailStop) as caught:
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertFalse(caught.exception.at_once)
+        self.assertEqual(server.ledger.signals, [])
+        self.assertEqual(len(gets), 1)
+        self.assertEqual(len(server.calls), gets[0])
+        record = self.record("configure-products-")
+        self.assertTrue(record["failure"].startswith("StepRefused: "), record)
+        self.assertTrue(record["reread_failure"].startswith("GuardrailStop: guardrail"), record)
+        self.assertTrue(record["after"].startswith("after-state not read: the re-read failed"))
+        # Through main: exit 3, the guardrail stop's own exit, for the general apply too.
+        for argv in (
+            ["configure", "--apply", "--products", "video,feeds"],
+            ["configure", "--apply"],
+        ):
+            with self.subTest(argv=argv):
+                server = FakeServer(UsageLedger())
+                server.products.grant_before_lockdown()
+                failing_write(server, 3, 400, 4, "bad request")
+                server.handlers.append(budget_in_the_reread)
+                stderr = io.StringIO()
+                with (
+                    mock.patch.object(cli, "Context", return_value=ClosingContext(server)),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    code = cli.main(argv)
+                self.assertEqual(code, 3)
+                self.assertTrue(
+                    stderr.getvalue().startswith("guardrail stop: guardrail: api_calls")
+                )
+                self.assertEqual(server.ledger.signals, [])
+
+    def test_without_a_signal_an_apply_failure_keeps_its_own_cause(self) -> None:
+        """P06.2 B1 (the C5 review's nit 3): no signal, the apply fails with an ordinary
+        error that has a cause, the re-read runs and fails too. The apply's failure leaves
+        the command as it is, its own cause kept and the re-read's error recorded, not
+        chained in its place."""
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        cause = OSError(104, "Connection reset by peer")
+        failure = ConnectionError("the apply's own failure")
+        reread_error = RuntimeError("the re-read's error")
+        puts_seen: list[int] = []
+
+        def fail_the_apply_then_the_reread(
+            method: str, path: str, body: Any, params: Any
+        ) -> ApiResult | None:
+            if method == "PUT":
+                puts_seen.append(len(server.calls))
+                if len(puts_seen) == 2:
+                    raise failure from cause
+            if puts_seen and method == "GET":
+                raise reread_error
+            return None
+
+        server.handlers.append(fail_the_apply_then_the_reread)
+        ctx = FakeContext(server)
+        with self.assertRaises(ConnectionError) as caught:
+            cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assertIs(caught.exception, failure)
+        self.assertIs(caught.exception.__cause__, cause)
+        self.assertIsNot(caught.exception.__cause__, reread_error)
+        record = self.record("configure-products-")
+        self.assertEqual(record["failure"], "ConnectionError: the apply's own failure")
+        self.assertEqual(record["reread_failure"], "RuntimeError: the re-read's error")
+        self.assertEqual(
+            record["after"],
+            "after-state not read: the re-read failed: RuntimeError: the re-read's error",
+        )
+        # A signal's stop is still chained to what replaced it (C5's own review).
+        server = FakeServer(UsageLedger())
+        server.products.grant_before_lockdown()
+        replaced = RuntimeError("an error in place of the stop")
+        failing_write(server, 2, 402, 4, "payment required", replace_with=replaced)
+        with self.assertRaises(BaseException) as signalled:
+            cli.cmd_configure(FakeContext(server), True, ["video", "feeds"])  # type: ignore[arg-type]
+        self.assert_the_signal_left(signalled.exception, server, replaced)
+
     def test_a_ctrl_c_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
         server = FakeServer(UsageLedger())
         failing_write(server, 3, 400, 4, "bad request")
