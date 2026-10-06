@@ -1,6 +1,6 @@
 # P06.2 — Chat integration
 
-- **Status:** brief revision 2, 5 October 2026, by App Manager 6. Stage A's implementation is done and integrated (`e8eb5d3`), with its run of record (37383940454); its exact-head review approved it on 6 October ("Sessions"); Codex's review (three P1 findings, carried) and DM-14 are done, and Stage A's merge is next. **P06.2 is done only when Stage C merges** (DM-13 item 1); M04 and every other item wait for that (OD-29).
+- **Status:** brief revision 2, 5 October 2026, by App Manager 6. **Stage A merged** on 6 October (PR29, `02072f4`; receipt in the evidence record). Stage B's prompt is next, with "Carried to Stage B and P11". **P06.2 is done only when Stage C merges** (DM-13 item 1); M04 and every other item wait for that (OD-29).
   - Revision 2 applies the Dev Manager's read of revision 1, DM-13 ([report](../continuity/dev-manager/reviews/2026-10-05-dm-13-p06-2-brief-read.md), `80ce6c6`), as written, so it needs no further read (DM-03 G2). Each applied condition is marked with its DM-13 number. The disposition is in the [review log](../continuity/dev-manager/README.md), "DM-13".
   - Revision 1 (`a8db520`) went to the Dev Manager before any prompt (the [charter](dev-manager.md): new components, integration strategy and a brief whose choices have architectural consequences).
 - **Authority:** Nathan, 5 October 2026 (OD-38): *"App Manager 6 will be directed to create the PO6.2 worker prompt."* PF01 §8, P06, and §7, "Chat and notifications". Other feature work stays paused (OD-12); P06.3, notifications, is a separate item.

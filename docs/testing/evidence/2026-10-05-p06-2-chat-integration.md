@@ -516,3 +516,11 @@ The push of `9f6f6ab`, the records of CX4, CX5 and DM-14, started a second Codex
 ## DM-14 (6 October 2026)
 
 Dev Manager 2's [report](../../continuity/dev-manager/reviews/2026-10-06-dm-14-p06-2-stage-a-governing-read.md) (`e85bad6`, read covering `da9fac6`) approved the governing sentences (item 2 with replacement words, applied as written; item 1's *consider* clause taken as written), approved the dispositions of F1 to F5 with conditions for Stage B (the brief, items 1 to 3), and confirmed that Stage A may merge once item 2 is applied, Codex's findings are dispositioned, the final head's run passes and the checklist and branch-state report are done. Notion matched `da9fac6`. No item is Nathan's. The disposition is in the review log, "DM-14".
+
+## Stage A's merge receipt (6 October 2026)
+
+- **PR29 merged** at 01:51 UTC on 6 October by App Manager 6, as the merge commit `02072f4dcb0c20dd45dee9bc02e75323d0a2aec7` (parents `3afffb3`, `main` before, and `caa4333aabb36192768da0c0c0fd866b52ffe138`, the final head). Checked: `origin/main` is `02072f4`, and its tree equals `caa4333`'s.
+- **The pre-merge checklist** (PR29's description): PR run 37400724914 on `caa4333`, all eight jobs `success`, gate log `Application checks passed`; the exact-head review of `e8eb5d3`, approve; Codex's reviews complete (security on `da9fac6`, code on `caa4333`), CX4 to CX6 carried; the governing Markdown read by DM-13 and DM-14, DM-14's words applied as written.
+- **The push run on `main`:** 37401265870 on `02072f4`, in progress when this receipt was written; the next records batch states its result.
+- **Branch state at the merge** (`git ls-remote --heads`): `main`; `claude/magical-wozniak-yfmmx2`, kept, restarted from `main` at `02072f4` for Stage B; `claude/dev-manager`, kept by name, head `e85bad6` in `main`; `claude/dazzling-lovelace-f2mtts`, the Stage A session's branch, head `e50865d` in `main`: fully merged, given to Nathan to delete.
+- **Next:** Stage B's prompt (the Stream adapter, live, `Glow app`), with the brief's "Carried to Stage B and P11", the `getstream` 6.1.0 pin and the C5 review's nits 2 and 3; the Dev Manager reads it before Nathan runs it.
