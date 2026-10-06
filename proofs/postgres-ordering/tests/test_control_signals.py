@@ -194,7 +194,7 @@ class CaseSignalTests(unittest.TestCase):
             class context:  # noqa: N801 - a stand-in for LogContext
                 case_id: str | None = None
 
-        ctx = cases.Context(None, None, Log(), [])  # type: ignore[arg-type]
+        ctx = cases.Context(None, None, Log(), [], None)  # type: ignore[arg-type]
         result = cases.run_case(ctx, cases.Case("x", "g", "t", boom))
         self.assertFalse(result.passed)
         self.assertEqual(result.signals, frozenset({HARNESS_ERROR}))

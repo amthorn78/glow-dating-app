@@ -53,10 +53,32 @@ class CasePlanTests(unittest.TestCase):
             self.assertIn(name, ids)
 
     def test_plan_count_and_uniqueness(self) -> None:
+        # P06.DB's 55 cases and CX2's boundary (P06.2, item 4), for both subjects.
         plan = cases.plan()
-        self.assertEqual(len(plan), 10 * 4 + 15)
+        self.assertEqual(len(plan), 10 * 4 + 15 + 1)
         self.assertEqual(len({c["id"] for c in plan}), len(plan))
         self.assertTrue(all(c["guarantee"] and c["title"] for c in plan))
+        self.assertIn("named.session_expires_after_check", {c["id"] for c in plan})
+
+    def test_the_adapter_plan_adds_d5(self) -> None:
+        # P06.2 D5 (DM-13 4.1): each writer's four interleavings, both ways, for the
+        # sender's and the other member's account, and the positive case; the adapter
+        # only, since the reference design excludes D5.
+        reference = {c["id"] for c in cases.plan()}
+        adapter = {c["id"] for c in cases.plan(d5=True)}
+        self.assertTrue(reference < adapter)
+        added = adapter - reference
+        self.assertEqual(len(added), 6 * 4 + 1)
+        for writer in ("pause", "restrict", "withdraw"):
+            for which in ("low", "high"):
+                for interleaving in (
+                    "sequential_send_first",
+                    "sequential_revocation_first",
+                    "send_holds",
+                    "revocation_holds",
+                ):
+                    self.assertIn(f"{writer}_{which}.{interleaving}", added)
+        self.assertIn("named.d5_restored", added)
 
     def test_races(self) -> None:
         ids = {r.id for r in stress.RACES}

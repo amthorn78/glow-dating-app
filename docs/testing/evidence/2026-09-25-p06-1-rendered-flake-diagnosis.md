@@ -270,7 +270,7 @@ Checked against the pushed branch, not the report alone.
 - **Proposals:**
   - **Failure capture in CI:** recorded as a follow-up in the current handoff, for Nathan to schedule after P06.1. It changes the workflow and the Playwright configuration, so it needs its own full-scope change and review.
   - **Case count:** no living document states the current rendered case count. The records that say 83 are dated and keep their history.
-  - **Old diagnostics branch:** `app-builder-1/p05-1-birth-diagnostics` is retired after PR26 merges.
+  - **Old diagnostics branch:** `app-builder-1/p05-1-birth-diagnostics` is retired after PR26 merges. *(5 October 2026: PR27, which replaced PR26, merged the fix on 29 September; Nathan deleted the branch on 5 October (OD-39; AM5-24). Its two diagnostic commits, `f0680fa` and `6ad567c`, were never merged.)*
 - **Acceptance.** The fix is new code in PR26. OD-21's acceptance needs its own exact-head review of code head `8b8b1bd`, queued after the I1 review (OD-29). Points for that review:
   - with focus kept in a field, the heading is not focused; the alert text stays in the `role="alert"` live region;
   - `enteringText` trusts layout boxes to tell a hidden retained screen from a shown one;

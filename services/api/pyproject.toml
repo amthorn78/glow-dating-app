@@ -9,8 +9,13 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["glow_api", "glow_domain"]
+files = ["glow_api", "glow_domain", "glow_chat"]
 
 [[tool.mypy.overrides]]
 module = ["django.*", "rest_framework.*"]
 ignore_missing_imports = true
+
+# The P02 model definitions are untyped Django declarations; glow_chat uses them as Any.
+[[tool.mypy.overrides]]
+module = ["glow_persistence.*"]
+follow_imports = "skip"

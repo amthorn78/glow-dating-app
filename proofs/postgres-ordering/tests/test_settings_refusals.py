@@ -171,6 +171,7 @@ class SettingsModuleTests(unittest.TestCase):
                 "django.contrib.contenttypes",
                 "django.contrib.auth",
                 "glow_persistence.apps.PersistenceDesignConfig",
+                "glow_ordering_proof.apps.ProofConfig",
             ],
         )
         database = settings.DATABASES["default"]

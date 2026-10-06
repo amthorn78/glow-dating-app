@@ -84,6 +84,9 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-20 | 5 Oct 2026 | execution | Verifying C2, restored the scratch worktree after the first fix reversal with `git checkout -- .`, which kept the reverted files that `git checkout <sha> -- <files>` had also staged; the next five reversals and the control ran on a reverted tree. The results were discarded and the reversals redone after a hard reset; no record carried them | App Manager 5, when the unchanged control failed |
 | AM5-21 | 5 Oct 2026 | accuracy | Recording C2's run of record at its integration (`dd67696`), the P11 plan said run 37262466651 "reran the whole plan with the same results". Its outcome was the same; its numbers were not (526 submissions against 617, and 197 to 200 overlaps per race against 174 to 200) | C2's exact-head review (F3) |
 | AM5-22 | 5 Oct 2026 | accuracy | The handoff's current-item line kept calling the P06.DB brief "revision 2" through revisions 3 to 5, although three records batches changed the handoff and the brief. It repeats the mechanism of AM5-10 and AM5-13 | App Manager 5, in the supersession sweep for revision 6 |
+| AM5-23 | 5 Oct 2026 | process | The report of PR28's merge put P06.2's start to Nathan as a choice, with "Hold" as the other option, though nothing in the record argues for holding; only his direction was needed (OD-12). It repeats the mechanism of AM4-02, a choice with nothing to choose | Nathan: *"why would I want to hold?"* |
+| AM5-24 | 5 Oct 2026 | follow-through | The retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged (29 September); the handoff carried it without asking Nathan, the only person who can delete a branch, and no manager set up a cleanup of merged branches. Recorded by App Manager 6 | Nathan ("bad branching hygiene"), with 38 branches |
+| AM6-01 | 5 Oct 2026 | process | Took on Stage A's run of record itself: subscribed to PR29's CI events and scheduled a check-in to watch the run, work that belongs to the worker session | Nathan |
 
 ## App Manager 2
 
@@ -591,3 +594,31 @@ Recorded by App Manager 5, at P06.DB's integration.
 - **Effect:** none on a decision or a prompt: the line links the brief, whose status line names its current revision, and every prompt names the revision it read. A successor reading only the handoff would have taken revision 2 as current.
 - **Correction:** the line named revision 6, the current one at the correction, and points to the brief's status line for the others.
 - **Prevention:** it repeats the mechanism of AM5-10 and AM5-13, a status fact left behind in another document. The supersession sweep in the manager workflow's step 5 already requires a search for the old wording; when a brief's revision changes, the old wording includes its previous revision number, so the sweep searches the living documents for it.
+
+### AM5-23 — A "hold" option with nothing for it (process)
+
+- **What happened:** the report of PR28's merge put P06.2's start to Nathan as two options, "Start P06.2 now" and "Hold. No new work starts", and recommended starting. Nothing in the record argues for holding: P06.DB's CI and reviews are clear (OD-08), both proofs P06.2 depends on are done, P06.1's evidence record says P06.2 needs no approvals, and nothing else waits on him. The message needed only his direction, which OD-12 requires before other feature work starts.
+- **Caught by:** Nathan: *"why would I want to hold?"*
+- **Effect:** none on the work: nothing had started, and P06.2 still needs his direction. It cost him a message.
+- **Correction:** the answer says that nothing argues for holding and asks for his direction alone.
+- **Prevention:** it repeats AM4-02's mechanism, a choice with nothing to choose, whose prevention covered only the model and level. The manager workflow's rule "Nothing unexplained goes to Nathan" now says that an option goes to him only with what it gains, and that when the record gives no reason for the alternative, the item asks for his direction alone.
+
+### AM5-24 — Merged branches left for Nathan to find (follow-through)
+
+Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relayed message: App Manager 5 writes nothing after its handover commit `a1eb9dc`.
+
+- **What happened:** the retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged, with PR27 at `47db18d` on 29 September (the flake-diagnosis evidence record retired it "after PR26 merges", and PR27 replaced PR26). The handoff carried the retirement without asking Nathan, the only person who can delete a branch. No manager set up a cleanup of merged branches, though OD-09 gives the managers branch management. By 5 October the repository had 38 branches, 33 of them fully merged into `main`.
+- **Caught by:** Nathan on 5 October: *"I am a little concerned about this bad branching hygiene"*.
+- **Effect:** none on code or evidence: no repository link named any of the old branches. Some old Notion pages linked to files through a branch name and needed repointing before the deletion. It cost Nathan the cleanup by hand.
+- **Correction:** App Manager 5 gave Nathan the list of 34 deletable branches and a delete command; he deleted them on GitHub (the current handoff, "Branches", records the result). Notion links through deleted branches were repointed to `main` or commit-pinned URLs.
+- **Prevention:** the manager workflow's step 7 now reports the branch state at each merge, and links Notion only to `main`, a commit ID or the manager branch (OD-39). The work item M04 automates the deletion of merged branches.
+
+## App Manager 6
+
+### AM6-01 — Watching CI that belongs to the worker (process)
+
+- **What happened:** Stage A's push run 37372546600 had no run of record (three jobs got no runner). Integrating the branch, App Manager 6 named PR29's run on the integrated head as the run of record, subscribed the manager session to PR29's CI events and scheduled a check-in to watch it, rather than giving Nathan a relay message for the worker session, whose prompt (section 4, item 6) owns the run of record.
+- **Caught by:** Nathan: *"you should not be watching CI, that work belongs to the worker session, so give me a response to pass on"*.
+- **Effect:** none on the work: the runs had not finished, and the manager recorded no result from them. It cost Nathan a message, and it put the manager into the implementation work it never does.
+- **Correction:** the subscription is removed and the check-in deleted. The relay message gives the run of record back to the Stage A session.
+- **Prevention:** when a session's report leaves its run of record open, the manager answers with a relay message to that session; it never watches or chases the session's CI itself. The manager workflow's step 5 reads the CI of the manager branch's own pushes only.

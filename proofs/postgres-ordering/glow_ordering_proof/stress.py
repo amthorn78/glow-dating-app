@@ -11,6 +11,12 @@ writers' intervals intersect: in a two-writer race the send's and the revocation
 ``race.racing_duplicates`` the two sends'; in ``race.opposing_writers`` the send's and
 any revocation's. A race whose iterations never overlapped proves nothing, so the
 floors in ``budget`` apply.
+
+P06.2 (P06.DB's carried item 2, R1): each iteration's commit order is counted from the
+same database intervals and printed with the race (``orders``), and in the two session
+races the revocation gets a seeded extra delay on about half the iterations, so that
+the order where the send commits first occurs. The races run against either subject;
+each reads its own evidence (``ctx.evidence``). The adapter adds three D5 races.
 """
 
 from __future__ import annotations
@@ -27,7 +33,7 @@ from django.db import connection
 
 from glow_ordering_proof import budget, oracle
 from glow_ordering_proof.cases import (
-    REVOCATION_BY_ID,
+    REVOCATIONS,
     Context,
     Revocation,
     World,
@@ -54,7 +60,7 @@ RACES: tuple[Race, ...] = (
         Race(
             f"race.{rev.id}", f"a send against {rev.title}", "DB06/DB09 ordering", "revocation", rev
         )
-        for rev in REVOCATION_BY_ID.values()
+        for rev in REVOCATIONS
     ),
     Race("race.racing_duplicates", "two identical sends", "5.4 racing duplicates", "duplicates"),
     Race(
@@ -64,7 +70,31 @@ RACES: tuple[Race, ...] = (
         "opposing",
     ),
 )
-RACE_BY_ID = {race.id: race for race in RACES}
+
+
+def _d5_race(rev_id: str) -> Race:
+    from glow_ordering_proof.cases import REVOCATION_BY_ID
+
+    rev = REVOCATION_BY_ID[rev_id]
+    return Race(
+        f"race.{rev.id}", f"a send against {rev.title}", "P06.2 D5 ordering", "revocation", rev
+    )
+
+
+# P06.2 D5, the adapter only: one race per writer, alternating the member.
+D5_RACES: tuple[Race, ...] = (
+    _d5_race("pause_high"),
+    _d5_race("restrict_low"),
+    _d5_race("withdraw_high"),
+)
+RACE_BY_ID = {race.id: race for race in (*RACES, *D5_RACES)}
+# The revocations whose race gets a seeded extra delay (carried item 2).
+DELAYED_KINDS = frozenset({"sign_out", "expire"})
+MAX_REVOCATION_DELAY = 0.008
+
+
+def races(*, d5: bool = False) -> tuple[Race, ...]:
+    return (*RACES, *D5_RACES) if d5 else RACES
 
 
 @dataclass
@@ -80,6 +110,8 @@ class RaceResult:
     violations: list[oracle.Violation] = field(default_factory=list)
     first_failing_iteration: int | None = None
     stopped_early: bool = False
+    # Iterations per commit order (carried item 2), judged from the database intervals.
+    orders: Counter[str] = field(default_factory=Counter)
 
     @property
     def floors_met(self) -> bool:
@@ -101,6 +133,7 @@ class RaceResult:
             "harness_failures": self.harness_failures,
             "violations": [v.to_dict() for v in self.violations],
             "first_failing_iteration": self.first_failing_iteration,
+            "orders": dict(sorted(self.orders.items())),
             "floors_met": self.floors_met,
             "stopped_early": self.stopped_early,
             "budget": {
@@ -151,6 +184,25 @@ def _overlapped(race_kind: str, intervals: list[Interval]) -> bool:
         )
     others = [(s, e) for k, s, e in intervals if not k.startswith("send")]
     return any(_intersect(send, other) for send in sends for other in others)
+
+
+def commit_order(
+    race_kind: str, intervals: list[Interval], results: list[tuple[str, Result]]
+) -> str:
+    """Which writer ended first, from the iteration's database intervals: a committed
+    writer ends at its commit, a refused one at the clock it read before its rollback,
+    so a refused send ended after the revocation it saw. In ``race.racing_duplicates``
+    both are the same request: the one that authorized committed first."""
+    if race_kind == "duplicates":
+        winners = [label for label, r in results if r.outcome == "authorized"]
+        return f"{winners[0]} first" if len(winners) == 1 else "no single authorization"
+    sends = [e for k, _, e in intervals if k.startswith("send")]
+    others = [e for k, _, e in intervals if not k.startswith("send")]
+    if not sends or not others:
+        return "not measured"
+    if min(sends) < min(others):
+        return "send first"
+    return "revocation first"
 
 
 def _gated(barrier: Barrier, delay: float, writer: Callable[[], Result]) -> Callable[[], Result]:
@@ -265,6 +317,11 @@ def run_race(
         delays[order[0]] = 0.0
         for index in order[1:]:
             delays[index] = rng.choice((0.0, rng.uniform(0.0, 0.003)))
+        if race.revocation is not None and race.revocation.kind in DELAYED_KINDS:
+            # Carried item 2 (R1): the session's revocation locks only the row the send
+            # locks last, so without a delay it almost always wins; delay it on about
+            # half the iterations, by the seed.
+            delays[1] += rng.choice((0.0, rng.uniform(0.0, MAX_REVOCATION_DELAY)))
         futures = []
         for (label, writer, record), delay, worker in zip(
             writers, delays, ctx.workers, strict=False
@@ -275,7 +332,7 @@ def run_race(
             ) -> Result:
                 outcome = writer()
                 if not outcome.committed:
-                    ctx.log.record_attempt(outcome, **record)
+                    ctx.evidence.record_attempt(outcome, **record)
                 return outcome
 
             futures.append((label, worker.submit(_gated(barrier, delay, task))))
@@ -291,10 +348,12 @@ def run_race(
                 result.harness_failures.append(
                     f"iteration {iteration}: {len(rows)} rows for one key"
                 )
-        if _overlapped(race.kind, _intervals(run_tag, race.id, iteration)):
+        intervals = ctx.evidence.intervals(run_tag, race.id, iteration)
+        if _overlapped(race.kind, intervals):
             result.overlaps += 1
+        result.orders[commit_order(race.kind, intervals, results)] += 1
         if stop_at_first_violation:
-            report = oracle.evaluate(run_tag=run_tag, case_id=race.id, iteration=iteration)
+            report = ctx.evidence.evaluate(run_tag=run_tag, case_id=race.id, iteration=iteration)
             if report.violations or result.harness_failures:
                 result.violations.extend(report.violations)
                 result.first_failing_iteration = iteration

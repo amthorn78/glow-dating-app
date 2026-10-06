@@ -19,6 +19,17 @@ from glow_ordering_proof import budget
 from glow_ordering_proof.interface import Result
 
 LOG_TABLE = "proof_writer_log"
+# P06.2: the app's adapter writes no proof row of its own. After each of its calls, the
+# harness records the call's context here, outside the adapter's transaction: the run
+# tag, case and iteration, the request's session, the transaction's start and, for a
+# writer that rolled back, its end, as the adapter read them from the database clock.
+# None of these rows is ever used as a commit time: the adapter's own rows are.
+ADAPTER_CALL_TABLE = "proof_adapter_call"
+# Each world the harness creates, by subject, so a violation found on a match, an
+# account or a session (rule O0) is attributed to the run tag that made it.
+WORLD_TABLE = "proof_world"
+PROOF_TABLES = (LOG_TABLE, ADAPTER_CALL_TABLE, WORLD_TABLE)
+USED_DATABASE = "refusing a used database"
 
 # Each writer inserts one row in its own transaction, so pg_xact_commit_timestamp(xmin)
 # of that row is the writer's commit time (item 6.1). ``xact_start`` defaults to now(),
@@ -48,6 +59,59 @@ CREATE TABLE IF NOT EXISTS {LOG_TABLE} (
 )
 """
 
+ADAPTER_CALL_DDL = f"""
+CREATE TABLE IF NOT EXISTS {ADAPTER_CALL_TABLE} (
+    id bigserial PRIMARY KEY,
+    kind text NOT NULL,
+    outcome text NOT NULL,
+    run_tag text NOT NULL,
+    variant text NOT NULL,
+    case_id text,
+    iteration integer,
+    submission_id uuid,
+    match_id uuid,
+    actor_id uuid,
+    target_id uuid,
+    session_id uuid,
+    backend_pid integer,
+    started_at timestamptz,
+    ended_at timestamptz,
+    event_ids uuid[] NOT NULL DEFAULT '{{}}'
+)
+"""
+
+WORLD_DDL = f"""
+CREATE TABLE IF NOT EXISTS {WORLD_TABLE} (
+    id bigserial PRIMARY KEY,
+    subject text NOT NULL,
+    run_tag text NOT NULL,
+    case_id text,
+    iteration integer,
+    match_id uuid NOT NULL,
+    low_id uuid NOT NULL,
+    high_id uuid NOT NULL
+)
+"""
+
+
+def used_database_reasons(cursor: Any) -> list[str]:
+    """Why this database has been used already, or nothing (P06.DB's carried item 1).
+
+    A proof table that holds a row, or an app account, means an earlier run wrote here:
+    the run tags are fixed, so its rows would be read as this run's. The proof runs
+    once per new database."""
+    reasons: list[str] = []
+    for table in PROOF_TABLES:
+        cursor.execute("SELECT to_regclass(%s) IS NOT NULL", [table])
+        if cursor.fetchone()[0]:
+            cursor.execute(f"SELECT EXISTS (SELECT 1 FROM {table})")
+            if cursor.fetchone()[0]:
+                reasons.append(f"{table} already holds rows")
+    cursor.execute("SELECT EXISTS (SELECT 1 FROM glow_persistence_appaccount)")
+    if cursor.fetchone()[0]:
+        reasons.append("glow_persistence_appaccount already holds rows")
+    return reasons
+
 
 @dataclass
 class LogContext:
@@ -63,10 +127,75 @@ class ProofLog:
 
     def __init__(self) -> None:
         self.context = LogContext(run_tag="setup", variant="reference")
+        # CX2's boundary for the reference design (P06.2, item 4): called inside the
+        # send's transaction, after its checks and writes, just before its log row and
+        # its commit. The reference design's code is unchanged; it calls ``record``.
+        self.before_send_record: Callable[[], None] | None = None
 
     def ensure_table(self) -> None:
         with connection.cursor() as cursor:
             cursor.execute(LOG_DDL)
+            cursor.execute(ADAPTER_CALL_DDL)
+            cursor.execute(WORLD_DDL)
+
+    def record_world(self, subject: str, match_id: UUID, low_id: UUID, high_id: UUID) -> None:
+        context = self.context
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO {WORLD_TABLE} (subject, run_tag, case_id, iteration, match_id,"
+                " low_id, high_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                [
+                    subject,
+                    context.run_tag,
+                    context.case_id,
+                    context.iteration,
+                    match_id,
+                    low_id,
+                    high_id,
+                ],
+            )
+
+    def record_call(
+        self,
+        *,
+        kind: str,
+        outcome: str,
+        submission_id: UUID | None = None,
+        match_id: UUID | None = None,
+        actor_id: UUID | None = None,
+        target_id: UUID | None = None,
+        session_id: UUID | None = None,
+        backend_pid: int | None = None,
+        started_at: datetime | None = None,
+        ended_at: datetime | None = None,
+        event_ids: tuple[UUID, ...] = (),
+    ) -> None:
+        """After one call of the app's adapter, in autocommit: its context only."""
+        context = self.context
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO {ADAPTER_CALL_TABLE} (kind, outcome, run_tag, variant, case_id,"
+                " iteration, submission_id, match_id, actor_id, target_id, session_id,"
+                " backend_pid, started_at, ended_at, event_ids)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                [
+                    kind,
+                    outcome,
+                    context.run_tag,
+                    context.variant,
+                    context.case_id,
+                    context.iteration,
+                    submission_id,
+                    match_id,
+                    actor_id,
+                    target_id,
+                    session_id,
+                    backend_pid,
+                    started_at,
+                    ended_at,
+                    list(event_ids),
+                ],
+            )
 
     def record(
         self,
@@ -85,6 +214,8 @@ class ProofLog:
         ended_at: datetime | None = None,
         note: str | None = None,
     ) -> None:
+        if kind == "send" and self.before_send_record is not None:
+            self.before_send_record()
         context = self.context
         cursor.execute(
             f"INSERT INTO {LOG_TABLE} (kind, outcome, run_tag, variant, case_id, iteration,"

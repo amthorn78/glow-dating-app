@@ -1,6 +1,6 @@
 # Next manager start prompt
 
-- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand; its note on placeholders corrected by App Manager 5 (AM4-05), and its environment lines on 29 September 2026 (OD-36).
+- **Owner:** Nathan Amthor. Written by App Manager 2 on 25 September 2026, after M02 merged; updated by App Manager 3 the same day, on 27 September 2026 for App Manager 4, and later that day by App Manager 4 for App Manager 5, whom Nathan starts by hand; its note on placeholders corrected by App Manager 5 (AM4-05), and its environment lines on 29 September 2026 (OD-36); checked by App Manager 5 on 5 October 2026 for App Manager 6, which it creates at Nathan's direction (OD-38).
 - **Durable context:** [current handoff](../../continuity/current-handoff.md) and [manager workflow](../manager-workflow.md).
 - **A durable start procedure, not an ephemeral prompt** (DM-01 P9): each manager keeps it current for its successor.
 - **Two ways to start a manager:**

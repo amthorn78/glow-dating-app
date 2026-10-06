@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "glow_persistence.apps.PersistenceDesignConfig",
+    # P06.2 (P06.DB's carried item 6; DM-12): the proof's own dbshell, which refuses.
+    "glow_ordering_proof.apps.ProofConfig",
 ]
 DATABASES = {"default": environment.django_database(_options)}
 # D5: READ COMMITTED with row locks is the design. Every transaction begins at this level.

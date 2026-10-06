@@ -84,3 +84,7 @@ Each condition has its status after P06.1-I2a and I2b, whose exact-head reviews 
 - Stream adds a setting that disables client writes to member custom data;
 - a design change opens a path to the other member that a design constraint now closes, not the display rule: an invite, or a call, feed or activity the server creates for a user (the architecture document, sections 3 and 6);
 - an exception's basis changes, or a new one is proposed; only Nathan adds to the list.
+- **What the client reads goes to Nathan** (DM-13 7.1; the [P06.2 brief](../planning/p06-2-chat-integration.md), D8). P06.2 keeps the client token with `read-channel` under this rule. If any of these comes true, the alternative (no client token, with Glow serving history and realtime itself) goes to Nathan in OD-32's form before the next stage:
+  - the mobile client cannot be kept from holding or rendering SDK state beyond Glow's own view model;
+  - a client-reachable path appears that the display rule or a design constraint does not close;
+  - unread or read state needs a grant beyond `read-channel`.
