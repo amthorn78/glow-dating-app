@@ -195,7 +195,9 @@ activation checks only the accounts' state, an active block and an existing pair
 reciprocal likes, a paused or restricted profile or the onboarding consent, so it is the
 proof's way to make a match, not F09's activation, which P11 wires with those checks
 under the same locks; and the provider port has no user provisioning step (the fixture
-creates users inside `create_channel`). Both are carried to Stage B. A send stores its provider message
+creates users inside `create_channel`). Both are carried to Stage B, with CX6: a revocation skips
+removal for a `failed` binding, whose channel a lost creation response may have left at
+the provider. A send stores its provider message
 ID in `MessageSubmission.provider_message_ref` when it is authorized; acceptance by the
 provider moves the submission to `accepted`. A send is accepted into a `pending` or
 `active` binding: its event queues behind the channel's creation.
