@@ -12,18 +12,18 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Next item: M04**, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
 - **Done:** P06.1 (`47db18d`), P06.DB (`3afffb3`); P06.2 Stages A (`02072f4`) and B1 (`3272eed`).
 - **[HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; on delivery, record the receipt (its section 6).
-- **Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN` (OD-35); [review log](dev-manager/README.md), DM-01 to DM-15.
+- **Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN` (OD-35); [review log](dev-manager/README.md), DM-01 to DM-16.
 
 ## Waiting checkpoint (22 October 2026)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | The deletion of `claude/gracious-newton-4fjsmn` and `claude/kind-ride-brzl8u` (fully merged); then App Manager 6 writes B2's prompt and DM-16 | B2's prompt goes ahead; the branches stay listed as deletable |
+| App Manager 6 | Nathan | DM-16's report (the [consultation](../ephemeral/2026-10-22-dm-16-p06-2-stage-b2-prompt-read.md)); the deletion of `claude/gracious-newton-4fjsmn` and `claude/kind-ride-brzl8u` | Tell Nathan B2 waits on it; nothing else starts (OD-29) |
 
 ## Next actions (App Manager 6)
 
-1. **Stage B2**: its prompt for `Glow app` (the Stream adapter, `getstream` 6.1.0, `products.verify` first, the conformance run, with "Carried to Stage B and P11" items 1 to 5 and DM-15 5.2); the Dev Manager reads it in DM-16, with the governing changes (item 2) and the database job's time margin (AM6-02). Then Stage C.
-2. **Governing changes for DM-16:** OD-41's sentences in the manager workflow's step 7 and the CI policy; the workflow's step 3 still naming TypeSafe request v6 (the skill sends v8.2).
+1. **Stage B2**: its prompt (revision 1) for `Glow app` (the Stream adapter, `getstream` 6.1.0, `products.verify` first, the conformance run, with "Carried to Stage B and P11" items 1 to 5 and DM-15 5.2); with the Dev Manager in DM-16, with the governing changes (item 2) and the database job's time margin (AM6-02). Then Stage C.
+2. **Governing changes for DM-16:** OD-41's sentences (the workflow's step 7, the CI policy) and step 3's TypeSafe sentence, fixed to v8.2 at Nathan's word.
 3. **M04, after P06.2 merges:** brief, then the Dev Manager's read, then the implementation prompt for `Glow App - No Stream`. Starting points: push to `main` and manual dispatch only, never a pull-request event; `contents: write` for that job only, no secrets, pinned actions; delete only a branch whose head is in `main`, off a keep-list held on `main` (`main`, the manager branch, and `claude/dev-manager` by name, DM-13 item 10) and heading no open PR; dry-run mode and a job summary; selection tests and a run of record; the CI policy updated, classified with the pre-change policy, the whole workflow diff read; exact-head review, Codex and the Dev Manager's read.
 4. **Standing:** before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7), which still names `claude/stoic-carson-66gdig`.
 
