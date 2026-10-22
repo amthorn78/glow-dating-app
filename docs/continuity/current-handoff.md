@@ -18,7 +18,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 6 | Nathan | B1-C1's exact-head review report (the [prompt](../ephemeral/2026-10-22-p06-2-stage-b1-c1-review-prompt.md)) | Nothing else starts (OD-29) |
+| App Manager 6 | Nathan | B1-C1's exact-head review report (the [prompt](../ephemeral/2026-10-22-p06-2-stage-b1-c1-review-prompt.md); in flight, Opus 5.5 at high) | Nothing else starts (OD-29) |
 
 ## Next actions (App Manager 6)
 
