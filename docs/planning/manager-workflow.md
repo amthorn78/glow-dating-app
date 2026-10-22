@@ -83,11 +83,11 @@ Nathan's direction, 24 September 2026:
 7. **Merge and close.** Follow [CI/review policy](../operations/ci-and-branch-policy.md). Branch protection is not enforceable on this repository, so fill in a **pre-merge checklist** in the PR description before merging (DM-01 P7):
    - the run ID whose Foundation gate says `Application checks passed` on the exact head;
    - the exact-head review report for that head;
-   - Codex's summary, showing both reviews complete;
+   - Codex's summary, showing its code review complete on that head (its security reviews are no longer available: Nathan, 22 October 2026, OD-41);
    - the Dev Manager's dispositions in the review log for any governing Markdown the PR carries, with reads that cover its final text (DM-01 P1; a read covers one commit, per the charter).
 
    Then:
-   - **Wait for Codex.** Marking a draft ready starts Codex's automatic code and security review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows both reviews completed, and verify each Codex finding like any other review finding.
+   - **Wait for Codex.** Marking a draft ready starts Codex's automatic code review; on PR18 it took about five minutes and finished after the merge. Mark a full-scope PR ready once its final head is pushed. Merge only after Codex's summary comment shows the code review completed on the final head, and verify each Codex finding like any other review finding. Codex's security reviews are no longer available (OD-41); the exact-head code and security review sessions are unchanged.
    - Merge within the standing app-only authorization.
    - Verify actual main and record an ordinary-documentation receipt in `docs/testing/evidence/`.
    - Update the current handoff and sync Notion (Implementation Control and the Work Register row).

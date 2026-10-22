@@ -931,3 +931,11 @@ Relayed by Nathan to App Manager 6 on 22 October. Nathan's pick: Opus 5.5 at hig
 **Manager verification (App Manager 6, 22 October 2026).** R1 confirmed from the saved log: 27 race lines, 12 reference (6.8 to 15.7 s) and 15 adapter (13.4 to 29.7 s), `budget.py:10` `MAX_SECONDS = 30.0`. `c59827e` and `099cedd` differ only in `docs/continuity/manager-mistakes.md`.
 
 **Next:** PR30 goes ready for Codex; then the pre-merge checklist and B1's merge; then Stage B2's prompt with DM-16.
+
+## Stage B1's merge receipt (22 October 2026)
+
+- **PR30 merged** at 14:19 UTC on 22 October by App Manager 6, as the merge commit `3272eed3d6b07d3215c6c667000082b6254eea69` (parents `02072f4`, `main` before, and `7b786f7f7db928bc49a46c4c040b3ae7afe650f6`, the final head). Checked: `origin/main` is `3272eed`, and its tree equals `7b786f7`'s.
+- **The pre-merge checklist** (PR30's description): PR run 39792421221 on `7b786f7`, all eight jobs `success`, gate log `Application checks passed` (its database job 7 min 26 s); the exact-head reviews of `e614d8a` (B1) and `b1ffb45` (B1-C1), both approve; Codex's code review completed on `7b786f7` with no findings. PR30 carries no governing Markdown.
+- **Codex's security review did not run.** Marking PR30 ready started only the code review; the manager's `@codex security review` comment started nothing. Nathan, the same day: *"security reviews are no lonter available. make note"* (OD-41). PR30 merged on Codex's code review, and the manager workflow's step 7 and the CI policy now say so (a governing change, which the Dev Manager reads before the next PR merges).
+- **Branch state at the merge** (`git ls-remote --heads`): `main`; `claude/magical-wozniak-yfmmx2`, kept, restarted from `main` at `3272eed` for B2; `claude/dev-manager`, kept by name, head in `main`; `claude/gracious-newton-4fjsmn` and `claude/kind-ride-brzl8u`, B1's and B1-C1's session branches, heads in `main`: fully merged, given to Nathan to delete.
+- **Next:** Stage B2's prompt (the Stream adapter, live, `Glow app`), which the Dev Manager reads in DM-16, with the governing changes (OD-41's two sentences, and the step 3 sentence naming TypeSafe request v6) and the database job's time margin (AM6-02).
