@@ -1,6 +1,7 @@
 """The case plan and the controls, offline: what the job will run, pinned."""
 
 import unittest
+from datetime import timedelta
 
 from glow_ordering_proof import cases, controls, stress
 from glow_ordering_proof.design import REFERENCE, Design
@@ -85,7 +86,7 @@ class CasePlanTests(unittest.TestCase):
         # grant against the bump and a sign-out (F1), and the F2 and F5 nits; the
         # adapter only. The reference design's 56 cases are unchanged (6.3).
         self.assertEqual(len(cases.plan()), 56)
-        self.assertEqual(len(cases.plan(d5=True)), 56 + 25 + 33)
+        self.assertEqual(len(cases.plan(d5=True)), 56 + 25 + 34)
         ids = {c["id"] for c in cases.plan(d5=True)}
         self.assertFalse({c.id for c in cases.B1_CASES} & {c["id"] for c in cases.plan()})
         self.assertEqual(len(cases.B1_ACTIVATION_CASES), 6 * 4)
@@ -101,6 +102,7 @@ class CasePlanTests(unittest.TestCase):
         for name in (
             "token.pending_identity_refused",
             "token.sequential_grant_first",
+            "token.sequential_grant_first_long_skew",
             "token.sequential_bump_first",
             "token.grant_holds",
             "token.bump_holds",
@@ -111,6 +113,16 @@ class CasePlanTests(unittest.TestCase):
         ):
             self.assertIn(name, ids)
         self.assertEqual(len(ids), len(cases.plan(d5=True)))
+
+    def test_the_token_cases_skew_is_shorter_than_their_sessions(self) -> None:
+        # B1-C1 R5: under the token cases' skew a grant timed by the app clock still
+        # passes the session's expiry check, so it fails on its issue time against the
+        # bump's cut-off; the long-skew case's hour is longer than the session, so a check
+        # of the expiry against the app clock refuses there instead.
+        session = timedelta(seconds=cases.SESSION_TTL)
+        self.assertLess(cases.APP_CLOCK_SKEW, session / 2)
+        self.assertGreater(cases.APP_CLOCK_SKEW, timedelta(seconds=30))
+        self.assertGreater(cases.APP_CLOCK_SKEW_LONG, session)
 
     def test_restriction_shares_the_pause_writer(self) -> None:
         # DM-15 6.1: the pause and the restriction are one writer in the adapter

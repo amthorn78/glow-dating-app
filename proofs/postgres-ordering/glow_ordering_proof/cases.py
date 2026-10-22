@@ -1285,7 +1285,12 @@ def skewed_app_clock(ahead: timedelta = timedelta(hours=1)) -> Iterator[None]:
         timezone.now = real
 
 
-APP_CLOCK_SKEW = timedelta(hours=1)
+# The token cases' skew (B1-C1, R5): shorter than their sessions (``SESSION_TTL``), so a
+# grant whose time came from the app clock would still pass the expiry check and fail on
+# the issue time against the bump's cut-off. One case keeps an hour's skew, longer than
+# the sessions, so a check of the session's expiry against the app clock refuses there.
+APP_CLOCK_SKEW = timedelta(minutes=2)
+APP_CLOCK_SKEW_LONG = timedelta(hours=1)
 
 
 def _b1_writer(op: str, which: str) -> Callable[[Context, Pair, Hooks | None], Result]:
@@ -1456,32 +1461,35 @@ def _bump_cutoff(world: World) -> tuple[datetime, datetime]:
     return times
 
 
-def _judge_grant_before_bump(judge: Judge, granted: Result, world: World) -> None:
+def _judge_grant_before_bump(
+    judge: Judge, granted: Result, world: World, ahead: timedelta = APP_CLOCK_SKEW
+) -> None:
     """The grant's issue time precedes the bump's cut-off, both from the database clock,
-    while the app's clock (skewed ahead) shows in the row the app stamped."""
+    while the app's clock (skewed ``ahead``) shows in the row the app stamped."""
     issued_at = granted.detail.get("issued_at")
     if not judge.expect(isinstance(issued_at, datetime), "the grant carries no issue time"):
         return
     assert isinstance(issued_at, datetime)
     cutoff, created_at = _bump_cutoff(world)
-    judge.expect(
+    before = judge.expect(
         issued_at < cutoff,
         f"the issue time {issued_at.isoformat()} is not before the cut-off {cutoff.isoformat()}",
         signal=COMMIT_AFTER_REVOCATION,
     )
     skew = created_at - cutoff
     judge.expect(
-        skew > APP_CLOCK_SKEW - timedelta(minutes=5),
+        skew > ahead - ahead / 4,
         f"the app clock skew did not show: created_at - cut-off = {skew}",
     )
     judge.expect(
-        issued_at < cutoff + timedelta(minutes=5),
+        issued_at < cutoff + ahead / 4,
         "the issue time followed the skewed app clock, not the database's",
     )
-    judge.note(
-        f"issued {issued_at.isoformat()} before the cut-off {cutoff.isoformat()}; the app"
-        f" clock, {skew} ahead, stamped created_at and reached neither"
-    )
+    if before:
+        judge.note(
+            f"issued {issued_at.isoformat()} before the cut-off {cutoff.isoformat()}; the app"
+            f" clock, {skew} ahead, stamped created_at and reached neither"
+        )
 
 
 def token_pending_identity_refused(ctx: Context, judge: Judge) -> None:
@@ -1497,14 +1505,19 @@ def token_pending_identity_refused(ctx: Context, judge: Judge) -> None:
     judge.expect(row is not None and row[0] == "pending", f"identity {row}")
 
 
-def token_sequential_grant_first(ctx: Context, judge: Judge) -> None:
+def token_sequential_grant_first(
+    ctx: Context, judge: Judge, ahead: timedelta = APP_CLOCK_SKEW
+) -> None:
     world = _provisioned_world(ctx)
-    with skewed_app_clock(APP_CLOCK_SKEW):
-        granted = _grant(ctx, world)
+    commits: list[str] = []
+    with skewed_app_clock(ahead):
+        granted = _grant(ctx, world, Hooks(before_commit=lambda: commits.append("before_commit")))
         judge.outcome(granted, "grant before the bump", "granted")
         judge.outcome(ctx.subject.suspend(world.low), "suspension (the epoch bump)", "applied")
+    # B1-C1 R2: the granted path signals its commit point once.
+    judge.expect(commits == ["before_commit"], f"before_commit signalled {len(commits)} times")
     if granted.outcome == "granted":
-        _judge_grant_before_bump(judge, granted, world)
+        _judge_grant_before_bump(judge, granted, world, ahead)
     judge.outcome(
         _grant(ctx, world), "grant after the bump", "refused", reasons=GRANT_REFUSED_AFTER_BUMP
     )
@@ -1588,6 +1601,13 @@ B1_TOKEN_CASES: tuple[Case, ...] = (
         TOKEN_GUARANTEE,
         "a grant, then the bump: the issue time precedes the cut-off; a later grant refuses",
         token_sequential_grant_first,
+    ),
+    Case(
+        "token.sequential_grant_first_long_skew",
+        TOKEN_GUARANTEE,
+        "a grant, then the bump, with the app clock an hour ahead (longer than the session):"
+        " granted, so the session's expiry is not checked against the app clock",
+        partial(token_sequential_grant_first, ahead=APP_CLOCK_SKEW_LONG),
     ),
     Case(
         "token.sequential_bump_first",

@@ -29,14 +29,16 @@ event is dead-lettered.
 ``active`` does not wait: its provisioning, ordered ahead of it, is settled, so the
 channel dead-letters with ``member_unavailable``.
 
-**The reconciliation mark** (F3, CX6; DM-15 4.5): a dead letter whose call may have
-reached the provider marks the row it concerns, the binding or the identity, with
-``reconcile_code``, the Glow code of its last attempt, and the ``pending`` binding it
-failed to create becomes ``failed``. A message is never delivered into a marked,
-``revoked`` or ``failed`` binding. A revocation of such a binding still makes its
-removal, and a channel the provider does not have counts as removed; a deactivation or
-token revocation of a marked identity still makes its call, and a user the provider does
-not have counts as deactivated or revoked. Reconciliation itself is P11's (the data
+**The reconciliation mark** (F3, CX6; DM-15 4.5): a dead letter of a provisioning, a
+channel's creation, a removal, a deactivation or a token revocation marks the row it
+concerns, the identity or the binding, with ``reconcile_code``, the Glow code of its
+last attempt, whether or not a call was made (B1-C1, R3); only an event whose row does
+not exist marks nothing. The ``pending`` binding a channel event failed to create
+becomes ``failed``. A message is never delivered into a marked, ``revoked`` or
+``failed`` binding. A revocation of such a binding still makes its removal, and a
+channel the provider does not have counts as removed; a deactivation or token
+revocation of a marked identity still makes its call, and a user the provider does not
+have counts as deactivated or revoked. Reconciliation itself is P11's (the data
 model, "Chat contact and the outbox").
 
 **The cut-off** of a per-user token revocation is the epoch bump's time read after its
@@ -193,10 +195,18 @@ class OutboxDelivery:
         provider = self.provider
         if kind == events.IDENTITY_CREATED:
             identity = ChatIdentity.objects.filter(pk=event.payload_ref).first()
-            if identity is None or identity.provider != provider.name:
+            if identity is None:
+                # No row to mark.
                 return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
             identity_id = identity.id
             user_ref = identity.user_ref
+
+            def mark(code: str | None) -> None:
+                _mark_identity(identity_id, code)
+
+            if identity.provider != provider.name:
+                # F3: every dead-lettered event that concerns a row marks it (B1-C1, R3).
+                return _Plan(None, _nothing, mark, PROVIDER_REJECTED)
 
             def provisioned(receipt: ProviderReceipt, now: datetime) -> None:
                 # DM-15 3.2: provisioned only on the provider's receipt.
@@ -206,21 +216,21 @@ class OutboxDelivery:
                     row.version += 1
                     row.save(update_fields=["state", "version", "updated_at"])
 
-            def mark(code: str | None) -> None:
-                _mark_identity(identity_id, code)
-
             return _Plan(lambda: provider.provision_user(user_ref), provisioned, mark)
 
         if kind == events.MATCH_ACTIVATED:
             binding = ChatBinding.objects.filter(pk=event.payload_ref).first()
-            if binding is None or binding.provider != provider.name:
+            if binding is None:
+                # No row to mark.
                 return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
-            members = self._members(binding.match_id)
             binding_id = binding.id
 
             def failed_binding(code: str | None) -> None:
                 _mark_binding(binding_id, code, fail_pending=True)
 
+            if binding.provider != provider.name:
+                return _Plan(None, _nothing, failed_binding, PROVIDER_REJECTED)
+            members = self._members(binding.match_id)
             if members is None or any(member.state != "active" for member in members):
                 # DM-15 3.2: a member not provisioned (its provisioning, ordered ahead,
                 # was dead-lettered) or already deactivated: never wait, never call.
@@ -240,6 +250,7 @@ class OutboxDelivery:
         if kind == events.MESSAGE_SUBMITTED:
             submission = MessageSubmission.objects.filter(pk=event.payload_ref).first()
             if submission is None:
+                # No row to mark; a message's dead letter fails its submission, never a mark.
                 return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
             submission_id = submission.id
 
@@ -284,13 +295,19 @@ class OutboxDelivery:
         if kind == events.CONTACT_REVOKED:
             binding = ChatBinding.objects.filter(match_id=event.aggregate_id).first()
             if binding is None:
+                # No channel was ever bound: nothing to remove, and no dead letter.
                 return _Plan(None, _nothing, _nothing)
-            if binding.provider != provider.name:
-                return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
-            members = self._members(event.aggregate_id)
             binding_id = binding.id
+
+            def mark(code: str | None) -> None:
+                _mark_binding(binding_id, code, fail_pending=False)
+
+            if binding.provider != provider.name:
+                return _Plan(None, _nothing, mark, PROVIDER_REJECTED)
+            members = self._members(event.aggregate_id)
             if members is None or binding.channel_ref is None:
-                return _Plan(None, _nothing, _nothing, MEMBER_UNAVAILABLE)
+                # F3: a removal that cannot be made still marks its binding (B1-C1, R3).
+                return _Plan(None, _nothing, mark, MEMBER_UNAVAILABLE)
             both: tuple[str, str] = (members[0].user_ref, members[1].user_ref)
             channel_id = binding.channel_ref
 
@@ -311,9 +328,6 @@ class OutboxDelivery:
                     row.state = "revoked"
                     row.version += 1
                     row.save(update_fields=["state", "version", "updated_at"])
-
-            def mark(code: str | None) -> None:
-                _mark_binding(binding_id, code, fail_pending=False)
 
             return _Plan(remove, removed, mark)
 
@@ -366,6 +380,7 @@ class OutboxDelivery:
 
             return _Plan(revoke, revoked, mark)
 
+        # A kind this delivery does not know concerns no row it can mark.
         return _Plan(None, _nothing, _nothing, PROVIDER_REJECTED)
 
     # -- one event --------------------------------------------------------------------
