@@ -1,9 +1,11 @@
-"""An in-memory chat provider for development and tests (P06.2 Stage A).
+"""An in-memory chat provider for development and tests (P06.2 Stage A; B1 adds user
+provisioning, CX4).
 
 It keeps what a provider would hold for Glow: channels with their members and message
 history, and users with their state and token cut-offs. It is idempotent as the real
-adapter must be: a repeated create of a known channel, or a repeated message ID,
-returns the existing object and creates nothing. Failures are injected only through
+adapter must be: a repeated provisioning of a known user, a repeated create of a known
+channel, or a repeated message ID, returns the existing object and creates nothing. As
+Stream, it refuses a channel that names a user it does not hold. Failures are injected only through
 ``fail_next``, before or after the call's effect, so a test can show a lost response.
 Every call is recorded with its argument names, so a test can show that no name,
 image or custom field was ever sent. It reaches no network.
@@ -133,6 +135,15 @@ class FixtureChatProvider:
 
     # -- the port ----------------------------------------------------------------------
 
+    def provision_user(self, user_id: str) -> ProviderReceipt:
+        def effect() -> ProviderReceipt:
+            if user_id in self.users:
+                return ProviderReceipt(user_id, already=True)
+            self.users[user_id] = FixtureUser()
+            return ProviderReceipt(user_id)
+
+        return self._call("provision_user", {"user_id": user_id}, effect)
+
     def create_channel(self, channel_id: str, members: tuple[str, str]) -> ProviderReceipt:
         def effect() -> ProviderReceipt:
             if len(set(members)) != 2:
@@ -143,8 +154,10 @@ class FixtureChatProvider:
                     raise ChatProviderError(PROVIDER_REJECTED)
                 return ProviderReceipt(channel_id, already=True)
             for user_id in members:
-                user = self.users.setdefault(user_id, FixtureUser())
-                if not user.active:
+                # CX4 (DM-15 3.4): a member the provider does not hold is refused, never
+                # created here; provisioning is its own delivered call.
+                user = self.users.get(user_id)
+                if user is None or not user.active:
                     raise ChatProviderError(MEMBER_UNAVAILABLE)
             self.channels[channel_id] = FixtureChannel(members, set(members))
             return ProviderReceipt(channel_id)

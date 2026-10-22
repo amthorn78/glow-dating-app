@@ -311,7 +311,7 @@ def render_delivery(delivery: Any) -> str:
         f" outcomes: {', '.join(f'{k}:{v}' for k, v in sorted(delivery.outcomes.items()))}"
     )
     dead = ", ".join(f"{k}:{v}" for k, v in sorted(delivery.dead_letters.items())) or "none"
-    out.append(f"dead letters (the planted controls' worlds only): {dead}")
+    out.append(f"dead letters (the planted controls' and the targeted cases' worlds only): {dead}")
     out.append(
         table(
             ("check", "result", "detail"),

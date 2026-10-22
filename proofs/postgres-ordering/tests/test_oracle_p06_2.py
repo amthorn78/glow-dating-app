@@ -1,5 +1,6 @@
 """The oracle's P06.2 rules on constructed rows, offline: O5 narrowed (CX2), O9 (CX1),
-O10 (D5) and O0 (every revocation has its witness)."""
+O10 (D5), O0 (every revocation has its witness) and, since Stage B1, O11 (no activation
+after a pause, restriction or withdrawal it would have read; DM-15 6.2)."""
 
 import unittest
 from datetime import UTC, datetime, timedelta
@@ -7,7 +8,13 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from glow_ordering_proof import oracle
-from glow_ordering_proof.oracle import Census, RevocationRow, SubmissionRow, WriterRow
+from glow_ordering_proof.oracle import (
+    ActivationRow,
+    Census,
+    RevocationRow,
+    SubmissionRow,
+    WriterRow,
+)
 
 T0 = datetime(2026, 10, 5, 12, 0, 0, tzinfo=UTC)
 EXPIRY = 1_000.0
@@ -185,6 +192,88 @@ class D5RuleO10Tests(unittest.TestCase):
         again = world.consent(world.low, "accepted", 3)
         self.assertEqual(
             judge(world, [world.submission(5)], revocations=[*revocations, again], d5=True), []
+        )
+
+
+class ActivationRuleO11Tests(unittest.TestCase):
+    """B1 (CX5; DM-15 6.2): as of an activation's commit, neither member's profile is
+    paused or restricted and each member's latest onboarding consent is accepted."""
+
+    def activation(
+        self, world: World, committed: float, tag: str = "design:forced"
+    ) -> ActivationRow:
+        return ActivationRow(world.match, world.low, world.high, ms(committed), tag, "c", None)
+
+    def o11(
+        self,
+        world: World,
+        activations: list[ActivationRow],
+        revocations: list[RevocationRow],
+        **kwargs: Any,
+    ) -> list[str]:
+        report = oracle.judge(
+            [], revocations, world.sessions, d5=True, activations=activations, **kwargs
+        )
+        return [f"{v.rule}:{v.run_tag}" for v in report.violations]
+
+    def test_an_activation_after_accepted_consents_and_visible_profiles_is_clean(self) -> None:
+        world = World()
+        self.assertEqual(self.o11(world, [self.activation(world, 5)], world.accepted()), [])
+
+    def test_a_pause_before_the_activation_is_a_violation(self) -> None:
+        world = World()
+        pause = RevocationRow("profile_paused", None, world.high, None, 2, ms(2))
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 5)], [*world.accepted(), pause]),
+            ["O11:design:forced"],
+        )
+        resume = RevocationRow("profile_resumed", None, world.high, None, 3, ms(3))
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 5)], [*world.accepted(), pause, resume]), []
+        )
+        # A pause after the activation is the activation's world as it stood: clean.
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 1)], [*world.accepted(), pause]), []
+        )
+
+    def test_a_restriction_with_the_activation_is_a_violation(self) -> None:
+        world = World()
+        restriction = RevocationRow("profile_restricted", None, world.low, None, 2, ms(5))
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 5)], [*world.accepted(), restriction]),
+            ["O11:design:forced"],
+        )
+
+    def test_a_withdrawal_before_the_activation_is_a_violation(self) -> None:
+        world = World()
+        withdrawn = world.consent(world.low, "withdrawn", 2)
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 5)], [*world.accepted(), withdrawn]),
+            ["O11:design:forced"],
+        )
+        again = world.consent(world.low, "accepted", 3)
+        self.assertEqual(
+            self.o11(world, [self.activation(world, 5)], [*world.accepted(), withdrawn, again]), []
+        )
+
+    def test_no_consent_at_all_is_a_violation(self) -> None:
+        world = World()
+        self.assertEqual(len(self.o11(world, [self.activation(world, 5)], [])), 2)
+
+    def test_o11_needs_d5_and_keeps_its_scope(self) -> None:
+        world = World()
+        pause = RevocationRow("profile_paused", None, world.high, None, 2, ms(2))
+        revocations = [*world.accepted(), pause]
+        planted = self.activation(world, 5, tag="control:oracle.activation_after_pause")
+        report = oracle.judge([], revocations, world.sessions, activations=[planted])
+        self.assertEqual(report.violations, [])  # the reference design: no D5, no O11
+        self.assertEqual(
+            self.o11(world, [planted], revocations), ["O11:control:oracle.activation_after_pause"]
+        )
+        self.assertEqual(self.o11(world, [planted], revocations, scope="design:forced"), [])
+        self.assertEqual(
+            self.o11(world, [planted], revocations, scope="control:oracle.activation_after_pause"),
+            ["O11:control:oracle.activation_after_pause"],
         )
 
 

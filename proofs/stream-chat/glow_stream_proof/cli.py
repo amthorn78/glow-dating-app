@@ -170,13 +170,20 @@ class _Applied:
         return self.reread_failure if self.reread_failure is not None else self.failure
 
     def finish(self, ctx: Context) -> int | None:
-        """Re-raise what must reach ``main``, after the record is written, with what it
-        replaced chained to it; 1 for a step Stream refused; ``None`` when every step
-        succeeded."""
+        """Re-raise what must reach ``main``, after the record is written; 1 for a step
+        Stream refused; ``None`` when every step succeeded.
+
+        Only a charge or limit signal's stop is chained to what replaced it in flight (the
+        error or Ctrl-C that ended the apply or the re-read), so that the record of what
+        happened survives in the traceback. Any other stop is raised as it is: an apply
+        failure keeps its own cause when the re-read fails too (P06.1-B1; the C5 review's
+        nit 3: until then that failure was raised from the later re-read error, which
+        replaced its cause)."""
         stop = self.stop(ctx)
         if stop is not None:
             ended = self.ended_on()
-            if ended is not None and ended is not stop:
+            is_signal = any(stop is signal for signal in ctx.ledger.signals)
+            if ended is not None and ended is not stop and is_signal:
                 raise stop from ended
             raise stop
         return None if self.failure is None else 1

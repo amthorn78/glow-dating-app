@@ -776,6 +776,120 @@ class RequestHeaderTest(_NotSentTest):
         self.assertGreater(scanned, 100)
 
 
+class HeaderAllowlistTest(_NotSentTest):
+    """P06.2 B1 (the C5 review's advice): the runner refuses a request carrying any header
+    name outside the allowlist of what stream-chat 9.53.0 and axios 1.20.0 set, whatever op
+    sent it, before it is counted or sent. The routing headers the named deny-lists left
+    (X-Forwarded-Prefix, X-Forwarded-Proto, X-Original-Method and their kin) are refused by
+    it; a header the SDK sets passes; an ordinary request reaches the budget. Offline: a
+    zero budget and a loopback proxy nothing listens on."""
+
+    def test_a_header_outside_the_allowlist_is_refused_by_name(self) -> None:
+        cases = [
+            ({"X-Forwarded-Prefix": "/video"}, "x-forwarded-prefix"),
+            ({"X-Forwarded-Proto": "http"}, "x-forwarded-proto"),
+            ({"X-Original-Method": "DELETE"}, "x-original-method"),
+            ({"X-Forwarded-For": "127.0.0.1"}, "x-forwarded-for"),
+            ({"Via": "1.1 proxy"}, "via"),
+            ({"X-Custom": "x"}, "x-custom"),
+            # Read as sent: trimmed, lower case, an underscore for a hyphen.
+            ({"  X_Forwarded_Prefix\t": "/feeds"}, "x-forwarded-prefix"),
+        ]
+        commands = [with_headers(n, h) for n, (h, _) in enumerate(cases, start=2)]
+        # Through the channel target's queryMembers and the client's queryUsers too.
+        options = {"headers": {"X-Forwarded-Prefix": "/video"}}
+        commands.append(
+            {
+                "id": 20,
+                "op": "call",
+                "target": "channel",
+                "method": "queryMembers",
+                "args": [{}, [], {}, options],
+                "type": "glow-match",
+                "channel_id": "x",
+                "max_calls": 0,
+            }
+        )
+        commands.append(client_call(21, "queryUsers", {}, [], {}, options))
+        replies = run_runner_offline({"id": 1, **REST_USER}, *commands)
+        by_id = {r["id"]: r for r in replies}
+        for command, (headers, name) in zip(commands, cases, strict=False):
+            with self.subTest(headers=headers):
+                self.assert_not_sent(
+                    by_id[command["id"]],
+                    "refused",
+                    f"PROOF_REFUSED: a header name outside the allowlist ({name})",
+                )
+        for command_id in (20, 21):
+            self.assert_not_sent(
+                by_id[command_id],
+                "refused",
+                "PROOF_REFUSED: a header name outside the allowlist (x-forwarded-prefix)",
+            )
+        self.assertEqual(by_id[99]["background_requests"], [])
+
+    def test_the_named_deny_lists_keep_their_own_refusals(self) -> None:
+        """The Host, forwarding and request-rewriting checks come first and keep their
+        messages; the allowlist refuses what they do not name."""
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            with_headers(2, {"Host": "video.stream-io-api.com"}),
+            with_headers(3, {"X-Forwarded-Host": "video.stream-io-api.com"}),
+            with_headers(4, {"X-HTTP-Method-Override": "DELETE"}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        self.assert_not_sent(by_id[2], "refused", "PROOF_REFUSED: a Host header")
+        self.assert_not_sent(by_id[3], "refused", "PROOF_REFUSED: a forwarding header")
+        self.assert_not_sent(by_id[4], "refused", "PROOF_REFUSED: a request-rewriting header")
+
+    def test_a_header_the_sdk_sets_passes_and_only_the_budget_stops_the_request(self) -> None:
+        replies = run_runner_offline(
+            {"id": 1, **REST_USER},
+            # The SDK's own names, through request options, in another letter case.
+            with_headers(2, {"X-STREAM-CLIENT": "x", "Stream-Auth-Type": "jwt"}),
+            with_headers(3, {"x-client-request-id": "abc", "Accept": "application/json"}),
+            # An ordinary chat request with no option at all.
+            client_call(4, "post", CHAT + "/channels/glow-match/x/query", {}),
+            client_call(5, "get", CHAT + "/users", {}),
+        )
+        by_id = {r["id"]: r for r in replies}
+        for command_id in (2, 3, 4, 5):
+            self.assert_not_sent(by_id[command_id], "budget")
+
+    def test_the_allowlist_is_what_the_sdk_and_axios_set(self) -> None:
+        """The premise: stream-chat 9.53.0 sets Authorization, stream-auth-type,
+        X-Stream-Client and x-client-request-id (and a form's Content-Type for a file), and
+        axios 1.20.0 merges Accept and Content-Type before its interceptors; no other header
+        name appears in either package's request path. The allowlist in the runner is
+        exactly those names."""
+        modules = RUNNER.parent.parent / "node_modules"
+        sdk = (modules / "stream-chat" / "dist" / "cjs" / "index.node.js").read_text()
+        for name in (
+            "Authorization",
+            '"stream-auth-type"',
+            '"X-Stream-Client"',
+            '"x-client-request-id"',
+        ):
+            self.assertIn(name, sdk)
+        axios_defaults = (modules / "axios" / "lib" / "defaults" / "index.js").read_text()
+        self.assertIn("Accept: 'application/json, text/plain, */*'", axios_defaults)
+        self.assertIn("'Content-Type': undefined", axios_defaults)
+        source = RUNNER.read_text()
+        listed = source.split("const ALLOWED_HEADERS = [", 1)[1].split("];", 1)[0]
+        names = sorted(n.strip().strip("'") for n in listed.split(",") if n.strip())
+        self.assertEqual(
+            names,
+            [
+                "accept",
+                "authorization",
+                "content-type",
+                "stream-auth-type",
+                "x-client-request-id",
+                "x-stream-client",
+            ],
+        )
+
+
 # The runner loaded with a stub stream-chat in require.cache, as the runner itself places its
 # WebSocket for isomorphic-ws: the stub records the request interceptor the runner registers,
 # and nothing is sent.

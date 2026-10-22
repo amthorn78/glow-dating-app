@@ -10,7 +10,8 @@ must report the control's declared rule under the control's run tag. A control w
 rule does not appear, or that hits a harness error, fails the job.
 
 These controls do not depend on the subject: the same plant runs against both, except
-the two for D5 (O10), which the reference design excludes (P06.DB 5.6).
+the two for D5 (O10) and the two for B1's O11 (an activation after a pause or a
+withdrawal; DM-15 6.2), which the reference design excludes (P06.DB 5.6).
 """
 
 from __future__ import annotations
@@ -118,6 +119,20 @@ PLANTED: tuple[PlantedControl, ...] = (
         "a withdrawal of the other member's onboarding consent, then a submission",
         d5=True,
     ),
+    PlantedControl(
+        "oracle.activation_after_pause",
+        "O11",
+        "P06.2 B1 (CX5) no activation after a pause it would have read",
+        "a pause of one account's profile, then an activation of a match naming it",
+        d5=True,
+    ),
+    PlantedControl(
+        "oracle.activation_after_consent_withdrawn",
+        "O11",
+        "P06.2 B1 (CX5) no activation after a withdrawal it would have read",
+        "a withdrawal of one account's onboarding consent, then an activation naming it",
+        d5=True,
+    ),
 )
 PLANTED_BY_ID = {control.id: control for control in PLANTED}
 
@@ -146,6 +161,10 @@ class Planter(Protocol):
     def pause(self, account: UUID) -> None: ...
 
     def withdraw(self, account: UUID) -> None: ...
+
+    def activation(self, low: UUID, high: UUID) -> UUID:
+        """P06.2 B1: a match with its binding and its ``match_activated`` event, in one
+        transaction, as the adapter's activation writes them; returns the match id."""
 
 
 def _models() -> Any:
@@ -286,6 +305,9 @@ class ReferencePlanter:
     def withdraw(self, account: UUID) -> None:
         raise RuntimeError("the reference design carries no D5 writer")
 
+    def activation(self, low: UUID, high: UUID) -> UUID:
+        raise RuntimeError("the reference design has no activation of its own")
+
 
 class AdapterPlanter:
     """Rows in the adapter's shape: its submissions with their ``message_submitted``
@@ -381,6 +403,17 @@ class AdapterPlanter:
                 version=latest.version + 1,
             )
 
+    def activation(self, low: UUID, high: UUID) -> UUID:
+        m = _models()
+        with transaction.atomic():
+            match = m.Match.objects.create(account_low_id=low, account_high_id=high, state="active")
+            binding = m.ChatBinding.objects.create(
+                match=match, provider="fixture", channel_ref=secrets.token_hex(16), state="pending"
+            )
+            self._event("match_activated", match.id, 1, binding.id)
+        assert isinstance(match.id, UUID)
+        return match.id
+
 
 def _plant(control: PlantedControl, ctx: Context, world: World, planter: Planter) -> None:
     low, high, session = world.low, world.high, world.session_low
@@ -416,8 +449,22 @@ def _plant(control: PlantedControl, ctx: Context, world: World, planter: Planter
         case "oracle.send_after_consent_withdrawn":
             planter.withdraw(high)
             send()
+        case "oracle.activation_after_pause":
+            _activation_after(ctx, planter, planter.pause)
+        case "oracle.activation_after_consent_withdrawn":
+            _activation_after(ctx, planter, planter.withdraw)
         case _:
             raise ValueError(f"no plant for {control.id}")
+
+
+def _activation_after(ctx: Context, planter: Planter, writer: Any) -> None:
+    """B1 (O11): a pair not yet matched; ``writer`` changes one member's state, then an
+    activation that names the pair is planted and its world recorded under the control's
+    tag, so the oracle attributes the violation to the control."""
+    low, high = sorted((ctx.fixtures.create_account(), ctx.fixtures.create_account()))
+    writer(high)
+    match = planter.activation(low, high)
+    ctx.log.record_world(ctx.name, match, low, high)
 
 
 def _after_expiry(ctx: Context, world: World, planter: Planter) -> None:

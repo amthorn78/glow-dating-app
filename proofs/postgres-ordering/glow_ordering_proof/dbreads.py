@@ -126,3 +126,56 @@ def deletion_recorded(account_id: UUID) -> tuple[bool, bool, bool]:
         bool(DeletionTombstone.objects.filter(subject_id=account_id).exists()),
         bool(AppAccount.objects.filter(pk=account_id).exists()),
     )
+
+
+def activation_commit(match_id: UUID) -> datetime | None:
+    """P06.2 B1: the commit time of a match's activation, from its ``match_activated``
+    outbox event (written in the activation's transaction)."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pg_xact_commit_timestamp(xmin) FROM glow_persistence_outboxevent"
+            " WHERE event_type = 'match_activated' AND aggregate_id = %s",
+            [match_id],
+        )
+        row = cursor.fetchone()
+    value = row[0] if row else None
+    assert value is None or isinstance(value, datetime)
+    return value
+
+
+def match_between(low: UUID, high: UUID) -> tuple[UUID, str] | None:
+    """P06.2 B1: the pair's match, if one exists: (id, state)."""
+    from glow_persistence.models import Match
+
+    row = (
+        Match.objects.filter(account_low_id=low, account_high_id=high)
+        .values_list("id", "state")
+        .first()
+    )
+    return None if row is None else (row[0], str(row[1]))
+
+
+def identity_row(account_id: UUID) -> tuple[str, str | None, datetime | None] | None:
+    """P06.2 B1: the account's chat identity: (state, reconcile_code, tokens_revoked_before)."""
+    from glow_persistence.models import ChatIdentity
+
+    row = (
+        ChatIdentity.objects.filter(account_id=account_id)
+        .values_list("state", "reconcile_code", "tokens_revoked_before")
+        .first()
+    )
+    return None if row is None else (str(row[0]), row[1], row[2])
+
+
+def event_times(event_type: str, aggregate_id: UUID) -> tuple[datetime, datetime] | None:
+    """P06.2 B1: an outbox event's (available_at, created_at): the database clock the
+    writer read under its locks, and the app's clock at the row's save."""
+    from glow_persistence.models import OutboxEvent
+
+    row = (
+        OutboxEvent.objects.filter(event_type=event_type, aggregate_id=aggregate_id)
+        .order_by("-aggregate_version")
+        .values_list("available_at", "created_at")
+        .first()
+    )
+    return None if row is None else (row[0], row[1])

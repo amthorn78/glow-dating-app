@@ -13,7 +13,9 @@ first lock and after all its locks, which the forced interleavings use.
 P06.2 adds a fourth hold point, ``before_commit`` (after every check and write), for
 CX2's boundary; the reference design takes it through the proof log instead (its code
 is unchanged), and the app's adapter through its ``TransactionProbe``. It adds
-``ContactStateSubject``, the D5 writers only the app's adapter carries.
+``ContactStateSubject``, the D5 writers only the app's adapter carries; Stage B1 adds
+to it the adapter's match activation (CX5) and token grant (F1), whose outcome
+``granted`` commits nothing.
 """
 
 from __future__ import annotations
@@ -25,7 +27,9 @@ from datetime import datetime
 from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
-Outcome = Literal["authorized", "replayed", "applied", "no_change", "refused", "deadlock", "error"]
+Outcome = Literal[
+    "authorized", "replayed", "applied", "no_change", "granted", "refused", "deadlock", "error"
+]
 COMMITTED_OUTCOMES: frozenset[str] = frozenset({"authorized", "applied"})
 
 
@@ -142,3 +146,11 @@ class ContactStateSubject(OrderingSubject, Protocol):
     def withdraw_consent(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
 
     def accept_consent(self, account_id: UUID, *, hooks: Hooks | None = None) -> Result: ...
+
+    def activate_match(self, first: UUID, second: UUID, *, hooks: Hooks | None = None) -> Result:
+        """P06.2 B1 (CX5): the adapter's match activation, with its hold points, so the
+        suite can force it against the profile and consent writers."""
+
+    def grant_token(self, session_id: UUID, *, hooks: Hooks | None = None) -> Result:
+        """P06.2 B1 (F1): the adapter's token grant. ``granted`` carries ``issued_at`` and
+        ``expires_at`` in ``detail``; it writes no row."""

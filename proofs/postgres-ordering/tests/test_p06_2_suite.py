@@ -102,9 +102,10 @@ class ThreadWorker:
 class FakeLog:
     def __init__(self) -> None:
         self.context = observe.LogContext(run_tag="design:stress", variant="fake")
+        self.worlds: list[tuple[object, ...]] = []
 
     def record_world(self, *args: object) -> None:
-        return None
+        self.worlds.append(args)
 
 
 class FakeSubject:
@@ -316,9 +317,10 @@ class SeededDelayTests(unittest.TestCase):
 class PlantedPlanTests(unittest.TestCase):
     def test_every_rule_has_a_planted_control(self) -> None:
         rules = Counter(control.rule for control in planted.PLANTED)
-        for rule in ("O0", "O1", "O2", "O3", "O4", "O5", "O6", "O9", "O10"):
+        for rule in ("O0", "O1", "O2", "O3", "O4", "O5", "O6", "O9", "O10", "O11"):
             self.assertIn(rule, rules)
         self.assertEqual(rules["O9"], 2)  # CX1: the other member, and a non-member
+        self.assertEqual(rules["O11"], 2)  # B1: a pause, and a withdrawal, before an activation
         self.assertEqual(len(planted.PLANTED_BY_ID), len(planted.PLANTED))
 
     def test_d5_controls_run_for_the_adapter_only(self) -> None:
@@ -327,9 +329,18 @@ class PlantedPlanTests(unittest.TestCase):
         self.assertTrue(all(not c.d5 for c in reference))
         self.assertEqual(
             {c.id for c in adapter} - {c.id for c in reference},
-            {"oracle.send_while_paused", "oracle.send_after_consent_withdrawn"},
+            {
+                "oracle.send_while_paused",
+                "oracle.send_after_consent_withdrawn",
+                # B1 (DM-15 6.2): the planted controls for O11.
+                "oracle.activation_after_pause",
+                "oracle.activation_after_consent_withdrawn",
+            },
         )
         self.assertTrue(all(c.run_tag.startswith("control:") for c in adapter))
+        self.assertEqual(
+            {c.rule for c in adapter if c.id.startswith("oracle.activation_")}, {"O11"}
+        )
 
     def test_each_control_plants_what_it_declares(self) -> None:
         calls: list[tuple[str, dict[str, object]]] = []
@@ -354,6 +365,9 @@ class PlantedPlanTests(unittest.TestCase):
             "oracle.unwitnessed_revocation": ["contact_revocation"],
             "oracle.send_while_paused": ["pause", "submission"],
             "oracle.send_after_consent_withdrawn": ["withdraw", "submission"],
+            # B1: the writer changes one member's state, then an activation names the pair.
+            "oracle.activation_after_pause": ["pause", "activation"],
+            "oracle.activation_after_consent_withdrawn": ["withdraw", "activation"],
         }
         for control_id, names in expected.items():
             with self.subTest(control=control_id):

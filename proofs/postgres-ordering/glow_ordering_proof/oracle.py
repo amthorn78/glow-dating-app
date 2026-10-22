@@ -45,6 +45,15 @@ Rules, for every ``MessageSubmission`` S:
   neither member's profile is paused or restricted, and each member's latest onboarding
   consent decision is ``accepted``.
 
+And for every match activation A of the adapter (P06.2 B1; CX5, DM-15 6.2), read from
+its ``match_activated`` event, which the activation writes in its own transaction:
+
+- O11 no pause, restriction or withdrawal of either member that A would have read
+  committed before or with A: as of A's commit, neither member's profile is paused or
+  restricted and each member's latest onboarding consent is ``accepted``. Activation and
+  those writers lock the member's account row, so a writer that committed before A is
+  one A read.
+
 And over the subject's matches, accounts, sessions and profiles:
 
 - O0 (P06.2) every revocation PostgreSQL holds has its witness: a match's contact version
@@ -169,6 +178,20 @@ class RevocationRow:
     session: UUID | None
     contact_version: int | None
     committed: datetime
+
+
+@dataclass(frozen=True)
+class ActivationRow:
+    """A match activation (P06.2 B1), as the oracle reads it: its ``match_activated``
+    event's commit, the pair, and the run tag of its world."""
+
+    match: UUID
+    low: UUID
+    high: UUID
+    committed: datetime
+    run_tag: str
+    case_id: str | None
+    iteration: int | None
 
 
 @dataclass(frozen=True)
@@ -466,8 +489,29 @@ def evaluate_adapter(
             )
         }
         census = None
+        activations: list[ActivationRow] = []
         if case_id is None and iteration is None:
             census = _census(cursor, provider, "adapter", profiles=True)
+            # O11: every activation of the subject's bindings, tagged by its world.
+            for match, low, high, committed in _fetch(
+                cursor,
+                """
+                SELECT m.id, m.account_low_id, m.account_high_id,
+                       pg_xact_commit_timestamp(o.xmin)
+                FROM glow_persistence_outboxevent o
+                JOIN glow_persistence_match m ON m.id = o.aggregate_id
+                JOIN glow_persistence_chatbinding b ON b.match_id = m.id
+                WHERE o.schema_version = %s AND o.event_type = 'match_activated'
+                  AND b.provider = %s
+                """,
+                [schema, provider],
+            ):
+                if committed is None:
+                    continue
+                tag = census.tags.get(match, UNTAGGED)
+                if run_tag is not None and tag[0] != run_tag:
+                    continue
+                activations.append(ActivationRow(match, low, high, committed, *tag))
     return judge(
         submissions,
         revocations,
@@ -476,6 +520,7 @@ def evaluate_adapter(
         census=census,
         d5=True,
         scope=run_tag,
+        activations=activations,
     )
 
 
@@ -504,24 +549,33 @@ def _o5(s: SubmissionRow, expires_at: datetime, writers: Iterable[WriterRow]) ->
     return None
 
 
+def _contact_state(
+    low: UUID, high: UUID, committed: datetime, index: _Index, what: str
+) -> list[str]:
+    """D5's state as of a commit: both profiles visible, both latest consents accepted.
+    O10 judges a send by it, O11 (B1) an activation."""
+    found: list[str] = []
+    for member in (low, high):
+        profile = index.profile.get(member, [])
+        before = [r for r in profile if r.committed < committed]
+        if before and before[-1].kind in PROFILE_OFF:
+            state = PROFILE_STATE[before[-1].kind]
+            found.append(f"a member's profile was {state} before the {what}")
+        if any(r.committed == committed and r.kind in PROFILE_OFF for r in profile):
+            found.append(f"a member's profile changed with the {what}")
+        consent = index.consent.get(member, [])
+        decided = [r for r in consent if r.committed < committed]
+        if not decided or decided[-1].kind != "consent_accepted":
+            found.append(f"a member's latest onboarding consent was not accepted before the {what}")
+        if any(r.committed == committed and r.kind == "consent_withdrawn" for r in consent):
+            found.append(f"a member's consent was withdrawn with the {what}")
+    return found
+
+
 def _o10(s: SubmissionRow, index: _Index) -> list[str]:
     """D5, as of S's commit: both profiles visible, both latest consents accepted."""
     assert s.committed is not None
-    found: list[str] = []
-    for member in (s.low, s.high):
-        profile = index.profile.get(member, [])
-        before = [r for r in profile if r.committed < s.committed]
-        if before and before[-1].kind in PROFILE_OFF:
-            found.append(f"a member's profile was {PROFILE_STATE[before[-1].kind]} before the send")
-        if any(r.committed == s.committed and r.kind in PROFILE_OFF for r in profile):
-            found.append("a member's profile changed with the send")
-        consent = index.consent.get(member, [])
-        decided = [r for r in consent if r.committed < s.committed]
-        if not decided or decided[-1].kind != "consent_accepted":
-            found.append("a member's latest onboarding consent was not accepted before the send")
-        if any(r.committed == s.committed and r.kind == "consent_withdrawn" for r in consent):
-            found.append("a member's consent was withdrawn with the send")
-    return found
+    return _contact_state(s.low, s.high, s.committed, index, "send")
 
 
 @dataclass
@@ -600,13 +654,23 @@ def judge(
     census: Census | None = None,
     d5: bool = False,
     scope: str | None = None,
+    activations: Iterable[ActivationRow] = (),
 ) -> OracleReport:
     """The rules over rows already read; ``sessions`` maps a session id to its (account
     id, epoch, expires_at). O0 runs when a ``census`` is given; its violations are kept
-    for the run tag in ``scope`` only, when one is given."""
+    for the run tag in ``scope`` only, when one is given. O11 (B1) runs over
+    ``activations`` when ``d5`` holds, under each activation's own tag."""
     writers = list(writers)
     index = _Index.of(revocations)
     report = OracleReport(len(submissions), len(revocations))
+    if d5:
+        for a in activations:
+            if scope is not None and a.run_tag != scope:
+                continue
+            for detail in _contact_state(a.low, a.high, a.committed, index, "activation"):
+                report.violations.append(
+                    Violation("O11", a.run_tag, a.case_id, a.iteration, None, detail)
+                )
     keys: Counter[tuple[UUID, str]] = Counter()
     for s in submissions:
         report.by_tag[s.run_tag] = report.by_tag.get(s.run_tag, 0) + 1

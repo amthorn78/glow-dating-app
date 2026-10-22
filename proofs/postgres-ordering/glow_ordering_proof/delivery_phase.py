@@ -1,17 +1,24 @@
-"""The delivery phase (P06.2 Stage A, items 2 and 3): the app's outbox delivery, run
-in-process against the fixture provider on the disposable database.
+"""The delivery phase (P06.2 Stage A, items 2 and 3; Stage B1, CX4, CX6, F1 and F3): the
+app's outbox delivery, run in-process against the fixture provider on the disposable
+database.
 
 It runs after both subjects' oracles, because delivery updates the rows the oracle reads
 commit times from. First it drains the outbox: every chat event the adapter's cases,
 races and controls wrote is delivered, first in, first out, as one provider call each.
 Then it checks, for every world the design tags made, that the provider ended where the
-database says it should: an active match's channel holds exactly its two members, a
-revoked one holds none, every authorized message was delivered once and none after its
-channel's members were removed, and every suspended or deleted member's provider user is
-deactivated with one token revocation per epoch bump. Last, it runs the targeted cases:
-each event kind, a retry after a fixture failure (before and after the provider acted),
-provider text kept out, a revocation committed after a send's authorization and before
-its delivery, and a dead letter.
+database says it should: every member's user provisioned, an active match's channel
+holds exactly its two members, a revoked one holds none, every authorized message was
+delivered once and none after its channel's members were removed, and every suspended
+or deleted member's provider user is deactivated with one token revocation per epoch
+bump. Last, it runs the targeted cases: each event kind, with the provisioning before
+the channel; the order key against an app clock that runs backwards (DM-15 3.1); a retry
+after a fixture failure (before and after the provider acted); provider text kept out; a
+revocation committed after a send's authorization and before its delivery; a dead letter
+after the last attempt; a lost provisioning response (3.3); a lost creation response
+followed by a revocation (CX6, 4.5); each dead-lettered revocation marking its row, and
+no message into a marked binding (F3, 4.5); B1-C1 adds a second match for an
+already-provisioned account (DM-15 3.5, R1) and the dead letters made without a call
+marking their rows (F3, R3).
 
 No provider is called but the in-memory fixture; nothing reaches a network.
 """
@@ -22,16 +29,19 @@ import re
 import sys
 import time
 from collections.abc import Callable
-from typing import Any
+from datetime import timedelta
+from typing import Any, cast
 from uuid import UUID
 
 from glow_chat import events
 from glow_chat.delivery import Delivery, OutboxDelivery
 from glow_domain.chat_provider import OPERATIONS
 from glow_domain.chat_provider_fixtures import FixtureChatProvider
+from glow_domain.chat_tokens import revocation_cutoff_sent
 
 from glow_ordering_proof import oracle
-from glow_ordering_proof.cases import Context, World, make_world, send_request
+from glow_ordering_proof.cases import Context, Pair, World, make_pair, make_world, send_request
+from glow_ordering_proof.dbreads import match_between
 from glow_ordering_proof.interface import Result
 from glow_ordering_proof.observe import WORLD_TABLE, LogContext
 from glow_ordering_proof.results import DeliveryReport
@@ -41,6 +51,7 @@ DRAIN_MAX_SECONDS = 300.0
 REF_FORM = re.compile(r"[0-9a-f]{32}")
 # Text a provider could put in an error; it must never be kept or shown.
 PROVIDER_TEXT = "fixture-provider-said: upstream detail that must not be kept"
+ORDER_REPEATS = 25
 
 
 class DeliveryCheckFailed(AssertionError):
@@ -127,6 +138,8 @@ def _end_state(provider: FixtureChatProvider, report: DeliveryReport) -> None:
         active = match.state == "active"
         if binding.state != ("active" if active else "revoked"):
             problems.append(f"binding {binding.state} for a {match.state} match {match_id}")
+        if binding.reconcile_code is not None:
+            problems.append(f"a marked binding in a design world: {match_id}")
         if channel.members != (refs if active else set()):
             problems.append(f"channel members of a {match.state} match {match_id}")
         submissions = list(m.MessageSubmission.objects.filter(binding=binding))
@@ -145,8 +158,11 @@ def _end_state(provider: FixtureChatProvider, report: DeliveryReport) -> None:
         user = provider.users.get(identity.user_ref)
         revoked = row.state in ("suspended", "deletion_pending")
         deactivated += revoked
+        # B1 (CX4): every identity was provisioned, and is active or deactivated.
         if identity.state != ("deactivated" if revoked else "active"):
             problems.append(f"identity {identity.state} for a {row.state} account")
+        if identity.reconcile_code is not None:
+            problems.append(f"a marked identity in a design world: {account}")
         if user is None or user.active == revoked:
             problems.append(f"provider user state for a {row.state} account")
         elif len(user.token_cutoffs) != row.session_epoch - 1:
@@ -155,6 +171,12 @@ def _end_state(provider: FixtureChatProvider, report: DeliveryReport) -> None:
             )
     dead = m.OutboxEvent.objects.filter(schema_version=oracle.ADAPTER_SCHEMA, state="dead_letter")
     design_matches = {match for match, _, _ in worlds}
+    identity_accounts = {
+        identity_id: account_id
+        for account_id, identity_id in m.ChatIdentity.objects.filter(
+            account_id__in=accounts
+        ).values_list("account_id", "id")
+    }
     for event in dead:
         owner = event.aggregate_id
         if event.event_type == "message_submitted":
@@ -163,6 +185,8 @@ def _end_state(provider: FixtureChatProvider, report: DeliveryReport) -> None:
                 .values_list("binding__match_id", flat=True)
                 .first()
             )
+        elif event.event_type == "identity_created":
+            owner = identity_accounts.get(event.aggregate_id)
         if owner in design_matches or owner in accounts:
             problems.append(f"a dead letter in a design world: {event.event_type}")
     report.check(
@@ -190,9 +214,18 @@ def _world(ctx: Context, name: str) -> World:
     return make_world(ctx)
 
 
+def _pair(ctx: Context, name: str) -> Pair:
+    ctx.log.context = LogContext(run_tag=f"delivery:{name}", variant="adapter")
+    return make_pair(ctx)
+
+
 def _deliver(delivery: OutboxDelivery) -> list[Delivery]:
     done: list[Delivery] = delivery.deliver_due(limit=100)
     return done
+
+
+def _kinds(done: list[Delivery]) -> list[tuple[str, str]]:
+    return [(d.event_type, d.outcome) for d in done]
 
 
 def _receipt(result: Result) -> UUID:
@@ -201,21 +234,64 @@ def _receipt(result: Result) -> UUID:
     return result.receipt.submission_id
 
 
+def _identity(account_id: UUID) -> Any:
+    return _models().ChatIdentity.objects.get(account_id=account_id)
+
+
+def _fail_until_dead(
+    provider: FixtureChatProvider,
+    delivery: OutboxDelivery,
+    operations: tuple[str, ...],
+    *,
+    after_effect: bool,
+    until: str,
+) -> list[Delivery]:
+    """Every attempt of each of ``operations`` fails, before or after its effect, and the
+    outbox is delivered pass by pass until an event of type ``until`` is dead-lettered;
+    everything delivered meanwhile, in order (a pass runs on past a dead letter to the
+    events behind it, and stops at a retry)."""
+    for operation in operations:
+        for _ in range(delivery.max_attempts):
+            provider.fail_next(operation, after_effect=after_effect)
+    done: list[Delivery] = []
+    for _ in range(delivery.max_attempts * len(operations) + 2):
+        done.extend(_deliver(delivery))
+        if any(d.event_type == until and d.outcome == "dead_letter" for d in done):
+            return done
+    raise DeliveryCheckFailed(f"{until} was not dead-lettered: {_kinds(done)}")
+
+
+def _outcomes(done: list[Delivery], event_type: str) -> list[str]:
+    return [d.outcome for d in done if d.event_type == event_type]
+
+
 def _each_kind(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery) -> str:
     m = _models()
     world = _world(ctx, "each_kind")
     first = _deliver(delivery)
-    _require([d.event_type for d in first] == ["match_activated"], first)
+    # CX4 (DM-15 3.1 and 3.4): both provisionings, then the channel, each one call.
+    _require(
+        [d.event_type for d in first]
+        == ["identity_created", "identity_created", "match_activated"],
+        first,
+    )
+    _require(all(d.outcome == "delivered" and d.provider_called for d in first), first)
+    _require(
+        [c.operation for c in provider.calls[-3:]]
+        == ["provision_user", "provision_user", "create_channel"],
+        provider.calls[-3:],
+    )
     binding = m.ChatBinding.objects.get(match_id=world.match)
-    refs = {
-        i.user_ref for i in m.ChatIdentity.objects.filter(account_id__in=(world.low, world.high))
-    }
+    identities = list(m.ChatIdentity.objects.filter(account_id__in=(world.low, world.high)))
+    refs = {i.user_ref for i in identities}
+    _require(all(i.state == "active" for i in identities), [i.state for i in identities])
     _require(binding.state == "active", binding.state)
     channel = provider.channels[binding.channel_ref]
     _require(
         set(channel.created_members) == refs and channel.members == refs,
         "the delivery check did not hold",
     )
+    _require(all(provider.users[ref].active for ref in refs))
     for ref in (*refs, binding.channel_ref):
         _require(REF_FORM.fullmatch(ref), "a provider identifier is not 32 hexadecimal characters")
         for account in (world.low, world.high):
@@ -226,10 +302,7 @@ def _each_kind(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDeli
     sent = ctx.subject.send(send_request(world, key="k-each"))
     _require(sent.outcome == "authorized" and sent.receipt is not None, sent.label())
     second = _deliver(delivery)
-    _require(
-        [(d.event_type, d.outcome) for d in second] == [("message_submitted", "delivered")],
-        "the delivery check did not hold",
-    )
+    _require(_kinds(second) == [("message_submitted", "delivered")], second)
     submission = m.MessageSubmission.objects.get(pk=_receipt(sent))
     _require(submission.state == "accepted")
     _require(
@@ -239,40 +312,44 @@ def _each_kind(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDeli
     blocked = ctx.subject.block(world.high, world.low)
     _require(blocked.outcome == "applied", blocked.label())
     third = _deliver(delivery)
-    _require(
-        [(d.event_type, d.outcome) for d in third] == [("contact_revoked", "delivered")],
-        "the delivery check did not hold",
-    )
+    _require(_kinds(third) == [("contact_revoked", "delivered")], third)
     binding.refresh_from_db()
     _require(
         binding.state == "revoked" and channel.members == set() and len(channel.messages) == 1,
         "the delivery check did not hold",
     )
+    _require(binding.reconcile_code is None)
     other = _world(ctx, "each_kind_account")
     _deliver(delivery)
     suspended = ctx.subject.suspend(other.low)
     _require(suspended.outcome == "applied", suspended.label())
     fourth = _deliver(delivery)
     _require(
-        [(d.event_type, d.outcome) for d in fourth]
+        _kinds(fourth)
         == [
             ("access_revoked", "delivered"),
             ("session_epoch_bumped", "delivered"),
         ],
         fourth,
     )
-    identity = m.ChatIdentity.objects.get(account_id=other.low)
+    identity = _identity(other.low)
     event = m.OutboxEvent.objects.get(event_type="session_epoch_bumped", aggregate_id=other.low)
     user = provider.users[identity.user_ref]
     _require(identity.state == "deactivated" and not user.active)
+    # F1 (DM-15 5.2): the stored cut-off is exact; the provider got the next whole second.
+    _require(identity.tokens_revoked_before == event.available_at, "the stored cut-off")
     _require(
-        identity.tokens_revoked_before == event.available_at == user.token_cutoffs[-1],
-        "the delivery check did not hold",
+        user.token_cutoffs[-1] == revocation_cutoff_sent(event.available_at),
+        f"sent {user.token_cutoffs[-1]} for the cut-off {event.available_at}",
+    )
+    _require(
+        user.token_cutoffs[-1] > event.available_at and user.token_cutoffs[-1].microsecond == 0
     )
     return (
-        "channel created with exactly the two members, message sent with its committed ID,"
-        " both members removed on a block with the history kept, user deactivated and its"
-        " tokens revoked at the epoch bump's time"
+        "both users provisioned, then the channel created with exactly the two members; message"
+        " sent with its committed ID; both members removed on a block with the history kept;"
+        " user deactivated and its tokens revoked at the next whole second after the bump's"
+        " time, which is stored exact"
     )
 
 
@@ -283,7 +360,12 @@ def _retry(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
     provider.fail_next("create_channel")
     failed = _deliver(delivery)
     _require(
-        [(d.outcome, d.code, d.attempts) for d in failed] == [("retry", "provider_unavailable", 1)],
+        [(d.event_type, d.outcome, d.code, d.attempts) for d in failed]
+        == [
+            ("identity_created", "delivered", None, 1),
+            ("identity_created", "delivered", None, 1),
+            ("match_activated", "retry", "provider_unavailable", 1),
+        ],
         failed,
     )
     binding.refresh_from_db()
@@ -329,10 +411,13 @@ def _retry(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
     removed = _deliver(delivery)
     _require([d.outcome for d in removed] == ["delivered"], removed)
     _require(channel.members == set())
+    binding.refresh_from_db()
+    _require(binding.state == "revoked" and binding.reconcile_code is None)
     return (
         "a failed channel creation retried with the same channel ID (one channel); a lost"
         " answer to a send retried with the committed message ID (one message, the retry"
-        " found it); provider text mapped to provider_unavailable and kept nowhere"
+        " found it); provider text mapped to provider_unavailable and kept nowhere; a retried"
+        " event marks nothing"
     )
 
 
@@ -350,7 +435,7 @@ def _revocation_before_delivery(
     )
     done = _deliver(delivery)
     _require(
-        [(d.event_type, d.outcome) for d in done]
+        _kinds(done)
         == [
             ("message_submitted", "delivered"),
             ("contact_revoked", "delivered"),
@@ -383,31 +468,474 @@ def _revocation_before_delivery(
 def _dead_letter(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery) -> str:
     m = _models()
     world = _world(ctx, "dead_letter")
-    outcomes: list[str] = []
-    for _ in range(delivery.max_attempts):
-        provider.fail_next("create_channel")
-        outcomes.extend(d.outcome for d in _deliver(delivery))
+    done = _fail_until_dead(
+        provider, delivery, ("create_channel",), after_effect=False, until="match_activated"
+    )
+    outcomes = _outcomes(done, "match_activated")
     _require(outcomes == ["retry"] * (delivery.max_attempts - 1) + ["dead_letter"], outcomes)
     binding = m.ChatBinding.objects.get(match_id=world.match)
     _require(
         binding.state == "failed" and binding.channel_ref not in provider.channels,
         "the delivery check did not hold",
     )
+    # F3: the dead letter marks the binding with the Glow code of its last attempt.
+    _require(binding.reconcile_code == "provider_unavailable", binding.reconcile_code)
     refused = ctx.subject.send(send_request(world, key="k-dead"))
     _require(
         refused.outcome == "refused" and refused.reason == "binding_not_active", refused.label()
     )
     return (
         f"after {delivery.max_attempts} failed attempts the event is dead-lettered and the"
-        " binding failed; a send to it is refused"
+        " binding failed and marked provider_unavailable; a send to it is refused"
+    )
+
+
+def _order_key(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery) -> str:
+    """DM-15 3.1: the events one activation writes are delivered in the order it wrote
+    them, by the database-assigned sequence, over repeated runs, with the app's clock
+    running backwards so that created_at would order them the other way."""
+    from django.utils import timezone
+
+    m = _models()
+    real = timezone.now
+    step = [0]
+
+    def backwards() -> Any:
+        step[0] += 1
+        return real() - timedelta(seconds=step[0])
+
+    worlds: list[World] = []
+    timezone.now = backwards
+    try:
+        for _ in range(ORDER_REPEATS):
+            worlds.append(_world(ctx, "order_key"))
+    finally:
+        timezone.now = real
+    reversed_clocks = 0
+    for world in worlds:
+        identities = list(m.ChatIdentity.objects.filter(account_id__in=(world.low, world.high)))
+        rows = list(
+            m.OutboxEvent.objects.filter(
+                aggregate_id__in=[i.id for i in identities] + [world.match],
+                event_type__in=("identity_created", "match_activated"),
+            ).order_by("sequence")
+        )
+        _require(len(rows) == 3, [r.event_type for r in rows])
+        _require([r.event_type for r in rows] == ["identity_created"] * 2 + ["match_activated"])
+        _require(len({r.available_at for r in rows}) == 1, "one clock_timestamp per transaction")
+        _require(rows[0].sequence < rows[1].sequence < rows[2].sequence)
+        # The app's clock ran backwards: created_at would put the channel first.
+        if rows[0].created_at > rows[1].created_at > rows[2].created_at:
+            reversed_clocks += 1
+    _require(reversed_clocks == ORDER_REPEATS, f"{reversed_clocks} worlds with a reversed clock")
+    before = len(provider.calls)
+    done = _deliver(delivery)
+    _require(len(done) == 3 * ORDER_REPEATS, len(done))
+    _require(all(d.outcome == "delivered" for d in done), done[:3])
+    _require(
+        [d.event_type for d in done]
+        == ["identity_created", "identity_created", "match_activated"] * ORDER_REPEATS,
+        [d.event_type for d in done][:6],
+    )
+    calls = [c.operation for c in provider.calls[before:]]
+    _require(
+        calls == ["provision_user", "provision_user", "create_channel"] * ORDER_REPEATS, calls[:6]
+    )
+    return (
+        f"{ORDER_REPEATS} activations with the app clock running backwards: in every one the"
+        " two provisionings precede the channel by the database-assigned sequence, all three"
+        " share one available_at, and created_at would have ordered them the other way;"
+        " delivered and called in that order"
+    )
+
+
+def _lost_provisioning(
+    ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
+) -> str:
+    """DM-15 3.2 and 3.3: a provisioning whose response is lost dead-letters and marks the
+    identity; the channel then dead-letters with member_unavailable without a call; a
+    later deactivation and token revocation still make their calls, whether or not the
+    provider holds the user."""
+    m = _models()
+    # (a) The provider acted, the answer was lost, every time.
+    world = _world(ctx, "lost_provisioning")
+    before = len(provider.calls)
+    done = _fail_until_dead(
+        provider, delivery, ("provision_user",), after_effect=True, until="identity_created"
+    )
+    # The first member's provisioning: four retries and the dead letter; the second
+    # member's, delivered; then the channel, dead-lettered without a call (DM-15 3.2).
+    _require(
+        _outcomes(done, "identity_created")
+        == ["retry"] * (delivery.max_attempts - 1) + ["dead_letter", "delivered"],
+        _kinds(done),
+    )
+    _require(_outcomes(done, "match_activated") == ["dead_letter"], _kinds(done))
+    channel_event = next(d for d in done if d.event_type == "match_activated")
+    _require(channel_event.code == "member_unavailable" and not channel_event.provider_called)
+    _require(all(c.operation == "provision_user" for c in provider.calls[before:]))
+    dead = next(d for d in done if d.outcome == "dead_letter")
+    first_identity = m.ChatIdentity.objects.get(
+        pk=m.OutboxEvent.objects.get(pk=dead.event_id).aggregate_id
+    )
+    marked_account = first_identity.account_id
+    _require(first_identity.state == "pending", first_identity.state)
+    _require(first_identity.reconcile_code == "provider_unavailable", first_identity.reconcile_code)
+    _require(first_identity.user_ref in provider.users, "the provider holds the user")
+    binding = m.ChatBinding.objects.get(match_id=world.match)
+    _require(binding.state == "failed" and binding.reconcile_code == "member_unavailable")
+    refused = ctx.subject.send(send_request(world, key="k-lost-prov"))
+    _require(
+        refused.outcome == "refused" and refused.reason == "binding_not_active", refused.label()
+    )
+    # A grant for the marked, unprovisioned identity is refused too (5.1).
+    session = world.session_of(marked_account)
+    granted = ctx.state_subject.grant_token(session)
+    _require(granted.outcome == "refused" and granted.reason == "no_chat_identity", granted.label())
+    _require(ctx.subject.suspend(marked_account).outcome == "applied")
+    later = _deliver(delivery)
+    _require(
+        _kinds(later) == [("access_revoked", "delivered"), ("session_epoch_bumped", "delivered")],
+        _kinds(later),
+    )
+    _require(all(d.provider_called and not d.already for d in later), later)
+    first_identity.refresh_from_db()
+    user = provider.users[first_identity.user_ref]
+    _require(first_identity.state == "deactivated" and not user.active)
+    _require(first_identity.reconcile_code == "provider_unavailable", "the mark is kept")
+    _require(len(user.token_cutoffs) == 1)
+    # (b) The provider never acted: the user does not exist there.
+    other = _world(ctx, "lost_provisioning_never_created")
+    done = _fail_until_dead(
+        provider, delivery, ("provision_user",), after_effect=False, until="identity_created"
+    )
+    _require(_outcomes(done, "match_activated") == ["dead_letter"], _kinds(done))
+    dead = next(d for d in done if d.outcome == "dead_letter")
+    missing = m.ChatIdentity.objects.get(
+        pk=m.OutboxEvent.objects.get(pk=dead.event_id).aggregate_id
+    )
+    _require(missing.user_ref not in provider.users, "the provider does not hold the user")
+    _require(ctx.subject.delete(missing.account_id).outcome == "applied")
+    later = _deliver(delivery)
+    _require(
+        _kinds(later) == [("access_revoked", "delivered"), ("session_epoch_bumped", "delivered")],
+        _kinds(later),
+    )
+    # The calls were made; a user the provider does not have counts as deactivated and revoked.
+    _require(all(d.provider_called and d.already for d in later), later)
+    _require(
+        [c.outcome for c in provider.calls[-2:]] == ["member_unavailable", "member_unavailable"],
+        provider.calls[-2:],
+    )
+    missing.refresh_from_db()
+    _require(missing.state == "deactivated" and missing.tokens_revoked_before is not None)
+    _require(missing.reconcile_code == "provider_unavailable")
+    _require(other.match is not None)
+    return (
+        "a provisioning whose answer was lost dead-lettered after 5 attempts and marked the"
+        " identity (pending, provider_unavailable); the channel dead-lettered member_unavailable"
+        " without a call and the binding failed and marked; a grant was refused; the later"
+        " deactivation and token revocation made their calls (the user existed), and for a user"
+        " the provider never created they counted as done"
+    )
+
+
+def _lost_creation_then_revocation(
+    ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
+) -> str:
+    """CX6 (DM-15 4.5): a creation whose response was lost leaves the binding failed and
+    marked while the channel exists; a revocation still removes both members, and the
+    binding is recorded revoked, the mark kept. A channel the provider never created
+    counts as removed."""
+    m = _models()
+    world = _world(ctx, "lost_creation")
+    done = _fail_until_dead(
+        provider, delivery, ("create_channel",), after_effect=True, until="match_activated"
+    )
+    _require(_outcomes(done, "match_activated")[-1] == "dead_letter", _kinds(done))
+    binding = m.ChatBinding.objects.get(match_id=world.match)
+    channel = provider.channels.get(binding.channel_ref)
+    _require(channel is not None and len(channel.members) == 2, "the channel exists")
+    assert channel is not None
+    _require(binding.state == "failed" and binding.reconcile_code == "provider_unavailable")
+    refused = ctx.subject.send(send_request(world, key="k-lost-create"))
+    _require(
+        refused.outcome == "refused" and refused.reason == "binding_not_active", refused.label()
+    )
+    _require(ctx.subject.block(world.low, world.high).outcome == "applied")
+    removed = _deliver(delivery)
+    _require(_kinds(removed) == [("contact_revoked", "delivered")], _kinds(removed))
+    _require(removed[0].provider_called and not removed[0].already)
+    _require(channel.members == set(), "both members removed")
+    binding.refresh_from_db()
+    _require(binding.state == "revoked" and binding.reconcile_code == "provider_unavailable")
+    # The channel the provider never created.
+    other = _world(ctx, "lost_creation_never_created")
+    done = _fail_until_dead(
+        provider, delivery, ("create_channel",), after_effect=False, until="match_activated"
+    )
+    _require(_outcomes(done, "match_activated")[-1] == "dead_letter", _kinds(done))
+    binding = m.ChatBinding.objects.get(match_id=other.match)
+    _require(binding.channel_ref not in provider.channels)
+    _require(ctx.subject.unmatch(other.high, other.match).outcome == "applied")
+    removed = _deliver(delivery)
+    _require(_kinds(removed) == [("contact_revoked", "delivered")], _kinds(removed))
+    _require(removed[0].provider_called and removed[0].already, removed)
+    _require(provider.calls[-1].outcome == "channel_unavailable", provider.calls[-1])
+    binding.refresh_from_db()
+    _require(binding.state == "revoked" and binding.reconcile_code == "provider_unavailable")
+    return (
+        "a creation whose answer was lost left the binding failed and marked while the channel"
+        " held both members; the block's removal was still made and emptied it, and the binding"
+        " is revoked with its mark kept; for a channel the provider never created the removal"
+        " counted as done (channel_unavailable) and the binding is revoked"
+    )
+
+
+def _dead_lettered_revocations_mark(
+    ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
+) -> str:
+    """F3: a dead-lettered contact_revoked, access_revoked or session_epoch_bumped marks
+    its row; and no message is delivered into a marked binding (DM-15 4.5)."""
+    m = _models()
+    world = _world(ctx, "marks_contact")
+    _deliver(delivery)
+    _require(ctx.subject.unmatch(world.low, world.match).outcome == "applied")
+    done = _fail_until_dead(
+        provider, delivery, ("remove_members",), after_effect=False, until="contact_revoked"
+    )
+    _require(
+        _outcomes(done, "contact_revoked")
+        == ["retry"] * (delivery.max_attempts - 1) + ["dead_letter"],
+        _kinds(done),
+    )
+    binding = m.ChatBinding.objects.get(match_id=world.match)
+    _require(binding.state == "active" and binding.reconcile_code == "provider_unavailable")
+    channel = provider.channels[binding.channel_ref]
+    _require(len(channel.members) == 2, "the provider still holds both members")
+    other = _world(ctx, "marks_account")
+    _deliver(delivery)
+    _require(ctx.subject.suspend(other.low).outcome == "applied")
+    done = _fail_until_dead(
+        provider,
+        delivery,
+        ("deactivate_user", "revoke_user_tokens"),
+        after_effect=False,
+        until="session_epoch_bumped",
+    )
+    retried_then_dead = ["retry"] * (delivery.max_attempts - 1) + ["dead_letter"]
+    _require(_outcomes(done, "access_revoked") == retried_then_dead, _kinds(done))
+    _require(_outcomes(done, "session_epoch_bumped") == retried_then_dead, _kinds(done))
+    identity = _identity(other.low)
+    _require(identity.state == "active" and identity.reconcile_code == "provider_unavailable")
+    _require(identity.tokens_revoked_before is None)
+    _require(identity.reconcile_code == "provider_unavailable")
+    # A message authorized into a binding that is then marked is never delivered.
+    third = _world(ctx, "marks_message")
+    _deliver(delivery)
+    sent = ctx.subject.send(send_request(third, key="k-marked"))
+    _require(sent.receipt is not None, sent.label())
+    m.ChatBinding.objects.filter(match_id=third.match).update(reconcile_code="provider_unavailable")
+    before = len(provider.calls)
+    dead = _deliver(delivery)
+    _require(_kinds(dead) == [("message_submitted", "dead_letter")], _kinds(dead))
+    _require(dead[0].code == "channel_unavailable" and not dead[0].provider_called)
+    _require(len(provider.calls) == before, "no provider call")
+    submission = m.MessageSubmission.objects.get(pk=_receipt(sent))
+    _require(submission.state == "failed")
+    binding = m.ChatBinding.objects.get(match_id=third.match)
+    _require(provider.channels[binding.channel_ref].messages == [])
+    return (
+        "a dead-lettered removal marked its binding provider_unavailable (still active, both"
+        " members still at the provider); a dead-lettered deactivation and token revocation"
+        " marked their identity; a message authorized into a binding marked afterwards was"
+        " dead-lettered channel_unavailable without a call"
+    )
+
+
+def _written_with(event_type: str, aggregate_id: UUID) -> list[tuple[str, UUID]]:
+    """Every outbox row written by the transaction that wrote the given event, in the
+    database-assigned order: the rows that share its ``xmin``. Read before delivery
+    updates them."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT event_type, aggregate_id FROM glow_persistence_outboxevent"
+            " WHERE xmin = (SELECT xmin FROM glow_persistence_outboxevent"
+            " WHERE event_type = %s AND aggregate_id = %s) ORDER BY sequence",
+            [event_type, aggregate_id],
+        )
+        return [(str(row[0]), row[1]) for row in cursor.fetchall()]
+
+
+def _second_match(ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery) -> str:
+    """DM-15 3.5 (B1-C1, R1): an account whose identity a first match provisioned is
+    matched again. The second activation queues the new member's provisioning only; the
+    account keeps its one ``identity_created``, whose delivery precedes the new channel by
+    ``available_at``; the new channel's delivery follows the new member's provisioning
+    alone, and succeeds."""
+    m = _models()
+    world = _world(ctx, "second_match")
+    first = _deliver(delivery)
+    _require(
+        _kinds(first)
+        == [
+            ("identity_created", "delivered"),
+            ("identity_created", "delivered"),
+            ("match_activated", "delivered"),
+        ],
+        _kinds(first),
+    )
+    account = world.low
+    identity = _identity(account)
+    _require(identity.state == "active", f"the first match left the identity {identity.state}")
+    provisioned_ref = identity.user_ref
+    # The second match, with a new account, through the adapter's activation.
+    newcomer = ctx.fixtures.create_account()
+    activated = ctx.state_subject.activate_match(account, newcomer)
+    _require(activated.outcome == "applied", activated.label())
+    found = match_between(*sorted((account, newcomer)))
+    _require(found is not None and found[1] == "active", found)
+    assert found is not None
+    second = found[0]
+    newcomer_identity = _identity(newcomer)
+    _require(newcomer_identity.state == "pending", newcomer_identity.state)
+    # From the database: what the second activation's transaction wrote.
+    written = _written_with("match_activated", second)
+    _require(
+        written == [("identity_created", newcomer_identity.id), ("match_activated", second)],
+        f"the second activation wrote {[kind for kind, _ in written]}",
+    )
+    provisionings = list(
+        m.OutboxEvent.objects.filter(event_type="identity_created", aggregate_id=identity.id)
+    )
+    _require(
+        len(provisionings) == 1,
+        f"{len(provisionings)} identity_created events for the provisioned account",
+    )
+    earlier = provisionings[0]
+    channel_event = m.OutboxEvent.objects.get(event_type="match_activated", aggregate_id=second)
+    # Both writers lock the account: its one provisioning precedes the new channel.
+    _require(earlier.state == "delivered", earlier.state)
+    _require(earlier.available_at < channel_event.available_at, "available_at order")
+    before = len(provider.calls)
+    done = _deliver(delivery)
+    _require(
+        _kinds(done) == [("identity_created", "delivered"), ("match_activated", "delivered")],
+        _kinds(done),
+    )
+    _require(
+        m.OutboxEvent.objects.get(pk=done[0].event_id).aggregate_id == newcomer_identity.id,
+        "the provisioning delivered before the new channel is not the newcomer's",
+    )
+    _require(
+        [c.operation for c in provider.calls[before:]] == ["provision_user", "create_channel"],
+        provider.calls[before:],
+    )
+    identity.refresh_from_db()
+    newcomer_identity.refresh_from_db()
+    _require(identity.state == "active" and identity.user_ref == provisioned_ref)
+    _require(newcomer_identity.state == "active", newcomer_identity.state)
+    binding = m.ChatBinding.objects.get(match_id=second)
+    _require(binding.state == "active" and binding.reconcile_code is None, binding.state)
+    channel = provider.channels[binding.channel_ref]
+    refs = {provisioned_ref, newcomer_identity.user_ref}
+    _require(set(channel.created_members) == refs and channel.members == refs)
+    return (
+        "a second match for an account provisioned by its first: one identity_created for"
+        " that account over both activations, delivered before the new channel by"
+        " available_at; the second activation wrote the newcomer's provisioning and the"
+        " channel only; delivered as one provision_user (the newcomer's), then the channel"
+        " with both members"
+    )
+
+
+def _dead_letters_without_a_call_mark(
+    ctx: Context, provider: FixtureChatProvider, delivery: OutboxDelivery
+) -> str:
+    """F3's rule for the dead letters made without a call (B1-C1, R3): a provisioning, a
+    channel's creation and a removal for another provider's rows, and a removal whose
+    members and channel reference are missing, each mark the row they concern."""
+    from glow_chat.contact import OrmContactPersistence
+
+    m = _models()
+    # (a) Rows of another provider: its identities, binding and events, written by the
+    # adapter's own activation under that provider's name.
+    pair = _pair(ctx, "dead_letter_elsewhere")
+    elsewhere = OrmContactPersistence(provider="elsewhere")
+    activated = elsewhere.activate_match(pair.low, pair.high)
+    _require(activated.outcome == "applied", f"{activated.outcome}:{activated.reason}")
+    match_id = cast(UUID, activated.match_id)
+    before = len(provider.calls)
+    done = _deliver(delivery)
+    _require(
+        [(d.event_type, d.outcome, d.code) for d in done]
+        == [("identity_created", "dead_letter", "provider_rejected")] * 2
+        + [("match_activated", "dead_letter", "provider_rejected")],
+        done,
+    )
+    _require(len(provider.calls) == before, "no provider call")
+    for account in (pair.low, pair.high):
+        row = m.ChatIdentity.objects.get(account_id=account)
+        _require(
+            row.provider == "elsewhere" and row.reconcile_code == "provider_rejected",
+            f"identity {row.provider} marked {row.reconcile_code}",
+        )
+    binding = m.ChatBinding.objects.get(match_id=match_id)
+    _require(
+        binding.state == "failed" and binding.reconcile_code == "provider_rejected",
+        f"binding {binding.state} marked {binding.reconcile_code}",
+    )
+    # The harness clears the binding's mark, so the removal's own mark shows.
+    m.ChatBinding.objects.filter(pk=binding.id).update(reconcile_code=None)
+    _require(ctx.subject.unmatch(pair.low, match_id).outcome == "applied")
+    done = _deliver(delivery)
+    _require(
+        [(d.event_type, d.outcome, d.code) for d in done]
+        == [("contact_revoked", "dead_letter", "provider_rejected")],
+        done,
+    )
+    binding.refresh_from_db()
+    _require(binding.reconcile_code == "provider_rejected", binding.reconcile_code)
+    # (b) A binding with no member identities and no channel reference (a harness write:
+    # no app writer makes one), then an unmatch.
+    lone = _pair(ctx, "dead_letter_unbound")
+    match = m.Match.objects.create(
+        account_low_id=lone.low, account_high_id=lone.high, state="active"
+    )
+    unbound = m.ChatBinding.objects.create(match=match, provider=provider.name, state="pending")
+    _require(ctx.subject.unmatch(lone.high, match.id).outcome == "applied")
+    before = len(provider.calls)
+    done = _deliver(delivery)
+    _require(
+        [(d.event_type, d.outcome, d.code) for d in done]
+        == [("contact_revoked", "dead_letter", "member_unavailable")],
+        done,
+    )
+    _require(len(provider.calls) == before, "no provider call")
+    unbound.refresh_from_db()
+    _require(unbound.reconcile_code == "member_unavailable", unbound.reconcile_code)
+    _require(unbound.state == "pending", unbound.state)
+    return (
+        "another provider's provisionings, channel and removal dead-lettered provider_rejected"
+        " without a call and marked their identities and binding; a removal with no member"
+        " identities and no channel reference dead-lettered member_unavailable without a call"
+        " and marked its binding"
     )
 
 
 TARGETED: tuple[tuple[str, Callable[[Context, FixtureChatProvider, OutboxDelivery], str]], ...] = (
     ("delivery of each event kind", _each_kind),
+    ("the order key: provisioning before the channel", _order_key),
     ("a retry after a fixture failure", _retry),
     ("a revocation after the authorization, before the delivery", _revocation_before_delivery),
     ("a dead letter after the last attempt", _dead_letter),
+    ("a lost provisioning response", _lost_provisioning),
+    ("a lost creation response, then a revocation", _lost_creation_then_revocation),
+    ("dead-lettered revocations mark their rows", _dead_lettered_revocations_mark),
+    ("a second match for an already-provisioned account", _second_match),
+    ("dead letters without a call mark their rows", _dead_letters_without_a_call_mark),
 )
 
 

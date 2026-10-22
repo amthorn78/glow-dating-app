@@ -87,6 +87,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-23 | 5 Oct 2026 | process | The report of PR28's merge put P06.2's start to Nathan as a choice, with "Hold" as the other option, though nothing in the record argues for holding; only his direction was needed (OD-12). It repeats the mechanism of AM4-02, a choice with nothing to choose | Nathan: *"why would I want to hold?"* |
 | AM5-24 | 5 Oct 2026 | follow-through | The retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged (29 September); the handoff carried it without asking Nathan, the only person who can delete a branch, and no manager set up a cleanup of merged branches. Recorded by App Manager 6 | Nathan ("bad branching hygiene"), with 38 branches |
 | AM6-01 | 5 Oct 2026 | process | Took on Stage A's run of record itself: subscribed to PR29's CI events and scheduled a check-in to watch the run, work that belongs to the worker session | Nathan |
+| AM6-02 | 22 Oct 2026 | accuracy | Recorded B1-C1's race times as "7 to 23 s" from a listing cut off at 20 lines; the adapter's slowest race took 29.7 s against its 30-second cap | B1-C1's exact-head review (finding 1) |
 
 ## App Manager 2
 
@@ -610,7 +611,7 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **What happened:** the retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged, with PR27 at `47db18d` on 29 September (the flake-diagnosis evidence record retired it "after PR26 merges", and PR27 replaced PR26). The handoff carried the retirement without asking Nathan, the only person who can delete a branch. No manager set up a cleanup of merged branches, though OD-09 gives the managers branch management. By 5 October the repository had 38 branches, 33 of them fully merged into `main`.
 - **Caught by:** Nathan on 5 October: *"I am a little concerned about this bad branching hygiene"*.
 - **Effect:** none on code or evidence: no repository link named any of the old branches. Some old Notion pages linked to files through a branch name and needed repointing before the deletion. It cost Nathan the cleanup by hand.
-- **Correction:** App Manager 5 gave Nathan the list of 34 deletable branches and a delete command; he deleted them on GitHub (the current handoff, "Branches", records the result). Notion links through deleted branches were repointed to `main` or commit-pinned URLs.
+- **Correction:** App Manager 5 gave Nathan the list of 34 deletable branches and a delete command; he deleted them on GitHub on 5 October, with `claude/magical-goldberg-ie0j16`, the second run of C1's prompt, never integrated (the handoff of 5 October recorded the result; the current handoff now lists only live branches). Notion links through deleted branches were repointed to `main` or commit-pinned URLs.
 - **Prevention:** the manager workflow's step 7 now reports the branch state at each merge, and links Notion only to `main`, a commit ID or the manager branch (OD-39). The work item M04 automates the deletion of merged branches.
 
 ## App Manager 6
@@ -622,3 +623,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on the work: the runs had not finished, and the manager recorded no result from them. It cost Nathan a message, and it put the manager into the implementation work it never does.
 - **Correction:** the subscription is removed and the check-in deleted. The relay message gives the run of record back to the Stage A session.
 - **Prevention:** when a session's report leaves its run of record open, the manager answers with a relay message to that session; it never watches or chases the session's CI itself. The manager workflow's step 5 reads the CI of the manager branch's own pushes only.
+
+### AM6-02 — A figure read from a cut-off listing (accuracy)
+
+- **What happened:** verifying B1-C1's run of record, App Manager 6 listed the race lines of the database job's log through `head -20` and wrote "Its races ran 7 to 23 s each" in the evidence record. The listing held all 12 of the reference design's races and 8 of the adapter's 15; the 7 it cut off included the slowest, `race.withdraw_high` at 29.7 s, 0.3 s under the per-race cap.
+- **Caught by:** B1-C1's exact-head review, finding 1.
+- **Effect:** the record understated the job's time margin, which is the basis for deciding when the job's budget goes to the Dev Manager. No result changed, and nothing was decided on it before the correction.
+- **Correction:** the bullet is corrected in place and marked; the margin goes to the Dev Manager with Stage B2's prompt (DM-16).
+- **Prevention:** a range, a count or a maximum written into a record comes from the whole source, never from a truncated listing; when output is truncated, the figure is computed over the full file (for example `grep … | sort`) and the line count is checked against the expected total.

@@ -2,10 +2,13 @@
 
 P02.2 defines 32 app-owned Django models and two migration files in
 `services/api/glow_persistence/`. P06.2 Stage A adds two models, `ChatIdentity` and
-`ChatReadCursor`, in a third migration, `0003_chat_identity_read_cursor`, which only
-creates them; `0001` and `0002` are byte-identical to P02's. These are **unapplied
-design artifacts**: the fixture API does not install this app, and no migration is
-applied anywhere but a disposable proof database. P06.2 Stage A adds the first ORM
+`ChatReadCursor`, in a third migration, `0003_chat_identity_read_cursor`; Stage B1
+amends that unapplied migration (the [migration plan](../operations/migration-plan.md),
+"Amending an unapplied migration") so that it also adds `OutboxEvent.sequence`, the
+database-assigned order column, and the reconciliation mark `reconcile_code` on
+`ChatBinding` and `ChatIdentity`; `0001` and `0002` are byte-identical to P02's. These
+are **unapplied design artifacts**: the fixture API does not install this app, and no
+migration is applied anywhere but a disposable proof database. P06.2 Stage A adds the first ORM
 code over them, the chat contact adapter and its outbox delivery (`services/api/glow_chat`,
 below), which run only under the disposable-PostgreSQL proof's settings; the API's
 runtime imports none of it and keeps its dummy backend. No real authentication or
@@ -86,7 +89,7 @@ migration is activated by this fixture work.
 
 | Models | Relationships, constraints and indexes | Privacy and lifecycle |
 |---|---|---|
-| `OutboxEvent`, `WebhookInbox` | Migration 0001 precedes app state. Unique event `dedup_key`; unique provider/event identity. Versioned aggregate reference; queue/lease/delivery timestamps. Verified/applied inbox and leased/delivered outbox states require corresponding timestamps. Indexes on state plus scheduling time. | Operational-minimized. Reference payload only; no birth/chat/token body. Payload digest binds replayed provider identity to original content. Worker retention/retry policy must be explicit. |
+| `OutboxEvent`, `WebhookInbox` | Migration 0001 precedes app state. Unique event `dedup_key`; unique provider/event identity. Versioned aggregate reference; queue/lease/delivery timestamps. Verified/applied inbox and leased/delivered outbox states require corresponding timestamps. Indexes on state plus scheduling time. `sequence` (P06.2 B1, migration 0003): a database-assigned identity column, never written by the app, that orders delivery within one `available_at`. | Operational-minimized. Reference payload only; no birth/chat/token body. Payload digest binds replayed provider identity to original content. Worker retention/retry policy must be explicit. |
 | `AppAccount`, `AccountSession` | One app UUID per maintained auth user; account lifecycle checks, positive eligibility/preference/block/session revisions; unique non-secret session reference, expiry and revocation timestamp. Session owner/state index. | Account-private. Session and visibility revocation are immediate transaction requirements; secrets remain with auth. |
 | `PolicyRevision`, `ConsentDecision` | Unique named policy pointer; no rows seeded. Append-only consent decisions unique by account/purpose/revision with policy version and event time. Account/purpose/time index. | Account-private consent. Missing policy/decision grants nothing. Policy pointer is transactionally locked alongside actions. |
 | `Profile`, `Preferences` | One each per account; explicit visibility; bounded display text. Policy-versioned JSON selections, validated against closed schema and selected policy before storage. Profile state/UUID cursor index. | Account-private source; candidate projection allowlist only. Missing preferences policy prevents eligibility. No automatic geography, range or resurfacing policy. |
@@ -96,8 +99,8 @@ migration is activated by this fixture work.
 | `Match` | UUID pair sorted by underlying UUID value (`account_low < account_high`), unique pair and positive contact version. | Participant-only projection. One pair record; history/rematch requires policy, never a second match row for the same pair. Reciprocal likes and eligibility are cross-row transaction invariants. |
 | `CompatibilitySnapshot` | Ordered viewer/candidate, both engine references, birth/mapping revisions, full eligibility vector, engine/contract/adapter provenance and expiry. Unique directional revision tuple; viewer/expiry index. | Account-private metadata only; no HDE result body/score/band column. `ready` means internal metadata state, not permission to expose an HDE result. Cache/output rights remain A01. |
 | `RecommendationBatch`, `RecommendationEntry` | Owner, policy and own three eligibility revisions in batch; each candidate's three revisions in entry. Limit 1–100; positions 0–99; unique candidate and position per batch. Nullable snapshot FK can clear when removed. Owner/time/ID cursor index. | Bounded account-private candidate queue. API page maximum 50 is smaller than batch maximum. Repositories enforce count ≤ batch limit, entry position < limit, no self-candidate and correct snapshot pair. |
-| `ChatBinding`, `MessageSubmission` | One binding per match; provider/channel unique when known; active binding requires reference. Actor/idempotency key unique; accepted message requires provider receipt, pending message requires private text. | Provider owns retained conversation history. App temporarily owns bounded delivery spool (4000 code points), clears per approved retention/receipt policy. Only reference/version enters outbox. No provider membership alone grants send permission. |
-| `ChatIdentity`, `ChatReadCursor` (P06.2, migration 0003) | One provider user ID per account and provider; provider/user reference unique; active or deactivated; the cut-off of the latest per-user token revocation the provider confirmed. Account FK is PROTECT. One read cursor per match and member, pointing at the last read `MessageSubmission` (PROTECT). | The user reference is `secrets.token_hex(16)`, never derived from an account ID, name or email, never shown or logged; no name, image or custom field exists to send. The mapping outlives the account row until the provider deletion step that needs it has run (P07/P08); purge removes cursors before the submissions they name. Unread is counted from Glow's own accepted submissions after the cursor; the provider's read state is not used. |
+| `ChatBinding`, `MessageSubmission` | One binding per match; provider/channel unique when known; active binding requires reference; `reconcile_code` (P06.2 B1, migration 0003) marks a binding whose provider state is in doubt after a dead letter, with the Glow code of its last attempt. Actor/idempotency key unique; accepted message requires provider receipt, pending message requires private text. | Provider owns retained conversation history. App temporarily owns bounded delivery spool (4000 code points), clears per approved retention/receipt policy. Only reference/version enters outbox. No provider membership alone grants send permission. |
+| `ChatIdentity`, `ChatReadCursor` (P06.2, migration 0003) | One provider user ID per account and provider; provider/user reference unique; `pending` until the provider confirms the user, then `active`, or `deactivated` (B1, CX4); `reconcile_code` marks an identity whose provisioning, deactivation or token revocation was dead-lettered (B1, F3); the cut-off of the latest per-user token revocation the provider confirmed. Account FK is PROTECT. One read cursor per match and member, pointing at the last read `MessageSubmission` (PROTECT). | The user reference is `secrets.token_hex(16)`, never derived from an account ID, name or email, never shown or logged; no name, image or custom field exists to send. The mapping outlives the account row until the provider deletion step that needs it has run (P07/P08); purge removes cursors before the submissions they name. Unread is counted from Glow's own accepted submissions after the cursor; the provider's read state is not used. |
 | `DeviceRegistration`, `NotificationSettings` | Unique installation ID and private token-store reference; account FK; iOS/Android and active/revoked checks. One notification preference row per owner, defaults off. | Provider-managed secret reference, not plaintext token. Installation transfer/rotation requires old owner revocation in UOW. Wire provider token goes into the supported secure store before this reference is saved. |
 | `SafetyReport`, `ModerationCase`, `Appeal`, `StaffAudit` | Reporter/subject nullable `SET_NULL`; preserved subject marker. Protected report/case relationships. Resolved case/appeal requires outcome. Unique audit request ID; object/time audit and moderation queue indexes. | Safety-restricted description/evidence and immutable audit. Evidence-ref JSON shape/ownership validated before save. Staff subject is external authenticated operator identity, distinct from dating accounts. No support-to-moderation privilege inheritance. |
 | `SupportRequest` | Optional account or secure contact reference, bounded subject/description, explicit lifecycle and retention metadata. | Account-private/support-restricted. Public requests get generic acknowledgment; contact verification precedes account action. Category is server-classified, not an undeclared mandatory client field. |
@@ -154,14 +157,17 @@ No event relies on rereading a body already erased by deletion. Leases/retries h
 configured finite limits and dead-letter reconciliation; no retry duration is
 selected by schema defaults.
 
-## Chat contact and the outbox (P06.2 Stage A)
+## Chat contact and the outbox (P06.2 Stage A and Stage B1)
 
-The [P06.2 brief](../planning/p06-2-chat-integration.md), revision 2, items 1 to 4.
-The domain port is `glow_domain/chat.py` (`ContactPersistence`); the persistence
-adapter that implements it is `glow_chat/contact.py` (`OrmContactPersistence`); the
-outbox delivery is `glow_chat/delivery.py`; the chat provider port and its fixture
-adapter are `glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the token
-rules are `glow_domain/chat_tokens.py`. The adapter is a new package rather than code in
+The [P06.2 brief](../planning/p06-2-chat-integration.md), revision 3, items 1 to 4, and
+its "Carried to Stage B and P11" with "B1's design points" (Stage B1: F1 to F5, CX4 to
+CX6, under DM-15's conditions). The domain port is `glow_domain/chat.py`
+(`ContactPersistence`); the persistence adapter that implements it is
+`glow_chat/contact.py` (`OrmContactPersistence`); the outbox delivery is
+`glow_chat/delivery.py`; the chat provider port and its fixture adapter are
+`glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the token rules are
+`glow_domain/chat_tokens.py`; the order column's field type is
+`glow_persistence/fields.py`. The adapter is a new package rather than code in
 `glow_persistence`, so that the model registry stays definitions only (its static check
 still forbids every connection) and the runtime's seal names one package it must never
 import. The disposable-PostgreSQL proof (`proofs/postgres-ordering`) runs P06.DB's race
@@ -188,30 +194,34 @@ current. A resume restores a paused profile; nothing in Stage A lifts a restrict
 (P07). Until P07 sets Nathan's policy, an unknown or paused state denies contact (F06).
 
 **Provider identifiers** are random and committed before any provider call: a match's
-activation creates the match, each member's `ChatIdentity` if it has none, and the
-`ChatBinding` with a random `channel_ref` (state `pending`), with the channel's outbox
-event, in one transaction under both account locks. **Limits (Codex's review of PR29, CX4 and CX5):** this
-activation checks only the accounts' state, an active block and an existing pair, not
-reciprocal likes, a paused or restricted profile or the onboarding consent, so it is the
-proof's way to make a match, not F09's activation, which P11 wires with those checks
-under the same locks; and the provider port has no user provisioning step (the fixture
-creates users inside `create_channel`). Both are carried to Stage B, with CX6: a revocation skips
-removal for a `failed` binding, whose channel a lost creation response may have left at
-the provider. A send stores its provider message
-ID in `MessageSubmission.provider_message_ref` when it is authorized; acceptance by the
+activation creates the match, each member's `ChatIdentity` if it has none (state
+`pending`, with its own outbox event `identity_created`, written before the channel's;
+B1, CX4), and the `ChatBinding` with a random `channel_ref` (state `pending`), with the
+channel's outbox event, in one transaction under both account locks. An identity that
+already exists from an earlier match gets no second event (DM-15 3.5). **Activation's
+checks (B1, CX5):** under both account locks it checks the accounts' state, an active
+block, an existing pair, and the send's own checks of both profiles (`visible`) and
+both onboarding consents (`accepted`), so a pause, a restriction or a withdrawal that
+committed before it refuses it, and one that waits on its locks finds the match and
+refuses the send that follows (the suite's `activation.*` cases; oracle rule O11). It
+remains the proof's and the conformance run's way to make a match, not F09's
+activation: reciprocal likes and current two-person eligibility are checked by the
+activation P11 wires, under the same locks. A send stores its provider message ID in
+`MessageSubmission.provider_message_ref` when it is authorized; acceptance by the
 provider moves the submission to `accepted`. A send is accepted into a `pending` or
 `active` binding: its event queues behind the channel's creation.
 
 **Outbox events** (schema version `glow-chat-1`). Each carries only its aggregate, its
-version and a payload reference. Five are delivered, each as exactly one provider call:
+version and a payload reference. Six are delivered, each as exactly one provider call:
 
 | Event (aggregate) | Written by | Provider call on delivery | Receipt recorded |
 |---|---|---|---|
-| `match_activated` (match; payload the binding) | match activation | create the channel with exactly the two members | `ChatBinding.state` `active` |
-| `message_submitted` (submission) | an authorized send | send the message on the member's behalf, with its committed ID | `MessageSubmission.state` `accepted` |
-| `contact_revoked` (match, new contact version) | a block of an active match, an unmatch | remove both members; history stays at the provider (D6) | `ChatBinding.state` `revoked` |
-| `access_revoked` (account, new epoch) | suspension, deletion | deactivate the provider user | `ChatIdentity.state` `deactivated` |
-| `session_epoch_bumped` (account, new epoch) | every session-epoch bump (today suspension and deletion) | revoke the user's tokens issued before the event's time (DM-13 5.1) | `ChatIdentity.tokens_revoked_before` |
+| `identity_created` (identity; B1) | match activation, for each member without an identity, before the channel's event | provision the user, by its opaque ID only, idempotently (`provision_user`) | `ChatIdentity.state` `active` (provisioned only on receipt, DM-15 3.2) |
+| `match_activated` (match; payload the binding) | match activation | create the channel with exactly the two members, each `active`; a member not provisioned dead-letters the event at once with `member_unavailable`, never waits (DM-15 3.2) | `ChatBinding.state` `active`; on the dead letter, `failed` and marked |
+| `message_submitted` (submission) | an authorized send | send the message on the member's behalf, with its committed ID; never into a `revoked`, `failed` or marked binding (DM-15 4.5) | `MessageSubmission.state` `accepted` |
+| `contact_revoked` (match, new contact version) | a block of an active match, an unmatch | remove both members; history stays at the provider (D6); made for a `failed` or marked binding too, and a channel the provider does not have counts as removed (CX6) | `ChatBinding.state` `revoked`, the mark kept |
+| `access_revoked` (account, new epoch) | suspension, deletion | deactivate the provider user; a user the provider does not have counts as deactivated (DM-15 3.3) | `ChatIdentity.state` `deactivated` |
+| `session_epoch_bumped` (account, new epoch) | every session-epoch bump (today suspension and deletion) | revoke the user's tokens issued before the cut-off, sent rounded up to the next whole second, strictly (DM-15 5.2); a user the provider does not have counts as revoked | `ChatIdentity.tokens_revoked_before`, the exact cut-off |
 
 `block_changed`, `session_revoked`, `session_expired`, `profile_paused`,
 `profile_resumed`, `profile_restricted`, `consent_accepted` and `consent_withdrawn` are
@@ -221,34 +231,70 @@ the user's other matches. A single-device sign-out bumps no epoch; that device's
 lives until it expires (one hour), a residual recorded beside DB09.
 
 **Delivery** is first in, first out over the chat events, by `(available_at,
-created_at, id)`: the due events are read in that order and each, in turn, is leased by
-its key in one transaction that reads what the call needs; one provider call follows
+sequence)`: `available_at` is the `clock_timestamp()` the writer read under its locks,
+the same for every event of one transaction, and `sequence` (B1; DM-15 3.1) is a
+`bigint GENERATED BY DEFAULT AS IDENTITY` column the database assigns in insertion
+order, so the events one transaction wrote are delivered in the order it wrote them,
+with neither the app's clock (`created_at`) nor the random `id` deciding; the delivery
+phase shows the order holding over repeated activations with the app's clock running
+backwards. The due events are read in that order and each, in turn, is leased by its
+key in one transaction that reads what the call needs; one provider call follows
 outside any transaction; a second transaction records the receipt and marks the event
-`delivered`. Per channel and per user the order is the
-commit order, because every writer whose events concern the same provider object locks
-a common account row. A failed event that may be retried returns to the head with its
-`available_at` unchanged, so nothing overtakes it, and is repeated with the same
-committed identifiers, so the provider never gets a second channel, message or member.
-After five attempts, or on a final code, the event is dead-lettered and the binding or
-submission it concerns is marked `failed`. A message is never delivered into a binding
-that is `revoked` or `failed`. Every provider error is kept only as a Glow code
-(`provider_unavailable`, `provider_rejected`, `channel_unavailable`,
-`member_unavailable`); no provider text is stored, logged or shown, and no column holds
-the last error code in Stage A. A message authorized before a revocation committed is
-delivered into the channel's history first and the members are removed after it: it stays
-`accepted` in Glow's record, no member can read the channel, and nothing re-sends it.
-Stage A runs delivery in-process under the proof; there is no deployed worker before P11,
-and one deliverer at a time is assumed.
+`delivered`. Per channel and per user the order is the commit order, because every
+writer whose events concern the same provider object locks a common account row. A
+failed event that may be retried returns to the head with its `available_at` unchanged,
+so nothing overtakes it, and is repeated with the same committed identifiers, so the
+provider never gets a second user, channel, message or member. After five attempts, or
+on a final code, the event is dead-lettered. Every provider error is kept only as a Glow
+code (`provider_unavailable`, `provider_rejected`, `channel_unavailable`,
+`member_unavailable`); no provider text is stored, logged or shown. A message
+authorized before a revocation committed is delivered into the channel's history first
+and the members are removed after it: it stays `accepted` in Glow's record, no member
+can read the channel, and nothing re-sends it. Stage A and B1 run delivery in-process
+under the proof; there is no deployed worker before P11, and one deliverer at a time is
+assumed.
+
+**The reconciliation mark** (B1; F3, CX6; DM-15 item 4). A dead letter whose call may
+have reached the provider leaves Glow's record in doubt, so it marks the row it
+concerns with `reconcile_code`, the Glow code of its last attempt (a code from the
+provider port's `ERROR_CODES`, never provider text): a dead-lettered `match_activated`
+marks its binding and turns a `pending` binding `failed`; a dead-lettered
+`contact_revoked` marks its binding; a dead-lettered `identity_created`,
+`access_revoked` or `session_epoch_bumped` marks its identity. A marked row stays what
+it is otherwise: a dead-lettered removal leaves the binding `active` and marked, and a
+revocation of a marked or `failed` binding still makes its removal, after which the
+binding is `revoked` with the mark kept. **P11's reconciliation path** reads the
+`dead_letter` outbox events and the marked bindings and identities, compares each with
+the provider's state through the provider port's idempotent operations (a channel's
+members, a user's state, a token cut-off), repeats the operation the dead letter
+represents or records the difference, and clears the mark only when the provider's state
+agrees with Glow's record; it runs under P11's deployed worker with the outbox's crash
+and lease recovery (the [deferred acceptance plan](../testing/p11-deferred-acceptance.md),
+DB06 and DB09). Nothing in Stage B1 reconciles.
 
 **Token rules** (D6): `grant_chat_token` grants one hour only for a `valid`, unexpired
-session at its account's current epoch, of an `active` account with an active chat
-identity; it refuses after suspension or deletion. It signs nothing; P11 serves the
-endpoint and Stage B's adapter signs.
-**Gap (Stage A's exact-head review, F1):** the per-user revocation's cut-off is the
-epoch bump's time read before its commit, so an endpoint that reads the account without
-its row lock could grant an old-epoch token after the cut-off, valid for up to an hour.
-The endpoint must close it, by granting under the account row lock or by a cut-off at or
-after the bump's commit; the choice is carried to Stage B and P11.
+session at its account's current epoch, of an `active` account with an `active` chat
+identity, which means provisioned and not deactivated (DM-15 5.1: a `pending` identity
+is refused with `no_chat_identity`); it refuses after suspension or deletion. It signs
+nothing; P11 serves the endpoint and Stage B2's adapter signs.
+
+**The grant's transaction** (B1; F1, DM-14 item 3; closes Stage A's F1 gap).
+`OrmContactPersistence.grant_token` runs the rule in one transaction: the account row,
+then the session row, locked `SELECT ... FOR SHARE` in the send's order, so a grant
+waits for an epoch bump in flight (which holds the account `FOR UPDATE`) and then
+refuses at the new epoch, and a bump waits for a grant in flight; the time is
+`clock_timestamp()` read under those locks and passed as `now`, so the issue time and
+the revocation's cut-off come from one clock, the database's, and the app server's
+clock plays no part; every check of `grant_chat_token` runs on the locked rows; the
+locked session's account is checked against the pre-lock read (F2). The grant writes
+nothing and returns the rule's grant with its issue time; B2's signer sets the token's
+`iat` to that issue time truncated to the whole second (DM-15 5.2). The cut-off of a
+per-user revocation stays the bump's pre-commit time read after its account lock
+(`event.available_at`), stored exact, and is sent to the provider rounded up to the
+next whole second, strictly, so every token issued at or before the cut-off is covered.
+The suite forces both orders with the app clock skewed an hour ahead (`token.*` cases):
+a grant that waits on a bump refuses after it, and a grant that commits just before a
+bump has an issue time before the bump's cut-off.
 
 ## Erasure, retention and restore
 

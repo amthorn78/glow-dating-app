@@ -16,6 +16,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 class StaticModelDefinitionTests(unittest.TestCase):
     def check_script(self, assertions):
         prelude = """
+from pathlib import Path
 from glow_persistence.static_check import no_database_access, setup_static_registry
 from django.db import models, connections
 from django.db.migrations.loader import MigrationLoader
@@ -153,8 +154,9 @@ assert set(completed['outcome_code__in']) == codes
 """)
 
     def test_migration_0003_is_additive_and_0001_0002_are_unchanged(self):
-        # P06.2 D7 (DM-13 item 6): 0003 only adds the two new models; the reviewed
-        # migrations stay byte-identical to P02's.
+        # P06.2 D7 (DM-13 item 6): 0003 adds the two new models and, since Stage B1 (DM-15
+        # 4.1 to 4.3), the outbox's order column and the binding's reconciliation mark as
+        # AddField operations; the reviewed migrations stay byte-identical to P02's.
         import hashlib
 
         migrations = API_ROOT / "glow_persistence" / "migrations"
@@ -172,24 +174,74 @@ assert set(completed['outcome_code__in']) == codes
                 self.assertEqual(hashlib.sha256(content).hexdigest(), digest)
         self.check_script("""
 from django.db.migrations.operations.models import CreateModel
+from glow_persistence.fields import SequenceField
 loader = MigrationLoader(None)
 added = loader.disk_migrations[('glow_persistence', '0003_chat_identity_read_cursor')]
 assert added.dependencies == [('glow_persistence', '0002_app_domain')]
-assert [type(op).__name__ for op in added.operations] == ['CreateModel', 'CreateModel']
-assert {op.name for op in added.operations} == {'ChatIdentity', 'ChatReadCursor'}
+# The exact operation list (DM-15 4.3), as the pinned autodetector wrote it.
+assert [(type(op).__name__, getattr(op, 'name', None), getattr(op, 'model_name', None))
+    for op in added.operations] == [
+    ('AddField', 'reconcile_code', 'chatbinding'),
+    ('AddField', 'sequence', 'outboxevent'),
+    ('CreateModel', 'ChatIdentity', None),
+    ('CreateModel', 'ChatReadCursor', None),
+], [type(op).__name__ for op in added.operations]
+assert isinstance(added.operations[1].field, SequenceField)
+assert added.operations[1].preserve_default is True
+assert added.operations[0].field.max_length == 32 and added.operations[0].field.null
+identity_op = added.operations[2]
+assert dict(identity_op.fields)['state'].default == 'pending'
+assert sorted(dict(identity_op.fields)) == sorted(['id', 'created_at', 'updated_at', 'version',
+    'provider', 'user_ref', 'state', 'tokens_revoked_before', 'reconcile_code', 'account'])
 leaves = loader.graph.leaf_nodes('glow_persistence')
 assert leaves == [('glow_persistence', '0003_chat_identity_read_cursor')], leaves
+source = (Path.cwd() / 'glow_persistence' / 'migrations' /
+    '0003_chat_identity_read_cursor.py').read_text()
+assert 'RunSQL' not in source and 'RunPython' not in source
 identity = m.ChatIdentity._meta
 names = {c.name for c in identity.constraints}
 assert {'chat_identity_account', 'chat_identity_ref'} <= names
 assert identity.get_field('account').remote_field.on_delete is models.PROTECT
 assert identity.get_field('user_ref').max_length == 64
 assert {f.name for f in identity.get_fields()} >= {'account', 'provider', 'user_ref', 'state',
-    'tokens_revoked_before'}
+    'tokens_revoked_before', 'reconcile_code'}
+assert [v for v, _ in identity.get_field('state').choices] == ['pending', 'active', 'deactivated']
+assert identity.get_field('state').default == 'pending'
+mark = identity.get_field('reconcile_code')
+assert mark.null and mark.blank and mark.max_length == 32
 assert not {f.name for f in identity.get_fields()} & {'name', 'image', 'email', 'display_name'}
+binding = m.ChatBinding._meta
+mark = binding.get_field('reconcile_code')
+assert mark.null and mark.blank and mark.max_length == 32
 cursor = m.ChatReadCursor._meta
 assert 'chat_read_cursor_member' in {c.name for c in cursor.constraints}
 assert cursor.get_field('last_read').remote_field.model is m.MessageSubmission
+""")
+
+    def test_the_outbox_order_column_is_a_database_assigned_identity_beside_the_key(self):
+        # P06.2 B1 (DM-15 3.1): the delivery order key is assigned by the database in
+        # insertion order; the UUID stays the primary key, and the app never writes it.
+        self.check_script("""
+from glow_persistence.fields import DatabaseAssigned, SequenceField
+meta = m.OutboxEvent._meta
+field = meta.get_field('sequence')
+assert isinstance(field, SequenceField) and isinstance(field, models.BigAutoField)
+assert not field.primary_key and meta.pk.name == 'id' and isinstance(meta.pk, models.UUIDField)
+assert meta.auto_field is None, meta.auto_field
+assert field.db_returning is True
+assert field.get_internal_type() == 'BigAutoField'
+assert field.check(databases=[]) == [], field.check(databases=[])
+assert field.deconstruct()[1:] == ('glow_persistence.fields.SequenceField', [], {})
+event = m.OutboxEvent()
+assert event.sequence is None
+assigned = field.pre_save(event, add=True)
+assert isinstance(assigned, DatabaseAssigned)
+assert assigned.as_sql(None, None) == ('DEFAULT', [])
+event.sequence = 7
+assert field.pre_save(event, add=True) == 7 and field.pre_save(event, add=False) == 7
+unset = m.OutboxEvent()
+assert field.pre_save(unset, add=False) is None  # an update never asks for a new value
+assert field in meta.db_returning_fields
 """)
 
     def test_makemigrations_check_passes_without_a_database(self):
@@ -216,8 +268,9 @@ for word in ('Design(', 'design.', 'lock_accounts', 'check_contact_version', 'fi
     assert word not in source, word
 ref = contact.new_provider_ref()
 assert len(ref) == 32 and int(ref, 16) >= 0 and ref != contact.new_provider_ref()
-assert set(events.DELIVERED.values()) == {'create_channel', 'send_message', 'remove_members',
-    'deactivate_user', 'revoke_user_tokens'}
+assert set(events.DELIVERED.values()) == {'provision_user', 'create_channel', 'send_message',
+    'remove_members', 'deactivate_user', 'revoke_user_tokens'}
+assert list(events.DELIVERED)[0] == 'identity_created'
 assert events.CHAT_SCHEMA_VERSION == 'glow-chat-1'
 assert delivery.MAX_ATTEMPTS == 5
 assert connections['default'].connection is None

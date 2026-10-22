@@ -1,11 +1,14 @@
-"""The chat provider port (P06.2 Stage A; Stage B adds the Stream adapter beside it).
+"""The chat provider port (P06.2 Stage A; Stage B1 adds user provisioning, CX4; Stage
+B2 adds the Stream adapter beside it).
 
 Each operation is one provider call and takes only identifiers, the two members and,
 for a message, its text: there is no parameter for a channel, member or user name,
 image or custom field, and no operation creates an invite, a call, a feed or an
 activity (the brief, item 3; the architecture document, sections 3 and 6). Every
 identifier is Glow's own random value, committed before the call, so a retry repeats
-the same call and never creates a second channel, message or member.
+the same call and never creates a second channel, message or member. A provider needs
+a user before a channel names it (CX4): ``provision_user`` creates the opaque user,
+idempotently, and is delivered before the channel that names it (DM-15 3.1 to 3.5).
 
 A provider adapter raises only ``ChatProviderError`` with a Glow code. Whatever else
 it raises is mapped to ``PROVIDER_UNAVAILABLE`` by the caller; no provider text is
@@ -34,8 +37,9 @@ ERROR_CODES: frozenset[str] = frozenset(
 # Only an outage is worth repeating; every other code is final for the event.
 RETRYABLE: frozenset[str] = frozenset({PROVIDER_UNAVAILABLE})
 
-# The five operations, and the arguments each may carry. Nothing else exists.
+# The six operations, and the arguments each may carry. Nothing else exists.
 OPERATIONS: dict[str, frozenset[str]] = {
+    "provision_user": frozenset({"user_id"}),
     "create_channel": frozenset({"channel_id", "members"}),
     "send_message": frozenset({"channel_id", "sender", "message_id", "text"}),
     "remove_members": frozenset({"channel_id", "members"}),
@@ -77,8 +81,12 @@ class ProviderReceipt:
 class ChatProvider(Protocol):
     name: str
 
+    def provision_user(self, user_id: str) -> ProviderReceipt:
+        """The opaque user, with no name, image or custom field (CX4; DM-15 3.4). A user
+        the provider already holds is returned with ``already=True``."""
+
     def create_channel(self, channel_id: str, members: tuple[str, str]) -> ProviderReceipt:
-        """The match's channel with exactly its two members."""
+        """The match's channel with exactly its two members, each provisioned before."""
 
     def send_message(
         self, channel_id: str, sender: str, message_id: str, text: str

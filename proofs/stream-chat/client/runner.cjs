@@ -144,6 +144,24 @@ const REWRITING_HEADERS = [
   'x-original-url',
   'x-rewrite-url',
 ];
+// The only request-header names a request may carry when it reaches the interceptor
+// (P06.2 B1; the C5 review's advice to reconsider an allowlist before the harness is used
+// live again): what stream-chat 9.53.0 sets (`_enrichAxiosOptions`: Authorization,
+// stream-auth-type, X-Stream-Client, x-client-request-id; `sendFile`: the form's
+// Content-Type) and what axios 1.20.0 merges in before its interceptors (its defaults'
+// Accept and Content-Type). Anything else, which only a request-options argument could
+// add, is refused before the request is counted or sent, so the routing headers the
+// named deny-lists do not cover (X-Forwarded-Prefix, X-Forwarded-Proto, X-Original-Method
+// and their kin) cannot reach Stream either. Headers axios adds after its interceptors
+// (User-Agent, Accept-Encoding, Content-Length) never pass here.
+const ALLOWED_HEADERS = [
+  'accept',
+  'authorization',
+  'content-type',
+  'stream-auth-type',
+  'x-client-request-id',
+  'x-stream-client',
+];
 
 // The URL axios will send: its buildFullPath (the base URL joined to a relative URL, or to
 // any URL when allowAbsoluteUrls is false), then its Node adapter's new URL(). A relative
@@ -220,6 +238,9 @@ function productRequestRefusal(config) {
   // matrix's steps, and the harness's own code sends call ops too, so the runner refuses
   // these for every request, whatever op sent it.
   if (REWRITING_HEADERS.some((h) => names.includes(h))) return 'a request-rewriting header';
+  // Nor any header name outside the allowlist (P06.2 B1): a name is sent as it is compared.
+  const outside = names.find((h) => !ALLOWED_HEADERS.includes(h));
+  if (outside !== undefined) return `a header name outside the allowlist (${outside})`;
   const sent = parsed.pathname;
   const normalized = normalizedPath(sent);
   if (normalized === null) return 'a path whose percent-encoding does not settle';

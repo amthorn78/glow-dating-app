@@ -60,10 +60,19 @@ port with an in-memory fixture adapter (`glow_domain/chat_provider*.py`), the to
 (`glow_domain/chat_tokens.py`) and the `glow_chat` package: an ORM persistence adapter
 that carries P06.DB's send-versus-revocation design onto `glow_persistence`'s models,
 and the outbox delivery to the provider port. Migration `0003` adds `ChatIdentity` and
-`ChatReadCursor`; it is applied only to the disposable proof database. `glow_chat` needs
+`ChatReadCursor`; it is applied only to the disposable proof database. Stage B1 (offline,
+against the fixture provider) adds user provisioning to the port, delivered before the
+channel that names the user (CX4), a database-assigned order column on the outbox
+(`glow_persistence/fields.py`), the reconciliation mark on bindings and identities after a
+dead letter (F3, CX6), the token grant's transaction in the adapter (F1: shared locks on
+the account and the session, the issue time from the database clock) with the cut-off sent
+at the next whole second, the send's profile and consent checks in match activation (CX5),
+and the F2, F4 and F5 nits; it amends the unapplied `0003` for the schema (the
+[migration plan](../../docs/operations/migration-plan.md)). `glow_chat` needs
 a database and runs only under `proofs/postgres-ordering`'s settings, which test it on
 PostgreSQL in CI; this runtime imports none of it and keeps the dummy backend
-(`tests/test_chat_sealed_runtime.py`). No route, served feature or provider call is added.
+(`tests/test_chat_sealed_runtime.py`). No route, served feature, dependency or provider
+call is added; B2 adds the Stream adapter on this port.
 See the [data model](../../docs/architecture/data-model.md), "Chat contact and the outbox".
 
 ## Reproduce locally
