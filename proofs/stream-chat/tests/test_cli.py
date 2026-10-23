@@ -543,9 +543,13 @@ def puts(server: FakeServer) -> list[tuple[str, str, Any]]:
 
 CT = "/api/v2/video/calltypes"
 FV = "/api/v2/feeds/feed_visibilities"
-# I2b's live dry run and apply (commands 3, 10 and 11): the nine PUTs the committed products
-# baseline gives, as (product, scope, client roles named).
+# The PUTs the committed products baseline gives, as (product, scope, client roles named):
+# the nine of I2b's live dry run and apply (commands 3, 10 and 11) and, since P06.2 Stage
+# B2-C2 (whose baseline of 23 October 2026 the fake models), the two of the call types
+# `agent` and `audio_call` Stream added in October 2026.
 LIVE_PLAN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("v", "agent", ("user", "guest")),
+    ("v", "audio_call", ("user", "guest")),
     ("v", "audio_room", ("user", "anonymous")),
     ("v", "default", ("user", "guest")),
     ("v", "development", ("user", "guest", "anonymous")),
@@ -571,7 +575,7 @@ class ScopedConfigureTest(_WritesTest):
         self.assertIn("video: available", ctx.lines)
         plan_lines = [line for line in ctx.lines if line.startswith("- ")]
         # The fake models the committed products baseline (P06.1-C4), so the plan is the
-        # nine PUTs of I2b's live dry run (its command 3).
+        # nine PUTs of I2b's live dry run (its command 3) and B2-C2's two (LIVE_PLAN).
         want = []
         for product, name, roles in LIVE_PLAN:
             path, label = (
@@ -660,7 +664,7 @@ class ScopedConfigureTest(_WritesTest):
         self.assertEqual(cli.cmd_configure(ctx2, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         self.assertIn("video and feeds plan: nothing to change", ctx2.lines)
         self.assertIn("nothing to apply", ctx2.lines)
-        self.assertEqual(len(puts(server)), 9)
+        self.assertEqual(len(puts(server)), len(LIVE_PLAN))
 
     def test_apply_is_guarded_by_the_configure_scope(self) -> None:
         server = FakeServer(UsageLedger())
@@ -691,7 +695,7 @@ class ScopedConfigureTest(_WritesTest):
         with mock.patch.object(products, "LOCKDOWN_APPLIED", "2026-09-27T00:00:00Z"):
             self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 0)  # type: ignore[arg-type]
         self.assertIn("differences before: []", ctx.lines)
-        self.assertEqual(len(puts(server)), 9)
+        self.assertEqual(len(puts(server)), len(LIVE_PLAN))
         self.assertIn("differences after: []", ctx.lines)
 
     def test_unknown_products_are_refused(self) -> None:
@@ -775,14 +779,15 @@ class ConfigureRecordTest(_WritesTest):
         self.assertEqual(cli.cmd_configure(ctx, True, ["video", "feeds"]), 1)  # type: ignore[arg-type]
         record = self.record("configure-products-")
         self.assertEqual([s["status"] for s in record["applied"]], [201, 201, 400])
+        # The third write of LIVE_PLAN (the call type audio_room since B2-C2's baseline).
         self.assertEqual(
             record["failure"],
-            "StepRefused: PUT /api/v2/video/calltypes/development failed; stopping",
+            "StepRefused: PUT /api/v2/video/calltypes/audio_room failed; stopping",
         )
         # The re-read ran: the full after-state, with what the failure left undone.
         after = record["after"]
-        self.assertEqual(after["video"]["call_types"]["default"]["grants"]["user"], [])
-        self.assertTrue(after["video"]["call_types"]["development"]["grants"]["user"])
+        self.assertEqual(after["video"]["call_types"]["audio_call"]["grants"]["user"], [])
+        self.assertTrue(after["video"]["call_types"]["audio_room"]["grants"]["user"])
         self.assertTrue(record["problems_after"])
         self.assertTrue(any(m == "GET" for m, _p, _b in server.calls[-3:]), server.calls[-3:])
 
@@ -940,7 +945,7 @@ class ConfigureRecordTest(_WritesTest):
             cli.cmd_configure(ctx, True, ["video", "feeds"])  # type: ignore[arg-type]
         record = self.record("configure-products-")
         self.assertEqual(record["after"], cli.AFTER_NOT_READ_INTERRUPTED)
-        self.assertEqual(len(record["applied"]), 9)
+        self.assertEqual(len(record["applied"]), len(LIVE_PLAN))
         self.assertEqual(record["failure"], "KeyboardInterrupt: ")
 
     def test_a_signal_in_the_reread_after_a_refused_step_still_reaches_main(self) -> None:
@@ -1139,7 +1144,7 @@ class ConfigureRecordTest(_WritesTest):
         self.assertEqual(len(server.calls), gets[0])
         record = self.record("configure-products-")
         self.assertEqual(record["after"], cli.AFTER_NOT_READ_SIGNAL)
-        self.assertEqual(len(record["applied"]), 9)
+        self.assertEqual(len(record["applied"]), len(LIVE_PLAN))
 
 
 class ClosingContext(FakeContext):
@@ -1316,7 +1321,9 @@ class ProbeAndBaselineTest(_WritesTest):
             "video: available (GET /api/v2/video/calltypes -> HTTP 200 code None)", ctx.lines
         )
         self.assertIn(
-            "video call types: ['audio_room', 'default', 'development', 'livestream']", ctx.lines
+            "video call types: "
+            "['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']",
+            ctx.lines,
         )
         self.assertIn(
             "feed groups: ['foryou', 'notification', 'stories', 'story', 'timeline', 'user']",
@@ -1353,8 +1360,9 @@ class ProbeAndBaselineTest(_WritesTest):
         self.assertIn("products", snapshot)
         self.assertEqual(snapshot["products"]["video"]["availability"], "available")
         self.assertNotIn("dashboard-person", json.dumps(snapshot["products"]))
-        # The 18 client-role grants of I2b's live baseline read (its command 7).
-        self.assertIn("video and feeds differences from the lockdown target: 18", ctx.lines)
+        # The 18 client-role grants of I2b's live baseline read (its command 7), and the four
+        # of the call types agent and audio_call (B2-C2's baseline, which the fake models).
+        self.assertIn("video and feeds differences from the lockdown target: 22", ctx.lines)
         import tempfile
         from pathlib import Path
 

@@ -282,18 +282,19 @@ class CompareTest(unittest.TestCase):
         types = after["reads"]["channel_types"]["body"]["channel_types"]
         types[conf.MATCH_TYPE]["grants"]["channel_member"] = ["read-channel", "schedule-message"]
         after["reads"]["app"]["body"]["app"]["grants"]["user"] = ["search-user"]
-        after["reads"]["call_types"]["body"]["call_types"]["default"]["settings"]["lifecycle"] = {
-            "mode": "reusable"
-        }
+        # The committed products baseline (which the fake models) holds lifecycle since B2-C2.
+        default_settings = after["reads"]["call_types"]["body"]["call_types"]["default"]["settings"]
+        self.assertEqual(default_settings["lifecycle"], {"mode": "reusable"})
+        default_settings["lifecycle"] = {"mode": "single_use"}
         changes = full_view.compare(before, after)
         self.assertEqual(
             changes,
             [
                 {"path": "app.body.app.grants.user", "before": [], "after": ["search-user"]},
                 {
-                    "path": "call_types.body.call_types.default.settings.lifecycle",
-                    "before": full_view.ABSENT,
-                    "after": {"mode": "reusable"},
+                    "path": "call_types.body.call_types.default.settings.lifecycle.mode",
+                    "before": "reusable",
+                    "after": "single_use",
                 },
                 {
                     "path": "channel_types.body.channel_types."
@@ -491,7 +492,8 @@ class FullViewCommandTest(_WritesTest):
             ctx.lines,
         )
         self.assertIn(
-            "video call types: HTTP 200; ['audio_room', 'default', 'development', 'livestream']",
+            "video call types: HTTP 200; "
+            "['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']",
             ctx.lines,
         )
         self.assertIn(

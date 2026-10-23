@@ -76,12 +76,20 @@ FEED_VISIBILITIES = "/api/v2/feeds/feed_visibilities"
 # 27 September 2026 at 05:58:31 UTC (its record: configure-products-20260927T055831Z).
 LOCKDOWN_APPLIED: str | None = "2026-09-27T05:58:31Z"
 
-# The committed Video and Feeds baseline, read before the lockdown (``baseline`` then
-# ``record-products-baseline``, 27 September 2026). Since P06.1-C4 :func:`verify` compares
+# The committed Video and Feeds baseline in force. Since P06.1-C4 :func:`verify` compares
 # every other role's grants, each call type's settings and notification settings, and each
-# feed group's recorded fields with it (the I2b review's finding 2).
-PRODUCTS_BASELINE = (
+# feed group's recorded fields with it (the I2b review's finding 2). The first was read
+# before the lockdown (``baseline`` then ``record-products-baseline``, 27 September 2026,
+# kept as ``PRODUCTS_BASELINE_2026_09_27``); since P06.2 Stage B2-C2 it is the record of
+# 23 October 2026, merged with that one by :func:`merged_baseline_record`: the scopes of 27
+# September with their client grants from it, the call types ``agent`` and ``audio_call``
+# Stream added in October with their client grants as read before their lockdown, and the
+# ``lifecycle`` settings section Stream added to the four known call types.
+PRODUCTS_BASELINE_2026_09_27 = (
     Path(__file__).resolve().parent.parent / "baseline" / "video-feeds-1729640-2026-09-27.json"
+)
+PRODUCTS_BASELINE = (
+    Path(__file__).resolve().parent.parent / "baseline" / "video-feeds-1729640-2026-10-23.json"
 )
 
 _SEG = r"[^/]+"

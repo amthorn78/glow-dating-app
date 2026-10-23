@@ -6,11 +6,13 @@ feeds, activities, comments, reactions, follows), and answers the requests the h
 and a client can send them, the way Stream's documentation describes: a grants update
 changes only the roles it names; a hard-deleted feed takes its activities with it and
 its ID is not reused ("feed with id ... has been deleted"); a user's Feeds data delete
-removes everything of that user's. The configuration is the committed products baseline
-(``baseline/video-feeds-1729640-2026-09-27.json``, since P06.1-C4): its call types, feed
-visibilities and feed groups, every role's grants and the call types' settings. It starts
-at the lockdown target, as the live application's has since the apply of 27 September 2026
-(``products.LOCKDOWN_APPLIED``), so a run's preflight verifies it;
+removes everything of that user's. The configuration is the committed products baseline in
+force (``products.PRODUCTS_BASELINE``, since P06.1-C4; since P06.2 Stage B2-C2
+``baseline/video-feeds-1729640-2026-10-23.json``, with the call types ``agent`` and
+``audio_call`` and the ``lifecycle`` settings section Stream added in October 2026): its
+call types, feed visibilities and feed groups, every role's grants and the call types'
+settings. It starts at the lockdown target, as the live application's has since the apply of
+27 September 2026 (``products.LOCKDOWN_APPLIED``), so a run's preflight verifies it;
 ``grant_before_lockdown()`` puts the baseline's client grants back. What a client may do
 (``allowed``) is a knob of its own, not derived from the grants: which grant each request
 needs is not documented.
@@ -41,8 +43,9 @@ UNAVAILABLE_MESSAGE = (
     "{product} is not enabled for this application. Upgrade your plan to enable it."
 )
 CLIENT_ROLES = ("user", "guest", "anonymous")
-# The fake's configuration is the committed Video and Feeds baseline, read from the live
-# application before the lockdown (P06.1-C4; the I2b review's finding 2): its call types,
+# The fake's configuration is the committed Video and Feeds baseline in force, each scope as
+# read from the live application before its lockdown (P06.1-C4; the I2b review's finding 2;
+# the record of 23 October 2026 since P06.2 Stage B2-C2): its call types,
 # feed visibilities and feed groups, every role's grants, and each call type's settings and
 # notification settings. So products.verify, which compares every role other than the
 # client roles, every setting and every feed group with that baseline, finds no
