@@ -20,6 +20,10 @@ reruns only (``matrix.RUN_1_CASES``); run V1 and run V2, the Video and Feeds cas
 the lean setup; and one rerun in reserve, the largest of the three. The plan fits only
 if the four together, with what the ledger holds, fit the session caps.
 
+P06.2 Stage B2's live plan (its prompt, item 5; DM-16 1.3): the Stream adapter's
+``conformance`` run, counted against the fakes, and one rerun of it in reserve; it fits
+only if both together, with what the ledger holds, fit the session caps (``b2_fits``).
+
 Usage, offline and without any ``STREAM_*`` variable::
 
     python checks/run_plan.py
@@ -71,6 +75,25 @@ def measure(only: set[str] | None) -> dict[str, Any]:
         "cases": len(run.case_results),
         "problems": problems,
         "harness_errors": [c.case_id for c in run.case_results if "harness error" in c.observed],
+    }
+
+
+def measure_conformance() -> dict[str, Any]:
+    """The Stream adapter's conformance run against the fakes (P06.2 Stage B2): what the
+    ledger counted, and that every row was made."""
+    from tests.test_conformance import conformance_run
+
+    run, _server = conformance_run()
+    with NoSettle():
+        run.preflight()
+        run.run_rows()
+        problems = run.finish(cleanup=True)
+    counted = run.ledger.summary()["run"]
+    return {
+        **{key: counted[key] for key in RESOURCES},
+        "api_calls": counted["api_calls"],
+        "rows": len(run.rows),
+        "problems": problems,
     }
 
 
@@ -130,6 +153,12 @@ def plan(ledger: Path | None = LEDGER) -> dict[str, Any]:
         + max(r["api_calls"] for r in runs.values())
         <= limits.api_calls
     )
+    # P06.2 Stage B2: the conformance run, and one rerun of it in reserve.
+    conformance = measure_conformance()
+    b2_total = {key: used[key] + 2 * conformance[key] for key in ("users", "channels")}
+    b2_fits = {key: b2_total[key] <= caps[key] for key in ("users", "channels")}
+    b2_fits["peak_connections"] = conformance["peak_connections"] <= limits.connections
+    b2_fits["api_calls"] = used["api_calls"] + 2 * conformance["api_calls"] <= limits.api_calls
     return {
         "complete_set": complete,
         "base_setup": base,
@@ -144,7 +173,10 @@ def plan(ledger: Path | None = LEDGER) -> dict[str, Any]:
         "i2b_largest_run": largest_run,
         "i2b_total_with_reserve": i2b_total,
         "i2b_fits": i2b_fits,
-        "all_fit": all(fits.values()) and all(i2b_fits.values()),
+        "conformance": conformance,
+        "b2_total_with_reserve": b2_total,
+        "b2_fits": b2_fits,
+        "all_fit": all(fits.values()) and all(i2b_fits.values()) and all(b2_fits.values()),
         "note": "API calls: the fakes count the server's calls and one per recorded client "
         "request; the live count differs",
     }

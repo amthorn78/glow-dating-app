@@ -5,6 +5,12 @@ disposable-database proof's settings. This is a check, not a convention: the run
 settings, URL configuration and WSGI application import none of the adapter's modules
 (nor the model registry or a database driver), the database backend is still Django's
 dummy one, and the connection refusal is unchanged.
+
+Stage B2 (DM-16 2.3): the runtime imports neither the Stream adapter
+(``glow_domain.chat_provider_stream``) nor the SDK (``getstream``, with its own
+dependencies ``pydantic_settings`` and ``dotenv``), and the adapter module imports nothing
+from Django, ``glow_persistence`` or ``glow_chat``: only the port, the token module and
+the SDK, so it loads without Django (DM-16 4.6).
 """
 
 import json
@@ -63,7 +69,9 @@ except ImproperlyConfigured as exc:
     refused = type(exc).__name__
 print(json.dumps({
     "modules": sorted(name for name in sys.modules if name.split(".")[0] in
-                      ("glow_chat", "glow_persistence", "psycopg", "psycopg_binary")),
+                      ("glow_chat", "glow_persistence", "psycopg", "psycopg_binary",
+                       "getstream", "pydantic_settings", "dotenv", "jwt")
+                      or name == "glow_domain.chat_provider_stream"),
     "engine": settings.DATABASES["default"]["ENGINE"],
     "installed": list(settings.INSTALLED_APPS),
     "patterns": patterns,
@@ -106,6 +114,42 @@ class SealedRuntimeTests(unittest.TestCase):
                 source = path.read_text(encoding="utf-8")
                 self.assertNotIn("glow_chat", source)
                 self.assertNotIn("glow_persistence", source)
+                # Stage B2: nor the Stream adapter or its SDK (DM-16 2.3).
+                self.assertNotIn("chat_provider_stream", source)
+                self.assertNotIn("getstream", source)
+
+    def test_the_stream_adapter_loads_without_django_and_imports_only_its_three(self) -> None:
+        """DM-16 2.3 and 4.6: the adapter module, imported in a process whose Django is
+        hidden, loads, and names nothing of Django, glow_persistence or glow_chat."""
+        probe = (
+            "import sys\n"
+            "class Hidden:\n"
+            "    def find_spec(self, name, path=None, target=None):\n"
+            "        hidden = ('django', 'glow_persistence', 'glow_chat', 'glow_api')\n"
+            "        if name.split('.')[0] in hidden:\n"
+            "            raise ImportError('hidden: ' + name)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, Hidden())\n"
+            "import glow_domain.chat_provider_stream as m\n"
+            "print(sorted(n for n in sys.modules if n.split('.')[0] in "
+            "('django', 'glow_persistence', 'glow_chat', 'glow_api')))\n"
+            "print(m.StreamChatProvider.name)\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=API_ROOT,
+            env=clean_environment(),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines(), ["[]", "stream"])
+        source = (API_ROOT / "glow_domain" / "chat_provider_stream.py").read_text(encoding="utf-8")
+        for line in source.splitlines():
+            if line.startswith(("import ", "from ")):
+                self.assertNotRegex(line, r"django|glow_persistence|glow_chat|glow_api")
 
     def test_the_connection_refusal_is_unchanged(self) -> None:
         self.assertEqual(FORBIDDEN_CONNECTION_NAMES, FORBIDDEN_AT_P06_2)

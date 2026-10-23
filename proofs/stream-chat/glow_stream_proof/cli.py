@@ -2,9 +2,11 @@
 
 Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``configure`` and
 ``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
-``configure --products video,feeds --apply``, ``run``, ``cleanup --apply`` and
-``restore --apply``. ``record-baseline`` and ``record-products-baseline`` write files
-from a snapshot and call nothing.
+``configure --products video,feeds --apply``, ``run``, ``conformance`` (P06.2 Stage B2:
+the app's Stream adapter, on this harness's client, under the run's preflight, guard,
+budget, stop signals and cleanup), ``cleanup --apply`` and ``restore --apply``.
+``record-baseline`` and ``record-products-baseline`` write files from a snapshot and call
+nothing.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import baseline, configuration, guard, products, report
+from . import baseline, configuration, conformance, guard, products, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
 from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, lean_only, list_polls_and_groups
 from .redaction import Redactor
@@ -594,6 +596,110 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     return EXIT_AFTER_RUN_PROBLEMS if problems else 0
 
 
+EXIT_ROWS_DIFFER = 1
+INTERRUPTED = "interrupted (Ctrl-C)"
+
+
+def cmd_conformance(ctx: Context, accept_dashboard_user: bool) -> int:
+    """The Stream adapter's conformance run (P06.2 Stage B2; design point g). Exit 0 only if
+    every row passed (or is one stated as recorded), the run was cleaned up and the
+    configuration verifies; 1 if a row differs from the fixture or failed (reported; a
+    difference on an F3 or CX6 cause blocks B2's merge); 2 if it stopped or refused to
+    start; 4 if it completed but a check after it failed."""
+    # DM-16 1.1: both verifications on a fresh snapshot, before anything changes.
+    snapshot = baseline.read_snapshot(ctx.api)
+    chat_problems, product_problems = conformance.start_refusals(snapshot)
+    ctx.say(f"configuration differences from the proof's target: {len(chat_problems)}")
+    ctx.say(f"video and feeds differences from the lockdown target: {len(product_problems)}")
+    if chat_problems or product_problems:
+        for problem in chat_problems + product_problems:
+            ctx.say(f"- {problem}")
+        ctx.say("refused: the application's configuration is not the proof's; nothing changed")
+        return EXIT_REFUSED
+    prefix = f"{PREFIX_ROOT}{datetime.now(UTC).strftime('%m%d%H%M%S')}"
+    run = conformance.ConformanceRun(
+        ctx.credentials,
+        ctx.api,
+        ctx.ledger,
+        ctx.redactor,
+        os.environ,
+        prefix=prefix,
+        accept_dashboard_user=accept_dashboard_user,
+    )
+    started = datetime.now(UTC).isoformat(timespec="seconds")
+    ctx.say(f"conformance {prefix} started {started}")
+    stop_reason = None
+    created_anything = False
+
+    def progress() -> None:
+        write_json(f"conformance-{prefix}-progress.json", run.results(), ctx.secrets)
+
+    try:
+        preflight = run.preflight()
+        ctx.say(f"preflight: {preflight}")
+        created_anything = True
+        run.run_rows(progress)
+    except RunStopped as exc:
+        stop_reason = f"stopped: {ctx.redactor.text(str(exc))}"
+    except GuardrailStop as exc:
+        stop_reason = f"guardrail: {ctx.redactor.text(str(exc))}"
+        run.record_signal(exc)  # the signal joins the run's record (P06.1-C3)
+    except KeyboardInterrupt:
+        stop_reason = INTERRUPTED
+    except Exception as exc:  # recorded, never hidden; cleanup still runs
+        stop_reason = f"harness error: {type(exc).__name__}: {ctx.redactor.text(str(exc))}"
+    finally:
+        try:
+            early = run.results()
+            early.update(
+                {
+                    "started": started,
+                    "stop_reason": stop_reason,
+                    "end_of_run": "not finished: cleanup and the configuration check had "
+                    "not completed when this was written",
+                }
+            )
+            write_json(f"conformance-{prefix}.json", early, ctx.secrets)
+        except (Exception, KeyboardInterrupt) as exc:  # never in the way of the end of the run
+            run.notes.append(
+                "results not written before the end of the run: "
+                f"{type(exc).__name__}: " + ctx.redactor.text(str(exc))
+            )
+        try:
+            problems = run.finish(cleanup=created_anything)
+        except KeyboardInterrupt:
+            stop_reason = stop_reason or INTERRUPTED
+            problems = [
+                "the end of the run was interrupted (Ctrl-C): cleanup and the configuration "
+                "check may be incomplete; run verify-clean and configure (a dry run)",
+                *list(run.post_run_problems),
+            ]
+            run.post_run_problems = problems
+            run.close_sessions()  # a second Ctrl-C: the client processes still close
+    ctx.say(f"cleanup: {run.cleanup_result}")
+    for stop in run.stops:
+        ctx.say(f"stop recorded: {stop}")
+    for problem in problems:
+        ctx.say(f"after the run: {problem}")
+    ended = datetime.now(UTC).isoformat(timespec="seconds")
+    results = run.results()
+    results.update({"started": started, "ended": ended, "stop_reason": stop_reason})
+    write_json(f"conformance-{prefix}.json", results, ctx.secrets)
+    markdown = conformance.render(results)
+    write_text(f"conformance-{prefix}.md", markdown, ctx.secrets)
+    ctx.say(markdown)
+    ctx.say(f"usage: {json.dumps(ctx.ledger.summary())}")
+    ctx.say(f"conformance {prefix} ended {ended}" + (f"; {stop_reason}" if stop_reason else ""))
+    if stop_reason is not None:
+        return EXIT_STOPPED
+    if problems:
+        return EXIT_AFTER_RUN_PROBLEMS
+    verdicts = results["verdicts"]
+    if set(verdicts) - {conformance.PASS, conformance.RECORDED}:
+        return EXIT_ROWS_DIFFER
+    return 0
+
+
 def cmd_verify_clean(ctx: Context) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
     users = [str(u.get("id")) for u in snapshot["users"].get("users", [])]
@@ -727,6 +833,11 @@ def main(argv: list[str] | None = None) -> int:
     run = sub.add_parser("run", help="one live proof run with cleanup")
     run.add_argument("--accept-dashboard-user", action="store_true")
     run.add_argument("--only", default="", help="comma-separated case ids (development)")
+    conf_run = sub.add_parser(
+        "conformance",
+        help="P06.2 Stage B2: the app's Stream adapter against the application, with cleanup",
+    )
+    conf_run.add_argument("--accept-dashboard-user", action="store_true")
     sub.add_parser("verify-clean", help="confirm no proof users or channels remain")
     clean = sub.add_parser("cleanup", help="hard-delete leftover proof users and channels")
     clean.add_argument("--apply", action="store_true")
@@ -756,6 +867,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "run":
             only = {s for s in args.only.split(",") if s} or None
             return cmd_run(ctx, args.accept_dashboard_user, only)
+        if args.command == "conformance":
+            return cmd_conformance(ctx, args.accept_dashboard_user)
         if args.command == "verify-clean":
             return cmd_verify_clean(ctx)
         if args.command == "cleanup":

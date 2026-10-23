@@ -14,6 +14,7 @@ import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -79,13 +80,27 @@ class FakeServer:
     products: ProductState = field(default_factory=ProductState)
 
     def __post_init__(self) -> None:
+        # The typed calls the harness makes, and (P06.2 Stage B2) the ones the Stream adapter
+        # makes on the injected client: each goes through ``_count`` so the guard and the
+        # ledger see it, and answers with the attributes the adapter reads.
         self.sdk = SimpleNamespace(
             upsert_users=self._upsert,
+            update_users=self._update_users,
+            query_users=self._query_users,
+            update_users_partial=self._update_users_partial,
+            deactivate_user=self._deactivate_user,
             chat=SimpleNamespace(
-                get_or_create_channel=self._channel, send_message=self._send_message
+                get_or_create_channel=self._channel,
+                send_message=self._send_message,
+                query_channels=self._query_channels,
+                update_channel=self._update_channel,
             ),
             create_token=self._token,
+            api_secret=SECRET,
         )
+        # Messages sent through the typed call, by ID (P06.2 Stage B2): a repeated ID is
+        # refused as Stream refuses it, and a message can be read back.
+        self.sent_messages: dict[str, dict[str, Any]] = {}
 
     # -- the typed SDK calls the harness makes ------------------------------------
 
@@ -103,19 +118,162 @@ class FakeServer:
         for u in users:
             self.users[u.id] = {"id": u.id, "role": u.role, "name": u.name, "created_at": 0}
 
-    def _channel(self, type: str, id: str, data: Any) -> None:
+    def _channel(self, type: str, id: str, data: Any) -> Any:
         members = [{"user_id": m.user_id} for m in data.members]
         body = {"data": {"created_by_id": data.created_by_id, "members": members}}
         self._count("POST", f"/api/v2/chat/channels/{type}/{id}/query", body)
-        self.members[id] = [m.user_id for m in data.members]
+        missing = [m.user_id for m in data.members if m.user_id not in self.users]
+        if missing:
+            raise self._api_error(
+                400, 4, f"GetOrCreateChannel failed with error: users {missing} do not exist"
+            )
+        if id in self.members:
+            # As Stream's get-or-create: the members named join an existing channel.
+            for m in data.members:
+                if m.user_id not in self.members[id]:
+                    self.members[id].append(m.user_id)
+        else:
+            self.members[id] = [m.user_id for m in data.members]
+        return SimpleNamespace(data=self._channel_state(id))
 
     def _send_message(self, type: str, id: str, message: Any) -> Any:
-        body = {"message": {"text": message.text, "user_id": message.user_id}}
+        body: dict[str, Any] = {"message": {"text": message.text, "user_id": message.user_id}}
+        given = getattr(message, "id", None)
+        if given is not None:
+            body["message"]["id"] = given
         self._count("POST", f"/api/v2/chat/channels/{type}/{id}/message", body)
+        if id not in self.members:
+            raise self._api_error(404, 16, "SendMessage failed with error: channel not found")
+        if message.user_id not in self.users:
+            raise self._api_error(
+                400, 4, f"SendMessage failed with error: user {message.user_id} does not exist"
+            )
+        if self.users[message.user_id].get("deactivated_at"):
+            raise self._api_error(
+                400, 4, f"SendMessage failed with error: user {message.user_id} is deactivated"
+            )
+        if given is not None and given in self.sent_messages:
+            raise self._api_error(
+                400, 4, f"SendMessage failed with error: a message with ID {given} already exists"
+            )
         self.sent += 1
+        message_id = given if given is not None else f"m-{self.sent}"
+        self.sent_messages[message_id] = {
+            "id": message_id,
+            "cid": f"{type}:{id}",
+            "text": message.text,
+            "user_id": message.user_id,
+        }
         if self.on_send is not None:
-            self.on_send(id, f"m-{self.sent}")
-        return SimpleNamespace(data=SimpleNamespace(message=SimpleNamespace(id=f"m-{self.sent}")))
+            self.on_send(id, message_id)
+        return SimpleNamespace(data=SimpleNamespace(message=SimpleNamespace(id=message_id)))
+
+    # -- the typed calls the Stream adapter makes (P06.2 Stage B2) ---------------------
+
+    @staticmethod
+    def _api_error(status: int, code: int, message: str) -> Exception:
+        """The SDK's own API error, as ``getstream`` raises it (its text is the fake's)."""
+        from getstream.exceptions import StreamApiException
+
+        error: Exception = StreamApiException(status_code=status, code=code, message=message)
+        return error
+
+    @staticmethod
+    def _stamp(value: Any) -> Any:
+        """A stored stamp as the SDK decodes it: an aware datetime, or None."""
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, int | float) and value:
+            return datetime.fromtimestamp(value / 1e9, tz=UTC)
+        return None
+
+    def _user_view(self, user: dict[str, Any]) -> Any:
+        return SimpleNamespace(
+            id=user["id"],
+            role=user.get("role", "user"),
+            name=user.get("name"),
+            image=user.get("image"),
+            custom=user.get("custom") or {},
+            deactivated_at=self._stamp(user.get("deactivated_at")),
+            revoke_tokens_issued_before=self._stamp(user.get("revoke_tokens_issued_before")),
+        )
+
+    def _query_users(self, payload: Any) -> Any:
+        wanted = payload.filter_conditions.get("id", {}).get("$in", [])
+        self._count(
+            "GET", "/api/v2/users", None, {"payload": json.dumps(payload.to_dict(), default=str)}
+        )
+        include_deactivated = payload.include_deactivated_users is True
+        users = [
+            self._user_view(u)
+            for uid, u in self.users.items()
+            if uid in wanted and (include_deactivated or not u.get("deactivated_at"))
+        ]
+        return SimpleNamespace(data=SimpleNamespace(users=users))
+
+    def _update_users(self, users: dict[str, Any]) -> Any:
+        body = {"users": {uid: {"id": u.id} for uid, u in users.items()}}
+        self._count("POST", "/api/v2/users", body)
+        out: dict[str, Any] = {}
+        for uid, u in users.items():
+            stored = self.users.setdefault(uid, {"id": uid, "role": "user", "created_at": 0})
+            # An upsert replaces what it names; the adapter names the ID only.
+            for key in ("name", "image", "role", "custom"):
+                value = getattr(u, key, None)
+                if value is not None:
+                    stored[key] = value
+            out[uid] = self._user_view(stored)
+        return SimpleNamespace(data=SimpleNamespace(users=out))
+
+    def _update_users_partial(self, users: list[Any]) -> Any:
+        body = {"users": [{"id": u.id, "set": u.set} for u in users]}
+        self._count("PATCH", "/api/v2/users", body)
+        out: dict[str, Any] = {}
+        for u in users:
+            stored = self.users.get(u.id)
+            if stored is None:
+                raise self._api_error(404, 16, f"user {u.id} does not exist")
+            cut = (u.set or {}).get("revoke_tokens_issued_before")
+            if cut is not None:
+                moment = datetime.fromisoformat(str(cut).replace("Z", "+00:00"))
+                stored["revoke_tokens_issued_before"] = int(moment.timestamp() * 1e9)
+            out[u.id] = self._user_view(stored)
+        return SimpleNamespace(data=SimpleNamespace(users=out))
+
+    def _deactivate_user(self, user_id: str, **options: Any) -> Any:
+        body = {k: v for k, v in options.items() if v is not None}
+        self._count("POST", f"/api/v2/users/{user_id}/deactivate", body)
+        stored = self.users.get(user_id)
+        if stored is None:
+            raise self._api_error(404, 16, f"user {user_id} does not exist")
+        if stored.get("deactivated_at"):
+            raise self._api_error(400, 4, "user is already deactivated")
+        stored["deactivated_at"] = int(time.time() * 1e9)
+        return SimpleNamespace(data=SimpleNamespace(user=self._user_view(stored)))
+
+    def _channel_state(self, channel_id: str) -> Any:
+        return SimpleNamespace(
+            channel=SimpleNamespace(cid=f"{configuration.MATCH_TYPE}:{channel_id}", custom={}),
+            members=[SimpleNamespace(user_id=m) for m in self.members[channel_id]],
+        )
+
+    def _query_channels(self, **options: Any) -> Any:
+        body = {k: v for k, v in options.items() if v is not None}
+        self._count("POST", "/api/v2/chat/channels", body)
+        cid = (options.get("filter_conditions") or {}).get("cid")
+        channel_id = str(cid).split(":", 1)[-1]
+        channels = [self._channel_state(channel_id)] if cid and channel_id in self.members else []
+        return SimpleNamespace(data=SimpleNamespace(channels=channels))
+
+    def _update_channel(self, type: str, id: str, **options: Any) -> Any:
+        body = {k: v for k, v in options.items() if v is not None}
+        self._count("POST", f"/api/v2/chat/channels/{type}/{id}", body)
+        if id not in self.members:
+            raise self._api_error(404, 16, "UpdateChannel failed with error: channel not found")
+        for member in options.get("remove_members") or []:
+            if member in self.members[id]:
+                self.members[id].remove(member)
+        return SimpleNamespace(data=self._channel_state(id))
 
     @staticmethod
     def _token(user_id: str, expiration: int) -> str:
@@ -198,7 +356,18 @@ class FakeServer:
             channel_id = str(cid).split(":", 1)[-1]
             if cid and channel_id in self.members:
                 channel = self.effective_channel(channel_id)
-                return ok(method, path, {"channels": [{"channel": channel}]}, 201)
+                # With its members, as Stream lists them (P06.2 Stage B2 reads them back).
+                members = [{"user_id": m} for m in self.members[channel_id]]
+                entry = {"channel": channel, "members": members}
+                return ok(method, path, {"channels": [entry]}, 201)
+        if path.startswith("/api/v2/chat/messages/") and method == "GET":
+            # A message sent through the typed call, read back by ID (P06.2 Stage B2).
+            message_id = path.rsplit("/", 1)[-1]
+            stored = self.sent_messages.get(message_id)
+            if stored is None:
+                return error(method, path, 404, 16, f"message {message_id} does not exist")
+            read_back = {**stored, "user": {"id": stored["user_id"], "role": "user"}}
+            return ok(method, path, {"message": read_back}, 200)
             # As Stream: a channel that does not exist is not listed (P06.1-I2a).
             return ok(method, path, {"channels": []}, 201)
         if path.startswith("/channels/glow-match/") and method == "PATCH" and "/member" not in path:
@@ -426,10 +595,12 @@ def make_run(
     *,
     ledger: UsageLedger | None = None,
     default_behaviour: Behaviour | None = None,
+    run_class: type[ProofRun] = ProofRun,
 ) -> tuple[ProofRun, FakeServer]:
     ledger = ledger or (server.ledger if server else UsageLedger())
     server = server or FakeServer(ledger)
-    run = ProofRun(
+    # P06.2 Stage B2: a ConformanceRun is a ProofRun whose cases are the adapter's rows.
+    run = run_class(
         ServerCredentials("1729640", "k", SECRET),
         server,  # type: ignore[arg-type]
         ledger,
