@@ -92,6 +92,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-01 | 23 Oct 2026 | accuracy | B2-C1's prompt (revision 2) said `tzdata` stays as resolved and nothing else moves in the lock alignment, copied from DM-17 5.1 without reading the lock, which lists `tzdata` `# via python-dateutil`; aligning `python-dateutil` to 2.9.0.post0 removed it | The B2-C1 session |
 | AM7-02 | 23 Oct 2026 | accuracy | B2-C1's prompt said "Each push runs the Foundation workflow on your branch"; the session's harness named its branch `ccr-…`, outside the workflow's push filter, so no run started and the session had no run of record | The B2-C1 session |
 | AM7-03 | 23 Oct 2026 | accuracy | B2-C2's prompt, revisions 1 and 2, let the session send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat dry run, and the products dry run is item 6.1 | App Manager 7, reading revision 2 before giving it to Nathan |
+| AM7-04 | 23 Oct 2026 | accuracy | B2-C2's prompt allowed only "D1 and the class-2 types' grants" in the comparison after the chat apply; emptying those grants necessarily removes `agent` from nine roles' `scopes` in the roles read, which the rule did not allow | The B2-C2 session |
 
 ## App Manager 2
 
@@ -669,4 +670,12 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none: no session ran either revision. Read literally, the line would have allowed no Video or Feeds `PUT` at all, since item 5.1 plans none, and the session would have stopped at item 6 as a departure.
 - **Correction:** revision 2 reads "section 4 item 6.1" before it goes to Nathan. The fix changes a reference, not what the prompt allows; the review log's DM-18 entry lists it for the next consultation to confirm.
 - **Prevention:** when a revision renumbers or moves an item, the manager searches the prompt for every "item N" reference and checks each against the new numbering before the revision is committed.
+
+### AM7-04 — An allowed-change set that left out the plan's own effects (accuracy)
+
+- **What happened:** B2-C2's prompt, revisions 1 and 2, said of the comparison after the chat apply: "The only changes allowed are D1 and the class-2 types' grants", carrying DM-17 2.3's allowed set ("D1 and D4"), which named the application, the chat types and the call types and visibilities. B2-C1's full view, which runs that comparison, also reads the roles, and a role's `scopes` lists the scopes in which it holds grants, so emptying the chat type `agent`'s grants necessarily removes `agent` from the `scopes` of the nine roles that held them. App Manager 7 wrote the allowed set without deriving what the planned change does to the roles read, so the rule did not allow those nine fields.
+- **Caught by:** the B2-C2 session, which reported them as fields outside the planned grants, beside the unplanned `blocklist_behavior` field (D6).
+- **Effect:** none on the application or the result: the session also stopped on D6, which the rule rightly did not allow, so the stop happened either way. Read as written, the rule would have stopped the session on the roles' `scopes` alone, and the products apply's rule would have done the same for `user` and `guest`.
+- **Correction:** the brief's B2-C3 point i states the derived changes before the apply: a role's `scopes` losing exactly the scopes in which the apply emptied all of its grants. The Dev Manager reads it in DM-19.
+- **Prevention:** when a prompt states what a comparison may show after a change, the manager derives every field the planned change alters in every read the comparison covers (here the roles read as well as the types), and lists them, before the prompt is committed.
 
