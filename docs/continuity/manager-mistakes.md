@@ -89,6 +89,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM6-01 | 5 Oct 2026 | process | Took on Stage A's run of record itself: subscribed to PR29's CI events and scheduled a check-in to watch the run, work that belongs to the worker session | Nathan |
 | AM6-02 | 22 Oct 2026 | accuracy | Recorded B1-C1's race times as "7 to 23 s" from a listing cut off at 20 lines; the adapter's slowest race took 29.7 s against its 30-second cap | B1-C1's exact-head review (finding 1) |
 | AM6-03 | 23 Oct 2026 | scope | Stage B2's prompt added a pinned, untyped SDK to `services/api` but its owned paths named neither `pyproject.toml`, where the type check's override for it lives, nor the API README; the session changed both, reporting one | App Manager 6, verifying Stage B2 |
+| AM7-01 | 23 Oct 2026 | accuracy | B2-C1's prompt (revision 2) said `tzdata` stays as resolved and nothing else moves in the lock alignment, copied from DM-17 5.1 without reading the lock, which lists `tzdata` `# via python-dateutil`; aligning `python-dateutil` to 2.9.0.post0 removed it | The B2-C1 session |
+| AM7-02 | 23 Oct 2026 | accuracy | B2-C1's prompt said "Each push runs the Foundation workflow on your branch"; the session's harness named its branch `ccr-…`, outside the workflow's push filter, so no run started and the session had no run of record | The B2-C1 session |
 
 ## App Manager 2
 
@@ -640,3 +642,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** two small, reasonable changes outside the prompt's words, which now need the Dev Manager's disposition (DM-17 item 4). No check was weakened: the override applies to `getstream` alone.
 - **Correction:** both go to the Dev Manager in DM-17, with the recommendation to accept them.
 - **Prevention:** when a prompt adds a dependency to a component, its owned paths name the component's type-check and lint configuration and its README as well as the dependency files, or say that they stay unchanged and why.
+
+## App Manager 7
+
+### AM7-01 — A lock expectation copied without reading the lock (accuracy)
+
+- **What happened:** B2-C1's prompt, revision 2, applied DM-17 5.1 as written: regenerate the API's development lock with the harness's lock as a constraint, and leave `tzdata`, "which only the API holds", as resolved; the prompt added "nothing else moves". The lock before the alignment lists `tzdata` `# via python-dateutil`: only `python-dateutil` 3.0.0 required it, so aligning `python-dateutil` to the harness's 2.9.0.post0 left it an orphan, and uv dropped it.
+- **Caught by:** the B2-C1 session, which recorded the deviation and did not edit the lock by hand.
+- **Effect:** none on the work: the session handled it correctly, `pip check` and every API check pass without `tzdata`, and nothing was decided on the wrong sentence. The pin test's docstring repeats the sentence, and B2-C2 corrects it. The Dev Manager reads the deviation in DM-18.
+- **Correction:** the evidence record, "Manager verification of Stage B2-C1", and the brief's B2-C2 point v record it; B2-C2's prompt corrects the docstring.
+- **Prevention:** when a prompt predicts how a lock will change, the manager derives the prediction from the lock's own `# via` lines first, and quotes a condition's expectation only after checking it against them.
+
+### AM7-02 — "Each push runs the workflow" for a branch outside its filter (accuracy)
+
+- **What happened:** B2-C1's prompt, revision 2, said "Each push runs the Foundation workflow on your branch", inherited from B2's prompt. The workflow's `push` trigger names `main`, `app-builder-1/**`, `app-planner-1/**` and `claude/**`; the session's harness named its branch `ccr-a4379c5f-jeokfe`, so none of its pushes started a run, and its check 6 (the run of record) could not be met.
+- **Caught by:** the B2-C1 session, which ran the workflow's checks locally and reported that no run existed.
+- **Effect:** B2-C1's offline code had no CI run until the manager integrated it; the run of record is PR31's run on the integrating head. No result was wrong.
+- **Correction:** B2-C2's prompt names the filter and tells the session to say when its branch is outside it; the brief's B2-C2 point vi and a new step-5 bullet in the manager workflow say the integrating head's PR run is then the run of record, for the Dev Manager to read in DM-18; whether the filter should name such branches goes to M04's brief.
+- **Prevention:** the manager workflow's step 5 bullet "A session branch outside the push filter"; prompts state the filter rather than promise a run.
+
