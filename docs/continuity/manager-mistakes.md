@@ -88,6 +88,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-24 | 5 Oct 2026 | follow-through | The retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged (29 September); the handoff carried it without asking Nathan, the only person who can delete a branch, and no manager set up a cleanup of merged branches. Recorded by App Manager 6 | Nathan ("bad branching hygiene"), with 38 branches |
 | AM6-01 | 5 Oct 2026 | process | Took on Stage A's run of record itself: subscribed to PR29's CI events and scheduled a check-in to watch the run, work that belongs to the worker session | Nathan |
 | AM6-02 | 22 Oct 2026 | accuracy | Recorded B1-C1's race times as "7 to 23 s" from a listing cut off at 20 lines; the adapter's slowest race took 29.7 s against its 30-second cap | B1-C1's exact-head review (finding 1) |
+| AM6-03 | 23 Oct 2026 | scope | Stage B2's prompt added a pinned, untyped SDK to `services/api` but its owned paths named neither `pyproject.toml`, where the type check's override for it lives, nor the API README; the session changed both, reporting one | App Manager 6, verifying Stage B2 |
 
 ## App Manager 2
 
@@ -631,3 +632,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** the record understated the job's time margin, which is the basis for deciding when the job's budget goes to the Dev Manager. No result changed, and nothing was decided on it before the correction.
 - **Correction:** the bullet is corrected in place and marked; the margin goes to the Dev Manager with Stage B2's prompt (DM-16).
 - **Prevention:** a range, a count or a maximum written into a record comes from the whole source, never from a truncated listing; when output is truncated, the figure is computed over the full file (for example `grep … | sort`) and the line count is checked against the expected total.
+
+### AM6-03 — Owned paths that missed what a new dependency needs (scope)
+
+- **What happened:** Stage B2's prompt let the session pin `getstream` and `pyjwt` in `services/api`'s development scope and named the files the pin touches: `requirements-dev.in`, `requirements-dev.lock` and `dependency-inventory.json`. It did not name `services/api/pyproject.toml`, where mypy needs an override for an SDK that ships no type information, or the API README, which describes the component's dependencies. The session changed both without stopping (section 5 said "Nothing else. Report any other change you think is needed"), and reported the first.
+- **Caught by:** App Manager 6, verifying Stage B2's paths against section 5.
+- **Effect:** two small, reasonable changes outside the prompt's words, which now need the Dev Manager's disposition (DM-17 item 4). No check was weakened: the override applies to `getstream` alone.
+- **Correction:** both go to the Dev Manager in DM-17, with the recommendation to accept them.
+- **Prevention:** when a prompt adds a dependency to a component, its owned paths name the component's type-check and lint configuration and its README as well as the dependency files, or say that they stay unchanged and why.
