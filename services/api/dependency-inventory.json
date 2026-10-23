@@ -66,7 +66,7 @@
     },
     {
       "name": "certifi",
-      "version": "2026.10.23",
+      "version": "2026.7.22",
       "scope": "development",
       "license_expression": null,
       "license_field": "MPL-2.0",
@@ -79,7 +79,7 @@
     },
     {
       "name": "charset-normalizer",
-      "version": "3.5.2",
+      "version": "3.5.1",
       "scope": "development",
       "license_expression": null,
       "license_field": "MIT",
@@ -195,7 +195,7 @@
     },
     {
       "name": "ijson",
-      "version": "3.6.0",
+      "version": "3.5.1",
       "scope": "development",
       "license_expression": "BSD-3-Clause AND ISC",
       "license_field": null,
@@ -310,7 +310,7 @@
     },
     {
       "name": "pydantic",
-      "version": "2.14.1",
+      "version": "2.13.5",
       "scope": "development",
       "license_expression": "MIT",
       "license_field": null,
@@ -321,7 +321,7 @@
     },
     {
       "name": "pydantic_core",
-      "version": "2.50.1",
+      "version": "2.46.5",
       "scope": "development",
       "license_expression": "MIT",
       "license_field": null,
@@ -332,7 +332,7 @@
     },
     {
       "name": "pydantic-settings",
-      "version": "2.16.1",
+      "version": "2.15.0",
       "scope": "development",
       "license_expression": "MIT",
       "license_field": null,
@@ -345,7 +345,7 @@
     },
     {
       "name": "pyee",
-      "version": "15.0.0",
+      "version": "14.0.0",
       "scope": "development",
       "license_expression": null,
       "license_field": "MIT",
@@ -370,7 +370,7 @@
     },
     {
       "name": "python-dateutil",
-      "version": "3.0.0",
+      "version": "2.9.0.post0",
       "scope": "development",
       "license_expression": null,
       "license_field": "Dual License",
@@ -384,7 +384,7 @@
     },
     {
       "name": "python-dotenv",
-      "version": "1.2.4",
+      "version": "1.2.3",
       "scope": "development",
       "license_expression": null,
       "license_field": "BSD-3-Clause",
@@ -527,18 +527,6 @@
       "license_classifiers": [],
       "license_files": [
         "LICENSE"
-      ]
-    },
-    {
-      "name": "tzdata",
-      "version": "2026.5",
-      "scope": "development",
-      "license_expression": null,
-      "license_field": "Apache-2.0",
-      "license_classifiers": [],
-      "license_files": [
-        "LICENSE",
-        "licenses/LICENSE_APACHE"
       ]
     },
     {

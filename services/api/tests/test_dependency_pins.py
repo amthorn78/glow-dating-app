@@ -1,11 +1,15 @@
-"""One SDK under test (P06.2 Stage B2; DM-16 2.2).
+"""One SDK under test (P06.2 Stage B2; DM-16 2.2), one resolved set (P06.2 Stage B2-C1;
+DM-17 5.1).
 
-The conformance run executes the Stream adapter on the harness's installed SDK, so the
-API's development lock must resolve ``getstream``, ``httpx`` and ``pyjwt`` (the signer uses
-it directly) to the same version with the same set of hashes as the harness's
-``requirements.lock``; otherwise the live run vouches for a different build than the API
-pins. The files are only read. Any other shared package whose version differs is reported,
-not failed (``differing_shared_packages``).
+The conformance run executes the Stream adapter on the harness's installed SDK, so the API's
+development lock must resolve every package it shares with the harness's ``requirements.lock``
+to the same version with the same set of hashes; otherwise the live run vouches for a
+different build than the API pins. Stage B2 held ``getstream``, ``httpx`` and ``pyjwt`` (the
+signer uses it directly) to that and only reported the other shared packages, nine of which
+had resolved later (``python-dateutil`` a major version later). Since B2-C1 the development
+lock is regenerated with the harness's lock as a constraint, and this test holds every shared
+package to it, each as a subtest; ``tzdata``, which only the API holds, is not shared and
+stays as resolved. The files are only read.
 """
 
 import re
@@ -17,6 +21,8 @@ API_DEV_LOCK = ROOT / "services" / "api" / "requirements-dev.lock"
 API_DEV_IN = ROOT / "services" / "api" / "requirements-dev.in"
 API_RUNTIME_LOCK = ROOT / "services" / "api" / "requirements.lock"
 HARNESS_LOCK = ROOT / "proofs" / "stream-chat" / "requirements.lock"
+# The SDK, its HTTP client and the JWT library: the shared packages Stage B2 named; every
+# other shared package is held the same way since B2-C1.
 SHARED = ("getstream", "httpx", "pyjwt")
 PINS = {"getstream": "6.1.0", "pyjwt": "2.15.0"}
 
@@ -46,23 +52,22 @@ def resolved(lock: Path) -> Resolved:
     return packages
 
 
-def differing_shared_packages() -> dict[str, tuple[str, str]]:
-    """Shared packages whose versions differ between the two locks (API, harness)."""
-    api, harness = resolved(API_DEV_LOCK), resolved(HARNESS_LOCK)
-    return {
-        name: (api[name][0], harness[name][0])
-        for name in sorted(set(api) & set(harness))
-        if api[name][0] != harness[name][0]
-    }
+def shared_packages() -> list[str]:
+    """Every package both locks resolve."""
+    return sorted(set(resolved(API_DEV_LOCK)) & set(resolved(HARNESS_LOCK)))
 
 
 class DependencyPinTests(unittest.TestCase):
-    def test_the_sdk_its_http_client_and_the_jwt_library_match_the_harness(self) -> None:
+    def test_every_package_the_two_locks_share_matches_the_harness(self) -> None:
         api, harness = resolved(API_DEV_LOCK), resolved(HARNESS_LOCK)
+        shared = shared_packages()
         for name in SHARED:
+            self.assertIn(name, shared, f"{name} is not in both locks")
+        # The SDK's whole resolved set is shared (about 30 packages); a shrunken intersection
+        # would mean a lock lost its packages, not that they agree.
+        self.assertGreaterEqual(len(shared), 25, shared)
+        for name in shared:
             with self.subTest(package=name):
-                self.assertIn(name, api, f"{name} is not in the API's development lock")
-                self.assertIn(name, harness, f"{name} is not in the harness's lock")
                 self.assertEqual(api[name][0], harness[name][0], "version")
                 self.assertTrue(api[name][1], "no hashes")
                 self.assertEqual(api[name][1], harness[name][1], "hashes")
@@ -75,10 +80,6 @@ class DependencyPinTests(unittest.TestCase):
         for name in SHARED:
             self.assertNotIn(name, runtime, f"{name} must stay out of the runtime lock (P11)")
         self.assertEqual(resolved(API_DEV_LOCK)["getstream"][0], PINS["getstream"])
-
-    def test_differing_shared_packages_is_a_report_not_a_failure(self) -> None:
-        differing = differing_shared_packages()
-        self.assertFalse(set(differing) & set(SHARED))
 
 
 if __name__ == "__main__":

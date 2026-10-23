@@ -1,12 +1,13 @@
 """Command line entry point: ``python -m glow_stream_proof <command>``.
 
-Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``configure`` and
-``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
+Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``full-view`` (P06.2 Stage
+B2-C1: every configuration field, credential-like values digested, GETs only), ``configure``
+and ``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
 ``configure --products video,feeds --apply``, ``run``, ``conformance`` (P06.2 Stage B2:
 the app's Stream adapter, on this harness's client, under the run's preflight, guard,
 budget, stop signals and cleanup), ``cleanup --apply`` and ``restore --apply``.
 ``record-baseline`` and ``record-products-baseline`` write files from a snapshot and call
-nothing.
+nothing; ``compare-views`` compares two full views and calls nothing.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import baseline, configuration, conformance, guard, products, report
+from . import baseline, configuration, conformance, full_view, guard, products, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
 from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, lean_only, list_polls_and_groups
 from .redaction import Redactor
@@ -315,6 +316,45 @@ def cmd_record_products_baseline(ctx: Context, snapshot_path: Path) -> int:
     shown = path.relative_to(PROOF_ROOT) if path.is_relative_to(PROOF_ROOT) else path
     ctx.say(f"video and feeds baseline record written to {shown}")
     return 0
+
+
+def cmd_full_view(ctx: Context) -> int:
+    """A read-only full view of the configuration (P06.2 Stage B2-C1; DM-17 2.1 and 2.3):
+    every settings key of the application and its grants, every channel type, the roles,
+    every call type, feed visibility and feed group, read with GETs only under a guard that
+    refuses anything else, credential-like values written as their type, emptiness and
+    SHA-256 (:mod:`glow_stream_proof.full_view`). Six server API calls."""
+    ctx.api.guard = full_view.read_only_refusal
+    view = full_view.read_view(ctx.api)
+    path = write_json(f"full-view-{view['at']}.json", view, ctx.secrets)
+    ctx.say(f"full view written to {path.relative_to(PROOF_ROOT)}")
+    for line in full_view.summary(view):
+        ctx.say(line)
+    return 0
+
+
+def cmd_compare_views(ctx: Context, before_path: Path, after_path: Path) -> int:
+    """The offline comparison of two full views (DM-17 2.3): every field of every read,
+    value and type, the volatile fields ``full_view.VOLATILE_FIELDS`` left aside; each
+    changed path is printed with its before and after (or digest), and the comparison is
+    written to ``.work/``. Calls nothing. Exit 0 when nothing changed, 1 otherwise."""
+    before = json.loads(before_path.read_text(encoding="utf-8"))
+    after = json.loads(after_path.read_text(encoding="utf-8"))
+    changes = full_view.compare(before, after)
+    record = {
+        "at": _stamp(),
+        "before": before_path.name,
+        "after": after_path.name,
+        "left_aside": sorted(full_view.VOLATILE_FIELDS),
+        "changes": changes,
+    }
+    path = write_json(f"compare-views-{record['at']}.json", record, ctx.secrets)
+    ctx.say(f"comparison written to {path.relative_to(PROOF_ROOT)}")
+    ctx.say(f"left aside (volatile fields): {record['left_aside']}")
+    for line in full_view.render(changes):
+        ctx.say(line)
+    ctx.say(f"changed fields: {len(changes)}")
+    return 0 if not changes else 1
 
 
 def cmd_probe_products(ctx: Context) -> int:
@@ -826,6 +866,16 @@ def main(argv: list[str] | None = None) -> int:
         help="scoped, differential: only Video and Feeds configuration writes (video,feeds)",
     )
     sub.add_parser("probe-products", help="read-only: is each of Video and Feeds available?")
+    sub.add_parser(
+        "full-view",
+        help="P06.2 Stage B2-C1, read-only: every configuration field, credential-like values "
+        "digested (GETs only)",
+    )
+    cmp = sub.add_parser(
+        "compare-views", help="P06.2 Stage B2-C1: compare two full views offline; calls nothing"
+    )
+    cmp.add_argument("--before", type=Path, required=True)
+    cmp.add_argument("--after", type=Path, required=True)
     prec = sub.add_parser(
         "record-products-baseline", help="write the Video and Feeds baseline from a snapshot"
     )
@@ -862,6 +912,10 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_configure(ctx, args.apply, scope)
         if args.command == "probe-products":
             return cmd_probe_products(ctx)
+        if args.command == "full-view":
+            return cmd_full_view(ctx)
+        if args.command == "compare-views":
+            return cmd_compare_views(ctx, args.before, args.after)
         if args.command == "record-products-baseline":
             return cmd_record_products_baseline(ctx, args.snapshot)
         if args.command == "run":
