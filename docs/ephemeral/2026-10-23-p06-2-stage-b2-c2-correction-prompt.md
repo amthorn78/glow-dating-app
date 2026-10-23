@@ -36,7 +36,7 @@ You are the **correction session P06.2 Stage B2-C2**, which returns Stream's dev
   - push only your own session branch. **The Foundation workflow runs on a push only for `main`, `app-builder-1/**`, `app-planner-1/**` and `claude/**`.** If your branch's name is outside those, no run starts: say so in your report, and the manager's integration run is the run of record. On GitHub do nothing else: no pull request, no PR comments, no re-runs, no workflow dispatches. Change nothing in Notion.
 - **Never:**
   - dump the environment, or print, echo, log, copy or commit any `STREAM_*` value, a token, a signature, a marker or any other credential, in any form;
-  - call any Stream application but 1729640, or any Stream product but Chat, except the read-only Video and Feeds reads and the Video and Feeds `PUT`s that section 4 item 5.1 plans; create a call, a feed, an activity or an invite;
+  - call any Stream application but 1729640, or any Stream product but Chat, except the read-only Video and Feeds reads and the Video and Feeds `PUT`s that section 4 item 6.1 plans; create a call, a feed, an activity or an invite;
   - run `restore --apply`, a second `configure --apply`, a second `configure --products video,feeds --apply`, or any other command that changes the application's settings, roles, grants or channel or call types;
   - connect to any database, HDE, Railway or any other provider;
   - run `playwright install` or `eas`;

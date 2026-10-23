@@ -91,6 +91,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM6-03 | 23 Oct 2026 | scope | Stage B2's prompt added a pinned, untyped SDK to `services/api` but its owned paths named neither `pyproject.toml`, where the type check's override for it lives, nor the API README; the session changed both, reporting one | App Manager 6, verifying Stage B2 |
 | AM7-01 | 23 Oct 2026 | accuracy | B2-C1's prompt (revision 2) said `tzdata` stays as resolved and nothing else moves in the lock alignment, copied from DM-17 5.1 without reading the lock, which lists `tzdata` `# via python-dateutil`; aligning `python-dateutil` to 2.9.0.post0 removed it | The B2-C1 session |
 | AM7-02 | 23 Oct 2026 | accuracy | B2-C1's prompt said "Each push runs the Foundation workflow on your branch"; the session's harness named its branch `ccr-…`, outside the workflow's push filter, so no run started and the session had no run of record | The B2-C1 session |
+| AM7-03 | 23 Oct 2026 | accuracy | B2-C2's prompt, revisions 1 and 2, let the session send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat dry run, and the products dry run is item 6.1 | App Manager 7, reading revision 2 before giving it to Nathan |
 
 ## App Manager 2
 
@@ -660,4 +661,12 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** B2-C1's offline code had no CI run until the manager integrated it; the run of record is PR31's run on the integrating head. No result was wrong.
 - **Correction:** B2-C2's prompt names the filter and tells the session to say when its branch is outside it; the brief's B2-C2 point vi and a new step-5 bullet in the manager workflow say the integrating head's PR run is then the run of record, for the Dev Manager to read in DM-18; whether the filter should name such branches goes to M04's brief.
 - **Prevention:** the manager workflow's step 5 bullet "A session branch outside the push filter"; prompts state the filter rather than promise a run.
+
+### AM7-03 — A cross-reference to the wrong item (accuracy)
+
+- **What happened:** B2-C2's prompt, revision 1, moved the Video and Feeds lockdown from B2-C1's item 4.4 to item 6 and its dry run to item 6.1, but its "Never" line still said the session may send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat target's dry run. Revision 2 carried it, and the Dev Manager's read (DM-18) did not mention it.
+- **Caught by:** App Manager 7, reading revision 2 in full before giving it to Nathan.
+- **Effect:** none: no session ran either revision. Read literally, the line would have allowed no Video or Feeds `PUT` at all, since item 5.1 plans none, and the session would have stopped at item 6 as a departure.
+- **Correction:** revision 2 reads "section 4 item 6.1" before it goes to Nathan. The fix changes a reference, not what the prompt allows; the review log's DM-18 entry lists it for the next consultation to confirm.
+- **Prevention:** when a revision renumbers or moves an item, the manager searches the prompt for every "item N" reference and checks each against the new numbering before the revision is committed.
 

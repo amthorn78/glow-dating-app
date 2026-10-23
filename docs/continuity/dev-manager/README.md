@@ -467,6 +467,8 @@ App Manager 7 checked the report (`f0a43c9`) against the relayed message, which 
 | 8 The `agent` stamp | B2-C2 records stamps; D8 unchanged, strengthened if a lock is undone | **Accepted** | Brief, point vii; the prompt (2.4, 3.5) |
 | 9 Notion | Matches, apart from three uses-table cells | **Accepted**: B2-C1 revision 2's and B2-C2 revision 1's Session set to "correction"; B2-C1 revision 2's pick set to "not recorded" | Notion's uses table |
 
+**One change to B2-C2's revision 2 beyond DM-18's conditions, for the next consultation to confirm** (AM7-03): its "Never" line referred to "the Video and Feeds `PUT`s that section 4 item 5.1 plans", a reference left from before the renumbering; it now reads "item 6.1", the products dry run, which is what revision 1 meant and DM-18 read.
+
 ## Nathan's answers and directions (25 September 2026)
 
 Nathan answered the Dev Manager directly in its session, and the Dev Manager recorded his words and their consequences in five files. They arrived through Nathan's relay message and were integrated in the batch that follows `516bee2`.
