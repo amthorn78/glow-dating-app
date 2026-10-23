@@ -90,6 +90,20 @@ class RunPlanTest(unittest.TestCase):
         self.assertEqual(self.plan["i2b_total_with_reserve"], {"users": 18, "channels": 8})
         self.assertTrue(all(self.plan["i2b_fits"].values()), self.plan["i2b_fits"])
 
+    def test_the_b2_conformance_plan(self) -> None:
+        """P06.2 Stage B2 (its prompt, item 5; DM-16 1.3): the Stream adapter's conformance
+        run and one rerun of it fit the session caps."""
+        conformance = self.plan["conformance"]
+        self.assertEqual(
+            (conformance["users"], conformance["channels"], conformance["peak_connections"]),
+            (4, 2, 1),
+        )
+        self.assertEqual(conformance["rows"], 46)
+        self.assertEqual(conformance["problems"], [])
+        self.assertLess(conformance["api_calls"], 400)
+        self.assertEqual(self.plan["b2_total_with_reserve"], {"users": 8, "channels": 4})
+        self.assertTrue(all(self.plan["b2_fits"].values()), self.plan["b2_fits"])
+
     def test_one_set_is_counted_on_its_own(self) -> None:
         script = load_script()
         only = script.measure({"VD-create", "FD-feed"})

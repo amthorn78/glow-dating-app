@@ -15,6 +15,12 @@ files = ["glow_api", "glow_domain", "glow_chat"]
 module = ["django.*", "rest_framework.*"]
 ignore_missing_imports = true
 
+# Stream's server SDK ships no type information (no py.typed); the adapter holds it as Any,
+# as the harness does (P06.2 Stage B2).
+[[tool.mypy.overrides]]
+module = ["getstream", "getstream.*"]
+ignore_missing_imports = true
+
 # The P02 model definitions are untyped Django declarations; glow_chat uses them as Any.
 [[tool.mypy.overrides]]
 module = ["glow_persistence.*"]

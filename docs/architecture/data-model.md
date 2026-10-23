@@ -157,7 +157,7 @@ No event relies on rereading a body already erased by deletion. Leases/retries h
 configured finite limits and dead-letter reconciliation; no retry duration is
 selected by schema defaults.
 
-## Chat contact and the outbox (P06.2 Stage A and Stage B1)
+## Chat contact and the outbox (P06.2 Stage A, Stage B1 and Stage B2)
 
 The [P06.2 brief](../planning/p06-2-chat-integration.md), revision 3, items 1 to 4, and
 its "Carried to Stage B and P11" with "B1's design points" (Stage B1: F1 to F5, CX4 to
@@ -165,8 +165,9 @@ CX6, under DM-15's conditions). The domain port is `glow_domain/chat.py`
 (`ContactPersistence`); the persistence adapter that implements it is
 `glow_chat/contact.py` (`OrmContactPersistence`); the outbox delivery is
 `glow_chat/delivery.py`; the chat provider port and its fixture adapter are
-`glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the token rules are
-`glow_domain/chat_tokens.py`; the order column's field type is
+`glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the Stream adapter on that
+port and the client token's signer are `glow_domain/chat_provider_stream.py` (Stage B2);
+the token rules are `glow_domain/chat_tokens.py`; the order column's field type is
 `glow_persistence/fields.py`. The adapter is a new package rather than code in
 `glow_persistence`, so that the model registry stays definitions only (its static check
 still forbids every connection) and the runtime's seal names one package it must never
@@ -295,6 +296,47 @@ next whole second, strictly, so every token issued at or before the cut-off is c
 The suite forces both orders with the app clock skewed an hour ahead (`token.*` cases):
 a grant that waits on a bump refuses after it, and a grant that commits just before a
 bump has an issue time before the bump's cut-off.
+
+**The Stream adapter** (B2; the brief's design points c and d, DM-16 2.3, 2.4, 4.1, 4.4
+and 4.5). `StreamChatProvider` in `glow_domain/chat_provider_stream.py` implements the six
+operations of the port on an injected `getstream` 6.1.0 client and holds nothing else: it
+never constructs a client, reads no environment variable and imports only the port, the
+token module and the SDK, so the runtime's seal keeps it out of every runtime import and
+the harness imports it by path. It sends identifiers and members only: a user is created
+with its ID; a channel in `glow-match` with exactly its two members and the first of them
+as the creator (`created_by_id`, which Stream requires of a server-side creation; one of
+the two members, never a name, image or custom field); a message with its committed ID,
+its text and its sender; a removal names the two members; a deactivation carries an empty
+body; a revocation carries the user and the cut-off exactly as delivery gives it
+(`revocation_cutoff_sent`). It reads before it acts, so a repeat never undoes a revocation
+(4.4): provisioning creates the user only when Stream does not hold it (a deactivated user
+counts as held) and never resets a field, reactivates or clears a cut-off; channel creation
+creates only when the channel is absent, so a repeat sends the members to no existing
+channel; removal sends only while one of the two is still a member; deactivation and
+revocation never create a user, and a revocation whose cut-off is not later than the one
+Stream holds sends nothing. `already=True` comes from those reads, and for a message whose
+ID Stream reports as existing. Only the SDK's own API error and its transport errors and
+timeouts are mapped to Glow codes, by HTTP status and Stream's numeric code (a transport
+error, a timeout, a 5xx, a 429 or an unreadable success is `provider_unavailable`; 404 with
+code 16 is the operation's missing object, `channel_unavailable` or `member_unavailable`;
+every other 4xx is `provider_rejected`; a send's 400 code 4 is told apart by its text in
+memory only); every other exception, the harness's stop types among them, propagates
+unchanged, and no provider text is stored, returned or logged. The adapter enforces no ID
+shape. The conformance run (`proofs/stream-chat`, `conformance`) is its live evidence; the
+offline contract runs the same rows against the fixture and against the adapter on a
+hand-written recorded transport (`tests/test_chat_provider_stream.py`).
+
+**The signer** (B2; design point e, DM-16 3.1 to 3.3). `getstream` 6.1.0's `create_token`
+takes `iat` from the SDK's own clock minus five seconds and `exp` from that clock plus a
+lifetime, with no parameter for either, so the pre-approved fallback signs the client's
+token in `sign_chat_token`: HS256 through `pyjwt`, with the injected client's own secret
+read at signing time and kept nowhere, and the claims exactly `user_id`, `iat` and `exp`,
+where `iat` is the grant's `issued_at` truncated to the whole second (less
+`IAT_BACKDATE_SECONDS`, a fixed number of whole seconds, never more than 5, that is 0
+unless Stream refuses a token whose `iat` is the current second; the conformance run's
+row shows the value in force) and `exp` is the grant's `expires_at` truncated to the
+whole second, never later. The SDK's clock plays no part, so the issue time stays the
+database's (F1).
 
 ## Erasure, retention and restore
 
