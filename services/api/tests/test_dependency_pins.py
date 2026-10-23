@@ -8,8 +8,9 @@ different build than the API pins. Stage B2 held ``getstream``, ``httpx`` and ``
 signer uses it directly) to that and only reported the other shared packages, nine of which
 had resolved later (``python-dateutil`` a major version later). Since B2-C1 the development
 lock is regenerated with the harness's lock as a constraint, and this test holds every shared
-package to it, each as a subtest; ``tzdata``, which only the API holds, is not shared and
-stays as resolved. The files are only read.
+package to it, each as a subtest; ``tzdata`` left the development lock in that regeneration,
+since only ``python-dateutil`` 3.0.0 required it and 2.9.0.post0 does not. The files are only
+read.
 """
 
 import re
