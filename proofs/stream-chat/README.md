@@ -302,7 +302,7 @@ Reads, including the POST queries the proof makes, are never refused. A refusal 
 - `disable_auth_checks=false` and `disable_permissions_checks=false`. Both were already false.
 - `guest_user_creation_disabled=true`. It was false.
 - Empty `.app` grants for `user`, `guest` and `anonymous`. `user` had 24 grants, including `search-user`, `update-user-owner` and `create-user-group`. `guest` had 4.
-- Empty grants for every role in the five default channel types. Their features are unchanged.
+- Empty grants for every role in every channel type other than `glow-match`: the five default types and, since P06.2 Stage B2-C1 (the brief's point i), any type Stream has added (the default type `agent`, created on 20 October 2026 with Stream's default client grants, which the five names missed). Each gets the same `PUT` as the default types: its `automod`, `automod_behavior` and `max_message_length` re-sent from the snapshot, every role's grants `[]`; their features are unchanged. `configuration.verify` reports any grant any role holds in any such type, and still requires the five default types to exist.
 - The `glow-match` channel type: members get `read-channel` only, every other role gets nothing, and every content feature is off, including typing events. Read events stay on.
 
 The configuration stays in place for P06.1-I2.
@@ -340,6 +340,8 @@ To restore the recorded baseline, check the plan first, then apply it:
 ```
 
 `--delete-match-type` works only when no `glow-match` channel exists. Stream's documented alternative is to send `grants: null` for a scope, which resets it to Stream's defaults. The live grants were not checked against Stream's defaults.
+
+`restore` returns only what the recorded baseline holds: the application's guest setting and client grants, and the five default types' grants and fixed settings. A channel type the baseline does not hold, such as the default type `agent` Stream created on 20 October 2026, is left untouched: `restore` sends nothing for it, and its verification does not inspect it (P06.2 Stage B2-C1). After a restore such a type keeps whatever `configure --apply` set, which is every role's grants empty.
 
 Side effect: the admin role's grants in the default types and in `glow-match` are empty too. A dashboard tool that acts client-side as the dashboard user may therefore be refused in those types until restored. This is unverified.
 

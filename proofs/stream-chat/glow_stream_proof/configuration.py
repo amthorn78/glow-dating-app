@@ -13,8 +13,11 @@ Design under proof: clients may only read their own match's channel. So:
   application grants (no user search, no own-profile updates, no polls, no user
   groups, no uploads outside channels).
 * Guest user creation is disabled.
-* Every default channel type keeps its features but every role's grants are
-  emptied, so no client role can create, join, read or send in it.
+* Every channel type other than ``glow-match`` keeps its features but every role's
+  grants are emptied, so no client role can create, join, read or send in it: the
+  five default types, which must still exist, and any type Stream adds (P06.2 Stage
+  B2-C1, point i: a default type ``agent`` with Stream's default client grants
+  appeared on 20 October 2026, which the five names missed).
 * ``glow-match``: members get ``read-channel`` only; every other role gets
   nothing; features a client could use to put content in front of the other
   member are off.
@@ -190,8 +193,13 @@ def apply_plan(snapshot: Mapping[str, Any]) -> list[ApiRequest]:
             "remove client roles' application grants",
         )
     ]
-    for name in DEFAULT_TYPES:
-        cfg = types[name]
+    # Every channel type the snapshot shows other than glow-match is locked with the same
+    # request: the five default types and any type Stream has added since (P06.2 Stage
+    # B2-C1, point i), its fixed settings re-sent from the snapshot, every role's grants [].
+    for name, cfg in sorted(types.items()):
+        if name == MATCH_TYPE:
+            continue
+        kind = "default type" if name in DEFAULT_TYPES else "channel type"
         plan.append(
             ApiRequest(
                 "PUT",
@@ -202,7 +210,7 @@ def apply_plan(snapshot: Mapping[str, Any]) -> list[ApiRequest]:
                     "max_message_length": cfg["max_message_length"],
                     "grants": {role: [] for role in roles},
                 },
-                f"lock default type {name}: empty grants for every role",
+                f"lock {kind} {name}: empty grants for every role",
             )
         )
     create_body = {k: v for k, v in MATCH_FEATURES.items() if k not in _UPDATE_ONLY_FEATURES}
@@ -295,9 +303,14 @@ def verify(snapshot: Mapping[str, Any], recorded: Mapping[str, Any] | None = Non
     problems += recorded_differences(app, recorded_app_settings() if recorded is None else recorded)
     problems += product_differences(snapshot)
     for name in DEFAULT_TYPES:
-        cfg = types.get(name)
-        if cfg is None:
+        if name not in types:
             problems.append(f"default type {name} missing")
+    # Every channel type other than glow-match must hold no grant for any role: the five
+    # default types and any type Stream adds (P06.2 Stage B2-C1, point i; until then only
+    # the five named types were inspected, and the default type `agent` Stream created on
+    # 20 October 2026, with client grants, went unseen).
+    for name, cfg in sorted(types.items()):
+        if name == MATCH_TYPE:
             continue
         for role, granted in cfg.get("grants", {}).items():
             if granted:
@@ -339,7 +352,10 @@ def product_differences(snapshot: Mapping[str, Any], locked: bool | None = None)
 def restore_plan(record: Mapping[str, Any], *, delete_match_type: bool) -> list[ApiRequest]:
     """Requests that return the application to the recorded baseline.
 
-    The match type can only be deleted once no channel of that type exists.
+    The match type can only be deleted once no channel of that type exists. A channel
+    type the record does not hold (one Stream added after the record was taken, such as
+    the default type ``agent`` of 20 October 2026) is left untouched: the plan names only
+    the record's types, and :func:`verify_restored` inspects only those.
     """
     settings = record["app_settings"]
     plan = [
