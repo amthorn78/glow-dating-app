@@ -1711,3 +1711,334 @@ App Manager 7, 23 October 2026, from Nathan's relay of the session's report and 
 - **State of the development application now:** the chat target holds (D1 corrected, every type other than `glow-match` empty; the apply's re-read: chat 0); the call types `agent` and `audio_call` still give `user` and `guest` Stream's default grants (D2 and D5 open; Video and Feeds 4). No conformance row has run.
 - **The architecture document's "Restoring" sentence** (section 5) now names the 23 October baseline in force, at this integration (DM-17 1.1).
 - **For the Dev Manager (DM-19):** whether the re-created `agent`, with `blocklist_behavior` `"flag"`, is accepted as class 2's lock; the rule for an apply's derived and materialization changes, decided before the next pass, since the first write to `agent` and `audio_call` (both `created_at` 0) may change them the same way; the next pass, B2-C3, from today's state.
+
+## Stage B2-C3
+
+The Video and Feeds lockdown after B2-C2's chat apply, then B2's live rows (the brief, "B2-C2's live run stopped after its chat apply, and B2-C3"; DM-19). **The session did not stop: every step of the prompt's section 5 ran, in order.** Item 1's `baseline` showed exactly the four expected class-3 lines and no chat line; the two read-only views 69 s apart showed no change; the listings showed only the two expected marks; no case of section 3 arose, so no new baseline was recorded and no chat apply ran (V1 is V0b). The products dry run planned exactly the two expected `PUT`s; `configure --products video,feeds --apply` ran once, both `PUT`s 201, its differences after `[]`; the comparison V1–V2 showed 10 fields, every one within section 4 (4 planned grants, 2 derived `scopes` losses, 4 identity fields of DM-19 2.4 on the two call types the write materialized). Both counts were 0 before and after the conformance run. **The conformance run completed: 42 PASS, 2 RECORDED, 2 DIFFERENCE.**
+
+**First, the blocking rule (DM-16 5.2): row D10 differs from the fixture.** "Deactivation of a user Stream does not have" gave `ok` where the fixture gives `member_unavailable`. Under the rule this blocks B2's merge until it is dispositioned. The run's own record shows why: the user the row names (the run's `U9`) **was held by Stream at D10**, because row M5 had just sent a message as `U9` and Stream accepted it (M5's `ok`, the other DIFFERENCE): read with the cleanup's count, that accepted send is what created the user at Stream (an inference from the run's own reads and the adapter's code). So D10 deactivated an existing user, and V13's `member_unavailable` came from Stream's 404 code 16 on that now-deactivated user, not from the adapter's "absent" read: **neither D10 nor V13 exercised "a user Stream does not have" live.** C4, which names the same `U9` before M5, did, through the read `deactivate_user` and `revoke_user_tokens` share. The analysis and a proposal are under "The two differences" below; no code was changed and no rerun was made (the rerun rule covers a run that stopped; this one completed).
+
+- **Prompt:** revision 2, from commit `7498e47865c181df4f1d295257cdada163e7d84c` (`docs/ephemeral/2026-10-23-p06-2-stage-b2-c3-correction-prompt.md`).
+- **Start:** `7498e47865c181df4f1d295257cdada163e7d84c`. The manager branch `claude/magical-wozniak-yfmmx2` was at `adcc0c7` when the session began, one commit later, which changes only the handoff and one line of this record's "Manager verification of Stage B2-C2" (no path under `services/`, `proofs/` or `.github/`); `main` was `3272eed3d6b07d3215c6c667000082b6254eea69`.
+- **Session branch:** `claude/admiring-lovelace-c6ii7i`, under the workflow's `claude/**` push filter.
+- **Code commits:** none. Section 7's items were not needed (below). **Run of record:** no code changed, so B2-C2's push run 40025252591 on `ebdc690` stays the run of record for the code (check 6).
+- **Records commit:** the commit that adds this section. It changes only this Markdown file.
+- **Times:** 23 October 2026, UTC.
+
+### Environment check (names only)
+
+- `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET` are set: the `Glow app` environment. None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing), and no `PG*` or `PROOF_DB_*` name. `ls -a . services/api proofs/stream-chat | grep -x '\.env'` printed nothing. I never read a Stream value: every harness command ran in B2-C2's command form through a scratch wrapper outside the checkout (`env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, the three `STREAM_*` names, `HTTPS_PROXY`, `https_proxy`, `NO_PROXY`, `no_proxy`, `SSL_CERT_FILE` and `NODE_EXTRA_CA_CERTS` by reference), and the harness's credential loader read them; for `pip` also `REQUESTS_CA_BUNDLE`, `PIP_CERT` and `CURL_CA_BUNDLE`, by reference.
+- `command -v python3.12` is `/root/.local/bin/python3.12`, `Python 3.12.14`; Node `v24.19.0`; npm `11.9.0`, with `$HOME/.local/bin` first on PATH. Every other command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only 7498e478…` on the session branch; `git rev-parse HEAD` printed `7498e47865c181df4f1d295257cdada163e7d84c`; `git diff --stat 7498e478… origin/claude/magical-wozniak-yfmmx2 -- services/ proofs/ .github/` printed nothing; `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage B2-C3'` printed `0`. The reading list was read whole before the first live command: root `AGENTS.md` and `CLAUDE.md`, the API README, the harness README, the brief (revision 7), DM-16, DM-17, DM-18 and DM-19, ADR 0003's "Conditions", the architecture document's section 5, this record's "Stage B2-C2", "Manager verification of Stage B2-C2" and "Stage B2-C1", the B2-C2 prompt's sections 3 and 4 and the B2 prompt's item 7, and in the harness `configuration.py`, `products.py`, `full_view.py`, `baseline.py`, `cli.py` (the commands named), `guard.py`'s configure scope and product rule, `conformance.py`, the three committed baselines, `tests/fake_products.py` and the tests that model the products baseline; and the Stream adapter's operations (`services/api/glow_domain/chat_provider_stream.py`), to read the rows. At the start, the API's tests ran 328, `OK`, and the harness's 638, `OK` (check 4).
+
+### Section 7's items
+
+| Item | Done? |
+|---|---|
+| 1, a new merged baseline and its switch | **Not needed:** item 1's `baseline` showed no class-3 or class-4 line beyond the 23 October baseline (section 3, case 1 did not arise). No `record-products-baseline` ran; the three committed baselines are byte-identical (sha256 `2c07642d…`, `ed09aafa…` and `840196186d02…`, as at the start) |
+| 2, a volatile name or a list key | **Not needed:** V0a and V0b differ in no field (item 2) |
+| 3, a fix under the rerun rule | **Not needed, and not available:** the conformance run did not stop (it completed with two DIFFERENCE rows), so the rerun rule's first condition does not hold; no rerun was made and no code changed |
+
+### The live run
+
+The command form, from `proofs/stream-chat`, as B2-C2's:
+
+```
+env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 STREAM_APP_ID="$STREAM_APP_ID" STREAM_API_KEY="$STREAM_API_KEY" STREAM_API_SECRET="$STREAM_API_SECRET" HTTPS_PROXY="$HTTPS_PROXY" https_proxy="$https_proxy" NO_PROXY="$NO_PROXY" no_proxy="$no_proxy" SSL_CERT_FILE="$SSL_CERT_FILE" NODE_EXTRA_CA_CERTS="$NODE_EXTRA_CA_CERTS" .venv/bin/python -m glow_stream_proof <command>
+```
+
+The usage ledger started empty (no `.work/` in the fresh checkout). Each command's API calls are the ledger's difference across it.
+
+**1. `baseline`** (item 1, read-only), 22:27:16.95 to 22:27:19.54, exit 0, 8 server API calls. Its output, whole:
+
+```
+snapshot written to .work/snapshot-20261023T222719Z.json
+settings: {"allow_multi_user_devices": false, "custom_action_handler_url": "", "disable_auth_checks": false, "disable_permissions_checks": false, "enforce_unique_usernames": "", "event_hooks": [], "file_upload_config": {"allowed_file_extensions": [], "allowed_mime_types": [], "blocked_file_extensions": [], "blocked_mime_types": [], "size_limit": 0}, "guest_user_creation_disabled": true, "image_moderation_enabled": false, "image_upload_config": {"allowed_file_extensions": [], "allowed_mime_types": [], "blocked_file_extensions": [], "blocked_mime_types": [], "size_limit": 0}, "member_custom_on_mentioned_users_enabled": false, "member_custom_on_messages_enabled": false, "member_custom_on_typing_events_enabled": false, "moderation_enabled": true, "multi_tenant_enabled": false, "permission_version": "v2", "revoke_tokens_issued_before": null, "user_search_disallowed_roles": [], "webhook_url": ""}
+configuration differences from the proof's target: 4
+video: available
+feeds: available
+video call types: ['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']
+feed visibilities: ['followers', 'members', 'private', 'public', 'visible']
+feed groups: ['foryou', 'notification', 'stories', 'story', 'timeline', 'user']
+video and feeds differences from the lockdown target: 4
+```
+
+The `settings` line equals B2's, B2-C1's and B2-C2's.
+
+**Item 1's lines, each marked** (from `configuration.verify` and `products.verify` run offline on the written snapshot by a scratch script). `configuration.verify`'s 4 are `products.verify`'s 4 with the prefix `video/feeds: `, in the same order; **no chat line**:
+
+| # | Line (grant lists shortened to their count) | Mark | Class |
+|---|---|---|---|
+| p1 | `video call type agent: grants for user not empty: […31]` | expected | 3 (D2) |
+| p2 | `video call type agent: grants for guest not empty: […6]` | expected | 3 (D2) |
+| p3 | `video call type audio_call: grants for user not empty: […33]` | expected | 3 (D5) |
+| p4 | `video call type audio_call: grants for guest not empty: […6]` | expected | 3 (D5) |
+
+Each line's grant list is the 23 October baseline's for that scope and role, unchanged (the same 31, 6, 33 and 6 grants as B2-C1's lines 1 to 4). **No line is outside the four expected; section 3's cases 1, 2 and 3 did not arise.** The snapshot's users: 1 (the dashboard user), no proof user; channels: 0.
+
+**2. `full-view`, V0a** (item 1, read-only), 22:27:23.63 to 22:27:25.84, exit 0, 6 server API calls. Its output, whole:
+
+```
+full view written to .work/full-view-20261023T222725Z.json
+app: HTTP 200; 59 keys, 14 of them withheld (type, emptiness and digest only): ['async_url_enrich_enabled', 'custom_action_handler_url', 'moderation_keyframe_video_enabled', 'moderation_webhook_url', 'push_notifications', 'revoke_tokens_issued_before', 'sns_key', 'sns_secret', 'sns_topic_arn', 'sqs_key', 'sqs_secret', 'sqs_url', 'webhook_events', 'webhook_url']
+channel types: HTTP 200; ['agent', 'commerce', 'gaming', 'glow-match', 'livestream', 'messaging', 'team']
+roles: HTTP 200; 17
+video call types: HTTP 200; ['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']
+feed visibilities: HTTP 200; ['followers', 'members', 'private', 'public', 'visible']
+feed groups: HTTP 200; ['foryou', 'notification', 'stories', 'story', 'timeline', 'user']
+```
+
+**The stamps at V0a, against B2-C2's V1 (21:15:05)** (DM-19 3.1; read from the view file, `created_at` and `updated_at` being volatile in the comparison):
+
+| Scope | B2-C2's V1 | V0a (and V0b) | Moved? |
+|---|---|---|---|
+| chat type `agent` (class 2) | `created_at` and `updated_at` 1792790090261445000 (21:14:50.261445Z) | the same, both | no |
+| chat types `commerce`, `gaming`, `livestream`, `messaging`, `team`, `glow-match` | `updated_at` at B2-C2's apply | `updated_at` 21:14:50.362978Z, .486437Z, .589706Z, .697340Z, .804145Z and .906873Z; `created_at` 2026-09-25T03:13:25.73Z to 03:13:26.21Z | no |
+| call type `agent` (class 3) | `0` and `0` | `0` and `0`; the application body's summary: `created_at` `0`, `id` `0`, `app` `0` | no |
+| call type `audio_call` (class 3) | `0` and `0` | `0` and `0`; summary: `created_at` `0`, `id` `0`, `app` `0` | no |
+| call types `audio_room`, `default`, `development`, `livestream` | — | `created_at` = `updated_at` 2026-09-27T05:58:30.302175Z to .668674Z (the I2b apply); summaries `id` 24496 to 24499, `app` 1729640 | — |
+
+**No lock came undone** between B2-C2's V1 and this V0a (21:15:05 to 22:27:25): no class-2 line, no D1 line, and no locked type's stamp moved. So section 3's case 2 did not arise, and no chat apply ran.
+
+**3. `full-view`, V0b** (item 2, read-only), 22:28:32.34 to 22:28:34.58, 69 s after V0a's file (`full-view-20261023T222725Z` and `…T222834Z`), exit 0, 6 server API calls; its output equals V0a's but for the file name (`.work/full-view-20261023T222834Z.json`). Every stamp equals V0a's.
+
+**4. `compare-views --before V0a --after V0b`** (item 2; calls nothing), exit 0. Its output, whole:
+
+```
+comparison written to .work/compare-views-20261023T222839Z.json
+left aside (volatile fields): ['created_at', 'duration', 'updated_at']
+changed fields: 0
+```
+
+No field changed between the two reads, so no volatile name and no list key was added. Two things the comparison leaves aside, read from the files: the nine geofences came back in another order (this pass's four views hold four orders), which B2-C2's key by `name` reads as no change; and the six feed groups' `created_at` and `updated_at`, already volatile, each read the time of the read itself (V0a 22:27:25.66, V0b 22:28:34.39, V2 22:29:39.80, the closing view 22:31:27.39), as for platform defaults never written.
+
+**5. The listings against B2-C2's record** (item 3; offline, from V0b and item 1's snapshot, by a scratch script that parsed B2-C1's listing from this record, which B2-C2 found unchanged, and compared each value; a withheld value compared by its digest, which is not written here).
+
+- **The application settings keys** that the 25 September record and the target do not name: 40 of 59 (19 named), **the same 40 keys as B2-C2's listing, none added and none missing, and no value changed**: `async_url_enrich_enabled` (withheld, non-empty; unchanged), `auto_translation_enabled` `false`, `before_message_send_hook_system_messages` `false`, `call_types` (by name `['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']`), `campaign_enabled` `true`, `cdn_expiration_seconds` `1209600`, `channel_configs` (by name `['agent', 'commerce', 'gaming', 'glow-match', 'livestream', 'messaging', 'team']`), `datadog_info` `{"api_key": withheld, empty, "enabled": false, "site": ""}`, `defaults` `{"get_or_create_channel": {"members": {"limit": 100}, "messages": {"limit": 100}}, "query_channels": {"limit": 10, "max_limit": 30, "member_limit": 100, "message_limit": 25}}`, `feed_audit_logs_enabled` `false`, `geofences` (nine, by name `belarus_exclusion`, `canada`, `china_exclusion`, `european_union`, `india`, `iran_north_korea_syria_exclusion`, `russia_exclusion`, `united_kingdom`, `united_states`), `grants` (`admin` 47, `anonymous` 0, `global_admin` 44, `global_moderator` 39, `global_read_only` 5, `guest` 0, `moderator` 42, `user` 0), `id` `1729640`, `max_aggregated_activities_length` `0`, `moderation_audio_call_moderation_enabled` `false`, `moderation_dashboard_preferences` `null`, `moderation_keyframe_video_enabled` (withheld, non-empty; unchanged), `moderation_llm_configurability_enabled` `true`, `moderation_multitenant_blocklist_enabled` `false`, `moderation_onboarding_complete` `false`, `moderation_video_call_moderation_enabled` `false`, `moderation_webhook_url` (withheld, empty; unchanged), `name` `"Glow Connection System Chat Engine"`, `organization` `"Glow Connection System"`, `placement` `"gcp-us-east4.solaris"`, `policies` `{}`, `push_notifications` (withheld, non-empty; unchanged), `reminders_interval` `300`, `sns_key`, `sns_secret`, `sns_topic_arn`, `sqs_key`, `sqs_secret`, `sqs_url` (each withheld, empty; unchanged), `suspended` `false`, `suspended_explanation` `""`, `use_hook_v2` `true`, `user_response_time_enabled` `false`, `video_provider` `""`, `webhook_events` (withheld, non-empty; unchanged). **Marks: none.**
+- **`glow-match`'s fields that `MATCH_FEATURES` does not name** (from the snapshot): `blocklist_behavior` `"flag"`, `created_at` `1790306006206102000`, **`grants` `{"admin": [], "anonymous": [], "channel_member": ["read-channel"], "channel_moderator": [], "global_admin": [], "global_moderator": [], "global_read_only": [], "guest": [], "moderator": [], "user": []}` (marked: B2-C1's listing held `channel_member` `["read-channel", "schedule-message"]`; D1, corrected by B2-C2's apply, as expected)**, `message_retention` `"infinite"`, `name` `"glow-match"`, `permissions` (Stream's v1 policy list, seven policies, equal to B2-C1's), `push_level` `"all"`, `skip_last_msg_update_for_system_msgs` `false`, **`updated_at` `1792790090906873000` (2026-10-23T21:14:50.906873Z; marked: B2-C1's `1790459541645318000`; B2-C2's apply, as expected)**. No field added or missing. **Marks: the two expected, nothing else**; neither turns on a content feature or a client write (the grant is D1's removal).
+- **The role list:** 17, `admin`, `anonymous`, `call_member`, `channel_member`, `channel_moderator`, `feed_follower`, `feed_member`, `feed_member_viewer`, `feed_moderator`, `global_admin`, `global_moderator`, `global_read_only`, `guest`, `host`, `moderator`, `speaker`, `user`: equal to B2-C2's. **The `.app` grant counts:** `admin` 47, `anonymous` 0, `global_admin` 44, `global_moderator` 39, `global_read_only` 5, `guest` 0, `moderator` 42, `user` 0: equal. **The names:** channel types `['agent', 'commerce', 'gaming', 'glow-match', 'livestream', 'messaging', 'team']`, call types `['agent', 'audio_call', 'audio_room', 'default', 'development', 'livestream']`, feed visibilities `['followers', 'members', 'private', 'public', 'visible']`, feed groups `['foryou', 'notification', 'stories', 'story', 'timeline', 'user']`: each equal to B2-C2's; nothing new or missing. **The stamps** of the chat type `agent` and of the call types `agent` and `audio_call`: as the table above, unchanged from B2-C2's V1.
+
+Nothing here stopped the session before any apply.
+
+**Item 4: not run** (section 3's cases 1 and 2 did not arise). No new baseline, no chat apply. **V1 is V0b** (`full-view-20261023T222834Z.json`; DM-19 4.1).
+
+**6. `configure --products video,feeds`** (item 5.1, the dry run), 22:28:58.26 to 22:29:00.64, exit 0, 8 server API calls. Its output's lines: `differences before: []`; `video: available`; `feeds: available`; the call types, feed visibilities and feed groups as above; `video and feeds differences before:` the four lines p1 to p4 (their grant lists whole); and the plan, whole:
+
+```
+video and feeds plan (a difference; dry run unless --apply):
+- PUT /api/v2/video/calltypes/agent: video: remove the call type agent grants of user, guest
+  body: {"grants": {"guest": [], "user": []}}
+- PUT /api/v2/video/calltypes/audio_call: video: remove the call type audio_call grants of user, guest
+  body: {"grants": {"guest": [], "user": []}}
+```
+
+**The check:** `differences before:` is `[]` (the chat target holds); the plan is exactly one `PUT` per call type whose client-role lines item 1 listed, `agent` and `audio_call`, each naming only `user` and `guest` with `[]`, and nothing else: as B2-C2's record expected. No feed visibility is planned (none holds a client grant).
+
+**The derived changes, listed before the apply** (section 4 items 1 to 3, from the plan and V1 = V0b; written to a scratch note at 22:29:22.94, before the apply):
+
+- **Item 1, the planned grants (4):** `call_types.body.call_types.agent.grants.user` and `….agent.grants.guest`, `….audio_call.grants.user` and `….audio_call.grants.guest`, each to `[]`.
+- **Item 2, the `scopes` losses (2):** in V1 the roles read `user` (`roles[16]`) and `guest` (`roles[12]`) each `["video:agent", "video:audio_call"]`, and each holds grants in those two scopes only, all of which the plan empties: so `user`'s and `guest`'s `scopes` each lose `video:agent` and `video:audio_call`, to `[]`. `anonymous` holds no grant in either scope (its `scopes` `[]`), and no other role is named by the plan; no other role's `scopes` may change.
+- **Item 3 and DM-19 2.4, possible:** both written scopes read `created_at` `0` in their own read and in the application body's summary, so the write may materialize them; their summaries read `id` `0` and `app` `0` (2.4's case: `app` allowed only to `1729640`, the value the four call types the application wrote hold; `id` only to a value no other scope holds, the four holding 24496 to 24499). The comparison set for a materialization field: `audio_room`, `default`, `development`, `livestream`.
+
+**7. `configure --products video,feeds --apply`** (item 5.2, once; through the guard's configure scope). **Times:** `date -u` immediately before: **2026-10-23T22:29:27.969677323Z**; immediately after: **2026-10-23T22:29:31.073696643Z**. Exit 0, 15 server API calls (its snapshot's 8 reads, the 2 `PUT`s, the re-read's 5). Its output's result lines (after the same `differences before: []`, products lines and plan as the dry run):
+
+```
+PUT /api/v2/video/calltypes/agent -> 201
+PUT /api/v2/video/calltypes/audio_call -> 201
+configuration record written to .work/configure-products-20261023T222930Z.json
+differences after: []
+```
+
+**Differences after: `[]`** (with `LOCKDOWN_APPLIED` set, `configuration.verify`, so chat and both products). The record holds the two steps applied, each `status` 201, no `failure` and no `reread_failure`, `problems_after` `[]`, and the after-state's `agent` and `audio_call` with `user` and `guest` `[]` and every other role as before (`agent`: `admin` 40, `call_member` 32, `global_admin` 56, `global_read_only` 4; `audio_call`: `admin` 40, `call_member` 34, `global_admin` 43, `global_read_only` 4). No apply failed part-way (DM-17 3.4 did not apply).
+
+**8. `full-view`, V2** (item 5.3, read-only), 22:29:37.71 to 22:29:39.97, exit 0, 6 server API calls; its output equals V0a's but for the file name (`.work/full-view-20261023T222939Z.json`).
+
+**9. `compare-views --before V1 --after V2`** (item 5.3; V1 = V0b; calls nothing), exit 1. Its output, whole:
+
+```
+comparison written to .work/compare-views-20261023T222941Z.json
+left aside (volatile fields): ['created_at', 'duration', 'updated_at']
+- app.body.app.call_types.agent.app: 0 -> 1729640
+- app.body.app.call_types.agent.id: 0 -> 26123
+- app.body.app.call_types.audio_call.app: 0 -> 1729640
+- app.body.app.call_types.audio_call.id: 0 -> 26124
+- call_types.body.call_types.agent.grants.guest: ["enable-noise-cancellation-any-team", "join-call", "read-call", "send-audio", "send-event", "send-video"] -> []
+- call_types.body.call_types.agent.grants.user: ["block-user-owner", "create-call", "create-call-reaction", "enable-noise-cancellation-any-team", "end-call-owner", "join-call", "join-ended-call-owner", "kick-user-owner", "list-recordings-owner", "list-transcriptions-owner", "mute-users-owner", "pin-call-track-owner", "read-call", "remove-call-member-owner", "screenshare", "send-audio", "send-closed-captions", "send-event", "send-video", "start-closed-captions-owner", "start-frame-recording-owner", "start-recording-owner", "start-transcription-owner", "stop-closed-captions-owner", "stop-frame-recording-owner", "stop-recording-owner", "stop-transcription-owner", "update-call-member-owner", "update-call-owner", "update-call-permissions-owner", "update-call-settings-owner"] -> []
+- call_types.body.call_types.audio_call.grants.guest: ["enable-noise-cancellation-any-team", "join-call", "read-call", "send-audio", "send-event", "send-video"] -> []
+- call_types.body.call_types.audio_call.grants.user: ["block-user-owner", "create-call", "create-call-reaction", "enable-noise-cancellation-any-team", "end-call", "join-call", "join-ended-call", "kick-user-owner", "list-recordings", "list-transcriptions", "mute-users-owner", "pin-call-track-owner", "read-call", "remove-call-member", "screenshare", "send-audio", "send-closed-captions", "send-event", "send-video", "start-broadcasting", "start-closed-captions", "start-frame-recording", "start-recording", "start-transcription", "stop-broadcasting", "stop-closed-captions", "stop-frame-recording", "stop-recording", "stop-transcription", "update-call-member", "update-call-owner", "update-call-permissions-owner", "update-call-settings-owner"] -> []
+- roles.body.roles[12].scopes: ["video:agent", "video:audio_call"] -> []
+- roles.body.roles[16].scopes: ["video:agent", "video:audio_call"] -> []
+changed fields: 10
+```
+
+**Each field's case under section 4** (a scratch script that applies the rule as section 4 states it, with the times of item 7; its output, `OTHER changes: 0`):
+
+| Field | Case |
+|---|---|
+| `call_types.body.call_types.agent.grants.guest` and `.user`, `call_types.body.call_types.audio_call.grants.guest` and `.user` (4) | item 1: each a grant list the plan sets, set to its planned value `[]` |
+| `roles.body.roles[12].scopes` (`guest`), `roles.body.roles[16].scopes` (`user`) (2) | item 2: each loses exactly `video:agent` and `video:audio_call`, the scopes in which the apply emptied all of that role's grants, as listed before the apply; nothing added, the role names and order unchanged, no other field of any role changed (their stamps included) |
+| `app.body.app.call_types.agent.app` `0` → `1729640`, `app.body.app.call_types.audio_call.app` `0` → `1729640` (2) | DM-19 2.4: an identity field on a scope this apply materialized from `created_at` `0`, moving from `0` to a value equal to the one every call type the application wrote holds (`audio_room`, `default`, `development` and `livestream`: `app` 1729640 each, in V1 and V2) |
+| `app.body.app.call_types.agent.id` `0` → `26123`, `app.body.app.call_types.audio_call.id` `0` → `26124` (2) | DM-19 2.4: an identity field on a materialized scope, from `0` to a value no other scope holds (the four others' summaries hold 24496, 24497, 24498 and 24499; no scope's own read carries an `id`) |
+
+**"Materialized" as measured** (DM-19 2.1; `created_at` read from the two view files): the call type `agent`'s `created_at` was `0` in V1 and is **1792794570394451000 (2026-10-23T22:29:30.394451Z)** in V2; `audio_call`'s was `0` and is **1792794570511465000 (22:29:30.511465Z)**; both lie between the apply's two times (22:29:27.969677Z and 22:29:31.073697Z), and the apply wrote both. So both scopes were materialized by this write, and 2.4 applies to them. **No field of section 4 item 3's kind occurred** (no field absent before and present after; no setting, notification setting or other role changed: `differences after` `[]` also compares every other role's grants and every setting with the 23 October baseline). No value that was non-empty changed. **Nothing else changed: the session went on.**
+
+**The stamps at V2 of every class-2 and class-3 scope** (DM-18 3.5), with this pass's measure:
+
+| Scope | Class | `created_at` and `updated_at` at V2 | Re-created or materialized by this pass's applies? |
+|---|---|---|---|
+| chat type `agent` | 2 | both 1792790090261445000 (2026-10-23T21:14:50.261445Z), unchanged since B2-C2's apply | no: this pass made no chat apply and did not write it |
+| call type `agent` | 3 | both 1792794570394451000 (2026-10-23T22:29:30.394451Z); summary the same, `id` 26123, `app` 1729640 | **yes:** materialized by the products apply (from `0`, inside the apply's window) |
+| call type `audio_call` | 3 | both 1792794570511465000 (2026-10-23T22:29:30.511465Z); summary the same, `id` 26124, `app` 1729640 | **yes:** materialized by the products apply (from `0`, inside the apply's window) |
+
+No type was listed under section 3's case 2, so no "how a lock came undone" applies.
+
+**10. `baseline`** (item 6), 22:30:02.24 to 22:30:04.38, exit 0, 8 server API calls: `snapshot written to .work/snapshot-20261023T223004Z.json`; the `settings` line as item 1's; **`configuration differences from the proof's target: 0`**; the products lines as item 1's; **`video and feeds differences from the lockdown target: 0`**.
+
+**11. `verify-clean`** (item 7, before the run), 22:30:11.51 to 22:30:14.02, exit 1, 13 server API calls. Its output, whole:
+
+```
+proof users remaining: []
+channels remaining: []
+other users present: 1
+polls remaining: not verified: HTTP 400 code 4: QueryPolls failed with error: "either user or user_id must be provided when using server side auth."
+user_groups remaining: []
+calls remaining: []
+feeds remaining: []
+activities remaining: []
+polls: the standalone listing needs a user; a run's cleanup lists polls as each of its own users before their delete and reads each recorded poll by ID
+```
+
+Nothing left from earlier runs; the one other user is the dashboard user. The exit 1 is the standalone poll listing's, as the harness README's "Limits" records (the run's own cleanup lists polls as its users).
+
+**12. `conformance --accept-dashboard-user`** (item 7), 22:30:22.80 to 22:30:45.36, exit 1 (a row differs), run prefix `p061i1-1023223024`, started 22:30:24 and ended 22:30:45. Its first lines: `configuration differences from the proof's target: 0`, `video and feeds differences from the lockdown target: 0` (its own start check, DM-16 1.1); `preflight: {'dashboard_users_present': 1, 'configuration_problems': [], 'polls_before_run': 'not verified', 'user_groups_before_run': 0, 'calls_before_run': 0, 'feeds_before_run': 0, 'activities_before_run': 0}`. No stop, no stop signal, no charge or limit signal, no note and no problem after the run (`stops`, `stop_signals`, `notes` and `post_run_problems` all empty); `Verdicts: {'DIFFERENCE': 2, 'PASS': 42, 'RECORDED': 2}`; `API calls used by the run: 109` (105 server, 4 client); the run's usage: 4 users, 2 channels, a peak of 1 connection, 9 connection attempts. **Its cleanup** (the run's own end, so no `cleanup --apply` was needed): `channels_delete` 201, `channels_task` `completed`; `users_delete` 201, `users_task` `completed`; `users_found_by_prefix_not_recorded` 1 (below); `artifact_users_found` 1, deleted 201, task `completed` (the `deleted-user-1729640-…` user Stream creates at the hard delete); `polls_listed_as_run_users` `{"users": 3, "deactivated_left_out": 1, "listing": "verified"}`; `remaining_proof_users`, `remaining_channels`, `remaining_polls`, `remaining_user_groups`, `remaining_calls`, `remaining_feeds` and `remaining_activities` all `[]`; `deleted_user_artifacts_remaining` 0; `errors` `[]`.
+
+**The conformance rows, row by row** (from `.work/conformance-p061i1-1023223024.json`; the fixture's outcome is the expectation, a read-back or token check "as designed"):
+
+| Row | What it shows | Fixture or design | Stream | Verdict | Status and code, or the read |
+|---|---|---|---|---|---|
+| P1 | provisioning creates the user with its ID only | ok | ok | PASS | 2xx |
+| P2 | read back: role user, no name, image or custom field | as designed | as designed | PASS | role user, name False, image False, custom [], other keys ['channel_mutes', 'devices', 'mutes', 'total_unread_count', 'unread_channels', 'unread_count', 'unread_threads'], deactivated False |
+| P3 | provisioning repeated returns already | already | already | PASS | the adapter's read (nothing sent) |
+| P4 | the second member is provisioned | ok | ok | PASS | 2xx |
+| C1 | channel creation in glow-match with the two members | ok | ok | PASS | 2xx |
+| C2 | read back: exactly the two members, no name, image or custom data | as designed | as designed | PASS | 2 members; name False, image False, custom [], other keys [] |
+| C3 | channel creation repeated returns already | already | already | PASS | the adapter's read (nothing sent) |
+| C4 | channel creation naming a user Stream does not have | member_unavailable | member_unavailable | PASS | the adapter's read |
+| M1 | a message with its committed ID and text | ok | ok | PASS | 2xx |
+| M2 | read back: the committed ID, the text and the sender | as designed | as designed | PASS | ID matches True, cid matches True |
+| M3 | the send repeated returns already | already | already | PASS | Stream answered the repeated ID as existing (the adapter's rule for a 400 with code 4) |
+| M4 | a send to a channel Stream does not have | channel_unavailable | channel_unavailable | PASS | 404, code 16 |
+| M5 | a send by a user Stream does not have | member_unavailable | ok | DIFFERENCE | 2xx (the send is inferred to have created the user; see below) |
+| T1 | the token's iat and exp are the grant's, truncated to the second | as designed | as designed | PASS | HS256, claims exp/iat/user_id, iat − truncated issue 0, exp − truncated expiry 0, exp − iat 3600, backdate 0 s |
+| T2 | a token from the signer is accepted: connect and read the channel | as designed | as designed | PASS | connect: ok (succeeded); read: 201 (succeeded) |
+| R1 | removal of both members | ok | ok | PASS | 2xx |
+| R2 | read back: no member remains | as designed | as designed | PASS | 0 members; name False, image False, custom [], other keys [] |
+| R3 | the removed member's own client can no longer read the channel | as designed | as designed | PASS | connect: ok (succeeded); read: 403 / code 17 |
+| R4 | removal repeated returns already | already | already | PASS | the adapter's read (nothing sent) |
+| R5 | channel creation repeated after the removal | already | already | PASS | the adapter's read (nothing sent) |
+| R6 | read back: the members were not re-added (4.4) | as designed | as designed | PASS | 0 members; name False, image False, custom [], other keys [] |
+| R7 | a send by a removed member, after the removal (4.7) | member_unavailable | ok | RECORDED | 2xx |
+| R8 | removal from a channel Stream does not have | channel_unavailable | channel_unavailable | PASS | the adapter's read |
+| D1 | a third user is provisioned | ok | ok | PASS | 2xx |
+| D2 | deactivation | ok | ok | PASS | 2xx |
+| D3 | the deactivated user's signed token is refused | as designed | as designed | PASS | connect: 404 / code 16 |
+| D4 | deactivation repeated returns already | already | already | PASS | the adapter's read (nothing sent) |
+| D5 | re-provisioning a deactivated user returns already | already | already | PASS | the adapter's read (nothing sent) |
+| D6 | read back: still deactivated after the re-provisioning (4.4) | as designed | as designed | PASS | role user, name False, image False, custom [], other keys ['channel_mutes', 'devices', 'mutes', 'total_unread_count', 'unread_channels', 'unread_count', 'unread_threads'], deactivated True |
+| D7 | the deactivated user's token is still refused after the re-provisioning (4.4) | as designed | as designed | PASS | connect: 404 / code 16 |
+| D8 | channel creation naming a deactivated member | member_unavailable | member_unavailable | PASS | the adapter's read |
+| D9 | a send by a deactivated user | member_unavailable | member_unavailable | PASS | 404, code 16 |
+| D10 | deactivation of a user Stream does not have | member_unavailable | ok | DIFFERENCE | 2xx: the adapter's read found the user (see below) |
+| V1 | a fourth user is provisioned | ok | ok | PASS | 2xx |
+| V2 | its channel is created | ok | ok | PASS | 2xx |
+| V3 | a per-user revocation with the cut-off from revocation_cutoff_sent | ok | ok | PASS | 2xx |
+| V4 | read back: the cut-off Stream holds is the exact second plus one | as designed | as designed | PASS | held − exact 1 s; sent − exact 1 s |
+| V5 | a token whose iat is before the cut-off is refused | as designed | as designed | PASS | connect: 401 / code 40 |
+| V6 | a token issued in the cut-off's second (iat equal to the exact second) is refused | as designed | as designed | PASS | connect: 401 / code 40 |
+| V7 | a token whose iat equals the sent cut-off: Stream's comparison at the boundary | recorded | accepted | RECORDED | connect: ok (succeeded); read: 201 (succeeded) |
+| V8 | a token signed after the cut-off is accepted | as designed | as designed | PASS | connect: ok (succeeded); read: 201 (succeeded) |
+| V9 | the revocation repeated returns already | already | already | PASS | the adapter's read (nothing sent) |
+| V10 | a revocation with an earlier cut-off sends nothing and lowers nothing (4.4) | as designed | as designed | PASS | outcome already; cut-off unchanged True |
+| V11 | re-provisioning after the revocation returns already | already | already | PASS | the adapter's read (nothing sent) |
+| V12 | the revoked token is still refused after the re-provisioning (4.4) | as designed | as designed | PASS | connect: 401 / code 40 |
+| V13 | revocation of a user Stream does not have | member_unavailable | member_unavailable | PASS | 404, code 16 |
+
+| Row | Operation | Glow code | HTTP status | Stream code | Decided by |
+|---|---|---|---|---|---|
+| C4 | `create_channel` | `member_unavailable` | — | — | the adapter's read: Stream does not hold the object |
+| M4 | `send_message` | `channel_unavailable` | 404 | 16 | Stream's HTTP status and numeric code |
+| R8 | `remove_members` | `channel_unavailable` | — | — | the adapter's read: Stream does not hold the object |
+| D8 | `create_channel` | `member_unavailable` | — | — | the adapter's read: Stream does not hold the object |
+| D9 | `send_message` | `member_unavailable` | 404 | 16 | Stream's HTTP status and numeric code |
+| V13 | `revoke_user_tokens` | `member_unavailable` | 404 | 16 | Stream's HTTP status and numeric code |
+
+The two tables above are the run's: the second lists every Glow code the adapter gave with what decided it (DM-16 4.5); a row whose outcome was `ok` or `already` has no code to map.
+
+**The two differences, and R7.**
+
+- **D10 (blocking; DM-16 5.2): deactivation of a user Stream does not have, `ok` where the fixture gives `member_unavailable`.** The adapter's `deactivate_user` reads the user first (`query_users`, deactivated users included) and raises `member_unavailable` when Stream does not hold it; it sends the deactivation only when the read finds the user (`chat_provider_stream.py`, `deactivate_user`). D10's `ok`, with no status or number, therefore means **Stream held the user at D10**. The user is the run's `U9`, the one identifier the rows use for "a user Stream does not have" (C4, M5, D10 and V13), never provisioned by the run. The cleanup found **one run-prefixed user the run had not recorded** (`users_found_by_prefix_not_recorded` 1; the run records only the four it provisions, `U1` to `U4`), so `U9` existed at the end of the run. Of the requests that name `U9`, in order: C4 (`create_channel`) sent nothing, because its read found `U9` absent (`member_unavailable` by the read; PASS); **M5 (`send_message` with `U9` as the sender) was accepted by Stream**; D10's read then found it; and V13's read found it too, now deactivated, so the adapter sent the revocation and Stream answered 404 with code 16, which the adapter maps to `member_unavailable` (the deactivated-user answer D9 also shows). **Read together, M5's accepted send created `U9` at Stream** (an inference from these reads and the code; Stream's documentation was not consulted). So D10 did not exercise its cause live, and V13's equal code came through another cause (a deactivated user); C4 did exercise "a user Stream does not have", through the same `_users` read that `deactivate_user` and `revoke_user_tokens` begin with. **Under the blocking rule the difference is reported here and blocks B2's merge until it is dispositioned.** A proposal for that decision (not made here; it is code outside this pass's paths unless a rerun is authorized): give each cause row its own never-used identifier (or make M5 after D10 and V13), offline in `conformance.py` with a test, then one more live run of the rows; the alternative is to accept C4's read as the live evidence for the adapter's absent-user path and record D10 and V13 as not exercising their cause.
+- **M5: a send by a user Stream does not have, `ok` where the fixture gives `member_unavailable`** (a finding; reported, not fixed). Stream's server-side send accepted a sender it did not hold, into a channel of which that user was not a member, and (above) created the user. For P11's delivery: a send for a sender whose identity is not provisioned is not refused by Stream and creates a bare user outside the provisioning event; only Glow's own checks (D5) and the order of delivery (provisioning before the channel, B1's 3.2) keep that from happening.
+- **R7 (recorded either way): a send by a removed member, after the removal: Stream accepted it (`ok`)**; the fixture refuses it (`member_unavailable`). Stream's server-side send does not check membership. As DM-16 4.7 says, this is a reported difference, not a failure: Glow's own send checks refuse it first (D5), and P11's worker must know that Stream will not.
+- **V7 (recorded): a token whose `iat` equals the sent cut-off was accepted** (connect and read succeeded), while V6's token, whose `iat` is the cut-off's exact second, one second earlier, was refused (401, code 40). So Stream revokes a token whose `iat` is strictly before the cut-off it holds, and the delivery's rounding of the cut-off up to the next whole second, strictly (F1 point 3; DM-15 5.2), is what refuses a token issued in the bump's own second. V4: the cut-off Stream holds is the exact second plus one, as sent.
+- **The signer** (T1): `iat` is the grant's issue time truncated to the second (`iat` − truncated issue 0; `IAT_BACKDATE_SECONDS` 0), `exp` the grant's expiry truncated (`exp` − `iat` 3600), claims exactly `exp`, `iat` and `user_id`, HS256; T2 shows Stream accepts it (connect, and a channel read answered 201). No backdate was needed.
+
+**The provider halves of F3 and CX6** (the blocking rule's rows): C4 `member_unavailable` (PASS, by the read), R8 `channel_unavailable` (PASS, by the read), **D10 `ok` (DIFFERENCE, blocking; its cause not exercised)**, V13 `member_unavailable` (PASS in code, 404 code 16, through a deactivated user; its cause not exercised). Offline, a transport failure and a timeout give `provider_unavailable` (B2's tests, unchanged).
+
+**No rerun was used:** the run completed, so the rerun rule (DM-16 1.3) does not apply.
+
+**13. `verify-clean`** (item 7, after the run), 22:31:20.22, exit 1, 13 server API calls: its output equals step 11's, line for line (no proof user, channel, user group, call, feed or activity; one other user; polls "not verified", the standalone limit). Nothing of the run remains.
+
+**14. The closing `baseline`** (item 7), 22:31:22.83 to 22:31:25.22, exit 0, 8 server API calls: `snapshot written to .work/snapshot-20261023T223125Z.json`; the `settings` line as item 1's; **`configuration differences from the proof's target: 0`**; the products lines as item 1's; **`video and feeds differences from the lockdown target: 0`**. The snapshot's users: 1 (the dashboard user), no proof user; channels: 0.
+
+**15. `full-view`** with the closing `baseline` (for the call types' stamps, which the snapshot does not hold), to 22:31:27.62, exit 0, 6 server API calls (`.work/full-view-20261023T223127Z.json`); and **`compare-views --before V2 --after` it** (calls nothing), exit 0, `changed fields: 0`: the conformance run changed no configuration field.
+
+**The stamps at the close** (DM-18 3.5; from the closing view, and the closing snapshot for the chat type): every stamp equals V2's. The chat type `agent` `created_at` and `updated_at` 21:14:50.261445Z, every role's grants `[]`; the call type `agent` both 22:29:30.394451Z, `user` and `guest` `[]`; `audio_call` both 22:29:30.511465Z, `user` and `guest` `[]`. **No scope locked by B2-C2 or this pass reads grants again: the locks held** from B2-C2's apply (21:14:50) and this pass's (22:29:30) to the close (22:31:27).
+
+**Every `baseline` run's two counts:** item 1: 4 and 4; item 6: 0 and 0; closing: 0 and 0. The conformance run's own start check: 0 and 0.
+
+**The API calls used:** 206 in the session (`.work/usage-ledger.json`): 202 server and 4 client; 4 users, 2 channels, a peak of 1 connection, 9 connection attempts. By command: `baseline` 8 three times (24); `full-view` 6 four times (24); `configure --products video,feeds` (dry run) 8; its `--apply` 15 (2 of them writes); `verify-clean` 13 twice (26); `conformance` 109; `compare-views` (three times) 0. No charge or limit signal was met (the run's `stop_signals` is empty, and no command reported one); no rate limit. The writes to the application's configuration were the two `PUT`s of item 7, nothing else.
+
+### Checks
+
+| Check | Command | Result |
+|---|---|---|
+| 1 | `git diff --check 7498e478… HEAD` | clean (exit 0) at the records commit |
+| 1 | `git diff --name-only 7498e478… HEAD` | one path, `docs/testing/evidence/2026-10-05-p06-2-chat-integration.md`: this section, appended after the existing sections, which are byte-identical (the file at `7498e478…` is a byte-for-byte prefix of the new one). Unchanged: every path under `services/`, `proofs/` and `.github/`, the three committed baselines, every dependency file |
+| 2 | the trusted policy from `main` (`3272eed…`) written by `git show` to a `mktemp -d` directory, then `python3 -I <dir>/change_scope.py --base 7498e47865c181df4f1d295257cdada163e7d84c --head <the records commit> --merge-base` | `{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/testing/evidence/2026-10-05-p06-2-chat-integration.md"]}`, exit 0; `scripts/change_scope.py` sha256 `dec69a2696ec261a…`; `git merge-base --all` gives one merge base, `7498e478…`. Ordinary documentation, as the prompt expects when only the record changes |
+| 3 | `python3.12 -m venv .venv` and `pip install --require-hashes` for the API (`requirements.lock`, then `requirements-dev.lock`) and the harness (`requirements-dev.lock`), proxy and CA by reference; `pip check`; `npm ci --ignore-scripts` in `proofs/stream-chat`; `npm audit --json` | each install exit 0; `No broken requirements found.` for both; `npm ci`: `added 51 packages, and audited 52 packages`, `1 high severity vulnerability`. **The advisory:** `follow-redirects` 1.16.0 (transitive), high, GHSA-q3jh-wrc6-jgq8 ("follow-redirects array-form headers bypass cross-origin credential stripping") and GHSA-8r9p-f939-6h3c ("follow-redirects sensitiveHeaders regex escaping can expose credential headers"), a fix available; no change (B2's finding) |
+| 4 | API: `env -i … GLOW_ENV=test .venv/bin/python manage.py check`; `manage.py test tests --verbosity 1` | `System check identified no issues (0 silenced).`; `Found 328 test(s)`, `Ran 328 tests`, `OK` |
+| 4 | API: `smoke.py`; the contracts tests (`PYTHONPATH=. … -m unittest discover -s ../../packages/contracts/tests`) | `PASS /health/live: HTTP 200`, `PASS /health/ready: HTTP 503`, `PASS /api/v1/development/recommendations: HTTP 200`; `Ran 38 tests`, `OK` |
+| 4 | harness: `env -i … .venv/bin/python -m unittest discover -s tests -t .` | **`Ran 638 tests`, `OK`** |
+| 4 | Ruff (`ruff check .`; `ruff format --check .`) | API `All checks passed!`, `73 files already formatted`; harness `All checks passed!`, `59 files already formatted` |
+| 4 | mypy | API `Success: no issues found in 38 source files`; harness `Success: no issues found in 57 source files` |
+| 4 | the static check (`env -i … GLOW_ENV=test .venv/bin/python -m glow_persistence.static_check`) and `manage.py makemigrations --check --dry-run` | `Static definitions agree: 34 app models; migrations=0001_event_infrastructure,0002_app_domain,0003_chat_identity_read_cursor`; `No changes detected`, exit 0 |
+| 4 | the sealed-runtime test, the pin test and the toolchain pins (`… -m unittest tests.test_dependency_pins tests.test_chat_sealed_runtime tests.test_toolchain_pins`) | `Ran 10 tests`, `OK` |
+| 4 | harness: `for f in client/*.cjs; do node --check "$f"; done`; `python checks/run_plan.py` | the four files pass; exit 0, `run plan: fits`, `"conformance": {"api_calls": 94, "channels": 2, "peak_connections": 1, "problems": [], "rows": 46, "users": 4}`, `"b2_total_with_reserve": {"channels": 4, "users": 8}`, `all_fit` `true`, `session_used_before` 0 (run before the live commands) |
+| 5 | the live run | above: 206 API calls; three `baseline` runs (4 and 4; 0 and 0; 0 and 0); four full views; three comparisons (0; 10, each within section 4; 0); the products dry run (2 `PUT`s, as expected) and its apply (2 × 201, differences after `[]`); `verify-clean` before and after; the conformance run's 46 rows (42 PASS, 2 RECORDED, 2 DIFFERENCE, D10 blocking). No `STREAM_*` value, token, signature or digest of a non-empty withheld value is recorded |
+| 6 | the run of record | **No code changed**, so B2-C2's push run 40025252591 on `ebdc690` stays the run of record for the code. The push of the records commit to `claude/admiring-lovelace-c6ii7i` (under `claude/**`) starts the Foundation workflow on the branch; its change scope sees ordinary documentation only, and it is no run of record for any code |
+| 7 | secret scan over this pass's diff, every `.work` file this section cites and this section | this pass's diff (this section only) and this section: the known secret 0, the API key 0 (both counted by reference, never printed), a `STREAM_*` assignment 0, JWT shapes 0, emails 0; `/tmp/`, `password`, `marker` and `***` occur only as this row's own pattern names; the hexadecimal runs of 32 or more are the commit SHAs `7498e478…` and `3272eed…` only; the base64-like runs of 40 or more are those SHAs, paths and setting names; the proof identifier occurs only as the run prefix `p061i1-1023223024`, never a synthetic user or channel ID; the HDE names occur only as the environment check's names. The 15 `.work` files cited: the known secret 0, the API key 0, JWT shapes 0, emails 0, `/tmp/` 0, `***` 0; the 64-character hexadecimal runs (179 in each full view) are the views' digests of withheld values, which stay in these ignored files, and `password` occurs once per view as an entry of `withheld_key_parts`; the conformance results and their progress file hold four 32-character hexadecimal runs each, the random parts of three synthetic users' IDs after `{prefix}` (C2's two member IDs, D3's and D7's connect notes; the generalization finding below), and the run prefix; the other long runs are grant, setting and key names |
+
+The offline checks (rows 3 and 4) ran once, at the start, on `7498e478…`; this pass changed no file but this record, so they hold for the head's code. **Again at the records commit, after the live run:** the API's checks (`manage.py check`, `Ran 328 tests`, `OK`, the smoke, the contracts' 38, Ruff, mypy, the static check, `makemigrations`, the 10 pin, sealed-runtime and toolchain tests) and the harness's (`Ran 638 tests`, `OK`, Ruff, mypy, the four `node --check`) as at the start. **`checks/run_plan.py` now exits 1, `run plan: DOES NOT FIT: no live run`,** because it adds this checkout's session ledger (`session_used_before`: 206 API calls, 4 users, 2 channels: this pass's live commands) to every plan: B2's conformance plan still fits with one rerun in reserve (`b2_fits` true for users, channels, connections and API calls; with the reserve 12 users and 6 channels), while P06.1's complete set and I2b's runs no longer fit their user cap (`fits` and `i2b_fits`: users false; 22 of 20 with the reserve). The caps are per session, kept per checkout; a fresh checkout, as CI's, starts at zero and fits (the start's run above, `all_fit` true). No code changed between the two runs
+
+### Deviations, findings and limits
+
+- **D10, a blocking difference** (above; DM-16 5.2): reported first; it blocks B2's merge until dispositioned. Class: a conformance row whose cause was not exercised live, because an earlier row's accepted send created the user it names. The adapter's absent-user read is shown live by C4 only.
+- **M5 and R7** (above): Stream's server-side send accepts a sender who is not a member (R7) and one Stream does not hold, creating that user (M5). Class: provider behaviour against the fixture's model; findings for P11's delivery and worker, reported, not fixed.
+- **The products apply materialized both call types** (`agent`, `audio_call`): `created_at` from `0` to the apply's second, `id` and `app` set in the summaries. With D6 (the chat type `agent` re-created at B2-C2's first write), this is the second observation that the application's first write to a Stream default type replaces it with the application's own; this time in Video. Its grants are `[]` for the client roles and every other role and setting is as before. For the D8 question (DM-19 item 7): **no lock came undone in this pass**; the chat locks held from B2-C2's V1 (21:15:05) to this pass's close (22:31:27), and the Video locks from 22:29:30 to the close.
+- **The conformance results' identifiers are only partly generalized** (found reading the run's record, not changed). `conformance.ConformanceRun.results` passes each row's detail through `proof_run._generic`, which replaces only the keys in `_TABLE_NAMES`; the conformance run's own keys (`U1` to `U9`, `C1` to `C4`, `CX`, `M1` to `M5`) are not among them, so only the prefix is replaced, and a synthetic user's ID keeps its 32 random hexadecimal characters after `{prefix}` wherever a row's detail quotes it (C2's member IDs, D3's and D7's connect notes). The users are synthetic and deleted, the files are in the ignored `.work/`, and no credential is involved. Class: record hygiene in B2's command, outside this pass's owned paths and not a fix-here class; for the exact-head review.
+- **`verify-clean` exits 1** before and after the run, on the standalone poll listing only (the README's recorded limit); every listing it can make is empty.
+- **The two read-only views differed in nothing** (69 s apart); B2-C2's geofence key is in place, and Stream returned the same nine geofences.
+- **Section 7: nothing done.** No baseline file, no volatile name or list key, no rerun fix. Nothing was changed at Stream beyond the two `PUT`s; nothing in Notion; on GitHub only this branch's push.
+- **The `.work` files** cited here (`snapshot-20261023T222719Z.json`, `snapshot-20261023T223004Z.json`, `snapshot-20261023T223125Z.json`, `full-view-20261023T222725Z.json`, `full-view-20261023T222834Z.json`, `full-view-20261023T222939Z.json`, `full-view-20261023T223127Z.json`, `compare-views-20261023T222839Z.json`, `compare-views-20261023T222941Z.json`, `compare-views-20261023T223137Z.json`, `configure-products-20261023T222930Z.json`, `conformance-p061i1-1023223024.json`, `conformance-p061i1-1023223024.md`, `conformance-p061i1-1023223024-progress.json`, `usage-ledger.json`) are in the session's ephemeral container, ignored by git; the digests of withheld values stay there.
+- **Local tooling:** a scratch wrapper for the live command form, and scratch scripts for item 1's lines, the stamps, the listings, section 4's judgement and the rows table, all outside the checkout and none committed.
+
+### What the exact-head review must know
+
+- **No code changed in B2-C3.** The code under review is B2-C2's (`ebdc690`) with its run of record; this pass adds only this section.
+- **The development application now holds both targets:** the chat target (since B2-C2's apply) and the Video and Feeds lockdown (this pass's apply, 22:29:30): `configuration.verify` 0 and `products.verify` 0 at the close. The call types `agent` and `audio_call` are application types now (materialized at the write), their client grants `[]`.
+- **The live rows ran once:** 46 rows, 42 PASS, 2 RECORDED (R7: Stream accepts a removed member's server-side send; V7: Stream revokes `iat` strictly before the cut-off), 2 DIFFERENCE: M5 (a send by an unknown user is accepted and creates the user) and **D10 (blocking: its user existed, created by M5's send, so the row did not exercise its cause; V13's code matched through a deactivated user)**.
+- **The conformance results' generalization** keeps the random part of synthetic IDs (above).
+- The harness's guard, deny-lists, budget, stop signals, cleanup's rules, every command, the adapter, the signer, `conformance.py`, the three committed baselines and every dependency file are unchanged; the workflow is unchanged.
