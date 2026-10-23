@@ -39,7 +39,9 @@ another is not seen there (a recorded limit), only a change between empty and no
 and type, leaving aside only the fields named in :data:`VOLATILE_FIELDS` (``created_at``,
 ``updated_at`` and each response's ``duration``). Its output lists each changed path with its
 before and after (or digest). A list of scalars (a role's grants) is compared as one value,
-so an added grant shows the whole list before and after; a list of objects item by item.
+so an added grant shows the whole list before and after; a list of objects item by item, by
+position, except the lists named in :data:`KEYED_LISTS` (the application's geofences, which
+Stream returns in no fixed order; P06.2 Stage B2-C2), whose items are paired by their key.
 """
 
 from __future__ import annotations
@@ -77,6 +79,12 @@ CREDENTIAL_KEY_PARTS: tuple[str, ...] = (
 # channel types, call types, feed groups and roles, and the ``duration`` every response
 # carries.
 VOLATILE_FIELDS: frozenset[str] = frozenset({"created_at", "updated_at", "duration"})
+# The lists of objects the comparison keys by a field instead of by position, each named by
+# its exact path in the views' reads (P06.2 Stage B2-C2; DM-18 3.3): Stream returns the
+# application's geofences in no fixed order (two read-only views 79 s apart, with no apply
+# between them, held the same nine geofences in two orders). Every other list of objects is
+# compared by position, and a keyed list whose items do not each carry a unique key is too.
+KEYED_LISTS: dict[str, str] = {"app.body.app.geofences": "name"}
 # What the view reads, in order: (name, path). All GETs; ``baseline`` makes the same reads
 # (and reads users and channels too, which the view never does).
 READS: tuple[tuple[str, str], ...] = (
@@ -233,13 +241,30 @@ def _is_digest(value: Any) -> bool:
     )
 
 
+def _keyed(items: Any, key: str) -> dict[str, Any] | None:
+    """A list of objects as a mapping from each item's ``key`` to the item, or ``None`` when
+    an item is not an object, lacks the key or repeats another's (then the list is compared by
+    position, which never hides a change)."""
+    out: dict[str, Any] = {}
+    for item in items:
+        if not isinstance(item, Mapping) or key not in item:
+            return None
+        name = str(item[key])
+        if name in out:
+            return None
+        out[name] = item
+    return out
+
+
 def changed_fields(before: Any, after: Any, path: str = "") -> list[dict[str, Any]]:
     """Every field at which two JSON values differ, value or type, with the before and after
     at that path; the fields named in :data:`VOLATILE_FIELDS` are left aside at any depth. A
     key present on one side only is reported with :data:`ABSENT` on the other. A list of
-    scalars is one value; a list of objects is compared item by item, and a length that
-    differs is reported with both lengths. A withheld value's digest entry is one value, so a
-    changed credential-like value is one line, before and after digests."""
+    scalars is one value; a list of objects is compared item by item, by position, except a
+    list named in :data:`KEYED_LISTS`, whose items are paired by their key (an item on one
+    side only reported with :data:`ABSENT` on the other); a length that differs is reported
+    with both lengths. A withheld value's digest entry is one value, so a changed
+    credential-like value is one line, before and after digests."""
     if _is_digest(before) or _is_digest(after):
         if before == after:
             return []
@@ -273,6 +298,19 @@ def changed_fields(before: Any, after: Any, path: str = "") -> list[dict[str, An
                     "after": len(after),
                 }
             )
+        key = KEYED_LISTS.get(path)
+        keyed_before = _keyed(before, key) if key is not None else None
+        keyed_after = _keyed(after, key) if key is not None else None
+        if keyed_before is not None and keyed_after is not None:
+            for name in sorted(set(keyed_before) | set(keyed_after)):
+                sub = f"{path}[{key}={name}]"
+                if name not in keyed_before:
+                    items.append({"path": sub, "before": ABSENT, "after": keyed_after[name]})
+                elif name not in keyed_after:
+                    items.append({"path": sub, "before": keyed_before[name], "after": ABSENT})
+                else:
+                    items += changed_fields(keyed_before[name], keyed_after[name], sub)
+            return items
         for index, (b, a) in enumerate(zip(before, after, strict=False)):
             items += changed_fields(b, a, f"{path}[{index}]")
         return items
@@ -298,6 +336,7 @@ def render(changes: list[dict[str, Any]]) -> list[str]:
 __all__ = [
     "ABSENT",
     "CREDENTIAL_KEY_PARTS",
+    "KEYED_LISTS",
     "READS",
     "VOLATILE_FIELDS",
     "changed_fields",

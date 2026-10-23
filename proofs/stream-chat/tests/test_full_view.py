@@ -373,6 +373,104 @@ class CompareTest(unittest.TestCase):
         )
 
 
+GEOFENCES = [
+    {
+        "country_codes": ["AT", "BE"],
+        "description": "EU",
+        "name": "european_union",
+        "type": "inclusion",
+    },
+    {"country_codes": ["US"], "description": "US", "name": "united_states", "type": "inclusion"},
+    {
+        "country_codes": ["BY"],
+        "description": "BY",
+        "name": "belarus_exclusion",
+        "type": "exclusion",
+    },
+]
+
+
+class KeyedListTest(unittest.TestCase):
+    """P06.2 Stage B2-C2 (DM-18 3.3): the application's geofences, which Stream returned in
+    two orders in two read-only views 79 s apart, are paired by ``name``; every other list of
+    objects is still compared by position."""
+
+    def views(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        view = full_view.read_view(FakeServer(UsageLedger()))  # type: ignore[arg-type]
+        view["reads"]["app"]["body"]["app"]["geofences"] = copy.deepcopy(GEOFENCES)
+        return view, copy.deepcopy(view)
+
+    def test_only_the_geofences_are_keyed_and_by_name(self) -> None:
+        self.assertEqual(full_view.KEYED_LISTS, {"app.body.app.geofences": "name"})
+
+    def test_the_same_geofences_in_another_order_are_no_change(self) -> None:
+        before, after = self.views()
+        after["reads"]["app"]["body"]["app"]["geofences"].reverse()
+        self.assertEqual(full_view.compare(before, after), [])
+
+    def test_a_changed_added_or_removed_geofence_is_still_reported(self) -> None:
+        before, after = self.views()
+        fences = after["reads"]["app"]["body"]["app"]["geofences"]
+        fences.reverse()
+        fences[0]["country_codes"] = ["BY", "RU"]  # belarus_exclusion, now first
+        self.assertEqual(
+            full_view.compare(before, after),
+            [
+                {
+                    "path": "app.body.app.geofences[name=belarus_exclusion].country_codes",
+                    "before": ["BY"],
+                    "after": ["BY", "RU"],
+                }
+            ],
+        )
+        removed = fences.pop()  # european_union, last after the reverse
+        fences.append({"country_codes": ["GB"], "name": "united_kingdom", "type": "inclusion"})
+        fences.append(dict(GEOFENCES[0], name="extra"))
+        changes = full_view.compare(before, after)
+        self.assertEqual(
+            [c["path"] for c in changes],
+            [
+                "app.body.app.geofences (length)",
+                "app.body.app.geofences[name=belarus_exclusion].country_codes",
+                "app.body.app.geofences[name=european_union]",
+                "app.body.app.geofences[name=extra]",
+                "app.body.app.geofences[name=united_kingdom]",
+            ],
+        )
+        self.assertEqual((changes[0]["before"], changes[0]["after"]), (3, 4))
+        self.assertEqual((changes[2]["before"], changes[2]["after"]), (removed, full_view.ABSENT))
+        self.assertEqual(changes[3]["before"], full_view.ABSENT)
+
+    def test_every_other_list_of_objects_is_still_compared_by_position(self) -> None:
+        roles = [{"name": "r1", "scopes": ["chat"]}, {"name": "r2", "scopes": ["video"]}]
+        self.assertEqual(
+            [c["path"] for c in full_view.changed_fields(roles, roles[::-1], "roles.body.roles")],
+            [
+                "roles.body.roles[0].name",
+                "roles.body.roles[0].scopes",
+                "roles.body.roles[1].name",
+                "roles.body.roles[1].scopes",
+            ],
+        )
+        # The geofences named at another path are positional too.
+        self.assertEqual(
+            len(full_view.changed_fields(GEOFENCES, GEOFENCES[::-1], "app.body.geofences")), 8
+        )
+
+    def test_geofences_without_a_unique_name_are_compared_by_position(self) -> None:
+        path = "app.body.app.geofences"
+        twice = [dict(GEOFENCES[0]), dict(GEOFENCES[0], description="again")]
+        self.assertEqual(
+            full_view.changed_fields(twice, twice[::-1], path),
+            [
+                {"path": f"{path}[0].description", "before": "EU", "after": "again"},
+                {"path": f"{path}[1].description", "before": "again", "after": "EU"},
+            ],
+        )
+        unnamed = [{"country_codes": ["US"]}, {"country_codes": ["CA"]}]
+        self.assertEqual(len(full_view.changed_fields(unnamed, unnamed[::-1], path)), 2)
+
+
 class FullViewCommandTest(_WritesTest):
     def test_full_view_writes_the_view_under_the_read_only_guard(self) -> None:
         server = FakeServer(UsageLedger())
