@@ -1385,6 +1385,41 @@ class ProbeAndBaselineTest(_WritesTest):
             path.write_text(json.dumps({"app": {}}), encoding="utf-8")
             self.assertEqual(cli.cmd_record_products_baseline(ctx, path), cli.EXIT_REFUSED)  # type: ignore[arg-type]
 
+    def test_record_products_baseline_keeps_the_committed_client_grants(self) -> None:
+        """P06.2 Stage B2-C1 (DM-17 1.1): a snapshot taken after the lockdown holds the client
+        roles empty; the record written from it carries the committed baseline's client grants
+        for every scope that baseline holds, so it still means "before the lockdown"."""
+        import tempfile
+        from pathlib import Path
+
+        server = FakeServer(UsageLedger())  # the fake starts at the lockdown target
+        server.users["dashboard-person"] = dashboard_user("dashboard-person")
+        ctx = FakeContext(server)
+        self.assertEqual(cli.cmd_baseline(ctx), 0)  # type: ignore[arg-type]
+        self.assertIn("video and feeds differences from the lockdown target: 0", ctx.lines)
+        name, snapshot = next((k, v) for k, v in self.written.items() if k.startswith("snapshot-"))
+        for cfg in snapshot["products"]["video"]["call_types"].values():
+            self.assertEqual(cfg["grants"].get("user", []), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot_path = Path(tmp) / name
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            with mock.patch.object(cli, "BASELINE_DIR", Path(tmp) / "baseline"):
+                self.assertEqual(cli.cmd_record_products_baseline(ctx, snapshot_path), 0)  # type: ignore[arg-type]
+                (written,) = list((Path(tmp) / "baseline").glob("video-feeds-1729640-*.json"))
+            record = json.loads(written.read_text(encoding="utf-8"))
+        self.assertEqual(record, BASELINE)  # the committed baseline, client grants and all
+        kept = products.PRODUCTS_BASELINE.name
+        self.assertIn(
+            f"call types: client roles' grants kept from {kept} for "
+            f"{sorted(BASELINE['video']['call_types'])}; recorded as read for []",
+            ctx.lines,
+        )
+        self.assertIn(
+            f"feed visibilities: client roles' grants kept from {kept} for "
+            f"{sorted(BASELINE['feeds']['feed_visibilities'])}; recorded as read for []",
+            ctx.lines,
+        )
+
 
 class ProductLeftoversTest(_WritesTest):
     def test_verify_clean_lists_calls_feeds_and_activities(self) -> None:

@@ -7,6 +7,7 @@ the products' availability and the product-finding rule are read from Stream's a
 the listings and the baseline record hold no user data.
 """
 
+import copy
 import json
 import subprocess
 import unittest
@@ -653,6 +654,108 @@ class BaselineComparisonTest(unittest.TestCase):
         problems = products.verify({"video": recorded["video"], "feeds": recorded["feeds"]})
         self.assertEqual(len(problems), 18)
         self.assertTrue(all("not empty" in p for p in problems), problems)
+
+
+class MergedBaselineTest(unittest.TestCase):
+    """P06.2 Stage B2-C1 (DM-17 1.1): the new products baseline takes, for every scope the
+    committed baseline holds, the client roles' grants from that baseline, read before the
+    lockdown, and everything else from the fresh snapshot; a scope the baseline does not hold
+    takes its client grants as read. The merge changes no verification."""
+
+    def drifted(self) -> tuple[FakeServer, dict[str, Any]]:
+        """The fake at the lockdown target (the client roles empty), with what Stream added
+        in October 2026: a settings section on every known call type and a new call type
+        with client grants."""
+        server = FakeServer(UsageLedger())
+        settings = server.products.call_type_settings
+        for cfg in settings.values():
+            cfg["settings"]["lifecycle"] = {"mode": "reusable"}
+        server.products.call_type_grants["agent"] = {
+            "admin": ["create-call", "read-call"],
+            "call_member": ["read-call", "send-audio"],
+            "guest": ["join-call", "read-call"],
+            "user": ["create-call", "join-call", "read-call", "send-audio"],
+        }
+        settings["agent"] = copy.deepcopy(settings["default"])
+        return server, products.read_configuration(server)  # type: ignore[arg-type]
+
+    def test_known_scopes_keep_the_committed_client_grants_and_a_new_scope_its_own(self) -> None:
+        server, state = self.drifted()
+        previous = products.recorded_products()
+        record = products.merged_baseline_record(state, "1729640", previous)
+        unmerged = products.baseline_record(state, "1729640")
+        for product, key in (("video", "call_types"), ("feeds", "feed_visibilities")):
+            for name, cfg in previous[product][key].items():
+                merged = record[product][key][name]["grants"]
+                read = unmerged[product][key][name]["grants"]
+                for role in products.CLIENT_ROLES:
+                    # As the committed baseline, while the snapshot held them empty.
+                    self.assertEqual(merged.get(role), cfg["grants"].get(role), (name, role))
+                    if role in read:
+                        self.assertEqual(read[role], [], (name, role))
+                for role in set(merged) - set(products.CLIENT_ROLES):
+                    self.assertEqual(merged[role], read[role], (name, role))  # as read
+        for name in previous["video"]["call_types"]:
+            settings = record["video"]["call_types"][name]["settings"]
+            self.assertEqual(settings["lifecycle"], {"mode": "reusable"})  # as read
+        agent = record["video"]["call_types"]["agent"]
+        self.assertEqual(agent["grants"], server.products.call_type_grants["agent"])
+        self.assertEqual(agent["settings"]["lifecycle"], {"mode": "reusable"})
+        self.assertEqual(record["feeds"]["feed_groups"], unmerged["feeds"]["feed_groups"])
+        self.assertEqual(record["app_id"], "1729640")
+        self.assertEqual(sorted(record), ["app_id", "feeds", "video"])
+
+    def test_the_merge_changes_no_verification(self) -> None:
+        _server, state = self.drifted()
+        previous = products.recorded_products()
+        merged = products.merged_baseline_record(state, "1729640", previous)
+        self.assertEqual(
+            products.verify(state, merged),
+            products.verify(state, products.baseline_record(state, "1729640")),
+        )
+        # Against the new record the only differences left are the new scope's client
+        # grants, which its lockdown removes; the lifecycle sections are no difference.
+        self.assertEqual(
+            products.verify(state, merged),
+            [
+                "video call type agent: grants for user not empty: "
+                "['create-call', 'join-call', 'read-call', 'send-audio']",
+                "video call type agent: grants for guest not empty: ['join-call', 'read-call']",
+            ],
+        )
+
+    def test_the_record_differs_from_the_committed_baseline_only_where_stream_added(self) -> None:
+        _server, state = self.drifted()
+        previous = products.recorded_products()
+        merged = products.merged_baseline_record(state, "1729640", previous)
+        # B2-C1's item 4.2 check, modelled: the new call type and a lifecycle section on each
+        # known call type, and nothing else.
+        self.assertEqual(
+            products._changed_paths(merged, previous),
+            [
+                "video.call_types.agent (not in the baseline)",
+                "video.call_types.audio_room.settings.lifecycle (not in the baseline)",
+                "video.call_types.default.settings.lifecycle (not in the baseline)",
+                "video.call_types.development.settings.lifecycle (not in the baseline)",
+                "video.call_types.livestream.settings.lifecycle (not in the baseline)",
+            ],
+        )
+        # Unmerged, every known scope's client roles would differ too.
+        unmerged = products.baseline_record(state, "1729640")
+        self.assertGreater(len(products._changed_paths(unmerged, previous)), 5)
+
+    def test_a_client_role_the_committed_baseline_does_not_list_is_left_out(self) -> None:
+        _server, state = self.drifted()
+        previous = products.recorded_products()
+        self.assertNotIn("anonymous", previous["video"]["call_types"]["default"]["grants"])
+        state["video"]["call_types"]["default"]["grants"]["anonymous"] = []
+        merged = products.merged_baseline_record(state, "1729640", previous)
+        self.assertNotIn("anonymous", merged["video"]["call_types"]["default"]["grants"])
+        # A new scope keeps every role it lists.
+        self.assertEqual(
+            sorted(merged["video"]["call_types"]["agent"]["grants"]),
+            ["admin", "call_member", "guest", "user"],
+        )
 
 
 class ReadAndListTest(unittest.TestCase):

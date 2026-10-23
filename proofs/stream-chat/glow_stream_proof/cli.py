@@ -300,13 +300,28 @@ def cmd_baseline(ctx: Context) -> int:
 
 def cmd_record_products_baseline(ctx: Context, snapshot_path: Path) -> int:
     """Write the Video and Feeds baseline record from a ``baseline`` snapshot (P06.1-I2b):
-    ``baseline/video-feeds-<app>-<date>.json``, settings and grants only. Calls nothing."""
+    ``baseline/video-feeds-<app>-<date>.json``, settings and grants only. Calls nothing.
+    Since P06.2 Stage B2-C1 (DM-17 1.1) the record is merged with the committed baseline it
+    supersedes: every scope that baseline holds keeps its client roles' grants from it, read
+    before the lockdown, and everything else comes from the snapshot
+    (``products.merged_baseline_record``)."""
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     state = snapshot.get("products")
     if not isinstance(state, dict):
         ctx.say("refused: the snapshot holds no products section")
         return EXIT_REFUSED
-    record = products.baseline_record(state, ctx.credentials.app_id)
+    previous = products.recorded_products()
+    record = products.merged_baseline_record(state, ctx.credentials.app_id, previous)
+    for product, key, kind in (
+        ("video", "call_types", "call types"),
+        ("feeds", "feed_visibilities", "feed visibilities"),
+    ):
+        kept = sorted(set(record[product][key]) & set(previous.get(product, {}).get(key, {})))
+        new = sorted(set(record[product][key]) - set(kept))
+        ctx.say(
+            f"{kind}: client roles' grants kept from {products.PRODUCTS_BASELINE.name} for "
+            f"{kept}; recorded as read for {new}"
+        )
     BASELINE_DIR.mkdir(parents=True, exist_ok=True)
     path = BASELINE_DIR / (
         f"video-feeds-{ctx.credentials.app_id}-{datetime.now(UTC).strftime('%Y-%m-%d')}.json"
