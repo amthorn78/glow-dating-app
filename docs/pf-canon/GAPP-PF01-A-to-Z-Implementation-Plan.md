@@ -113,7 +113,7 @@ The prior research sampled legacy SQL-parameter logging, development-secret/sess
 | Jobs | Celery/Redis with transactional outbox and bounded retries | Reuse queue mechanics; build durable domain events, deduplication and dead-letter/reconciliation procedures |
 | HDE | App-owned port and one HDE adapter | Build mapping, timeout/error handling and provenance; reuse engine intelligence and protected engine data |
 | Media | Cloudflare Images/private R2 as appropriate | Reuse upload/storage/delivery; build authorization, quarantine, moderation and lifecycle state |
-| Chat | Stream Chat is preferred, subject to permission and cost proof | Reuse transport/history/native UI where safe; build app-controlled mutual-match and block enforcement |
+| Chat | Stream Chat, behind Glow's server only (OD-45, 24 October 2026); its cost stays Nathan's launch decision (A04) | Reuse Stream's server-side delivery and retained history. Glow's API serves history and new messages; the app holds no provider credential, SDK or connection. Build app-controlled mutual-match and block enforcement |
 | Billing | RevenueCat/store SDKs if monetization is selected | Reuse purchase/receipt lifecycle; build entitlement rules, reconciliation and support surfaces |
 | Operations | WordPress plugin calling scoped application admin APIs | Reuse WordPress staff UI/CMS, which also hosts the public sales landing page; app API owns dating authorization, moderation state and audit history. WordPress is never a second backend and never reads or writes app or HDE tables (OD-19) |
 | Quality/operations | CI, standard test runners, error/metric tooling | Configure reproducible checks, redaction, alerts and release evidence; no custom orchestration platform |

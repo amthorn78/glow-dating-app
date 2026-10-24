@@ -714,3 +714,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision. The re-review caught it before the merge, and B2-C5 makes the claim true.
 - **Correction:** PR31's body and Implementation Control are corrected with the re-review's record.
 - **Prevention:** a summary for PR31 or Notion repeats a completeness claim ("every", "all") only after the manager has checked it against the code paths that feed the result; otherwise it describes the mechanism.
+
+### AM7-09 — The manager's own next step left waiting on Nathan (follow-through)
+
+- **What happened:** after integrating DM-21's report, App Manager 7 told Nathan "NOTHING NEEDED" and said it would read Codex's review and the final run when his next message arrived. Reading Codex's review, verifying the run and merging PR31 were the manager's own steps, with nothing of Nathan's needed. So was writing Stage C's design afterwards.
+- **Caught by:** Nathan: *"You don't have a planned next step?"*
+- **Effect:** PR31's merge and Stage C's design waited one relay turn. No record was wrong.
+- **Correction:** the manager read Codex's review and verified the final run, merged PR31 and recorded the receipt (`d0439fc`). It then wrote Stage C's design and DM-22 in the same turn.
+- **Prevention:** before ending a turn, the manager checks the handoff's next actions. Any step that needs nothing from Nathan or another session, it takes now. A message that ends a turn is "NOTHING NEEDED" only when the next step is someone else's.
