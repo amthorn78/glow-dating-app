@@ -455,7 +455,7 @@ C1 ran from its prompt's revision 2 (integrated by fast-forward to `13acf7a`; ru
     - the reads' treatment of a `failed` binding, in the data model.
 - **C1-C1's owned paths:**
   - in `services/api/`, `glow_chat/reads.py`, `glow_domain/chat_projections.py` (finding 10) and their tests;
-  - in `proofs/postgres-ordering/`, `glow_ordering_proof/read_phase.py` and its tests;
+  - in `proofs/postgres-ordering/`, `glow_ordering_proof/read_phase.py` and its tests, and the README's read-phase paragraph if a count or a case name in it changes;
   - `docs/architecture/production-contracts.md` and `docs/architecture/data-model.md`;
   - a new section "Stage C1-C1" in the evidence record.
 
