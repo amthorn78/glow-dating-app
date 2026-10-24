@@ -2305,7 +2305,7 @@ The offline correction pass after B2-C4's exact-head re-review: C4R1 with `cmd_c
 - **No finding outside this work.**
 - **Limits.**
   - The tests run on hand-written fakes and the recorded transport; no row was run live. Stream's real connect refusal text was modelled on B2-C3's record (`user "<id>" does not exist`), not read again.
-  - `_without_ids` generalizes the run's identifiers as they appear whole or in `_generic`'s form. An identifier that reaches a string in any other form (cut short, re-encoded, or with its prefix changed by another rewrite) is not matched; none is known.
+  - `_without_ids` generalizes the run's identifiers as they appear whole or in `_generic`'s form. An identifier that reaches a string in any other form (cut short, re-encoded, or with its prefix changed by another rewrite) is not matched; none is known. **[Corrected by App Manager 7 after B2-C5's exact-head re-review, C5R1:** one is known. The client runner cuts every asynchronous error's text at 300 characters (`client/runner.cjs:498`), so an identifier across the cut reaches the notes cut short and keeps part of its random part. It is carried to P11.**]**
   - The console lines are not generalized: `cleanup:`, `stop recorded:`, `after the run:`, and the closing line `conformance … ended …; <stop_reason>`, which prints `stop_reason` as before. They stay carried to P11 with B2C4-X1.
   - The reversals ran in full scratch copies of the working tree outside the checkout; `git status` was clean afterwards.
 
@@ -2341,3 +2341,46 @@ App Manager 7, 24 October 2026, from the session's report as Nathan relayed it a
 - **C4R1 and C4R2:** done as the prompt asks. B2-C4's item 4 and its "What the exact-head re-review must know" are now true of the results and of `stop_reason`, and not of the console lines.
 - **Carried to P11, unchanged:** B2C4-X1 and the console lines. The P11 plan names the closing line too.
 - **Next:** the exact-head re-review of B2-C5's change at `93caa4b`, offline. Then Codex's code review of the final head, the Dev Manager's read of OD-45's register row, the final head's run and PR31's merge.
+
+## Exact-head review of Stage B2-C5 (24 October 2026)
+
+Relayed by Nathan to App Manager 7 on 24 October. The review session ran the [review prompt](../../ephemeral/2026-10-24-p06-2-stage-b2-c5-review-prompt.md), revision 1, from `cd02f8220075c958e665b6ed22e0690bd037f587` (Nathan's pick: Opus 5.5 at high, TypeSafe's reading), in `Glow App - No Stream`, offline.
+
+- **Head reviewed:** `93caa4b7815fb351584b2db43b7fd229c31c14e7` (code equal to `a1e92eb`'s), against the base `4c70db8` (code equal to `da3c0ff`'s). The live branch head was `469ba07`, one Markdown-only commit after `cd02f82`.
+- **Verdict: changes required, in the records only.** One should-fix finding (C5R1), in the record-claim class by its letter, and two nits. The code at the head needs no change for PR31.
+- **What the review confirmed:**
+  - B2-C5's three code items are correct and tested, and each reversal fails for the right reason. The reversals gave 8 failures for C4R1, 2 for each of the three `stop_reason` cases, and 10 subtests for C4R2, which pass on the base's test.
+  - Nothing else changed against `4c70db8`.
+  - Every finding of the earlier reviews is fixed or recorded with a disposition.
+- **Start gate and classification:** every check passed.
+  - `4c70db8` to the head: `"full": true`, 6 paths, none outside the owned code paths.
+  - The head to `cd02f82`: `ordinary-docs-only`.
+- **Environment (names only):** no HDE, `PG*`, `PROOF_DB_*` or `STREAM_*` name; Python 3.12.14, Node v24.19.0, npm 11.9.0; every command under `env -i`. Reversals ran in a `git archive` copy in the scratch folder; `git status` was clean afterwards.
+- **Offline checks at the head:**
+  - **The API:** `pip check`; `manage.py check`; `Ran 331 tests`, `OK`; Ruff and mypy; the static check and `makemigrations --check --dry-run`; the sealed-runtime, pin and runtime tests, `Found 14 test(s)`, `OK`.
+  - **The harness:** `Ran 648 tests`, `OK`; Ruff and mypy; `node --check`; `run plan: fits` (5 users, 2 channels, 46 rows, 95 calls; 10 users with the reserve).
+- **Run of record's logs read:** run 40054102314. API checks `Ran 331 tests`, `OK`, and contracts `Ran 38 tests`, `OK`; Stream proof checks `Ran 648 tests`, `OK`, and `run plan: fits`; the gate `Application checks passed`. This reading confirms the harness count, which neither the session nor the manager had read from the log.
+- **The forms an identifier takes:** whole, or `{prefix}` plus 32 hexadecimal characters, through every path. Those paths are `_text`, `_client_note`, `_check`, the async errors, `_request_line`, `_defer_stop` and `RunStopped`. The guard's messages, the redactor and the ledger hold none.
+  - `M1` and `M2` become `{M1}` and `{M2}` by `_generic`'s table names, the same placeholders.
+  - The new pairs can replace only what `_generic` produced from a run identifier.
+  - The order and the empty-prefix guard are right.
+
+**Findings**
+
+| ID | Severity | Finding | Disposition (App Manager 7) |
+|---|---|---|---|
+| C5R1 | should fix; the record-claim class by its letter; records only | An identifier cut short is a form `_without_ids` does not match. The client runner cuts every asynchronous error's text at 300 characters (`client/runner.cjs:498`). That text reaches the notes through `_send` (`proof_run.py:551`) and the at-exit notes (`client_bridge.py:464`, via `_client_note`). A probe kept 29 of an identifier's 32 random characters. It occurs only when an async error's text runs past 300 characters with an identifier across the cut; B2-C3's live run recorded no notes. The harness README's sentence was unqualified, and "Stage B2-C5" said "none is known". | **Fixed in the records, in the review's words:** the harness README now names the exception, and "Stage B2-C5"'s limit carries a marked correction by the manager. **The code fix is carried to P11** with B2C4-X1: `_without_ids` also matches `{prefix}` followed by a shorter hexadecimal run at the end of a string, or the runner cuts outside identifiers. |
+| C5R2 | nit, records | The brief's "Sessions" entry for B2-C5 said "all four items, each with a test and a reversal"; item 4 (the claims) has neither. | **Fixed:** "items 1 to 3 each with a test and a reversal, item 4 by its text". |
+| C5R3 | nit, test strength | In `test_chat_provider_stream.py:862`, the length assertion uses the same hand count as `pass_next`, so a wrong count cannot make it fail. The method-and-path assertion (`:865`) is the one that catches it, as the B2-C5 record already says. | **No change.** |
+
+**Manager verification (App Manager 7, 24 October 2026).**
+- **The report:** it states the prompt's revision, its commit and the head as the prompt names them.
+- **C5R1, confirmed:** `client/runner.cjs:498` builds each async error's text as `` `${origin}: ${text}`.slice(0, 300) ``.
+- **The corrections:** the README sentence, the marked correction in "Stage B2-C5", the brief's entry and the P11 bullet are Markdown only.
+- **The head's code:** the head that carries them differs from `a1e92eb`'s code paths only in `proofs/stream-chat/README.md`. So run 40054102314 stays the run of record for the code, and the classification of the corrections is `ordinary-docs-only`.
+- **Effect on recorded results:** none.
+
+**Next:**
+1. The Dev Manager's read of OD-45's register row (DM-21), the one governing change since DM-20's read at `050a37e`.
+2. PR31 marked ready, so that Codex reviews the final head (OD-41).
+3. The final head's run, and PR31's merge.
