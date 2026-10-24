@@ -36,7 +36,13 @@ there, and for a message whose ID Stream reports as existing.
 **The exception boundary** (4.1). Only the SDK's own API error (``StreamApiException``) and
 its transport errors and timeouts (``StreamTransportException``, ``httpx.TransportError``)
 are mapped to Glow codes. Every other exception propagates unchanged: the harness's
-``GuardRefused``, ``RunStopped`` and ``GuardrailStop`` among them.
+``GuardRefused``, ``RunStopped`` and ``GuardrailStop`` among them. A mapped error is raised
+after its ``except`` block, so neither its ``__cause__`` nor its ``__context__`` holds the
+SDK's error (both are ``None`` unless the caller is itself handling an exception).
+A non-2xx body that the SDK cannot parse into its ``APIError`` (for example, one with
+``code`` and ``message`` only) raises the SDK's own ``KeyError`` before a
+``StreamApiException`` exists; that ``KeyError`` propagates unmapped, as an undecodable 2xx
+body's does (DM-16 4.1), and delivery keeps it as a retryable ``provider_unavailable``.
 
 **Codes from status and number** (4.5). Each mapping is decided by the HTTP status and
 Stream's numeric ``code``: a transport error, a timeout, a 5xx, a 429 or a success that
@@ -132,12 +138,14 @@ def _mapped(error: BaseException, *, missing: ChatErrorCode) -> StreamProviderEr
 
 
 def _guarded[T](call: Callable[[], T], *, missing: ChatErrorCode) -> T:
-    """Run one SDK call, mapping only the SDK's own errors (4.1); the chain is dropped so
-    that no provider text travels with the Glow code."""
+    """Run one SDK call, mapping only the SDK's own errors (4.1); the Glow error is raised
+    after the ``except`` block, so neither its ``__cause__`` nor its ``__context__`` holds
+    the SDK's error, and no provider text travels with the Glow code."""
     try:
         return call()
     except (StreamApiException, StreamTransportException, httpx.TransportError) as error:
-        raise _mapped(error, missing=missing) from None
+        refused = _mapped(error, missing=missing)
+    raise refused
 
 
 def _cutoff_text(cutoff: datetime) -> str:
@@ -240,10 +248,13 @@ class StreamChatProvider:
             if _reports_existing(error):
                 # Stream reports the committed ID exists: a repeat (design point d).
                 return ProviderReceipt(message_id, already=True)
-            raise _send_error(error) from None
-        if response.data.message is None or response.data.message.id != message_id:
-            raise StreamProviderError(PROVIDER_REJECTED, status=response.status_code())
-        return ProviderReceipt(message_id)
+            refused = _send_error(error)
+        else:
+            if response.data.message is None or response.data.message.id != message_id:
+                raise StreamProviderError(PROVIDER_REJECTED, status=response.status_code())
+            return ProviderReceipt(message_id)
+        # After the block, as in _guarded: no SDK error in __cause__ or __context__.
+        raise refused
 
     def remove_members(self, channel_id: str, members: tuple[str, str]) -> ProviderReceipt:
         state = self._channel(channel_id)

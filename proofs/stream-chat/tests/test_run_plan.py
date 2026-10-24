@@ -96,12 +96,12 @@ class RunPlanTest(unittest.TestCase):
         conformance = self.plan["conformance"]
         self.assertEqual(
             (conformance["users"], conformance["channels"], conformance["peak_connections"]),
-            (4, 2, 1),
+            (5, 2, 1),  # 4 until B2-C4: M5's sender is now reserved (DM-20 1.3; B2R3)
         )
         self.assertEqual(conformance["rows"], 46)
         self.assertEqual(conformance["problems"], [])
         self.assertLess(conformance["api_calls"], 400)
-        self.assertEqual(self.plan["b2_total_with_reserve"], {"users": 8, "channels": 4})
+        self.assertEqual(self.plan["b2_total_with_reserve"], {"users": 10, "channels": 4})
         self.assertTrue(all(self.plan["b2_fits"].values()), self.plan["b2_fits"])
 
     def test_one_set_is_counted_on_its_own(self) -> None:

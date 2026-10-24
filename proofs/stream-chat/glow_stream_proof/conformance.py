@@ -18,14 +18,19 @@ adapter in memory and on the Stream adapter live, with the same identifiers, and
 outcomes are compared. A difference is a finding, reported, never fixed silently; for the
 causes delivery acts on (the provider halves of F3 and CX6: a removal from a channel Stream
 does not have, and a deactivation, a revocation or a channel creation naming a user Stream
-does not have) a difference blocks B2's merge until it is dispositioned (DM-16 5.2). Two
+does not have) a difference blocks B2's merge until it is dispositioned (DM-16 5.2). Three
 rows are stated as recorded: a send by a removed member (4.7), where the fixture refuses
-and Stream's answer is recorded (an acceptance is a reported difference, not a failure), and
-a token whose ``iat`` equals the sent cut-off, which shows Stream's comparison at the
-whole-second boundary.
+and Stream's answer is recorded (an acceptance is a reported difference, not a failure); a
+send by a user Stream does not have (M5; DM-20 1.3), which Stream accepts and which may
+create that user, so its sender is reserved in the ledger and recorded as a run user before
+the send, and cleanup deletes it by record; and a token whose ``iat`` equals the sent
+cut-off, which shows Stream's comparison at the whole-second boundary.
 
 **Identifiers**: the run's prefix plus ``secrets.token_hex(16)`` (49 characters), so the
-guard's ownership by prefix, ``verify-clean`` and ``cleanup --apply`` work unchanged.
+guard's ownership by prefix, ``verify-clean`` and ``cleanup --apply`` work unchanged. The
+absent users of rows C4, D10 and V13 and M5's sender each have an identifier no other row
+names (``U5``, ``U7``, ``U8`` and ``U6``; DM-20 1.2). The results replace every identifier
+of the run with its key (B2R2).
 
 **Before its first changing request** (1.1) the command runs ``configuration.verify`` and
 ``products.verify`` on a fresh snapshot (:func:`start_refusals`) and refuses to start unless
@@ -574,7 +579,7 @@ class ConformanceRun(ProofRun):
             "channel creation naming a user Stream does not have",
             "create_channel",
             self._id("C2"),
-            (u1, self._id("U9")),
+            (u1, self._id("U5")),
             blocking=True,
         )
 
@@ -608,14 +613,19 @@ class ConformanceRun(ProofRun):
             self._message("M3"),
             "nowhere",
         )
+        # Stream's server-side send checks neither membership nor existence (DM-20 item 2):
+        # an accepted send may create its sender, so the sender is reserved in the ledger
+        # and recorded as a run user before the send, and cleanup deletes it by record
+        # (DM-20 1.3; B2R3). Its identifier is its own (DM-20 1.2).
         self._both(
             "M5",
             "a send by a user Stream does not have",
             "send_message",
             c1,
-            self._id("U9"),
+            self._new_user("U6"),
             self._message("M4"),
             "nobody",
+            recorded=True,
         )
 
     def rows_signer(self) -> None:
@@ -728,7 +738,7 @@ class ConformanceRun(ProofRun):
             "D10",
             "deactivation of a user Stream does not have",
             "deactivate_user",
-            self._id("U9"),
+            self._id("U7"),
             blocking=True,
         )
 
@@ -827,7 +837,7 @@ class ConformanceRun(ProofRun):
             "V13",
             "revocation of a user Stream does not have",
             "revoke_user_tokens",
-            self._id("U9"),
+            self._id("U8"),
             sent,
             blocking=True,
         )
@@ -854,15 +864,33 @@ class ConformanceRun(ProofRun):
             counts[row.verdict] = counts.get(row.verdict, 0) + 1
         return dict(sorted(counts.items()))
 
+    def _without_ids(self, value: Any) -> Any:
+        """``value`` with every identifier of the run replaced by ``{key}``, longest first,
+        in every string at any depth (B2R2): no record keeps an identifier's random part."""
+        pairs = sorted(((v, k) for k, v in self.ids.items() if v), key=lambda p: -len(p[0]))
+
+        def walk(item: Any) -> Any:
+            if isinstance(item, str):
+                for identifier, key in pairs:
+                    item = item.replace(identifier, "{" + key + "}")
+                return item
+            if isinstance(item, Mapping):
+                return {walk(k): walk(v) for k, v in item.items()}
+            if isinstance(item, list | tuple):
+                return [walk(v) for v in item]
+            return item
+
+        return walk(value)
+
     def results(self) -> dict[str, Any]:
         base = super().results()
         rows = []
         for row in self.rows:
             entry = asdict(row)
-            # Identifiers generalized, the text redacted, as every record of this harness.
-            entry["detail"] = json.loads(
-                self.redactor.text(pr._generic(json.dumps(row.detail, default=str), self.ctx))
-            )
+            # Every identifier of the run generalized (B2R2), then the prefix and the
+            # harness's table names, then the text redacted, as every record of this harness.
+            detail = self._without_ids(json.dumps(row.detail, default=str))
+            entry["detail"] = json.loads(self.redactor.text(pr._generic(detail, self.ctx)))
             rows.append(entry)
         base.update(
             {
@@ -872,7 +900,9 @@ class ConformanceRun(ProofRun):
                 "api_calls_used": self.ledger.summary()["run"]["api_calls"],
             }
         )
-        return base
+        # And in every other part of the results: the notes, the stops, the cleanup.
+        generalized: dict[str, Any] = self._without_ids(base)
+        return generalized
 
 
 def render(results: Mapping[str, Any]) -> str:
