@@ -2970,3 +2970,24 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 3. The pre-merge checklist, and the merge.
 
 The governing Markdown PR32 carries is PF01 1.12, read in DM-22 as written; no other governing file changed since `main`.
+
+## Stage C1's merge receipt (24 October 2026)
+
+- **PR32 merged** at 20:48:24 UTC on 24 October, by App Manager 7. The merge commit is `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae`; its parents are `3572c41`, `main` before, and `737a7af6e55688df25eb100375da1494323c18f6`, the final head, pinned with the merge's expected head. Checked: `origin/main` is `a8e9528`, and its tree (`12c7f74`) equals `737a7af`'s.
+- **The pre-merge checklist** (PR32's description):
+  - **The exact-head reviews:** C1's review of `ee3ce7e` (changes required, made by C1-C1), C1-C1's re-review of `8a753c3` (changes required, made by C1-C2) and C1-C2's re-review of `4eac142` (approve, four nits: N1 corrected in place, N2 and N3 recorded follow-ups, N4 fixed in the P11 plan). The final head's code is `4a6a81a`'s; `737a7af` adds Markdown records only.
+  - **The Dev Manager's read:** DM-22 (`f9c624d`, of `d1f7ea1`) covers PF01 1.12 as written, with its conditions applied as written at `2fa6cb2`; PF01 is unchanged since. No other governing file differs from `main` at `3572c41`.
+  - **Codex's code review** completed on `737a7af` at 20:44:46 UTC, triggered by marking the PR ready, with no findings and no review thread. Its security reviews are no longer available (OD-41).
+  - **The final head's run:** PR run [40130871253](https://github.com/amthorn78/glow-dating-app/actions/runs/40130871253) on `737a7af`.
+    - All eight jobs passed, and the gate printed `Application checks passed`.
+    - The database job ran from 20:41:03Z to 20:47:26Z and ended `VERDICT: PASS`.
+    - The second run on the used database exited 1 with "refusing a used database", and the row counts were unchanged. The container and the credential and marker files were removed.
+  - **Classification:** the trusted base policy reports `behavior-or-empty` (full scope).
+- **Branch state at the merge** (`git ls-remote --heads`, each head checked as an ancestor of `origin/main` with `git merge-base --is-ancestor`). Six remain. Nathan had already deleted the eight branches given to him at PR31's merge.
+  - **Kept:** `main` (`a8e9528`); `claude/magical-wozniak-yfmmx2`, fast-forwarded to `a8e9528` for Stage C2; `claude/dev-manager` (`f9c624d`), kept by name, its head in `main`.
+  - **Fully merged, for Nathan to delete:** C1's, C1-C1's and C1-C2's session branches, each head in `main`: `claude/gallant-bardeen-k6xjwf` (`13acf7a`), `claude/youthful-faraday-dakcvg` (`bdd2043`) and `claude/glow-c1-c2-correction-w417el` (`716f9d6`).
+- **What stays open for P11** (the P11 plan, "The reads' limits from P06.2 Stage C1"):
+  - the history read's live row, a prerequisite to serving the reads (DM-22 8.2);
+  - the history policy question to Nathan before the reads are served (DM-22 3.1);
+  - the receipt order requirement, the list's locked set and the serving rule for the reads' transactions.
+- **Next:** Stage C2, the mobile interface (the brief's point g). Its prompt goes to Nathan without a further read on DM-22 9.1's terms. P06.2 is done when C2 merges, and its closing record states DM-22 8.1.

@@ -97,6 +97,9 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
 | AM7-07 | 24 Oct 2026 | follow-through | The handoff's branch list kept `claude/dev-manager` at `821efc7` (DM-19, merge `5480b99`) through DM-20's integration, when its head became `ca806e3` (merge `855a92b`) | App Manager 7, checking the remote branches at B2-C4's integration |
 | AM7-08 | 24 Oct 2026 | accuracy | PR31's body and Implementation Control said B2-C4 generalized "every run identifier" in the conformance results, repeating the session's claim; strings already passed through `_generic` keep their random part | B2-C4's exact-head re-review (C4R1) |
+| AM7-09 | 24 Oct 2026 | follow-through | After DM-21, the manager told Nathan "NOTHING NEEDED" and left its own next steps (Codex's review, the final run, PR31's merge) waiting on his next message | Nathan: *"You don't have a planned next step?"* |
+| AM7-10 | 24 Oct 2026 | accuracy | The P11 plan said the reads' guards meant "no enclosing Django transaction can hold their locks", and carried a session's raw-`BEGIN` limit unchecked; `set_autocommit(False)` passed both guards | C1-C1's exact-head re-review (R1) |
+| AM7-11 | 24 Oct 2026 | follow-through | DM-17's follow-up on the harness client's `npm ci` advisory was due "before Stage C", and was not decided before C1 ran and merged | App Manager 7, updating the handoff after PR32 merged |
 
 ## App Manager 2
 
@@ -730,3 +733,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision or a member. The re-review caught it before PR32 merges, and nothing is served.
 - **Correction:** the P11 plan's line and the manager's verification note are corrected in place, marked as corrections. C1-C2 closes the path in code.
 - **Prevention:** AM7-08's rule applies to the manager's own summaries as well as to a session's claims. A record says "no", "never" or "every" only when the manager has checked the paths it covers. Otherwise it states what the mechanism does.
+
+### AM7-11 — A follow-up due "before Stage C" not decided when Stage C started (follow-through)
+
+- **What happened:** DM-17 (item 5) approved B2-C1's handling of the harness client's `npm ci` advisory, and set its follow-up to be decided before Stage C, "whose mobile app has its own lock". App Manager 7 kept it among the handoff's recorded follow-ups. It then wrote Stage C's design and C1's prompt without deciding it, and C1 ran and merged first.
+- **Caught by:** App Manager 7, updating the handoff after PR32 merged.
+- **Effect:** none. C1 changed no dependency. The advisory's package, `follow-redirects` 1.16.0, is only in the harness's client lock: the mobile app's and the contracts' locks hold none. No live harness run has occurred since.
+- **Correction:** decided before C2. The P11 plan carries the lock's update as a fix required before the harness's next live run.
+- **Prevention:** before writing a stage's first prompt, the manager reads the handoff's recorded follow-ups for any due "before" that stage, and decides or schedules each one first.
