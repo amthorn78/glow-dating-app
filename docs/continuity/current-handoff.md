@@ -17,11 +17,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 2:** `session_015DxVkL8PXn2YaauE6RdSWN` (OD-35); [review log](dev-manager/README.md), DM-01 to DM-20 (all answered).
 - **Environments** (OD-36, OD-40, OD-43): every prompt names one. `Glow app` only for a session that calls Stream; `Glow App - No Stream` otherwise; Nathan's CLI agent in an open environment for a task the cloud refuses, with the environment Nathan sets for that task.
 
-## Waiting checkpoint (23 October 2026, App Manager 7)
+## Waiting checkpoint (24 October 2026, App Manager 7)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 7 | Nathan | The exact-head review's report (revision 1, `Glow App - No Stream`), and his pick of model and rung for the uses table | Ask Nathan whether the session started; nothing else starts (OD-29). After it: the correction pass's prompt (DM-20 1.2, 1.3 and the review's findings) |
+| App Manager 7 | Nathan | The exact-head review's report (revision 1, `Glow App - No Stream`; Nathan ran it at Fable 5.1 at max, recorded) | Ask Nathan whether the session started; nothing else starts (OD-29). After it: the correction pass's prompt (DM-20 1.2, 1.3 and the review's findings) |
 
 ## Next actions (App Manager 7)
 
