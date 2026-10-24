@@ -100,6 +100,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-09 | 24 Oct 2026 | follow-through | After DM-21, the manager told Nathan "NOTHING NEEDED" and left its own next steps (Codex's review, the final run, PR31's merge) waiting on his next message | Nathan: *"You don't have a planned next step?"* |
 | AM7-10 | 24 Oct 2026 | accuracy | The P11 plan said the reads' guards meant "no enclosing Django transaction can hold their locks", and carried a session's raw-`BEGIN` limit unchecked; `set_autocommit(False)` passed both guards | C1-C1's exact-head re-review (R1) |
 | AM7-11 | 24 Oct 2026 | follow-through | DM-17's follow-up on the harness client's `npm ci` advisory was due "before Stage C", and was not decided before C1 ran and merged | App Manager 7, updating the handoff after PR32 merged |
+| AM7-12 | 24 Oct 2026 | follow-through | After verifying Codex's CX8 on PR33, the manager carried it to P11 and put the alternative (a correction pass before the merge) to Nathan as a question, instead of consulting the Dev Manager first (OD-32) | Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"* |
 
 ## App Manager 2
 
@@ -741,3 +742,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none. C1 changed no dependency. The advisory's package, `follow-redirects` 1.16.0, is only in the harness's client lock: the mobile app's and the contracts' locks hold none. No live harness run has occurred since.
 - **Correction:** decided before C2. The P11 plan carries the lock's update as a fix required before the harness's next live run.
 - **Prevention:** before writing a stage's first prompt, the manager reads the handoff's recorded follow-ups for any due "before" that stage, and decides or schedules each one first.
+
+### AM7-12 — A review question put to Nathan instead of the Dev Manager (follow-through)
+
+- **What happened:** after verifying Codex's CX8 on PR33 (the read cursor advances past messages not yet scrolled into view), App Manager 7 carried it to the P11 plan, following CX4 to CX7, and replied on Codex's thread. In the same message it asked Nathan whether to fix it before the merge instead. That choice is a review question that no correction class decides. OD-32 sends such questions to the Dev Manager first, and Nathan receives only what the Dev Manager refers to him. The manager's carry disposition had also not weighed that CX8 misses item 8 of C2's own prompt ("when the member has seen newer messages").
+- **Caught by:** Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"*.
+- **Effect:** none on the code or a member. PR33's merge is held for the Dev Manager's read, and the reply on Codex's thread ("not fixed in this PR") may need correcting.
+- **Correction:** DM-23 to the Dev Manager, with a recommendation of a correction pass, C2-C1. The merge is held.
+- **Prevention:** when a verified finding leaves a choice between fixing it before a merge and carrying it, and no correction class decides it, the manager consults the Dev Manager before saying anything to Nathan. A finding that misses an item of the stage's own prompt is weighed as such, not only by the precedent of earlier carried findings.
