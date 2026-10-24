@@ -70,12 +70,15 @@ test('a committed pass is not undone by refresh or the other discovery mode', as
   await expect(active(page, 'discovery-card-profile-jules')).toHaveCount(0);
 });
 
-test('two committed fictional likes produce one participant match and a safe detail with no messaging grant', async ({ page }) => {
+test('two committed fictional likes produce one participant match and a safe detail whose messages open only on the guarded conversation route', async ({ page }) => {
   await mutual(page);
   await page.getByRole('button', { name: 'View match with Fictional Jules', exact: true }).click();
   await expect(active(page, 'screen-match')).toBeVisible();
   await expect(active(page, 'match-detail')).toContainText('You both liked each other');
-  await expect(active(page, 'match-detail')).toContainText('Messaging is unavailable');
+  // P06.2 C2: an active match opens its conversation on /conversation; the detail itself has no composer.
+  await expect(active(page, 'match-detail')).toContainText('Messages with this match stay in this fictional preview session.');
+  await expect(active(page, 'match-conversation')).toBeVisible();
+  await expect(page.getByTestId('composer')).toHaveCount(0);
   await expect(active(page, 'match-unmatch')).toBeEnabled();
   await expect(active(page, 'match-detail')).not.toContainText(/birth_date|birth_time|chart_id|demo_connection|engine_reference|fixture-passphrase/);
   await expect(page.getByRole('button', { name: /send message|start chat/i })).toHaveCount(0);
