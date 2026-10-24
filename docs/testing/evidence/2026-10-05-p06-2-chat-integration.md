@@ -2896,3 +2896,26 @@ The two R2 orders against the start's case both passed, confirming the re-review
 - **R3** is `read_phase.py:551`; the guard before the provider call is now reached only by the offline tests.
 - **R5** is `production-contracts.md:121-128`.
 - **The run of record** is [40127834532](https://github.com/amthorn78/glow-dating-app/actions/runs/40127834532) on `4a6a81a`; the records commit is Markdown-only.
+
+## Manager verification of Stage C1-C2
+
+App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/glow-c1-c2-correction-w417el`: code commit `4a6a81a60b8c47bd569bec8d70294c0a4251cc1e`, records commit `716f9d6b316d5c1d6bc0b09d4cb8c0967123e71d`, both as reported. The prompt's commit `d662319` is an ancestor.
+- **Changed paths.** Seven against `d662319`, every one inside C1-C2's owned paths. Five are code paths (338 lines added, 55 removed): `reads.py`, its offline tests, `read_phase.py` and its tests, and the proof README. `git diff --check` is clean.
+- **Unchanged since C1-C1:** `packages/`, `apps/`, `.github/`, `proofs/stream-chat/`, `glow_domain`, `glow_persistence`, `contact.py`, `delivery.py`, `reference.py`, `cases.py`, `controls.py`, `results.py` and `interface.py` (an empty diff from `d662319`).
+- **The departure.** R1's refusal in `_run` is the manager's direction during the session (the brief, revision 15, `09d8fe4`), which the session asked for before writing it. The code matches it:
+  - `_caller_transaction_open()` is `connection.in_atomic_block or not connection.get_autocommit()`;
+  - `_run` checks it inside its `try` and before its durable block, and returns `error`, `transaction_open`, before any statement;
+  - the guard before the provider call checks the same condition again.
+
+  The session moved the check inside the `try` after finding, in its own draft, that reading autocommit can open the connection. An unreachable database is then still an `error` result.
+- **Run of record.** Foundation push run 40127834532 on `4a6a81a`. The manager read its job list, not its logs:
+  - all eight jobs concluded `success`, the gate included;
+  - the database job ran from 20:00:34 to 20:08:03 UTC (7 min 29 s);
+  - its suite step ran from 20:01:22 to 20:07:59.
+
+  The counts (API 366, proof 160, read phase 62/62, three read controls) are the session's reading of the logs.
+- **Integration.** The session branched from `d662319`, before the brief-only commit `09d8fe4`, so the manager merged it, with no conflict. The head's code is byte-identical to `4a6a81a`'s.
+
+**Next:** C1-C2's exact-head re-review, then Codex's code review of PR32's final head (OD-41).
