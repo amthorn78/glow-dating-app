@@ -486,6 +486,15 @@ C1-C1 ran from its prompt's revision 1 (merged at `8b210ec`; run of record 40109
   - a new section "Stage C1-C2" in the evidence record.
 
   Nothing else: no contract shape, dependency, migration or other module. If a fix needs more, the session stops and reports.
+- **The manager's direction during C1-C2** (24 October; the session stopped before R1's code and asked, through Nathan):
+  - **What the session found:** under `set_autocommit(False)`, the guard before the provider call alone returns `error` and calls no provider. But the first check has already taken its `FOR SHARE` locks inside the caller's transaction, so a transaction ID is assigned and a block waits on the caller until that transaction ends. R1's case could not then show "no transaction ID" and "a block not held up", and the prompt's reversal could not fail the case once an earlier refusal exists.
+  - **Direction (an approved departure from the prompt's letter, not a design change):** `_run` refuses before any statement, and before entering its durable block, whenever the caller has a transaction open (`connection.in_atomic_block or not connection.get_autocommit()`). It returns an `error` result with one Glow reason, for all three reads. So no read takes a lock inside a caller's transaction: DM-22 3.2 applied more strictly. The durable flag and the guard before the provider call stay, as a second line covered by offline tests.
+  - **The cases:** R1's case and R3's case each show `error`, no provider call and no transaction ID assigned. R1's case also shows a block not held up.
+  - **The reversals:**
+    - `_run`'s check reverted fails R1's case and R3's case;
+    - `_run`'s check and the guard both reverted fails R1's case by a provider call;
+    - the guard alone reverted fails its offline test.
+  - **The record** names this direction. No Dev Manager read is needed: it changes no design point and is stricter than DM-22 3.2's words.
 - **Already done by the manager:**
   - the P11 plan's line on the reads' transactions corrected (AM7-10), with R4's serving rule (`non_atomic_requests`, no autocommit switch on the reads' connection, `TransactionTestCase`);
   - R5's dependency recorded in the P11 plan.
