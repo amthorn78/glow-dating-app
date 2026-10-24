@@ -2208,3 +2208,46 @@ App Manager 7, 24 October 2026, from the session's report as Nathan relayed it (
     - The harness's next live conformance run is P11's. The P11 plan carries the fix: `_verify_polls` leaves out a recorded user that a complete listing does not show, as `_delete_users` already does. Until then, an exit 4 whose only problem is that refusal is read as this case.
 - **B2C4-X2, the session's limit on B2R2** (not in a correction class). `cmd_conformance` (`cli.py`, not B2-C4's to change) adds `stop_reason` after `results()` and prints three console lines, which are not generalized. `stop_reason` repeats an exception's redacted text, which `run.stops` also holds, generalized. **Carried with B2C4-X1** to the harness's next change before its next live use.
 - **Next:** the exact-head re-review of B2-C4's change, at the head that integrates it, offline. Then Codex's code review of the final head, the Dev Manager's read of OD-45's register row, the final head's run and PR31's merge.
+
+## Exact-head review of Stage B2-C4 (24 October 2026)
+
+Relayed by Nathan to App Manager 7 on 24 October. The review session ran the [review prompt](../../ephemeral/2026-10-24-p06-2-stage-b2-c4-review-prompt.md), revision 1, from `fabb183b6904e2748520945ba21fbf882a45d90c` (Nathan's pick: Opus 5.5 at high, TypeSafe's reading), in `Glow App - No Stream`, offline.
+
+- **Head reviewed:** `da3c0ff65ffb25e5ea4f7562a7f819ff006d648d`, the merge that integrated B2-C4 (`HEAD^2` `0fdc54d`, code equal to `42e6231`'s; first parent's code equal to `51844a5`'s). The scope was the whole of `git diff HEAD^1 HEAD`. The live branch head was `5b68e3c`, one Markdown-only commit after `fabb183`.
+- **Verdict: changes required.** One should-fix finding (C4R1) in the record-claim correction class, and one nit (C4R2). Nothing is blocking, and no credential, token or secret is involved.
+- **Start gate and classification:** every check passed.
+  - `HEAD^1` to `HEAD`: `"full": true`, `behavior-or-empty`, 8 paths, none outside the owned code paths.
+  - `HEAD` to `fabb183`: `ordinary-docs-only`.
+  - The reviewer's first run of the policy, from its own scratch folder, printed `comparison-unavailable`, because git was not in that folder. Run from the repository root, it gave the results above.
+- **Environment (names only):** no HDE, `PG*`, `PROOF_DB_*` or `STREAM_*` name; Python 3.12.14, Node v24.19.0, npm 11.9.0; every command under `env -i`. No provider call, database or live harness command; `git status` clean afterwards.
+- **Run of record's logs read:** run 40049721647. API checks `Ran 331 tests`, `OK`; Stream proof checks `Ran 646 tests`, `OK`, and `run plan: fits` (5 users, 95 calls, 10 users with the reserve); the gate `Application checks passed`; all eight jobs `success`.
+- **Offline checks at the head, clean environment:**
+  - **The API:** `pip check`; `manage.py check`; `Ran 331 tests`, `OK`; Ruff and mypy; contracts `Ran 38 tests`, `OK`; the static check and `makemigrations --check --dry-run` (`No changes detected`); sealed-runtime and pin tests, `Ran 7 tests`, `OK`; `smoke.py`, three `PASS`.
+  - **The harness:** `pip check`; `Ran 646 tests`, `OK`, after `npm ci --ignore-scripts` (a first run without `node_modules` failed, 3 failures and 81 errors); Ruff and mypy; `node --check`; `run plan: fits`.
+- **Focus areas:**
+  - **B2R1, confirmed by a probe.** The probe ran 36 mapped errors: 30 Stream error answers on all six operations and 6 transport errors from a hook, each carrying a marker. None reached the SDK's error or the marker, through `__cause__`, `__context__`, `args`, `__dict__`, adapter frame locals or the formatted traceback. The docstring's caveat is right. `send_message`'s `else` preserves behaviour. The reviewer's own reversal gave 91 failures, each for the right reason.
+  - **DM-20 1.2 and 1.3, with B2R3, confirmed.** C4, D10 and V13 name users the run never creates, each its own. M5 is RECORDED, with the fixture's expectation. Its sender is reserved before either subject is called. The blocking rows and every other row are unchanged. The run plan's figures follow from the code. Reversals: 8 failures and 3 errors; 5 failures.
+  - **B2R4 and B2R7, confirmed.** The README's command matches B2-C1's recorded command, and the two locks share 30 packages at the same versions.
+  - **B2C4-X1 and B2C4-X2:** the session's analysis is right, and so is the manager's disposition (carry both to P11's next live run). Optionally, X2's `stop_reason` could ride with a correction pass for C4R1.
+  - **Nothing else changed** against `HEAD^1`.
+  - **The records:** the statements C4R1 lists claim more than the code does. The rest of "Stage B2-C4" and "Manager verification of Stage B2-C4" matches the code, the tests and the run.
+
+**Findings**
+
+| ID | Severity | Finding | Disposition (App Manager 7) |
+|---|---|---|---|
+| C4R1 | should fix; the record-claim class | `_without_ids` (`conformance.py:867-883`) matches each identifier only in full. Strings that `proof_run._generic` has already rewritten hold `{prefix}<32 hex>`, so they keep their random part: `_text` (`proof_run.py:490-491`, used for `connect_note`, `read_note` and `error` in `_token_check`, `conformance.py:477-497`), `_client_note` (`:544-545`), the async-error and request lines (`:551-565`) and `_defer_stop`. A probe, on a fake run whose D3 and D7 connect refusals name the user as Stream's did in B2-C3, kept U3's random part in rows D3 and D7. The new test adds its note as a raw string, so it does not see this. Four statements claim more: `_without_ids`'s docstring, the harness README, the B2-C4 record's item 4 and its "What the exact-head re-review must know", and B2R2's disposition. | **B2-C5, in code:** `_without_ids` also replaces the form `_generic` leaves (`{prefix}` plus the identifier's part after the prefix), with a test that sends identifiers through `_text`, `_client_note` and a connect note; the claims state what the code then does. |
+| C4R2 | nit, test strength | The `at_write=True` case of `test_streams_error_answer_is_mapped_with_no_cause_or_context` (`tests/test_chat_provider_stream.py:803-833`) relies on hand-counted reads and never asserts that the scripted refusal reached the write. The counts are right today. | **B2-C5:** assert the last recorded request's method and path, or the recording's length. |
+
+**Manager verification (App Manager 7, 24 October 2026).**
+- **The report:** it states the prompt's revision, its commit and the head as the prompt names them.
+- **C4R1, confirmed in the code at `5b68e3c`,** whose code paths equal `da3c0ff`'s:
+  - `_check` (`proof_run.py:486-489`), `_text` (`:491-492`), `_client_note` (`:544-545`) and the async-error notes (`:551`) each pass their text through `_generic`, which replaces the prefix with `{prefix}`.
+  - `_without_ids` (`conformance.py:867`) builds its pairs from `self.ids`' full values only.
+- **`stop_reason`, B2C4-X2's part that reaches a record.** `cmd_conformance` builds `stop_reason` from an exception's text through the redactor only (`cli.py:698-705`). It adds it to the early results (`:708-717`) and to the final results (`:740-742`), after `run.results()`. Both are written to `conformance-<prefix>.json`, and the final one also through `render` to the `.md`. So a stop whose exception names a run identifier writes that identifier whole. That makes "every part of the results that is written to a record" untrue for `stop_reason` too.
+  - **Disposition:** it rides with C4R1 in B2-C5, as the reviewer suggests: `stop_reason` goes through `run._without_ids` before both writes.
+  - The console lines (`cleanup:`, `stop recorded:`, `after the run:`) are not records. They stay carried to P11 with B2C4-X1.
+- **The manager's own overclaim (AM7-08).** PR31's body and Implementation Control repeated the session's "every run identifier generalized" without checking strings already passed through `_generic`. Both are corrected with this record.
+- **Effect on recorded results:** none. B2-C3's live record is unchanged. The exposure is the random part of synthetic, deleted users' identifiers, in the git-ignored `.work`.
+
+**Next:** the correction pass B2-C5 (C4R1 with `stop_reason`, and C4R2), offline; its exact-head re-review; then Codex's code review of the final head, the Dev Manager's read of OD-45's register row, the final head's run and PR31's merge.

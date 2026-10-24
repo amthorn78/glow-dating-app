@@ -96,6 +96,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-05 | 23 Oct 2026 | accuracy | The D8 message for Nathan, revision 1, said "four things" and listed three, called the chat type `agent` "a second kind of chat room" when six others existed, said the removals "held" when they held for one evening's run, and said (b) closes "every way" a Stream change could reach a member "permanently"; it gave (a) no cost line and (b) no "what stays open" line | The Dev Manager (DM-20 item 5), before it reached Nathan |
 | AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
 | AM7-07 | 24 Oct 2026 | follow-through | The handoff's branch list kept `claude/dev-manager` at `821efc7` (DM-19, merge `5480b99`) through DM-20's integration, when its head became `ca806e3` (merge `855a92b`) | App Manager 7, checking the remote branches at B2-C4's integration |
+| AM7-08 | 24 Oct 2026 | accuracy | PR31's body and Implementation Control said B2-C4 generalized "every run identifier" in the conformance results, repeating the session's claim; strings already passed through `_generic` keep their random part | B2-C4's exact-head re-review (C4R1) |
 
 ## App Manager 2
 
@@ -705,3 +706,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; no session read that line in between. PR31's body named `ca806e3`.
 - **Correction:** the handoff's branch list, checked against `git ls-remote` on 24 October.
 - **Prevention:** at each integration, the manager lists the remote branches and updates every line of the handoff's branch list, not only the new branch's.
+
+### AM7-08 — A session's completeness claim repeated unchecked (accuracy)
+
+- **What happened:** recording B2-C4, App Manager 7 read `_without_ids` and described it accurately in the evidence record ("replaces every value of `self.ids`"). But PR31's body and Implementation Control repeated the session's wider claim, "every run identifier generalized". The manager had not checked the strings that reach the results after `_generic` has already rewritten the prefix.
+- **Caught by:** B2-C4's exact-head re-review (C4R1).
+- **Effect:** none on a decision. The re-review caught it before the merge, and B2-C5 makes the claim true.
+- **Correction:** PR31's body and Implementation Control are corrected with the re-review's record.
+- **Prevention:** a summary for PR31 or Notion repeats a completeness claim ("every", "all") only after the manager has checked it against the code paths that feed the result; otherwise it describes the mechanism.
