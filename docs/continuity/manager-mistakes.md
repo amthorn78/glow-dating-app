@@ -93,6 +93,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-02 | 23 Oct 2026 | accuracy | B2-C1's prompt said "Each push runs the Foundation workflow on your branch"; the session's harness named its branch `ccr-…`, outside the workflow's push filter, so no run started and the session had no run of record | The B2-C1 session |
 | AM7-03 | 23 Oct 2026 | accuracy | B2-C2's prompt, revisions 1 and 2, let the session send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat dry run, and the products dry run is item 6.1 | App Manager 7, reading revision 2 before giving it to Nathan |
 | AM7-04 | 23 Oct 2026 | accuracy | B2-C2's prompt allowed only "D1 and the class-2 types' grants" in the comparison after the chat apply; emptying those grants necessarily removes `agent` from nine roles' `scopes` in the roles read, which the rule did not allow | The B2-C2 session |
+| AM7-05 | 23 Oct 2026 | accuracy | The D8 message for Nathan, revision 1, said "four things" and listed three, called the chat type `agent` "a second kind of chat room" when six others existed, said the removals "held" when they held for one evening's run, and said (b) closes "every way" a Stream change could reach a member "permanently"; it gave (a) no cost line and (b) no "what stays open" line | The Dev Manager (DM-20 item 5), before it reached Nathan |
 
 ## App Manager 2
 
@@ -679,3 +680,10 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Correction:** the brief's B2-C3 point i states the derived changes before the apply: a role's `scopes` losing exactly the scopes in which the apply emptied all of its grants. DM-19 approved the rule with conditions 2.1 to 2.4 and confirmed this entry; the Dev Manager recorded its own share (the allowed set began in its DM-17 2.3, and DM-18 3.1 re-read it).
 - **Prevention:** when a prompt states what a comparison may show after a change, the manager derives every field the planned change alters in every read the comparison covers (here the roles read as well as the types), and lists them, before the prompt is committed.
 
+### AM7-05 — Plain words that outran the record (accuracy)
+
+- **What happened:** writing the D8 message for Nathan, revision 1, App Manager 7 simplified the record and lost accuracy: "four things" with three listed (the two call types counted as one item); "a second kind of chat room" for the chat type `agent`, when six other kinds already existed; "the removals held", when the record shows them held from 21:14 and 22:29 to 22:31 UTC on one evening; and (b) closing "every way a Stream change could reach a member, permanently", when it closes the app's way in and Stream's server side still needs the settings check. It also left out two of OD-32's lines: what (a) costs, and what (b) leaves open.
+- **Caught by:** the Dev Manager, reading the message in DM-20 before it went to Nathan (OD-32).
+- **Effect:** none on Nathan: revision 1 did not go to him. Revision 2 uses DM-20's words as written.
+- **Correction:** the message's revision 2, in DM-20 section 7's words.
+- **Prevention:** before a plain-language message goes to Nathan, the manager checks every count, comparison and duration in it against the record line by line, avoids absolutes ("every", "permanently") unless the record shows them, and gives each option all of OD-32's lines: what it is, what it costs, what it closes and what stays open.
