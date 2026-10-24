@@ -709,7 +709,8 @@ def cmd_conformance(ctx: Context, accept_dashboard_user: bool) -> int:
             early.update(
                 {
                     "started": started,
-                    "stop_reason": stop_reason,
+                    # Every identifier of the run generalized, as in the results (C4R1).
+                    "stop_reason": run._without_ids(stop_reason),
                     "end_of_run": "not finished: cleanup and the configuration check had "
                     "not completed when this was written",
                 }
@@ -738,7 +739,9 @@ def cmd_conformance(ctx: Context, accept_dashboard_user: bool) -> int:
         ctx.say(f"after the run: {problem}")
     ended = datetime.now(UTC).isoformat(timespec="seconds")
     results = run.results()
-    results.update({"started": started, "ended": ended, "stop_reason": stop_reason})
+    results.update(
+        {"started": started, "ended": ended, "stop_reason": run._without_ids(stop_reason)}
+    )
     write_json(f"conformance-{prefix}.json", results, ctx.secrets)
     markdown = conformance.render(results)
     write_text(f"conformance-{prefix}.md", markdown, ctx.secrets)

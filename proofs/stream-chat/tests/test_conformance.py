@@ -692,19 +692,78 @@ class ResultsIdentifiersTest(unittest.TestCase):
         self.assertIn("client X note: {U1} in glow-match:{C1}", results["notes"])
         self.assertEqual(results["prefix"], PREFIX)
 
+    def test_the_form_generic_leaves_loses_its_random_part_too(self) -> None:
+        """C4R1: a string ``proof_run._generic`` has already rewritten holds ``{prefix}`` and
+        the identifier's random part. Here identifiers reach the results that way: a connect
+        refusal naming the user, as Stream's did for D3 and D7 in B2-C3 (``_text``), a
+        client note (``_client_note``), an async error (``_send``), a check's evidence
+        (``_check``) and a deferred stop (``_defer_stop``). None keeps the random part."""
+        holder: dict[str, ConformanceRun] = {}
+
+        def naming(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
+            if op != "connect":
+                return None
+            run = holder["run"]
+            user_id = str((params.get("user") or {}).get("id"))
+            if session.label in ("D3", "D7"):
+                return ws_refused(404, 16, message=f'user "{user_id}" does not exist')
+            if session.label == "T2":
+                run._client_note(f"client T2 connected as {user_id}")
+                return Reply(
+                    True,
+                    {"me": {"id": user_id, "role": "user"}},
+                    None,
+                    async_errors=[f"event for {user_id} in {T}:{run.ids['C1']}"],
+                )
+            return None
+
+        run, _server = conformance_run(SendCreatesItsSender(UsageLedger()), behaviour=naming)
+        holder["run"] = run
+        complete(run)
+        run._check("X1", "a check naming an identifier", True, f"read {run.ids['U4']} back")
+        run._defer_stop(f"stopped at {run.ids['U2']}")
+        u3_rewritten = "{prefix}" + run.ids["U3"][len(PREFIX) :]
+        by_id = {row.row_id: row for row in run.rows}
+        # The rewritten form is what reached the run's own state (C4R1's case).
+        self.assertEqual(
+            by_id["D3"].detail["connect_note"], f'user "{u3_rewritten}" does not exist'
+        )
+        self.assertTrue(any(n.startswith("client T2 connected as {prefix}") for n in run.notes))
+        results = run.results()
+        text = json.dumps(results, default=str) + conformance.render(results)
+        for random_part in {value[len(PREFIX) :] for value in run.ids.values()}:
+            with self.subTest(random_part=random_part[:6]):
+                self.assertNotIn(random_part, text)
+        rows = {row["row_id"]: row for row in results["rows"]}
+        for row_id in ("D3", "D7"):
+            with self.subTest(row=row_id):
+                self.assertEqual(rows[row_id]["verdict"], conformance.PASS)
+                self.assertEqual(
+                    rows[row_id]["detail"]["connect_note"], 'user "{U3}" does not exist'
+                )
+        self.assertIn("client T2 connected as {U1}", results["notes"])
+        self.assertIn("client T2 async error: event for {U1} in glow-match:{C1}", results["notes"])
+        check = next(c for c in results["checks"] if c["check_id"] == "X1")
+        self.assertEqual(check["evidence"], "read {U4} back")
+        self.assertIn("stopped at {U2}", results["stops"])
+
 
 class CommandTest(unittest.TestCase):
     """``cmd_conformance``: its exit codes and its records, on the fakes."""
 
     def setUp(self) -> None:
         self.written: dict[str, Any] = {}
+        # Every write in order: the early results and the final ones share a name.
+        self.writes: list[tuple[str, Any]] = []
 
         def write_json(name: str, data: Any, secrets: Any) -> Any:
             self.written[name] = json.loads(json.dumps(data, default=str))
+            self.writes.append((name, self.written[name]))
             return PROOF_ROOT / ".work" / name
 
         def write_text(name: str, text: str, secrets: Any) -> Any:
             self.written[name] = text
+            self.writes.append((name, text))
             return PROOF_ROOT / ".work" / name
 
         for name, fake in (("write_json", write_json), ("write_text", write_text)):
@@ -795,6 +854,55 @@ class CommandTest(unittest.TestCase):
         self.assertLess(len(results["rows"]), 46)
         self.assertEqual(set(self.server.users), {"owner"})
         self.assertEqual(results["post_run_problems"], [])
+
+    def test_a_stop_naming_an_identifier_is_written_without_its_random_part(self) -> None:
+        """B2C4-X2's part that reaches a record: ``stop_reason`` passes through the run's
+        ``_without_ids`` before the early and the final results are written (C4R1)."""
+        cases: tuple[tuple[str, Callable[[str], Exception], str], ...] = (
+            (
+                "stopped",
+                lambda cid: GuardRefused(f"guard refused POST channels/{T}/{cid}: test"),
+                f"stopped: guard refused POST channels/{T}/{{C1}}: test",
+            ),
+            (
+                "harness error",
+                lambda cid: RuntimeError(f"unexpected answer for {T}:{cid}"),
+                f"harness error: RuntimeError: unexpected answer for {T}:{{C1}}",
+            ),
+        )
+        for kind, make, expected in cases:
+            with self.subTest(kind=kind):
+                self.written.clear()
+                self.writes.clear()
+
+                def stop_on_the_removal(
+                    run: ConformanceRun,
+                    server: FakeServer,
+                    make: Callable[[str], Exception] = make,
+                ) -> None:
+                    def refused(*args: Any, **kwargs: Any) -> Any:
+                        raise make(run.ids["C1"])
+
+                    server.sdk.chat.update_channel = refused
+
+                self.assertEqual(self.command(stop_on_the_removal), cli.EXIT_STOPPED)
+                random_part = self.proof.ids["C1"][len(PREFIX) :]
+                records = [
+                    data
+                    for name, data in self.writes
+                    if name.startswith("conformance-")
+                    and name.endswith(".json")
+                    and "progress" not in name
+                ]
+                # The early results, then the final ones.
+                self.assertEqual(len(records), 2)
+                for record in records:
+                    self.assertEqual(record["stop_reason"], expected)
+                markdown = [data for name, data in self.writes if name.endswith(".md")]
+                self.assertEqual(len(markdown), 1)
+                for name, data in self.writes:
+                    with self.subTest(kind=kind, written=name):
+                        self.assertNotIn(random_part, json.dumps(data, default=str))
 
     def test_a_charge_signal_exits_two_and_deletes_nothing(self) -> None:
         def charge_on_the_removal(run: ConformanceRun, server: FakeServer) -> None:

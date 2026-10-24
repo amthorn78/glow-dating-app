@@ -788,16 +788,40 @@ class ExceptionBoundaryTests(unittest.TestCase):
                     self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
                     self.assert_no_chain(seen.exception)
 
-    def writes(self, adapter: StreamChatProvider, w: World) -> list[tuple[Callable[[], Any], int]]:
+    def writes(
+        self, adapter: StreamChatProvider, w: World
+    ) -> list[tuple[Callable[[], Any], int, tuple[str, str]]]:
         """Each operation where it writes, after ``a`` and ``b`` are provisioned and channel
-        ``c`` created: the call, and how many reads come before its write."""
+        ``c`` created: the call, how many reads come before its write, and the write's
+        method and path."""
+        channel = f"/api/v2/chat/channels/{TYPE}"
         return [
-            (lambda: adapter.provision_user(w.d), 1),
-            (lambda: adapter.create_channel(w.c_mixed, (w.a, w.b)), 2),
-            (lambda: adapter.send_message(w.c, w.a, w.m1, "hello"), 0),
-            (lambda: adapter.remove_members(w.c, (w.a, w.b)), 1),
-            (lambda: adapter.deactivate_user(w.a), 1),
-            (lambda: adapter.revoke_user_tokens(w.a, revocation_cutoff_sent(NOW)), 1),
+            (lambda: adapter.provision_user(w.d), 1, ("POST", "/api/v2/users")),
+            (
+                lambda: adapter.create_channel(w.c_mixed, (w.a, w.b)),
+                2,
+                ("POST", f"{channel}/{w.c_mixed}/query"),
+            ),
+            (
+                lambda: adapter.send_message(w.c, w.a, w.m1, "hello"),
+                0,
+                ("POST", f"{channel}/{w.c}/message"),
+            ),
+            (
+                lambda: adapter.remove_members(w.c, (w.a, w.b)),
+                1,
+                ("POST", f"{channel}/{w.c}"),
+            ),
+            (
+                lambda: adapter.deactivate_user(w.a),
+                1,
+                ("POST", f"/api/v2/users/{w.a}/deactivate"),
+            ),
+            (
+                lambda: adapter.revoke_user_tokens(w.a, revocation_cutoff_sent(NOW)),
+                1,
+                ("PATCH", "/api/v2/users"),
+            ),
         ]
 
     def test_streams_error_answer_is_mapped_with_no_cause_or_context(self) -> None:
@@ -818,19 +842,27 @@ class ExceptionBoundaryTests(unittest.TestCase):
                         model = RecordedStream()
                         adapter = StreamChatProvider(make_client(model))
                         w = World("ctx")
+                        write: tuple[str, str] | None = None
+                        reads = 0
                         if at_write:
                             adapter.provision_user(w.a)
                             adapter.provision_user(w.b)
                             adapter.create_channel(w.c, (w.a, w.b))
-                            call, reads = self.writes(adapter, w)[index]
+                            call, reads, write = self.writes(adapter, w)[index]
                             model.pass_next(reads)
                         else:
                             call = self.operations(adapter, w)[index]
                         model.refuse_next(status, code, message)
+                        before = len(model.recording)
                         with self.assertRaises(StreamProviderError) as seen:
                             call()
                         self.assertEqual(seen.exception.status, status)
                         self.assert_no_chain(seen.exception)
+                        if write is not None:
+                            # C4R2: the scripted refusal reached the write, after the reads.
+                            self.assertEqual(len(model.recording), before + reads + 1)
+                            last = model.recording[-1]
+                            self.assertEqual((last["method"], last["path"]), write)
 
     def test_a_short_error_body_raises_the_sdks_own_key_error_unmapped(self) -> None:
         """B2R4: a non-2xx body the SDK cannot parse into its ``APIError`` (here ``code``

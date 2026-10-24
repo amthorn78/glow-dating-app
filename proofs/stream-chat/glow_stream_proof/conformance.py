@@ -29,8 +29,9 @@ cut-off, which shows Stream's comparison at the whole-second boundary.
 **Identifiers**: the run's prefix plus ``secrets.token_hex(16)`` (49 characters), so the
 guard's ownership by prefix, ``verify-clean`` and ``cleanup --apply`` work unchanged. The
 absent users of rows C4, D10 and V13 and M5's sender each have an identifier no other row
-names (``U5``, ``U7``, ``U8`` and ``U6``; DM-20 1.2). The results replace every identifier
-of the run with its key (B2R2).
+names (``U5``, ``U7``, ``U8`` and ``U6``; DM-20 1.2). The results, and the command's
+``stop_reason``, replace every identifier of the run with its key, whole or as
+``proof_run._generic`` leaves it (B2R2, C4R1); the command's console lines do not.
 
 **Before its first changing request** (1.1) the command runs ``configuration.verify`` and
 ``products.verify`` on a fresh snapshot (:func:`start_refusals`) and refuses to start unless
@@ -866,8 +867,20 @@ class ConformanceRun(ProofRun):
 
     def _without_ids(self, value: Any) -> Any:
         """``value`` with every identifier of the run replaced by ``{key}``, longest first,
-        in every string at any depth (B2R2): no record keeps an identifier's random part."""
-        pairs = sorted(((v, k) for k, v in self.ids.items() if v), key=lambda p: -len(p[0]))
+        in every string at any depth (B2R2): whole, and in the form ``proof_run._generic``
+        leaves (``{prefix}`` and the identifier's part after the prefix), as in the connect,
+        read and client notes, the checks, the async errors and the deferred stops (C4R1).
+        :meth:`results` applies it to every part of the results, and ``cmd_conformance`` to
+        its ``stop_reason``; the command's console lines do not pass through it."""
+        pairs = sorted(
+            [(v, k) for k, v in self.ids.items() if v]
+            + [
+                ("{prefix}" + v[len(self.prefix) :], k)
+                for k, v in self.ids.items()
+                if v and self.prefix and v.startswith(self.prefix)
+            ],
+            key=lambda p: -len(p[0]),
+        )
 
         def walk(item: Any) -> Any:
             if isinstance(item, str):
