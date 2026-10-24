@@ -372,6 +372,11 @@ committed. `OrmConversationReads` runs only under the proof's settings, as the r
   `failed` submissions on the newest page only, with their spool `text` and their event's
   `available_at`. The other member's pending and failed submissions are never read for a
   page. The provider ID never leaves the server.
+- **No binding-state check** (C1's exact-head review, finding 9). Unlike the send, the
+  reads make no `BINDING_NOT_ACTIVE` check: a `failed` binding under an `active` match is
+  listed, and its page serves the member's own pending and failed submissions. No
+  accepted message can exist for it: a binding is `failed` only when its channel's
+  creation dead-lettered, and delivery never sends into a `failed` binding.
 - **The order follows acceptance** (DM-22 2.2). Accepted messages are ordered by
   `(OutboxEvent.delivered_at, OutboxEvent.sequence)` of their `message_submitted` event:
   `delivered_at` is the database's `clock_timestamp()` in the transaction that records the
