@@ -95,6 +95,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-04 | 23 Oct 2026 | accuracy | B2-C2's prompt allowed only "D1 and the class-2 types' grants" in the comparison after the chat apply; emptying those grants necessarily removes `agent` from nine roles' `scopes` in the roles read, which the rule did not allow | The B2-C2 session |
 | AM7-05 | 23 Oct 2026 | accuracy | The D8 message for Nathan, revision 1, said "four things" and listed three, called the chat type `agent` "a second kind of chat room" when six others existed, said the removals "held" when they held for one evening's run, and said (b) closes "every way" a Stream change could reach a member "permanently"; it gave (a) no cost line and (b) no "what stays open" line | The Dev Manager (DM-20 item 5), before it reached Nathan |
 | AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
+| AM7-07 | 24 Oct 2026 | follow-through | The handoff's branch list kept `claude/dev-manager` at `821efc7` (DM-19, merge `5480b99`) through DM-20's integration, when its head became `ca806e3` (merge `855a92b`) | App Manager 7, checking the remote branches at B2-C4's integration |
 
 ## App Manager 2
 
@@ -696,3 +697,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision. DM-20 item 2 approved no adapter change on the same evidence, and the inference is well supported.
 - **Correction:** the brief's revision 10 and the P11 plan mark it an inference, in the evidence record's terms.
 - **Prevention:** when a record summarizes another record, keep its qualifiers ("by inference", "not shown live") with the claim.
+
+### AM7-07 — A branch head left stale in the handoff (follow-through)
+
+- **What happened:** integrating DM-20's report (`ca806e3`, merge `855a92b`), App Manager 7 updated the review log and the Dev Manager's state, but not the handoff's branch list, which kept `claude/dev-manager` at DM-19's `821efc7`.
+- **Caught by:** App Manager 7, listing the remote branches when it added B2-C4's session branch.
+- **Effect:** none; no session read that line in between. PR31's body named `ca806e3`.
+- **Correction:** the handoff's branch list, checked against `git ls-remote` on 24 October.
+- **Prevention:** at each integration, the manager lists the remote branches and updates every line of the handoff's branch list, not only the new branch's.

@@ -2176,3 +2176,35 @@ The offline correction pass after B2's exact-head review: DM-20 1.2 and 1.3, wit
 - The four keys are `U5` (C4), `U6` (M5), `U7` (D10), `U8` (V13).
 - `results()` now generalizes every identifier of the run anywhere in the result; `render()` reads the generalized result.
 - The run of record is 40049721647 on `42e6231`; the records commit is Markdown-only.
+
+## Manager verification of Stage B2-C4
+
+App Manager 7, 24 October 2026, from the session's report as Nathan relayed it (Nathan's pick: Opus 5.5 at high, TypeSafe's reading) and from the pushed branch.
+
+- **The report and the branch agree.** It names prompt revision 1 from `5385567`, the branch `claude/exciting-lovelace-yhr21v`, the code commit `42e6231` and the records commit `0fdc54d`. The branch holds exactly those two commits on `5385567`.
+- **Paths:**
+  - The code commit changes the seven paths the prompt owns, and no other. Five are code and tests: `chat_provider_stream.py` and its tests, `conformance.py`, `test_conformance.py` and `test_run_plan.py`. Two are READMEs, each in its owned part.
+  - The records commit only appends "Stage B2-C4": the record at `5385567` is a byte-identical prefix of the record at `0fdc54d`, and no line is removed.
+- **Classification** (the trusted policy from `main`):
+  - `5385567` to `0fdc54d`: `"full": true`, `behavior-or-empty`.
+  - `42e6231` to `0fdc54d`: `ordinary-docs-only`.
+- **The run of record**, read on GitHub: Foundation push run 40049721647 on `42e623197cb341a3e4188a5fba918639c133ae4b`.
+  - All eight jobs passed: Change scope, API checks, API mobile smoke, API artifact checks, Mobile checks, Stream proof checks, Database proof checks and Foundation gate.
+  - The database job ran from 01:25:39Z to 01:32:24Z, 6 min 45 s.
+  - The gate printed `Application checks passed`.
+- **Read in the diff:**
+  - **The adapter:** the mapped error is now raised after the `except` block (`_guarded`, `:140-148`; `send_message`, `:247-257`, with the success path in the `else` clause). `_mapped`, `_send_error`, `_reports_existing`, the caught tuple and the codes are unchanged.
+  - **The row keys:** `U5` (C4), `U6` (M5), `U7` (D10) and `U8` (V13); C4, D10 and V13 use `_id` only.
+  - **M5:** `recorded=True` and `_new_user("U6")`.
+  - **The results:** `_without_ids` replaces every value of `self.ids`, longest first, at any depth. `results()` applies it to each row's detail before `_generic` and the redactor, and then to the whole result.
+  - **The pins and the README:** `test_run_plan.py` pins 5 users and 10 with the reserve. The API README's development-lock line names the constraint.
+- **Not re-run by the manager:** the tests, the reversals and item 6's byte comparison. They are the session's, and its run of record ran the tests.
+- **Integrated** at the merge `da3c0ff`, whose code paths equal `42e6231`'s. Run 40049721647 is the run of record for that code. The final head still needs its own run before the merge (DM-20 7.1).
+- **B2C4-X1, the session's finding outside the work** (cleanup's poll listing; not in a correction class), confirmed in `proof_run.py`.
+  - **What it is:** `_verify_polls` lists polls as each run user that is not deactivated, and M5's sender is now a run user. If a live send did not create that user, and Stream refused Query Polls for it, the polls would read "not verified", and the run would exit 4 with every object deleted.
+  - **The manager's disposition: carried, not fixed in PR31.**
+    - It fails safe: a false problem, never a false pass.
+    - It needs two things the record does not show: that Stream leaves M5's sender uncreated, against B2-C3's inference, and that Stream refuses Query Polls for that user.
+    - The harness's next live conformance run is P11's. The P11 plan carries the fix: `_verify_polls` leaves out a recorded user that a complete listing does not show, as `_delete_users` already does. Until then, an exit 4 whose only problem is that refusal is read as this case.
+- **B2C4-X2, the session's limit on B2R2** (not in a correction class). `cmd_conformance` (`cli.py`, not B2-C4's to change) adds `stop_reason` after `results()` and prints three console lines, which are not generalized. `stop_reason` repeats an exception's redacted text, which `run.stops` also holds, generalized. **Carried with B2C4-X1** to the harness's next change before its next live use.
+- **Next:** the exact-head re-review of B2-C4's change, at the head that integrates it, offline. Then Codex's code review of the final head, the Dev Manager's read of OD-45's register row, the final head's run and PR31's merge.
