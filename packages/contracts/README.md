@@ -126,3 +126,20 @@ actor/operation/key unique constraint. The outcome code now distinguishes the
 interaction-family outcomes. These are static design guarantees only; no DDL or
 database test was executed. P11 must prove durable immutable receipt/outbox
 publication, canonical-pair uniqueness, all-writer versioning and actual races.
+
+## P06.2 C1 conversation reads
+
+Under OD-45 the app holds no provider credential and Glow's API serves conversation
+history and new messages. F11 gains the closed DTOs `ConversationList`,
+`ConversationSummary`, `LatestMessageMarker`, `MessagePage`, `ConversationMessage`,
+`MessagePageRequest` and `ReadCursorIntent`; the three responses join `AppResponse` and
+`ReadCursorIntent` joins `AppIntent`, as `MediaCollection` did, with no route or deployed
+negotiation. `ChannelEntitlement` loses `channel_ref`, the provider's channel ID. The
+shared corpus adds each new DTO's valid forms and state rules, and rejects every provider
+field (a provider user, channel or message ID, a user or member object, custom data, a
+provider timestamp, an event type such as `member.updated` or `ai_indicator.update`, and
+an error text) in each new DTO, nested messages and conversations, `ChannelEntitlement`,
+`MessageSubmission`, `Error` and an `AppResponse`, through Python and the generated
+validators. The server's projections are `services/api/glow_domain/chat_projections.py`.
+See [production contracts](../../docs/architecture/production-contracts.md), "F11 under
+OD-45".

@@ -15,7 +15,9 @@ CX2's boundary; the reference design takes it through the proof log instead (its
 is unchanged), and the app's adapter through its ``TransactionProbe``. It adds
 ``ContactStateSubject``, the D5 writers only the app's adapter carries; Stage B1 adds
 to it the adapter's match activation (CX5) and token grant (F1), whose outcome
-``granted`` commits nothing.
+``granted`` commits nothing. Stage C1's read phase judges the adapter's conversation reads
+with the same ``Result``: ``read`` (a page), ``listed`` and ``moved`` (the read cursor);
+none but ``moved`` writes a row, and the oracle reads none of them.
 """
 
 from __future__ import annotations
@@ -28,7 +30,17 @@ from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 Outcome = Literal[
-    "authorized", "replayed", "applied", "no_change", "granted", "refused", "deadlock", "error"
+    "authorized",
+    "replayed",
+    "applied",
+    "no_change",
+    "granted",
+    "read",
+    "listed",
+    "moved",
+    "refused",
+    "deadlock",
+    "error",
 ]
 COMMITTED_OUTCOMES: frozenset[str] = frozenset({"authorized", "applied"})
 

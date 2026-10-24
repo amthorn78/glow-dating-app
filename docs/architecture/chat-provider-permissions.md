@@ -6,6 +6,8 @@ Status: written by P06.1-I2b (27 September 2026; the harness at `ad89753`, the r
 
 ## 1. The design under proof
 
+**OD-45 (24 October 2026; DM-22 12.1).** Since Nathan's D8 decision, the app holds no provider credential, SDK or connection: Glow's API serves history and new messages, and Stream stays the provider behind Glow's server ([P06.2 brief](../planning/p06-2-chat-integration.md), "Stage C under OD-45"). Design point 3 below records what P06.1 proved, not the production design. Section 5's configuration and its drift check still apply to the server.
+
 Stream Chat is the chat provider. Glow's design gives a client the least it needs:
 
 1. **The app server controls channel membership.** It creates a match's channel with exactly its two members, in the `glow-match` channel type, and removes a member (or acts on the account) when a match ends. Clients never create channels, join them, invite to them or change their members.
@@ -142,6 +144,8 @@ And one signal: the refused calls query (403 code 102) says that "some calls mat
 - **The fallback** (B7 (d)): one channel per person, in which the other member never shares a channel object with the writer, stays the recorded fallback if the display rule cannot be shown to hold in P06.2. A provider-level closure (a `before_message_send_hook_url` cannot see member writes; a webhook clearing member custom data could) stays Nathan's option, not chosen.
 
 ## 8. Constraints and open questions for P06.2
+
+**OD-45 (24 October 2026; DM-22 12.1).** The app holds no provider credential, SDK or connection, so this section's token and SDK questions are closed by OD-45: whether the app revokes tokens per user, the open WebSocket that outlives its token, and whether the mobile client can be kept from rendering SDK state. Section 5's configuration and its drift check still apply to the server.
 
 The design is P06.2's; nothing here decides it.
 

@@ -38,11 +38,11 @@ handles are test choices, not production policy or cursor cryptography.
 
 `PageRequest` requests a bounded recommendations/discovery collection. `CandidatePage` identifies the batch/version/expiry and an opaque nullable next cursor. The future repository cursor binds authenticated viewer, collection, batch/version, policy and both-sided eligibility revisions, and stable position. It contains no private payload; reject a forged, wrong-viewer, wrong-collection, stale or expired cursor with a generic stale response. A cursor grants no permission. Ordering is stable within a batch; refresh produces a new version. `empty` is valid and never triggers HDE work merely to fill a list. Non-ready pages expose no items or continuation cursor. Final ranking/granularity remains A01/A07.
 
-Every mutating intent contains an idempotency key and expected version. Deduplication is unique by **authenticated actor, operation and key**, matching `IdempotencyRecord.intent_dedup`. The target and every intent-defining field belong in the canonical-payload digest; target is not an additional uniqueness dimension. Reusing a key for another target therefore conflicts instead of executing a second action. The future unit of work stores the digest and result atomically with domain changes/outbox. Same key/same payload returns the prior logical command outcome **only after current authorization and safe projection checks**. Retain a minimal immutable receipt (outcome code, object reference and committed version) with the idempotency record; an object reference to a mutable row alone cannot reconstruct the original result. Replay never promises identical response bytes or renews media/export grants. Fetch any current private projection separately under present access rules; return generic unavailable when access has been withdrawn. Different payload conflicts; pending operation cannot run twice. Request IDs are diagnostics, not idempotency keys. Scope-specific retention/expiry for deduplication remains A05; no duration is invented. Expired deduplication records require authoritative state inspection and must not imply safe blind replay. At P11, prove simultaneous reciprocal likes yield one canonical match and one logical outbox event.
+Every mutating intent contains an idempotency key and expected version, with one exception: `ReadCursorIntent` carries neither, since it only moves the member's own read cursor forward and a repeat changes nothing ("F11 under OD-45", below; C1's exact-head review, finding 2). Deduplication is unique by **authenticated actor, operation and key**, matching `IdempotencyRecord.intent_dedup`. The target and every intent-defining field belong in the canonical-payload digest; target is not an additional uniqueness dimension. Reusing a key for another target therefore conflicts instead of executing a second action. The future unit of work stores the digest and result atomically with domain changes/outbox. Same key/same payload returns the prior logical command outcome **only after current authorization and safe projection checks**. Retain a minimal immutable receipt (outcome code, object reference and committed version) with the idempotency record; an object reference to a mutable row alone cannot reconstruct the original result. Replay never promises identical response bytes or renews media/export grants. Fetch any current private projection separately under present access rules; return generic unavailable when access has been withdrawn. Different payload conflicts; pending operation cannot run twice. Request IDs are diagnostics, not idempotency keys. Scope-specific retention/expiry for deduplication remains A05; no duration is invented. Expired deduplication records require authoritative state inspection and must not imply safe blind replay. At P11, prove simultaneous reciprocal likes yield one canonical match and one logical outbox event.
 
 Before new discovery, like or contact authorization, follow [trusted eligibility](trusted-eligibility.md): authenticated server identity, exact ordered account pair, both snapshot revisions, policy revision, both preference directions and both block directions. Wrong-pair evidence is rejected; stale versions reload/re-evaluate; missing policy denies. Consent withdrawal, suspension, block, pause and deletion invalidate dependent projections. Both participants are checked before chart/provider work. PairEvidenceVersion is an optimistic precondition, never a client authorization claim. Generic public errors hide the internal exclusion reasons. Profile/birth/media edits must validate their own current owner and object version as well.
 
-The production transaction must lock or otherwise serialize current account/relationship versions and recheck immediately before committing an interaction/send entitlement, with outbox work after commit. Match activity is independently required for channel/send permission; pair eligibility alone is insufficient. Block/unmatch commit is the boundary after which no newly authorized send may begin. The selected provider must prevent direct SDK bypass; A08 remains a required capability proof. Provider acknowledgement of a previously authorized in-flight send is distinguished from granting a new send. This P02 oracle proves none of the actual races or provider behavior.
+The production transaction must lock or otherwise serialize current account/relationship versions and recheck immediately before committing an interaction/send entitlement, with outbox work after commit. Match activity is independently required for channel/send permission; pair eligibility alone is insufficient. Block/unmatch commit is the boundary after which no newly authorized send may begin. The selected provider must prevent direct SDK bypass; A08 remains a required capability proof. *(That sentence is P02's baseline, superseded by OD-45: the app holds no provider SDK or credential, so the client has no direct provider path; see "F11 under OD-45", below. C1's exact-head review, finding 2.)* Provider acknowledgement of a previously authorized in-flight send is distinguished from granting a new send. This P02 oracle proves none of the actual races or provider behavior.
 
 ## Maintained authentication reference and app mapping
 
@@ -68,7 +68,7 @@ The following index is generated from the committed flow registry. Detailed proj
 | F08 | interactions / App | InteractionIntent → InteractionOutcome | Repeated key identical intent yields same result; changed payload conflicts; stale/ineligible target denied |
 | F09 | matches / App | InteractionIntent, OwnedObjectRequest → MatchProjection | Reciprocal likes only; one unordered pair and logical event; unilateral client match creation denied |
 | F10 | matches/communication / App entitlement; provider revocation | UnmatchIntent → MatchProjection | Participant unmatch revokes contact without owner-policy prerequisite; unmatch never grants rematch |
-| F11 | communication / App entitlement/submission; provider message bodies | ChannelIntent, MessageIntent, OwnedObjectRequest → ChannelEntitlement, MessageSubmission | No send after block/unmatch commit; SDK token alone insufficient; pending submission is not delivery |
+| F11 | communication / App entitlement/submission; provider message bodies | ChannelIntent, MessageIntent, OwnedObjectRequest, MessagePageRequest, ReadCursorIntent → ChannelEntitlement, MessageSubmission, ConversationList, ConversationSummary, MessagePage | No send or history read after block/unmatch commit; no provider token is issued (OD-45); pending submission is not delivery; only text Glow sent is shown |
 | F12 | communication / App settings/devices; push provider | NotificationIntent, DeviceIntent → NotificationSettings | Token rotation owner/session bound; logout revokes registration; no duplicate push; denied platform permission is normal |
 | F13 | safety / App block; provider revocation | BlockIntent → BlockOutcome | Block works after unmatch and while paused; unblock cannot restore match/send entitlement |
 | F14 | safety / App report/case; restricted provider evidence | ReportSubmission, OwnedObjectRequest → ReportReceipt | After-unmatch reporting allowed; other account receipt/evidence denied; malicious description never rendered as HTML |
@@ -78,6 +78,90 @@ The following index is generated from the committed flow registry. Detailed proj
 | F18 | privacy/all domains / App jobs/tombstones; providers own purge; HDE unresolved | DeletionRequest, PublicDeletionRequest, OwnedObjectRequest → DeletionProjection, PublicRequestReceipt | Request immediately denies access/visibility; unresolved provider obligations prevent completed; restore replays tombstone |
 | F19 | mobile presentation / API remains authorization owner | AppIntent → AppResponse, Error | Offline/stale response cannot authorize writes; accessible buttons submit same intents; native proofs deferred |
 | F20 | entitlements / Verified provider lifecycle; app derived state |  → EntitlementProjection | Every attempted enable/purchase/restore is denied until new owner-selected versioned provider contract |
+
+### F11 under OD-45: the conversation reads (P06.2 Stage C1)
+
+Nathan decided D8 as option (b) on 24 October 2026 (OD-45): **no provider token is
+issued** and the app holds no Stream credential, SDK or connection. Glow's API serves a
+conversation's history and its new messages; Stream stays the provider behind Glow's
+server. The [P06.2 brief](../planning/p06-2-chat-integration.md), "Stage C under OD-45",
+holds the design; the [data model](data-model.md), "Chat contact and the outbox", holds
+the reads behind these contracts. P11 serves the endpoints; nothing here is a route.
+
+- **`ConversationList`** (`kind: conversation_list`): at most 200 `ConversationSummary`
+  entries, read from Glow's rows with no provider call. A conversation the member may no
+  longer see is not listed.
+- **`ConversationSummary`** (`kind: conversation`): `match_id`, Glow's `state`, the
+  `unread_count` and `latest`, a `LatestMessageMarker` or null. `state` is `open` for
+  every listed conversation; `closed` carries no count and no marker, for a later push
+  or the app's own state, and neither value says why a conversation ended (F10, F13).
+  Nothing in C1 emits `closed`; its intended producer is a later push of the same summary
+  (the brief's point d: a socket would push the same objects the list returns). The
+  contract is unchanged (C1's exact-head review, finding 6).
+  The unread count is the other member's accepted messages after the member's own read
+  cursor, in the order they became visible (DM-22 6.3); the other member's cursor is
+  never returned, and read receipts are not built (DM-22 item 5).
+- **`LatestMessageMarker`**: Glow's `submission_id` and Glow's time `at` only, never text,
+  computed over the accepted messages and the member's own pending or failed submissions,
+  never the other member's (DM-22 6.1).
+- **`MessagePage`** (`kind: message_page`): `match_id`, at most 100 `messages` (at most 50
+  accepted ones, then, on the newest page only, the member's own pending and failed
+  submissions, at most 50), and `older_cursor` and `newer_cursor`. A cursor is opaque,
+  carries Glow's identifiers only, and is bound to the match it was issued for: a cursor
+  from another match, or naming a message that is not an accepted message of that match,
+  is refused with the generic `stale_version` (DM-22 6.4).
+- **`ConversationMessage`**: Glow's `submission_id`, `author` (`own` or `other`), Glow's
+  time `at`, `content` (`text`, or `unavailable`) with `text` (the text Glow sent, or
+  null), and `delivery` (`pending`, `accepted` or `failed`) for the member's own messages,
+  null for the other member's, which are always accepted. "Unavailable" is one state with
+  no reason field, the same for retention, a failed digest check or reconciliation (DM-22
+  6.2). A pending own message carries its spool text to its sender only; the other
+  member's pending and failed submissions never appear (F11: a pending submission is not
+  delivery).
+  **`at` has two meanings** (C1's exact-head review, finding 7): for an accepted message it
+  is the acceptance time (its `message_submitted` event's `delivered_at`); for the member's
+  own pending and failed submissions it is that event's `available_at`. That is the
+  submission time under today's deliverer, which leaves `available_at` unchanged on a
+  retry (`services/api/glow_chat/delivery.py:470`); a deliverer whose retries move
+  `available_at` would change it, and the P11 plan carries that dependency (C1-C1's
+  re-review, R5). A message's `at` therefore changes when it is accepted, and a client
+  keys a message on `submission_id`, never on `at`.
+- **`MessagePageRequest`**: `match_id`, `cursor` (null for the newest page) and `limit` (1
+  to 50). The actor is the authenticated session's account, never a field.
+- **`ReadCursorIntent`** (`operation: read_cursor`): `match_id` and `submission_id`. It
+  moves the member's own read cursor forward, in acceptance order, to an accepted message
+  of the match, after the send's checks; its response is that conversation's
+  `ConversationSummary`. It is the one mutating intent without `CommandMeta`: the command
+  is a monotone maximum, so a repeat, a replay or a cursor behind the current one changes
+  nothing, and an idempotency key or expected version would add nothing. F11's registry
+  entry gains its transition, `read` from `behind` to `current`, for a participant with an
+  active match and current eligibility.
+- **`ChannelEntitlement` loses `channel_ref`** (DM-21 2.3), with its conditional: it was
+  the provider's channel ID, and the provider's channel ID no longer reaches the client.
+- **No DTO carries anything from the provider:** no user, channel or message ID, no
+  timestamp, no user or member object, no custom data, no event type and no error text.
+  The shared corpus rejects each such field in each new DTO, in a nested message or
+  conversation, in `ChannelEntitlement`, `MessageSubmission` and `Error`, and in an
+  `AppResponse`, through Python and the generated validators.
+- **The new responses join `AppResponse`** and `ReadCursorIntent` joins `AppIntent`, as
+  P04.3's `MediaCollection` did: an unpublished design catalog consumed by the generated
+  client in this repository. No route or deployed-client negotiation is activated; older
+  validators reject the new discriminators, and a deployed transport negotiates support
+  before returning them.
+- **Errors.** A refused read maps to Glow's generic codes: the member's own session to
+  `unauthenticated`; anything about the conversation or the other member (an unmatch, a
+  block, a suspension or deletion, a pause or restriction, a withdrawn consent, a message
+  that is not this match's) to `not_found`; a provider failure to `provider_unavailable`,
+  retryable only for an outage, never a page in which every message is unavailable (DM-22
+  2.4); a cursor to `stale_version`.
+- **The interim rule (F06; DM-22 3.1).** Whatever refuses a send refuses these reads, so a
+  conversation also leaves the other member's list while one member is paused,
+  restricted, suspended or has withdrawn consent. Before P11 serves the reads, the A05
+  history question goes to Nathan in OD-32's form.
+- **Uniqueness.** Conversations carry distinct match IDs and messages distinct submission
+  IDs by construction of the server's projections; the shared key-uniqueness rule
+  (`runtime.py`, mobile `validation.ts`) covers `items` and `selections` only, so the
+  generated validators do not enforce it here.
 
 ## Policy boundaries and deliberately unavailable operations
 

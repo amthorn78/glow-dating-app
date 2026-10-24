@@ -388,10 +388,13 @@ class RunVerdictTests(unittest.TestCase):
 
     def test_both_subjects_and_the_delivery_phase(self) -> None:
         from glow_ordering_proof.results import DeliveryReport
+        from tests.test_read_phase import passing_reads
 
         delivery = DeliveryReport()
         delivery.check("drain", True, "ok")
-        run = RunReport([self.passing("reference"), self.passing("adapter")], delivery)
+        run = RunReport(
+            [self.passing("reference"), self.passing("adapter")], delivery, passing_reads()
+        )
         self.assertTrue(run.verdict()[0])
         delivery.check("end state", False, "a channel kept its members")
         self.assertFalse(run.verdict()[0])
@@ -404,7 +407,7 @@ class RunVerdictTests(unittest.TestCase):
         )
         ok_delivery = DeliveryReport()
         ok_delivery.check("drain", True, "ok")
-        run = RunReport([self.passing("reference"), failing], ok_delivery)
+        run = RunReport([self.passing("reference"), failing], ok_delivery, passing_reads())
         ok, reasons = run.verdict()
         self.assertFalse(ok)
         self.assertTrue(any(r.startswith("adapter:") for r in reasons))

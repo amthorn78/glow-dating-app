@@ -74,6 +74,27 @@
       "MessageSubmission": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/MessageSubmission"
       },
+      "LatestMessageMarker": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/LatestMessageMarker"
+      },
+      "ConversationSummary": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ConversationSummary"
+      },
+      "ConversationList": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ConversationList"
+      },
+      "ConversationMessage": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ConversationMessage"
+      },
+      "MessagePage": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MessagePage"
+      },
+      "MessagePageRequest": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MessagePageRequest"
+      },
+      "ReadCursorIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ReadCursorIntent"
+      },
       "NotificationSettings": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/NotificationSettings"
       },

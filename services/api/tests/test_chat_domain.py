@@ -104,10 +104,16 @@ class ProviderPortTests(unittest.TestCase):
                 "remove_members",
                 "deactivate_user",
                 "revoke_user_tokens",
+                "read_message_texts",
             },
         )
         # CX4 (DM-15 3.4): provisioning takes the opaque user ID and nothing else.
         self.assertEqual(chat_provider.OPERATIONS["provision_user"], frozenset({"user_id"}))
+        # P06.2 C1: the text read takes the channel ID and the page's message IDs only.
+        self.assertEqual(
+            chat_provider.OPERATIONS["read_message_texts"],
+            frozenset({"channel_id", "message_ids"}),
+        )
         arguments = set().union(*chat_provider.OPERATIONS.values())
         self.assertFalse(arguments & {"name", "image", "data", "custom", "extra_data"})
         for name in chat_provider.OPERATIONS:
