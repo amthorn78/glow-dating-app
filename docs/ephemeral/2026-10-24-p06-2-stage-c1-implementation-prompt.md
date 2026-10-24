@@ -93,7 +93,7 @@ Then read, completely:
 
 - root `AGENTS.md` and `CLAUDE.md`;
 - `services/api/README.md`, `proofs/postgres-ordering/README.md`, `packages/contracts/README.md`, and `apps/mobile/AGENTS.md` (you change only its generated contracts);
-- the P06.2 brief, `docs/planning/p06-2-chat-integration.md`, revision 12: "What P06.2 delivers", D1 to D8, the owned paths, "The client-token question (D8)" and "Stage C under OD-45";
+- the P06.2 brief, `docs/planning/p06-2-chat-integration.md`, revision 13: "What P06.2 delivers", D1 to D8, the owned paths, "The client-token question (D8)" and "Stage C under OD-45";
 - ADR 0003, `docs/adr/0003-chat-display-rule.md`;
 - the DM-20, DM-21 and DM-22 reports (`docs/continuity/dev-manager/reviews/`); DM-22's conditions are quoted below at their items;
 - the P06.2 evidence record, Stage A's, B1's and B2's sections and their reviews;
