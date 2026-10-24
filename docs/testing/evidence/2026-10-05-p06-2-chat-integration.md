@@ -2812,8 +2812,8 @@ The prompt asked for the guard before the provider call (`reads.py:495`) to refu
 `read.final_check_first_lock` pins the final check's **first** lock (the lower account's, whoever reads); it does not pin the order after it. The second wrong order (the lower account, the match, the higher account, the session) passes it, and it is deadlock-free against today's writers. Checked against `services/api/glow_chat/contact.py` at the head:
 
 - **Each writer that locks both accounts takes the lower first:** `send` (`:465-469`: lower, higher, match, session), `block` (`:564-576`: lower, higher, then the match and the block row), `unblock` (`:631-635`), `unmatch` (`:677-680`: lower, higher, match), and `activate_match` (`:243-245`).
-- **None locks the higher account or the match without the lower:** the match is locked only by `send`, `block` and `unmatch`, each after both accounts. The single-account writers (`_revoke_account` `:718`, `_set_profile` `:799-801`, `_decide_consent` `:848`, `open_session` `:379`) lock one account row and their own profile or consent rows, which the reads do not lock. `_end_session` (`:414`) locks the session row only. `grant_token` (`:332-336`) takes shared locks only. `delivery.py` locks bindings, identities, submissions and events, none of which the final check locks.
-- **So no cycle:** the final check holds the lower account `FOR SHARE`. Any writer that holds the higher account or the match `FOR UPDATE` must already hold the lower account, which conflicts with the final check's share lock. They cannot both hold it, so the final check never waits on such a writer while it holds the lower account. A writer that holds only the higher account, or only the session, waits on nothing the final check holds. Shared locks never wait on one another.
+- **None locks the higher account or the match without the lower:** the match is locked only by `send`, `block` and `unmatch`, each after both accounts. The single-account writers (`_revoke_account` `:718`, `_set_profile` `:799-801`, `_decide_consent` `:848`, `open_session` `:379`) lock one account row and their own profile or consent rows, which the reads do not lock. `_end_session` (`:414`) locks the session row only. `grant_token` (`:332-336`) takes shared locks only. `delivery.py` locks bindings, identities, submissions and events, none of which the final check locks. [Corrected by App Manager 7 after C1-C2's exact-head re-review, N1: four writers lock the higher account alone when they act on the higher member (`_revoke_account` `:718`, `_set_profile` `:799`, `_decide_consent` `:848`, `open_session` `:379`), so read this as "none locks the match, or both accounts, without taking the lower account first". The single-account writers are handled in the sentences that follow, and the deadlock-free conclusion holds, which the re-review checked against `contact.py`.]
+- **So no cycle:** the final check holds the lower account `FOR SHARE`. Any writer that holds the higher account or the match `FOR UPDATE` must already hold the lower account, which conflicts with the final check's share lock. They cannot both hold it, so the final check never waits on such a writer while it holds the lower account. A writer that holds only the higher account, or only the session, waits on nothing the final check holds. Shared locks never wait on one another. [Corrected by App Manager 7, N1: read "any writer that holds the match, or both accounts, `FOR UPDATE` must already hold the lower account".]
 
 The reader's-own-account-first order is the one this case now catches: for the higher member's read it locks the higher account before the lower, which a block's lower-then-higher order meets in a cycle.
 
@@ -2919,3 +2919,54 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 - **Integration.** The session branched from `d662319`, before the brief-only commit `09d8fe4`, so the manager merged it, with no conflict. The head's code is byte-identical to `4a6a81a`'s.
 
 **Next:** C1-C2's exact-head re-review, then Codex's code review of PR32's final head (OD-41).
+
+## Exact-head review of Stage C1-C2 (24 October 2026)
+
+- **Prompt:** [revision 1](../../ephemeral/2026-10-24-p06-2-stage-c1-c2-review-prompt.md), from `4eac142bc5bd296484c7e966d06ea35091600d39`; offline, in `Glow App - No Stream`.
+- **The model and level:** not named in the relay; Nathan's pick is not recorded. TypeSafe's reading was Opus 5.5 at extra high.
+- **Start gate and classification:** every check passed. The head's code is identical to `4a6a81a`'s, and the base's to `f4749ee`'s. The shortstat is as expected. The trusted policy reports `"full": true`, `behavior-or-empty`, 10 paths, and the owned-path filter printed nothing.
+- **What the reviewer read:** the run of record 40127834532's database job whole (1,460 lines), its API job whole (1,934 lines), the gate's tail and the results artifact.
+  - all eight jobs `success`, and the gate printed `Application checks passed`;
+  - the database job ran 7 min 29 s on PostgreSQL 17.11;
+  - proof 160 OK, API 366 OK, contracts 39 OK;
+  - reference 56/56, adapter 115/115, 0 violations;
+  - delivery 13/13;
+  - reads 62/62 in 17.3 s, with all three read controls failing as intended;
+  - the used-database refusal exited 1;
+  - `***` appears only in the actions' token lines.
+- **Checks at `HEAD`:**
+  - **the API:** 366 tests OK; Ruff and format clean (78 files); mypy 41 files; the static check and `makemigrations` clean; the sealed-runtime tests OK; smoke three PASS;
+  - **the proof:** 160 OK; Ruff and mypy clean (44 files);
+  - **a local PostgreSQL 16.15 run** (iteration only): the read phase 62/62 with three controls failing as intended, and the full run `VERDICT PASS`;
+  - **the reversals,** reproduced as the session recorded: `_run`'s check reverted; the check and the guard both reverted; the two R2 wrong orders; the three offline reversals.
+- **Confirmed:**
+  - **R1 and the manager's direction:** the refusal is the first thing `_run` does, inside its `try`, before any statement, for every read. Both Django modes are covered. An unreachable database is still an `error` result.
+  - **The reviewer's own probe:** under `set_autocommit(False)` the list, the cursor move and the history read each returned `error`/`transaction_open` with no transaction ID; inside `atomic()` the list and the cursor move did the same. A raw `BEGIN` through a cursor still ends in `error`/`ProgrammingError` with no provider call and no transaction ID, which updates the session's limit.
+  - **R2:** eight waits in the artifact. The "reader's own account first" order now fails. The session's reading, that the order after the first lock is not pinned and is deadlock-free against today's writers, is right against `contact.py`, apart from N1's wording.
+  - **R3:** `read.inside_test_case_block` shows `error`/`transaction_open`, no provider call, no transaction ID. The guard before the provider call is covered by the offline tests.
+  - **R5 and the wording.**
+  - **The records,** except N1.
+  - **Nothing else changed** since `d662319`.
+
+**Verdict: approve.** There is no blocking or should-fix finding; the review gave four nits.
+
+| # | Severity | Finding | Correction class | Disposition |
+|---|---|---|---|---|
+| N1 | Nit | "Stage C1-C2", R2's reading: "None locks the higher account or the match without the lower" and "So no cycle" are wrong as written. Four writers lock the higher account alone (`contact.py:718`, `:799`, `:848`, `:379`). The next sentences handle them, and the conclusion holds | By its letter a record claim, but the conclusion holds | **Corrected in place** by the manager, marked as a correction, in the reviewer's words. No pass needed |
+| N2 | Nit | `read_phase.py:542-548`: `read.autocommit_off` always writes "the block committed while the caller's transaction was open", even when it released that transaction first because the block was observed waiting. The case still fails correctly | No | **Recorded follow-up,** at the next change to `read_phase.py`: write that note only when no wait was observed |
+| N3 | Nit | `read_phase.py:7`: "The reader is the world's lower account" is stale since R2 | No | **Recorded follow-up,** with N2: add "except where a case says otherwise" |
+| N4 | Nit | The P11 plan's line on the reads' transactions describes C1-C1's mechanism, not `HEAD`'s | No | **The manager's P11 plan line,** now: the reads refuse before their first statement whenever the caller has a transaction open (`error`, `transaction_open`) |
+
+- **The brief's R3 line** ("expecting `error:atomic_block_open`") is superseded by the manager's direction during C1-C2, which the brief records beside it.
+- **The review's limits:**
+  - its local runs were on PostgreSQL 16.15;
+  - two of the session's reversals were not re-run;
+  - the other CI jobs were read only by their conclusions.
+- **No question goes to Nathan.**
+
+**Next:**
+1. PR32 marked ready for Codex's code review of its final head (OD-41).
+2. The final head's run.
+3. The pre-merge checklist, and the merge.
+
+The governing Markdown PR32 carries is PF01 1.12, read in DM-22 as written; no other governing file changed since `main`.
