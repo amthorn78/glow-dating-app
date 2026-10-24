@@ -2314,3 +2314,30 @@ The offline correction pass after B2-C4's exact-head re-review: C4R1 with `cmd_c
 - The code change is confined to `_without_ids`'s pairs (`conformance.py:875-883`) and the two `stop_reason` values written by `cmd_conformance` (`cli.py:713`, `:743`); `results()`, `render()`, `proof_run.py`, the rows, their identifiers, verdicts and order are unchanged.
 - The two new harness tests are at `tests/test_conformance.py:695` and `:858`; the API change is test-only (`test_chat_provider_stream.py:791-865`).
 - The run of record is 40054102314 on `a1e92eb`; the records commit is Markdown-only.
+
+## Manager verification of Stage B2-C5
+
+App Manager 7, 24 October 2026, from the session's report as Nathan relayed it and from the pushed branch. The relay did not name Nathan's pick of model and rung, so the uses table records "not recorded".
+
+- **The report and the branch agree.** It names prompt revision 1 from `4c70db8`, the branch `claude/cool-thompson-95ynmy`, the code commit `a1e92eb` and the records commit `93caa4b`. The branch holds exactly those two commits on `4c70db8`.
+- **Integrated by fast-forward:** the manager branch was still at `4c70db8`, so it moved to `93caa4b`, whose code paths equal `a1e92eb`'s.
+- **Paths:**
+  - The code commit changes the five owned paths, and no other: `conformance.py`, `cli.py`, `test_conformance.py`, the harness README and `test_chat_provider_stream.py` (5 files, +172 and −16).
+  - The records commit only appends "Stage B2-C5": the record at `4c70db8` is a byte-identical prefix, and no line is removed.
+- **Classification** (the trusted policy from `main`):
+  - `4c70db8` to `a1e92eb`: `"full": true`, `behavior-or-empty`.
+  - `a1e92eb` to `93caa4b`: `ordinary-docs-only`.
+- **The run of record**, read on GitHub: Foundation push run 40054102314 on `a1e92eb0d42b183dd33a7991deef30abf8d6e5fc`.
+  - All eight jobs passed.
+  - The database job ran from 02:25:35Z to 02:32:37Z, 7 min 2 s.
+  - The API checks job printed `Ran 331 tests`, `OK`, and the contracts' `Ran 38 tests`, `OK`.
+  - The Stream proof job printed `run plan: fits`. The manager did not read its test count in the log; the session reports 648 locally.
+  - The gate printed `Application checks passed`.
+- **Read in the diff:**
+  - **`_without_ids`** (`conformance.py:868-896`) adds, for each identifier that starts with the run's prefix, the pair `"{prefix}"` plus the identifier's part after the prefix, sorted with the whole identifiers longest first. With an empty prefix it adds nothing.
+  - **`cmd_conformance`** passes `stop_reason` through `run._without_ids` in the early results (`cli.py:713`) and the final results (`:742-744`). The closing console line still prints the raw `stop_reason`, as the session's limit says.
+  - **The claims:** the module docstring, `_without_ids`' docstring and the harness README say what the code does, and name the console lines as not generalized.
+- **Not re-run by the manager:** the tests and the reversals. They are the session's, and its run of record ran them.
+- **C4R1 and C4R2:** done as the prompt asks. B2-C4's item 4 and its "What the exact-head re-review must know" are now true of the results and of `stop_reason`, and not of the console lines.
+- **Carried to P11, unchanged:** B2C4-X1 and the console lines. The P11 plan names the closing line too.
+- **Next:** the exact-head re-review of B2-C5's change at `93caa4b`, offline. Then Codex's code review of the final head, the Dev Manager's read of OD-45's register row, the final head's run and PR31's merge.
