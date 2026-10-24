@@ -2692,3 +2692,31 @@ Each reversal ran in a copy of the working tree outside the repository (a scratc
 - **Finding 8** is `read_phase.py:285-288`.
 - **Finding 10** is a test (`test_chat_reads_offline.py:116`); `chat_projections.py` is unchanged.
 - **The run of record** is [40109633125](https://github.com/amthorn78/glow-dating-app/actions/runs/40109633125) on `f4749ee`; the records commit is Markdown-only.
+
+## Manager verification of Stage C1-C1
+
+App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/youthful-faraday-dakcvg`: code commit `f4749ee71d4db470d8d470354a54e3030c73d455`, records commit `bdd2043b68ef36fb8e617eb2611df18a4a62d7d8`, both as reported. The prompt's commit `95494fc` is an ancestor.
+- **Changed paths.** Eight against `95494fc`, every one inside C1-C1's owned paths. Five are code paths (473 lines added, 17 removed):
+  - `glow_chat/reads.py`;
+  - a new `tests/test_chat_reads_offline.py`;
+  - `read_phase.py` and its tests;
+  - the proof README.
+
+  `git diff --check` is clean.
+- **The README table row.** The session also changed the proof README's module-table row from "two" to "three planted read controls". That row is outside the read-phase paragraph the prompt names. **Accepted:** left alone, its count would be false, and the brief's revision 14 owns the README's read-phase lines for this reason.
+- **Unchanged since C1** (`91c3945`): `reference.py`, `contact.py`, `delivery.py`, `packages/`, `apps/`, `.github/`, `proofs/stream-chat/`, `glow_persistence` and `glow_domain`. That includes `chat_projections.py`: finding 10 was met by a test, as the prompt preferred.
+- **Run of record.** Foundation push run 40109633125 on `f4749ee`. The manager read its job list, not its logs:
+  - all eight jobs concluded `success`, the gate included;
+  - the database job ran from 16:01:38 to 16:06:56 UTC (5 min 18 s);
+  - its suite step ran from 16:02:17 to 16:06:52 (4 min 35 s).
+
+  The counts (API 364, proof 159, read phase 60/60, three read controls) are the session's reading of the logs.
+- **Integration.** The session branched from `95494fc`, before the brief-only commit `ddaa1b9`, so the manager merged it (`8b210ec`), with no conflict. The head's code is byte-identical to `f4749ee`'s.
+- **What the manager read in the code:**
+  - `_run` opens `transaction.atomic(durable=True)` (`reads.py:144`);
+  - `read_history` returns `error`, `atomic_block_open`, before the provider call when `connection.in_atomic_block` is true (`:495-499`). Its comment records why that guard is needed beside the durable flag: Django lets a durable block nest inside a test case's own atomic block.
+- **The session's finding C1C1-X1** (a limit): a transaction opened with raw SQL `BEGIN` is invisible to both the durable flag and the assertion. It goes to the P11 plan: P11 opens every transaction through Django, never raw `BEGIN`, on a connection the reads use.
+
+**Next:** C1-C1's exact-head re-review, then Codex's code review of PR32's final head (OD-41).
