@@ -2527,3 +2527,41 @@ Each reversal ran in a copy of the working tree outside the repository (`/root/c
 - **The text check** is `page_messages` (`glow_domain/chat_reads.py:289`) with the send's `request_digest`; the type and deleted filter is in each adapter (`chat_provider_stream.py:338`, `chat_provider_fixtures.py:243`).
 - **The contracts:** seven new definitions, `ChannelEntitlement` without `channel_ref`, 213 corpus cases; `ReadCursorIntent` has no `CommandMeta` (a choice for the review, above).
 - **The run of record** is [40064952123](https://github.com/amthorn78/glow-dating-app/actions/runs/40064952123) on `91c3945`; the records commit is Markdown-only.
+
+## Manager verification of Stage C1
+
+App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed the session's report. The session's model and level were not named in the relay; Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/gallant-bardeen-k6xjwf`: code commit `91c39457a9657cc8c4bf8b1964ec822fb6506491` (tree `dffa679f391e367bbb392c6951911c19047f0004`), records commit `13acf7a470a84d69f499bef04d64aa47668aaf83` (tree `4c33d8dd3dc88576aeb45536138374b206fbf3f5`). Both match the report. The prompt's commit `c1798dc` is an ancestor.
+- **Changed paths.** 32 against `c1798dc`, every one inside C1's owned paths (checked path by path). The one change in `proofs/stream-chat/` is a single line in `tests/test_conformance.py`'s `operations()` helper (DM-22 10.1). `git diff --check` is clean.
+- **Unchanged files.** `reference.py` and migrations `0001` to `0003` hash the same at `3572c41` and `13acf7a` (SHA-256 prefixes `d174c3d22f0a`, `817c1c763b53`, `862bac8b81aa`, `6dc68582c174`). No dependency file, runtime module, workflow or script is in the diff.
+- **Classification** (the trusted policy from `main`, `python3 -I`, full SHAs, `c1798dc` to `13acf7a`): `"full": true`, `behavior-or-empty`.
+- **Run of record.** Foundation push run 40064952123 on `91c3945`. The manager read its job list (each job's conclusion and step times) and the run's metadata, not its logs:
+  - all eight jobs concluded `success`, the gate included;
+  - the database job ran from 05:06:27 to 05:14:01 UTC (7 min 34 s of its 30-minute timeout), and its suite step from 05:07:16 to 05:13:57 (6 min 41 s).
+  - The counts and log lines in the session's section are the session's reading of the logs.
+- **Integration.** The manager branch is fast-forwarded to `13acf7a`.
+- **What the manager read in the code:**
+  - **The Stream adapter's text read** (`chat_provider_stream.py:309`). It makes one `get_many_messages` call with `type`, `id` and `ids` only; it keeps an asked ID's text only for a `regular`, undeleted message; it drops any ID answered twice; and an answer without a list of messages raises `provider_unavailable`.
+  - **The order.** `delivered_at` is `clock_timestamp()` read inside the delivery's transaction after the provider call, before the commit (`delivery.py:414`, `:458`).
+
+**Observations for the exact-head review** (the manager's, not findings):
+
+1. **The order and concurrent deliverers** (DM-22 2.2). The reads key "newer" and "unread" on `(delivered_at, sequence)`. `delivered_at` is taken before the delivery commits, so two deliveries of one channel's messages could commit out of `delivered_at` order. A reader polling between the two commits would then pass the earlier one, which would never appear and never count as unread. That is the case 2.2 names.
+   - The session records the assumption: one deliverer per channel, and the delivered `message_submitted` events kept.
+   - **The review judges** whether the read meets 2.2's first case (an order that follows acceptance), or rests on 2.2's second case (per-channel delivery order). The second would make the P11 plan's "Per-channel order across retries" a requirement for the history read, without its "or records the case".
+2. **The session's recorded choices,** for the review to judge:
+   - `ReadCursorIntent` without `CommandMeta`, against the production contracts' rule for mutating intents;
+   - F11's `read` transition;
+   - `ConversationSummary.state`'s unused `closed`;
+   - one check for a page with no accepted message;
+   - own failed submissions' spool text;
+   - the error mapping;
+   - the order case calling `OutboxDelivery._deliver` directly.
+3. **Sixteen revocations.** The brief named nine kinds. The suite's sixteen are those kinds by either member or account (block, unmatch, suspension, deletion, pause, restriction and withdrawal, each by either member; the reader's sign-out and session expiry). Each has three forced cases, for 48 cases. The phase's other 10 are `read.block_during_provider_call` and nine named cases: 58 in all.
+4. **The session's findings outside the work:**
+   - **C1-X1** (records: the production contracts' older sentence on direct SDK bypass) goes to the review. It is a record claim in a C1-owned file, so a correction pass that follows takes it if the review agrees.
+   - **C1-X2** (Ruff's format check over `packages/contracts`, not run in CI, failing at the start too) is a recorded follow-up.
+5. **The session's limits** (the text read unproven live; the order's assumptions; the list's shared locks; no index for the submission-to-event join; local runs on PostgreSQL 16.15) are carried to the P11 plan as the session states them.
+
+**Next:** draft PR32 from the manager branch, then C1's exact-head review of the head that holds this section, then Codex's code review of the final head (OD-41).

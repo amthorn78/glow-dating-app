@@ -1,4 +1,4 @@
-# Current handoff — App Manager 7 (24 October 2026, P06.2; Stage C's design approved in DM-22; Stage C1's prompt with Nathan)
+# Current handoff — App Manager 7 (24 October 2026, P06.2; Stage C1 integrated; its exact-head review with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.DB to its merge](history/p06-db-handoff.md).
 
@@ -21,11 +21,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 7 | Nathan, then the Stage C1 session | [C1's prompt](../ephemeral/2026-10-24-p06-2-stage-c1-implementation-prompt.md), revision 2 (DM-22's conditions applied; TypeSafe v8.2: Opus 5.5 at extra high), and the session's report | Nathan says when he starts it, and relays the report. Meanwhile he can delete the eight fully merged branches below |
+| App Manager 7 | Nathan, then the C1 review session | [C1's exact-head review prompt](../ephemeral/2026-10-24-p06-2-stage-c1-review-prompt.md), revision 1 (TypeSafe v8.2: Fable 5.1 at max), and its report | Nathan relays the report. Meanwhile he can delete the eight fully merged branches below and C1's session branch once C1 merges |
 
 ## Next actions (App Manager 7)
 
-1. **Stage C1:** on the session's report, verify it against its branch and integrate it; then C1's exact-head review prompt (DM-22 item 1's note: the review may split its reading by area), Codex's review of the final head, and C1's PR and merge. **Then C2's prompt** under the brief's point k and DM-22 9.1. P06.2's closing record states DM-22 8.1.
+1. **Stage C1:** done and integrated (`13acf7a`; run of record 40064952123), in the draft PR32. On the review's report: record it and its disposition; a correction pass and its re-review if it asks for one; then Codex's review of the final head (PR32 marked ready), the final head's run, the pre-merge checklist and the merge. The governing Markdown PR32 carries (PF01 1.12) was read in DM-22. **Then C2's prompt** under the brief's point k and DM-22 9.1. P06.2's closing record states DM-22 8.1.
 2. **The harness's carried fixes** (the P11 plan: B2C4-X1, the console lines, C5R1, CX7) land before the harness's next live conformance run, which is P11's.
 3. **M04, after P06.2 merges:** brief, then the Dev Manager's read, then the implementation prompt for `Glow App - No Stream`. Starting points: push to `main` and manual dispatch only, never a pull-request event; `contents: write` for that job only, no secrets, pinned actions; delete only a branch whose head is in `main`, off a keep-list held on `main` (`main`, the manager branch, and `claude/dev-manager` by name, DM-13 item 10) and heading no open PR; dry-run mode and a job summary; selection tests and a run of record; the CI policy updated, classified with the pre-change policy, the whole workflow diff read; exact-head review, Codex and the Dev Manager's read. Also weigh adding the session harness's branch pattern to the push filter (AM7-02; the brief's B2-C2 point vi).
 4. **Standing:** before the next Dev Manager session, rewrite its start prompt (DM-03 E3; DM-07 item 7), which still names `claude/stoic-carson-66gdig`.
@@ -34,8 +34,9 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches and PRs (checked on GitHub by App Manager 7, 24 October 2026, after PR31 merged; heads re-listed with `git ls-remote` after DM-22)
 
-- **Open PRs:** none. PR31 merged at `3572c41` on 24 October; PR27 to PR30 merged before it; PR26 was closed and replaced by PR27. Stage C's PR is opened from the manager branch when its work is integrated.
-- **Eleven remote branches,** each head an ancestor of `main` except the manager branch's and `claude/dev-manager`'s (`f9c624d`, in the manager branch through DM-22's merge) (checked with `git merge-base --is-ancestor`):
-  - **kept:** `main` (`3572c41`); `claude/magical-wozniak-yfmmx2`, the manager branch, at `main` plus records commits (the merge receipt `d0439fc`, Stage C's design `d1f7ea1`, DM-22's merge `dd434bf` and its conditions); `claude/dev-manager` (`f9c624d`, DM-22), the Dev Manager's branch, kept by name;
+- **Open PRs:** the draft PR32, Stage C1, from the manager branch into `main`. PR31 merged at `3572c41` on 24 October; PR27 to PR30 merged before it; PR26 was closed and replaced by PR27.
+- **Twelve remote branches,** each head an ancestor of `main` except the manager branch's, `claude/dev-manager`'s (`f9c624d`, in the manager branch through DM-22's merge) and C1's (checked with `git merge-base --is-ancestor`):
+  - **in the manager branch, not yet in `main`:** `claude/gallant-bardeen-k6xjwf` (C1, `13acf7a`); Nathan deletes it after PR32 merges;
+  - **kept:** `main` (`3572c41`); `claude/magical-wozniak-yfmmx2`, the manager branch, at `main` plus records commits (the merge receipt `d0439fc`, Stage C's design `d1f7ea1`, DM-22's merge `dd434bf` and its conditions, C1 by fast-forward to `13acf7a`, then the manager's C1 records); `claude/dev-manager` (`f9c624d`, DM-22), the Dev Manager's branch, kept by name;
   - **fully merged, for Nathan to delete** (a session cannot delete a branch; OD-38): `claude/sharp-clarke-fmeflb` (B2, `6bdc9b8`), `ccr-a4379c5f-jeokfe` (B2-C1, `9e24ca1`), `claude/exciting-curie-ay6811` (B2-C2, `cf27fef`), `claude/admiring-lovelace-c6ii7i` (B2-C3, `9dbcda8`), `claude/exciting-lovelace-yhr21v` (B2-C4, `0fdc54d`), `claude/cool-thompson-95ynmy` (B2-C5, `93caa4b`), `claude/gracious-newton-4fjsmn` (B1, `e6a5c0d`) and `claude/kind-ride-brzl8u` (B1-C1, `c562867`).
 - **Earlier deletions** (5 October): see OD-39 in the owner-direction register and AM5-24 in the mistakes log.
