@@ -112,8 +112,12 @@ were generated with uv 0.12.17 for Python 3.12 on Linux; regenerate deliberately
 
 ```bash
 uv pip compile requirements.in --python-version 3.12 --generate-hashes --output-file requirements.lock --no-header
-uv pip compile requirements-dev.in --python-version 3.12 --generate-hashes --output-file requirements-dev.lock --no-header
+uv pip compile requirements-dev.in --python-version 3.12 --generate-hashes --output-file requirements-dev.lock --no-header --constraint ../../proofs/stream-chat/requirements.lock
 ```
+
+The development lock is compiled in place, so uv keeps its other pins as preferences,
+and with the constraint the 30 packages it shares with the harness's lock keep the
+harness's versions and hashes, which `tests/test_dependency_pins.py` holds.
 
 Do not automatically upgrade dependencies during startup. Other operating systems
 need their own install verification; this checkpoint proves Linux only.

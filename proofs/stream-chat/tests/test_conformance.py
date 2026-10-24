@@ -12,6 +12,7 @@ import sys
 import unittest
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from unittest import mock
@@ -36,6 +37,7 @@ from tests.fakes import (
     FakeServer,
     FakeSession,
     NoSettle,
+    error,
     http_reply,
     make_run,
     ws_refused,
@@ -338,7 +340,10 @@ class ConformanceRunTest(unittest.TestCase):
     def test_every_row_passes_or_is_one_stated_as_recorded(self) -> None:
         verdicts = {row.row_id: row.verdict for row in self.proof.rows}
         not_passing = {k: v for k, v in verdicts.items() if v != conformance.PASS}
-        self.assertEqual(not_passing, {"R7": conformance.RECORDED, "V7": conformance.RECORDED})
+        self.assertEqual(
+            not_passing,
+            {"M5": conformance.RECORDED, "R7": conformance.RECORDED, "V7": conformance.RECORDED},
+        )
         self.assertEqual(self.problems, [])
         self.assertEqual(len(self.proof.rows), 46)
 
@@ -347,6 +352,12 @@ class ConformanceRunTest(unittest.TestCase):
         # 4.7: the fixture refuses a removed member's send; this model of Stream accepts it.
         self.assertEqual((by_id["R7"].expected, by_id["R7"].observed), ("member_unavailable", "ok"))
         self.assertEqual(by_id["R7"].reason, "differs from the fixture")
+        # DM-20 1.3: M5 is recorded whatever Stream answers, its expectation the fixture's;
+        # these fakes refuse an unknown sender, as the fixture does.
+        self.assertEqual(
+            (by_id["M5"].expected, by_id["M5"].observed, by_id["M5"].reason),
+            ("member_unavailable", "member_unavailable", "as the fixture"),
+        )
         # The boundary token: this model compares strictly, so iat == cut-off is accepted.
         self.assertEqual(by_id["V7"].observed, "accepted")
 
@@ -396,10 +407,11 @@ class ConformanceRunTest(unittest.TestCase):
 
     def test_the_ledger_counted_the_users_the_channels_and_the_calls(self) -> None:
         counted = self.proof.ledger.summary()["run"]
-        self.assertEqual((counted["users"], counted["channels"]), (4, 2))
+        # Five users: U1 to U4, and M5's sender, reserved before its send (B2R3).
+        self.assertEqual((counted["users"], counted["channels"]), (5, 2))
         self.assertEqual(counted["peak_connections"], 1)
         self.assertGreater(counted["api_calls"], 40)
-        self.assertEqual(len(self.proof.users), 4)
+        self.assertEqual(len(self.proof.users), 5)
         self.assertEqual(len(self.proof.channels), 2)
 
     def test_the_run_was_cleaned_up(self) -> None:
@@ -414,7 +426,7 @@ class ConformanceRunTest(unittest.TestCase):
         text = json.dumps(self.results, default=str) + conformance.render(self.results)
         self.assertIsNone(JWT_PATTERN.search(text))
         self.assertNotIn(SECRET, text)
-        self.assertEqual(self.results["verdicts"], {"PASS": 44, "RECORDED": 2})
+        self.assertEqual(self.results["verdicts"], {"PASS": 43, "RECORDED": 3})
         self.assertEqual(
             self.results["api_calls_used"], self.proof.ledger.summary()["run"]["api_calls"]
         )
@@ -494,6 +506,193 @@ class _FixtureSayingOtherwise:
             raise
 
 
+@dataclass
+class SendCreatesItsSender(FakeServer):
+    """As Stream answered M5 live (DM-20 item 2): a server-side send naming a sender it does
+    not hold is accepted, and (by inference from B2-C3's reads, AM7-06) creates that user.
+    ``seen_at_send`` holds each sender so created, with what ``on_unknown_sender`` returned
+    at the moment of the send (``None`` without one)."""
+
+    on_unknown_sender: Callable[[str], Any] | None = None
+    seen_at_send: dict[str, Any] = field(default_factory=dict)
+
+    def _send_message(self, type: str, id: str, message: Any) -> Any:
+        sender = message.user_id
+        if sender not in self.users and id in self.members:
+            seen = self.on_unknown_sender
+            self.seen_at_send[sender] = seen(sender) if seen is not None else None
+            self.users[sender] = {"id": sender, "role": "user", "created_at": 0}
+        return super()._send_message(type, id, message)
+
+
+def spied(run: ConformanceRun) -> list[tuple[str, str, tuple[Any, ...]]]:
+    """Each contract row's operation and arguments, in the order the run makes them."""
+    made: list[tuple[str, str, tuple[Any, ...]]] = []
+    original = run._both
+
+    def both(row_id: str, description: str, operation: str, *args: Any, **kwargs: Any) -> Any:
+        made.append((row_id, operation, args))
+        return original(row_id, description, operation, *args, **kwargs)
+
+    run._both = both  # type: ignore[method-assign]
+    return made
+
+
+def _names(args: Any) -> set[str]:
+    if isinstance(args, str):
+        return {args}
+    if isinstance(args, tuple | list):
+        return set().union(*(_names(a) for a in args)) if args else set()
+    return set()
+
+
+# The user each of the four rows names (DM-20 1.2): C4's absent member, M5's sender, and the
+# user D10 deactivates and V13 revokes.
+ABSENT_USER_ROWS: dict[str, Callable[[tuple[Any, ...]], Any]] = {
+    "C4": lambda args: args[1][1],
+    "M5": lambda args: args[1],
+    "D10": lambda args: args[0],
+    "V13": lambda args: args[0],
+}
+
+
+class RowIdentifiersTest(unittest.TestCase):
+    """DM-20 1.2: C4, D10 and V13 each name a user no other row names, and M5 its own;
+    C4's, D10's and V13's users are never created by the run."""
+
+    def test_no_two_of_c4_m5_d10_and_v13_share_an_identifier(self) -> None:
+        run, _server = conformance_run()
+        made = spied(run)
+        complete(run)
+        by_row = {row_id: args for row_id, _operation, args in made}
+        named = {row: pick(by_row[row]) for row, pick in ABSENT_USER_ROWS.items()}
+        self.assertEqual(len(set(named.values())), 4, named)
+        keys = {row: k for row, uid in named.items() for k, v in run.ids.items() if v == uid}
+        self.assertEqual(keys, {"C4": "U5", "M5": "U6", "D10": "U7", "V13": "U8"})
+        for row, user_id in named.items():
+            with self.subTest(row=row):
+                # No other row names it, before or after.
+                others = [r for r, _op, args in made if r != row and user_id in _names(args)]
+                self.assertEqual(others, [])
+        for row in ("C4", "D10", "V13"):
+            with self.subTest(row=row):
+                # Never through _new_user: not a run user, nothing reserved for it.
+                self.assertNotIn(named[row], run.users)
+
+    def test_under_streams_send_d10_and_v13_still_name_a_user_stream_does_not_have(self) -> None:
+        """With M5's send creating its sender (as live), D10 and V13 still exercise their
+        cause and give the fixture's code, which B2-C3's shared identifier did not."""
+        server = SendCreatesItsSender(UsageLedger())
+        run, _ = conformance_run(server)
+        complete(run)
+        by_id = {row.row_id: row for row in run.rows}
+        for row_id in ("C4", "D10", "V13"):
+            with self.subTest(row=row_id):
+                self.assertEqual(by_id[row_id].verdict, conformance.PASS)
+                self.assertEqual(by_id[row_id].observed, "member_unavailable")
+        self.assertEqual(set(server.seen_at_send), {run.ids["U6"]})
+
+
+class RecordedSenderTest(unittest.TestCase):
+    """DM-20 1.3 with B2R3: M5 is recorded whatever Stream answers; its sender is reserved
+    in the ledger and recorded as a run user before the send, so cleanup deletes it by
+    record, not only by the prefix search."""
+
+    def stream_like_run(self) -> tuple[ConformanceRun, SendCreatesItsSender]:
+        server = SendCreatesItsSender(UsageLedger())
+        run, _ = conformance_run(server)
+        server.on_unknown_sender = lambda sender: (
+            sender in run.users,
+            run.ledger.summary()["run"]["users"],
+        )
+        return run, server
+
+    def test_m5_is_recorded_when_stream_accepts_the_send(self) -> None:
+        run, _server = self.stream_like_run()
+        complete(run)
+        m5 = next(row for row in run.rows if row.row_id == "M5")
+        self.assertEqual(
+            (m5.expected, m5.observed, m5.verdict, m5.reason),
+            ("member_unavailable", "ok", conformance.RECORDED, "differs from the fixture"),
+        )
+        self.assertEqual(run.verdict_counts(), {"PASS": 43, "RECORDED": 3})
+
+    def test_the_sender_is_reserved_and_recorded_before_the_send(self) -> None:
+        run, server = self.stream_like_run()
+        complete(run)
+        sender = run.ids["U6"]
+        # At the send: already a run user, and the ledger had counted it with U1 and U2.
+        self.assertEqual(server.seen_at_send, {sender: (True, 3)})
+        self.assertIn(sender, run.users)
+
+    def test_cleanup_deletes_the_created_sender_and_nothing_is_found_unrecorded(self) -> None:
+        run, server = self.stream_like_run()
+        problems = complete(run)
+        self.assertEqual(problems, [])
+        self.assertEqual(set(server.users), {"owner"})
+        self.assertEqual(run.cleanup_result.get("users_found_by_prefix_not_recorded"), 0)
+        deleted = [b for m, p, b in server.calls if p == "/api/v2/users/delete"]
+        self.assertIn(run.ids["U6"], deleted[0]["user_ids"])
+
+    def test_the_sender_is_deleted_by_record_when_the_prefix_search_finds_nothing(self) -> None:
+        run, server = self.stream_like_run()
+
+        def listing_fails(method: str, path: str, body: Any, params: Any) -> Any:
+            payload = json.loads((params or {}).get("payload", "{}"))
+            if method == "GET" and path == "/api/v2/users" and payload.get("limit") == 100:
+                return error(method, path, 500, 0, "listing unavailable")
+            return None
+
+        with NoSettle(), no_revocation_wait():
+            run.preflight()
+            run.run_rows()
+            # Only the cleanup's listing fails: the prefix search finds nothing.
+            server.handlers.append(listing_fails)
+            run.finish(cleanup=True)
+        self.assertEqual(run.cleanup_result.get("users_found_by_prefix_not_recorded"), 0)
+        deleted = [b for m, p, b in server.calls if p == "/api/v2/users/delete"]
+        self.assertIn(run.ids["U6"], deleted[0]["user_ids"])
+        self.assertNotIn(run.ids["U6"], server.users)
+
+    def test_a_sender_stream_did_not_create_leaves_no_problem(self) -> None:
+        """These fakes refuse the send: the recorded sender is absent from a complete
+        listing, so cleanup does not name it again, and reports no problem."""
+        run, server = conformance_run()
+        problems = complete(run)
+        self.assertEqual(problems, [])
+        self.assertEqual(run.cleanup_result.get("recorded_users_already_gone"), 1)
+        self.assertEqual(run.cleanup_result.get("users_found_by_prefix_not_recorded"), 0)
+
+
+class ResultsIdentifiersTest(unittest.TestCase):
+    """B2R2: the results replace every identifier of the run with its key, not only the
+    prefix, so no row's detail and no note keeps an identifier's random part."""
+
+    def test_no_detail_or_note_keeps_an_identifiers_random_part(self) -> None:
+        run, _server = conformance_run(SendCreatesItsSender(UsageLedger()))
+        complete(run)
+        # A note and a stop that name identifiers, as a client note or a stop could.
+        run.notes.append(f"client X note: {run.ids['U1']} in {T}:{run.ids['C1']}")
+        run.stops.append(f"stopped at {run.ids['M1']}")
+        randoms = {value[len(PREFIX) :] for value in run.ids.values()}
+        self.assertEqual(len(randoms), len(run.ids))
+        self.assertTrue(all(len(r) == 32 for r in randoms))
+        raw = json.dumps([row.detail for row in run.rows], default=str)
+        self.assertTrue(any(r in raw for r in randoms))  # the details do carry identifiers
+        results = run.results()
+        details = [json.dumps(row["detail"]) for row in results["rows"]]
+        text = json.dumps(results, default=str) + conformance.render(results)
+        for random_part in randoms:
+            with self.subTest(random_part=random_part[:6]):
+                self.assertFalse(any(random_part in d for d in details))
+                self.assertFalse(any(random_part in n for n in results["notes"]))
+                self.assertNotIn(random_part, text)
+        c2 = next(row for row in results["rows"] if row["row_id"] == "C2")
+        self.assertEqual(sorted(c2["detail"]["shape"]["member_user_ids"]), ["{U1}", "{U2}"])
+        self.assertIn("client X note: {U1} in glow-match:{C1}", results["notes"])
+        self.assertEqual(results["prefix"], PREFIX)
+
+
 class CommandTest(unittest.TestCase):
     """``cmd_conformance``: its exit codes and its records, on the fakes."""
 
@@ -541,7 +740,7 @@ class CommandTest(unittest.TestCase):
     def test_a_clean_run_exits_zero_and_records_the_rows(self) -> None:
         self.assertEqual(self.command(), 0)
         results = self.results()
-        self.assertEqual(results["verdicts"], {"PASS": 44, "RECORDED": 2})
+        self.assertEqual(results["verdicts"], {"PASS": 43, "RECORDED": 3})
         self.assertEqual(results["post_run_problems"], [])
         self.assertIsNone(results["stop_reason"])
         markdown = next(v for k, v in self.written.items() if k.endswith(".md"))

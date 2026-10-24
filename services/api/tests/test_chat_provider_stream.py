@@ -117,6 +117,10 @@ class RecordedStream:
     def answer_next(self, status: int, body: Any) -> None:
         self._scripted.append(lambda request: httpx.Response(status, json=body))
 
+    def pass_next(self, count: int) -> None:
+        """The next ``count`` requests are answered as modelled (before a scripted one)."""
+        self._scripted.extend(lambda request: None for _ in range(count))
+
     # -- the transport -----------------------------------------------------------------
 
     def handle(self, request: httpx.Request) -> httpx.Response:
@@ -745,7 +749,7 @@ class ExceptionBoundaryTests(unittest.TestCase):
                     self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
                     self.assertTrue(seen.exception.retryable)
                     self.assertIsNone(seen.exception.status)
-                    self.assertIsNone(seen.exception.__cause__)  # no provider text travels
+                    self.assert_no_chain(seen.exception)  # no provider text travels
 
     def test_an_httpx_transport_error_raised_directly_is_mapped_too(self) -> None:
         class Raising:
@@ -755,6 +759,94 @@ class ExceptionBoundaryTests(unittest.TestCase):
         with self.assertRaises(StreamProviderError) as seen:
             StreamChatProvider(Raising()).provision_user("u")
         self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
+        self.assert_no_chain(seen.exception)
+
+    # -- B2R1: the mapped error is raised after its except block -----------------------
+
+    def assert_no_chain(self, error: BaseException) -> None:
+        """Neither ``__cause__`` nor ``__context__`` holds the SDK's error, so nothing of
+        Stream's text is reachable from the Glow error (B2R1)."""
+        self.assertIsNone(error.__cause__)
+        self.assertIsNone(error.__context__)
+
+    def test_a_transport_error_from_either_hook_is_mapped_with_no_cause_or_context(self) -> None:
+        for hook_kind in ("request", "response"):
+            for index, operation in enumerate(OPERATIONS):
+                with self.subTest(hook=hook_kind, operation=operation):
+
+                    def hook(_: Any) -> None:
+                        raise httpx.ReadError("Stream's text would be here")
+
+                    model = RecordedStream()
+                    http = httpx.Client(
+                        event_hooks={hook_kind: [hook]},
+                        transport=httpx.MockTransport(model.handle),
+                    )
+                    adapter = StreamChatProvider(make_client(model, http_client=http))
+                    with self.assertRaises(StreamProviderError) as seen:
+                        self.operations(adapter, World("ctx"))[index]()
+                    self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
+                    self.assert_no_chain(seen.exception)
+
+    def writes(self, adapter: StreamChatProvider, w: World) -> list[tuple[Callable[[], Any], int]]:
+        """Each operation where it writes, after ``a`` and ``b`` are provisioned and channel
+        ``c`` created: the call, and how many reads come before its write."""
+        return [
+            (lambda: adapter.provision_user(w.d), 1),
+            (lambda: adapter.create_channel(w.c_mixed, (w.a, w.b)), 2),
+            (lambda: adapter.send_message(w.c, w.a, w.m1, "hello"), 0),
+            (lambda: adapter.remove_members(w.c, (w.a, w.b)), 1),
+            (lambda: adapter.deactivate_user(w.a), 1),
+            (lambda: adapter.revoke_user_tokens(w.a, revocation_cutoff_sent(NOW)), 1),
+        ]
+
+    def test_streams_error_answer_is_mapped_with_no_cause_or_context(self) -> None:
+        """On every operation's first request (a read, or the send) and on its write."""
+        answers = (
+            (500, 0, "server"),
+            (429, 9, "Too many requests"),
+            (404, 16, 'failed with error: "user u does not exist"'),
+            (400, 4, 'failed with error: "user u does not exist"'),
+            (403, 17, "not allowed"),
+        )
+        for status, code, message in answers:
+            for index, operation in enumerate(OPERATIONS):
+                for at_write in (False, True):
+                    with self.subTest(
+                        status=status, code=code, operation=operation, at_write=at_write
+                    ):
+                        model = RecordedStream()
+                        adapter = StreamChatProvider(make_client(model))
+                        w = World("ctx")
+                        if at_write:
+                            adapter.provision_user(w.a)
+                            adapter.provision_user(w.b)
+                            adapter.create_channel(w.c, (w.a, w.b))
+                            call, reads = self.writes(adapter, w)[index]
+                            model.pass_next(reads)
+                        else:
+                            call = self.operations(adapter, w)[index]
+                        model.refuse_next(status, code, message)
+                        with self.assertRaises(StreamProviderError) as seen:
+                            call()
+                        self.assertEqual(seen.exception.status, status)
+                        self.assert_no_chain(seen.exception)
+
+    def test_a_short_error_body_raises_the_sdks_own_key_error_unmapped(self) -> None:
+        """B2R4: a non-2xx body the SDK cannot parse into its ``APIError`` (here ``code``
+        and ``message`` only) raises getstream 6.1.0's own ``KeyError`` before a
+        ``StreamApiException`` exists. It is none of the SDK's API or transport errors, so
+        it propagates unmapped (4.1), as the undecodable 2xx body's does; delivery maps it
+        to provider_unavailable and retries."""
+        for index, operation in enumerate(OPERATIONS):
+            with self.subTest(operation=operation):
+                model = RecordedStream()
+                adapter = StreamChatProvider(make_client(model))
+                model.answer_next(404, {"code": 16, "message": "short"})
+                with self.assertRaises(KeyError) as seen:
+                    self.operations(adapter, World("short"))[index]()
+                self.assertNotIsInstance(seen.exception, ChatProviderError)
+                self.assertEqual(len(model.recording), 1)  # the one request it answered
 
 
 class CodesFromStatusAndNumberTests(unittest.TestCase):
