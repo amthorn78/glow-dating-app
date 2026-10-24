@@ -3127,3 +3127,30 @@ One line was removed instead of reversed: a check of the fictional member's own 
 - **The no-provider test** is `src/chat/no-provider.test.ts`; its patterns are deliberately built from fragments.
 - **The one inherited test change** is `rendered/interactions.spec.ts:73` (above).
 - **The run of record** is [40135312825](https://github.com/amthorn78/glow-dating-app/actions/runs/40135312825) on `cb3a6a6`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2
+
+App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/p06-2-stage-c2-37vrqt`: code commit `cb3a6a6dae0f3ad629a1cbd92ea299fcd5cab03a`, records commit `676b49b639919d243711e14613f209c7d3d7f2ab` (tree `ad7b4be`), both as reported. The prompt's commit `b23253b` is their parent.
+- **Changed paths.** 24 against `b23253b`, every one inside C2's owned paths: 23 code paths under `apps/mobile/src/` and `apps/mobile/rendered/`, and `apps/mobile/README.md` (2,266 lines added, 7 removed). The records commit changes only this file. `git diff --check` is clean.
+- **Classification** (the trusted policy from `main` at `a8e9528`, run outside the tree): `"full": true`, `behavior-or-empty`.
+- **Unchanged:** an empty diff from `b23253b` over `apps/mobile/package.json`, `package-lock.json`, `.npmrc`, `dependency-inventory.json`, `src/contracts/generated/`, `app.config.ts` and `scripts/development.mjs`, and over `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+- **The evidence record:** the first 619,444 bytes at `676b49b` equal the whole file at `b23253b`, so the earlier sections are byte-identical and "Stage C2" is appended.
+- **What the manager read in the code:**
+  - `store.ts` sets `CONVERSATION_POLL_MS = 3_000` and `CONVERSATION_LIST_POLL_MS = 30_000`;
+  - no `fetch(`, `new WebSocket`, `new EventSource` or `XMLHttpRequest` appears in the app's non-test source;
+  - `no-provider.test.ts` builds its package and construction patterns from fragments, so that it does not match itself, and scans the manifest, the lock and the app's source;
+  - the routes are guarded by `canAccessRoute`, for an active account only, which is stricter than `/matches` (active, suspended or deletion-pending);
+  - the conversation is chosen through the store (`store.select`), not a query parameter, as P05's match route is;
+  - the changed inherited assertion (`rendered/interactions.spec.ts`, the active match's detail) now asserts the new wording, the "Open conversation" button and that the detail has no composer.
+- **Run of record.** Foundation push run 40135312825 on `cb3a6a6`.
+  - All eight jobs concluded `success`, and the gate printed `Application checks passed`.
+  - The Mobile job ran from 21:41:24 to 21:47:40 UTC (6 min 16 s of 15). Its rendered step ran from 21:43:06 to 21:47:37 and printed `94 passed (4.5m)`.
+  - The unit counts (contracts 586, app 583) are the session's reading of the log.
+- **The session's findings:**
+  - **C2-X1** (the fixture closes a conversation for both members when the other member's session is revoked; C1 checks only the requester's own session): a fixture-fidelity limit, stricter, never looser. The exact-head review judges whether it shows one member another's sign-out in the fixture.
+  - **C2-X2** (no contract names the projection carrying the version a send's `expected_version` must match): the server's send carries the domain's `contact_version` (`SendCommand.contact_version`), and neither `MatchProjection` nor `ChannelEntitlement` names it as such. The manager proposes it as a contract question for P11, before the send is served, and the P11 plan carries it. The review judges it.
+- **Integration.** The session branched from the manager branch's head `b23253b`, so the manager branch fast-forwarded to `676b49b`. The draft PR33 carries it.
+
+**Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), revision 1), then Codex's code review of PR33's final head (OD-41).
