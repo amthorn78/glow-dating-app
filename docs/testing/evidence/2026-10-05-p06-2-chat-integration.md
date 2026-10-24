@@ -3183,11 +3183,11 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 
 | # | Severity | Finding | Correction class | Disposition |
 |---|---|---|---|---|
-| 1 | Nit | `no-provider.test.ts:17-22`: the test matches the forms DM-22 7.1 names. In a scratch copy, an aliased constructor (`const S = globalThis.WebSocket; new S(u)`) and a concatenated specifier (`import('stream' + '-chat')`) passed it. The README says it fails on "any socket or event-stream construction" (`apps/mobile/README.md:427-430`) | No: every named form fails, and evasion needs intent | **Recorded follow-up,** at the next change to `apps/mobile`: the README sentence names the direct forms; optionally, the test flags any bare `WebSocket` or `EventSource` identifier in the app's source |
+| 1 | Nit | `no-provider.test.ts:17-22`: the test matches the forms DM-22 7.1 names. In a scratch copy, an aliased constructor (`const S = globalThis.WebSocket; new S(u)`) and a concatenated specifier (`import('stream' + '-chat')`) passed it. The README says it fails on "any socket or event-stream construction" (`apps/mobile/README.md:427-430`) | No: every named form fails, and evasion needs intent | **The README sentence: corrected in C2-C1** (DM-23 3.1). **The broader test: a recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1): optionally, the test flags any bare `WebSocket` or `EventSource` identifier in the app's source |
 | 2 | Nit | "Stage C2", the reversals: "the copy's 65 chat unit tests"; the head has 67 | No: it claims fewer | **Annotated in place** by the manager, marked as a manager's note |
 | 3 | Nit, hardening | `store.ts:162-185`: when a fresh list omits the selected conversation, or the list read is refused as signed out, the retained history stays until that conversation's own next read is refused. On reopening a retained screen, the cached messages show for one request's latency | No (the reviewer's judgement, which the manager accepts): the server refuses the read, the member saw that history legitimately, and the fixture's authority signal revokes promptly | **To the P11 plan,** as a client requirement before P11 connects the adapter to Glow's API, since the window exists only with a real transport. Not taken now: the reviewer's first question |
-| 4 | Nit | `store.ts:282-284`: the draft is cleared before the result, so a final refusal (`stale`, `conflict`, `unavailable`) loses it | No | **Recorded follow-up,** at the next change to the chat store: restore the draft on a final refusal |
-| 5 | Nit | `rendered/interactions.spec.ts:115-128`, `:145-169`: the restricted-match tests do not assert that `match-conversation` is absent | No: the route guard and `routes.test.ts` cover access | **Recorded follow-up,** with finding 1 |
+| 4 | Nit | `store.ts:282-284`: the draft is cleared before the result, so a final refusal (`stale`, `conflict`, `unavailable`) loses it | No | **Recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1): restore the draft on a final refusal |
+| 5 | Nit | `rendered/interactions.spec.ts:115-128`, `:145-169`: the restricted-match tests do not assert that `match-conversation` is absent | No: the route guard and `routes.test.ts` cover access | **Recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1) |
 | 6 | Nit, P11 | `store.ts:129-133`: each match-projection change in the foreground reads a hidden retained conversation, one page read per change signal per retained conversation | No | **To the P11 plan,** where P11 defines the authority signal: the reviewer's second question |
 
 - **The review's limits:**
@@ -3234,7 +3234,10 @@ P06.2, the chat integration (PF01 P06), is complete when PR33 merges. Nathan res
   - So in a conversation longer than the screen, the unread count can clear before the newest messages are seen.
   - C2's prompt, item 8, asked for the cursor to move "when the member has seen newer messages". The session's item 8 row is annotated above.
 - **Class:** outside C2's correction classes. The app serves nothing before P11.
-- **Disposition: pending DM-23.**
+- **Disposition: corrected before the merge, in C2-C1** (DM-23, [report](../continuity/dev-manager/reviews/2026-10-24-dm-23-p06-2-cx8.md), `c8bc632`, a read of `12a4d20`).
   - The manager first carried CX8 to the P11 plan, following CX4 to CX7, and replied on the thread ("not fixed in this PR"). It then put the alternative, a correction pass before the merge, to Nathan.
-  - Nathan referred the question to the Dev Manager (AM7-12), and [DM-23](../../ephemeral/2026-10-24-dm-23-p06-2-cx8.md) carries it, with the manager's recommendation of a correction pass, C2-C1.
-  - **PR33's merge is held until DM-23 is answered.**
+  - Nathan referred the question to the Dev Manager (AM7-12), and [DM-23](../../ephemeral/2026-10-24-dm-23-p06-2-cx8.md) carried it.
+  - **DM-23's verdict: (b).** CX8 misses C2's own item 8, and `store.test.ts:141` asserts the defect. CX4 to CX7 needed P11's environment to be shown; CX8 does not. The rule: a defect in a stage's own code that misses an item of that stage's prompt is fixed before the stage merges.
+  - CX8 does not join the P11 plan. The manager updated Codex's thread to say the fix comes before the merge.
+  - C2-C1's conditions, 2.1 to 2.6, are in the brief's revision 16, "Codex's CX8, and C2-C1".
+  - **PR33's merge waits on C2-C1, its exact-head re-review and Codex's review of the new final head.**
