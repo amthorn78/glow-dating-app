@@ -3064,7 +3064,7 @@ The mobile interface of Stage C under OD-45 (the brief's "Stage C under OD-45", 
 
 ### Fix reversals
 
-Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths; the changed file was restored from the checkout after each, and the copy's 65 chat unit tests passed before and after the series. **All 36 reversals made their tests fail.** `git status` in the checkout showed only this work's changes throughout.
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths; the changed file was restored from the checkout after each, and the copy's 65 chat unit tests passed before and after the series. *(Manager's note, from the exact-head review's finding 2: the head has 67 chat unit tests, which is 583 minus 516. Which two the copy did not run is not recorded.)* **All 36 reversals made their tests fail.** `git status` in the checkout showed only this work's changes throughout.
 
 - **Item 1 (11):** order by writing (the 2.2 tests in the adapter and the store); the other member's unsent on a page (F11); unread counting the member's own (6.3); the marker over the other member's pending (6.1); the cursor moving back; the cursor to an unaccepted message (point e); the page cursor not bound to its match (6.4); text shown without the digest check (2.1, and the store's "unavailable" test); an empty page failing the text read (2.4); a replay deduplicated before authorizing; no idempotent replay (the adapter's and the store's lost-response test).
 - **Item 3 (5):** no contact check (twelve revocation and store tests); a member of another match acting in this one; the member's own inactive account answering like an active one; a revocation keeping the history; another account keeping the conversation.
@@ -3154,3 +3154,72 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 - **Integration.** The session branched from the manager branch's head `b23253b`, so the manager branch fast-forwarded to `676b49b`. The draft PR33 carries it.
 
 **Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), revision 1), then Codex's code review of PR33's final head (OD-41).
+
+## Exact-head review of Stage C2 (24 October 2026)
+
+- **Prompt:** [revision 1](../../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), from `77c7073d99fd7ac41802ebc986aa172b03d54312`; offline, in `Glow App - No Stream`.
+- **The model and level:** not named in the relay; Nathan's pick is not recorded. TypeSafe's reading was Fable 5.1 at max.
+- **Start gate and classification:** every check passed. One merge base, `a8e9528`. The head's code is identical to `cb3a6a6`'s. The shortstat is as expected. The trusted policy reports `"full": true`, `behavior-or-empty`. Every non-Markdown path is under `apps/mobile/src/` or `apps/mobile/rendered/`, with no symlink or executable mode.
+- **What the reviewer read:**
+  - everything the prompt lists, plus the two capture helpers the revocation path depends on, the chat DTOs' and `CommandMeta`'s schemas, the P11 plan's C2-X2 entry and PR33's description;
+  - the run of record's Mobile job (2,792 lines, its step headers and result lines) and the gate's whole log, but not the other jobs' logs.
+- **Its checks at `HEAD`,** in a clean environment:
+  - **the contracts:** `npm ci`; `npm run generate` with no diff; `npm run check` 586/586. Its first run failed only because the mobile install had not finished (the corpus test loads the app's generated validators), and CI installs the app first;
+  - **the mobile app:** `npm run check` 583/583; `check:expo` and `export:development` exit 0; the chat unit tests 67/67;
+  - **rendered, informational** (Chromium 1243, not the pinned 1234; no `playwright install`): 94 passed (4.6m);
+  - **DM-22 7.1's planted failures,** reproduced: six plants each failed the test with its named finding.
+- **Confirmed:**
+  - the display rule at one validating boundary, with no provider text reaching a render, the store or a log through an error path;
+  - every revocation the fixture models refused, with history, unsent rows, draft, cursors and the retryable intent dropped;
+  - polling only while shown and in the foreground;
+  - messages keyed on `submission_id`, with retries of the same intent;
+  - DM-22 6.1 to 6.4, 7.1 and 7.2;
+  - the routes' stricter guard, which is right under point c;
+  - the changed inherited assertion, an honest replacement;
+  - C2-X1, a correctly recorded fixture limit;
+  - C2-X2, a contract question for P11, not a C2 finding.
+
+**Verdict: approve.** There is no blocking or should-fix finding; the review gave six nits, none in a correction class. **No correction pass runs.**
+
+| # | Severity | Finding | Correction class | Disposition |
+|---|---|---|---|---|
+| 1 | Nit | `no-provider.test.ts:17-22`: the test matches the forms DM-22 7.1 names. In a scratch copy, an aliased constructor (`const S = globalThis.WebSocket; new S(u)`) and a concatenated specifier (`import('stream' + '-chat')`) passed it. The README says it fails on "any socket or event-stream construction" (`apps/mobile/README.md:427-430`) | No: every named form fails, and evasion needs intent | **Recorded follow-up,** at the next change to `apps/mobile`: the README sentence names the direct forms; optionally, the test flags any bare `WebSocket` or `EventSource` identifier in the app's source |
+| 2 | Nit | "Stage C2", the reversals: "the copy's 65 chat unit tests"; the head has 67 | No: it claims fewer | **Annotated in place** by the manager, marked as a manager's note |
+| 3 | Nit, hardening | `store.ts:162-185`: when a fresh list omits the selected conversation, or the list read is refused as signed out, the retained history stays until that conversation's own next read is refused. On reopening a retained screen, the cached messages show for one request's latency | No (the reviewer's judgement, which the manager accepts): the server refuses the read, the member saw that history legitimately, and the fixture's authority signal revokes promptly | **To the P11 plan,** as a client requirement before P11 connects the adapter to Glow's API, since the window exists only with a real transport. Not taken now: the reviewer's first question |
+| 4 | Nit | `store.ts:282-284`: the draft is cleared before the result, so a final refusal (`stale`, `conflict`, `unavailable`) loses it | No | **Recorded follow-up,** at the next change to the chat store: restore the draft on a final refusal |
+| 5 | Nit | `rendered/interactions.spec.ts:115-128`, `:145-169`: the restricted-match tests do not assert that `match-conversation` is absent | No: the route guard and `routes.test.ts` cover access | **Recorded follow-up,** with finding 1 |
+| 6 | Nit, P11 | `store.ts:129-133`: each match-projection change in the foreground reads a hidden retained conversation, one page read per change signal per retained conversation | No | **To the P11 plan,** where P11 defines the authority signal: the reviewer's second question |
+
+- **The review's limits:**
+  - its rendered evidence is informational; the pinned-browser evidence is the run of record's;
+  - the other five jobs' logs were not read;
+  - only DM-22 7.1's plants were reproduced, not the session's 36 reversals;
+  - native `AppState` behaviour stays unverified, as recorded.
+- **No question goes to Nathan.**
+
+**Next:**
+1. P06.2's closing record (below).
+2. PR33 marked ready for Codex's code review of its final head (OD-41).
+3. The final head's run, the pre-merge checklist and the merge.
+
+PR33 carries no governing Markdown.
+
+## P06.2's closing record (24 October 2026)
+
+P06.2, the chat integration (PF01 P06), is complete when PR33 merges. Nathan resumed it on 5 October 2026 (OD-38).
+
+- **What it delivered,** in three stages, each merged before the next:
+  - **Stage A** (PR29, `02072f4`): the send and revocation design in the app, its persistence adapter run through P06.DB's race suite on a disposable PostgreSQL;
+  - **Stage B** (PR30, `3272eed`; PR31, `3572c41`): the outbox and the Stream adapter. B2's 46 live rows ran against the development application (42 PASS, 2 RECORDED, and 2 DIFFERENCE: M5 and D10), and DM-20 dispositioned D10, the blocking one, as option (b);
+  - **Stage C** under Nathan's D8 decision (OD-45):
+    - C1 (PR32, `a8e9528`): the history read, the conversation list, the read cursor and their contracts;
+    - C2 (PR33): the mobile interface on fixtures.
+- **What is unproven** (DM-22 8.1): **the history read's provider half is unproven live.** It is proved offline against the SDK's request shape, and serving the read waits on the live text-read row, a prerequisite in the P11 plan (DM-22 8.2).
+- **Nothing is served.** No app runtime gains a database, real authentication or a live provider; P11 wires them.
+- **What P11 carries** (the P11 plan, the chat entries):
+  - before the harness's next live run: B2C4-X1, the console lines, C5R1, CX7 and the client lock's `follow-redirects` advisory;
+  - before the reads are served: the live text-read row, the receipt order, the list's locked set, the serving rule for the reads' transactions, and the history policy question to Nathan (DM-22 3.1);
+  - before the send is served: C2-X2, the send's expected version;
+  - when P11 connects the mobile client: the C2 review's findings 3 and 6.
+- **Recorded follow-ups:** the handoff's list, including the C2 review's findings 1, 4 and 5 and `read_phase.py`'s N2 and N3.
+- **Next item:** M04, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
