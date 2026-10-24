@@ -5,14 +5,23 @@ The read phase's cases run against PostgreSQL in the database job; here the plan
 pinned (each revocation's three forced cases and the named cases DM-22 asks for), the
 controls must target the forced case "committed while the read waits" and declare a
 missing refusal (3.3), and a run without the read phase, or with a failing read case or a
-control that did not fail, does not pass.
+control that did not fail, does not pass. C1-C1 adds the lock-order control's target and
+signal (finding 5), and shows that ``read_waits`` releases a read that held its locks
+across the call before it awaits the revocation (finding 8).
 """
 
 from __future__ import annotations
 
 import sys
+import threading
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest import mock
+from uuid import uuid4
 
 API_ROOT = Path(__file__).resolve().parents[3] / "services" / "api"
 if str(API_ROOT) not in sys.path:
@@ -20,10 +29,18 @@ if str(API_ROOT) not in sys.path:
     # (``glow_chat``) is imported only when a case runs.
     sys.path.insert(0, str(API_ROOT))
 
-from glow_ordering_proof import cases, read_phase  # noqa: E402
-from glow_ordering_proof.cases import REFUSAL_MISSING, CaseResult  # noqa: E402
+from glow_domain.chat_reads import ReadResult  # noqa: E402
+
+from glow_ordering_proof import budget, cases, read_phase  # noqa: E402
+from glow_ordering_proof.cases import (  # noqa: E402
+    DEADLOCK,
+    REFUSAL_MISSING,
+    WAIT_NOT_OBSERVED,
+    CaseResult,
+)
 from glow_ordering_proof.controls import ControlResult  # noqa: E402
 from glow_ordering_proof.interface import Result  # noqa: E402
+from glow_ordering_proof.observe import ObservedWait  # noqa: E402
 from glow_ordering_proof.results import ReadReport  # noqa: E402
 
 
@@ -65,6 +82,8 @@ class ReadPlanTests(unittest.TestCase):
         ids = {c["id"] for c in read_phase.plan()}
         for name in (
             "read.block_during_provider_call",  # 3.2
+            "read.inside_open_transaction",  # 3.2, C1-C1 finding 1
+            "read.final_check_first_lock",  # 3.2, C1-C1 finding 5
             "read.order_follows_acceptance",  # 2.2
             "read.pages_and_cursors",
             "read.only_text_glow_sent",  # 2.1
@@ -79,7 +98,7 @@ class ReadPlanTests(unittest.TestCase):
 
     def test_plan_count_and_uniqueness(self) -> None:
         plan = read_phase.plan()
-        self.assertEqual(len(plan), 16 * 3 + 10)
+        self.assertEqual(len(plan), 16 * 3 + 12)
         self.assertEqual(len({c["id"] for c in plan}), len(plan))
         self.assertTrue(all(c["guarantee"] and c["title"] for c in plan))
         # The reads are not the suite's: the reference design's 56 cases are unchanged.
@@ -94,18 +113,111 @@ class ReadControlTests(unittest.TestCase):
         self.assertEqual(read_phase.CONTROL_TARGET, "read.block_by_high.read_waits")
         self.assertEqual(
             {c.id for c in read_phase.READ_CONTROLS},
-            {"read.final_check_skipped", "read.final_check_before_call"},
+            {
+                "read.final_check_skipped",
+                "read.final_check_before_call",
+                "read.final_check_lock_order_inverted",
+            },
         )
         for control in read_phase.READ_CONTROLS:
+            if control.target != read_phase.CONTROL_TARGET:
+                continue
             with self.subTest(control=control.id):
                 self.assertEqual(control.signal.case, frozenset({REFUSAL_MISSING}))
                 self.assertTrue(control.signal.met({REFUSAL_MISSING}, ()))
                 self.assertFalse(control.signal.met({cases.OTHER}, ()))
                 self.assertFalse(control.signal.met({REFUSAL_MISSING, cases.HARNESS_ERROR}, ()))
 
+    def test_the_lock_order_control_targets_its_case_and_declares_both_signals(self) -> None:
+        """Finding 5: the inverted final check must fail ``read.final_check_first_lock``
+        by an unobserved wait and a deadlock, both; neither alone, nor with a harness
+        error, counts."""
+        control = next(
+            c for c in read_phase.READ_CONTROLS if c.id == "read.final_check_lock_order_inverted"
+        )
+        self.assertEqual(control.target, "read.final_check_first_lock")
+        self.assertEqual(control.target, read_phase.LOCK_ORDER_TARGET)
+        self.assertIn(control.target, {c["id"] for c in read_phase.plan()})
+        self.assertEqual(control.signal.case, frozenset({WAIT_NOT_OBSERVED, DEADLOCK}))
+        self.assertTrue(control.signal.met({WAIT_NOT_OBSERVED, DEADLOCK, cases.OTHER}, ()))
+        self.assertFalse(control.signal.met({WAIT_NOT_OBSERVED}, ()))
+        self.assertFalse(control.signal.met({DEADLOCK}, ()))
+        self.assertFalse(control.signal.met({WAIT_NOT_OBSERVED, DEADLOCK, cases.HARNESS_ERROR}, ()))
+        self.assertEqual(read_phase.FIRST_LOCK_WRITERS, ("block_by_high", "suspend_low"))
+
     def test_a_page_where_a_refusal_was_expected_is_a_missing_refusal(self) -> None:
         for outcome in ("read", "listed", "moved"):
             self.assertEqual(cases.outcome_signal(Result(outcome), ("refused",)), REFUSAL_MISSING)
+
+
+class _HeldAcrossTheCall:
+    """A broken read that keeps its locks across the provider call: it holds at the call
+    and returns its page. ``released`` is set when the harness releases it."""
+
+    def __init__(self) -> None:
+        self.released = threading.Event()
+
+    def read_history(self, request: object, *, probe: object = None) -> ReadResult:
+        probe.first.on_begin(101)  # type: ignore[attr-defined]
+        probe.after_provider_call()  # type: ignore[attr-defined]
+        self.released.set()
+        return ReadResult("read")
+
+
+class ReadWaitsReleaseTests(unittest.TestCase):
+    def test_an_observed_wait_releases_the_read_before_the_revocation_is_awaited(
+        self,
+    ) -> None:
+        """Finding 8: when the revocation is observed waiting on the read (a read that
+        held its locks across the call), ``read_waits`` releases the read first, so the
+        revocation can finish and the case fails by its own signals, not by a harness
+        error after the hold budget."""
+        broken = _HeldAcrossTheCall()
+
+        def act(world: object, subject: object, hooks: object) -> Result:
+            hooks.on_begin(202)  # type: ignore[attr-defined]
+            # The revocation waits on the read's locks until the read is released.
+            return Result("applied" if broken.released.wait(5.0) else "error", "")
+
+        rev: Any = SimpleNamespace(
+            id="block_by_high",
+            title="a block",
+            act=act,
+            effect=lambda world, judge: None,
+            refusals=frozenset({"match_not_active", "blocked"}),
+        )
+        world = SimpleNamespace(session_low=uuid4(), match=uuid4())
+        phase: Any = SimpleNamespace(reads=lambda: broken)
+        with ThreadPoolExecutor(1) as first, ThreadPoolExecutor(1) as second:
+            ctx = cast(
+                Any,
+                SimpleNamespace(
+                    subject=None,
+                    workers=[first, second],
+                    log=SimpleNamespace(context=SimpleNamespace()),
+                ),
+            )
+            waited = ObservedWait(202, True, "Lock", "transactionid", "transactionid", "S", 1, 0)
+            case = cases.Case(
+                "read.block_by_high.read_waits",
+                "g",
+                "t",
+                lambda ctx, judge: read_phase.read_waits(rev, phase, ctx, judge),
+            )
+            started = time.monotonic()
+            with (
+                mock.patch.object(read_phase, "_conversation", return_value=world),
+                mock.patch.object(read_phase, "backend_state", return_value="idle in transaction"),
+                mock.patch.object(read_phase, "observe_lock_wait", return_value=waited),
+                mock.patch.object(budget, "HOLD_SECONDS", 2.0),
+            ):
+                result = cases.run_case(ctx, case)
+            seconds = time.monotonic() - started
+        self.assertFalse(result.passed)
+        self.assertNotIn(cases.HARNESS_ERROR, result.signals, result.failures)
+        self.assertIn(REFUSAL_MISSING, result.signals, result.failures)
+        self.assertIn("the revocation waited on the read", result.failures)
+        self.assertLess(seconds, 2.0)
 
 
 class ReadReportTests(unittest.TestCase):

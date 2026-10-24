@@ -26,6 +26,12 @@ either member), each judged by what PostgreSQL recorded:
 member commits while it is held, with no wait recorded for the block (3.2), and the read
 is refused.
 
+C1-C1 (C1's exact-head review): ``read.inside_open_transaction`` calls the read inside an
+open transaction, which must be an ``error`` with no provider call and no lock taken
+(finding 1); ``read.final_check_first_lock`` holds the final check at its first lock
+against a block and a suspension, and holds each of them at its first lock against the
+final check, every wait observed (finding 5).
+
 **The named cases**: the order follows acceptance (2.2), pages and cursors, only text
 Glow sent (2.1), a provider error fails the read (2.4), the cursor bound to its match
 (6.4), a read writes nothing (2.3), no message text in a log line (2.5), unread and the
@@ -34,7 +40,10 @@ read cursor (point e, 6.3), and the conversation list (item 4, 6.1).
 **The planted controls** (DM-22 3.3): two read variants composed from the adapter's own
 steps in another order, one with the final check skipped and one with it before the
 provider call, must each fail ``read.block_by_high.read_waits`` by its declared signal, a
-missing refusal. No oracle rule judges a read (DM-22 item 3): a read writes nothing.
+missing refusal. A third (C1-C1, finding 5), a final check composed from the adapter's
+own helpers that locks the session, then the match, then the accounts, must fail
+``read.final_check_first_lock`` by an unobserved wait and a deadlock. No oracle rule
+judges a read (DM-22 item 3): a read writes nothing.
 
 No provider is called but the in-memory fixture; nothing reaches a network.
 """
@@ -49,7 +58,7 @@ from functools import partial
 from typing import Any
 from uuid import UUID
 
-from django.db import connection
+from django.db import connection, transaction
 from glow_domain.chat import TransactionProbe
 from glow_domain.chat_provider_fixtures import FixtureChatProvider
 from glow_domain.chat_reads import (
@@ -64,8 +73,11 @@ from glow_ordering_proof import budget
 from glow_ordering_proof.cases import (
     COMMIT_AFTER_REVOCATION,
     D5_REVOCATIONS,
+    DEADLOCK,
     REFUSAL_MISSING,
+    REVOCATION_BY_ID,
     REVOCATIONS,
+    WAIT_NOT_OBSERVED,
     Case,
     CaseResult,
     Context,
@@ -270,6 +282,10 @@ def read_waits(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) ->
     )
     observed = observe_lock_wait(writer.wait(), holder_pid=pid, finished=revoking.done)
     judge.wait(observed, required=False)
+    if observed.observed:
+        # A read that held its locks across the call: release it first, so the case ends
+        # by its signal, not by the harness's timeout (C1-C1, finding 8).
+        hold.release.set()
     judge.expect(not observed.observed, "the revocation waited on the read")
     revoked = revoking.result(timeout=budget.HOLD_SECONDS)
     judge.outcome(revoked, f"{rev.title} (committed while the read waits)", "applied")
@@ -409,6 +425,125 @@ def block_during_provider_call(phase: ReadPhase, ctx: Context, judge: Judge) -> 
     read = reading.result(timeout=budget.HOLD_SECONDS)
     judge.outcome(as_result(read), "the read", "refused", reasons=BLOCK_REFUSALS)
     judge.note(f"the block committed while the provider call was held; reader backend {state}")
+
+
+def read_inside_open_transaction(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """C1-C1, finding 1 (DM-22 3.2): a read called inside an open transaction would hold
+    the first check's locks across the provider call. It is an ``error``, the provider is
+    not called, and the enclosing transaction holds no lock the read took."""
+    world = _conversation(phase)
+    reads = phase.reads()
+    calls = _read_calls(phase)
+
+    def inside() -> tuple[ReadResult, Any, Any, Any]:
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("SELECT now()")
+            began = cursor.fetchone()[0]
+            read = reads.read_history(_request(world))
+            # From the database, before the enclosing transaction ends: still the same
+            # transaction (its ``now()``), and no transaction ID assigned, so no row lock
+            # (``FOR SHARE`` assigns one) and no write was made inside it.
+            cursor.execute("SELECT now(), pg_current_xact_id_if_assigned()")
+            same, xid = cursor.fetchone()
+        return read, began, same, xid
+
+    read, began, same, xid = ctx.workers[0].run(inside)
+    judge.outcome(as_result(read), "the read inside an open transaction", "error")
+    judge.expect(read.page is None, "a page was returned inside an open transaction")
+    judge.expect(_read_calls(phase) == calls, "the read inside a transaction called the provider")
+    judge.expect(began == same, f"not one enclosing transaction: {began} then {same}")
+    judge.expect(xid is None, f"the enclosing transaction holds the read's locks (xid {xid})")
+    judge.note(f"enclosing transaction from {began}: transaction ID {xid}, the read {read.reason}")
+    after = reads.read_history(_request(world))
+    judge.outcome(as_result(after), "the same read outside any transaction", "read")
+    judge.expect(_texts(after) == [OTHER_TEXT, OWN_TEXT], f"page {_texts(after)}")
+    made = _read_calls(phase) - calls
+    judge.expect(made == 1, f"{made} provider calls in all, expected the read outside's one")
+
+
+def _final_check_holds_first_lock(
+    rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge
+) -> None:
+    """The final check holds its first lock (the lower account's, in the canonical order);
+    the writer, whose first lock is the same row, is observed waiting on it; the page is
+    returned and the writer applies."""
+    world = _conversation(phase)
+    reads = phase.reads()
+    hold, final = Hold(), PidSlot()
+    probe = ReadProbe(final=TransactionProbe(on_begin=final.set, after_first_lock=hold.point))
+    reading = ctx.workers[0].submit(lambda: reads.read_history(_request(world), probe=probe))
+    if not _wait_held(hold, reading):
+        hold.release.set()
+        judge.fail(f"the final check reached no hold point: {as_result(reading.result()).label()}")
+        return
+    writer = PidSlot()
+    writing = ctx.workers[1].submit(lambda: rev.act(world, ctx.subject, Hooks(on_begin=writer.set)))
+    judge.wait(observe_lock_wait(writer.wait(), holder_pid=final.wait(), finished=writing.done))
+    hold.release.set()
+    read = reading.result(timeout=budget.HOLD_SECONDS)
+    written = writing.result(timeout=budget.HOLD_SECONDS)
+    judge.outcome(
+        as_result(read), f"the read (its final check held its first lock: {rev.id})", "read"
+    )
+    judge.outcome(written, f"{rev.title} (arrived at the final check's first lock)", "applied")
+    rev.effect(world, judge)
+
+
+def _writer_holds_first_lock(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """The writer holds its first lock (the lower account's); the final check arrives and
+    is observed waiting on it; the writer applies and the read is refused."""
+    world = _conversation(phase)
+    reads = phase.reads()
+    read_hold, final = Hold(), PidSlot()
+    probe = ReadProbe(
+        after_provider_call=read_hold.point, final=TransactionProbe(on_begin=final.set)
+    )
+    reading = ctx.workers[0].submit(lambda: reads.read_history(_request(world), probe=probe))
+    if not _wait_held(read_hold, reading):
+        read_hold.release.set()
+        judge.fail(f"the read reached no hold point: {as_result(reading.result()).label()}")
+        return
+    write_hold, writer = Hold(), PidSlot()
+    writing = ctx.workers[1].submit(
+        lambda: rev.act(
+            world, ctx.subject, Hooks(on_begin=writer.set, after_first_lock=write_hold.point)
+        )
+    )
+    if not _wait_held(write_hold, writing):
+        write_hold.release.set()
+        read_hold.release.set()
+        judge.fail(f"{rev.title} reached no hold point: {writing.result().label()}")
+        return
+    read_hold.release.set()  # the final check now takes its locks
+    judge.wait(observe_lock_wait(final.wait(), holder_pid=writer.wait(), finished=reading.done))
+    write_hold.release.set()
+    written = writing.result(timeout=budget.HOLD_SECONDS)
+    read = reading.result(timeout=budget.HOLD_SECONDS)
+    judge.outcome(written, f"{rev.title} (held its first lock)", "applied")
+    rev.effect(world, judge)
+    judge.outcome(
+        as_result(read),
+        f"the read (its final check arrived at the first lock of {rev.id})",
+        "refused",
+        reasons=rev.refusals,
+    )
+
+
+# The writers whose first lock is the final check's first lock: a block (by the other
+# member; every block locks the lower account first) and a suspension of the reader's
+# account, which locks that row only.
+FIRST_LOCK_WRITERS = ("block_by_high", "suspend_low")
+
+
+def final_check_first_lock(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """C1-C1, finding 5: the final check's lock order, as the send's ``opposing_*`` cases
+    test the send's. Against a block and against a suspension, both ways: the final check
+    holds its first lock and the writer waits on it; the writer holds its first lock and
+    the final check waits on it. Each wait is observed; no deadlock."""
+    for rev_id in FIRST_LOCK_WRITERS:
+        rev = REVOCATION_BY_ID[rev_id]
+        _final_check_holds_first_lock(rev, phase, ctx, judge)
+        _writer_holds_first_lock(rev, phase, ctx, judge)
 
 
 # -- the named cases --------------------------------------------------------------------------
@@ -854,6 +989,19 @@ NAMED: tuple[tuple[str, str, str, Callable[..., None]], ...] = (
         block_during_provider_call,
     ),
     (
+        "read.inside_open_transaction",
+        "DM-22 3.2 no lock across the provider call (C1-C1, finding 1)",
+        "a read inside an open transaction is an error, with no provider call and no lock taken",
+        read_inside_open_transaction,
+    ),
+    (
+        "read.final_check_first_lock",
+        "DM-22 3.2 the final check's lock order (C1-C1, finding 5)",
+        "the final check and a block, and a suspension, each holding its first lock against"
+        " the other; every wait observed",
+        final_check_first_lock,
+    ),
+    (
         "read.order_follows_acceptance",
         "DM-22 2.2 the order follows visibility",
         "a message accepted after a later one reaches the next poll and counts as unread",
@@ -912,6 +1060,7 @@ NAMED: tuple[tuple[str, str, str, Callable[..., None]], ...] = (
 )
 REVOCATIONS_READ: tuple[Revocation, ...] = (*REVOCATIONS, *D5_REVOCATIONS)
 CONTROL_TARGET = "read.block_by_high.read_waits"
+LOCK_ORDER_TARGET = "read.final_check_first_lock"
 
 
 def _guarantee(rev: Revocation) -> str:
@@ -991,12 +1140,40 @@ def final_check_before_call(texts: Any) -> Any:
     return FinalCheckBeforeCall(texts)
 
 
+def final_check_lock_order_inverted(texts: Any) -> Any:
+    """A read variant whose final check, composed from the adapter's own helpers, locks
+    the session, then the match, then the accounts (C1-C1, finding 5). Its first lock is
+    the session's; the adapter's own checks then run on the rows it locked."""
+    from glow_chat.reads import OrmConversationReads, _lock_shared, _run, _signal
+
+    class FinalCheckLockOrderInverted(OrmConversationReads):  # type: ignore[misc]
+        def _final_check(self, request: Any, probe: Any) -> Any:
+            def body(cursor: Any, held: Any) -> Any:
+                _lock_shared(
+                    "glow_persistence_accountsession", request.session_id, ("state",), cursor
+                )
+                _signal(held, "after_first_lock")
+                _lock_shared("glow_persistence_match", request.match_id, ("state",), cursor)
+                # The accounts next, through the adapter's own checks (which take the
+                # match and the session again, already held); its first-lock signal is
+                # given above.
+                inner = replace(held, after_first_lock=None) if held is not None else None
+                return self._authorize(cursor, inner, request.session_id, request.match_id)
+
+            _, outcome, reason, trace = _run(body, probe.final)
+            return outcome, reason, trace
+
+    return FinalCheckLockOrderInverted(texts)
+
+
 @dataclass(frozen=True)
 class ReadControl:
     id: str
     variant: str
     make_reads: Callable[[Any], Any]
     signal: Signal = Signal(case=frozenset({REFUSAL_MISSING}))
+    target: str = CONTROL_TARGET
+    guarantee: str = "DM-22 3.3 the forced case can fail"
 
 
 READ_CONTROLS: tuple[ReadControl, ...] = (
@@ -1006,14 +1183,25 @@ READ_CONTROLS: tuple[ReadControl, ...] = (
         "broken: the final check before the provider call",
         final_check_before_call,
     ),
+    ReadControl(
+        "read.final_check_lock_order_inverted",
+        "broken: the final check locks the session, then the match, then the accounts",
+        final_check_lock_order_inverted,
+        # The writer finds the final check's first lock free (no wait), and the final
+        # check, holding the match, meets the block's account lock (a deadlock).
+        Signal(case=frozenset({WAIT_NOT_OBSERVED, DEADLOCK})),
+        LOCK_ORDER_TARGET,
+        "C1-C1 finding 5 the lock-order case can fail",
+    ),
 )
 
 
 def run_read_control(phase: ReadPhase, control: ReadControl) -> ControlResult:
-    """The control's variant must fail the forced case "committed while the read waits"
-    by a missing refusal, in this run."""
+    """The control's variant must fail its target case by its declared signal, in this
+    run: the forced case "committed while the read waits" by a missing refusal, or the
+    final check's first-lock case by an unobserved wait and a deadlock."""
     broken = replace(phase, make_reads=control.make_reads)
-    target = next(case for case in cases_for(broken) if case.id == CONTROL_TARGET)
+    target = next(case for case in cases_for(broken) if case.id == control.target)
     phase.ctx.log.context = LogContext(run_tag=f"control:{control.id}", variant="adapter:planted")
     result: CaseResult = run_case(broken.ctx, target)
     met = control.signal.met(result.signals, ())
@@ -1022,9 +1210,9 @@ def run_read_control(phase: ReadPhase, control: ReadControl) -> ControlResult:
         signal = f"not the declared signal (case signals {sorted(result.signals)}): {signal}"
     return ControlResult(
         control.id,
-        "DM-22 3.3 the forced case can fail",
+        control.guarantee,
         "planted",
-        CONTROL_TARGET,
+        control.target,
         control.variant,
         met,
         signal,
