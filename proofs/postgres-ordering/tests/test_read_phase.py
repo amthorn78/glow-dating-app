@@ -7,7 +7,8 @@ controls must target the forced case "committed while the read waits" and declar
 missing refusal (3.3), and a run without the read phase, or with a failing read case or a
 control that did not fail, does not pass. C1-C1 adds the lock-order control's target and
 signal (finding 5), and shows that ``read_waits`` releases a read that held its locks
-across the call before it awaits the revocation (finding 8).
+across the call before it awaits the revocation (finding 8). C1-C2 adds the two cases for
+a caller's open transaction (R1, R3) and runs the lock-order case for each reader (R2).
 """
 
 from __future__ import annotations
@@ -83,6 +84,8 @@ class ReadPlanTests(unittest.TestCase):
         for name in (
             "read.block_during_provider_call",  # 3.2
             "read.inside_open_transaction",  # 3.2, C1-C1 finding 1
+            "read.autocommit_off",  # 3.2, C1-C2 R1
+            "read.inside_test_case_block",  # 3.2, C1-C2 R3
             "read.final_check_first_lock",  # 3.2, C1-C1 finding 5
             "read.order_follows_acceptance",  # 2.2
             "read.pages_and_cursors",
@@ -98,12 +101,43 @@ class ReadPlanTests(unittest.TestCase):
 
     def test_plan_count_and_uniqueness(self) -> None:
         plan = read_phase.plan()
-        self.assertEqual(len(plan), 16 * 3 + 12)
+        self.assertEqual(len(plan), 16 * 3 + 14)
         self.assertEqual(len({c["id"] for c in plan}), len(plan))
         self.assertTrue(all(c["guarantee"] and c["title"] for c in plan))
         # The reads are not the suite's: the reference design's 56 cases are unchanged.
         self.assertEqual(len(cases.plan()), 56)
         self.assertFalse({c["id"] for c in plan} & {c["id"] for c in cases.plan(d5=True)})
+
+
+class FirstLockReadersTests(unittest.TestCase):
+    def test_the_lock_order_case_holds_both_ways_for_each_reader(self) -> None:
+        """C1-C2, R2: ``read.final_check_first_lock`` runs both holds, against both
+        writers, for the lower member's read and for the higher member's."""
+        held: list[tuple[str, str, str]] = []
+
+        def recorder(kind: str) -> Any:
+            def record(rev: Any, reader: str, phase: Any, ctx: Any, judge: Any) -> None:
+                held.append((kind, rev.id, reader))
+
+            return record
+
+        with (
+            mock.patch.object(
+                read_phase, "_final_check_holds_first_lock", recorder("final_check_holds")
+            ),
+            mock.patch.object(read_phase, "_writer_holds_first_lock", recorder("writer_holds")),
+        ):
+            read_phase.final_check_first_lock(cast(Any, None), cast(Any, None), cast(Any, None))
+        self.assertEqual(read_phase.FIRST_LOCK_READERS, ("low", "high"))
+        self.assertEqual(
+            sorted(held),
+            sorted(
+                (kind, writer, reader)
+                for kind in ("final_check_holds", "writer_holds")
+                for writer in ("block_by_high", "suspend_low")
+                for reader in ("low", "high")
+            ),
+        )
 
 
 class ReadControlTests(unittest.TestCase):

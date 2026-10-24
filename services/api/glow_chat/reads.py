@@ -15,11 +15,15 @@ It carries the send's protocol to the reads, as B1's grant does:
   call runs outside any transaction, so no lock is held across it and a safety action
   never waits on the provider; then a new transaction takes the same shared locks and
   checks again, and the page is returned only if that check passes too (DM-22 3.2);
-- every transaction is durable (C1-C1, the exact-head review's finding 1): inside an
-  enclosing atomic block (``ATOMIC_REQUESTS``, a view's ``atomic``) the first check would
-  be a savepoint whose shared locks stay held across the provider call, so a read there
-  is an ``error`` result and calls no provider; the history read also asserts that no
-  atomic block is open before the call;
+- no read runs inside a transaction its caller has open (C1-C2, C1-C1's re-review, R1):
+  inside an atomic block (``ATOMIC_REQUESTS``, a view's ``atomic``, a Django test case's
+  own block) or on a connection with autocommit off (``transaction.set_autocommit(False)``)
+  the first check would take its shared locks inside the caller's transaction, and they
+  would stay held until it ends, across the provider call. So each read's transaction
+  refuses before any statement: an ``error`` result, ``transaction_open``, with no lock
+  taken and no provider called. Behind that, every transaction is durable (C1-C1, the
+  exact-head review's finding 1), and the history read checks both conditions again
+  immediately before the provider call;
 - a read writes nothing (DM-22 2.3); the read-cursor command writes only the member's own
   ``ChatReadCursor`` row, after the same checks, in one transaction, with no provider call.
 
@@ -97,8 +101,12 @@ _ACCEPTED_ROW = (
 
 Position = tuple[datetime, int]
 
-# The history read was called inside an open atomic block: no provider call (DM-22 3.2).
+# The history read found an atomic block open just before the provider call: no
+# provider call (DM-22 3.2). A second line behind ``TRANSACTION_OPEN``.
 ATOMIC_BLOCK_OPEN = "atomic_block_open"
+# The caller has a transaction open on the connection: an atomic block (a Django test
+# case's included) or autocommit off. A read refuses before any statement (C1-C2, R1).
+TRANSACTION_OPEN = "transaction_open"
 
 
 class _Rollback(Exception):
@@ -131,16 +139,30 @@ def _signal(probe: TransactionProbe | None, name: str) -> None:
         callback()
 
 
+def _caller_transaction_open() -> bool:
+    """An atomic block is open (a Django test case's included), or autocommit is off, so
+    a transaction begun by the caller would hold whatever a read locks (DM-22 3.2)."""
+    return connection.in_atomic_block or not connection.get_autocommit()
+
+
 def _run[T](
     body: Callable[[Any, TransactionProbe | None], T], probe: TransactionProbe | None
 ) -> tuple[T | None, str, str, Trace | None]:
     """One transaction: ``(value, outcome, reason, trace)``. A refusal rolls back and is a
     result; a deadlock or any other database error becomes a result; nothing is retried.
 
-    The block is durable: inside an enclosing atomic block Django raises ``RuntimeError``
+    It refuses before any statement, and before it enters its block, while the caller has a
+    transaction open (an atomic block, a test case's included, or autocommit off): an
+    ``error`` result, ``transaction_open``, with no lock taken (C1-C2, R1). This is checked
+    outside the block, since inside any atomic block autocommit is off by design. The
+    block is also durable: inside an enclosing atomic block Django raises ``RuntimeError``
     before any statement, and that is an ``error`` result, never a page (DM-22 3.2)."""
     trace: Trace | None = None
     try:
+        # Inside the ``try``: reading autocommit may open the connection, and a database
+        # that cannot be reached is an ``error`` result as before, never an exception.
+        if _caller_transaction_open():
+            return None, "error", TRANSACTION_OPEN, None
         with transaction.atomic(durable=True):
             cursor = connection.cursor()
             # The transaction's first statement: its backend and its start.
@@ -492,11 +514,12 @@ class OrmConversationReads:
             return ReadResult(
                 "read", page=self._page(request, selected, {}, False), traces=_traces(first)
             )
-        if connection.in_atomic_block:
+        if _caller_transaction_open():
             # 3.2: an enclosing transaction would hold the first check's locks across the
-            # call. The durable block refuses it first, except under a Django test case's
-            # own atomic block, which Django lets a durable block nest in; this refuses all.
-            return ReadResult("error", ATOMIC_BLOCK_OPEN, traces=_traces(first))
+            # call. ``_run`` refuses it before the first check; this second line refuses it
+            # again immediately before the call, whatever ran in between.
+            reason = ATOMIC_BLOCK_OPEN if connection.in_atomic_block else TRANSACTION_OPEN
+            return ReadResult("error", reason, traces=_traces(first))
         texts, failure = self._provider_texts(selected, probe)
         if failure:
             return ReadResult("refused", failure, traces=_traces(first))

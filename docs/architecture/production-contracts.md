@@ -120,8 +120,11 @@ the reads behind these contracts. P11 serves the endpoints; nothing here is a ro
   delivery).
   **`at` has two meanings** (C1's exact-head review, finding 7): for an accepted message it
   is the acceptance time (its `message_submitted` event's `delivered_at`); for the member's
-  own pending and failed submissions it is the submission time (that event's
-  `available_at`). A message's `at` therefore changes when it is accepted, and a client
+  own pending and failed submissions it is that event's `available_at`. That is the
+  submission time under today's deliverer, which leaves `available_at` unchanged on a
+  retry (`services/api/glow_chat/delivery.py:470`); a deliverer whose retries move
+  `available_at` would change it, and the P11 plan carries that dependency (C1-C1's
+  re-review, R5). A message's `at` therefore changes when it is accepted, and a client
   keys a message on `submission_id`, never on `at`.
 - **`MessagePageRequest`**: `match_id`, `cursor` (null for the newest page) and `limit` (1
   to 50). The actor is the authenticated session's account, never a field.
