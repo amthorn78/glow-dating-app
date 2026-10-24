@@ -359,8 +359,9 @@ def own_baseline(current: dict[str, Any]) -> dict[str, Any]:
 
 
 # The committed products baseline's call types and feed groups, which the fake models
-# (P06.1-C4).
-CALL_TYPES = ["audio_room", "default", "development", "livestream"]
+# (P06.1-C4); since P06.2 Stage B2-C2 the record of 23 October 2026, with the call types
+# `agent` and `audio_call` Stream added.
+CALL_TYPES = ["agent", "audio_call", "audio_room", "default", "development", "livestream"]
 FEED_GROUPS = ["foryou", "notification", "stories", "story", "timeline", "user"]
 
 
@@ -647,12 +648,154 @@ class BaselineComparisonTest(unittest.TestCase):
         self.assertTrue(problems[0].startswith("video call type default: grants for admin"))
 
     def test_the_before_lockdown_baseline_differs_only_in_the_client_roles(self) -> None:
-        """The committed baseline itself, read before the lockdown: its only differences
-        are the 18 client-role grants the nine PUTs removed (command 3 of I2b's record)."""
-        recorded = products.recorded_products()
-        problems = products.verify({"video": recorded["video"], "feeds": recorded["feeds"]})
-        self.assertEqual(len(problems), 18)
-        self.assertTrue(all("not empty" in p for p in problems), problems)
+        """The committed baseline itself, each scope as it was before its lockdown: its only
+        differences are the client-role grants the lockdown's PUTs remove. For the record of
+        27 September 2026, the 18 the nine PUTs removed (command 3 of I2b's record); for the
+        record in force since P06.2 Stage B2-C2, those and the four of the call types
+        `agent` and `audio_call` (`user` and `guest` each), which two more PUTs remove."""
+        for path, grant_lines, puts in (
+            (products.PRODUCTS_BASELINE_2026_09_27, 18, 9),
+            (products.PRODUCTS_BASELINE, 22, 11),
+        ):
+            recorded = json.loads(path.read_text(encoding="utf-8"))
+            problems = products.verify(
+                {"video": recorded["video"], "feeds": recorded["feeds"]}, recorded
+            )
+            self.assertEqual(len(problems), grant_lines, path.name)
+            self.assertTrue(all("not empty" in p for p in problems), problems)
+            self.assertEqual(len(products.lockdown_plan(recorded)), puts, path.name)
+
+
+class MergedBaselineTest(unittest.TestCase):
+    """P06.2 Stage B2-C1 (DM-17 1.1) and B2-C2: a new products baseline takes, for every scope
+    the record it supersedes holds, the client roles' grants from that record, read before the
+    lockdown, and everything else from the fresh snapshot; a scope that record does not hold
+    takes its client grants as read. The merge changes no verification. Since B2-C2 the
+    committed baseline in force, which the fake models, is the record of 23 October 2026: the
+    merge of that day's snapshot over the record of 27 September 2026, which these tests take
+    as the record superseded."""
+
+    @staticmethod
+    def previous() -> dict[str, Any]:
+        path = products.PRODUCTS_BASELINE_2026_09_27
+        return dict(json.loads(path.read_text(encoding="utf-8")))
+
+    def drifted(self) -> tuple[FakeServer, dict[str, Any]]:
+        """The fake as the application read on 23 October 2026, before B2-C2's applies: the
+        scopes of 27 September at the lockdown target (their client roles empty), and what
+        Stream added in October 2026: a `lifecycle` settings section on every call type (the
+        committed baseline's, which the fake models), and the call types `agent` and
+        `audio_call` with their client grants."""
+        server = FakeServer(UsageLedger())
+        for name in ("agent", "audio_call"):
+            server.products.call_type_grants[name] = {
+                role: list(granted) for role, granted in BEFORE_LOCKDOWN[name].items()
+            }
+        return server, products.read_configuration(server)  # type: ignore[arg-type]
+
+    def test_known_scopes_keep_the_committed_client_grants_and_a_new_scope_its_own(self) -> None:
+        server, state = self.drifted()
+        previous = self.previous()
+        record = products.merged_baseline_record(state, "1729640", previous)
+        unmerged = products.baseline_record(state, "1729640")
+        for product, key in (("video", "call_types"), ("feeds", "feed_visibilities")):
+            for name, cfg in previous[product][key].items():
+                merged = record[product][key][name]["grants"]
+                read = unmerged[product][key][name]["grants"]
+                for role in products.CLIENT_ROLES:
+                    # As the superseded record, while the snapshot held them empty.
+                    self.assertEqual(merged.get(role), cfg["grants"].get(role), (name, role))
+                    if role in read:
+                        self.assertEqual(read[role], [], (name, role))
+                for role in set(merged) - set(products.CLIENT_ROLES):
+                    self.assertEqual(merged[role], read[role], (name, role))  # as read
+        for name in previous["video"]["call_types"]:
+            settings = record["video"]["call_types"][name]["settings"]
+            self.assertEqual(settings["lifecycle"], {"mode": "reusable"})  # as read
+        for name in ("agent", "audio_call"):
+            new = record["video"]["call_types"][name]
+            self.assertEqual(new["grants"], server.products.call_type_grants[name])  # as read
+            self.assertEqual(new["settings"]["lifecycle"], {"mode": "single_use"})
+        self.assertEqual(record["feeds"]["feed_groups"], unmerged["feeds"]["feed_groups"])
+        self.assertEqual(record["app_id"], "1729640")
+        self.assertEqual(sorted(record), ["app_id", "feeds", "video"])
+
+    def test_the_merge_changes_no_verification(self) -> None:
+        _server, state = self.drifted()
+        merged = products.merged_baseline_record(state, "1729640", self.previous())
+        self.assertEqual(
+            products.verify(state, merged),
+            products.verify(state, products.baseline_record(state, "1729640")),
+        )
+        # Against the new record the only differences left are the new scopes' client
+        # grants, which their lockdown removes; the lifecycle sections are no difference.
+        self.assertEqual(
+            products.verify(state, merged),
+            [
+                f"video call type {name}: grants for {role} not empty: "
+                f"{BEFORE_LOCKDOWN[name][role]}"
+                for name in ("agent", "audio_call")
+                for role in ("user", "guest")
+            ],
+        )
+
+    def test_the_record_differs_from_the_superseded_one_only_where_stream_added(self) -> None:
+        _server, state = self.drifted()
+        previous = self.previous()
+        merged = products.merged_baseline_record(state, "1729640", previous)
+        # B2-C2's item 4 check, modelled: the new call types and a lifecycle section on each
+        # known call type, and nothing else.
+        expected = [
+            "video.call_types.agent (not in the baseline)",
+            "video.call_types.audio_call (not in the baseline)",
+            "video.call_types.audio_room.settings.lifecycle (not in the baseline)",
+            "video.call_types.default.settings.lifecycle (not in the baseline)",
+            "video.call_types.development.settings.lifecycle (not in the baseline)",
+            "video.call_types.livestream.settings.lifecycle (not in the baseline)",
+        ]
+        self.assertEqual(products._changed_paths(merged, previous), expected)
+        # Unmerged, every known scope's client roles would differ too.
+        unmerged = products.baseline_record(state, "1729640")
+        self.assertGreater(len(products._changed_paths(unmerged, previous)), len(expected))
+
+    def test_the_committed_record_of_23_october_is_that_merge(self) -> None:
+        """The committed file in force differs from the record of 27 September only where
+        Stream added (item 4's diff, on the committed files themselves), keeps every scope of
+        27 September's grants, client roles included, and equals the merge of the state the
+        fake models over the record of 27 September; the record of 27 September is kept."""
+        committed = products.recorded_products()
+        previous = self.previous()
+        self.assertEqual(products.PRODUCTS_BASELINE.name, "video-feeds-1729640-2026-10-23.json")
+        self.assertTrue(products.PRODUCTS_BASELINE_2026_09_27.is_file())
+        self.assertEqual(
+            products._changed_paths(committed, previous),
+            [
+                "video.call_types.agent (not in the baseline)",
+                "video.call_types.audio_call (not in the baseline)",
+                "video.call_types.audio_room.settings.lifecycle (not in the baseline)",
+                "video.call_types.default.settings.lifecycle (not in the baseline)",
+                "video.call_types.development.settings.lifecycle (not in the baseline)",
+                "video.call_types.livestream.settings.lifecycle (not in the baseline)",
+            ],
+        )
+        for product, key in (("video", "call_types"), ("feeds", "feed_visibilities")):
+            for name, cfg in previous[product][key].items():
+                self.assertEqual(committed[product][key][name]["grants"], cfg["grants"], name)
+        _server, state = self.drifted()
+        self.assertEqual(products.merged_baseline_record(state, "1729640", previous), committed)
+
+    def test_a_client_role_the_committed_baseline_does_not_list_is_left_out(self) -> None:
+        _server, state = self.drifted()
+        previous = self.previous()
+        self.assertNotIn("anonymous", previous["video"]["call_types"]["default"]["grants"])
+        state["video"]["call_types"]["default"]["grants"]["anonymous"] = []
+        merged = products.merged_baseline_record(state, "1729640", previous)
+        self.assertNotIn("anonymous", merged["video"]["call_types"]["default"]["grants"])
+        # A new scope keeps every role it lists.
+        self.assertEqual(
+            sorted(merged["video"]["call_types"]["agent"]["grants"]),
+            sorted(BEFORE_LOCKDOWN["agent"]),
+        )
 
 
 class ReadAndListTest(unittest.TestCase):

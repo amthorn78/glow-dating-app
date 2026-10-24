@@ -1,9 +1,33 @@
 {
   "source": "Installed wheel metadata after hash-locked clean virtual environment install",
-  "observed_date": "2026-09-23",
+  "observed_date": "2026-10-23",
   "python": "3.12.14",
   "platform": "Linux x86_64",
   "packages": [
+    {
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "anyio",
+      "version": "4.15.1",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
     {
       "name": "asgiref",
       "version": "3.12.1",
@@ -41,6 +65,41 @@
       ]
     },
     {
+      "name": "certifi",
+      "version": "2026.7.22",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MPL-2.0",
+      "license_classifiers": [
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.1",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "dataclasses-json",
+      "version": "0.6.7",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": []
+    },
+    {
       "name": "Django",
       "version": "5.2.17",
       "scope": "runtime",
@@ -65,6 +124,17 @@
       ]
     },
     {
+      "name": "getstream",
+      "version": "6.1.0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.md"
+      ]
+    },
+    {
       "name": "gunicorn",
       "version": "26.2.0",
       "scope": "runtime",
@@ -73,6 +143,65 @@
       "license_classifiers": [],
       "license_files": [
         "LICENSE"
+      ]
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE.txt"
+      ]
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "scope": "development",
+      "license_expression": "BSD-3-Clause",
+      "license_field": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: BSD License"
+      ],
+      "license_files": [
+        "LICENSE.md"
+      ]
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "BSD-3-Clause",
+      "license_classifiers": [
+        "License :: OSI Approved :: BSD License"
+      ],
+      "license_files": []
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "scope": "development",
+      "license_expression": "BSD-3-Clause",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.md"
+      ]
+    },
+    {
+      "name": "ijson",
+      "version": "3.5.1",
+      "scope": "development",
+      "license_expression": "BSD-3-Clause AND ISC",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt"
       ]
     },
     {
@@ -109,6 +238,19 @@
       ]
     },
     {
+      "name": "marshmallow",
+      "version": "3.26.2",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "mypy",
       "version": "2.3.1",
       "scope": "development",
@@ -132,6 +274,19 @@
       ]
     },
     {
+      "name": "packaging",
+      "version": "26.3",
+      "scope": "development",
+      "license_expression": "Apache-2.0 OR BSD-2-Clause",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "LICENSE.APACHE",
+        "LICENSE.BSD"
+      ]
+    },
+    {
       "name": "pathspec",
       "version": "1.1.1",
       "scope": "development",
@@ -145,6 +300,100 @@
       ]
     },
     {
+      "name": "protobuf",
+      "version": "7.36.2",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "3-Clause BSD License",
+      "license_classifiers": [],
+      "license_files": []
+    },
+    {
+      "name": "pydantic",
+      "version": "2.13.5",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pydantic_core",
+      "version": "2.46.5",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pydantic-settings",
+      "version": "2.15.0",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pyee",
+      "version": "14.0.0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "PyJWT",
+      "version": "2.15.0",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "AUTHORS.rst"
+      ]
+    },
+    {
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "Dual License",
+      "license_classifiers": [
+        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: Apache Software License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "python-dotenv",
+      "version": "1.2.3",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "BSD-3-Clause",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "referencing",
       "version": "0.37.0",
       "scope": "development",
@@ -153,6 +402,20 @@
       "license_classifiers": [],
       "license_files": [
         "COPYING"
+      ]
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "Apache-2.0",
+      "license_classifiers": [
+        "License :: OSI Approved :: Apache Software License"
+      ],
+      "license_files": [
+        "LICENSE",
+        "NOTICE"
       ]
     },
     {
@@ -178,6 +441,19 @@
       ]
     },
     {
+      "name": "six",
+      "version": "1.17.0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "sqlparse",
       "version": "0.6.0",
       "scope": "runtime",
@@ -192,6 +468,33 @@
       ]
     },
     {
+      "name": "structlog",
+      "version": "26.1.0",
+      "scope": "development",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_field": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE-APACHE",
+        "LICENSE-MIT",
+        "NOTICE"
+      ]
+    },
+    {
+      "name": "twirp",
+      "version": "0.0.7",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "UNKNOWN",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "typing_extensions",
       "version": "4.16.0",
       "scope": "development",
@@ -200,6 +503,41 @@
       "license_classifiers": [],
       "license_files": [
         "LICENSE"
+      ]
+    },
+    {
+      "name": "typing-inspect",
+      "version": "0.9.0",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0",
+      "scope": "development",
+      "license_expression": "MIT",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt"
       ]
     }
   ]

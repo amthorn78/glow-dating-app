@@ -75,6 +75,20 @@ PostgreSQL in CI; this runtime imports none of it and keeps the dummy backend
 call is added; B2 adds the Stream adapter on this port.
 See the [data model](../../docs/architecture/data-model.md), "Chat contact and the outbox".
 
+P06.2 Stage B2 adds the Stream adapter on that port, `glow_domain/chat_provider_stream.py`
+(`StreamChatProvider`), and the client token's signer (`sign_chat_token`), with Stream's
+server SDK `getstream` 6.1.0 and `pyjwt` 2.15.0 pinned in the **development scope only**
+(`requirements-dev.in`; `tests/test_dependency_pins.py` holds them to the same version and
+hashes as the harness's lock). The adapter takes an injected `getstream` client and holds
+nothing else: it never constructs a client, reads no environment variable and imports only
+the port, the token module and the SDK, so it loads without Django; the sealed-runtime
+test shows the runtime imports neither it nor the SDK. It runs only in the API's offline
+tests (`tests/test_chat_provider_stream.py`: one port contract against the fixture and
+against the adapter on a hand-written recorded transport) and in `proofs/stream-chat`'s
+`conformance` command, which proves it live against the development application through
+the harness's guard. No runtime path constructs a client or signs a token; P11 wires the
+runtime, decides how it builds the client, and moves the pin to the runtime scope.
+
 ## Reproduce locally
 
 Use CPython **3.12.14**, the exact version in `.python-version`. From this directory:
@@ -98,8 +112,12 @@ were generated with uv 0.12.17 for Python 3.12 on Linux; regenerate deliberately
 
 ```bash
 uv pip compile requirements.in --python-version 3.12 --generate-hashes --output-file requirements.lock --no-header
-uv pip compile requirements-dev.in --python-version 3.12 --generate-hashes --output-file requirements-dev.lock --no-header
+uv pip compile requirements-dev.in --python-version 3.12 --generate-hashes --output-file requirements-dev.lock --no-header --constraint ../../proofs/stream-chat/requirements.lock
 ```
+
+The development lock is compiled in place, so uv keeps its other pins as preferences,
+and with the constraint the 30 packages it shares with the harness's lock keep the
+harness's versions and hashes, which `tests/test_dependency_pins.py` holds.
 
 Do not automatically upgrade dependencies during startup. Other operating systems
 need their own install verification; this checkpoint proves Linux only.

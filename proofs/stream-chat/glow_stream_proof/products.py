@@ -76,12 +76,20 @@ FEED_VISIBILITIES = "/api/v2/feeds/feed_visibilities"
 # 27 September 2026 at 05:58:31 UTC (its record: configure-products-20260927T055831Z).
 LOCKDOWN_APPLIED: str | None = "2026-09-27T05:58:31Z"
 
-# The committed Video and Feeds baseline, read before the lockdown (``baseline`` then
-# ``record-products-baseline``, 27 September 2026). Since P06.1-C4 :func:`verify` compares
+# The committed Video and Feeds baseline in force. Since P06.1-C4 :func:`verify` compares
 # every other role's grants, each call type's settings and notification settings, and each
-# feed group's recorded fields with it (the I2b review's finding 2).
-PRODUCTS_BASELINE = (
+# feed group's recorded fields with it (the I2b review's finding 2). The first was read
+# before the lockdown (``baseline`` then ``record-products-baseline``, 27 September 2026,
+# kept as ``PRODUCTS_BASELINE_2026_09_27``); since P06.2 Stage B2-C2 it is the record of
+# 23 October 2026, merged with that one by :func:`merged_baseline_record`: the scopes of 27
+# September with their client grants from it, the call types ``agent`` and ``audio_call``
+# Stream added in October with their client grants as read before their lockdown, and the
+# ``lifecycle`` settings section Stream added to the four known call types.
+PRODUCTS_BASELINE_2026_09_27 = (
     Path(__file__).resolve().parent.parent / "baseline" / "video-feeds-1729640-2026-09-27.json"
+)
+PRODUCTS_BASELINE = (
+    Path(__file__).resolve().parent.parent / "baseline" / "video-feeds-1729640-2026-10-23.json"
 )
 
 _SEG = r"[^/]+"
@@ -563,9 +571,45 @@ def baseline_differences(state: Mapping[str, Any], recorded: Mapping[str, Any]) 
     return problems
 
 
+def merged_baseline_record(
+    state: Mapping[str, Any], app_id: str, previous: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The products' configuration as a new committed baseline records it, merged with the
+    record it supersedes (P06.2 Stage B2-C1; DM-17 1.1 and 2.2).
+
+    The committed baseline was read before the lockdown and holds each scope's client grants
+    as they were then (``audio_room`` ``user`` 29, …); a snapshot read after the lockdown
+    holds those roles empty. So for every call type and feed visibility ``previous`` holds,
+    the client roles' grants (:data:`CLIENT_ROLES`) are taken from ``previous`` unchanged, a
+    client role ``previous`` does not list being left out too, and everything else (every
+    other role's grants, each call type's ``settings`` and ``notification_settings``, the
+    feed groups and the read answers) comes from ``state``. A scope ``previous`` does not
+    hold (the call type ``agent`` Stream added in October 2026) takes its client grants as
+    read, before its own lockdown. The record then still means "each scope's grants before
+    the lockdown", and :func:`verify`, which leaves the client roles out of
+    :func:`baseline_differences`, is unchanged by the merge. :func:`baseline_record` is the
+    unmerged state, which the configure records keep.
+    """
+    record = baseline_record(state, app_id)
+    for product, key in (("video", "call_types"), ("feeds", "feed_visibilities")):
+        kept = (previous.get(product) or {}).get(key) or {}
+        for name, cfg in record[product][key].items():
+            if name not in kept:
+                continue
+            old_grants = dict((kept[name] or {}).get("grants") or {})
+            grants = cfg["grants"]
+            for role in CLIENT_ROLES:
+                if role in old_grants:
+                    grants[role] = list(old_grants[role])
+                else:
+                    grants.pop(role, None)
+    return record
+
+
 def baseline_record(state: Mapping[str, Any], app_id: str) -> dict[str, Any]:
     """The products' configuration before the lockdown: settings and grants only, no user
-    and no data (committed as ``baseline/video-feeds-<app>-<date>.json``)."""
+    and no data (committed as ``baseline/video-feeds-<app>-<date>.json``; since P06.2 Stage
+    B2-C1 through :func:`merged_baseline_record`)."""
     video = state.get("video") or {}
     feeds = state.get("feeds") or {}
     return {

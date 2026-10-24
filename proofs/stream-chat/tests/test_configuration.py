@@ -1,4 +1,5 @@
 import copy
+import json
 import unittest
 from typing import Any
 
@@ -6,6 +7,10 @@ import tests  # noqa: F401
 from glow_stream_proof import configuration as conf
 
 ROLES = ["admin", "anonymous", "channel_member", "channel_moderator", "guest", "moderator", "user"]
+# A sixth, non-default channel type with client grants, as the default type `agent` that
+# Stream created on 20 October 2026 with its default grants (P06.2 Stage B2-C1, point i):
+# the chat target covers every type other than glow-match, not only the five default types.
+SIXTH_TYPE = "agent"
 
 
 def _type(name: str) -> dict[str, Any]:
@@ -26,7 +31,20 @@ def _type(name: str) -> dict[str, Any]:
     }
 
 
+def _sixth_type() -> dict[str, Any]:
+    cfg = _type(SIXTH_TYPE)
+    cfg["grants"] = {
+        "user": ["create-channel", "read-channel-owner", "schedule-message-owner"],
+        "guest": ["read-channel"],
+        "channel_member": ["read-channel", "create-message", "schedule-message"],
+        "admin": ["read-channel"],
+    }
+    return cfg
+
+
 def snapshot() -> dict[str, Any]:
+    types = {n: _type(n) for n in conf.DEFAULT_TYPES}
+    types[SIXTH_TYPE] = _sixth_type()
     return {
         "app": {
             "app": {
@@ -49,7 +67,7 @@ def snapshot() -> dict[str, Any]:
                 },
             }
         },
-        "channel_types": {"channel_types": {n: _type(n) for n in conf.DEFAULT_TYPES}},
+        "channel_types": {"channel_types": types},
         "users": {"users": [{"id": "someone", "custom": {"first_name": "Private"}}]},
     }
 
@@ -62,8 +80,9 @@ def configured(snap: dict[str, Any]) -> dict[str, Any]:
     for role in conf.CLIENT_APP_ROLES:
         app["grants"][role] = []
     roles = conf.roles_in(snap)
-    for name in conf.DEFAULT_TYPES:
-        snap["channel_types"]["channel_types"][name]["grants"] = {r: [] for r in roles}
+    # Every type the snapshot shows is locked, the sixth as the five default types.
+    for cfg in snap["channel_types"]["channel_types"].values():
+        cfg["grants"] = {r: [] for r in roles}
     match = {k: v for k, v in conf.MATCH_FEATURES.items() if k != "commands"}
     match["commands"] = []
     match["grants"] = conf.match_type_grants(roles)
@@ -80,8 +99,11 @@ class ConfigurationTest(unittest.TestCase):
         self.assertIs(app_patch.body["disable_permissions_checks"], False)
         self.assertIs(app_patch.body["guest_user_creation_disabled"], True)
         self.assertEqual(app_patch.body["grants"], {"user": [], "guest": [], "anonymous": []})
-        locks = [s for s in plan if s.path.split("/")[-1] in conf.DEFAULT_TYPES]
-        self.assertEqual(len(locks), len(conf.DEFAULT_TYPES))
+        locks = [s for s in plan if s.method == "PUT" and not s.path.endswith(conf.MATCH_TYPE)]
+        # The five default types and the sixth type the snapshot shows (P06.2 Stage B2-C1).
+        self.assertEqual(
+            [s.path.split("/")[-1] for s in locks], sorted([*conf.DEFAULT_TYPES, SIXTH_TYPE])
+        )
         for lock in locks:
             self.assertEqual(set(lock.body["grants"]), {"admin", "channel_member", "guest", "user"})
             self.assertTrue(all(v == [] for v in lock.body["grants"].values()))
@@ -178,6 +200,100 @@ class ConfigurationTest(unittest.TestCase):
         self.assertFalse(any(s.method == "DELETE" for s in plan))
         with_delete = conf.restore_plan(record, delete_match_type=True)
         self.assertEqual(with_delete[-1].method, "DELETE")
+
+
+class EveryChannelTypeTest(unittest.TestCase):
+    """P06.2 Stage B2-C1, point i (DM-17 item 2): every channel type other than glow-match
+    must hold no grant for any role, not only the five default types, which must still
+    exist; the plan locks every type the snapshot shows with the default types' request;
+    restore leaves a type the pre-proof record does not hold untouched."""
+
+    def test_a_non_default_type_with_grants_is_a_difference(self) -> None:
+        problems = conf.verify(snapshot())
+        self.assertIn(
+            f"{SIXTH_TYPE} grants for user not empty: "
+            "['create-channel', 'read-channel-owner', 'schedule-message-owner']",
+            problems,
+        )
+        self.assertIn(f"{SIXTH_TYPE} grants for guest not empty: ['read-channel']", problems)
+        self.assertIn(
+            f"{SIXTH_TYPE} grants for channel_member not empty: "
+            "['read-channel', 'create-message', 'schedule-message']",
+            problems,
+        )
+        # Locked as the default types are, it verifies.
+        self.assertEqual(conf.verify(configured(snapshot())), [])
+
+    def test_a_type_stream_adds_later_is_a_difference_once_it_holds_a_grant(self) -> None:
+        drift = configured(snapshot())
+        seventh = _type("later")
+        seventh["grants"] = {"user": ["read-channel"], "admin": []}
+        drift["channel_types"]["channel_types"]["later"] = seventh
+        self.assertEqual(conf.verify(drift), ["later grants for user not empty: ['read-channel']"])
+        seventh["grants"] = {"user": [], "admin": []}
+        self.assertEqual(conf.verify(drift), [])
+        # A grant any role gains in a locked type is seen, the admin role's too.
+        drift["channel_types"]["channel_types"][SIXTH_TYPE]["grants"]["admin"] = ["read-channel"]
+        self.assertEqual(
+            conf.verify(drift), [f"{SIXTH_TYPE} grants for admin not empty: ['read-channel']"]
+        )
+
+    def test_the_five_default_types_must_still_exist(self) -> None:
+        missing = configured(snapshot())
+        del missing["channel_types"]["channel_types"]["team"]
+        self.assertEqual(conf.verify(missing), ["default type team missing"])
+        # A non-default type's absence is no difference: nothing of it can hold a grant.
+        gone = configured(snapshot())
+        del gone["channel_types"]["channel_types"][SIXTH_TYPE]
+        self.assertEqual(conf.verify(gone), [])
+
+    def test_the_plan_locks_every_type_the_snapshot_shows(self) -> None:
+        snap = snapshot()
+        plan = conf.apply_plan(snap)
+        lock = next(s for s in plan if s.path == f"/api/v2/chat/channeltypes/{SIXTH_TYPE}")
+        default_lock = next(s for s in plan if s.path == "/api/v2/chat/channeltypes/team")
+        self.assertEqual(lock.method, "PUT")
+        # The same request shape as the five default types': the fixed settings from the
+        # snapshot and every role's grants [], no feature.
+        self.assertEqual(set(lock.body), set(default_lock.body))
+        self.assertEqual(
+            {k: lock.body[k] for k in ("automod", "automod_behavior", "max_message_length")},
+            {"automod": "disabled", "automod_behavior": "flag", "max_message_length": 5000},
+        )
+        self.assertEqual(lock.body["grants"], {r: [] for r in conf.roles_in(snap)})
+        self.assertEqual(
+            lock.purpose, f"lock channel type {SIXTH_TYPE}: empty grants for every role"
+        )
+        self.assertEqual(
+            default_lock.purpose, "lock default type team: empty grants for every role"
+        )
+        # The types in sorted order (the five default types keep the order of 25 September
+        # 2026), glow-match last, and nothing the snapshot does not show.
+        names = [s.path.rsplit("/", 1)[-1] for s in plan if s.method == "PUT"]
+        self.assertEqual(names, [*sorted([*conf.DEFAULT_TYPES, SIXTH_TYPE]), conf.MATCH_TYPE])
+        without = snapshot()
+        del without["channel_types"]["channel_types"][SIXTH_TYPE]
+        names = [s.path.rsplit("/", 1)[-1] for s in conf.apply_plan(without) if s.method == "PUT"]
+        self.assertEqual(names, [*conf.DEFAULT_TYPES, conf.MATCH_TYPE])
+
+    def test_restore_leaves_a_type_the_record_does_not_hold_untouched(self) -> None:
+        before = snapshot()
+        del before["channel_types"]["channel_types"][SIXTH_TYPE]
+        record = conf.baseline_record(before)  # as the pre-proof record: the five default types
+        self.assertEqual(sorted(record["channel_types"]), sorted(conf.DEFAULT_TYPES))
+        plan = conf.restore_plan(record, delete_match_type=True)
+        self.assertEqual(
+            [s.path.rsplit("/", 1)[-1] for s in plan if s.method != "PATCH"],
+            [*conf.DEFAULT_TYPES, conf.MATCH_TYPE],
+        )
+        # Against that record the sixth type is neither restored nor a difference, whether it
+        # holds Stream's grants or is locked.
+        for state in (snapshot(), configured(snapshot())):
+            problems = conf.verify_restored(state, record, match_type_deleted=False)
+            self.assertFalse(any(SIXTH_TYPE in p for p in problems), problems)
+        # The committed pre-proof record holds the five default types and no other.
+        committed = json.loads(conf.BASELINE_RECORD.read_text(encoding="utf-8"))
+        self.assertEqual(sorted(committed["channel_types"]), sorted(conf.DEFAULT_TYPES))
 
 
 class RecordedSettingsTest(unittest.TestCase):

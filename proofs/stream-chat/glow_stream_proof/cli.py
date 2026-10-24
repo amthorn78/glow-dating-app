@@ -1,10 +1,13 @@
 """Command line entry point: ``python -m glow_stream_proof <command>``.
 
-Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``configure`` and
-``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
-``configure --products video,feeds --apply``, ``run``, ``cleanup --apply`` and
-``restore --apply``. ``record-baseline`` and ``record-products-baseline`` write files
-from a snapshot and call nothing.
+Read-only: ``baseline``, ``verify-clean``, ``probe-products``, ``full-view`` (P06.2 Stage
+B2-C1: every configuration field, credential-like values digested, GETs only), ``configure``
+and ``restore`` without ``--apply`` (they print the plan). Mutating: ``configure --apply``,
+``configure --products video,feeds --apply``, ``run``, ``conformance`` (P06.2 Stage B2:
+the app's Stream adapter, on this harness's client, under the run's preflight, guard,
+budget, stop signals and cleanup), ``cleanup --apply`` and ``restore --apply``.
+``record-baseline`` and ``record-products-baseline`` write files from a snapshot and call
+nothing; ``compare-views`` compares two full views and calls nothing.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import baseline, configuration, guard, products, report
+from . import baseline, configuration, conformance, full_view, guard, products, report
 from .credentials import EnvironmentRefused, ServerCredentials, load_server_credentials
 from .proof_run import PREFIX_ROOT, ProofRun, RunStopped, lean_only, list_polls_and_groups
 from .redaction import Redactor
@@ -297,13 +300,28 @@ def cmd_baseline(ctx: Context) -> int:
 
 def cmd_record_products_baseline(ctx: Context, snapshot_path: Path) -> int:
     """Write the Video and Feeds baseline record from a ``baseline`` snapshot (P06.1-I2b):
-    ``baseline/video-feeds-<app>-<date>.json``, settings and grants only. Calls nothing."""
+    ``baseline/video-feeds-<app>-<date>.json``, settings and grants only. Calls nothing.
+    Since P06.2 Stage B2-C1 (DM-17 1.1) the record is merged with the committed baseline it
+    supersedes: every scope that baseline holds keeps its client roles' grants from it, read
+    before the lockdown, and everything else comes from the snapshot
+    (``products.merged_baseline_record``)."""
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     state = snapshot.get("products")
     if not isinstance(state, dict):
         ctx.say("refused: the snapshot holds no products section")
         return EXIT_REFUSED
-    record = products.baseline_record(state, ctx.credentials.app_id)
+    previous = products.recorded_products()
+    record = products.merged_baseline_record(state, ctx.credentials.app_id, previous)
+    for product, key, kind in (
+        ("video", "call_types", "call types"),
+        ("feeds", "feed_visibilities", "feed visibilities"),
+    ):
+        kept = sorted(set(record[product][key]) & set(previous.get(product, {}).get(key, {})))
+        new = sorted(set(record[product][key]) - set(kept))
+        ctx.say(
+            f"{kind}: client roles' grants kept from {products.PRODUCTS_BASELINE.name} for "
+            f"{kept}; recorded as read for {new}"
+        )
     BASELINE_DIR.mkdir(parents=True, exist_ok=True)
     path = BASELINE_DIR / (
         f"video-feeds-{ctx.credentials.app_id}-{datetime.now(UTC).strftime('%Y-%m-%d')}.json"
@@ -313,6 +331,45 @@ def cmd_record_products_baseline(ctx: Context, snapshot_path: Path) -> int:
     shown = path.relative_to(PROOF_ROOT) if path.is_relative_to(PROOF_ROOT) else path
     ctx.say(f"video and feeds baseline record written to {shown}")
     return 0
+
+
+def cmd_full_view(ctx: Context) -> int:
+    """A read-only full view of the configuration (P06.2 Stage B2-C1; DM-17 2.1 and 2.3):
+    every settings key of the application and its grants, every channel type, the roles,
+    every call type, feed visibility and feed group, read with GETs only under a guard that
+    refuses anything else, credential-like values written as their type, emptiness and
+    SHA-256 (:mod:`glow_stream_proof.full_view`). Six server API calls."""
+    ctx.api.guard = full_view.read_only_refusal
+    view = full_view.read_view(ctx.api)
+    path = write_json(f"full-view-{view['at']}.json", view, ctx.secrets)
+    ctx.say(f"full view written to {path.relative_to(PROOF_ROOT)}")
+    for line in full_view.summary(view):
+        ctx.say(line)
+    return 0
+
+
+def cmd_compare_views(ctx: Context, before_path: Path, after_path: Path) -> int:
+    """The offline comparison of two full views (DM-17 2.3): every field of every read,
+    value and type, the volatile fields ``full_view.VOLATILE_FIELDS`` left aside; each
+    changed path is printed with its before and after (or digest), and the comparison is
+    written to ``.work/``. Calls nothing. Exit 0 when nothing changed, 1 otherwise."""
+    before = json.loads(before_path.read_text(encoding="utf-8"))
+    after = json.loads(after_path.read_text(encoding="utf-8"))
+    changes = full_view.compare(before, after)
+    record = {
+        "at": _stamp(),
+        "before": before_path.name,
+        "after": after_path.name,
+        "left_aside": sorted(full_view.VOLATILE_FIELDS),
+        "changes": changes,
+    }
+    path = write_json(f"compare-views-{record['at']}.json", record, ctx.secrets)
+    ctx.say(f"comparison written to {path.relative_to(PROOF_ROOT)}")
+    ctx.say(f"left aside (volatile fields): {record['left_aside']}")
+    for line in full_view.render(changes):
+        ctx.say(line)
+    ctx.say(f"changed fields: {len(changes)}")
+    return 0 if not changes else 1
 
 
 def cmd_probe_products(ctx: Context) -> int:
@@ -594,6 +651,113 @@ def cmd_run(ctx: Context, accept_dashboard_user: bool, only: set[str] | None) ->
     return EXIT_AFTER_RUN_PROBLEMS if problems else 0
 
 
+EXIT_ROWS_DIFFER = 1
+INTERRUPTED = "interrupted (Ctrl-C)"
+
+
+def cmd_conformance(ctx: Context, accept_dashboard_user: bool) -> int:
+    """The Stream adapter's conformance run (P06.2 Stage B2; design point g). Exit 0 only if
+    every row passed (or is one stated as recorded), the run was cleaned up and the
+    configuration verifies; 1 if a row differs from the fixture or failed (reported; a
+    difference on an F3 or CX6 cause blocks B2's merge); 2 if it stopped or refused to
+    start; 4 if it completed but a check after it failed."""
+    # DM-16 1.1: both verifications on a fresh snapshot, before anything changes.
+    snapshot = baseline.read_snapshot(ctx.api)
+    chat_problems, product_problems = conformance.start_refusals(snapshot)
+    ctx.say(f"configuration differences from the proof's target: {len(chat_problems)}")
+    ctx.say(f"video and feeds differences from the lockdown target: {len(product_problems)}")
+    if chat_problems or product_problems:
+        for problem in chat_problems + product_problems:
+            ctx.say(f"- {problem}")
+        ctx.say("refused: the application's configuration is not the proof's; nothing changed")
+        return EXIT_REFUSED
+    prefix = f"{PREFIX_ROOT}{datetime.now(UTC).strftime('%m%d%H%M%S')}"
+    run = conformance.ConformanceRun(
+        ctx.credentials,
+        ctx.api,
+        ctx.ledger,
+        ctx.redactor,
+        os.environ,
+        prefix=prefix,
+        accept_dashboard_user=accept_dashboard_user,
+    )
+    started = datetime.now(UTC).isoformat(timespec="seconds")
+    ctx.say(f"conformance {prefix} started {started}")
+    stop_reason = None
+    created_anything = False
+
+    def progress() -> None:
+        write_json(f"conformance-{prefix}-progress.json", run.results(), ctx.secrets)
+
+    try:
+        preflight = run.preflight()
+        ctx.say(f"preflight: {preflight}")
+        created_anything = True
+        run.run_rows(progress)
+    except RunStopped as exc:
+        stop_reason = f"stopped: {ctx.redactor.text(str(exc))}"
+    except GuardrailStop as exc:
+        stop_reason = f"guardrail: {ctx.redactor.text(str(exc))}"
+        run.record_signal(exc)  # the signal joins the run's record (P06.1-C3)
+    except KeyboardInterrupt:
+        stop_reason = INTERRUPTED
+    except Exception as exc:  # recorded, never hidden; cleanup still runs
+        stop_reason = f"harness error: {type(exc).__name__}: {ctx.redactor.text(str(exc))}"
+    finally:
+        try:
+            early = run.results()
+            early.update(
+                {
+                    "started": started,
+                    # Every identifier of the run generalized, as in the results (C4R1).
+                    "stop_reason": run._without_ids(stop_reason),
+                    "end_of_run": "not finished: cleanup and the configuration check had "
+                    "not completed when this was written",
+                }
+            )
+            write_json(f"conformance-{prefix}.json", early, ctx.secrets)
+        except (Exception, KeyboardInterrupt) as exc:  # never in the way of the end of the run
+            run.notes.append(
+                "results not written before the end of the run: "
+                f"{type(exc).__name__}: " + ctx.redactor.text(str(exc))
+            )
+        try:
+            problems = run.finish(cleanup=created_anything)
+        except KeyboardInterrupt:
+            stop_reason = stop_reason or INTERRUPTED
+            problems = [
+                "the end of the run was interrupted (Ctrl-C): cleanup and the configuration "
+                "check may be incomplete; run verify-clean and configure (a dry run)",
+                *list(run.post_run_problems),
+            ]
+            run.post_run_problems = problems
+            run.close_sessions()  # a second Ctrl-C: the client processes still close
+    ctx.say(f"cleanup: {run.cleanup_result}")
+    for stop in run.stops:
+        ctx.say(f"stop recorded: {stop}")
+    for problem in problems:
+        ctx.say(f"after the run: {problem}")
+    ended = datetime.now(UTC).isoformat(timespec="seconds")
+    results = run.results()
+    results.update(
+        {"started": started, "ended": ended, "stop_reason": run._without_ids(stop_reason)}
+    )
+    write_json(f"conformance-{prefix}.json", results, ctx.secrets)
+    markdown = conformance.render(results)
+    write_text(f"conformance-{prefix}.md", markdown, ctx.secrets)
+    ctx.say(markdown)
+    ctx.say(f"usage: {json.dumps(ctx.ledger.summary())}")
+    ctx.say(f"conformance {prefix} ended {ended}" + (f"; {stop_reason}" if stop_reason else ""))
+    if stop_reason is not None:
+        return EXIT_STOPPED
+    if problems:
+        return EXIT_AFTER_RUN_PROBLEMS
+    verdicts = results["verdicts"]
+    if set(verdicts) - {conformance.PASS, conformance.RECORDED}:
+        return EXIT_ROWS_DIFFER
+    return 0
+
+
 def cmd_verify_clean(ctx: Context) -> int:
     snapshot = baseline.read_snapshot(ctx.api)
     users = [str(u.get("id")) for u in snapshot["users"].get("users", [])]
@@ -720,6 +884,16 @@ def main(argv: list[str] | None = None) -> int:
         help="scoped, differential: only Video and Feeds configuration writes (video,feeds)",
     )
     sub.add_parser("probe-products", help="read-only: is each of Video and Feeds available?")
+    sub.add_parser(
+        "full-view",
+        help="P06.2 Stage B2-C1, read-only: every configuration field, credential-like values "
+        "digested (GETs only)",
+    )
+    cmp = sub.add_parser(
+        "compare-views", help="P06.2 Stage B2-C1: compare two full views offline; calls nothing"
+    )
+    cmp.add_argument("--before", type=Path, required=True)
+    cmp.add_argument("--after", type=Path, required=True)
     prec = sub.add_parser(
         "record-products-baseline", help="write the Video and Feeds baseline from a snapshot"
     )
@@ -727,6 +901,11 @@ def main(argv: list[str] | None = None) -> int:
     run = sub.add_parser("run", help="one live proof run with cleanup")
     run.add_argument("--accept-dashboard-user", action="store_true")
     run.add_argument("--only", default="", help="comma-separated case ids (development)")
+    conf_run = sub.add_parser(
+        "conformance",
+        help="P06.2 Stage B2: the app's Stream adapter against the application, with cleanup",
+    )
+    conf_run.add_argument("--accept-dashboard-user", action="store_true")
     sub.add_parser("verify-clean", help="confirm no proof users or channels remain")
     clean = sub.add_parser("cleanup", help="hard-delete leftover proof users and channels")
     clean.add_argument("--apply", action="store_true")
@@ -751,11 +930,17 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_configure(ctx, args.apply, scope)
         if args.command == "probe-products":
             return cmd_probe_products(ctx)
+        if args.command == "full-view":
+            return cmd_full_view(ctx)
+        if args.command == "compare-views":
+            return cmd_compare_views(ctx, args.before, args.after)
         if args.command == "record-products-baseline":
             return cmd_record_products_baseline(ctx, args.snapshot)
         if args.command == "run":
             only = {s for s in args.only.split(",") if s} or None
             return cmd_run(ctx, args.accept_dashboard_user, only)
+        if args.command == "conformance":
+            return cmd_conformance(ctx, args.accept_dashboard_user)
         if args.command == "verify-clean":
             return cmd_verify_clean(ctx)
         if args.command == "cleanup":

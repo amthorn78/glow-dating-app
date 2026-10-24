@@ -88,6 +88,15 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM5-24 | 5 Oct 2026 | follow-through | The retirement of `app-builder-1/p05-1-birth-diagnostics` fell due when the flake fix merged (29 September); the handoff carried it without asking Nathan, the only person who can delete a branch, and no manager set up a cleanup of merged branches. Recorded by App Manager 6 | Nathan ("bad branching hygiene"), with 38 branches |
 | AM6-01 | 5 Oct 2026 | process | Took on Stage A's run of record itself: subscribed to PR29's CI events and scheduled a check-in to watch the run, work that belongs to the worker session | Nathan |
 | AM6-02 | 22 Oct 2026 | accuracy | Recorded B1-C1's race times as "7 to 23 s" from a listing cut off at 20 lines; the adapter's slowest race took 29.7 s against its 30-second cap | B1-C1's exact-head review (finding 1) |
+| AM6-03 | 23 Oct 2026 | scope | Stage B2's prompt added a pinned, untyped SDK to `services/api` but its owned paths named neither `pyproject.toml`, where the type check's override for it lives, nor the API README; the session changed both, reporting one | App Manager 6, verifying Stage B2 |
+| AM7-01 | 23 Oct 2026 | accuracy | B2-C1's prompt (revision 2) said `tzdata` stays as resolved and nothing else moves in the lock alignment, copied from DM-17 5.1 without reading the lock, which lists `tzdata` `# via python-dateutil`; aligning `python-dateutil` to 2.9.0.post0 removed it | The B2-C1 session |
+| AM7-02 | 23 Oct 2026 | accuracy | B2-C1's prompt said "Each push runs the Foundation workflow on your branch"; the session's harness named its branch `ccr-…`, outside the workflow's push filter, so no run started and the session had no run of record | The B2-C1 session |
+| AM7-03 | 23 Oct 2026 | accuracy | B2-C2's prompt, revisions 1 and 2, let the session send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat dry run, and the products dry run is item 6.1 | App Manager 7, reading revision 2 before giving it to Nathan |
+| AM7-04 | 23 Oct 2026 | accuracy | B2-C2's prompt allowed only "D1 and the class-2 types' grants" in the comparison after the chat apply; emptying those grants necessarily removes `agent` from nine roles' `scopes` in the roles read, which the rule did not allow | The B2-C2 session |
+| AM7-05 | 23 Oct 2026 | accuracy | The D8 message for Nathan, revision 1, said "four things" and listed three, called the chat type `agent` "a second kind of chat room" when six others existed, said the removals "held" when they held for one evening's run, and said (b) closes "every way" a Stream change could reach a member "permanently"; it gave (a) no cost line and (b) no "what stays open" line | The Dev Manager (DM-20 item 5), before it reached Nathan |
+| AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
+| AM7-07 | 24 Oct 2026 | follow-through | The handoff's branch list kept `claude/dev-manager` at `821efc7` (DM-19, merge `5480b99`) through DM-20's integration, when its head became `ca806e3` (merge `855a92b`) | App Manager 7, checking the remote branches at B2-C4's integration |
+| AM7-08 | 24 Oct 2026 | accuracy | PR31's body and Implementation Control said B2-C4 generalized "every run identifier" in the conformance results, repeating the session's claim; strings already passed through `_generic` keep their random part | B2-C4's exact-head re-review (C4R1) |
 
 ## App Manager 2
 
@@ -631,3 +640,77 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** the record understated the job's time margin, which is the basis for deciding when the job's budget goes to the Dev Manager. No result changed, and nothing was decided on it before the correction.
 - **Correction:** the bullet is corrected in place and marked; the margin goes to the Dev Manager with Stage B2's prompt (DM-16).
 - **Prevention:** a range, a count or a maximum written into a record comes from the whole source, never from a truncated listing; when output is truncated, the figure is computed over the full file (for example `grep … | sort`) and the line count is checked against the expected total.
+
+### AM6-03 — Owned paths that missed what a new dependency needs (scope)
+
+- **What happened:** Stage B2's prompt let the session pin `getstream` and `pyjwt` in `services/api`'s development scope and named the files the pin touches: `requirements-dev.in`, `requirements-dev.lock` and `dependency-inventory.json`. It did not name `services/api/pyproject.toml`, where mypy needs an override for an SDK that ships no type information, or the API README, which describes the component's dependencies. The session changed both without stopping (section 5 said "Nothing else. Report any other change you think is needed"), and reported the first.
+- **Caught by:** App Manager 6, verifying Stage B2's paths against section 5.
+- **Effect:** two small, reasonable changes outside the prompt's words, which now need the Dev Manager's disposition (DM-17 item 4). No check was weakened: the override applies to `getstream` alone.
+- **Correction:** both go to the Dev Manager in DM-17, with the recommendation to accept them.
+- **Prevention:** when a prompt adds a dependency to a component, its owned paths name the component's type-check and lint configuration and its README as well as the dependency files, or say that they stay unchanged and why.
+
+## App Manager 7
+
+### AM7-01 — A lock expectation copied without reading the lock (accuracy)
+
+- **What happened:** B2-C1's prompt, revision 2, applied DM-17 5.1 as written: regenerate the API's development lock with the harness's lock as a constraint, and leave `tzdata`, "which only the API holds", as resolved; the prompt added "nothing else moves". The lock before the alignment lists `tzdata` `# via python-dateutil`: only `python-dateutil` 3.0.0 required it, so aligning `python-dateutil` to the harness's 2.9.0.post0 left it an orphan, and uv dropped it.
+- **Caught by:** the B2-C1 session, which recorded the deviation and did not edit the lock by hand.
+- **Effect:** none on the work: the session handled it correctly, `pip check` and every API check pass without `tzdata`, and nothing was decided on the wrong sentence. The pin test's docstring repeats the sentence, and B2-C2 corrects it. The Dev Manager reads the deviation in DM-18.
+- **Correction:** the evidence record, "Manager verification of Stage B2-C1", and the brief's B2-C2 point v record it; B2-C2's prompt corrects the docstring.
+- **Prevention:** when a prompt predicts how a lock will change, the manager derives the prediction from the lock's own `# via` lines first, and quotes a condition's expectation only after checking it against them.
+
+### AM7-02 — "Each push runs the workflow" for a branch outside its filter (accuracy)
+
+- **What happened:** B2-C1's prompt, revision 2, said "Each push runs the Foundation workflow on your branch", inherited from B2's prompt. The workflow's `push` trigger names `main`, `app-builder-1/**`, `app-planner-1/**` and `claude/**`; the session's harness named its branch `ccr-a4379c5f-jeokfe`, so none of its pushes started a run, and its check 6 (the run of record) could not be met.
+- **Caught by:** the B2-C1 session, which ran the workflow's checks locally and reported that no run existed.
+- **Effect:** B2-C1's offline code had no CI run until the manager integrated it; the run of record is PR31's run on the integrating head. No result was wrong.
+- **Correction:** B2-C2's prompt names the filter and tells the session to say when its branch is outside it; the brief's B2-C2 point vi and a new step-5 bullet in the manager workflow say the integrating head's PR run is then the run of record, for the Dev Manager to read in DM-18; whether the filter should name such branches goes to M04's brief.
+- **Prevention:** the manager workflow's step 5 bullet "A session branch outside the push filter"; prompts state the filter rather than promise a run.
+
+### AM7-03 — A cross-reference to the wrong item (accuracy)
+
+- **What happened:** B2-C2's prompt, revision 1, moved the Video and Feeds lockdown from B2-C1's item 4.4 to item 6 and its dry run to item 6.1, but its "Never" line still said the session may send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat target's dry run. Revision 2 carried it, and the Dev Manager's read (DM-18) did not mention it.
+- **Caught by:** App Manager 7, reading revision 2 in full before giving it to Nathan.
+- **Effect:** none: no session ran either revision. Read literally, the line would have allowed no Video or Feeds `PUT` at all, since item 5.1 plans none, and the session would have stopped at item 6 as a departure.
+- **Correction:** revision 2 reads "section 4 item 6.1" before it goes to Nathan. The fix changes a reference, not what the prompt allows; the review log's DM-18 entry lists it for the next consultation to confirm. DM-19 item 6 confirmed it, and the Dev Manager recorded its own share (DM-18 read revision 1 without catching the reference) and now checks every cross-reference in a prompt it reads.
+- **Prevention:** when a revision renumbers or moves an item, the manager searches the prompt for every "item N" reference and checks each against the new numbering before the revision is committed.
+
+### AM7-04 — An allowed-change set that left out the plan's own effects (accuracy)
+
+- **What happened:** B2-C2's prompt, revisions 1 and 2, said of the comparison after the chat apply: "The only changes allowed are D1 and the class-2 types' grants", carrying DM-17 2.3's allowed set ("D1 and D4"), which named the application, the chat types and the call types and visibilities. B2-C1's full view, which runs that comparison, also reads the roles, and a role's `scopes` lists the scopes in which it holds grants, so emptying the chat type `agent`'s grants necessarily removes `agent` from the `scopes` of the nine roles that held them. App Manager 7 wrote the allowed set without deriving what the planned change does to the roles read, so the rule did not allow those nine fields.
+- **Caught by:** the B2-C2 session, which reported them as fields outside the planned grants, beside the unplanned `blocklist_behavior` field (D6).
+- **Effect:** none on the application or the result: the session also stopped on D6, which the rule rightly did not allow, so the stop happened either way. Read as written, the rule would have stopped the session on the roles' `scopes` alone, and the products apply's rule would have done the same for `user` and `guest`.
+- **Correction:** the brief's B2-C3 point i states the derived changes before the apply: a role's `scopes` losing exactly the scopes in which the apply emptied all of its grants. DM-19 approved the rule with conditions 2.1 to 2.4 and confirmed this entry; the Dev Manager recorded its own share (the allowed set began in its DM-17 2.3, and DM-18 3.1 re-read it).
+- **Prevention:** when a prompt states what a comparison may show after a change, the manager derives every field the planned change alters in every read the comparison covers (here the roles read as well as the types), and lists them, before the prompt is committed.
+
+### AM7-05 — Plain words that outran the record (accuracy)
+
+- **What happened:** writing the D8 message for Nathan, revision 1, App Manager 7 simplified the record and lost accuracy: "four things" with three listed (the two call types counted as one item); "a second kind of chat room" for the chat type `agent`, when six other kinds already existed; "the removals held", when the record shows them held from 21:14 and 22:29 to 22:31 UTC on one evening; and (b) closing "every way a Stream change could reach a member, permanently", when it closes the app's way in and Stream's server side still needs the settings check. It also left out two of OD-32's lines: what (a) costs, and what (b) leaves open.
+- **Caught by:** the Dev Manager, reading the message in DM-20 before it went to Nathan (OD-32).
+- **Effect:** none on Nathan: revision 1 did not go to him. Revision 2 uses DM-20's words as written.
+- **Correction:** the message's revision 2, in DM-20 section 7's words.
+- **Prevention:** before a plain-language message goes to Nathan, the manager checks every count, comparison and duration in it against the record line by line, avoids absolutes ("every", "permanently") unless the record shows them, and gives each option all of OD-32's lines: what it is, what it costs, what it closes and what stays open.
+
+### AM7-06 — An inference recorded as fact (accuracy)
+
+- **What happened:** writing the brief's revision 8, point ii, App Manager 7 wrote that a send naming a sender Stream does not hold "is accepted and creates that user (M5)". The run shows M5 accepted, and that the user existed afterwards. Its creation by the send is an inference: C4's read found the user absent before M5, and D10's read found it after. The evidence record says so; the brief did not.
+- **Caught by:** Stage B2's exact-head review (focus area 9), as a precision, not a finding.
+- **Effect:** none on a decision. DM-20 item 2 approved no adapter change on the same evidence, and the inference is well supported.
+- **Correction:** the brief's revision 10 and the P11 plan mark it an inference, in the evidence record's terms.
+- **Prevention:** when a record summarizes another record, keep its qualifiers ("by inference", "not shown live") with the claim.
+
+### AM7-07 — A branch head left stale in the handoff (follow-through)
+
+- **What happened:** integrating DM-20's report (`ca806e3`, merge `855a92b`), App Manager 7 updated the review log and the Dev Manager's state, but not the handoff's branch list, which kept `claude/dev-manager` at DM-19's `821efc7`.
+- **Caught by:** App Manager 7, listing the remote branches when it added B2-C4's session branch.
+- **Effect:** none; no session read that line in between. PR31's body named `ca806e3`.
+- **Correction:** the handoff's branch list, checked against `git ls-remote` on 24 October.
+- **Prevention:** at each integration, the manager lists the remote branches and updates every line of the handoff's branch list, not only the new branch's.
+
+### AM7-08 — A session's completeness claim repeated unchecked (accuracy)
+
+- **What happened:** recording B2-C4, App Manager 7 read `_without_ids` and described it accurately in the evidence record ("replaces every value of `self.ids`"). But PR31's body and Implementation Control repeated the session's wider claim, "every run identifier generalized". The manager had not checked the strings that reach the results after `_generic` has already rewritten the prefix.
+- **Caught by:** B2-C4's exact-head re-review (C4R1).
+- **Effect:** none on a decision. The re-review caught it before the merge, and B2-C5 makes the claim true.
+- **Correction:** PR31's body and Implementation Control are corrected with the re-review's record.
+- **Prevention:** a summary for PR31 or Notion repeats a completeness claim ("every", "all") only after the manager has checked it against the code paths that feed the result; otherwise it describes the mechanism.
