@@ -94,6 +94,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-03 | 23 Oct 2026 | accuracy | B2-C2's prompt, revisions 1 and 2, let the session send "the Video and Feeds `PUT`s that section 4 item 5.1 plans"; item 5.1 is the chat dry run, and the products dry run is item 6.1 | App Manager 7, reading revision 2 before giving it to Nathan |
 | AM7-04 | 23 Oct 2026 | accuracy | B2-C2's prompt allowed only "D1 and the class-2 types' grants" in the comparison after the chat apply; emptying those grants necessarily removes `agent` from nine roles' `scopes` in the roles read, which the rule did not allow | The B2-C2 session |
 | AM7-05 | 23 Oct 2026 | accuracy | The D8 message for Nathan, revision 1, said "four things" and listed three, called the chat type `agent` "a second kind of chat room" when six others existed, said the removals "held" when they held for one evening's run, and said (b) closes "every way" a Stream change could reach a member "permanently"; it gave (a) no cost line and (b) no "what stays open" line | The Dev Manager (DM-20 item 5), before it reached Nathan |
+| AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
 
 ## App Manager 2
 
@@ -687,3 +688,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on Nathan: revision 1 did not go to him. Revision 2 uses DM-20's words as written.
 - **Correction:** the message's revision 2, in DM-20 section 7's words.
 - **Prevention:** before a plain-language message goes to Nathan, the manager checks every count, comparison and duration in it against the record line by line, avoids absolutes ("every", "permanently") unless the record shows them, and gives each option all of OD-32's lines: what it is, what it costs, what it closes and what stays open.
+
+### AM7-06 — An inference recorded as fact (accuracy)
+
+- **What happened:** writing the brief's revision 8, point ii, App Manager 7 wrote that a send naming a sender Stream does not hold "is accepted and creates that user (M5)". The run shows M5 accepted, and that the user existed afterwards. Its creation by the send is an inference: C4's read found the user absent before M5, and D10's read found it after. The evidence record says so; the brief did not.
+- **Caught by:** Stage B2's exact-head review (focus area 9), as a precision, not a finding.
+- **Effect:** none on a decision. DM-20 item 2 approved no adapter change on the same evidence, and the inference is well supported.
+- **Correction:** the brief's revision 10 and the P11 plan mark it an inference, in the evidence record's terms.
+- **Prevention:** when a record summarizes another record, keep its qualifiers ("by inference", "not shown live") with the claim.
