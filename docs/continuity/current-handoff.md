@@ -21,7 +21,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 7 | Nathan | B2-C5's exact-head re-review's report (revision 1, `Glow App - No Stream`), and his pick of model and rung for the uses table | Ask Nathan whether the session started; nothing else starts (OD-29). After it: record it; then Codex's code review of the final head |
+| App Manager 7 | Nathan | B2-C5's exact-head re-review's report (revision 1, `Glow App - No Stream`; Nathan ran it at Opus 5.5 at high, recorded) | Ask Nathan whether the session started; nothing else starts (OD-29). After it: record it; then Codex's code review of the final head |
 
 ## Next actions (App Manager 7)
 
