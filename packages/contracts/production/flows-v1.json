@@ -904,16 +904,21 @@
       "request_contracts": [
         "ChannelIntent",
         "MessageIntent",
-        "OwnedObjectRequest"
+        "OwnedObjectRequest",
+        "MessagePageRequest",
+        "ReadCursorIntent"
       ],
       "response_contracts": [
         "ChannelEntitlement",
-        "MessageSubmission"
+        "MessageSubmission",
+        "ConversationList",
+        "ConversationSummary",
+        "MessagePage"
       ],
-      "private_projection": "Two participants only; provider bodies via authorized history route",
+      "private_projection": "Two participants only; history, the conversation list and unread through Glow's API after the send's checks, with the provider's text only when its digest is Glow's; no provider ID, field or token",
       "public_projection": "None",
       "staff_projection": "Case-scoped evidence, no general message access",
-      "acceptance": "No send after block/unmatch commit; SDK token alone insufficient; pending submission is not delivery",
+      "acceptance": "No send or history read after block/unmatch commit; no provider token is issued (OD-45); pending submission is not delivery; only text Glow sent is shown",
       "read_roles": [
         "participant"
       ],
@@ -966,6 +971,15 @@
           "eligible": false,
           "policies": [],
           "active_match": false
+        },
+        {
+          "event": "read",
+          "from": "behind",
+          "to": "current",
+          "role": "participant",
+          "eligible": true,
+          "policies": [],
+          "active_match": true
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
@@ -974,6 +988,15 @@
           "participant"
         ],
         "MessageSubmission": [
+          "participant"
+        ],
+        "ConversationList": [
+          "participant"
+        ],
+        "ConversationSummary": [
+          "participant"
+        ],
+        "MessagePage": [
           "participant"
         ]
       }

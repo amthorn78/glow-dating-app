@@ -13,6 +13,15 @@ idempotently, and is delivered before the channel that names it (DM-15 3.1 to 3.
 A provider adapter raises only ``ChatProviderError`` with a Glow code. Whatever else
 it raises is mapped to ``PROVIDER_UNAVAILABLE`` by the caller; no provider text is
 ever stored, logged or shown.
+
+**The text read** (P06.2 Stage C1, OD-45; the brief's "Stage C under OD-45", point b).
+Glow's rows define a conversation, and the provider is asked only for the texts of the
+messages Glow committed: ``read_message_texts`` takes a channel ID and a page's message
+IDs, at most ``TEXT_READ_LIMIT``, and returns, for each of those messages the provider
+holds as a ``regular`` message with no deleted marker, its ID and its text, and nothing
+else. A message the provider holds of another type, or deleted, is left out, so the
+caller shows it as unavailable (DM-22 2.1). Asking for no ID, more than the cap or one ID
+twice is the caller's error, refused before any request.
 """
 
 from __future__ import annotations
@@ -37,7 +46,7 @@ ERROR_CODES: frozenset[str] = frozenset(
 # Only an outage is worth repeating; every other code is final for the event.
 RETRYABLE: frozenset[str] = frozenset({PROVIDER_UNAVAILABLE})
 
-# The six operations, and the arguments each may carry. Nothing else exists.
+# The seven operations, and the arguments each may carry. Nothing else exists.
 OPERATIONS: dict[str, frozenset[str]] = {
     "provision_user": frozenset({"user_id"}),
     "create_channel": frozenset({"channel_id", "members"}),
@@ -45,7 +54,13 @@ OPERATIONS: dict[str, frozenset[str]] = {
     "remove_members": frozenset({"channel_id", "members"}),
     "deactivate_user": frozenset({"user_id"}),
     "revoke_user_tokens": frozenset({"user_id", "issued_before"}),
+    # P06.2 Stage C1: the texts of a page's messages, by the IDs Glow committed.
+    "read_message_texts": frozenset({"channel_id", "message_ids"}),
 }
+
+# The most message IDs one text read may ask for (P06.2 Stage C1): a page's texts come in
+# one call, so the cap is the production page limit, ``MessagePageRequest.limit``'s 50.
+TEXT_READ_LIMIT = 50
 
 
 class ChatProviderError(Exception):
@@ -67,6 +82,21 @@ def error_code(error: BaseException) -> ChatErrorCode:
     if isinstance(error, ChatProviderError):
         return error.code
     return PROVIDER_UNAVAILABLE
+
+
+def text_read_ids(message_ids: tuple[str, ...]) -> tuple[str, ...]:
+    """The IDs one text read may ask for: at least one, at most ``TEXT_READ_LIMIT``, each a
+    non-empty string, none twice. Anything else is the caller's error, refused here, before
+    any request (P06.2 Stage C1)."""
+    if not isinstance(message_ids, tuple) or not message_ids:
+        raise ValueError("a text read asks for at least one message ID")
+    if len(message_ids) > TEXT_READ_LIMIT:
+        raise ValueError("a text read asks for at most TEXT_READ_LIMIT message IDs")
+    if not all(isinstance(message_id, str) and message_id for message_id in message_ids):
+        raise ValueError("a message ID is a non-empty string")
+    if len(set(message_ids)) != len(message_ids):
+        raise ValueError("a text read asks for each message ID once")
+    return message_ids
 
 
 @dataclass(frozen=True)
@@ -100,3 +130,9 @@ class ChatProvider(Protocol):
 
     def revoke_user_tokens(self, user_id: str, issued_before: datetime) -> ProviderReceipt:
         """Every token of the user issued before the cut-off stops working."""
+
+    def read_message_texts(self, channel_id: str, message_ids: tuple[str, ...]) -> dict[str, str]:
+        """For each asked message the provider holds as a ``regular`` message with no
+        deleted marker: its ID and its text, and nothing else (P06.2 Stage C1). A message
+        the provider does not return is the caller's "unavailable"; a provider failure is a
+        ``ChatProviderError``, never a partial answer."""

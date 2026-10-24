@@ -7,7 +7,9 @@
 app's adapter (``services/api``'s ``glow_chat``), each with the forced and named cases,
 the stress races, its controls and the commit-order oracle over every row of its own,
 reported separately; then the delivery phase, the app's outbox against the fixture
-provider. It refuses a database an earlier run used (P06.DB's carried item 1). It exits
+provider; then the read phase (P06.2 Stage C1), the app's conversation reads with their
+forced cases and planted controls. It refuses a database an earlier run used (P06.DB's
+carried item 1). It exits
 0 only on a PASS. Django's own ``migrate`` and ``makemigrations --check --dry-run`` run
 separately (``python -m django ...``); Django's ``dbshell`` is refused under these
 settings (the proof's own command, P06.DB's carried item 6).
@@ -150,7 +152,8 @@ def run(seed: int, results_path: Path | None) -> int:
 def run_suite(
     seed: int, results_path: Path | None, reference_report: Any, adapter_report: Any
 ) -> int:
-    """Both subjects, then the delivery phase, on a database ``run`` has accepted."""
+    """Both subjects, then the delivery phase, then the read phase, on a database ``run``
+    has accepted."""
     from glow_chat.contact import OrmContactPersistence
 
     from glow_ordering_proof.adapter import PROVIDER, AdapterFixtures, AdapterSubject
@@ -160,6 +163,7 @@ def run_suite(
     from glow_ordering_proof.evidence import AdapterEvidence, ReferenceEvidence
     from glow_ordering_proof.fixtures import DjangoFixtures
     from glow_ordering_proof.observe import ProofLog
+    from glow_ordering_proof.read_phase import run_read_phase
     from glow_ordering_proof.reference import ReferenceSubject
     from glow_ordering_proof.results import RunReport, render_run
 
@@ -192,6 +196,22 @@ def run_suite(
             f" checks {passed}/{len(run_report.delivery.checks)} passed",
             flush=True,
         )
+        # The reads deliver their own worlds' events to their own provider, after the
+        # delivery phase has drained the outbox.
+        run_report.reads = run_read_phase(adapter_ctx)
+        reads = run_report.reads
+        print(
+            f"[read] cases: {sum(c.passed for c in reads.cases)}/{len(reads.cases)} passed"
+            f" in {reads.seconds:.1f} s",
+            flush=True,
+        )
+        for control in reads.controls:
+            verdict = "failed as intended" if control.failed_as_intended else "DID NOT FAIL"
+            print(
+                f"[read] control {control.control_id}: declared signal {control.declared}:"
+                f" {verdict}",
+                flush=True,
+            )
     finally:
         for worker in workers:
             worker.close()

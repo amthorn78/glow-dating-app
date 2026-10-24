@@ -52,6 +52,18 @@ other 4xx is ``provider_rejected``. Where one number covers several causes (a 40
 code 4 on a send) the message's text is tested in memory only, never stored, returned or
 logged; ``StreamProviderError`` carries the two numbers beside the Glow code, nothing else.
 
+**The text read** (P06.2 Stage C1; the brief's "Stage C under OD-45", point b; DM-22
+2.1). ``read_message_texts`` makes one ``get_many_messages`` call (``GET
+/api/v2/chat/channels/glow-match/{id}/messages`` with the asked IDs), never with
+``member_custom_include``. From the answer it reads each message's ID and text, and its
+``type`` and deleted markers (``deleted_at``, ``deleted_for_me``) only to leave it out:
+a message whose type is not ``regular``, or that carries a deleted marker, is not
+returned, so the history read shows it as unavailable whatever its text. Every other
+field (the user, the member, custom data, reactions, attachments, timestamps) is dropped,
+and so is every message Glow did not ask for; an ID answered twice is not trusted and left
+out. Its errors map as every operation's: 404 with code 16 is ``channel_unavailable``, and a
+success without its list of messages is ``provider_unavailable``.
+
 **The signer** (design point e; DM-16 3.1 to 3.3). ``getstream`` 6.1.0's ``create_token``
 sets ``iat`` to its own clock minus 5 s and ``exp`` to its own clock plus a lifetime, with
 no parameter for either, so the pre-approved fallback signs the token here: HS256 with the
@@ -88,6 +100,7 @@ from .chat_provider import (
     ChatErrorCode,
     ChatProviderError,
     ProviderReceipt,
+    text_read_ids,
 )
 from .chat_tokens import TokenGrant
 
@@ -292,6 +305,45 @@ class StreamChatProvider:
         update = UpdateUserPartialRequest(id=user_id, set={"revoke_tokens_issued_before": text})
         _guarded(lambda: self._client.update_users_partial([update]), missing=MEMBER_UNAVAILABLE)
         return ProviderReceipt(user_id)
+
+    def read_message_texts(self, channel_id: str, message_ids: tuple[str, ...]) -> dict[str, str]:
+        asked = text_read_ids(message_ids)
+        response = _guarded(
+            lambda: self._client.chat.get_many_messages(
+                type=CHANNEL_TYPE, id=channel_id, ids=list(asked)
+            ),
+            missing=CHANNEL_UNAVAILABLE,
+        )
+        messages = response.data.messages
+        if not isinstance(messages, list):
+            # A success without its list of messages could not be read: an outage, never an
+            # answer without every message (DM-22 2.4).
+            raise StreamProviderError(PROVIDER_UNAVAILABLE, status=response.status_code())
+        wanted = set(asked)
+        answered: set[str] = set()
+        texts: dict[str, str] = {}
+        for message in messages:
+            message_id = message.id
+            if message_id not in wanted:
+                continue  # never a message Glow did not ask for
+            if message_id in answered:
+                texts.pop(message_id, None)  # one ID answered twice: neither is trusted
+                continue
+            answered.add(message_id)
+            if _shows_text(message):
+                texts[message_id] = message.text
+        return texts
+
+
+def _shows_text(message: Any) -> bool:
+    """Whether a returned message's text may reach the history read (DM-22 2.1): a
+    ``regular`` message with no deleted marker and a text. Nothing else of it is read."""
+    return (
+        message.type == "regular"
+        and message.deleted_at is None
+        and not message.deleted_for_me
+        and isinstance(message.text, str)
+    )
 
 
 def _numbers(error: StreamApiException) -> tuple[int | None, int | None, str]:

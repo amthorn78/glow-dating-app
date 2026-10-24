@@ -240,12 +240,19 @@ class Judge:
 
 
 def outcome_signal(result: Result, expected: Collection[str]) -> str:
-    """The signal of an unexpected outcome."""
+    """The signal of an unexpected outcome. P06.2 C1: a read that returned its page, or a
+    read cursor that moved, where a refusal was expected is a missing refusal too."""
     if result.outcome == "deadlock":
         return DEADLOCK
     if result.outcome == "error":
         return DATABASE_ERROR
-    if "refused" in expected and result.outcome in ("authorized", "replayed"):
+    if "refused" in expected and result.outcome in (
+        "authorized",
+        "replayed",
+        "read",
+        "listed",
+        "moved",
+    ):
         return REFUSAL_MISSING
     return OTHER
 

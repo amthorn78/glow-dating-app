@@ -1089,8 +1089,7 @@
         "kind",
         "match_id",
         "version",
-        "state",
-        "channel_ref"
+        "state"
       ],
       "properties": {
         "kind": {
@@ -1121,55 +1120,8 @@
           "not": {
             "pattern": "[\\ud800-\\udfff]"
           }
-        },
-        "channel_ref": {
-          "anyOf": [
-            {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100,
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
-              "not": {
-                "pattern": "[\\ud800-\\udfff]"
-              }
-            },
-            {
-              "type": "null"
-            }
-          ]
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "active"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "channel_ref": {
-                "type": "string",
-                "not": {
-                  "pattern": "[\\ud800-\\udfff]"
-                }
-              }
-            }
-          },
-          "else": {
-            "properties": {
-              "channel_ref": {
-                "type": "null"
-              }
-            }
-          }
-        }
-      ]
+      }
     },
     "MessageSubmission": {
       "type": "object",
@@ -1210,6 +1162,406 @@
           }
         }
       }
+    },
+    "LatestMessageMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "at"
+      ],
+      "properties": {
+        "submission_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "at": {
+          "$ref": "#/$defs/Instant"
+        }
+      },
+      "description": "A conversation's latest message over the rows the member may see: Glow's submission ID and Glow's time only, never text (P06.2 C1; DM-22 6.1)."
+    },
+    "ConversationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "match_id",
+        "state",
+        "unread_count",
+        "latest"
+      ],
+      "properties": {
+        "kind": {
+          "const": "conversation"
+        },
+        "match_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "unread_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatestMessageMarker"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "One conversation of the member's list: Glow's state, the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended (P06.2 C1, OD-45).",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "closed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "unread_count": {
+                "const": 0
+              },
+              "latest": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ConversationList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "conversations"
+      ],
+      "properties": {
+        "kind": {
+          "const": "conversation_list"
+        },
+        "conversations": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/ConversationSummary"
+          }
+        }
+      },
+      "description": "The member's conversations, answered from Glow's rows with no provider call; a conversation the member may no longer see is not listed (P06.2 C1)."
+    },
+    "ConversationMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "author",
+        "at",
+        "content",
+        "text",
+        "delivery"
+      ],
+      "properties": {
+        "submission_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "author": {
+          "type": "string",
+          "enum": [
+            "own",
+            "other"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "content": {
+          "type": "string",
+          "enum": [
+            "text",
+            "unavailable"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "delivery": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "pending",
+                "accepted",
+                "failed"
+              ],
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "One message of a page, from Glow's rows: Glow's submission ID, own or other, Glow's time, the text Glow sent or the one unavailable state with no reason, and for own messages the delivery state. No provider ID, timestamp or field (P06.2 C1; DM-22 2.1, 6.2).",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "content": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "content"
+            ]
+          },
+          "then": {
+            "properties": {
+              "text": {
+                "type": "string",
+                "not": {
+                  "pattern": "[\\ud800-\\udfff]"
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "text": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "author": {
+                "const": "own"
+              }
+            },
+            "required": [
+              "author"
+            ]
+          },
+          "then": {
+            "properties": {
+              "delivery": {
+                "type": "string",
+                "not": {
+                  "pattern": "[\\ud800-\\udfff]"
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "delivery": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "MessagePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "match_id",
+        "messages",
+        "older_cursor",
+        "newer_cursor"
+      ],
+      "properties": {
+        "kind": {
+          "const": "message_page"
+        },
+        "match_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "messages": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/ConversationMessage"
+          }
+        },
+        "older_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "newer_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "A page of one conversation: at most 50 accepted messages in the order they became visible, then, on the newest page only, the member's own pending and failed submissions (at most 50). Cursors are opaque and bound to the match they were issued for (P06.2 C1; DM-22 6.4)."
+    },
+    "MessagePageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match_id",
+        "cursor",
+        "limit"
+      ],
+      "properties": {
+        "match_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "description": "A page request for one conversation: no cursor for the newest page, or a cursor a page returned for that match (P06.2 C1)."
+    },
+    "ReadCursorIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "match_id",
+        "submission_id"
+      ],
+      "properties": {
+        "operation": {
+          "const": "read_cursor"
+        },
+        "match_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "submission_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "Move the member's own read cursor forward to an accepted message of the match. A monotone, idempotent command: a repeat, a replay or a cursor behind the current one changes nothing, so it carries no CommandMeta (P06.2 C1)."
     },
     "NotificationSettings": {
       "type": "object",
@@ -2752,6 +3104,9 @@
         },
         {
           "$ref": "#/$defs/DeletionRequest"
+        },
+        {
+          "$ref": "#/$defs/ReadCursorIntent"
         }
       ]
     },
@@ -2846,6 +3201,15 @@
             },
             {
               "$ref": "#/$defs/MediaCollection"
+            },
+            {
+              "$ref": "#/$defs/ConversationList"
+            },
+            {
+              "$ref": "#/$defs/ConversationSummary"
+            },
+            {
+              "$ref": "#/$defs/MessagePage"
             }
           ]
         }

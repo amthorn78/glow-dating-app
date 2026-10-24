@@ -65,6 +65,15 @@ CONSENT_NOT_CURRENT = "consent_not_current"
 NO_CONSENT = "no_consent"
 
 
+def request_digest(match_id: UUID, contact_version: int, text: str) -> str:
+    """The digest of a send's canonical request: its match, the contact version it was
+    authorized at, and its text. A ``MessageSubmission`` stores it, so the history read
+    (P06.2 Stage C1; DM-22 2.1) shows a provider's text only if it is exactly what Glow
+    sent."""
+    canonical = f"{match_id}\n{contact_version}\n{text}".encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
 @dataclass(frozen=True)
 class SendCommand:
     """A member's request to send. The actor is the session's account, never a field
@@ -80,8 +89,7 @@ class SendCommand:
     def request_digest(self) -> str:
         """The canonical request's digest: the same key with a different request is a
         conflict (data model, idempotency keys)."""
-        canonical = f"{self.match_id}\n{self.contact_version}\n{self.text}".encode()
-        return hashlib.sha256(canonical).hexdigest()
+        return request_digest(self.match_id, self.contact_version, self.text)
 
 
 @dataclass(frozen=True)

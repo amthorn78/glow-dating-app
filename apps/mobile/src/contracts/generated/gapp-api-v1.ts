@@ -86,17 +86,6 @@ export type InteractionOutcome = {
 };
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
- * via the `definition` "ChannelEntitlement".
- */
-export type ChannelEntitlement = {
-  kind: 'channel';
-  match_id: string;
-  version: number;
-  state: 'pending' | 'active' | 'revoked' | 'failed';
-  channel_ref: string | null;
-};
-/**
- * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "ExportProjection".
  */
 export type ExportProjection = {
@@ -136,6 +125,33 @@ export type PolicyVersion = string;
  * via the `definition` "Version".
  */
 export type Version = number;
+/**
+ * One conversation of the member's list: Glow's state, the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended (P06.2 C1, OD-45).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ConversationSummary".
+ */
+export type ConversationSummary = {
+  kind: 'conversation';
+  match_id: string;
+  state: 'open' | 'closed';
+  unread_count: number;
+  latest: LatestMessageMarker | null;
+};
+/**
+ * One message of a page, from Glow's rows: Glow's submission ID, own or other, Glow's time, the text Glow sent or the one unavailable state with no reason, and for own messages the delivery state. No provider ID, timestamp or field (P06.2 C1; DM-22 2.1, 6.2).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ConversationMessage".
+ */
+export type ConversationMessage = {
+  submission_id: string;
+  author: 'own' | 'other';
+  at: Instant;
+  content: 'text' | 'unavailable';
+  text: string | null;
+  delivery: ('pending' | 'accepted' | 'failed') | null;
+};
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "Text80".
@@ -202,7 +218,8 @@ export type AppIntent =
   | AppealSubmission
   | SupportRequest
   | ExportRequest
-  | DeletionRequest;
+  | DeletionRequest
+  | ReadCursorIntent;
 
 /**
  * P02 app-owned production design baseline; no production route is implemented. All limits are transport ceilings, not launch policy. HDE ready projection is deliberately unavailable pending A01/A07.
@@ -233,7 +250,10 @@ export interface AppResponse {
     | EntitlementProjection
     | PublicRequestReceipt
     | MediaUploadGrant
-    | MediaCollection;
+    | MediaCollection
+    | ConversationList
+    | ConversationSummary
+    | MessagePage;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -315,6 +335,16 @@ export interface MatchProjection {
   version: number;
   other_profile_id: string;
   state: 'active' | 'unmatched' | 'restricted';
+}
+/**
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ChannelEntitlement".
+ */
+export interface ChannelEntitlement {
+  kind: 'channel';
+  match_id: string;
+  version: number;
+  state: 'pending' | 'active' | 'revoked' | 'failed';
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -432,6 +462,45 @@ export interface MediaCollection {
   items: MediaLifecycle[];
 }
 /**
+ * The member's conversations, answered from Glow's rows with no provider call; a conversation the member may no longer see is not listed (P06.2 C1).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ConversationList".
+ */
+export interface ConversationList {
+  kind: 'conversation_list';
+  /**
+   * @maxItems 200
+   */
+  conversations: ConversationSummary[];
+}
+/**
+ * A conversation's latest message over the rows the member may see: Glow's submission ID and Glow's time only, never text (P06.2 C1; DM-22 6.1).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "LatestMessageMarker".
+ */
+export interface LatestMessageMarker {
+  submission_id: string;
+  at: Instant;
+}
+/**
+ * A page of one conversation: at most 50 accepted messages in the order they became visible, then, on the newest page only, the member's own pending and failed submissions (at most 50). Cursors are opaque and bound to the match they were issued for (P06.2 C1; DM-22 6.4).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "MessagePage".
+ */
+export interface MessagePage {
+  kind: 'message_page';
+  match_id: string;
+  /**
+   * @maxItems 100
+   */
+  messages: ConversationMessage[];
+  older_cursor: string | null;
+  newer_cursor: string | null;
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "CommandMeta".
  */
@@ -459,6 +528,28 @@ export interface Error {
     | 'unsupported_contract'
     | 'rate_limited';
   retryable: boolean;
+}
+/**
+ * A page request for one conversation: no cursor for the newest page, or a cursor a page returned for that match (P06.2 C1).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "MessagePageRequest".
+ */
+export interface MessagePageRequest {
+  match_id: string;
+  cursor: string | null;
+  limit: number;
+}
+/**
+ * Move the member's own read cursor forward to an accepted message of the match. A monotone, idempotent command: a repeat, a replay or a cursor behind the current one changes nothing, so it carries no CommandMeta (P06.2 C1).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ReadCursorIntent".
+ */
+export interface ReadCursorIntent {
+  operation: 'read_cursor';
+  match_id: string;
+  submission_id: string;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -692,7 +783,10 @@ export interface AppResponse1 {
     | EntitlementProjection
     | PublicRequestReceipt
     | MediaUploadGrant
-    | MediaCollection;
+    | MediaCollection
+    | ConversationList
+    | ConversationSummary
+    | MessagePage;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.

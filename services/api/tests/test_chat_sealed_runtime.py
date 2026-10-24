@@ -11,6 +11,10 @@ Stage B2 (DM-16 2.3): the runtime imports neither the Stream adapter
 dependencies ``pydantic_settings`` and ``dotenv``), and the adapter module imports nothing
 from Django, ``glow_persistence`` or ``glow_chat``: only the port, the token module and
 the SDK, so it loads without Django (DM-16 4.6).
+
+Stage C1: nor the conversation reads' domain types or their projections
+(``glow_domain.chat_reads``, ``glow_domain.chat_projections``); their adapter,
+``glow_chat.reads``, is in ``glow_chat``. No URL names them: P11 serves the reads.
 """
 
 import json
@@ -71,7 +75,9 @@ print(json.dumps({
     "modules": sorted(name for name in sys.modules if name.split(".")[0] in
                       ("glow_chat", "glow_persistence", "psycopg", "psycopg_binary",
                        "getstream", "pydantic_settings", "dotenv", "jwt")
-                      or name == "glow_domain.chat_provider_stream"),
+                      or name in ("glow_domain.chat_provider_stream",
+                                  "glow_domain.chat_reads",
+                                  "glow_domain.chat_projections")),
     "engine": settings.DATABASES["default"]["ENGINE"],
     "installed": list(settings.INSTALLED_APPS),
     "patterns": patterns,
@@ -117,6 +123,9 @@ class SealedRuntimeTests(unittest.TestCase):
                 # Stage B2: nor the Stream adapter or its SDK (DM-16 2.3).
                 self.assertNotIn("chat_provider_stream", source)
                 self.assertNotIn("getstream", source)
+                # Stage C1: nor the reads or their projections.
+                self.assertNotIn("chat_reads", source)
+                self.assertNotIn("chat_projections", source)
 
     def test_the_stream_adapter_loads_without_django_and_imports_only_its_three(self) -> None:
         """DM-16 2.3 and 4.6: the adapter module, imported in a process whose Django is
