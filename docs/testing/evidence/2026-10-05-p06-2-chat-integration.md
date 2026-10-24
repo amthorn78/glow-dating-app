@@ -2384,3 +2384,21 @@ Relayed by Nathan to App Manager 7 on 24 October. The review session ran the [re
 1. The Dev Manager's read of OD-45's register row (DM-21), the one governing change since DM-20's read at `050a37e`.
 2. PR31 marked ready, so that Codex reviews the final head (OD-41).
 3. The final head's run, and PR31's merge.
+
+## Stage B2's merge receipt (24 October 2026)
+
+- **PR31 merged** at about 03:23 UTC on 24 October, by App Manager 7. The merge commit is `3572c41d8c401cc0c54430a9e364c2c1c58b5963`; its parents are `3272eed`, `main` before, and `a35ce1aa499e4ff110e0c35651ca59087dc325c2`, the final head, pinned with the merge's expected head. Checked: `origin/main` is `3572c41`, and its tree equals `a35ce1a`'s.
+- **The pre-merge checklist** (PR31's description):
+  - **The exact-head reviews** of `51844a5` (B2 to B2-C3, approve), `da3c0ff` (B2-C4, changes required, made by B2-C5) and `93caa4b` (B2-C5, record corrections only, made). The final head's code is `a1e92eb`'s, apart from the harness README's corrected sentence.
+  - **The Dev Manager's reads** DM-16 to DM-21. DM-21 (`278369e`, of `016e9fe`) covers the final governing text, with 1.1 and 2.1 to 2.4 applied as written at `a35ce1a`.
+  - **Codex's code review** completed on `a35ce1a` at 03:17 UTC, triggered by marking the PR ready.
+  - **The final head's run:** PR run 40057495942 on `a35ce1a`. All eight jobs passed; the database job ran from 03:14:46Z to 03:21:56Z, and the gate printed `Application checks passed`.
+- **CX7, Codex's one finding** (P2, `proofs/stream-chat/glow_stream_proof/conformance.py:528-529`), verified.
+  - **What it is:** `_refused` counts any non-success connect or read as a refusal. A Stream 5xx during a negative token check would give PASS on R3, D3, D7, V5, V6 or V12, even if the removal, deactivation or revocation had not taken effect.
+  - **Outside the correction classes.** B2-C3's live run is the only one, and it recorded attributable refusals for every affected row: R3, read 403 code 17; D3 and D7, connect 404 code 16; V5, V6 and V12, connect 401 code 40. So no recorded result rests on the defect, and DM-16 sets no rule it breaks. Codex's P2 findings on PR28 were carried on the same basis.
+  - **Carried to the P11 plan** as a fix required before the harness's next live conformance run: `_refused` passes only the expected authentication or permission refusals and the documented 404 code 16, and marks any other answer INCONCLUSIVE, with a test.
+  - The manager replied on Codex's thread with this disposition.
+- **Branch state at the merge** (`git ls-remote --heads`, each head checked as an ancestor of `origin/main`):
+  - **Kept:** `main`; `claude/magical-wozniak-yfmmx2`, fast-forwarded to `3572c41` for Stage C; `claude/dev-manager`, kept by name, its head `278369e` in `main`.
+  - **Fully merged, given to Nathan to delete.** These are the session branches of B2 to B2-C5, each head in `main`: `claude/sharp-clarke-fmeflb` (`6bdc9b8`), `ccr-a4379c5f-jeokfe` (`9e24ca1`), `claude/exciting-curie-ay6811` (`cf27fef`), `claude/admiring-lovelace-c6ii7i` (`9dbcda8`), `claude/exciting-lovelace-yhr21v` (`0fdc54d`) and `claude/cool-thompson-95ynmy` (`93caa4b`). B1's and B1-C1's, `claude/gracious-newton-4fjsmn` (`e6a5c0d`) and `claude/kind-ride-brzl8u` (`c562867`), are still present from PR30.
+- **Next:** Stage C, under OD-45. It needs a brief revision for its design: no Stream SDK in the app; history and new messages through Glow's API; the history operation and the realtime contract, offline. PF01 section 4's Chat row changes with it. The Dev Manager reads the revision with Stage C's prompt.
