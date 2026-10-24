@@ -27,10 +27,19 @@ member commits while it is held, with no wait recorded for the block (3.2), and 
 is refused.
 
 C1-C1 (C1's exact-head review): ``read.inside_open_transaction`` calls the read inside an
-open transaction, which must be an ``error`` with no provider call and no lock taken
-(finding 1); ``read.final_check_first_lock`` holds the final check at its first lock
-against a block and a suspension, and holds each of them at its first lock against the
-final check, every wait observed (finding 5).
+atomic block (``transaction.atomic()``, not a Django test case's), which must be an
+``error`` with no provider call and no lock taken (finding 1);
+``read.final_check_first_lock`` holds the final check at its first lock against a block
+and a suspension, and holds each of them at its first lock against the final check, every
+wait observed (finding 5).
+
+C1-C2 (C1-C1's re-review): the two other ways a caller can have a transaction open, each
+an ``error`` (``transaction_open``) with no provider call and no transaction ID assigned:
+``read.autocommit_off`` reads on a connection with ``transaction.set_autocommit(False)``,
+and a block by the other member, run before the caller's transaction ends, is not held
+up by the read (R1); ``read.inside_test_case_block`` reads under an atomic block marked
+as a Django test case's (R3). ``read.final_check_first_lock`` runs for each reader, the
+lower member and the higher member (R2).
 
 **The named cases**: the order follows acceptance (2.2), pages and cursors, only text
 Glow sent (2.1), a provider error fails the read (2.4), the cursor bound to its match
@@ -428,9 +437,10 @@ def block_during_provider_call(phase: ReadPhase, ctx: Context, judge: Judge) -> 
 
 
 def read_inside_open_transaction(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
-    """C1-C1, finding 1 (DM-22 3.2): a read called inside an open transaction would hold
-    the first check's locks across the provider call. It is an ``error``, the provider is
-    not called, and the enclosing transaction holds no lock the read took."""
+    """C1-C1, finding 1 (DM-22 3.2): a read called inside an atomic block
+    (``transaction.atomic()``, not a Django test case's) would hold the first check's locks
+    across the provider call. It is an ``error``, the provider is not called, and the
+    enclosing transaction holds no lock the read took."""
     world = _conversation(phase)
     reads = phase.reads()
     calls = _read_calls(phase)
@@ -448,9 +458,9 @@ def read_inside_open_transaction(phase: ReadPhase, ctx: Context, judge: Judge) -
         return read, began, same, xid
 
     read, began, same, xid = ctx.workers[0].run(inside)
-    judge.outcome(as_result(read), "the read inside an open transaction", "error")
-    judge.expect(read.page is None, "a page was returned inside an open transaction")
-    judge.expect(_read_calls(phase) == calls, "the read inside a transaction called the provider")
+    judge.outcome(as_result(read), "the read inside an atomic block", "error")
+    judge.expect(read.page is None, "a page was returned inside an atomic block")
+    judge.expect(_read_calls(phase) == calls, "the read inside an atomic block called the provider")
     judge.expect(began == same, f"not one enclosing transaction: {began} then {same}")
     judge.expect(xid is None, f"the enclosing transaction holds the read's locks (xid {xid})")
     judge.note(f"enclosing transaction from {began}: transaction ID {xid}, the read {read.reason}")
@@ -461,17 +471,138 @@ def read_inside_open_transaction(phase: ReadPhase, ctx: Context, judge: Judge) -
     judge.expect(made == 1, f"{made} provider calls in all, expected the read outside's one")
 
 
-def _final_check_holds_first_lock(
-    rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge
-) -> None:
-    """The final check holds its first lock (the lower account's, in the canonical order);
-    the writer, whose first lock is the same row, is observed waiting on it; the page is
-    returned and the writer applies."""
+def read_autocommit_off(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """C1-C2 (C1-C1's re-review, R1): a read on a connection whose caller turned autocommit
+    off (``transaction.set_autocommit(False)``), which is not an atomic block. The read
+    refuses before any statement: ``error``, ``transaction_open``, no page and no provider
+    call; the caller's transaction has no transaction ID assigned, so the read took no row
+    lock; and a block by the other member, run while that transaction is still open, is not
+    observed waiting on the reader's backend and applies. Then autocommit is restored."""
+    from glow_chat.reads import TRANSACTION_OPEN
+
     world = _conversation(phase)
     reads = phase.reads()
+    before = reads.read_history(_request(world))
+    judge.outcome(as_result(before), "the read with autocommit on", "read")
+    calls = _read_calls(phase)
+    hold = Hold()
+    seen: dict[str, Any] = {}
+
+    def autocommit_off() -> Result:
+        transaction.set_autocommit(False)
+        try:
+            seen["read"] = reads.read_history(_request(world))
+            # From the database, inside the caller's transaction: no transaction ID, so no
+            # row lock (``FOR SHARE`` assigns one) and no write.
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_backend_pid(), pg_current_xact_id_if_assigned()")
+                seen["pid"], seen["xid"] = cursor.fetchone()
+            hold.point()  # the caller's transaction stays open while the block runs
+        finally:
+            transaction.rollback()
+            transaction.set_autocommit(True)
+        return as_result(seen["read"])
+
+    reading = ctx.workers[0].submit(autocommit_off)
+    if not _wait_held(hold, reading):
+        hold.release.set()
+        reading.result(timeout=budget.HOLD_SECONDS)
+        judge.fail("the read with autocommit off reached no hold point")
+        return
+    read: ReadResult = seen["read"]
+    judge.outcome(
+        as_result(read),
+        "the read with autocommit off",
+        "error",
+        reasons={TRANSACTION_OPEN},
+    )
+    judge.expect(read.page is None, "a page was returned with autocommit off")
+    judge.expect(_read_calls(phase) == calls, "the read with autocommit off called the provider")
+    judge.expect(
+        seen["xid"] is None,
+        f"the caller's transaction holds the read's locks (xid {seen['xid']})",
+    )
+    writer = PidSlot()
+    blocking = ctx.workers[1].submit(
+        lambda: ctx.subject.block(world.high, world.low, hooks=Hooks(on_begin=writer.set))
+    )
+    observed = observe_lock_wait(writer.wait(), holder_pid=seen["pid"], finished=blocking.done)
+    judge.wait(observed, required=False)
+    if observed.observed:
+        # The read left its locks with the caller: end that transaction first, so the case
+        # ends by its signal, not by the harness's timeout (as ``read_waits`` does).
+        hold.release.set()
+    judge.expect(not observed.observed, "the block waited on the reader's transaction")
+    try:
+        # The caller's transaction is still open: a block that waited on it would time out.
+        blocked = blocking.result(timeout=budget.WAIT_OBSERVATION_SECONDS)
+    finally:
+        hold.release.set()
+    reading.result(timeout=budget.HOLD_SECONDS)
+    judge.outcome(blocked, "a block by the other member, the caller's transaction open", "applied")
+    REVOCATION_BY_ID["block_by_high"].effect(world, judge)
+    judge.note(
+        f"autocommit off: the read {as_result(read).label()},"
+        f" transaction ID {seen['xid']}; the block committed while the caller's transaction"
+        " was open"
+    )
+
+
+def read_inside_test_case_block(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """C1-C2 (C1-C1's re-review, R3): a read under an outer atomic block marked as a Django
+    test case's, as ``TestCase`` marks its own. Django lets a durable block nest there; the
+    read refuses before any statement instead: ``error``, ``transaction_open``, no page,
+    no provider call, and no transaction ID assigned to the outer transaction."""
+    from glow_chat.reads import TRANSACTION_OPEN
+
+    world = _conversation(phase)
+    reads = phase.reads()
+    calls = _read_calls(phase)
+
+    def inside() -> tuple[ReadResult, Any]:
+        outer = transaction.atomic()
+        outer._from_testcase = True  # as django.test.TestCase._enter_atomics marks it
+        with outer, connection.cursor() as cursor:
+            read: ReadResult = reads.read_history(_request(world))
+            cursor.execute("SELECT pg_current_xact_id_if_assigned()")
+            xid = cursor.fetchone()[0]
+            transaction.set_rollback(True)  # a test case's block is rolled back
+        return read, xid
+
+    read, xid = ctx.workers[0].run(inside)
+    judge.outcome(
+        as_result(read),
+        "the read under a test case's atomic block",
+        "error",
+        reasons={TRANSACTION_OPEN},
+    )
+    judge.expect(read.page is None, "a page was returned under a test case's atomic block")
+    judge.expect(
+        _read_calls(phase) == calls, "the read under a test case's atomic block called the provider"
+    )
+    judge.expect(xid is None, f"the test case's transaction holds the read's locks (xid {xid})")
+    after = reads.read_history(_request(world))
+    judge.outcome(as_result(after), "the same read outside any transaction", "read")
+    made = _read_calls(phase) - calls
+    judge.expect(made == 1, f"{made} provider calls in all, expected the read outside's one")
+
+
+def _reader(world: World, reader: str) -> UUID:
+    return world.low if reader == "low" else world.high
+
+
+def _final_check_holds_first_lock(
+    rev: Revocation, reader: str, phase: ReadPhase, ctx: Context, judge: Judge
+) -> None:
+    """The final check of the ``reader`` member's read holds its first lock (the lower
+    account's, in the canonical order, whoever reads); the writer, whose first lock is the
+    same row, is observed waiting on it; the page is returned and the writer applies."""
+    world = _conversation(phase)
+    reads = phase.reads()
+    request = _request(world, reader=_reader(world, reader))
     hold, final = Hold(), PidSlot()
     probe = ReadProbe(final=TransactionProbe(on_begin=final.set, after_first_lock=hold.point))
-    reading = ctx.workers[0].submit(lambda: reads.read_history(_request(world), probe=probe))
+    reading = ctx.workers[0].submit(lambda: reads.read_history(request, probe=probe))
     if not _wait_held(hold, reading):
         hold.release.set()
         judge.fail(f"the final check reached no hold point: {as_result(reading.result()).label()}")
@@ -483,22 +614,32 @@ def _final_check_holds_first_lock(
     read = reading.result(timeout=budget.HOLD_SECONDS)
     written = writing.result(timeout=budget.HOLD_SECONDS)
     judge.outcome(
-        as_result(read), f"the read (its final check held its first lock: {rev.id})", "read"
+        as_result(read),
+        f"the read by the {reader} member (its final check held its first lock: {rev.id})",
+        "read",
     )
-    judge.outcome(written, f"{rev.title} (arrived at the final check's first lock)", "applied")
+    judge.outcome(
+        written,
+        f"{rev.title} (arrived at the {reader} reader's final check's first lock)",
+        "applied",
+    )
     rev.effect(world, judge)
 
 
-def _writer_holds_first_lock(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -> None:
-    """The writer holds its first lock (the lower account's); the final check arrives and
-    is observed waiting on it; the writer applies and the read is refused."""
+def _writer_holds_first_lock(
+    rev: Revocation, reader: str, phase: ReadPhase, ctx: Context, judge: Judge
+) -> None:
+    """The writer holds its first lock (the lower account's); the final check of the
+    ``reader`` member's read arrives and is observed waiting on it; the writer applies and
+    the read is refused."""
     world = _conversation(phase)
     reads = phase.reads()
+    request = _request(world, reader=_reader(world, reader))
     read_hold, final = Hold(), PidSlot()
     probe = ReadProbe(
         after_provider_call=read_hold.point, final=TransactionProbe(on_begin=final.set)
     )
-    reading = ctx.workers[0].submit(lambda: reads.read_history(_request(world), probe=probe))
+    reading = ctx.workers[0].submit(lambda: reads.read_history(request, probe=probe))
     if not _wait_held(read_hold, reading):
         read_hold.release.set()
         judge.fail(f"the read reached no hold point: {as_result(reading.result()).label()}")
@@ -519,31 +660,40 @@ def _writer_holds_first_lock(rev: Revocation, phase: ReadPhase, ctx: Context, ju
     write_hold.release.set()
     written = writing.result(timeout=budget.HOLD_SECONDS)
     read = reading.result(timeout=budget.HOLD_SECONDS)
-    judge.outcome(written, f"{rev.title} (held its first lock)", "applied")
+    judge.outcome(
+        written, f"{rev.title} (held its first lock against the {reader} reader)", "applied"
+    )
     rev.effect(world, judge)
     judge.outcome(
         as_result(read),
-        f"the read (its final check arrived at the first lock of {rev.id})",
+        f"the read by the {reader} member (its final check arrived at the first lock of {rev.id})",
         "refused",
         reasons=rev.refusals,
     )
 
 
-# The writers whose first lock is the final check's first lock: a block (by the other
-# member; every block locks the lower account first) and a suspension of the reader's
-# account, which locks that row only.
+# The writers whose first lock is the final check's first lock, the lower account's: a
+# block (every block locks the lower account first, whoever blocks) and a suspension of
+# the lower account, which locks that row only.
 FIRST_LOCK_WRITERS = ("block_by_high", "suspend_low")
+# C1-C2 (C1-C1's re-review, R2): each member reads in turn. For the lower member, "the
+# lower account first" and "the reader's own account first" are the same order; the
+# higher member's read tells them apart.
+FIRST_LOCK_READERS = ("low", "high")
 
 
 def final_check_first_lock(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
-    """C1-C1, finding 5: the final check's lock order, as the send's ``opposing_*`` cases
-    test the send's. Against a block and against a suspension, both ways: the final check
-    holds its first lock and the writer waits on it; the writer holds its first lock and
-    the final check waits on it. Each wait is observed; no deadlock."""
-    for rev_id in FIRST_LOCK_WRITERS:
-        rev = REVOCATION_BY_ID[rev_id]
-        _final_check_holds_first_lock(rev, phase, ctx, judge)
-        _writer_holds_first_lock(rev, phase, ctx, judge)
+    """C1-C1, finding 5, and C1-C2, R2: the final check's lock order, as the send's
+    ``opposing_*`` cases test the send's. For each reader, the lower member and the higher
+    member, against a block and against a suspension, both ways: the final check holds its
+    first lock and the writer waits on it; the writer holds its first lock and the final
+    check waits on it. Each of the eight waits is observed; no deadlock. The order after
+    the first lock is not pinned here."""
+    for reader in FIRST_LOCK_READERS:
+        for rev_id in FIRST_LOCK_WRITERS:
+            rev = REVOCATION_BY_ID[rev_id]
+            _final_check_holds_first_lock(rev, reader, phase, ctx, judge)
+            _writer_holds_first_lock(rev, reader, phase, ctx, judge)
 
 
 # -- the named cases --------------------------------------------------------------------------
@@ -991,14 +1141,29 @@ NAMED: tuple[tuple[str, str, str, Callable[..., None]], ...] = (
     (
         "read.inside_open_transaction",
         "DM-22 3.2 no lock across the provider call (C1-C1, finding 1)",
-        "a read inside an open transaction is an error, with no provider call and no lock taken",
+        "a read inside an atomic block (transaction.atomic(), not a Django test case's) is an"
+        " error, with no provider call and no lock taken",
         read_inside_open_transaction,
     ),
     (
+        "read.autocommit_off",
+        "DM-22 3.2 no lock across the provider call (C1-C2, R1)",
+        "a read with autocommit off (set_autocommit(False)) is an error (transaction_open),"
+        " with no provider call, no transaction ID, and a block by the other member not held up",
+        read_autocommit_off,
+    ),
+    (
+        "read.inside_test_case_block",
+        "DM-22 3.2 no lock across the provider call (C1-C2, R3)",
+        "a read under an atomic block marked as a Django test case's is an error"
+        " (transaction_open), with no provider call and no transaction ID",
+        read_inside_test_case_block,
+    ),
+    (
         "read.final_check_first_lock",
-        "DM-22 3.2 the final check's lock order (C1-C1, finding 5)",
-        "the final check and a block, and a suspension, each holding its first lock against"
-        " the other; every wait observed",
+        "DM-22 3.2 the final check's lock order (C1-C1, finding 5; C1-C2, R2)",
+        "for each reader, the lower and the higher member: the final check and a block, and a"
+        " suspension, each holding its first lock against the other; every wait observed",
         final_check_first_lock,
     ),
     (
