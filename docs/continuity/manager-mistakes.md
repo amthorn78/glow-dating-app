@@ -722,3 +722,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** PR31's merge and Stage C's design waited one relay turn. No record was wrong.
 - **Correction:** the manager read Codex's review and verified the final run, merged PR31 and recorded the receipt (`d0439fc`). It then wrote Stage C's design and DM-22 in the same turn.
 - **Prevention:** before ending a turn, the manager checks the handoff's next actions. Any step that needs nothing from Nathan or another session, it takes now. A message that ends a turn is "NOTHING NEEDED" only when the next step is someone else's.
+
+### AM7-10 — A session's limit turned into an absolute in the P11 plan (accuracy)
+
+- **What happened:** recording C1-C1, App Manager 7 wrote in the P11 plan that the reads' guards meant "no enclosing Django transaction can hold their locks across it". It also carried the session's C1C1-X1 (raw `BEGIN`) as the remaining limit. The manager had checked neither claim. Django's own `transaction.set_autocommit(False)` passes both guards, and the pinned psycopg already refuses a raw `BEGIN`.
+- **Caught by:** C1-C1's exact-head re-review (R1).
+- **Effect:** none on a decision or a member. The re-review caught it before PR32 merges, and nothing is served.
+- **Correction:** the P11 plan's line and the manager's verification note are corrected in place, marked as corrections. C1-C2 closes the path in code.
+- **Prevention:** AM7-08's rule applies to the manager's own summaries as well as to a session's claims. A record says "no", "never" or "every" only when the manager has checked the paths it covers. Otherwise it states what the mechanism does.

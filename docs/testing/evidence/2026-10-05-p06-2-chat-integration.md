@@ -2717,6 +2717,53 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 - **What the manager read in the code:**
   - `_run` opens `transaction.atomic(durable=True)` (`reads.py:144`);
   - `read_history` returns `error`, `atomic_block_open`, before the provider call when `connection.in_atomic_block` is true (`:495-499`). Its comment records why that guard is needed beside the durable flag: Django lets a durable block nest inside a test case's own atomic block.
-- **The session's finding C1C1-X1** (a limit): a transaction opened with raw SQL `BEGIN` is invisible to both the durable flag and the assertion. It goes to the P11 plan: P11 opens every transaction through Django, never raw `BEGIN`, on a connection the reads use.
+- **The session's finding C1C1-X1** (a limit): a transaction opened with raw SQL `BEGIN` is invisible to both the durable flag and the assertion. It goes to the P11 plan: P11 opens every transaction through Django, never raw `BEGIN`, on a connection the reads use. [Corrected by App Manager 7 after C1-C1's re-review, R1: the pinned psycopg 3.3.6 refuses a raw `BEGIN` here (`ProgrammingError`, no provider call). The open path is Django's own `transaction.set_autocommit(False)`, which passes both guards. C1-C2 closes it, and the P11 plan's line is corrected (AM7-10).]
 
 **Next:** C1-C1's exact-head re-review, then Codex's code review of PR32's final head (OD-41).
+
+## Exact-head review of Stage C1-C1 (24 October 2026)
+
+- **Prompt:** [revision 1](../../ephemeral/2026-10-24-p06-2-stage-c1-c1-review-prompt.md), from `8a753c3513ba8ca5b8c8af74ff0ad58810a4e205`; offline, in `Glow App - No Stream`.
+- **The model and level:** Nathan's pick, Opus 5.5 at extra high, which was TypeSafe's reading.
+- **Start gate and classification:** every check passed. The head's code is identical to `f4749ee`'s, and the base's to `91c3945`'s. The trusted policy reports `"full": true`, `behavior-or-empty`, 12 paths. The owned-path filter printed nothing.
+- **Checks at `HEAD`:**
+  - **the API:** 364 tests OK; Ruff and format clean (78 files); mypy 41 files; the static check and `makemigrations` clean; sealed-runtime OK; smoke three PASS;
+  - **the proof:** 159 OK; Ruff and mypy clean (44 files).
+  - **A local PostgreSQL 16.15 run** (iteration only): reference 56/56, adapter 115/115, delivery 13/13, reads 60/60, all three read controls failing as intended, `VERDICT PASS`.
+  - **Reversals:** four offline and three on the database, each with the expected result.
+- **The run of record 40109633125,** read by the reviewer:
+  - all eight jobs `success`, and the gate printed `Application checks passed`;
+  - API 364; proof 159; PostgreSQL 17.11; reads 60/60 in 10.1 s with the three controls' lines and `VERDICT: PASS`;
+  - the used-database re-run refused (exit 1);
+  - the only `***` masks are the checkout token's.
+- **Confirmed:**
+  - **Finding 1's durable block:** inside a non-test-case atomic block it raises `RuntimeError` before any statement, which `_run` makes an `error`;
+  - **the guard's placement:** immediately before the only provider call;
+  - **durability elsewhere:** the list and the cursor move run durable;
+  - **the cursor move's savepoint** nests correctly;
+  - **finding 5's case and control** (all four waits observed; the control fails by `deadlock + wait_not_observed`);
+  - **findings 8 and 10;**
+  - **the records,** except as below;
+  - **nothing else changed** since `91c3945`.
+
+**Verdict: changes required,** for two should-fix findings in correction classes. Nothing is blocking.
+
+| # | Severity | Finding | Correction class | Disposition |
+|---|---|---|---|---|
+| R1 | Should fix | `reads.py:495` with `:144`: a transaction opened by Django's `transaction.set_autocommit(False)` is not an atomic block. The durable flag has no outer block to refuse, `_run` becomes a savepoint, and `in_atomic_block` is False again on exit, so the guard passes. In the reviewer's scratch experiment on PostgreSQL, the provider call ran while the reader's backend was `idle in transaction` holding the first check's locks. A block by the other member waited on the reader during the call, and the read returned its page. A raw `BEGIN` is refused by the pinned psycopg 3.3.6 (`ProgrammingError`, no provider call, no lock). So C1C1-X1 named a limit the driver already closes, and the P11 plan's line ("no enclosing Django transaction can hold their locks") claimed more than the code shows | Yes: a safety action could wait on the provider; a record claims more than the code shows | **To C1-C2:** the guard before the provider call also refuses when autocommit is off (`connection.in_atomic_block or not connection.get_autocommit()`); a read-phase case under `set_autocommit(False)`, expecting `error`, no provider call and no transaction ID; the wording "inside an open transaction" corrected in the README, `read_phase.py`'s docstring and the case title. **The manager has corrected** the P11 plan's line and the verification's C1C1-X1 note in place (AM7-10) |
+| R2 | Should fix | `read_phase.py:464-545` (plan entry `:998`): every hold in `read.final_check_first_lock` uses the lower member as the reader, where "the lower account first" and "the reader's own account first" are the same. Two wrong final checks passed it in the reviewer's scratch copy. With the reader as the higher member, a "reader's account first" variant deadlocks against a block, and the block can be the victim | Yes: a forced case passes where it should fail, given its declared guarantee | **To C1-C2:** both holds run for each reader, the lower and the higher member, with the same two writers. The record says that the order after the first lock is not pinned, and why it is deadlock-free against today's writers (each that locks both accounts takes the lower first, and none locks the higher account and the match without the lower) |
+| R3 | Nit | `read_phase.py:430`: with the history read's atomic-block check removed and the durable flag kept, `read.inside_open_transaction` still passes. The check is covered only by the mocked offline test | No | **To C1-C2:** a read-phase variant under an outer block marked as a Django test case's, expecting `error:atomic_block_open` and no provider call |
+| R4 | Nit | The P11 plan does not say how to serve the reads: under `ATOMIC_REQUESTS` every read, list and cursor move would fail, and under a Django `TestCase` a history read returns `atomic_block_open` | No | **The manager's P11 plan line,** now: `non_atomic_requests`, never autocommit off on the reads' connection, `TransactionTestCase` |
+| R5 | Nit | `production-contracts.md:121-125`: for pending and failed messages `at` is the event's `available_at`, the submission time only because today's deliverer leaves it unchanged on a retry (`delivery.py:470`) | No | **To C1-C2:** the sentence tied to today's deliverer. **The manager's P11 plan bullet** names the dependency |
+
+- **The reviewer's two questions, answered:**
+  - **R1:** the code fix and its case (the reviewer's recommendation). It closes the path DM-22 3.2 forbids, and a records-only rule would leave it to every later caller.
+  - **R2:** the case runs for both readers (the reviewer's recommendation), keeping its declared guarantee.
+- **The review's limits:**
+  - its local runs were on PostgreSQL 16.15, not CI's 17.11;
+  - the experiments behind R1 to R3 are scratch runs, not repeated in CI;
+  - R1's fix was tried only against its own experiment;
+  - only psycopg 3.3.6 was tested for raw `BEGIN`.
+- **No item is Nathan's.**
+
+**Next:** the correction pass C1-C2, offline (the brief, "C1-C1's re-review, and C1-C2"), then its exact-head re-review.
