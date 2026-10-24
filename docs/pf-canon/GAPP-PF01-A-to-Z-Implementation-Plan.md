@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.11 · **Date:** 29 September 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.12 · **Date:** 24 October 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
@@ -113,7 +113,7 @@ The prior research sampled legacy SQL-parameter logging, development-secret/sess
 | Jobs | Celery/Redis with transactional outbox and bounded retries | Reuse queue mechanics; build durable domain events, deduplication and dead-letter/reconciliation procedures |
 | HDE | App-owned port and one HDE adapter | Build mapping, timeout/error handling and provenance; reuse engine intelligence and protected engine data |
 | Media | Cloudflare Images/private R2 as appropriate | Reuse upload/storage/delivery; build authorization, quarantine, moderation and lifecycle state |
-| Chat | Stream Chat, behind Glow's server only (OD-45, 24 October 2026); its cost stays Nathan's launch decision (A04) | Reuse Stream's server-side delivery and retained history. Glow's API serves history and new messages; the app holds no provider credential, SDK or connection. Build app-controlled mutual-match and block enforcement |
+| Chat | Stream Chat, behind Glow's server only (OD-45, 24 October 2026); its cost stays Nathan's launch decision (A04) | Reuse Stream's server-side delivery and retained history. Glow's API serves history and new messages; the app holds no provider credential, SDK or connection. Build app-controlled mutual-match and block enforcement, and the required drift check of the provider's configuration (OD-45) |
 | Billing | RevenueCat/store SDKs if monetization is selected | Reuse purchase/receipt lifecycle; build entitlement rules, reconciliation and support surfaces |
 | Operations | WordPress plugin calling scoped application admin APIs | Reuse WordPress staff UI/CMS, which also hosts the public sales landing page; app API owns dating authorization, moderation state and audit history. WordPress is never a second backend and never reads or writes app or HDE tables (OD-19) |
 | Quality/operations | CI, standard test runners, error/metric tooling | Configure reproducible checks, redaction, alerts and release evidence; no custom orchestration platform |
@@ -590,3 +590,10 @@ The product scope changes only by the landing page. No phase acceptance, D08 aut
 - Section 4's Operations row says WordPress never reads or writes app or HDE tables (OD-19; DM-07 finding 1.2).
 
 No product scope, phase acceptance, D08 authority or HDE boundary changes.
+
+1.12 — records Nathan's D8 decision of 24 October 2026 (OD-45), after the Dev Manager's DM-22 read:
+
+- Section 4's Chat row: Stream Chat behind Glow's server only; Glow's API serves history and new messages; the app holds no provider credential, SDK or connection; the provider's configuration has a required drift check (DM-22 11.1).
+- Under OD-45, P06's "token lifecycle", and its validation's "direct SDK send restrictions" and "stale tokens", no longer apply to the app. The server's dormant token code stays until a later cleanup (DM-22 11.2).
+
+No phase acceptance, D08 authority or HDE boundary changes.
