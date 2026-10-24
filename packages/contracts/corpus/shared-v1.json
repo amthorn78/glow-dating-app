@@ -576,8 +576,7 @@
         "kind": "channel",
         "match_id": "11111111-1111-4111-8111-111111111111",
         "version": 1,
-        "state": "pending",
-        "channel_ref": null
+        "state": "pending"
       },
       "valid": true
     },
@@ -590,7 +589,6 @@
         "match_id": "11111111-1111-4111-8111-111111111111",
         "version": 1,
         "state": "pending",
-        "channel_ref": null,
         "birth_secret": "must-not-leak"
       },
       "valid": false
@@ -2461,7 +2459,7 @@
       "valid": false
     },
     {
-      "name": "invalid-lifecycle-ChannelEntitlement",
+      "name": "provider-field-channel_ref-ChannelEntitlement",
       "scope": "production",
       "definition": "ChannelEntitlement",
       "value": {
@@ -2469,7 +2467,7 @@
         "match_id": "11111111-1111-4111-8111-111111111111",
         "version": 1,
         "state": "pending",
-        "channel_ref": "unapproved-channel"
+        "channel_ref": "0123456789abcdef0123456789abcdef"
       },
       "valid": false
     },
@@ -6999,6 +6997,4678 @@
         "batch_version": 1,
         "action": "like",
         "account_id": "discovery-jules"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationSummary-no-message",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 0,
+        "latest": null
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationSummary-closed",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "closed",
+        "unread_count": 0,
+        "latest": null
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-closed-with-unread-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "closed",
+        "unread_count": 2,
+        "latest": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-closed-with-marker-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "closed",
+        "unread_count": 0,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-reason-state-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "blocked",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-negative-unread-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": -1,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-marker-text-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "text": "a preview"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationList-empty",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": []
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationMessage-other",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationMessage-own-accepted",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "author": "own",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hi",
+        "delivery": "accepted"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationMessage-own-pending",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "44444444-4444-4444-8444-444444444444",
+        "author": "own",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "on its way",
+        "delivery": "pending"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationMessage-unavailable",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "unavailable",
+        "text": null,
+        "delivery": null
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-ConversationMessage-own-failed-unavailable",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "44444444-4444-4444-8444-444444444444",
+        "author": "own",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "unavailable",
+        "text": null,
+        "delivery": "failed"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-other-with-delivery-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": "accepted"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-own-without-delivery-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "author": "own",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hi",
+        "delivery": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-text-state-without-text-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": null,
+        "delivery": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-unavailable-with-text-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "unavailable",
+        "text": "provider text",
+        "delivery": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-unavailable-reason-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "unavailable",
+        "text": null,
+        "delivery": null,
+        "reason": "retention"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-blank-text-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": " ",
+        "delivery": null
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-MessagePage-empty",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [],
+        "older_cursor": null,
+        "newer_cursor": null
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-cursor-form-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "glow-match:abc/def"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-MessagePageRequest",
+      "scope": "production",
+      "definition": "MessagePageRequest",
+      "value": {
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "cursor": null,
+        "limit": 50
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-MessagePageRequest-cursor",
+      "scope": "production",
+      "definition": "MessagePageRequest",
+      "value": {
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "limit": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-limit-MessagePageRequest",
+      "scope": "production",
+      "definition": "MessagePageRequest",
+      "value": {
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "cursor": null,
+        "limit": 51
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-zero-limit-MessagePageRequest",
+      "scope": "production",
+      "definition": "MessagePageRequest",
+      "value": {
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "cursor": null,
+        "limit": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "private-extra-MessagePageRequest",
+      "scope": "production",
+      "definition": "MessagePageRequest",
+      "value": {
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "cursor": null,
+        "limit": 50,
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-ReadCursorIntent",
+      "scope": "production",
+      "definition": "ReadCursorIntent",
+      "value": {
+        "operation": "read_cursor",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "submission_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-extra-ReadCursorIntent",
+      "scope": "production",
+      "definition": "ReadCursorIntent",
+      "value": {
+        "operation": "read_cursor",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "birth_secret": "must-not-leak"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-other-member-cursor-ReadCursorIntent",
+      "scope": "production",
+      "definition": "ReadCursorIntent",
+      "value": {
+        "operation": "read_cursor",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "account_id": "33333333-3333-4333-8333-333333333333"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppIntent-ReadCursorIntent",
+      "scope": "production",
+      "definition": "AppIntent",
+      "value": {
+        "operation": "read_cursor",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "submission_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-AppResponse-MessagePage",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-AppResponse-ConversationList",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "conversation_list",
+          "conversations": [
+            {
+              "kind": "conversation",
+              "match_id": "11111111-1111-4111-8111-111111111111",
+              "state": "open",
+              "unread_count": 2,
+              "latest": {
+                "submission_id": "33333333-3333-4333-8333-333333333333",
+                "at": "2026-10-24T12:00:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-AppResponse-ConversationSummary",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "conversation",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "state": "open",
+          "unread_count": 2,
+          "latest": {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "at": "2026-10-24T12:00:00Z"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "provider-field-provider_message_ref-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "provider_message_ref": "0123456789abcdef0123456789abcdef"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "provider_message_ref": "0123456789abcdef0123456789abcdef"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "provider_message_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-provider_message_ref-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "provider_message_ref": "0123456789abcdef0123456789abcdef"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "channel_ref": "0123456789abcdef0123456789abcdef"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "channel_ref": "0123456789abcdef0123456789abcdef"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "channel_ref": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-channel_ref-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "channel_ref": "0123456789abcdef0123456789abcdef"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "cid": "glow-match:0123456789abcdef0123456789abcdef"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "cid": "glow-match:0123456789abcdef0123456789abcdef"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "cid": "glow-match:0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-cid-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "cid": "glow-match:0123456789abcdef0123456789abcdef"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "user_id": "0123456789abcdef0123456789abcdef"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "user_id": "0123456789abcdef0123456789abcdef"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "user_id": "0123456789abcdef0123456789abcdef"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user_id-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "user_id": "0123456789abcdef0123456789abcdef"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "user": {
+              "id": "0123456789abcdef0123456789abcdef",
+              "name": "A provider name",
+              "image": "https://provider.invalid/a.png"
+            }
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "user": {
+              "id": "0123456789abcdef0123456789abcdef",
+              "name": "A provider name",
+              "image": "https://provider.invalid/a.png"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "user": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "name": "A provider name",
+          "image": "https://provider.invalid/a.png"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-user-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "user": {
+                "id": "0123456789abcdef0123456789abcdef",
+                "name": "A provider name",
+                "image": "https://provider.invalid/a.png"
+              }
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "member": {
+              "user_id": "0123456789abcdef0123456789abcdef",
+              "channel_role": "channel_member",
+              "custom": {
+                "note": "free text"
+              }
+            }
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "member": {
+              "user_id": "0123456789abcdef0123456789abcdef",
+              "channel_role": "channel_member",
+              "custom": {
+                "note": "free text"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "member": {
+          "user_id": "0123456789abcdef0123456789abcdef",
+          "channel_role": "channel_member",
+          "custom": {
+            "note": "free text"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-member-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "member": {
+                "user_id": "0123456789abcdef0123456789abcdef",
+                "channel_role": "channel_member",
+                "custom": {
+                  "note": "free text"
+                }
+              }
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "custom": {
+              "note": "free text"
+            }
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "custom": {
+              "note": "free text"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "custom": {
+          "note": "free text"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-custom-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "custom": {
+                "note": "free text"
+              }
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "created_at": "2026-10-24T12:00:00Z"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "created_at": "2026-10-24T12:00:00Z"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "created_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-created_at-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "created_at": "2026-10-24T12:00:00Z"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "updated_at": "2026-10-24T12:00:00Z"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "updated_at": "2026-10-24T12:00:00Z"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "updated_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-updated_at-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "updated_at": "2026-10-24T12:00:00Z"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "deleted_at": "2026-10-24T12:00:00Z"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "deleted_at": "2026-10-24T12:00:00Z"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "deleted_at": "2026-10-24T12:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-deleted_at-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "deleted_at": "2026-10-24T12:00:00Z"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "type": "member.updated"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "type": "member.updated"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "type": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-member.updated-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "type": "member.updated"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "type": "ai_indicator.update"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "type": "ai_indicator.update"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "type": "ai_indicator.update"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-type-ai_indicator.update-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "type": "ai_indicator.update"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "event": "member.updated"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "event": "member.updated"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "event": "member.updated"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-event-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "event": "member.updated"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "message": "GetManyMessages failed with error: provider detail"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "message": "GetManyMessages failed with error: provider detail"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "message": "GetManyMessages failed with error: provider detail"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-message-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "message": "GetManyMessages failed with error: provider detail"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "html": "<p>hello</p>"
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "html": "<p>hello</p>"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "html": "<p>hello</p>"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-html-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "html": "<p>hello</p>"
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-ConversationMessage",
+      "scope": "production",
+      "definition": "ConversationMessage",
+      "value": {
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "author": "other",
+        "at": "2026-10-24T12:00:00Z",
+        "content": "text",
+        "text": "hello",
+        "delivery": null,
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-MessagePage",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-MessagePage-message",
+      "scope": "production",
+      "definition": "MessagePage",
+      "value": {
+        "kind": "message_page",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "messages": [
+          {
+            "submission_id": "22222222-2222-4222-8222-222222222222",
+            "author": "other",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hello",
+            "delivery": null,
+            "attachments": []
+          },
+          {
+            "submission_id": "33333333-3333-4333-8333-333333333333",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "hi",
+            "delivery": "accepted"
+          },
+          {
+            "submission_id": "44444444-4444-4444-8444-444444444444",
+            "author": "own",
+            "at": "2026-10-24T12:00:00Z",
+            "content": "text",
+            "text": "on its way",
+            "delivery": "pending"
+          }
+        ],
+        "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+        "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-ConversationSummary",
+      "scope": "production",
+      "definition": "ConversationSummary",
+      "value": {
+        "kind": "conversation",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "state": "open",
+        "unread_count": 2,
+        "latest": {
+          "submission_id": "33333333-3333-4333-8333-333333333333",
+          "at": "2026-10-24T12:00:00Z"
+        },
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-LatestMessageMarker",
+      "scope": "production",
+      "definition": "LatestMessageMarker",
+      "value": {
+        "submission_id": "33333333-3333-4333-8333-333333333333",
+        "at": "2026-10-24T12:00:00Z",
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-ConversationList",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            }
+          }
+        ],
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-ConversationList-conversation",
+      "scope": "production",
+      "definition": "ConversationList",
+      "value": {
+        "kind": "conversation_list",
+        "conversations": [
+          {
+            "kind": "conversation",
+            "match_id": "11111111-1111-4111-8111-111111111111",
+            "state": "open",
+            "unread_count": 2,
+            "latest": {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "at": "2026-10-24T12:00:00Z"
+            },
+            "attachments": []
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-ChannelEntitlement",
+      "scope": "production",
+      "definition": "ChannelEntitlement",
+      "value": {
+        "kind": "channel",
+        "match_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "state": "active",
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-MessageSubmission",
+      "scope": "production",
+      "definition": "MessageSubmission",
+      "value": {
+        "kind": "message",
+        "submission_id": "22222222-2222-4222-8222-222222222222",
+        "version": 1,
+        "state": "accepted",
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-Error",
+      "scope": "production",
+      "definition": "Error",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "code": "provider_unavailable",
+        "retryable": true,
+        "attachments": []
+      },
+      "valid": false
+    },
+    {
+      "name": "provider-field-attachments-AppResponse-message",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "message_page",
+          "match_id": "11111111-1111-4111-8111-111111111111",
+          "messages": [
+            {
+              "submission_id": "22222222-2222-4222-8222-222222222222",
+              "author": "other",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hello",
+              "delivery": null,
+              "attachments": []
+            },
+            {
+              "submission_id": "33333333-3333-4333-8333-333333333333",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "hi",
+              "delivery": "accepted"
+            },
+            {
+              "submission_id": "44444444-4444-4444-8444-444444444444",
+              "author": "own",
+              "at": "2026-10-24T12:00:00Z",
+              "content": "text",
+              "text": "on its way",
+              "delivery": "pending"
+            }
+          ],
+          "older_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg",
+          "newer_cursor": "cAQERERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg"
+        }
       },
       "valid": false
     }

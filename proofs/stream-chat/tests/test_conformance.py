@@ -220,6 +220,7 @@ def operations(adapter: Any) -> list[tuple[str, Callable[[], Any]]]:
         ("remove_members", lambda: adapter.remove_members("c1", ("u1", "u2"))),
         ("deactivate_user", lambda: adapter.deactivate_user("u1")),
         ("revoke_user_tokens", lambda: adapter.revoke_user_tokens("u1", cut)),
+        ("read_message_texts", lambda: adapter.read_message_texts("c1", ("m1",))),
     ]
 
 

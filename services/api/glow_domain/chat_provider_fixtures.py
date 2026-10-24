@@ -9,6 +9,13 @@ Stream, it refuses a channel that names a user it does not hold. Failures are in
 ``fail_next``, before or after the call's effect, so a test can show a lost response.
 Every call is recorded with its argument names, so a test can show that no name,
 image or custom field was ever sent. It reaches no network.
+
+P06.2 Stage C1 adds the text read: it answers from the messages the fixture holds, by
+the same rule as the Stream adapter (only a ``regular`` message with no deleted marker
+returns its text). A test can change what the fixture holds as Stream could, outside
+Glow's sends: plant a message Glow never sent, edit a message's text, give it another
+type, or delete it (``plant_message``, ``edit_message``, ``delete_message``). Those are
+not port operations and record no call.
 """
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TypeVar
 
 from .chat_provider import (
     CHANNEL_UNAVAILABLE,
@@ -28,8 +36,11 @@ from .chat_provider import (
     ChatErrorCode,
     ChatProviderError,
     ProviderReceipt,
+    text_read_ids,
 )
 from .provider_fixtures import require_fixture_environment
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -40,6 +51,10 @@ class FixtureChannel:
     messages: list[tuple[str, str, str]] = field(default_factory=list)
     # The message count at each removal of members, in order.
     removals: list[int] = field(default_factory=list)
+    # P06.2 C1: a held message's type, when a test made it other than "regular", and the
+    # messages a test deleted; the text read returns neither.
+    kinds: dict[str, str] = field(default_factory=dict)
+    deleted: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -112,8 +127,8 @@ class FixtureChatProvider:
         self,
         operation: str,
         arguments: dict[str, object],
-        effect: Callable[[], ProviderReceipt],
-    ) -> ProviderReceipt:
+        effect: Callable[[], T],
+    ) -> T:
         if set(arguments) - OPERATIONS[operation]:
             raise AssertionError("an argument outside the operation's identifiers")
         with self._lock:
@@ -129,7 +144,8 @@ class FixtureChatProvider:
             if failure is not None:
                 self.calls.append(FixtureCall(operation, frozenset(arguments), "failed_after"))
                 self._raise(failure)
-            outcome = "already" if receipt.already else "ok"
+            already = isinstance(receipt, ProviderReceipt) and receipt.already
+            outcome = "already" if already else "ok"
             self.calls.append(FixtureCall(operation, frozenset(arguments), outcome))
             return receipt
 
@@ -223,3 +239,69 @@ class FixtureChatProvider:
 
         arguments = {"user_id": user_id, "issued_before": issued_before}
         return self._call("revoke_user_tokens", arguments, effect)
+
+    def read_message_texts(self, channel_id: str, message_ids: tuple[str, ...]) -> dict[str, str]:
+        asked = text_read_ids(message_ids)
+
+        def effect() -> dict[str, str]:
+            channel = self.channels.get(channel_id)
+            if channel is None:
+                raise ChatProviderError(CHANNEL_UNAVAILABLE)
+            wanted = set(asked)
+            return {
+                message_id: text
+                for message_id, _, text in channel.messages
+                if message_id in wanted
+                and channel.kinds.get(message_id, "regular") == "regular"
+                and message_id not in channel.deleted
+            }
+
+        arguments: dict[str, object] = {"channel_id": channel_id, "message_ids": asked}
+        return self._call("read_message_texts", arguments, effect)
+
+    # -- what a test may change at the provider (P06.2 C1); not port operations ------------
+
+    def _channel(self, channel_id: str) -> FixtureChannel:
+        channel = self.channels.get(channel_id)
+        if channel is None:
+            raise KeyError("no such fixture channel")
+        return channel
+
+    def plant_message(
+        self,
+        channel_id: str,
+        message_id: str,
+        text: str,
+        *,
+        sender: str = "provider-planted",
+        kind: str = "regular",
+    ) -> None:
+        """A message the provider holds that Glow never sent (a system message, or a write
+        through a feature the provider added), in the channel's history."""
+        channel = self._channel(channel_id)
+        if any(known == message_id for known, _, _ in channel.messages):
+            raise ValueError("the fixture already holds that message ID")
+        channel.messages.append((message_id, sender, text))
+        if kind != "regular":
+            channel.kinds[message_id] = kind
+
+    def edit_message(
+        self, channel_id: str, message_id: str, *, text: str | None = None, kind: str | None = None
+    ) -> None:
+        """A held message changed at the provider: its text, or its type."""
+        channel = self._channel(channel_id)
+        for index, (known, sender, old) in enumerate(channel.messages):
+            if known == message_id:
+                channel.messages[index] = (known, sender, old if text is None else text)
+                if kind is not None:
+                    channel.kinds[message_id] = kind
+                return
+        raise KeyError("no such fixture message")
+
+    def delete_message(self, channel_id: str, message_id: str) -> None:
+        """A held message deleted at the provider, as Stream keeps it: with its text and a
+        deleted marker."""
+        channel = self._channel(channel_id)
+        if not any(known == message_id for known, _, _ in channel.messages):
+            raise KeyError("no such fixture message")
+        channel.deleted.add(message_id)

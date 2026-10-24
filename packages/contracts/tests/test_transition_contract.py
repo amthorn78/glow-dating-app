@@ -213,6 +213,26 @@ class FlowAcceptanceTests(unittest.TestCase):
             "policy_unresolved",
         )
 
+    def test_f11_read_cursor_moves_only_for_a_matched_eligible_participant(self):
+        # P06.2 C1: the read-cursor command authorizes as a send does (point c).
+        allowed = replace(PARTICIPANT, eligible=True, active_match=True)
+        self.check("F11", "read", "behind", "current", allowed, "allowed")
+        for denied in (
+            replace(allowed, active_match=False),
+            replace(allowed, eligible=False),
+            replace(allowed, actor_id="charlie"),
+            replace(allowed, session_state="revoked"),
+        ):
+            self.check("F11", "read", "behind", "current", denied, "forbidden")
+        self.check("F11", "read", "current", "behind", allowed, "state_conflict")
+        self.assertEqual(
+            read_projection(
+                "F11", "MessagePage", replace(PARTICIPANT, actor_id="charlie")
+            ),
+            "not_found",
+        )
+        self.assertEqual(read_projection("F11", "ConversationList", PARTICIPANT), "allowed")
+
     def test_f12_device_owner_and_session_revocation(self):
         self.check(
             "F12",

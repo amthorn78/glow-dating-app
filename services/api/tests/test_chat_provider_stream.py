@@ -12,12 +12,19 @@ against the adapter on the recording, and the outcomes must agree row for row, e
 one row DM-16 4.7 names (a send by a removed member), where the fixture refuses and the
 recording models Stream's server-side send accepting it; the live conformance run records
 what Stream answers.
+
+P06.2 Stage C1 adds the text read (``read_message_texts``, the seventh operation): its
+request's exact shape (one ``GET`` with the asked IDs, never ``member_custom_include``), an
+answer carrying the provider's other fields and messages Glow did not ask for, of which only
+the asked IDs and their texts survive, each error class mapped to its code, and no text in
+any log line (DM-22 2.1, 2.4 and 2.5).
 """
 
 from __future__ import annotations
 
 import inspect
 import json
+import logging
 import re
 import time
 import unittest
@@ -37,6 +44,7 @@ from glow_domain.chat_provider import (
     OPERATIONS,
     PROVIDER_REJECTED,
     PROVIDER_UNAVAILABLE,
+    TEXT_READ_LIMIT,
     ChatProviderError,
     ProviderReceipt,
 )
@@ -344,6 +352,18 @@ class RecordedStream:
             }
             self.messages[message_id] = stored
             return 201, {"duration": "0.42ms", "message": self._message_body(stored)}
+        many = re.fullmatch(rf"/api/v2/chat/channels/{TYPE}/([^/]+)/messages", path)
+        if method == "GET" and many:
+            channel = self.channels.get(many.group(1))
+            if channel is None:
+                return _error(404, 16, 'GetManyMessages failed with error: "channel not found"')
+            wanted = params.get("ids", "").split(",")
+            found = [
+                self._message_body(m)
+                for m in self.messages.values()
+                if m["cid"] == channel["cid"] and m["id"] in wanted
+            ]
+            return 200, {"duration": "0.42ms", "messages": found}
         update = re.fullmatch(rf"/api/v2/chat/channels/{TYPE}/([^/]+)", path)
         if method == "POST" and update:
             channel = self.channels.get(update.group(1))
@@ -387,6 +407,16 @@ def outcome(call: Callable[[], ProviderReceipt]) -> str:
     return "already" if receipt.already else "ok"
 
 
+def texts(call: Callable[[], dict[str, str]], labels: dict[str, str]) -> str:
+    """A text read's outcome (P06.2 C1): each returned message as ``label=text``, sorted, or
+    the Glow code; ``labels`` names the run's message IDs without the run's tag."""
+    try:
+        returned = call()
+    except ChatProviderError as error:
+        return error.code
+    return ",".join(sorted(f"{labels.get(k, '?')}={v}" for k, v in returned.items()))
+
+
 class World:
     """The identifiers one contract run uses (Glow's own random IDs; no shape enforced)."""
 
@@ -419,6 +449,13 @@ def contract(provider: Any, w: World) -> dict[str, str]:
     rows["send to an unknown channel"] = outcome(
         lambda: provider.send_message(w.c_missing, w.a, w.m3, "hello")
     )
+    labels = {w.m1: "m1", w.m2: "m2", w.m3: "m3"}
+    rows["read the sent text, and one never sent"] = texts(
+        lambda: provider.read_message_texts(w.c, (w.m1, w.m3)), labels
+    )
+    rows["read from an unknown channel"] = texts(
+        lambda: provider.read_message_texts(w.c_missing, (w.m1,)), labels
+    )
     rows["send by an unknown user"] = outcome(
         lambda: provider.send_message(w.c, w.unknown, w.m4, "hello")
     )
@@ -426,6 +463,9 @@ def contract(provider: Any, w: World) -> dict[str, str]:
     rows["remove repeat"] = outcome(lambda: provider.remove_members(w.c, (w.a, w.b)))
     rows["create repeated after the removal"] = outcome(
         lambda: provider.create_channel(w.c, (w.a, w.b))
+    )
+    rows["read after the removal (history kept)"] = texts(
+        lambda: provider.read_message_texts(w.c, (w.m1,)), labels
     )
     rows[REMOVED_MEMBER_SEND] = outcome(lambda: provider.send_message(w.c, w.a, w.m2, "later"))
     rows["remove from an unknown channel"] = outcome(
@@ -464,10 +504,13 @@ EXPECTED = {
     "send first": "ok",
     "send repeat": "already",
     "send to an unknown channel": CHANNEL_UNAVAILABLE,
+    "read the sent text, and one never sent": "m1=hello",
+    "read from an unknown channel": CHANNEL_UNAVAILABLE,
     "send by an unknown user": MEMBER_UNAVAILABLE,
     "remove first": "ok",
     "remove repeat": "already",
     "create repeated after the removal": "already",
+    "read after the removal (history kept)": "m1=hello",
     REMOVED_MEMBER_SEND: MEMBER_UNAVAILABLE,  # the fixture's; the recording accepts
     "remove from an unknown channel": CHANNEL_UNAVAILABLE,
     "provision for deactivation": "ok",
@@ -691,6 +734,7 @@ class ExceptionBoundaryTests(unittest.TestCase):
             lambda: adapter.remove_members(w.c, (w.a, w.b)),
             lambda: adapter.deactivate_user(w.a),
             lambda: adapter.revoke_user_tokens(w.a, revocation_cutoff_sent(NOW)),
+            lambda: adapter.read_message_texts(w.c, (w.m1,)),
         ]
 
     def test_each_stop_type_propagates_unchanged_from_a_request_hook(self) -> None:
@@ -793,7 +837,8 @@ class ExceptionBoundaryTests(unittest.TestCase):
     ) -> list[tuple[Callable[[], Any], int, tuple[str, str]]]:
         """Each operation where it writes, after ``a`` and ``b`` are provisioned and channel
         ``c`` created: the call, how many reads come before its write, and the write's
-        method and path."""
+        method and path. The text read (P06.2 C1) writes nothing: its entry is its one
+        request, the ``GET``."""
         channel = f"/api/v2/chat/channels/{TYPE}"
         return [
             (lambda: adapter.provision_user(w.d), 1, ("POST", "/api/v2/users")),
@@ -821,6 +866,11 @@ class ExceptionBoundaryTests(unittest.TestCase):
                 lambda: adapter.revoke_user_tokens(w.a, revocation_cutoff_sent(NOW)),
                 1,
                 ("PATCH", "/api/v2/users"),
+            ),
+            (
+                lambda: adapter.read_message_texts(w.c, (w.m1,)),
+                0,
+                ("GET", f"{channel}/{w.c}/messages"),
             ),
         ]
 
@@ -1037,6 +1087,198 @@ class RepeatNeverUndoesTests(unittest.TestCase):
         self.assertEqual(sent, "2026-10-23T12:30:00.123456Z")
         with self.assertRaises(ValueError):
             self.adapter.revoke_user_tokens(self.w.e, exact.replace(tzinfo=None))
+
+
+class TextReadTests(unittest.TestCase):
+    """P06.2 Stage C1: the text read on the recording (the brief's "Stage C under OD-45",
+    point b; DM-22 2.1, 2.4 and 2.5)."""
+
+    def setUp(self) -> None:
+        self.model = RecordedStream()
+        self.adapter = StreamChatProvider(make_client(self.model))
+        self.w = World("tx")
+        self.adapter.provision_user(self.w.a)
+        self.adapter.provision_user(self.w.b)
+        self.adapter.create_channel(self.w.c, (self.w.a, self.w.b))
+        self.adapter.send_message(self.w.c, self.w.a, self.w.m1, "first text")
+        self.adapter.send_message(self.w.c, self.w.b, self.w.m2, "second text")
+        self.model.recording = []
+
+    def message(self, message_id: str, text: str, **changes: Any) -> dict[str, Any]:
+        """Stream's documented message shape, as the recording answers it, with changes."""
+        body = self.model._message_body(
+            {
+                "id": message_id,
+                "cid": f"{TYPE}:{self.w.c}",
+                "text": text,
+                "user_id": self.w.a,
+                "created_at": self.model.clock,
+            }
+        )
+        body.update(changes)
+        return body
+
+    def test_one_get_with_the_asked_ids_and_never_member_custom_include(self) -> None:
+        returned = self.adapter.read_message_texts(self.w.c, (self.w.m1, self.w.m2))
+        self.assertEqual(returned, {self.w.m1: "first text", self.w.m2: "second text"})
+        self.assertEqual(
+            self.model.recording,
+            [
+                {
+                    "method": "GET",
+                    "path": f"/api/v2/chat/channels/{TYPE}/{self.w.c}/messages",
+                    "params": {"ids": f"{self.w.m1},{self.w.m2}"},
+                    "body": None,
+                }
+            ],
+        )
+        source = inspect.getsource(StreamChatProvider.read_message_texts)
+        self.assertIn("get_many_messages(", source)
+        self.assertNotIn("member_custom_include", source)
+
+    def test_only_the_asked_ids_and_their_texts_survive(self) -> None:
+        """An answer with the provider's other fields, other types, deleted markers, a
+        message Glow did not ask for and an ID answered twice: only the asked, regular,
+        undeleted messages' IDs and texts come back."""
+        w = self.w
+        asked = (w.m1, w.m2, w.m3, w.m4, w.m5, "tx-m6", "tx-m7", "tx-m8")
+        extra = {
+            "user": {"id": w.a, "role": "user", "name": "a provider name", "custom": {"k": 1}},
+            "member": {"user_id": w.a, "channel_role": "channel_member", "custom": {"x": "y"}},
+            "custom": {"provider": "data"},
+            "attachments": [{"type": "image", "image_url": "https://provider.invalid/i"}],
+            "latest_reactions": [],
+            "reaction_counts": {"like": 2},
+            "i18n": {"fr_text": "texte"},
+        }
+        self.model.answer_next(
+            200,
+            {
+                "duration": "0.42ms",
+                "messages": [
+                    self.message(w.m1, "kept text", **extra),
+                    self.message(w.m2, "a system notice", type="system"),
+                    self.message(w.m3, "an error notice", type="error"),
+                    self.message(
+                        w.m4, "This message was deleted.", type="deleted", deleted_at=_ns(NOW)
+                    ),
+                    self.message(w.m5, "deleted with its text", deleted_at=_ns(NOW)),
+                    self.message("tx-m6", "deleted for me", deleted_for_me=True),
+                    self.message("tx-m7", "answered once"),
+                    self.message("tx-m7", "answered twice"),
+                    self.message("tx-m8", "a reply", type="reply"),
+                    self.message("tx-not-asked", "a message Glow did not ask for"),
+                ],
+            },
+        )
+        returned = self.adapter.read_message_texts(w.c, asked)
+        self.assertEqual(returned, {w.m1: "kept text"})
+        self.assertIs(type(returned[w.m1]), str)
+
+    def test_a_text_changed_at_the_provider_comes_back_as_the_provider_holds_it(self) -> None:
+        """The adapter reports what the provider holds; the history read's digest check,
+        not the adapter, decides whether it is Glow's text (DM-22 2.1)."""
+        self.model.messages[self.w.m1]["text"] = "first texT"
+        returned = self.adapter.read_message_texts(self.w.c, (self.w.m1,))
+        self.assertEqual(returned, {self.w.m1: "first texT"})
+
+    def test_a_message_the_provider_does_not_return_is_absent(self) -> None:
+        returned = self.adapter.read_message_texts(self.w.c, (self.w.m1, self.w.m3))
+        self.assertEqual(returned, {self.w.m1: "first text"})
+
+    def test_each_error_class_maps_to_its_code(self) -> None:
+        for status, code, wanted in (
+            (500, 0, PROVIDER_UNAVAILABLE),
+            (503, 0, PROVIDER_UNAVAILABLE),
+            (429, 9, PROVIDER_UNAVAILABLE),
+            (404, 16, CHANNEL_UNAVAILABLE),
+            (400, 4, PROVIDER_REJECTED),
+            (403, 17, PROVIDER_REJECTED),
+        ):
+            with self.subTest(status=status, code=code):
+                self.model.refuse_next(status, code, "Stream's text: GetManyMessages failed")
+                with self.assertRaises(StreamProviderError) as seen:
+                    self.adapter.read_message_texts(self.w.c, (self.w.m1,))
+                self.assertEqual(seen.exception.code, wanted)
+                self.assertEqual(seen.exception.retryable, wanted == PROVIDER_UNAVAILABLE)
+                self.assertEqual((seen.exception.status, seen.exception.number), (status, code))
+                self.assertNotIn("Stream's text", str(seen.exception))
+                self.assertIsNone(seen.exception.__cause__)
+                self.assertIsNone(seen.exception.__context__)
+        for make in (
+            lambda request: httpx.ConnectError("refused", request=request),
+            lambda request: httpx.ReadTimeout("slow", request=request),
+        ):
+            self.model.fail_next(make)
+            with self.assertRaises(StreamProviderError) as seen:
+                self.adapter.read_message_texts(self.w.c, (self.w.m1,))
+            self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
+        self.model.refuse_next(404, 16, "channel not found")
+        with self.assertRaises(StreamProviderError) as missing:
+            self.adapter.read_message_texts(self.w.c_missing, (self.w.m1,))
+        self.assertEqual(missing.exception.code, CHANNEL_UNAVAILABLE)
+
+    def test_an_unreadable_success_is_provider_unavailable(self) -> None:
+        """A success without its list of messages could not be read: the retryable
+        ``provider_unavailable``, never an empty answer (DM-22 2.4). A message the SDK
+        decodes without a type (``getstream`` 6.1.0 decodes with ``infer_missing``) is not a
+        ``regular`` message, so it is left out."""
+        self.model.answer_next(200, {"duration": "0.42ms"})
+        with self.assertRaises(StreamProviderError) as seen:
+            self.adapter.read_message_texts(self.w.c, (self.w.m1,))
+        self.assertEqual(seen.exception.code, PROVIDER_UNAVAILABLE)
+        self.assertTrue(seen.exception.retryable)
+        self.model.answer_next(200, {"duration": "0.42ms", "messages": [{"id": self.w.m1}]})
+        self.assertEqual(self.adapter.read_message_texts(self.w.c, (self.w.m1,)), {})
+        self.model.answer_next(200, {"duration": "0.42ms", "messages": []})
+        self.assertEqual(self.adapter.read_message_texts(self.w.c, (self.w.m1,)), {})
+
+    def test_the_argument_rule_refuses_before_any_request(self) -> None:
+        too_many = tuple(f"tx-{i}" for i in range(TEXT_READ_LIMIT + 1))
+        for bad in ((), too_many, (self.w.m1, self.w.m1), ("",), [self.w.m1]):
+            with self.subTest(count=len(bad)):
+                with self.assertRaises(ValueError):
+                    self.adapter.read_message_texts(self.w.c, bad)  # type: ignore[arg-type]
+        self.assertEqual(self.model.recording, [])
+        at_cap = tuple(f"tx-{i}" for i in range(TEXT_READ_LIMIT))
+        self.assertEqual(self.adapter.read_message_texts(self.w.c, at_cap), {})
+        self.assertEqual(TEXT_READ_LIMIT, 50)
+
+    def test_no_text_in_any_log_line(self) -> None:
+        """DM-22 2.5: every logger at DEBUG, through a read that returns texts, one whose
+        answer carries a dropped field, and one that fails."""
+        secret_texts = ("first text", "second text", "a dropped provider text")
+        records: list[logging.LogRecord] = []
+
+        class Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                records.append(record)
+
+        root = logging.getLogger()
+        handler = Capture(level=logging.DEBUG)
+        saved = root.level
+        root.addHandler(handler)
+        root.setLevel(logging.DEBUG)
+        try:
+            self.adapter.read_message_texts(self.w.c, (self.w.m1, self.w.m2))
+            self.model.answer_next(
+                200,
+                {
+                    "duration": "0.42ms",
+                    "messages": [self.message(self.w.m3, "a dropped provider text", type="system")],
+                },
+            )
+            self.adapter.read_message_texts(self.w.c, (self.w.m3,))
+            self.model.refuse_next(500, 0, "first text")
+            with self.assertRaises(StreamProviderError):
+                self.adapter.read_message_texts(self.w.c, (self.w.m1,))
+        finally:
+            root.removeHandler(handler)
+            root.setLevel(saved)
+        for record in records:
+            line = f"{record.getMessage()} {record.exc_text or ''} {record.args!r}"
+            for text in secret_texts:
+                self.assertNotIn(text, line)
 
 
 class SignerTests(unittest.TestCase):

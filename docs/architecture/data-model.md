@@ -157,7 +157,7 @@ No event relies on rereading a body already erased by deletion. Leases/retries h
 configured finite limits and dead-letter reconciliation; no retry duration is
 selected by schema defaults.
 
-## Chat contact and the outbox (P06.2 Stage A, Stage B1 and Stage B2)
+## Chat contact and the outbox (P06.2 Stage A, Stage B1, Stage B2 and Stage C1)
 
 The [P06.2 brief](../planning/p06-2-chat-integration.md), revision 3, items 1 to 4, and
 its "Carried to Stage B and P11" with "B1's design points" (Stage B1: F1 to F5, CX4 to
@@ -168,7 +168,10 @@ CX6, under DM-15's conditions). The domain port is `glow_domain/chat.py`
 `glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the Stream adapter on that
 port and the client token's signer are `glow_domain/chat_provider_stream.py` (Stage B2);
 the token rules are `glow_domain/chat_tokens.py`; the order column's field type is
-`glow_persistence/fields.py`. The adapter is a new package rather than code in
+`glow_persistence/fields.py`; the conversation reads (Stage C1) are
+`glow_domain/chat_reads.py` (the port and its domain types), `glow_chat/reads.py`
+(`OrmConversationReads`) and `glow_domain/chat_projections.py` (their projections into the
+production contracts). The adapter is a new package rather than code in
 `glow_persistence`, so that the model registry stays definitions only (its static check
 still forbids every connection) and the runtime's seal names one package it must never
 import. The disposable-PostgreSQL proof (`proofs/postgres-ordering`) runs P06.DB's race
@@ -337,6 +340,86 @@ unless Stream refuses a token whose `iat` is the current second; the conformance
 row shows the value in force) and `exp` is the grant's `expires_at` truncated to the
 whole second, never later. The SDK's clock plays no part, so the issue time stays the
 database's (F1).
+
+**The conversation reads** (Stage C1; the [P06.2 brief](../planning/p06-2-chat-integration.md),
+"Stage C under OD-45", points b, c and e, with DM-22's conditions). Under OD-45 the app
+holds no provider credential; Glow's API serves history and new messages, and P11 serves
+the endpoints. No migration and no model change: the reads use the rows Stages A to B2
+committed. `OrmConversationReads` runs only under the proof's settings, as the rest of
+`glow_chat` does.
+
+- **The send's checks, under the send's shared locks.** The history read, the
+  conversation list and the read-cursor command make the send's checks, in the send's
+  order, on rows read under the send's locks taken `FOR SHARE`, as B1's grant takes its
+  own: the lower and higher `AppAccount`, the `Match`, the reader's `AccountSession`, then
+  the active `Block` rows either way, both `Profile` states and both latest onboarding
+  `ConsentDecision` rows under those account locks (the send's own
+  `_contact_state_checks`). A read waits for a revocation in flight, which holds one of
+  those rows `FOR UPDATE`, and reads its result; a revocation waits for a read in flight.
+  The time is `clock_timestamp()` after the locks. This is the interim default under F06
+  (DM-22 3.1): the A05 history question goes to Nathan before P11 serves the reads.
+- **The history read checks twice** (DM-22 3.2). The first check's transaction reads the
+  page's rows and ends; the provider call (the port's `read_message_texts`, for the page's
+  accepted messages' `provider_message_ref`, in one call) runs outside any transaction, so
+  no lock is held across it and a safety action never waits on the provider; then a new
+  transaction takes the same shared locks and checks again, and the page is returned only
+  if it passes. A refused first check makes no provider call. A page with no accepted
+  message makes no call, so "anything new?" is answered from Glow's rows alone and its one
+  check is its answer.
+- **Which rows a page reads.** The match's `ChatBinding` (its `channel_ref`, for the
+  provider call only); its accepted `MessageSubmission` rows, each joined to its own
+  `message_submitted` `OutboxEvent` in state `delivered`; the reader's own `pending` and
+  `failed` submissions on the newest page only, with their spool `text` and their event's
+  `available_at`. The other member's pending and failed submissions are never read for a
+  page. The provider ID never leaves the server.
+- **The order follows acceptance** (DM-22 2.2). Accepted messages are ordered by
+  `(OutboxEvent.delivered_at, OutboxEvent.sequence)` of their `message_submitted` event:
+  `delivered_at` is the database's `clock_timestamp()` in the transaction that records the
+  provider's acceptance and moves the submission to `accepted`, so a message accepted
+  after a later one sorts after it; `sequence` breaks a tie deterministically. Neither the
+  app's clock (`created_at`, `updated_at`) nor a random ID decides. The page, the "older"
+  and "newer" cursors, the unread count and the read cursor's "forward" all use this
+  order, so a late acceptance reaches the reader's next poll as new and unread (the
+  database job's `read.order_follows_acceptance`). It holds while one channel's receipts
+  commit in their `delivered_at` order, as they do under the one deliverer at a time this
+  section's "Delivery" assumes; a deployed worker with concurrent deliverers keeps that
+  property (for example by taking the binding's lock before it reads the receipt's time),
+  which P11 carries. The delivered `message_submitted` events are the order's record, so
+  an outbox retention rule must keep them, or a later migration moves the acceptance time
+  onto the submission.
+- **Only text Glow sent is shown** (DM-22 2.1). The provider adapters return a message's
+  text only for a `regular` message with no deleted marker. The read shows a returned
+  text only if `sha256("{match_id}\n{contact_version}\n{text}")`, from the binding's match,
+  the row's `contact_version` and that text, equals the row's `request_digest`
+  (`glow_domain.chat.request_digest`, the send's own). Anything else is "unavailable", one
+  state with no reason, and counted in the read's result (missing, mismatched, and IDs the
+  provider returned unasked) for P11's reconciliation metrics; a read writes no row (2.3).
+  A provider error refuses the read with its Glow code, the retryable
+  `provider_unavailable` for an outage (2.4). No message text reaches a log line (2.5).
+- **The page cursor** is opaque (a version, the direction, the match ID and the boundary
+  message's submission ID, base64url-encoded behind a `c`), carries Glow's identifiers
+  only, and is bound to its match: a cursor whose match is not the request's, or whose
+  boundary is not an accepted message of that match's binding, is refused
+  (`cursor_invalid`; DM-22 6.4).
+- **The conversation list** reads, for the session's account, every `active` `Match` it
+  belongs to, then locks `FOR SHARE` every account those matches name and the account's
+  own, in UUID order, then those matches, then the session, the canonical order every
+  writer follows (accounts, then matches, then the session). It makes the session's checks
+  (the account `active`, the session `valid`, unexpired and at the account's epoch) and,
+  for each conversation, the per-match checks (the match still `active` with its pair, the
+  other account `active`, no block either way, both profiles and both consents); a
+  conversation that fails them is not listed. For each it reads the reader's
+  `ChatReadCursor` and counts the other member's accepted messages after it (6.3), and
+  takes the latest-message marker over the accepted messages and the reader's own pending
+  or failed submissions (6.1): the submission ID and its time, no text. No provider is
+  called. At most 200 conversations, the latest activity first.
+- **The read-cursor command** makes the same checks in one transaction, then requires the
+  target to be an accepted message of the match's binding, locks the reader's own
+  `ChatReadCursor` row (`FOR UPDATE`, created first if absent, under a savepoint so a
+  concurrent creation is read rather than failed), and moves `last_read` only forward in
+  acceptance order; a repeat or an earlier target changes nothing. It is the only one of
+  the three that writes, and it writes only that row. The other member's cursor is never
+  read for a member or returned.
 
 ## Erasure, retention and restore
 

@@ -6,7 +6,9 @@ only that.
 
 P06.2 (D3): one ``Report`` per subject, the reference design and the app's adapter,
 each judged and printed separately, and the delivery phase's report beside them in a
-``RunReport``. The run passes only when every part does.
+``RunReport``. The run passes only when every part does. Stage C1 adds the read phase's
+report (``ReadReport``): its cases, with their observed waits, and its planted controls,
+each of which must fail its target case by its declared signal (DM-22 3.3).
 """
 
 from __future__ import annotations
@@ -274,11 +276,54 @@ class DeliveryReport:
 
 
 @dataclass
+class ReadReport:
+    """P06.2 C1: the read phase, the app's conversation reads on the disposable database.
+    It passes only when it ran a case, every case passed, and every planted control failed
+    its target case by its declared signal."""
+
+    cases: list[Any] = field(default_factory=list)  # CaseResult
+    controls: list[Any] = field(default_factory=list)  # ControlResult
+    seconds: float = 0.0
+    problems: list[str] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.reasons()
+
+    def reasons(self) -> list[str]:
+        reasons = list(self.problems)
+        if not self.cases:
+            reasons.append("no read case ran")
+        failed = [c.case_id for c in self.cases if not c.passed]
+        if failed:
+            reasons.append(f"read cases failed: {', '.join(failed)}")
+        if not self.controls:
+            reasons.append("no read control ran")
+        not_failing = [c.control_id for c in self.controls if not c.failed_as_intended]
+        if not_failing:
+            reasons.append(
+                "read controls that did not fail as intended (declared signal absent):"
+                f" {', '.join(not_failing)}"
+            )
+        return reasons
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "seconds": round(self.seconds, 2),
+            "cases": [c.to_dict() for c in self.cases],
+            "controls": [c.to_dict() for c in self.controls],
+            "reasons": self.reasons(),
+            "passed": self.ok,
+        }
+
+
+@dataclass
 class RunReport:
-    """The whole run: each subject's report and the delivery phase's."""
+    """The whole run: each subject's report, the delivery phase's and the read phase's."""
 
     subjects: list[Report]
     delivery: Any = None  # DeliveryReport
+    reads: Any = None  # ReadReport
     problems: list[str] = field(default_factory=list)
 
     def verdict(self) -> tuple[bool, list[str]]:
@@ -291,6 +336,10 @@ class RunReport:
         elif not self.delivery.ok:
             failed = [c.name for c in self.delivery.checks if not c.passed]
             reasons.append(f"delivery checks failed: {', '.join(failed) or 'none ran'}")
+        if self.reads is None:
+            reasons.append("the read phase did not run")
+        else:
+            reasons.extend(f"reads: {reason}" for reason in self.reads.reasons())
         return (not reasons, reasons)
 
     def to_json(self) -> str:
@@ -300,6 +349,7 @@ class RunReport:
             "reasons": reasons,
             "subjects": {report.subject: report.to_dict() for report in self.subjects},
             "delivery": self.delivery.to_dict() if self.delivery is not None else None,
+            "reads": self.reads.to_dict() if self.reads is not None else None,
         }
         return json.dumps(data, indent=2, sort_keys=True, default=str)
 
@@ -321,10 +371,57 @@ def render_delivery(delivery: Any) -> str:
     return "\n".join(out)
 
 
+def render_reads(reads: ReadReport) -> str:
+    out = [
+        "== The read phase: the app's conversation reads (P06.2 C1) against the fixture provider =="
+    ]
+    passed = sum(c.passed for c in reads.cases)
+    out.append(f"{passed}/{len(reads.cases)} cases passed in {reads.seconds:.1f} s")
+    out.append(
+        table(
+            ("case", "result", "waits observed", "notes"),
+            (
+                (
+                    c.case_id,
+                    "PASS" if c.passed else "FAIL",
+                    "; ".join(w.summary() for w in c.waits) or "-",
+                    "; ".join(c.failures) if c.failures else "; ".join(c.notes)[:200],
+                )
+                for c in reads.cases
+            ),
+        )
+    )
+    out.append("")
+    out.append(
+        "-- Planted read controls (each must fail its target case by its declared signal) --"
+    )
+    out.append(
+        table(
+            ("control", "variant", "target", "declared signal", "failed as intended", "signal"),
+            (
+                (
+                    c.control_id,
+                    c.variant,
+                    c.target,
+                    c.declared or "-",
+                    "yes" if c.failed_as_intended else "NO",
+                    c.signal[:200],
+                )
+                for c in reads.controls
+            ),
+        )
+    )
+    for problem in reads.problems:
+        out.append(f"problem: {problem}")
+    return "\n".join(out)
+
+
 def render_run(run: RunReport) -> str:
     sections = [render(report) for report in run.subjects]
     if run.delivery is not None:
         sections.append(render_delivery(run.delivery))
+    if run.reads is not None:
+        sections.append(render_reads(run.reads))
     ok, reasons = run.verdict()
     verdict = [f"== VERDICT: {'PASS' if ok else 'FAIL'} ==", *(f"  - {r}" for r in reasons)]
     return "\n\n".join(sections) + "\n\n" + "\n".join(verdict)
