@@ -830,6 +830,8 @@ for (const outcome of ['succeed', 'fail', 'refuse'] as const) test(`CX12 (e): an
   const snapshot = fixture.store.getSnapshot();
   await paged.release(0); // The invalidated one: it neither merges nor ends the current one's `loading`.
   assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  await fixture.store.loadOlder(); await settle();
+  assert.equal(requested(fixture), asked, 'still at most one: the invalidated one\'s completion does not free the current window\'s');
   await paged.release(0, outcome);
   if (outcome === 'refuse') { assertRevoked(fixture); return; }
   const conversation = fixture.store.getSnapshot().conversation;
@@ -838,4 +840,25 @@ for (const outcome of ['succeed', 'fail', 'refuse'] as const) test(`CX12 (e): an
   } else {
     assert.deepEqual([texts(fixture), conversation.older, conversation.hasOlder], [numbered(11, 50), 'idle', true], 'its page merges');
   }
+});
+
+test('CX12 (f): an older page asked from the replaced window starts no cursor command when it succeeds, even with a failed move waiting to be retried (DM-28 1.1; DM-25 3.2)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  await heldOlder(fixture, paged);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged);
+  // The newest message is in view while offline: its command fails and waits for the next read (DM-23 2.3).
+  const tried = count(fixture, 'read_cursor');
+  fixture.fixture.setScenario('offline');
+  fixture.store.viewed(idsOf(fixture, 'Later message 50.')); await settle(); await settle();
+  fixture.fixture.setScenario('normal');
+  assert.equal(count(fixture, 'read_cursor'), tried + 1, 'the command was sent and failed offline');
+  const before = requested(fixture), commands = count(fixture, 'read_cursor'), snapshot = fixture.store.getSnapshot();
+  await paged.release(0);
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assert.equal(requested(fixture), before, 'no cursor command and no read: DM-25 3.2\'s older-page trigger does not fire');
+  await fixture.timers.advance(CONVERSATION_POLL_MS); await settle(); await settle();
+  assert.equal(count(fixture, 'read_cursor'), commands + 1, 'the waiting move follows the next read, as before');
 });
