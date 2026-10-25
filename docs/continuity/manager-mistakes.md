@@ -106,6 +106,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-01 | 25 Oct 2026 | follow-through | The first report and DM-25 revision 1 went to Nathan without checking PR33's open review threads; Codex's CX10 (00:42 UTC), unrecorded since App Manager 7's handover, was missed | App Manager 8, reading PR33's threads after Codex's next summary reported unresolved findings |
 | AM8-02 | 25 Oct 2026 | accuracy | Notion's DM-24 row named the records commit `1ec5186` as the merge of DM-24's report; the merge is `f87f3b5` | Dev Manager 3, start note section 5 |
 | AM8-03 | 25 Oct 2026 | accuracy | CX10's records and DM-25 said the unread count "never clears" and that any member sending 20 messages in a row would reach it; both overstated the code | Dev Manager 3, DM-25 section 5 |
+| AM8-04 | 25 Oct 2026 | accuracy | Notion paraphrased the re-review's F3 as a revocation dropping "a list read begun after it started", which reads as the reverse of the finding | Dev Manager 3, DM-27 4.1 |
+| AM8-05 | 25 Oct 2026 | accuracy | DM-27's proposed d.2 asked for tests of two `cursorKnown` clears that, under d.1, could never fail | Dev Manager 3, DM-27 section 3 |
 
 ## App Manager 2
 
@@ -807,3 +809,20 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on the verdict, which DM-25 reached on C2's item 8; the records overstated the defect.
 - **Correction:** the evidence record's CX10 section, the review log's DM-25 row and the Work Register row state the outcome and reach in DM-25 3.7's terms, marked as corrections.
 - **Prevention:** AM7-05's and AM7-10's rule applies to a defect's effect as well as to a fix: "never", "any" and "every" only when the manager has traced the paths that end it. For a stuck state, the manager names what clears it.
+
+### AM8-04 — A finding paraphrased into its reverse (accuracy)
+
+- **What happened:** writing *Implementation Control*'s status after the re-review, App Manager 8 summarized F3 as "a revocation drops a list read begun after it started". Read with "it" as the revocation, that says the opposite of the finding: a list read made after a revocation is kept (DM-24 1.3). The review's words are "begun after the authority change that led to it".
+- **Caught by:** Dev Manager 3, DM-27 4.1.
+- **Effect:** none on a decision; the repository's records used the review's words.
+- **Correction:** Notion's line now uses the review's words; the P11 plan's F3 limit quotes them.
+- **Prevention:** a finding's timing or causal clause is copied in the source's words, not shortened, in every summary.
+
+### AM8-05 — Proposed tests that could never fail (accuracy)
+
+- **What happened:** DM-27's proposed d.2 asked C2-C3 for one test per clear of `cursorKnown` (F2), beside d.1's `cursorKnown && from >= 0`. `lastRead` and `cursorKnown` are set and cleared together, so under d.1 neither clear can change a result, and no such test can fail under its reversal: the same kind of error as DM-24 1.4's impossible pairings (DM-26 item 1).
+- **Caught by:** Dev Manager 3, DM-27 section 3, before any session met it.
+- **Effect:** none; DM-27 1.1 removes the flag and drops the tests.
+- **Correction:** C2-C3's prompt quotes DM-27 1.1 to 1.4, not d.1 to d.4.
+- **Prevention:** before proposing a test condition, the manager checks that a reversal of the code it covers can make it fail, given every other condition proposed with it.
+
