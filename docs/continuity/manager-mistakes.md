@@ -105,6 +105,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-14 | 25 Oct 2026 | accuracy | Nathan directed the manager to create App Manager 8; the manager read his words as his own hand start, recorded OD-46, the handoff and Notion that way, and told him to start it | Nathan: *"i told you to create the Glow App Manager 8 session"* |
 | AM8-01 | 25 Oct 2026 | follow-through | The first report and DM-25 revision 1 went to Nathan without checking PR33's open review threads; Codex's CX10 (00:42 UTC), unrecorded since App Manager 7's handover, was missed | App Manager 8, reading PR33's threads after Codex's next summary reported unresolved findings |
 | AM8-02 | 25 Oct 2026 | accuracy | Notion's DM-24 row named the records commit `1ec5186` as the merge of DM-24's report; the merge is `f87f3b5` | Dev Manager 3, start note section 5 |
+| AM8-03 | 25 Oct 2026 | accuracy | CX10's records and DM-25 said the unread count "never clears" and that any member sending 20 messages in a row would reach it; both overstated the code | Dev Manager 3, DM-25 section 5 |
 
 ## App Manager 2
 
@@ -798,3 +799,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision; a reader following the SHA finds the records, not the merge.
 - **Correction:** the review log and Notion name `f87f3b5`.
 - **Prevention:** when a record names a merge, the manager takes the SHA from `git log --merges -1` after the merge, not from the batch's last commit.
+
+### AM8-03 — A defect's effect and reach overstated (accuracy)
+
+- **What happened:** recording CX10, App Manager 8 wrote that the unread count "never clears" and that the defect reaches "any member who sends 20 messages in a row after an unread one", in the evidence record, DM-25, the review log and Notion. The count clears once the member views a later incoming message, and through this app the defect takes a missed view, since sending usually brings the incoming message into view.
+- **Caught by:** Dev Manager 3, DM-25 section 5.
+- **Effect:** none on the verdict, which DM-25 reached on C2's item 8; the records overstated the defect.
+- **Correction:** the evidence record's CX10 section, the review log's DM-25 row and the Work Register row state the outcome and reach in DM-25 3.7's terms, marked as corrections.
+- **Prevention:** AM7-05's and AM7-10's rule applies to a defect's effect as well as to a fix: "never", "any" and "every" only when the manager has traced the paths that end it. For a stuck state, the manager names what clears it.

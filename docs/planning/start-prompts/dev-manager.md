@@ -9,7 +9,8 @@
 
 - `<N>` and `<PREVIOUS>`: this session's number, and the session that creates it, with its session ID;
 - `<DIRECTION>`: Nathan's words that direct the creation, quoted exactly, with their date and OD number when recorded;
-- `<HANDOVER>`: the predecessor's handover file under `docs/continuity/dev-manager/reviews/` and its full commit SHA, or "none" when the primary manager starts the session without a handover;
+- `<HANDOVER>`: the predecessor's handover file under `docs/continuity/dev-manager/reviews/`, or "none" when the primary manager starts the session without a handover;
+- `<HANDOVER_SHA>`: the full SHA of the handover commit, used in the start gate (DM-25 4.3);
 - `<MANAGER_BRANCH>`: the open manager PR's head branch (the current handoff names it);
 - `<ENVIRONMENT>`: `Glow App - No Stream` unless the charter says otherwise (OD-36), with the Stream names it does or does not hold;
 - `<FIRST_TASK>`: the start note alone, or the start note and the first consultation, pasted in full.
@@ -52,7 +53,7 @@ git rev-parse HEAD
 git rev-parse origin/<MANAGER_BRANCH> origin/main
 ```
 
-- **With a handover:** also run `git merge-base --is-ancestor <HANDOVER_SHA> HEAD && echo "handover present"`. Your branch's head is the handover commit, or the one commit after it that records the successor. The predecessor pushes nothing after that; if the head is anything else, say so in your start note.
+- **With a handover** (`<HANDOVER>`): also run `git merge-base --is-ancestor <HANDOVER_SHA> HEAD && echo "handover present"`. Your branch's head is the handover commit, or the one commit after it that records the successor. The predecessor pushes nothing after that; if the head is anything else, say so in your start note.
 - **Without one:** your branch's head is the last report commit the review log names; say so in your start note if it is not.
 
 ## 3. Read, completely, before your first report
