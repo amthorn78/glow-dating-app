@@ -11,7 +11,7 @@
   - **Nathan's pick:** recorded when he gives it.
 - **The Dev Manager's read:** none needed. DM-27 1.4 sets this re-review's content, quoted below as written; the prompt authorizes no credential use and no live provider action. This session is the only security reading of C2-C3 (OD-41).
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
-- **It runs alone** (OD-29). Codex's code review of C2-C3's head (`9776c6f`, holding `85b9844`) <CODEX_LINE> (DM-27 1.4, DM-25 1.2).
+- **It runs alone** (OD-29). Codex's code review of C2-C3's head (`9776c6f`, holding `85b9844`) completed at 04:35 UTC with no finding (DM-27 1.4, DM-25 1.2).
 - **Deletion condition:** prune after Stage C2's PR merges and the evidence record holds the review.
 
 **Manager:** before giving this prompt to Nathan, replace every `<RECORDS_COMMIT>` with the full SHA of the manager-branch commit that holds this revision.
