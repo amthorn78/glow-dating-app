@@ -3740,3 +3740,261 @@ Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile
 - **CX12's effect, stated exactly (DM-28 section 3):** the messages stay in order, with a silent gap (in Codex's example, 5 shows directly above 31); "Show earlier messages" disappears, or, if the late page brings an older cursor of its own, loads history before it while the gap stays unreachable. It lasts while the conversation stays selected (leaving and reopening keeps the window: `select()` returns at once for the conversation already selected, `:124`), and ends when another conversation is selected or the account changes, at a revocation, at another `stale` reload, or when the app restarts. An older-page request made after the `stale` answer and before the reload's page is merged is exposed too. [Corrected by App Manager 8: this record and the consultation first said "history out of order and partly unreachable … until it is reopened" (AM8-06).]
 - **Codex on `771b870`:** completed at 04:42 UTC with no new review or comment; its summary's findings flag counts the open threads (CX8 to CX12).
 
+## Stage C2-C4
+
+The correction of Codex's CX12 on PR33 (DM-28, conditions 1.1 to 1.5; the brief's revision 19, "Codex's CX12, and C2-C4"). **CX12:** an older-page request outstanding when a `stale` answer's cursorless reload replaced the loaded window passed `loadOlder`'s epoch check, was put in front of the reload's window, and set `olderCursor` from the discarded window. The history between the two windows was then shown with a silent gap and could not be reached. **All five items done; no departure from a design condition, no contract change, no dependency change, no fixture-adapter change, no README change, no existing test or helper changed.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `ab05992b86965f14e555e3b52050181e37b1af03`.
+- **Start:** `ab05992b86965f14e555e3b52050181e37b1af03`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/upbeat-thompson-yis6d0`, under the workflow's `claude/**` push filter.
+- **Code commits:**
+  - `a328bc7449da339a39e6f2557f0b6f1cbb204d46`: the fix and tests (a) to (e);
+  - **`d3d73002c454416f41ef7d787a139e8970759d89`** (tree `61c6ef812af214c0bfbd6796a3ba68c82e038bcd`), the code head: (e) strengthened and (f) added, after this session's own review (below). It changes only the test file.
+- **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661) on `d3d7300` (check 7). The run on `a328bc7`, [40205573422](https://github.com/amthorn78/glow-dating-app/actions/runs/40205573422), also passed; it finished before `d3d7300` was pushed, and it is not the run of record. The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set: the prompt's loop printed nothing. `compgen -e | grep -E '^STREAM_'` printed nothing, so this is the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`).
+- Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it. The installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+- `git fetch origin claude/magical-wozniak-yfmmx2 main`, then `git merge --ff-only ab05992…` on the session branch.
+- `git rev-parse HEAD` printed `ab05992b86965f14e555e3b52050181e37b1af03`.
+- `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`.
+- `git diff --quiet 85b9844… HEAD -- proofs .github services scripts apps packages` printed `C2-C3's code`.
+- `git diff --stat ab05992… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing (the manager branch's head was `ab05992` itself).
+- `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C4'` printed `0`.
+- The reading list was read before the first change. The change touches no Expo or React Native interface (`store.ts` and its tests are plain TypeScript), so no versioned Expo page was needed.
+
+### The mechanism, and why (items 1 and 2, DM-28 1.1 and 1.2)
+
+**The mechanism: an older-page window epoch, advanced by the replacement itself.**
+
+- **`windowEpoch`** (`apps/mobile/src/chat/store.ts:86`) is advanced in `mergeHead`'s newest branch (`:266`), on the same step that replaces `accepted`, `unsent` and both cursors (`:267`). That is the replacement, not the `stale` answer (`:254`), so a request made after the `stale` answer and before the reload's page is merged carries the old value and is invalidated with the rest.
+- **`loadOlder`** (`:282-305`) captures `windowId = this.windowEpoch` with the conversation's epoch and the cursor (`:283`).
+  - **A success** returns before any change when either epoch has moved (`:291`): nothing is merged into `accepted`, `olderCursor` is not set, nothing is published, and DM-25 3.2's older-page trigger (`:298`) is not reached.
+  - **A failure that does not end access** publishes the older-page error only while `windowId` is still current (`:303`). From an earlier window it publishes nothing and starts nothing.
+  - **A refusal that ends access** (`unavailable` or `signed_out`) revokes whichever window it was asked from (`:303`), unless the conversation's epoch has moved on first (`:300`, unchanged, DM-24 1.1). That is 1.1's exception.
+  - **The one-at-a-time slot** `olderInFlight` is keyed by the window (`:285-286`), not by the conversation's epoch, and cleared only by the request that holds it (`:304`). So an invalidated request neither blocks a request asked from the reload's window nor frees that request's slot when it completes.
+- **The older-page state** (`:244-246`): when `readHead` merges a page asked with no cursor, a `loading` older-page state becomes `idle` in the same publish. At that moment any older request outstanding was asked from the window just replaced, so it is invalidated and can no longer clear the state itself.
+
+**Why this mechanism and not the cursor comparison.**
+
+- An epoch tests the request's own origin. A comparison of the captured cursor with the current `olderCursor` would also have to decide the one-at-a-time slot and the `loading` state separately (DM-28 1.2's note), and it lets an identical cursor through. The epoch needs neither.
+- It follows the store's existing pattern, `conversationEpoch` and `listEpoch` (CX9). No position is computed from a cursor or from `at`.
+
+**Where it bites** (DM-28 1.1). The newest branch otherwise runs only on the first read after a reset or a revocation, and while the conversation holds no accepted message. In both cases `olderCursor` is null, so no older page can be outstanding and the epoch's advance changes nothing. A `loading` state can then not exist either. So the change alters behaviour only on the `stale` path.
+
+**Why the slot cannot collide across conversations.** `olderCursor` is null after `resetConversation` (`:194`) and `revoke()` (`:352`). It is set only at the newest branch (`:267`, after `:266` advances the window) or by a merged older page (`:295`, after `:291` checks both epochs). So whenever `loadOlder` can ask in a conversation's epoch, `windowEpoch` has already moved past every value captured in an earlier one. The comment at `:284` says so.
+
+**When the older-page state becomes `idle`:** once the replacement is merged (`:245`), not when the invalidated request completes. A request asked after the replacement is allowed at once, with the reload's `older_cursor`. It keeps today's behaviour: at most one for the current window at a time, its page merges, its failure shows the error, and a refusal that ends access revokes. Test (e) covers all four.
+
+**The class comment** (`:61-66`) states the rule: "Replacing the window (CX12, DM-28 1.1 and 1.2)".
+
+### Items 1 to 5
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the invalidation** (DM-28 1.1) | Done | `store.ts:86`, `:266`, `:283`, `:291`, `:300-303`; the class comment `:61-66` | (a) `store.test.ts:759`, (b) `:773`, (c) `:788`, (d) `:799`, (f) `:845` |
+| **2, the older-page state** (DM-28 1.2) | Done: `idle` once the replacement is merged; per-window slot | `store.ts:244-246`, `:284-286`, `:304` | (a), (b), (d) and (e) `:817`; every CX12 test checks `idle` after the replacement (`assertReloaded`, `:730`) |
+| **3, the tests** (DM-28 1.3) | Done: (a) to (d) as DM-28 sets them, plus (e) and (f). Reversals R1 to R9 (check 6). No existing test or helper changed | `store.test.ts:683` to the end | Check 6 |
+| **4, the audit** (DM-28 1.4) | Done: below. One observation beyond CX12, which is not a defect and is not fixed | This section | — |
+| **5, the record** | Done: this section | This file | — |
+
+**Which test covers each of DM-28 1.1 to 1.3:**
+
+- **The helpers** (all appended after C2-C3's last test):
+  - **`pages()`** (`:691`), the test transport. It holds the next `messages` requests chosen, and releases each on its own, so a reload and an older page can be released in either order. A held request reaches the fixture at once, so its page is the one built when it was asked. It is released to succeed, to fail offline, or to be refused with the CX9 gate's `not_found` envelope (as the server answers once access has ended). It records each page's `older_cursor` by the cursor it was asked with.
+  - **The composition:** `cx12()` (`:754`) is `chatSetup(transport => stalled.wrap(paged.wrap(transport)))`, with C2-C3's `staleOnce` outermost. So the `stale` answer bypasses the hold, and the cursorless reload behind it can be held (test (d)).
+  - **The other helpers:**
+    - `windowThenLater` (`:716`): 25 seeded messages, with the window holding 6–25.
+    - `later` (`:721`): Jules sends 26–50, as "Later message n.".
+    - `staleAnswer` (`:723`): the next poll's head read is answered `stale`. It asserts that one was answered and that the last `messages` request had cursor `null`.
+    - `assertReloaded` (`:730`): the window is 31–50 alone, `hasOlder` is true, the older-page state is `idle`, and the reload's page carried an older cursor.
+    - `reachTheGap` (`:737`): "Show earlier messages" is asked with the reload's own `older_cursor` and reaches 11–30, then 1–10, in order, with 50 distinct `submission_id`s and `hasOlder` false at the end.
+    - `heldOlder` (`:748`).
+  - C2-C3's `staleOnce` and the CX9 `gate` are used as they are, unchanged.
+- **1.1 and 1.3 (a), CX12's sequence in Codex's numbers** (`:759`): 6–25 loaded; the older page 1–5 held; 26–50 arrive; one head read answered `stale`, and the reload shows 31–50 with its own `older_cursor`. Releasing the held page publishes nothing (the snapshot object is identical) and starts no request (the fixture's request log is unchanged). Then `reachTheGap`.
+- **1.1, 1.2 and 1.3 (b), the held page failing offline** (`:773`): the window and its cursor are unchanged (same snapshot), there is no older-page error, the state is `idle` (already after the replacement, and still after the failure), no request is started, then `reachTheGap`.
+- **1.1's exception and 1.3 (c), the held page refused** (`:788`): `assertRevoked` (`:479`).
+- **1.1 and 1.3 (d), asked after the `stale` answer and before the reload's merge** (`:799`): the reload is held, and the window 6–25 is still loaded. The older page is then asked with the discarded window's `older_cursor` (asserted to differ from the reload's) and held. The reload is released first (`assertReloaded`), then the older page: nothing published, no request, then `reachTheGap`.
+- **1.2, (e), a request asked after the replacement** (`:817`, for success, failure and refusal): with the invalidated page still held, a second older page is asked with the reload's cursor, and a third press sends nothing. Releasing the invalidated one publishes nothing, so the state stays `loading`. A press after that still sends nothing (`:834`): the slot is still the current window's. Then the current one is released:
+  - its page merges (11–50, `idle`);
+  - or its failure shows the error (31–50, `error`);
+  - or its refusal revokes (`assertRevoked`).
+- **1.1's "starts nothing: no cursor command", (f)** (`:845`): after the reload, the newest message is viewed while the fixture is offline. Its command is sent and fails (`read_cursor` count +1), so a move is waiting to be retried. Releasing the held older page publishes nothing and starts no request. The waiting move follows the next poll, as DM-23 2.3 has it.
+
+### Existing tests
+
+**None changed, and no existing helper changed.** Every existing store test passes unchanged at the code head: the CX9 tests (`store.test.ts:490` to `:574`), the CX10 tests (`:281` to `:326`), C2-C3's (a) to (c) (`:649`, `:660`, `:673`) and C2-C1's. The new code is appended after C2-C3's last test (`:681`), so no earlier line reference in this record moves. `testing.ts` is unchanged: no helper was needed there.
+
+### The audit (item 4, DM-28 1.4)
+
+Each piece of window-bound state across a replacement (`mergeHead`'s newest branch, `store.ts:265-268`), with the code that handles it, at `d3d7300`. This is this session's own trace, checked independently by its review (below).
+
+- **`accepted`, `unsent`, `olderCursor`, `newerCursor`:** replaced from the reload's page (`:267`). `hasOlder` is recomputed from `olderCursor` on every publish (`:125`). Nothing of the discarded window survives.
+- **An outstanding older page:** invalidated at the replacement (`:266`).
+  - Its success changes nothing and starts nothing (`:291`).
+  - Its failure shows nothing (`:303`).
+  - Its refusal that ends access revokes (`:303`).
+  - Its slot does not block or free the current window's (`:285-286`, `:304`).
+  - Tests (a) to (f).
+- **The older-page state:**
+  - **`loading`** becomes `idle` in the replacement's publish (`:245`).
+  - **`error`** is kept: see the observation below.
+- **`lastRead`:** not changed by the replacement. `moveReadCursor` reads it against the window at each call (`:323`; `indexOf` is −1 outside it), so a position outside the window is treated as unknown (DM-27 1.1; C2-C3's tests).
+- **`seen`:** not changed by the replacement, and it may fall before the new window. `moveReadCursor` then finds `to` = −1 and sends nothing until the screen reports a message in view. `noteSeen` (`:155-161`) then moves `seen` to the newest accepted message in view, which is a forward move: a newest page that does not hold `seen` holds only later messages.
+  - DM-28 section 3 notes that CX12's join could move `seen` backward (viewing the late page's messages). The fix removes that path: no page from a discarded window is merged.
+- **`visible`:** the screen's last report, by `submission_id`. It is compared with `accepted` only when a report or the return to the foreground calls `noteSeen`, and an ID outside the new window matches nothing. Not window-bound.
+- **`cursorRetry`:** retried after the next read (`:249`) against the window as it then stands. The retry reads `seen` and `lastRead` against `accepted` at that call. Test (f) shows a waiting retry is neither started by an invalidated page nor lost.
+- **A cursor command in flight:** its success sets `lastRead` to its target (`:334`), which may lie outside the new window, where DM-27 1.1 treats the position as unknown. Its follow-up (`:341`) re-applies the rule to the window as it then stands. Its failure sets `cursorRetry`, and a refusal that ends access revokes (`:339`). Unchanged.
+- **A send in flight:** not tied to the window. Its success asks for a head read (`:390`), which the reload's slot queues behind it (`headAgain`, `:236`) and which then uses the reload's `newer_cursor`. Own unsent messages come from the reload's page (`:267`). Unchanged.
+- **A list read in flight:** not tied to the window (the summary is per conversation). A changed summary calls `moveReadCursor`, which reads the current window. Unchanged.
+- **A head read, and one queued behind it:** the reload is the only head read in flight (`:236`). A read queued behind it (`headAgain`) is sent after it with the reload's `newer_cursor` (`:259`). The `stale` branch itself sets `headAgain` (`:254`). Unchanged.
+
+**One observation beyond CX12, recorded and not fixed: an older-page error from before the replacement survives it.** This is not a defect, by this session's reading.
+
+- **The path:** the window holds 6–25. "Show earlier messages" fails offline while that window is current, so the error is published (`:303`; the request was not invalidated). Then a head read is answered `stale`, and the reload replaces the window. `:245` resets only `loading`, so "Earlier messages could not be loaded. Try again." (`screen.tsx:166`) stays shown over the reload's window until the next press.
+- **Why it is not a defect:**
+  - The button stays enabled (`screen.tsx:165` disables it only while `loading`), and a press asks with the reload's `older_cursor`.
+  - The text stays true of the member's last attempt.
+  - It is today's behaviour: before this change, `readHead`'s publish never touched `older`, so an older-page error already survived every head read, the reload included.
+  - DM-28 1.1 rules out an error shown by an *invalidated* response, and this failure completed before the replacement.
+- **For the Dev Manager:** whether the replacement should also clear an earlier `error`. That is a one-word change at `:245`. It is recorded here, with its path, under DM-28 1.4 and DM-25 1.2, and is not in C2-C4.
+
+**What the code does not need**, as DM-28 section 3 states and this audit confirms:
+
+- `stale` to a cursorless read, and `stale` to an older cursor while the newer one still reads, need no change. The contracts give `stale_version` to a read only for its cursor.
+- C1's `reads.py` gives a newest page a `newer_cursor` whenever it holds an accepted message, and an `older_cursor` only with one. So a cursorless head read with an older cursor held occurs only after a `stale` answer.
+
+### The session's own review (before the records commit)
+
+After the first code commit (`a328bc7`), three independent reviewers read the diff, without being given this session's conclusions:
+
+- **correctness,** against DM-28 1.1 and 1.2 and the unchanged rules;
+- **an independent audit** of the window-bound state (DM-28 1.4);
+- **test adequacy,** against DM-28 1.3.
+
+Each finding was then given to a skeptic told to refute it. Each reviewer ran mutations only in the scratch copy.
+
+- **Correctness:** no defect. It confirmed:
+  - the slot cannot collide across conversations;
+  - two successive `stale` reloads, with requests from both earlier windows released out of order, change nothing;
+  - a reload that fails offline leaves an older page from the same window to merge normally.
+- **The audit:** no defect. It raised the error observation above. Its skeptic refuted it as a defect, for the reasons given, so it is recorded as an observation.
+- **Test adequacy:**
+  - **Confirmed, and fixed in `d3d7300`:** at `a328bc7`, removing the window guard from `loadOlder`'s `finally` (`:304`) left every test passing. (e) asked a second time only while the invalidated request was still held. (e) now asks again after it completes (`:834`); reversal R9.
+  - **A nit, also taken in `d3d7300`:** no CX12 test could detect DM-25 3.2's trigger firing on an invalidated page, because `seen` was null. (f) holds a failed move waiting to be retried; reversal R8.
+  - **Refuted:** that the whole-file reversal (R1) stops at the `idle` check before reaching the merge. It does, and the record cites the targeted reversals (R4, R7) for the merge and the error. R1 still fails every CX12 test, as DM-28 1.3 requires.
+
+### Fix reversals
+
+**The setup:**
+
+- Each reversal ran in a copy outside the repository: `$scratchpad/rev/apps/mobile`, made with `tar` from the checkout without `node_modules` and `.work`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's.
+- Every path was absolute. A script wrote each variant of the copy's `store.ts`, printed its diff against the fixed file, ran `node --test src/chat/store.test.ts` there, and restored the file.
+- After the series, the copy's `store.ts` equalled the checkout's (`cmp`). `git status` in the checkout showed nothing but this work.
+
+**The results**, over 50 store tests, each failure at its first failing assertion:
+
+- **R0, the fixed `store.ts` (the control):** 50 of 50 passed.
+- **R1, today's code** (`store.ts` at `ab05992`, the reversal DM-28 1.3 names for (a), (b) and (d)): 8 failed, every CX12 test: (a), (b), (c), (d), (e) ×3 and (f), each at `:733`. After the reload, the older-page state was `loading`, not `idle`: the held request still held it. The 42 earlier tests passed.
+- **R2, 1.1's exception removed** (an invalidated refusal that ends access dropped: `:300` also tests `windowId`): 1 failed, **(c)** `:788`. Not revoked.
+- **R3, a mechanism that invalidates only the requests made before the `stale` answer** (`windowEpoch` advanced in `readHead`'s `stale` branch instead of at `:266`): 1 failed, **(d)** `:799`, at `:812` ("nothing published"). The page asked after the `stale` answer was merged into the reload's window.
+- **R4, an invalidated failure shows the error** (`:303`'s `windowId` test removed): 1 failed, **(b)** `:773`, at `:782` ("nothing published"). Today's error.
+- **R5, no `idle` at the replacement** (`:245`'s reset removed): 8 failed, every CX12 test, at `:733` (`loading`).
+- **R6, today's one-at-a-time guard** (`olderInFlight` keyed by the conversation's epoch, `:285-286` and `:304`): 3 failed, **(e)** ×3 `:817`, at `:751`. The request asked after the replacement was never sent while the invalidated one was held.
+- **R7, a successful page from a replaced window is merged** (the window test removed from `:291` only: CX12's merge itself): 6 failed:
+  - **(a)** `:759`, at `:768` ("nothing published": 1–5 were joined in front of 31–50 and `olderCursor` was replaced);
+  - **(d)** at `:812`;
+  - **(e)** ×3, at the invalidated release;
+  - **(f)** at `:860`.
+- **R8, an invalidated success fires DM-25 3.2's trigger before returning:** 1 failed, **(f)** `:845`, at `:860`. The waiting move was sent on the release, and its response published the list.
+- **R9, the `finally` clears the slot whichever window it was asked from** (`:304` unguarded): 3 failed, **(e)** ×3, at `:834`. A second request for the current window was sent after the invalidated one completed.
+
+### Checks
+
+1. **The diff.**
+   - `git diff --check ab05992… d3d7300` printed nothing.
+   - `git diff --name-only ab05992… d3d7300` printed 2 paths: `apps/mobile/src/chat/store.test.ts` and `apps/mobile/src/chat/store.ts`.
+   - 204 lines added, 7 removed.
+   - The records commit adds this section after the existing sections, which are byte-identical.
+   - All owned paths. `testing.ts` and the README are unchanged.
+2. **Classification**, with the trusted policy from `main` (`a8e9528…`), extracted to a temporary directory outside the tree and run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base ab05992b86965f14e555e3b52050181e37b1af03 --head d3d73002c454416f41ef7d787a139e8970759d89 --merge-base` printed `{"full": true, "reason": "behavior-or-empty", "paths": ["apps/mobile/src/chat/store.test.ts", "apps/mobile/src/chat/store.ts"]}`. Full scope, as expected.
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then in `packages/contracts`, each exit 0.
+4. **The offline checks**, at `ab05992` (the start, with the change stashed) and at the code:
+   - **The contracts:** `npm run generate`, then no diff (both times). `npm run check`: `Generated types and runtime validators match schemas.`, then **586 → 586** of 586.
+   - **The mobile app, `npm run check`** (typecheck, lint, unit tests): **613 → 621** of 621, `ℹ fail 0`. The store's tests went 42 → 50: 49 at `a328bc7`'s content (620), 50 at `d3d7300` (621).
+   - **The mobile app, the Expo checks:** `EXPO_OFFLINE=1 npm run check:expo` printed `Dependencies are up to date`, and `EXPO_OFFLINE=1 npm run export:development` printed `Exported: .work/native-export`. Each exited 0 both times. At the head they ran on `a328bc7`'s content, whose `store.ts` is `d3d7300`'s; `d3d7300` changes only a unit-test file.
+   - **`npm run test:rendered`, informational, not the pinned browser:**
+     - It used the container's Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it.
+     - On the fixed `store.ts`: **97 passed (4.9m)**, among them `rendered/chat.spec.ts:87`, the long conversation (6.0 s).
+5. **What stays unchanged.** `git diff ab05992… d3d7300` is empty over all of the following:
+   - `apps/mobile/README.md`;
+   - `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`;
+   - `apps/mobile/src/contracts/generated/`;
+   - `apps/mobile/src/chat/fixture-adapter.ts` and `testing.ts`;
+   - `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`;
+   - `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+6. **The reversals:** R0 to R9, above. Each fails the tests DM-28 1.3 names, and R6, R8 and R9 fail those of (e) and (f).
+7. **The run of record:** Foundation push run [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661), attempt 1, on `d3d73002c454416f41ef7d787a139e8970759d89`, branch `claude/upbeat-thompson-yis6d0`, 25 October 2026 15:18:35 to 15:26:25 UTC.
+   - **All eight jobs `success`:** Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate.
+   - **The gate's step printed `Application checks passed`.** Its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`.
+   - Nothing was pushed to the branch after `d3d7300` until the run had finished. The run was not re-run or dispatched.
+   - **Mobile checks,** 15:18:46 to 15:25:27: **6 min 41 s against its 15-minute timeout**, so 8 min 19 s to spare. The rendered step ("Render and exercise account onboarding"), 15:20:31 to 15:25:23: **4 min 52 s**. Against C2-C3's run 40160547922 (6 min 36 s, rendered 4 min 51 s): 5 s longer and 1 s longer.
+     - The whole log (2,859 lines) was searched for these lines and for any failure: no `✖`, `not ok` or `##[error]`. Its one `##[warning]` is the runner's Node.js 20 deprecation notice for `actions/upload-artifact`.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 621`, `ℹ pass 621`, `ℹ fail 0` (613 before this work), with all eight CX12 tests (`✔ CX12`, eight lines) among them.
+     - `check:expo`: `Dependencies are up to date`. `export:development`: `Exported: .work/native-export`.
+     - **The rendered tests: `97 passed (4.8m)`,** against the pinned Chromium the job installs. All thirteen of `rendered/chat.spec.ts` passed, among them `:34` (10.7 s), **`:87` a long conversation: unread does not clear until the newest message is in view (5.5 s)**, `:108` (5.3 s), `:121` (8.3 s), `:181` the older page (5.1 s), and the revoked state `:195`, both ways (2.0 s each).
+   - **API mobile smoke:** `success`. It printed `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs,** unchanged by this work and passing: Change scope (15:18:37 to 15:18:44), API checks (15:18:46 to 15:19:30), API artifact checks (15:18:46 to 15:19:05), Stream proof checks (15:18:46 to 15:20:24), and Database proof checks (15:18:46 to 15:26:21; its suite 15:19:33 to 15:26:17). Their logs were not read beyond their conclusions.
+   - **The run on `a328bc7`,** [40205573422](https://github.com/amthorn78/glow-dating-app/actions/runs/40205573422): `completed`, `success`, 15:09:08 to 15:16:37 UTC. It is not the run of record, and its jobs were not read.
+8. **Secret scan** over the code diff's added lines (204), and again after `d3d7300`. The patterns:
+   - JWT shapes, private-key headers, cloud key prefixes and token prefixes;
+   - credential assignments and e-mail addresses;
+   - runs of 32 or more hexadecimal characters;
+   - the HDE and `STREAM_*` names.
+
+   No match. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at.**
+  - No design condition was departed from.
+  - There is no contract, dependency, fixture-adapter, `testing.ts`, README, screen, workflow or service change.
+  - The revocation path (`revoke()`, and every `ends(code)` branch) is unchanged.
+  - The cursor rule and DM-25 3.2's triggers for a merged page are unchanged: `moveReadCursor` is untouched, and `:298` still fires for a merged older page.
+- **Two choices recorded:**
+  - **Two code commits:** `a328bc7` was pushed before this session's own review had reported, and the review's two test findings were taken in `d3d7300`. The run of record is `d3d7300`'s. `a328bc7`'s run finished before `d3d7300` was pushed.
+  - **Two tests beyond DM-28 1.3's four:** (e) for 1.2's request made after the replacement, and (f) for 1.1's "no cursor command". DM-28 1.3's (a) to (d) are as written.
+- **Findings outside the work:** none in a fix-here class. One observation (an older-page error surviving the replacement) is recorded in the audit, with its path, for the Dev Manager. It is not fixed.
+- **Limits:**
+  - **CX12's reach** is as DM-28 states it: C1 answers `stale_version` to a newer cursor only when the cursor cannot be read, or its boundary cannot be placed (`reads.py:389-411`). The fixture never answers it to a cursor the app sends, so the tests reach the path only through C2-C3's `staleOnce`.
+  - **The cursor's position** stays out of the contracts (C2C1-X1, for P11).
+  - **Local rendered runs used Chromium 1243, not the pinned revision.** The pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know (DM-28 2.2)
+
+**Every request that can be outstanding when the window is replaced** (`mergeHead`'s newest branch, `store.ts:265-268`), and how each is handled:
+
+- **A head read:** none but the reload itself. One head read at a time per conversation epoch (`:236`), and the reload is sent from the `stale` read's `finally` (`:259`).
+- **A head read queued behind it** (`headAgain`, from a return to the foreground, an authority change, `retryRead` or a send's success): sent after the reload with the reload's `newer_cursor` (`:259`). Unchanged.
+- **An older page** asked before the `stale` answer, or after it and before the merge: invalidated by `:266`. Its success is dropped at `:291`. Its non-ending failure is dropped at `:303`. Its refusal that ends access revokes at `:303`, unless the conversation's epoch moved (`:300`). Its slot is the old window's (`:285-286`, `:304`). Tests (a) to (f).
+- **An older page asked after the merge:** today's behaviour, under the per-window slot. Test (e).
+- **A cursor command:** not invalidated (it names a `submission_id`, not a window). Its success sets `lastRead`, which DM-27 1.1 reads against the window at each call. Its follow-up (`:341`) and its retry (`:249`) re-apply the rule to the window as it stands. Unchanged, from C2-C3.
+- **A send:** not invalidated. Its success queues a head read behind the reload. Unchanged.
+- **A list read:** not invalidated (per conversation, not per window). Unchanged.
+
+**Further points for the re-review:**
+
+- **The window-bound state:** the audit above, which DM-28 2.2 asks the re-review to check, not take from this record. It includes the one observation (an older-page `error` kept across the replacement, `:245`).
+- **The delta from `85b9844`:**
+  - `store.ts` +21 −7: the class comment, `windowEpoch`, `:244-246`, `:266` and `loadOlder`;
+  - `store.test.ts` +183, appended after `:681`.
+  - The security focus is unchanged: no import, provider package, `fetch`, socket, `EventSource`, `console` or timer is added. The test transport lives in the test file only.
+- **The run of record** is [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661) on `d3d7300`. The records commit is Markdown-only.
