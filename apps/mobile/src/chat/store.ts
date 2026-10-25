@@ -55,8 +55,9 @@ let keySerial = 0;
  * - **The read cursor** (point e; CX8, DM-23 2.1 to 2.3) moves forward only, to the newest
  *   accepted message the screen has reported inside the conversation's visible area while the
  *   conversation was shown and the app was in the foreground. A page arriving never moves it.
- *   Until a command has succeeded, the store does not know the server's position, so the
- *   loaded window alone cannot hold a move back (CX10, DM-25 3.1 and 3.2).
+ *   The store knows the server's position only while `lastRead` is among the loaded accepted
+ *   messages; otherwise the loaded window alone cannot hold a move back (CX10, F1; DM-25 3.1
+ *   and 3.2, DM-27 1.1).
  * - **Revocation.** A refusal ends the conversation in Glow's revoked state and drops its
  *   history, draft, cursors and any pending send at once. Every request outstanding then is
  *   invalidated: its response, success or failure, changes nothing and starts nothing
@@ -86,11 +87,6 @@ export class ChatStore {
   private seen: string | null = null;
   /** A cursor command failed without ending access: it is tried again after the next read. */
   private cursorRetry = false;
-  /**
-   * A cursor command has succeeded since `lastRead` was last cleared (this opening). Until then
-   * the server's position is unknown (C2C1-X1), and DM-25 3.1's grounds apply.
-   */
-  private cursorKnown = false;
   private listShown = false;
   private conversationShown = false;
   private foreground: boolean;
@@ -188,7 +184,7 @@ export class ChatStore {
   private resetConversation(matchId: string | null) {
     this.conversationEpoch += 1;
     this.accepted = []; this.unsent = []; this.olderCursor = null; this.newerCursor = null; this.lastRead = null;
-    this.visible = []; this.seen = null; this.cursorRetry = false; this.cursorKnown = false;
+    this.visible = []; this.seen = null; this.cursorRetry = false;
     this.sending = null; this.retryable = null; this.headAgain = false;
     this.publish({ selectedMatchId: matchId, conversation: emptyConversation, draft: '', send: idleSend });
     this.schedule();
@@ -299,11 +295,13 @@ export class ChatStore {
     return matchId === null ? undefined : this.state.list.conversations.find(entry => entry.match_id === matchId);
   }
   /**
-   * Point e (DM-23 2.1 to 2.3, DM-25 3.1): forward only, to `seen`, and only when that passes a
-   * message from the other member. Until a command has succeeded, the server's position is
-   * unknown, so a move is also sent when the summary held shows an unread count above zero, or
-   * when no summary is held; the server moves the cursor forward only. One command at a time;
-   * a move made while one is in flight follows it.
+   * Point e (DM-23 2.1 to 2.3, DM-25 3.1, DM-27 1.1): forward only, to `seen`, and only when
+   * that passes a message from the other member. `lastRead` is set only by a successful command
+   * and cleared wherever the store forgets the position, so the position is known only while
+   * `lastRead` is among the loaded accepted messages. Otherwise (none has succeeded, or a reload
+   * of the newest page left it outside the window) a move is also sent when the summary held
+   * shows an unread count above zero, or when no summary is held; the server moves the cursor
+   * forward only. One command at a time; a move made while one is in flight follows it.
    */
   private async moveReadCursor() {
     const matchId = this.state.selectedMatchId, epoch = this.conversationEpoch;
@@ -312,14 +310,14 @@ export class ChatStore {
     if (to <= from) return;
     const passesOther = this.accepted.slice(from + 1, to + 1).some(message => message.author === 'other');
     const held = this.summary();
-    if (!passesOther && (this.cursorKnown || (held !== undefined && held.unread_count === 0))) return;
+    if (!passesOther && (from >= 0 || (held !== undefined && held.unread_count === 0))) return;
     const target = this.accepted[to]!;
     this.cursorInFlight = epoch;
     let moved = false;
     try {
       const summary = await this.client.readCursor(this.client.readCursorIntent(matchId, target.submission_id));
       if (epoch !== this.conversationEpoch) return;
-      this.lastRead = target.submission_id; this.cursorRetry = false; this.cursorKnown = true; moved = true;
+      this.lastRead = target.submission_id; this.cursorRetry = false; moved = true;
       this.publish({ list: Object.freeze({ ...this.state.list,
         conversations: this.state.list.conversations.map(entry => entry.match_id === summary.match_id ? summary : entry) }) });
     } catch (error) {
@@ -338,7 +336,7 @@ export class ChatStore {
     const matchId = this.state.selectedMatchId;
     this.conversationEpoch += 1; this.listEpoch += 1;
     this.accepted = []; this.unsent = []; this.olderCursor = null; this.newerCursor = null; this.lastRead = null;
-    this.visible = []; this.seen = null; this.cursorRetry = false; this.cursorKnown = false;
+    this.visible = []; this.seen = null; this.cursorRetry = false;
     this.sending = null; this.retryable = null; this.headAgain = false;
     this.publishConversation({ status: 'revoked', older: 'idle', error: code });
     this.publish({ draft: '', send: idleSend,

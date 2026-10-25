@@ -609,3 +609,73 @@ test('two messages with the same time are two messages; keys are submission_id, 
   await fixture.timers.advance(CONVERSATION_POLL_MS);
   assert.deepEqual(texts(fixture), ['First.', 'Second, same second.']);
 });
+
+const stale = { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fe', code: 'stale_version', retryable: false };
+/**
+ * F1's transport (DM-27 1.2): answers the next head read made with a newer cursor with Glow's
+ * `stale_version`, as C1 answers a cursor whose boundary it cannot place. The store then reloads
+ * the newest page alone, which replaces the loaded window.
+ */
+function staleOnce() {
+  let armed = false, answered = 0;
+  return { arm: () => { armed = true; }, answered: () => answered, wrap: (transport: ChatTransport): ChatTransport => ({ ...transport,
+    conversations: () => transport.conversations(), send: intent => transport.send(intent), readCursor: intent => transport.readCursor(intent),
+    messages: async request => {
+      if (!armed || request.cursor === null) return transport.messages(request);
+      armed = false; answered += 1; return stale;
+    } }) };
+}
+const A = 'A, viewed.', B = 'B, never viewed.';
+type Reload = Readonly<{ own: number; listFirst?: boolean; sendB?: boolean }>;
+/**
+ * Jules sends A (with `listFirst`, the list is read then); A is viewed and its command succeeds;
+ * then Jules sends B (unless `sendB` is false) and the member `own` messages; then one head read
+ * is answered `stale`.
+ */
+async function staleReload(fixture: Setup, log: ReturnType<typeof cursorLog>, stalled: ReturnType<typeof staleOnce>, { own, listFirst = false, sendB = true }: Reload) {
+  julesSends(fixture, A);
+  if (listFirst) { fixture.store.refreshList(); await settle(); assert.equal(unread(fixture), 1); }
+  await open(fixture);
+  fixture.store.viewed(idsOf(fixture, A)); await settle(); await settle();
+  assert.deepEqual(log.targets, idsOf(fixture, A), 'the command to A succeeded');
+  if (sendB) julesSends(fixture, B);
+  await ownSends(fixture, own);
+  stalled.arm(); await fixture.timers.advance(CONVERSATION_POLL_MS); await settle();
+  assert.equal(stalled.answered(), 1, 'one head read answered `stale`');
+  assert.equal(fixture.fixture.requests().filter(request => request.operation === 'messages').at(-1)!.cursor, null, 'then the newest page alone');
+  assert.equal(texts(fixture).includes(B), false, 'B lies before the reloaded window');
+}
+
+test('F1 (a): after a `stale` reload leaves `lastRead` outside the window, with no summary held, viewing the newest sends one command, to `seen`, and the count clears (DM-27 1.1, 1.2)', async () => {
+  const log = cursorLog(), stalled = staleOnce(), fixture = await chatSetup(transport => log.wrap(stalled.wrap(transport)));
+  await staleReload(fixture, log, stalled, { own: CONVERSATION_PAGE_LIMIT });
+  assert.equal(texts(fixture).includes(A), false, '`lastRead` lies before the reloaded window');
+  assert.deepEqual(fixture.store.getSnapshot().list.conversations, [], 'no summary held');
+  fixture.store.viewed(newest(fixture)); await settle(); await settle();
+  assert.deepEqual(log.targets.slice(1), newest(fixture), 'one command, to `seen`');
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 0);
+});
+
+test('F1 (b): the same with a summary held at 0: viewing the newest sends nothing, and the next list read sends one command, to `seen`, and the count clears (DM-27 1.2; DM-25 3.4 (c))', async () => {
+  const log = cursorLog(), stalled = staleOnce(), fixture = await chatSetup(transport => log.wrap(stalled.wrap(transport)));
+  await staleReload(fixture, log, stalled, { own: CONVERSATION_PAGE_LIMIT, listFirst: true });
+  assert.equal(unread(fixture), 0, 'the earlier command\'s response left the summary at 0');
+  fixture.store.viewed(newest(fixture)); await settle(); await settle();
+  assert.equal(log.targets.length, 1, 'the summary held shows 0 and the window holds no incoming message');
+  fixture.store.refreshList(); await settle(); await settle();
+  assert.deepEqual(log.targets.slice(1), newest(fixture), 'one command, to `seen`');
+  assert.equal(unread(fixture), 0);
+  fixture.store.refreshList(); await settle();
+  assert.equal(unread(fixture), 0);
+});
+
+test('F1 (c): a `stale` reload that keeps `lastRead` within the newest page, with no summary held: the member\'s own newer messages in view send nothing (DM-27 1.2; DM-23 2.3)', async () => {
+  const log = cursorLog(), stalled = staleOnce(), fixture = await chatSetup(transport => log.wrap(stalled.wrap(transport)));
+  await staleReload(fixture, log, stalled, { own: CONVERSATION_PAGE_LIMIT - 1, sendB: false });
+  assert.equal(texts(fixture)[0], A, '`lastRead` is the oldest message of the reloaded window');
+  assert.deepEqual(fixture.store.getSnapshot().list.conversations, [], 'no summary held');
+  for (let index = 0; index < 5; index++) { viewAll(fixture); fixture.store.viewed(idsOf(fixture, `Mine ${CONVERSATION_PAGE_LIMIT - 1}.`)); }
+  await fixture.timers.advance(3 * CONVERSATION_POLL_MS);
+  assert.equal(log.targets.length, 1, 'only the known position holds the move back');
+});
