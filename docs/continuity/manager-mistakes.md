@@ -102,6 +102,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-11 | 24 Oct 2026 | follow-through | DM-17's follow-up on the harness client's `npm ci` advisory was due "before Stage C", and was not decided before C1 ran and merged | App Manager 7, updating the handoff after PR32 merged |
 | AM7-12 | 24 Oct 2026 | follow-through | After verifying Codex's CX8 on PR33, the manager carried it to P11 and put the alternative (a correction pass before the merge) to Nathan as a question, instead of consulting the Dev Manager first (OD-32) | Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"* |
 | AM7-13 | 25 Oct 2026 | process | The manager gave Nathan C2-C1's exact-head re-review prompt while Codex's review of C2-C1's head was still running; Codex then found CX9, and the manager sent DM-24, which can change the code under review, while telling Nathan the re-review should continue | Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation"* |
+| AM7-14 | 25 Oct 2026 | accuracy | Nathan directed the manager to create App Manager 8; the manager read his words as his own hand start, recorded OD-46, the handoff and Notion that way, and told him to start it | Nathan: *"i told you to create the Glow App Manager 8 session"* |
 
 ## App Manager 2
 
@@ -759,7 +760,7 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
   - Codex posted CX9 at 00:25 UTC, a verified defect in the code under review. The manager sent DM-24, whose recommended outcome, a correction pass, changes that code.
   - In the same message, it told Nathan that the re-review should continue because "its report covers C2-C1's own diff". A review of a head that is about to change certifies nothing for the merge, and the work goes to waste.
 - **Caught by:** Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation. ... I have not submitted "review session for P06.2 Stage C2-C1" and will not due to your confused context. Your subsequent dev manager escalation invalidates that."*
-- **Effect:** none on the code or a member. C2-C1's re-review never ran; its prompt is withdrawn. DM-24 revision 1 assumed the re-review was in flight, so revision 2 corrects that. Nathan starts App Manager 8 to receive DM-24's answer.
+- **Effect:** none on the code or a member. C2-C1's re-review never ran; its prompt is withdrawn. DM-24 revision 1 assumed the re-review was in flight, so revision 2 corrects that. App Manager 8 receives DM-24's answer (OD-46).
 - **Correction:**
   - the re-review prompt is marked withdrawn;
   - DM-24 revision 2 states that the re-review did not run, and proposes one exact-head re-review after any correction pass, given only after Codex has reported on that head;
@@ -767,3 +768,13 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:**
   - Codex reviews each new head within minutes. Before giving Nathan an exact-head review prompt, the manager waits for Codex's review of the head's code commit to report, and handles any finding first.
   - When a new finding may change the code under a review that is already with Nathan, the manager tells Nathan to hold that review. It never tells him to continue it.
+
+### AM7-14 — A direction to create the successor read as Nathan's own hand start (accuracy)
+
+- **What happened:** Nathan wrote: *"It's time to create a new Glow App Manager Session. ... I will submit the DM-24 request, create a new session to receive it. It will be Glow App Manager 8."* App Manager 7 read "create a new session" as Nathan's own act. It recorded OD-46, the handoff, the start procedure and Notion as a hand start, with a replacement PR for PR33. It then told Nathan to start App Manager 8 himself.
+- **Caught by:** Nathan: *"i told you to create the Glow App Manager 8 session"*.
+- **Effect:** a delay, and records that briefly named the wrong path (a replacement PR instead of the manager branch as the successor's outcome branch). No PR was closed and no branch was created.
+- **Correction:**
+  - OD-46, the handoff, the start procedure, DM-24's header and Notion are corrected;
+  - App Manager 7 creates App Manager 8 with the remote-session tools, in `Glow App - No Stream`, with the manager branch as its outcome branch (OD-31).
+- **Prevention:** a direction to the outgoing manager that says it is time to create a new manager session is OD-31's case: the outgoing manager creates the successor. When the words leave unclear who creates it, the manager asks in one line before recording either path.
