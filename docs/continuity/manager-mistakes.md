@@ -110,6 +110,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-05 | 25 Oct 2026 | accuracy | DM-27's proposed d.2 asked for tests of two `cursorKnown` clears that, under d.1, could never fail | Dev Manager 3, DM-27 section 3 |
 | AM8-06 | 25 Oct 2026 | accuracy | CX12's records said "history out of order … until it is reopened"; the messages stay in order with a gap, and reopening the same conversation does not clear it; and `:248` for `:244` | Dev Manager 3, DM-28 section 3 and 4.3 |
 | AM8-07 | 25 Oct 2026 | follow-through | The Work Register row's Next Action property was left at `9776c6f` when its page body was updated for CX12 and DM-28 | Dev Manager 3, DM-28 4.1 |
+| AM8-08 | 25 Oct 2026 | accuracy | *Implementation Control* said "Show earlier messages" is idle once the reload merges; the code turns only `loading` into `idle` | Dev Manager 3, DM-29 1.3 |
 
 ## App Manager 2
 
@@ -844,3 +845,10 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Correction:** the property is updated in this batch.
 - **Prevention:** this repeats AM5-02 and AM5-03, whose prevention is already the manager workflow's checklist item ("update every property and page body that states it"). The manager now writes the Work Register's property and body together on every update, and reads both back.
 
+### AM8-08 — A state change stated without its scope (accuracy)
+
+- **What happened:** writing C2-C4 to *Implementation Control*, App Manager 8 wrote that "Show earlier messages" is idle once the reload merges. The code turns only a `loading` state into `idle` at the replacement; an earlier `error` is kept (`store.ts:245`). The manager's own verification in the evidence record stated it correctly; the Notion summary dropped the qualifier, as DM-28 1.2's words and the session's record had.
+- **Caught by:** Dev Manager 3, DM-29 1.3.
+- **Effect:** a reader of Notion could take the observation DM-29 decided as already fixed; no decision used it.
+- **Correction:** the phrase is corrected in this batch, and the evidence record's two unscoped lines are annotated (DM-29 1.3).
+- **Prevention:** a summary of a state change names which state changes, in the code's terms, and is checked against the verification it summarizes before it is written (AM8-03 and AM8-04's kind: a summary that says more than its source).
