@@ -402,7 +402,12 @@ field, is refused whole and shows Glow's own error state.
    messages in view; the screen opens at the top and does not scroll to the newest message.
    A message that arrives while you are scrolled away stays unread until it is scrolled into
    view. A command is sent only when that position passes a message from the other person,
-   one at a time, never backward. The other person's read state is never shown, and read
+   one at a time, never backward. Until a command has succeeded since the conversation was
+   opened, the app does not know where Glow holds your cursor, so it also sends one when the
+   conversation's entry in the list shows an unread count above zero, or when it holds no
+   entry for it (as when the conversation is opened from a match); Glow moves a cursor
+   forward only. A move held back is reconsidered when an earlier page or a list read brings
+   new evidence, never on each scroll. The other person's read state is never shown, and read
    receipts are not built.
 5. **Show chat fixture controls** opens the **SYNTHETIC CHAT TEST CONTROLS**. Fictional
    Jules can send a message, or one held in delivery that **Deliver held fictional

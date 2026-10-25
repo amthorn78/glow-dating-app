@@ -263,6 +263,81 @@ test('the read cursor moves only over the messages that were in view: 25 message
   assert.equal(Object.values(fixture.fixture.inspect().readCursors).length, 1);
 });
 
+/** The member's own accepted messages, sent through the transport before the conversation is opened (DM-25 3.5). */
+async function ownSends(fixture: Setup, total: number) {
+  const version = fixture.adapter.matches().find(match => match.match_id === fixture.matchId)!.version;
+  for (let index = 1; index <= total; index++) {
+    await fixture.fixture.send(fixture.client.messageIntent(fixture.matchId, `Mine ${index}.`, version, `own-through-transport:${index}`));
+  }
+}
+const INCOMING = 'Unread, before the newest page.';
+/** One incoming message, then a full newest page of the member's own: the incoming one lies outside the loaded window (CX10). */
+async function incomingOutsideWindow(fixture: Setup) {
+  julesSends(fixture, INCOMING);
+  await ownSends(fixture, CONVERSATION_PAGE_LIMIT);
+}
+const newest = (fixture: Setup) => idsOf(fixture, `Mine ${CONVERSATION_PAGE_LIMIT}.`);
+
+test('(a) an incoming message outside the window, with the list read first: viewing the newest sends one command, to it, and the count clears (CX10; DM-25 3.1)', async () => {
+  const log = cursorLog(), fixture = await chatSetup(log.wrap);
+  await incomingOutsideWindow(fixture);
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 1);
+  fixture.store.hideList(); await open(fixture);
+  assert.equal(texts(fixture).includes(INCOMING), false, 'the incoming message is outside the newest page');
+  fixture.store.viewed(newest(fixture)); await settle(); await settle();
+  assert.deepEqual(log.targets, newest(fixture));
+  assert.equal(unread(fixture), 0, 'the command\'s summary clears the list\'s count');
+  fixture.store.refreshList(); await settle();
+  assert.equal(unread(fixture), 0);
+});
+
+test('(b) the same with no list read: the conversation opened with no summary held sends one command (CX10; DM-25 3.1)', async () => {
+  const log = cursorLog(), fixture = await chatSetup(log.wrap);
+  await incomingOutsideWindow(fixture);
+  await open(fixture); // As the match's "Open conversation" does: no list read.
+  assert.deepEqual(fixture.store.getSnapshot().list.conversations, []);
+  fixture.store.viewed(newest(fixture)); await settle(); await settle();
+  assert.deepEqual(log.targets, newest(fixture));
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 0);
+});
+
+for (const trigger of ['an older page', 'a list read'] as const) test(`(c) a summary out of date at 0 holds the move back until ${trigger} supplies the evidence (CX10; DM-25 3.1, 3.2)`, async () => {
+  const log = cursorLog(), fixture = await chatSetup(log.wrap);
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 0, 'read before the incoming message and the member\'s own arrived');
+  fixture.store.hideList();
+  await incomingOutsideWindow(fixture);
+  await open(fixture);
+  fixture.store.viewed(newest(fixture)); await settle(); await settle();
+  assert.deepEqual(log.targets, [], 'the summary held shows 0 and the window holds no incoming message');
+  if (trigger === 'an older page') {
+    await fixture.store.loadOlder(); await settle(); await settle();
+    assert.equal(texts(fixture)[0], INCOMING);
+  } else {
+    fixture.store.refreshList(); await settle(); await settle();
+  }
+  assert.deepEqual(log.targets, newest(fixture), 'one command, to `seen`');
+  fixture.store.refreshList(); await settle();
+  assert.equal(unread(fixture), 0);
+});
+
+test('(d) nothing unread: a summary at 0 and no incoming message in the window send no command, however often the messages are reported (CX10; DM-25 3.1)', async () => {
+  const log = cursorLog(), fixture = await chatSetup(log.wrap);
+  await ownSends(fixture, 3);
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 0);
+  await open(fixture);
+  for (let index = 0; index < 20; index++) {
+    viewAll(fixture); fixture.store.viewed(idsOf(fixture, 'Mine 1.')); fixture.store.viewed([]); fixture.store.viewed(idsOf(fixture, 'Mine 3.'));
+  }
+  await fixture.timers.advance(3 * CONVERSATION_POLL_MS);
+  fixture.store.refreshList(); await settle();
+  assert.deepEqual(log.targets, []);
+  assert.equal(count(fixture, 'read_cursor'), 0);
+});
+
 /** Records every send intent the store passes to the transport. */
 function recording() {
   const sent: MessageIntent[] = [];
@@ -338,6 +413,185 @@ test('another account replaces the session: nothing private survives and late re
   const snapshot = fixture.store.getSnapshot();
   assert.deepEqual([snapshot.selectedMatchId, snapshot.conversation.messages.length, snapshot.send.status, snapshot.draft], [null, 0, 'idle', '']);
   assert.equal(JSON.stringify(snapshot).includes('Before the switch.'), false);
+});
+
+type Operation = keyof ChatTransport;
+const refusal = { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000ff', code: 'not_found', retryable: false };
+/**
+ * CX9's wrapper (DM-24 1.4): holds a chosen request's response until released, and answers a
+ * chosen request with Glow's refusal, as the server answers once access has ended. A held
+ * request reaches the fixture at once, so its response is the one built before the revocation.
+ */
+function gate() {
+  const holding = new Map<Operation, 'succeed' | 'fail'>(), refusing = new Set<Operation>();
+  let releases: (() => void)[] = [];
+  const pass = async (operation: Operation, call: () => Promise<unknown>) => {
+    if (refusing.delete(operation)) return refusal;
+    const outcome = holding.get(operation);
+    if (!outcome) return call();
+    holding.delete(operation);
+    const body = await call();
+    await new Promise<void>(resolve => { releases.push(resolve); });
+    if (outcome === 'fail') throw new Error('The request did not complete.'); // Offline: access has not ended.
+    return body;
+  };
+  return {
+    hold: (operation: Operation, outcome: 'succeed' | 'fail' = 'succeed') => { holding.set(operation, outcome); },
+    refuse: (operation: Operation) => { refusing.add(operation); },
+    held: () => releases.length,
+    release: async () => { const pending = releases; releases = []; pending.forEach(release => release()); await settle(); await settle(); },
+    wrap: (transport: ChatTransport): ChatTransport => ({
+      conversations: () => pass('conversations', () => transport.conversations()),
+      messages: request => pass('messages', () => transport.messages(request)),
+      send: intent => pass('send', () => transport.send(intent)),
+      readCursor: intent => pass('readCursor', () => transport.readCursor(intent)),
+    }),
+  };
+}
+type Gate = ReturnType<typeof gate>;
+const PRIVATE = 'Private history.';
+/** The ways a request outstanding can meet a revocation: a send's refusal, a cursor command's, or a head read's. */
+const revokeThrough = {
+  'a send\'s refusal': async (fixture: Setup, gated: Gate) => {
+    gated.refuse('send'); fixture.store.setDraft('Refused.'); await fixture.store.send(); await settle();
+  },
+  'a cursor command\'s refusal': async (fixture: Setup, gated: Gate) => {
+    gated.refuse('readCursor'); fixture.store.setDraft('Unsent words.'); fixture.store.viewed(idsOf(fixture, PRIVATE)); await settle();
+  },
+  'a head read\'s refusal': async (fixture: Setup, gated: Gate) => {
+    gated.refuse('messages'); fixture.store.setDraft('Unsent words.'); await fixture.timers.advance(CONVERSATION_POLL_MS);
+  },
+} as const;
+type Revocation = keyof typeof revokeThrough;
+/** A shown conversation with one unviewed message from Jules, and the list read. */
+async function revocable(gated: Gate) {
+  const fixture = await chatSetup(gated.wrap);
+  julesSends(fixture, PRIVATE);
+  fixture.store.showList(); await open(fixture);
+  assert.deepEqual(texts(fixture), [PRIVATE]);
+  assert.equal(unread(fixture), 1);
+  return fixture;
+}
+async function revoke(fixture: Setup, gated: Gate, through: Revocation) {
+  await revokeThrough[through](fixture, gated);
+  assertRevoked(fixture);
+}
+function assertRevoked(fixture: Setup) {
+  const snapshot = fixture.store.getSnapshot();
+  assert.deepEqual([snapshot.conversation.status, snapshot.conversation.error, snapshot.conversation.messages, snapshot.conversation.hasOlder,
+    snapshot.conversation.older], ['revoked', 'unavailable', [], false, 'idle']);
+  assert.deepEqual([snapshot.draft, snapshot.send], ['', { status: 'idle', error: null, canRetry: false }], 'no draft, no pending send, no retry (DM-24 1.2)');
+  assert.equal(snapshot.list.conversations.some(entry => entry.match_id === fixture.matchId), false);
+  assert.equal(JSON.stringify(snapshot).includes(PRIVATE), false);
+}
+const requested = (fixture: Setup) => fixture.fixture.requests().length;
+const both = ['a send\'s refusal', 'a cursor command\'s refusal'] as const satisfies readonly Revocation[];
+
+for (const through of both) test(`CX9: a head read held across a revocation through ${through} changes nothing when it succeeds (DM-24 1.1, 1.2)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('messages'); await fixture.timers.advance(CONVERSATION_POLL_MS);
+  assert.equal(gated.held(), 1);
+  fixture.store.retryRead(); // Queued behind the read in flight: invalidated with it.
+  await revoke(fixture, gated, through);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await gated.release();
+  await fixture.timers.advance(3 * CONVERSATION_POLL_MS); // Before the list's 30-second read, which, made after, is 1.3's.
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assertRevoked(fixture);
+  assert.equal(requested(fixture), before, 'no new read and no cursor command');
+});
+
+for (const through of both) test(`CX9: an older page held across a revocation through ${through} leaves the messages empty when it succeeds (DM-24 1.1)`, async () => {
+  const gated = gate(), fixture = await chatSetup(gated.wrap);
+  assert.equal(fixture.fixture.developmentSeed('profile-jules', fixture.matchId, 25), true);
+  fixture.store.showList(); await open(fixture);
+  gated.hold('messages');
+  const older = fixture.store.loadOlder(); await settle();
+  assert.equal(gated.held(), 1);
+  if (through === 'a send\'s refusal') await revokeThrough[through](fixture, gated);
+  else { gated.refuse('readCursor'); fixture.store.viewed(idsOf(fixture, ...history(25))); await settle(); }
+  assertRevoked(fixture);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await gated.release(); await older;
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assert.deepEqual(fixture.store.getSnapshot().conversation.messages, []);
+  assert.equal(requested(fixture), before);
+});
+
+for (const through of both) test(`CX9: a head read held across a revocation through ${through} that then fails without ending access leaves it revoked, not in error (DM-24 1.1)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('messages', 'fail'); await fixture.timers.advance(CONVERSATION_POLL_MS);
+  await revoke(fixture, gated, through);
+  const before = requested(fixture);
+  await gated.release();
+  await fixture.timers.advance(3 * CONVERSATION_POLL_MS); // Before the list's 30-second read, which, made after, is 1.3's.
+  assertRevoked(fixture);
+  assert.equal(requested(fixture), before);
+});
+
+for (const through of ['a cursor command\'s refusal', 'a head read\'s refusal'] as const) test(`CX9: a send held across a revocation through ${through} is no longer pending, and its success shows no "sent" and reads nothing (DM-24 1.1, 1.2)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('send');
+  fixture.store.setDraft('Held.'); const pending = fixture.store.send(); await settle();
+  assert.equal(fixture.store.getSnapshot().send.status, 'pending');
+  await revoke(fixture, gated, through);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await gated.release(); await pending;
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'no "sent" state');
+  assert.equal(requested(fixture), before, 'no head read after the send');
+});
+
+for (const through of ['a send\'s refusal', 'a head read\'s refusal'] as const) test(`CX9: a cursor command held across a revocation through ${through} changes neither the cursor nor the list when it succeeds (DM-24 1.1)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('readCursor');
+  fixture.store.viewed(idsOf(fixture, PRIVATE)); await settle();
+  assert.equal(gated.held(), 1);
+  await revoke(fixture, gated, through);
+  const snapshot = fixture.store.getSnapshot();
+  await gated.release();
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published: the list is unchanged');
+  // The cursor position the store holds is unchanged too: once readable again, viewing the
+  // same message sends a command, which a late `lastRead` would have suppressed.
+  fixture.activity.set('background'); fixture.activity.set('active'); await settle();
+  assert.deepEqual(texts(fixture), [PRIVATE]);
+  const commands = count(fixture, 'read_cursor');
+  fixture.store.viewed(idsOf(fixture, PRIVATE)); await settle(); await settle();
+  assert.equal(count(fixture, 'read_cursor'), commands + 1);
+});
+
+for (const through of both) test(`CX9: a list read held across a revocation through ${through} does not put the conversation's row back (DM-24 1.1)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('conversations'); fixture.store.refreshList(); await settle();
+  assert.equal(gated.held(), 1);
+  await revoke(fixture, gated, through);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await gated.release();
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assert.equal(unread(fixture), undefined, 'the row stays absent');
+  assert.equal(requested(fixture), before, 'and nothing is started');
+});
+
+for (const through of both) test(`CX9: requests made after a revocation through ${through} keep today's behaviour, beside held ones made before it (DM-24 1.3)`, async () => {
+  const gated = gate(), fixture = await revocable(gated);
+  gated.hold('messages'); await fixture.timers.advance(CONVERSATION_POLL_MS);
+  gated.hold('conversations'); fixture.store.refreshList(); await settle();
+  assert.equal(gated.held(), 2);
+  await revoke(fixture, gated, through);
+  const reads = count(fixture, 'messages'), lists = count(fixture, 'conversations');
+  // A return to the foreground: a read issued now, which Glow decides. The fixture still serves
+  // the match (the refusal was one request's), as a resumed match may (DM-22 3.1).
+  fixture.activity.set('background'); fixture.activity.set('active'); await settle();
+  assert.equal(count(fixture, 'messages'), reads + 1, 'not held back by the read made before the revocation');
+  assert.equal(count(fixture, 'conversations'), lists + 1, 'nor the list read');
+  let snapshot = fixture.store.getSnapshot();
+  assert.deepEqual([snapshot.conversation.status, texts(fixture)], ['ready', [PRIVATE]]);
+  assert.equal(unread(fixture), 1, 'the row is back from a list read made after the revocation');
+  snapshot = fixture.store.getSnapshot();
+  await gated.release();
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'the held responses still change nothing');
+  // And when Glow refuses the read made afterwards, the conversation is revoked again.
+  fixture.adapter.block('profile-jules', true, 'block:after-revocation'); await settle();
+  assertRevoked(fixture);
 });
 
 test('two messages with the same time are two messages; keys are submission_id, never at', async () => {
