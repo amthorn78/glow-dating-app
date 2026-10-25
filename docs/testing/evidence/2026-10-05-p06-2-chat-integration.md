@@ -3241,3 +3241,137 @@ P06.2, the chat integration (PF01 P06), is complete when PR33 merges. Nathan res
   - CX8 does not join the P11 plan. The manager updated Codex's thread to say the fix comes before the merge.
   - C2-C1's conditions, 2.1 to 2.6, are in the brief's revision 16, "Codex's CX8, and C2-C1".
   - **PR33's merge waits on C2-C1, its exact-head re-review and Codex's review of the new final head.**
+
+## Stage C2-C1
+
+The correction of Codex's CX8 on PR33 (DM-23, conditions 2.1 to 2.6 and 3.1; the brief's revision 16, "Codex's CX8, and C2-C1"): the read cursor moved to the newest fetched message whenever a page arrived while the conversation was shown in the foreground, so a long conversation's unread count cleared before its newest messages were seen. **All five items done; no departure, no contract change, no dependency change.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `e578b08cccb25b8767584a5540a7836cf29636be`.
+- **Start:** `e578b08cccb25b8767584a5540a7836cf29636be`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/pensive-pascal-82j52l`, under the workflow's `claude/**` push filter.
+- **Code commit:** `311b07e11b7131147becd0f045665f30d29856fa` (tree `a1a39eb8e0d3da067273a79e2d3881d9e227e139`). **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786) on `311b07e` (check 7). The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 24 and 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing). `compgen -e | grep -E '^STREAM_'` printed nothing: the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`). Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it; the installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only e578b08…` on the session branch; `git rev-parse HEAD` printed `e578b08cccb25b8767584a5540a7836cf29636be`; `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`; `git diff --quiet cb3a6a6… HEAD -- apps packages services proofs .github scripts` printed `C2's code`; `git diff --stat e578b08… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing; `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C1'` printed `0`. The reading list was read before the first change. As `apps/mobile/AGENTS.md` asks, React Native's ScrollView page (0.87; `onScroll`'s `contentOffset` and `layoutMeasurement`, `scrollEventThrottle`) and its layout-measurement page were read, with the installed type definitions of `measureLayout` (`react-native` 0.86.3: coordinates "relative to the origin x, y of the ancestor view") and React Native Web 0.21.0's `onLayout` and `measureLayout` sources.
+
+### The visibility mechanism, and why
+
+**Visibility tracking on the message list, computed from the measured layout** (DM-23 2.1's first form), with React Native's own interfaces only:
+
+- **The conversation's own scroll container,** `ConversationPage` (`src/chat/screen.tsx:132`): `Page`'s structure (safe area, keyboard avoidance, the same `ScrollView` props), plus the scroll view's `onLayout` (the visible area's height) and `onScroll` (`contentOffset.y` and `layoutMeasurement.height`, `scrollEventThrottle={16}`), with the content in one view whose origin is the scroll content's origin. **`Page` (`src/components/ui.tsx`) is unchanged,** so every other screen is too.
+- **Each row is measured** with `measureLayout` against that content view (`screen.tsx:109`), after every render (`:114`) and every size change of the content (`ConversationPage`'s content `onLayout`). Each pass starts empty, so a row not yet measured in the current pass is never in view.
+- **The rule** (`src/chat/visibility.ts:16`): a row is in view when its whole box lies inside the visible area, within one pixel of rounding, or, for a row taller than the area, when it fills the area. An unmeasured row or area is never in view.
+- **The report** (`useViewedMessages`, `screen.tsx:96`): the IDs of the rows in view go to `ChatStore.viewed` on each measurement, scroll and layout event, and when the screen gains focus. The screen sends nothing itself.
+
+**Why this mechanism:**
+
+- **Not a `FlatList` with `onViewableItemsChanged`:** the conversation's composer, controls and navigation share its scroll; a virtualized list would need them as header and footer, and virtualization would change which rows the inherited rendered tests can count.
+- **Not cached `onLayout` positions alone:** React Native Web reports `onLayout` through a `ResizeObserver`, so on size changes only. A row that moves without resizing, such as every row when an earlier page loads above it, would keep a stale position and could be counted in view before it is. Hence the re-measurement after every render, which the rendered test `chat.spec.ts:108` covers (reversal RR4).
+- **Not scrolling to the newest message on opening:** DM-23 2.2 allows it but does not require it. The screen opens at the top, as before; a member reaches the newest message by scrolling. Recorded as a limit.
+
+### The store's cursor path
+
+- **`viewed(submissionIds)`** (`src/chat/store.ts:129`): ignored while the conversation is not shown. Otherwise it keeps the report and, in the foreground, moves `seen` forward to the newest *accepted* message in it (`noteSeen`, `:138`), never backward. An unsent message never counts.
+- **`moveReadCursor`** (`:280`) sends `ReadCursorIntent` to `seen` only when `seen` is past the last cursor the store moved and the messages between include one from the other member; only in the foreground; at most one in flight. A move made while one is in flight follows it once it succeeds (`:298`). A command that fails without ending access is tried again after the next successful read (`:226`), not on each report.
+- **A page arriving never moves it** (`:226`): the page's only effect is that retry. Older pages, the member's own messages and polls move nothing.
+- **The foreground:** a report made in the background counts when the app returns, if the screen is still shown, and a deferred move is sent then (`:155`). Leaving the screen clears the report (`:121`); a revocation, another conversation or another account clears `seen` too.
+- **One behaviour changed beyond the cursor's target:** a move to a message that was in view may now complete after the screen is left; before, `moveReadCursor` required the screen to be shown. The message was in view while shown and in the foreground, so 2.1 holds, and a fast exit no longer leaves a seen message unread.
+
+### Items 1 to 5
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the read cursor** (2.1 to 2.3) | Done | `src/chat/store.ts:129` (`viewed`), `:138` (`noteSeen`), `:280` (`moveReadCursor`); `src/chat/screen.tsx:96` (`useViewedMessages`), `:132` (`ConversationPage`); `src/chat/visibility.ts` | `store.test.ts:161`, `:173`, `:193`, `:210`, `:226`; `visibility.test.ts:7`, `:17`, `:22`, `:28`; `rendered/chat.spec.ts:87`, `:108`, `:121` |
+| **2, the tests** (2.4) | Done. The store's four, with `store.test.ts:141` replaced by `:226`, plus a retry test; the rendered test's two cases, plus a re-measurement case; each with its reversal (check 6) | `src/chat/store.test.ts`, `src/chat/visibility.test.ts`, `rendered/chat.spec.ts` | Check 6 |
+| **3, the scope** (2.5) | Done. `apps/mobile` only; React Native's `ScrollView`, `onLayout`, `onScroll` and `measureLayout`; the conversation's own scroll container; `Page` unchanged; every other screen's rendered tests unchanged and passing | `git diff --name-only` (check 1) | Check 4 (local), check 7 (hosted) |
+| **4, the README** (2.5, 3.1) | Done. The cursor sentence states 2.1's rule, that a page never moves it, that the screen opens at the top, and 2.2 and 2.3; finding 1's sentence names the forms the no-provider test checks (DM-22 7.1) and says it does not catch an aliased constructor or a computed module name | `apps/mobile/README.md:397`, `:435` | — |
+| **5, the record** | Done: this section | This file | — |
+
+**Which test covers each of DM-23's conditions:**
+
+- **2.1** (in view, shown, foreground; a page never moves it; the layout is the evidence): `store.test.ts:161` (a page in the foreground, nothing reported: no command); `:226` (opening a 25-message conversation clears nothing; a report while not shown is ignored; one in the background sends nothing until the foreground); `visibility.test.ts:7` to `:28`; `chat.spec.ts:87` (opened at the top: some unread remain; scrolled to message 23: one; to 25: none), `:108`.
+- **2.2** (no move on arrival; marked read when scrolled into view): `chat.spec.ts:121` (scrolled up, the arrival leaves `scrollTop` 0 and one unread, until scrolled into view); `:87`; `store.test.ts:226`. The screen does not scroll on opening, so 2.2's first point has no case.
+- **2.3** (one in flight; only when passing a message from the other member; never backward, unsent or for older pages): `store.test.ts:173` (one in flight, the follow-up to the newest viewed), `:193` (older, the same, and only the member's own newer messages: no command, over 60 reports), `:210` (a failed command retried after the next read, not on each report), `:226` (older pages and own messages).
+- **2.4:** the replaced `store.test.ts:141` is `:226` ("only the viewed messages clear": 13 → 8 → 1 → 0). **The test at `:94`** (DM-22 2.2) asserted that the cursor moved on opening; it now reports the shown message as viewed first, and asserts one unread while the late message is shown but not reported, then none.
+- **2.5:** check 1 (paths), check 5 (unchanged files), check 4 and check 7 (every other screen's rendered tests pass unchanged; `rendered/chat.spec.ts`'s ten inherited tests are unchanged).
+
+### Fix reversals
+
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths; the changed file was restored from the checkout after each, and `diff -r` showed the copy equal to the checkout after each series. **All fifteen reversals made their tests fail.** `git status` in the checkout showed only this work's changes throughout.
+
+**The store and visibility tests** (`node --test src/chat/store.test.ts src/chat/visibility.test.ts`, 24 tests; all passed before and after the series):
+
+- **R1, a page arriving moves the cursor to the newest fetched (CX8 restored):** 4 failed: `:94`, `:161`, `:173`, `:226`.
+- **R2, the command targets the newest fetched, not the newest viewed:** 2 failed: `:173`, `:226`.
+- **R3, no forward-only check (an older report moves the cursor):** 3 failed: `:193`, `:210`, `:226`.
+- **R4, more than one command in flight:** 2 failed: `:173`, `:226`.
+- **R5, a report counts and a command is sent in the background:** 1 failed: `:226`.
+- **R6, a report counts while the conversation is not shown:** 1 failed: `:226`.
+- **R7, no follow-up after a command in flight:** 1 failed: `:173`.
+- **R8, the member's own newer messages move it (no "passes the other member" check):** 1 failed: `:193`.
+- **R11, a failed command is never tried again:** 1 failed: `:210`.
+- **R9, any overlap counts as in view:** 3 failed: `visibility.test.ts:7`, `:17`, `:28`.
+- **R10, an unmeasured area counts:** 1 failed: `visibility.test.ts:22`.
+
+The labels are the reversal script's; R11 was added after the first series, with the retry test.
+
+The first series showed two gaps, which were closed before the series of record: R3 as first written also left the "passes the other member" check in place, which blocks a backward target by itself, so it removed no protection and passed; it now removes both. R8 passed because no test viewed only the member's own newer messages; `:193` now does.
+
+**The rendered tests** (`rendered/chat.spec.ts`, the read-cursor tests `:34`, `:87`, `:108`, `:121`, informational, on the container's Chromium 1243; all four passed before the series):
+
+- **RR1, the screen reports every rendered message as viewed (a fetch as evidence):** `:87`, `:108`, `:121` failed (`No unread messages` where 1 to 12, or 1, were expected).
+- **RR2, the store's CX8 behaviour restored:** `:87`, `:108`, `:121` failed, as RR1.
+- **RR3, the screen follows each arrival to the newest message:** `:87` and `:121` failed (`scrollTop` 4882, expected 0).
+- **RR4, rows measured once and never again:** `:108` failed (`No unread messages`, expected `1 unread message`).
+
+`:34`, the inherited one-message test, passed under every reversal: one message always fits the screen, as DM-23 says.
+
+### Checks
+
+1. **The diff.** `git diff --check e578b08… 311b07e` printed nothing. `git diff --name-only e578b08… 311b07e` (7 paths): `apps/mobile/README.md`, `apps/mobile/rendered/chat.spec.ts`, `apps/mobile/src/chat/{screen.tsx,store.test.ts,store.ts,visibility.test.ts,visibility.ts}`; the two new files are mode `100644`. The records commit adds this section. All owned paths.
+2. **Classification**, the trusted policy from `main` (`a8e9528…`) extracted to a temporary directory outside the tree, run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base e578b08… --head 311b07e… --merge-base` printed `"full": true`, `"reason": "behavior-or-empty"`, the 7 paths. Full scope, as expected. (Run first from inside the temporary directory, it printed `comparison-unavailable`, also full: the script reads the repository from its working directory.)
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then `packages/contracts`, each exit 0.
+4. **The offline checks**, at `e578b08` (start) and at `311b07e`:
+   - **The contracts:** `npm run generate`, then no diff (both times); `npm run check`: `Generated types and runtime validators match schemas.`, **586 → 586** of 586.
+   - **The mobile app:** `npm run check` (typecheck, lint, unit tests): **583 → 591** of 591, `ℹ fail 0` (the chat unit tests 67 → 74: the store's five new tests replace one, and four visibility tests). `EXPO_OFFLINE=1 npm run check:expo`: `Dependencies are up to date`, exit 0 both times. `EXPO_OFFLINE=1 npm run export:development`: `Exported: .work/native-export`, exit 0 both times.
+   - **`npm run test:rendered`, informational, not the pinned browser:** Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` 1.62.1 pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it. The whole suite at the final code: **97 passed (4.6m)**, 94 inherited and 3 new; an earlier run, before the re-measurement test was added, 96 passed (4.5m). Before the re-measurement test was added, the three read-cursor tests then present (`:34` and the first two new ones), five times each (`--repeat-each=5`): 15 passed, no failure.
+5. **What stays unchanged.** `git diff e578b08… 311b07e` is empty over `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`; `apps/mobile/src/contracts/generated/`; `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`; `apps/mobile/src/components/ui.tsx`; and `packages/`, `services/`, `proofs/` and `.github/`.
+6. **The reversals:** above, fifteen, each failing its tests.
+7. **The run of record:** Foundation push run [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786), attempt 1, on `311b07e11b7131147becd0f045665f30d29856fa`, branch `claude/pensive-pascal-82j52l`, 25 October 2026 00:06:33 to 00:14:15 UTC. **All eight jobs `success`**: Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate, whose step printed `Application checks passed` (its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`). Nothing was pushed to the branch until the run had finished; the run was not re-run or dispatched.
+   - **Mobile checks**, 00:06:44 to 00:13:32: **6 min 48 s against its 15-minute timeout**, so 8 min 12 s to spare (not within 3 minutes of it). The rendered step ("Render and exercise account onboarding"), 00:08:33 to 00:13:28: **4 min 55 s**. Against Stage C2's run 40135312825 (6 min 16 s, rendered 4 min 31 s): +32 s and +24 s, the three new specs. The whole log (2,829 lines) was read for these lines.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 591`, `ℹ pass 591`, `ℹ fail 0` (583 before this work).
+     - `check:expo`: `Dependencies are up to date`; `export:development`: `Exported: .work/native-export`.
+     - The rendered tests: **`97 passed (4.9m)`**, against the pinned Chromium the job installs, with no failure or retry. The read-cursor tests, all passing: `chat.spec.ts:34` the list, opening a conversation, unread and the read cursor (10.5 s); `:87` a long conversation: unread does not clear until the newest message is in view (5.6 s); `:108` after an earlier page loads above them, messages are measured again (5.4 s); `:121` scrolled up, a new message from the other member stays unread until it is scrolled into view (8.3 s).
+   - **API mobile smoke:** `success`; `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs**, unchanged by this work and passing: API checks (00:06:44 to 00:07:20), API artifact checks (to 00:06:59), Stream proof checks (to 00:08:18), Database proof checks (00:06:44 to 00:14:09; its suite 00:07:31 to 00:14:05). Their logs were not read beyond their conclusions.
+8. **Secret scan** over the whole diff (the code commit and this section): JWT shapes, private-key headers, cloud key prefixes, token prefixes, credential assignments, e-mail addresses, runs of 32 or more hexadecimal characters, and the HDE and `STREAM_*` names. The code diff matched none. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at; no contract, dependency, workflow or service change; `Page` unchanged.**
+- **Inherited tests changed:** `store.test.ts:141` replaced (2.4); `store.test.ts:94` (DM-22 2.2) now reports the shown message as viewed, since it asserted the cursor moving on opening, the behaviour CX8 removes; its 2.2 assertions are kept. No rendered test outside the new ones changed.
+- **Findings outside the work:** none in a fix-here class.
+  - **C2C1-X1, an observation for P11 (no change).** The contracts carry no member cursor position, so after the store is reset (another conversation, another account, a reload) the first viewed message may be at or behind the cursor the server holds. The command is then a no-op: the fixture, as C1's server, moves the cursor forward only. One such command per opening at most, after which the store's own position applies.
+- **Limits:**
+  - **Rendered on React Native Web only.** `measureLayout`, `onScroll` and `onLayout` on iOS and Android, the keyboard's effect on the visible area, and native scroll insets are unverified; native builds and devices are not run.
+  - **The screen opens at the top** and does not scroll to the newest message (2.2's "may"); whether it should is a presentation choice for later.
+  - **A message is in view only when wholly inside the visible area** (or filling it), within one pixel. A partly visible message is not counted.
+  - **Every row is measured after every render.** Retained history is not bounded in the store (Stage C2's limit), so a very long retained conversation measures many rows per render.
+  - **Local rendered runs used Chromium 1243, not the pinned revision;** the pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know
+
+- **Item 8 and CX8** (DM-23 2.6): the store's cursor path is `viewed`, `noteSeen` and `moveReadCursor` (`src/chat/store.ts:129`, `:138`, `:280`), with the retry at `:226` and the foreground at `:155`; the replaced unit test is `store.test.ts:226`, with `:161`, `:173`, `:193` and `:210`; the long-conversation rendered tests are `rendered/chat.spec.ts:87`, `:108` and `:121`.
+- **The evidence of viewing** is the screen's measurement (`src/chat/screen.tsx:96` to `:141`) and the rule `src/chat/visibility.ts:16`. The store trusts only what the shown screen reports, and counts only accepted messages it holds.
+- **The rendered tests press controls in place** (a DOM `click()`, which React Native Web's `Pressable` handles as a press) so that Playwright does not scroll the conversation, and wait two animation frames and a task after each scroll for the scroll event and the measurement. The fixture answers in microtasks.
+- **The one behaviour change beyond the target** (a move may complete after the screen is left) is under "The store's cursor path".
+- **The run of record** is [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786) on `311b07e`; the records commit is Markdown-only.
