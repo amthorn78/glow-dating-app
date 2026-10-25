@@ -3375,3 +3375,36 @@ The first series showed two gaps, which were closed before the series of record:
 - **The rendered tests press controls in place** (a DOM `click()`, which React Native Web's `Pressable` handles as a press) so that Playwright does not scroll the conversation, and wait two animation frames and a task after each scroll for the scroll event and the measurement. The fixture answers in microtasks.
 - **The one behaviour change beyond the target** (a move may complete after the screen is left) is under "The store's cursor path".
 - **The run of record** is [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786) on `311b07e`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2-C1
+
+App Manager 7, 25 October 2026 (UTC), against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/pensive-pascal-82j52l`: code commit `311b07e11b7131147becd0f045665f30d29856fa` (tree `a1a39eb`), records commit `73ef97e2d8719e5141de78a249b2031ac9f82dea` (tree `cd40804`), both as reported. The prompt's commit `e578b08` is their parent.
+- **Changed paths.** Seven code paths against `e578b08`, every one inside C2-C1's owned paths (2.5):
+  - `apps/mobile/README.md` and `rendered/chat.spec.ts`;
+  - in `src/chat/`: `screen.tsx`, `store.ts` and `store.test.ts`, and the new `visibility.ts` and `visibility.test.ts` (mode 100644).
+
+  In all, 402 lines are added and 40 removed. The records commit changes only this file. `git diff --check` is clean.
+- **Classification** (the trusted policy from `main` at `a8e9528`, run from the repository root): `"full": true`, `behavior-or-empty`.
+- **Unchanged:** an empty diff from `e578b08` over the mobile app's dependency files, `src/contracts/generated/`, `app.config.ts`, `scripts/development.mjs` and `src/components/ui.tsx` (`Page`), and over `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+- **The evidence record:** the first 663,777 bytes at `73ef97e` equal the whole file at `e578b08`, so "Stage C2-C1" is appended.
+- **What the manager read in the code** (`store.ts` at `311b07e`):
+  - **`viewed()`** (`:129`) records the visible set only while the conversation is shown.
+  - **`noteSeen()`** moves `seen` forward only, to the newest accepted message in view, and only while the conversation is shown and the app is in the foreground. On a return to the foreground, what stayed in view counts.
+  - **`moveReadCursor()`** (`:280`) targets `seen`, never the newest fetched message. It sends only when the move passes a message from the other member, holds one command in flight with a follow-up after it, and never sends in the background or after a revocation.
+  - **A page arriving** (`:226`) only retries a failed move.
+  - **The replaced test** (the old `store.test.ts:141`) is now the 25-message, 13-unread case that clears only the viewed messages. Four more store tests cover 2.1 and 2.3.
+- **Run of record.** Foundation push run 40145402786 on `311b07e`.
+  - All eight jobs concluded `success`, and the gate printed `Application checks passed`.
+  - The Mobile job ran from 00:06:44 to 00:13:32 UTC (6 min 48 s of 15). Its rendered step ran from 00:08:33 to 00:13:28 and printed `97 passed (4.9m)`.
+  - The unit counts (contracts 586, app 591) are the session's reading of the log.
+- **What the re-review must weigh** (from the session's record):
+  - **an inherited test changed:** `store.test.ts:94` (DM-22 2.2) now reports the message as viewed before the cursor moves, keeping its 2.2 assertions;
+  - **a behaviour change beyond the target:** a move to a message that was in view while shown and in the foreground can now complete after the member leaves the screen;
+  - **the measurement** is proved on React Native Web only. A row counts only when wholly in view (or when it fills the area), and the screen opens at the top, which 2.2 allows;
+  - **the rendered tests** press controls with a DOM `click()`, so that Playwright does not scroll the conversation.
+- **C2C1-X1** (the session's observation; no change): the contracts carry no cursor position. So the first command after the store resets may target a message at or behind the server's cursor, and the server, which moves cursors forward only, does nothing. The P11 plan's mobile-client entry notes it.
+- **Integration.** The session branched from the manager branch's head `e578b08`, so the manager branch fast-forwarded to `73ef97e`.
+
+**Next:** C2-C1's exact-head re-review, which names C2's item 8 and CX8 (DM-23 2.6), then Codex's code review of PR33's final head (OD-41).
