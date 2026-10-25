@@ -1,6 +1,6 @@
 # P06.2 Stage C2-C3 review prompt — the exact-head re-review of C2-C3 (F1, CX10, CX11, C2's item 8)
 
-> **Held on 25 October 2026.** Codex posted CX12 on `9422d9e` at 04:38 UTC, after this prompt went to Nathan; a fix would change the code under review (AM7-13). Whether it runs as it stands or is replaced follows DM-28.
+> **Withdrawn on 25 October 2026; do not run it** (DM-28 2.1). Codex posted CX12 on `9422d9e` at 04:38 UTC, after this prompt went to Nathan, and DM-28 had it fixed in C2-C4, which changes the code under review (AM7-13). One exact-head re-review of C2-C3 and C2-C4 replaces it.
 
 - **Owner:** App Manager 8. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
 - **Revision 1, 25 October 2026.**

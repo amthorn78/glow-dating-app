@@ -108,6 +108,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-03 | 25 Oct 2026 | accuracy | CX10's records and DM-25 said the unread count "never clears" and that any member sending 20 messages in a row would reach it; both overstated the code | Dev Manager 3, DM-25 section 5 |
 | AM8-04 | 25 Oct 2026 | accuracy | Notion paraphrased the re-review's F3 as a revocation dropping "a list read begun after it started", which reads as the reverse of the finding | Dev Manager 3, DM-27 4.1 |
 | AM8-05 | 25 Oct 2026 | accuracy | DM-27's proposed d.2 asked for tests of two `cursorKnown` clears that, under d.1, could never fail | Dev Manager 3, DM-27 section 3 |
+| AM8-06 | 25 Oct 2026 | accuracy | CX12's records said "history out of order … until it is reopened"; the messages stay in order with a gap, and reopening the same conversation does not clear it; and `:248` for `:244` | Dev Manager 3, DM-28 section 3 and 4.3 |
+| AM8-07 | 25 Oct 2026 | follow-through | The Work Register row's Next Action property was left at `9776c6f` when its page body was updated for CX12 and DM-28 | Dev Manager 3, DM-28 4.1 |
 
 ## App Manager 2
 
@@ -825,4 +827,20 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; DM-27 1.1 removes the flag and drops the tests.
 - **Correction:** C2-C3's prompt quotes DM-27 1.1 to 1.4, not d.1 to d.4.
 - **Prevention:** before proposing a test condition, the manager checks that a reversal of the code it covers can make it fail, given every other condition proposed with it.
+
+### AM8-06 — A stuck state's effect and end stated without tracing them (accuracy)
+
+- **What happened:** recording CX12, App Manager 8 wrote that the history is "out of order and partly unreachable in the open conversation until it is reopened", and cited `:248` for the `stale` branch. The messages stay in order with a silent gap; leaving and reopening the same conversation keeps the window (`select()` returns at once, `:124`), so the state lasts until another conversation or account is selected, a revocation, another `stale` reload or a restart. The branch is at `:244`.
+- **Caught by:** Dev Manager 3, DM-28 section 3 and 4.3.
+- **Effect:** none on the verdict; the records overstated one part and misstated the end.
+- **Correction:** the evidence record's CX12 lines, marked as corrections.
+- **Prevention:** AM8-03's prevention ("for a stuck state, the manager names what clears it") repeated here. So before writing a stuck state's end, the manager now traces every call that could reset it (here `select`, `closeConversation`, `resetConversation`, `revoke`), and cites a line only after reading it at the commit named.
+
+### AM8-07 — A Notion property left behind its page body (follow-through)
+
+- **What happened:** writing CX12 and DM-28 to the Work Register row, App Manager 8 updated the page body but not the Next Action property, which stayed at `9776c6f`.
+- **Caught by:** Dev Manager 3, DM-28 4.1.
+- **Effect:** a reader of the property saw a step already past; no decision used it.
+- **Correction:** the property is updated in this batch.
+- **Prevention:** this repeats AM5-02 and AM5-03, whose prevention is already the manager workflow's checklist item ("update every property and page body that states it"). The manager now writes the Work Register's property and body together on every update, and reads both back.
 
