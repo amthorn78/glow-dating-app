@@ -3408,3 +3408,21 @@ App Manager 7, 25 October 2026 (UTC), against the pushed branch, after Nathan re
 - **Integration.** The session branched from the manager branch's head `e578b08`, so the manager branch fast-forwarded to `73ef97e`.
 
 **Next:** C2-C1's exact-head re-review, which names C2's item 8 and CX8 (DM-23 2.6), then Codex's code review of PR33's final head (OD-41).
+
+## Codex's code review of C2-C1's head (25 October 2026)
+
+- **The review:** Codex's code review of `73ef97e`, triggered by the new commits, started at 00:22:36 UTC and posted one finding at 00:25 UTC. Its review of `83ce64d`, a records-only commit, started at 00:24:59 UTC.
+- **CX9, P2** (`apps/mobile/src/chat/store.ts:302`; [thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4369075844)), "Invalidate outstanding reads when revoking a conversation", quoted:
+
+  > When a message-page request overlaps a send or read-cursor request that refuses access, `revoke()` clears the conversation without changing `conversationEpoch`. A successful page response arriving afterward therefore passes `readHead()`'s epoch check, restores the private messages, and sets the conversation back to `ready`, making the history and composer visible again despite the refusal. An outstanding older-page response can likewise repopulate the cleared history. Invalidate outstanding requests on revocation so responses issued before access ended cannot restore that state.
+
+- **The manager's verification, at `311b07e`: the problem is real.**
+  - `revoke()` (`store.ts:300-309`) clears the history, cursors and draft and publishes `revoked`, but leaves `conversationEpoch` unchanged.
+  - `readHead()` (`:212-239`) checks only `epoch !== this.conversationEpoch` when its page returns. A page requested before the revocation passes that check. `mergeHead` then restores the messages, and `publishConversation({ status: 'ready' })` brings back the message list and the composer (`screen.tsx:150-171`).
+  - `loadOlder()` (`:258-275`) makes the same check. Its page puts its messages back into the store's state, though the status stays `revoked`, so the screen keeps the revoked notice.
+  - **What can revoke while a read is outstanding:** a send's refusal (`run()`, `:347`), a cursor command's (`:296`), or another read's. The codes that end access are `unavailable` and `signed_out` (`:37`).
+  - **It is C2's code.** C2-C1's change to `revoke()` adds only the cleared `visible`, `seen` and `cursorRetry` (the diff from `676b49b`). Codex's review of `96ce36b` did not report it.
+  - **Reachability:** the fixture answers a read without a delay (its `delayed` scenario holds commands only: `fixture-adapter.ts`, `gate`), so the preview app hardly opens the window. A unit test can hold a read through `chatSetup`'s transport wrapper (`testing.ts`). With a real transport, the window is a request's round trip.
+  - **Against C2's prompt:** its "Findings outside this work" names, as a class a session fixes here, a finding that could "let a revoked member see a conversation's history or send in it". After the revoked state is shown, a late page shows the history and the composer again.
+- **Class:** the decision to fix it before the merge or carry it is a review decision. It goes to the Dev Manager (OD-32; AM7-12): [DM-24](../../ephemeral/2026-10-25-dm-24-p06-2-cx9.md), with the manager's recommendation of a correction pass, C2-C2, before the merge.
+- **PR33's merge is held** until DM-24 is answered. C2-C1's exact-head re-review, already with Nathan, continues: its report covers C2-C1's own diff.
