@@ -112,6 +112,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-07 | 25 Oct 2026 | follow-through | The Work Register row's Next Action property was left at `9776c6f` when its page body was updated for CX12 and DM-28 | Dev Manager 3, DM-28 4.1 |
 | AM8-08 | 25 Oct 2026 | accuracy | *Implementation Control* said "Show earlier messages" is idle once the reload merges; the code turns only `loading` into `idle` | Dev Manager 3, DM-29 1.3 |
 | AM8-09 | 25 Oct 2026 | accuracy | "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14; the numstat is +14 −16 | The combined re-review, finding 13 |
+| AM8-10 | 25 Oct 2026 | accuracy | Chat reports labelled the push and PR runs of three Markdown-only commits the wrong way round | Dev Manager 3, DM-30 4.3 |
 
 ## App Manager 2
 
@@ -861,3 +862,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision; a record figure was reversed.
 - **Correction:** corrected in place, with an annotation.
 - **Prevention:** a diffstat in a record is pasted from `git diff --numstat` or `--shortstat` output, not retyped.
+
+### AM8-10 — Push and PR runs swapped (accuracy)
+
+- **What happened:** reporting CI on `ab05992`, `c3cce7a` and `c2b7929` to Nathan, App Manager 8 called the run whose application jobs all ran the push run, and the run that skipped them the PR run. It is the other way round: on a Markdown-only commit, the push run compares with the branch's previous head and skips the application jobs; the PR run compares from the merge base with `main` and runs them all.
+- **Caught by:** Dev Manager 3, DM-30 4.3 (for `c2b7929`); the manager then checked the others with `get_workflow_run`.
+- **Effect:** none on a decision; no repository record carried the swap (the evidence record's labels for `33bae36` are right).
+- **Correction:** recorded in the evidence record (DM-30's lines).
+- **Prevention:** a run is named by the `event` field of `get_workflow_run`, never by which jobs it skipped; the pre-merge checklist names the PR run on the final head (DM-30 4.3).
