@@ -58,6 +58,12 @@ let keySerial = 0;
  *   The store knows the server's position only while `lastRead` is among the loaded accepted
  *   messages; otherwise the loaded window alone cannot hold a move back (CX10, F1; DM-25 3.1
  *   and 3.2, DM-27 1.1).
+ * - **Replacing the window** (CX12, DM-28 1.1 and 1.2). A read of the newest page alone replaces
+ *   the loaded window and advances `windowEpoch`; with an older cursor held, that is the reload
+ *   after a `stale` answer. Every older page outstanding then, asked before the `stale` answer or
+ *   after it, is invalidated: its response, success or failure, changes nothing and starts
+ *   nothing, and the older-page state is `idle` once the replacement is merged. A refusal that
+ *   ends access still revokes, unless the conversation's epoch has moved on.
  * - **Revocation.** A refusal ends the conversation in Glow's revoked state and drops its
  *   history, draft, cursors and any pending send at once. Every request outstanding then is
  *   invalidated: its response, success or failure, changes nothing and starts nothing
@@ -76,6 +82,8 @@ export class ChatStore {
   private listEpoch = 0;
   /** Advanced by another conversation, another owner and each revocation: a response to an earlier request is never used. */
   private conversationEpoch = 0;
+  /** Advanced by each replacement of the loaded window: an older page asked from an earlier window is never merged (CX12, DM-28 1.1). */
+  private windowEpoch = 0;
   private accepted: readonly ConversationMessage[] = [];
   private unsent: readonly ConversationMessage[] = [];
   private olderCursor: string | null = null;
@@ -233,7 +241,9 @@ export class ChatStore {
       const page = await this.client.messages(matchId, cursor, CONVERSATION_PAGE_LIMIT);
       if (epoch !== this.conversationEpoch) return;
       this.mergeHead(page, cursor === null);
-      this.publishConversation({ status: 'ready', error: null });
+      // An older page asked from the replaced window no longer holds the older-page state (DM-28 1.2).
+      const older = cursor === null && this.state.conversation.older === 'loading' ? 'idle' : this.state.conversation.older;
+      this.publishConversation({ status: 'ready', error: null, older });
       this.schedule();
       // A page never moves the cursor itself (DM-23 2.1); it only retries a failed move to `seen`.
       if (this.cursorRetry) void this.moveReadCursor();
@@ -253,6 +263,7 @@ export class ChatStore {
   private mergeHead(page: MessagePage, newest: boolean) {
     const accepted = page.messages.filter(isAccepted), unsent = page.messages.filter(message => !isAccepted(message));
     if (newest) {
+      this.windowEpoch += 1;
       this.accepted = accepted; this.unsent = unsent; this.olderCursor = page.older_cursor; this.newerCursor = page.newer_cursor;
       return;
     }
@@ -269,13 +280,15 @@ export class ChatStore {
     this.newerCursor = page.newer_cursor ?? this.newerCursor;
   }
   async loadOlder() {
-    const matchId = this.state.selectedMatchId, epoch = this.conversationEpoch, cursor = this.olderCursor;
-    if (!matchId || !cursor || this.olderInFlight === epoch || this.state.conversation.status === 'revoked') return;
-    this.olderInFlight = epoch;
+    const matchId = this.state.selectedMatchId, epoch = this.conversationEpoch, windowId = this.windowEpoch, cursor = this.olderCursor;
+    // One at a time for the current window. An older cursor is only ever the current epoch's, set after a replacement in it.
+    if (!matchId || !cursor || this.olderInFlight === windowId || this.state.conversation.status === 'revoked') return;
+    this.olderInFlight = windowId;
     this.publishConversation({ older: 'loading' });
     try {
       const page = await this.client.messages(matchId, cursor, CONVERSATION_PAGE_LIMIT);
-      if (epoch !== this.conversationEpoch) return;
+      // Asked from a window since replaced (CX12, DM-28 1.1): its boundary belongs to the discarded window.
+      if (epoch !== this.conversationEpoch || windowId !== this.windowEpoch) return;
       const known = new Set(this.accepted.map(message => message.submission_id));
       const earlier = page.messages.filter(message => isAccepted(message) && !known.has(message.submission_id));
       this.accepted = [...earlier, ...this.accepted];
@@ -286,8 +299,9 @@ export class ChatStore {
     } catch (error) {
       if (epoch !== this.conversationEpoch) return;
       const code = codeOf(error);
-      if (ends(code)) this.revoke(code); else this.publishConversation({ older: 'error' });
-    } finally { if (this.olderInFlight === epoch) this.olderInFlight = null; }
+      // A refusal that ends access revokes whichever window it was asked from (DM-28 1.1; DM-24 1.1).
+      if (ends(code)) this.revoke(code); else if (windowId === this.windowEpoch) this.publishConversation({ older: 'error' });
+    } finally { if (this.olderInFlight === windowId) this.olderInFlight = null; }
   }
   /** The conversation's entry in the store's list, as the last list read or cursor command returned it. */
   private summary() {

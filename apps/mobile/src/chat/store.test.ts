@@ -679,3 +679,163 @@ test('F1 (c): a `stale` reload that keeps `lastRead` within the newest page, wit
   await fixture.timers.advance(3 * CONVERSATION_POLL_MS);
   assert.equal(log.targets.length, 1, 'only the known position holds the move back');
 });
+
+type Outcome = 'succeed' | 'fail' | 'refuse';
+/**
+ * CX12's wrapper (DM-28 1.3): holds the next `messages` requests chosen, and releases each on its
+ * own, so a reload and an older page can be released in either order. A held request reaches the
+ * fixture at once, so its page is the one built when it was asked. It is released to succeed, to
+ * fail without ending access (offline), or to be refused as the server refuses once access has
+ * ended. It records each page's `older_cursor`, by the cursor it was asked with.
+ */
+function pages() {
+  let holding = 0;
+  const waiting: ((outcome: Outcome) => void)[] = [], older = new Map<string | null, string | null>();
+  return {
+    hold: () => { holding += 1; },
+    held: () => waiting.length,
+    olderAfter: (cursor: string | null) => older.get(cursor),
+    release: async (index: number, outcome: Outcome = 'succeed') => { waiting.splice(index, 1)[0]!(outcome); await settle(); await settle(); },
+    wrap: (transport: ChatTransport): ChatTransport => ({ ...transport,
+      conversations: () => transport.conversations(), send: intent => transport.send(intent), readCursor: intent => transport.readCursor(intent),
+      messages: async request => {
+        const body = await transport.messages(request);
+        older.set(request.cursor, (body as { data?: { older_cursor?: string | null } }).data?.older_cursor ?? null);
+        if (holding === 0) return body;
+        holding -= 1;
+        const outcome = await new Promise<Outcome>(resolve => { waiting.push(resolve); });
+        if (outcome === 'fail') throw new Error('The request did not complete.'); // Offline: access has not ended.
+        return outcome === 'refuse' ? refusal : body;
+      } }) };
+}
+/** Messages 1 to 25 are the fixture's seeded history; 26 to 50 arrive later, from Jules. */
+const numbered = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => from + index)
+  .map(number => number <= 25 ? `Fictional history message ${number}.` : `Later message ${number}.`);
+const messageRequests = (fixture: Setup) => fixture.fixture.requests().filter(request => request.operation === 'messages');
+/** 25 messages, so the window holds 6 to 25 with an older cursor to 1 to 5; then 25 more arrive (Codex's numbers). */
+async function windowThenLater(fixture: Setup) {
+  assert.equal(fixture.fixture.developmentSeed('profile-jules', fixture.matchId, 25), true);
+  await open(fixture);
+  assert.deepEqual(texts(fixture), numbered(6, 25));
+}
+const later = (fixture: Setup) => { for (let number = 26; number <= 50; number++) julesSends(fixture, `Later message ${number}.`); };
+/** The next head read is answered `stale`; with `holdReload`, the cursorless reload that follows is held. */
+async function staleAnswer(fixture: Setup, stalled: ReturnType<typeof staleOnce>, paged: ReturnType<typeof pages>, holdReload = false) {
+  if (holdReload) paged.hold();
+  stalled.arm(); await fixture.timers.advance(CONVERSATION_POLL_MS); await settle();
+  assert.equal(stalled.answered(), 1, 'one head read answered `stale`');
+  assert.equal(messageRequests(fixture).at(-1)!.cursor, null, 'then the newest page alone');
+}
+/** The window is the reload's page alone, with the reload's older cursor, and the older-page state is `idle`. */
+function assertReloaded(fixture: Setup, paged: ReturnType<typeof pages>) {
+  const snapshot = fixture.store.getSnapshot().conversation;
+  assert.deepEqual(texts(fixture), numbered(31, 50));
+  assert.deepEqual([snapshot.status, snapshot.hasOlder, snapshot.older, snapshot.error], ['ready', true, 'idle', null]);
+  assert.ok(paged.olderAfter(null), 'the reload\'s page has an older cursor');
+}
+/** "Show earlier messages" reaches 11 to 30, then 1 to 10, with the reload's older cursor first; each message once. */
+async function reachTheGap(fixture: Setup, paged: ReturnType<typeof pages>) {
+  await fixture.store.loadOlder(); await settle();
+  assert.equal(messageRequests(fixture).at(-1)!.cursor, paged.olderAfter(null), 'asked with the reload\'s `older_cursor`');
+  assert.deepEqual(texts(fixture), numbered(11, 50));
+  await fixture.store.loadOlder(); await settle();
+  assert.deepEqual(texts(fixture), numbered(1, 50));
+  const ids = fixture.store.getSnapshot().conversation.messages.map(message => message.submission_id);
+  assert.equal(new Set(ids).size, 50);
+  assert.equal(fixture.store.getSnapshot().conversation.hasOlder, false);
+}
+/** An older page asked from the window now loaded (in (a) to (d), 1 to 5 from 6 to 25), and held. */
+async function heldOlder(fixture: Setup, paged: ReturnType<typeof pages>) {
+  const before = paged.held();
+  paged.hold(); void fixture.store.loadOlder(); await settle();
+  assert.equal(paged.held(), before + 1);
+  assert.equal(fixture.store.getSnapshot().conversation.older, 'loading');
+}
+const cx12 = () => {
+  const stalled = staleOnce(), paged = pages();
+  return { stalled, paged, setup: () => chatSetup(transport => stalled.wrap(paged.wrap(transport))) };
+};
+
+test('CX12 (a): an older page held while a `stale` reload replaces the window changes nothing when it succeeds, and the gap stays reachable (DM-28 1.1, 1.2)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  await heldOlder(fixture, paged);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await paged.release(0);
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published: the window, its cursors and the older-page state are unchanged');
+  assert.equal(requested(fixture), before, 'the release starts no request');
+  await reachTheGap(fixture, paged);
+});
+
+test('CX12 (b): the same with the held page failing without ending access: no older-page error, and the gap stays reachable (DM-28 1.1, 1.2)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  await heldOlder(fixture, paged);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await paged.release(0, 'fail');
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assert.equal(fixture.store.getSnapshot().conversation.older, 'idle', 'no older-page error');
+  assert.equal(requested(fixture), before, 'the failure starts no request');
+  await reachTheGap(fixture, paged);
+});
+
+test('CX12 (c): the same with the held page refused because access has ended: the conversation is revoked (DM-28 1.1\'s exception; DM-24 1.1)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  await heldOlder(fixture, paged);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged);
+  await paged.release(0, 'refuse');
+  assertRevoked(fixture);
+});
+
+test('CX12 (d): an older page asked after the `stale` answer and before the reload\'s page is merged changes nothing when released after it (DM-28 1.1, 1.2)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged, true);
+  assert.equal(paged.held(), 1, 'the reload is held');
+  assert.deepEqual(texts(fixture), numbered(6, 25), 'the window to be discarded is still loaded');
+  await heldOlder(fixture, paged);
+  assert.notEqual(messageRequests(fixture).at(-1)!.cursor, paged.olderAfter(null), 'asked with the discarded window\'s older cursor, not the reload\'s');
+  await paged.release(0); // The reload.
+  assertReloaded(fixture, paged);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await paged.release(0); // The older page, asked from the discarded window.
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  assert.equal(requested(fixture), before, 'the release starts no request');
+  await reachTheGap(fixture, paged);
+});
+
+for (const outcome of ['succeed', 'fail', 'refuse'] as const) test(`CX12 (e): an older page asked after the replacement, while the invalidated one is held, keeps today's behaviour when it ${outcome === 'refuse' ? 'is refused' : outcome === 'fail' ? 'fails' : 'succeeds'} (DM-28 1.2)`, async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  await heldOlder(fixture, paged);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged);
+  await heldOlder(fixture, paged); // Asked with the reload's older cursor; the invalidated one is still held.
+  assert.equal(paged.held(), 2);
+  assert.equal(messageRequests(fixture).at(-1)!.cursor, paged.olderAfter(null));
+  const asked = requested(fixture);
+  await fixture.store.loadOlder(); await settle();
+  assert.equal(requested(fixture), asked, 'at most one for the current window at a time');
+  const snapshot = fixture.store.getSnapshot();
+  await paged.release(0); // The invalidated one: it neither merges nor ends the current one's `loading`.
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
+  await paged.release(0, outcome);
+  if (outcome === 'refuse') { assertRevoked(fixture); return; }
+  const conversation = fixture.store.getSnapshot().conversation;
+  if (outcome === 'fail') {
+    assert.deepEqual([texts(fixture), conversation.older, conversation.hasOlder], [numbered(31, 50), 'error', true], 'its failure shows the error');
+  } else {
+    assert.deepEqual([texts(fixture), conversation.older, conversation.hasOlder], [numbered(11, 50), 'idle', true], 'its page merges');
+  }
+});
