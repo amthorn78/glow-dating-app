@@ -103,6 +103,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-12 | 24 Oct 2026 | follow-through | After verifying Codex's CX8 on PR33, the manager carried it to P11 and put the alternative (a correction pass before the merge) to Nathan as a question, instead of consulting the Dev Manager first (OD-32) | Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"* |
 | AM7-13 | 25 Oct 2026 | process | The manager gave Nathan C2-C1's exact-head re-review prompt while Codex's review of C2-C1's head was still running; Codex then found CX9, and the manager sent DM-24, which can change the code under review, while telling Nathan the re-review should continue | Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation"* |
 | AM7-14 | 25 Oct 2026 | accuracy | Nathan directed the manager to create App Manager 8; the manager read his words as his own hand start, recorded OD-46, the handoff and Notion that way, and told him to start it | Nathan: *"i told you to create the Glow App Manager 8 session"* |
+| AM8-01 | 25 Oct 2026 | follow-through | The first report and DM-25 revision 1 went to Nathan without checking PR33's open review threads; Codex's CX10 (00:42 UTC), unrecorded since App Manager 7's handover, was missed | App Manager 8, reading PR33's threads after Codex's next summary reported unresolved findings |
 
 ## App Manager 2
 
@@ -778,3 +779,13 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
   - OD-46, the handoff, the start procedure, DM-24's header and Notion are corrected;
   - App Manager 7 creates App Manager 8 with the remote-session tools, in `Glow App - No Stream`, with the manager branch as its outcome branch (OD-31).
 - **Prevention:** a direction to the outgoing manager that says it is time to create a new manager session is OD-31's case: the outgoing manager creates the successor. When the words leave unclear who creates it, the manager asks in one line before recording either path.
+
+## App Manager 8
+
+### AM8-01 — A start report and a consultation sent without reading the PR's open threads (follow-through)
+
+- **What happened:** App Manager 8 started, read the handoff, found DM-24's report and sent Nathan its first report with DM-25 revision 1, saying nothing else was open. It read PR33's check runs and body, but not its review threads. Codex had posted CX10 at 00:42 UTC (on C2-C1's cursor code), before App Manager 7's handover commit; the handover did not record it, and App Manager 8 did not find it.
+- **Caught by:** App Manager 8, reading PR33's review threads when Codex's next summary reported unresolved findings.
+- **Effect:** DM-25 revision 1 went to Nathan without CX10, which needs the same Dev Manager read (its fix changes DM-23 2.3's rule). If carried, the Dev Manager would have answered without it. No code, prompt or merge was affected.
+- **Correction:** CX10 verified and recorded in the evidence record; DM-25 revision 2 adds it as item 3 and replaces revision 1; Nathan is told to carry revision 2 only.
+- **Prevention:** at start, and before any message that says nothing else is open on a PR, the manager lists the PR's review threads and Codex's latest summary, and checks each unresolved thread against the records.
