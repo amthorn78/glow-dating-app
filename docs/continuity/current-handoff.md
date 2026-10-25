@@ -23,7 +23,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Codex | Its code review of C2-C2's integrated head; then a consultation to the Dev Manager on C2-C2's 1.4 deviation and any Codex finding (DM-25 1.2) | PR33 stays unmerged; App Manager 8 tells Nathan that P06.2's close waits on it. Meanwhile Nathan can delete C1's three fully merged session branches below |
+| App Manager 8 | Nathan, carrying to Dev Manager 3 | DM-26's answer: the [consultation](../ephemeral/2026-10-25-dm-26-p06-2-c2-c2-deviation.md) on C2-C2's 1.4 deviation and two findings. Codex found nothing on `9fd22c0` | PR33 stays unmerged; App Manager 8 tells Nathan that P06.2's close waits on it. Meanwhile Nathan can delete C1's three fully merged session branches below |
 
 C2-C1's exact-head re-review [prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c1-review-prompt.md) is withdrawn and does not run (AM7-13).
 
