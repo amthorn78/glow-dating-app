@@ -111,6 +111,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-06 | 25 Oct 2026 | accuracy | CX12's records said "history out of order … until it is reopened"; the messages stay in order with a gap, and reopening the same conversation does not clear it; and `:248` for `:244` | Dev Manager 3, DM-28 section 3 and 4.3 |
 | AM8-07 | 25 Oct 2026 | follow-through | The Work Register row's Next Action property was left at `9776c6f` when its page body was updated for CX12 and DM-28 | Dev Manager 3, DM-28 4.1 |
 | AM8-08 | 25 Oct 2026 | accuracy | *Implementation Control* said "Show earlier messages" is idle once the reload merges; the code turns only `loading` into `idle` | Dev Manager 3, DM-29 1.3 |
+| AM8-09 | 25 Oct 2026 | accuracy | "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14; the numstat is +14 −16 | The combined re-review, finding 13 |
 
 ## App Manager 2
 
@@ -852,3 +853,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** a reader of Notion could take the observation DM-29 decided as already fixed; no decision used it.
 - **Correction:** the phrase is corrected in this batch, and the evidence record's two unscoped lines are annotated (DM-29 1.3).
 - **Prevention:** a summary of a state change names which state changes, in the code's terms, and is checked against the verification it summarizes before it is written (AM8-03 and AM8-04's kind: a summary that says more than its source).
+
+### AM8-09 — A diffstat written in the wrong order (accuracy)
+
+- **What happened:** "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14 for `1506986..ccf8392`; `git diff --numstat` gives 14 added and 16 removed.
+- **Caught by:** the combined exact-head re-review of C2-C3 and C2-C4, finding 13.
+- **Effect:** none on a decision; a record figure was reversed.
+- **Correction:** corrected in place, with an annotation.
+- **Prevention:** a diffstat in a record is pasted from `git diff --numstat` or `--shortstat` output, not retyped.
