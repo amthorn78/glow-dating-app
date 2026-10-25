@@ -1,5 +1,7 @@
 # P06.2 Stage C2-C1 review prompt — the exact-head re-review of C2-C1 (C2's item 8 and CX8)
 
+> **Withdrawn on 25 October 2026; do not run it.** Nathan did not start this session. The manager gave it while Codex's review of C2-C1's head was still running. Codex then found CX9, and DM-24 may change the code under review (AM7-13). The exact-head re-review that follows is decided after DM-24's answer (DM-24 revision 2, item 2).
+
 - **Owner:** App Manager 7. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
 - **Revision 1, 25 October 2026.**
 - **Durable brief:** [P06.2 brief](../planning/p06-2-chat-integration.md), revision 16: "Codex's CX8, and C2-C1", with DM-23's conditions 2.1 to 2.6 and 3.1 as written.

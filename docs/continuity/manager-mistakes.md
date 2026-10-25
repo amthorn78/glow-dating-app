@@ -101,6 +101,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-10 | 24 Oct 2026 | accuracy | The P11 plan said the reads' guards meant "no enclosing Django transaction can hold their locks", and carried a session's raw-`BEGIN` limit unchecked; `set_autocommit(False)` passed both guards | C1-C1's exact-head re-review (R1) |
 | AM7-11 | 24 Oct 2026 | follow-through | DM-17's follow-up on the harness client's `npm ci` advisory was due "before Stage C", and was not decided before C1 ran and merged | App Manager 7, updating the handoff after PR32 merged |
 | AM7-12 | 24 Oct 2026 | follow-through | After verifying Codex's CX8 on PR33, the manager carried it to P11 and put the alternative (a correction pass before the merge) to Nathan as a question, instead of consulting the Dev Manager first (OD-32) | Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"* |
+| AM7-13 | 25 Oct 2026 | process | The manager gave Nathan C2-C1's exact-head re-review prompt while Codex's review of C2-C1's head was still running; Codex then found CX9, and the manager sent DM-24, which can change the code under review, while telling Nathan the re-review should continue | Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation"* |
 
 ## App Manager 2
 
@@ -750,3 +751,19 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on the code or a member. PR33's merge is held for the Dev Manager's read, and the reply on Codex's thread ("not fixed in this PR") may need correcting.
 - **Correction:** DM-23 to the Dev Manager, with a recommendation of a correction pass, C2-C1. The merge is held.
 - **Prevention:** when a verified finding leaves a choice between fixing it before a merge and carrying it, and no correction class decides it, the manager consults the Dev Manager before saying anything to Nathan. A finding that misses an item of the stage's own prompt is weighed as such, not only by the precedent of earlier carried findings.
+
+### AM7-13 — An exact-head review requested before Codex had reported on that head (process)
+
+- **What happened:**
+  - App Manager 7 integrated C2-C1 and gave Nathan its exact-head re-review prompt from `83ce64d` on 25 October. Codex's automatic review of C2-C1's head `73ef97e` had started at 00:22:36 UTC and was still running.
+  - Codex posted CX9 at 00:25 UTC, a verified defect in the code under review. The manager sent DM-24, whose recommended outcome, a correction pass, changes that code.
+  - In the same message, it told Nathan that the re-review should continue because "its report covers C2-C1's own diff". A review of a head that is about to change certifies nothing for the merge, and the work goes to waste.
+- **Caught by:** Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation. ... I have not submitted "review session for P06.2 Stage C2-C1" and will not due to your confused context. Your subsequent dev manager escalation invalidates that."*
+- **Effect:** none on the code or a member. C2-C1's re-review never ran; its prompt is withdrawn. DM-24 revision 1 assumed the re-review was in flight, so revision 2 corrects that. Nathan starts App Manager 8 to receive DM-24's answer.
+- **Correction:**
+  - the re-review prompt is marked withdrawn;
+  - DM-24 revision 2 states that the re-review did not run, and proposes one exact-head re-review after any correction pass, given only after Codex has reported on that head;
+  - the evidence record, the brief's Sessions, the handoff and Notion are corrected.
+- **Prevention:**
+  - Codex reviews each new head within minutes. Before giving Nathan an exact-head review prompt, the manager waits for Codex's review of the head's code commit to report, and handles any finding first.
+  - When a new finding may change the code under a review that is already with Nathan, the manager tells Nathan to hold that review. It never tells him to continue it.
