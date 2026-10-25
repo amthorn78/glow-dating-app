@@ -104,6 +104,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-13 | 25 Oct 2026 | process | The manager gave Nathan C2-C1's exact-head re-review prompt while Codex's review of C2-C1's head was still running; Codex then found CX9, and the manager sent DM-24, which can change the code under review, while telling Nathan the re-review should continue | Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation"* |
 | AM7-14 | 25 Oct 2026 | accuracy | Nathan directed the manager to create App Manager 8; the manager read his words as his own hand start, recorded OD-46, the handoff and Notion that way, and told him to start it | Nathan: *"i told you to create the Glow App Manager 8 session"* |
 | AM8-01 | 25 Oct 2026 | follow-through | The first report and DM-25 revision 1 went to Nathan without checking PR33's open review threads; Codex's CX10 (00:42 UTC), unrecorded since App Manager 7's handover, was missed | App Manager 8, reading PR33's threads after Codex's next summary reported unresolved findings |
+| AM8-02 | 25 Oct 2026 | accuracy | Notion's DM-24 row named the records commit `1ec5186` as the merge of DM-24's report; the merge is `f87f3b5` | Dev Manager 3, start note section 5 |
 
 ## App Manager 2
 
@@ -789,3 +790,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** DM-25 revision 1 went to Nathan without CX10, which needs the same Dev Manager read (its fix changes DM-23 2.3's rule). If carried, the Dev Manager would have answered without it. No code, prompt or merge was affected.
 - **Correction:** CX10 verified and recorded in the evidence record; DM-25 revision 2 adds it as item 3 and replaces revision 1; Nathan is told to carry revision 2 only.
 - **Prevention:** at start, and before any message that says nothing else is open on a PR, the manager lists the PR's review threads and Codex's latest summary, and checks each unresolved thread against the records.
+
+### AM8-02 — A records commit named as a merge commit (accuracy)
+
+- **What happened:** App Manager 8 wrote on Notion's *Dev Manager — reviews and approvals* that DM-24 was "merged at `1ec5186`". `1ec5186` is the records commit after the merge; the merge is `f87f3b5`, as earlier rows name the merge itself. The review log named no SHA.
+- **Caught by:** Dev Manager 3, comparing Notion with the repository in its start note.
+- **Effect:** none on a decision; a reader following the SHA finds the records, not the merge.
+- **Correction:** the review log and Notion name `f87f3b5`.
+- **Prevention:** when a record names a merge, the manager takes the SHA from `git log --merges -1` after the merge, not from the batch's last commit.
