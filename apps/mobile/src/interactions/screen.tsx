@@ -7,6 +7,7 @@ import { canAccessRoute } from '../onboarding/routes';
 import { useInteractions } from './context';
 import { ActionButton } from './action-button';
 import { InteractionFeedback } from './controls';
+import { chatFor } from '../chat/context';
 
 function MatchNavigation() {
   const { state, store } = useOnboarding();
@@ -34,7 +35,7 @@ export function MatchesScreen() {
     <PreviewNotice />
     <ScreenTitle>Your matches</ScreenTitle>
     <Text style={styles.body}>{restricted ? 'Your account is restricted. You can end existing connections. Profile details, discovery and messaging remain unavailable.'
-      : 'A mutual match appears only after both fictional people have committed a like. A match does not enable messaging in this preview.'}</Text>
+      : 'A mutual match appears only after both fictional people have committed a like. A mutual match opens a fictional conversation in this preview.'}</Text>
     <InteractionFeedback />
     <View style={styles.group} testID="match-list">
       {matches.length === 0 && <Text style={styles.body} testID="matches-empty">{restricted ? 'No connections are available to end.' : 'No mutual matches yet. A like on its own is private and is not a match.'}</Text>}
@@ -46,13 +47,14 @@ export function MatchesScreen() {
       </View>)}
     </View>
     <Button label="Refresh matches" testID="matches-refresh" secondary disabled={state.status === 'pending'} onPress={() => store.refresh()} />
+    {!restricted && <Button label="Your conversations" testID="open-conversations" secondary onPress={() => router.push('/conversations')} />}
     <MatchNavigation />
   </Page>;
 }
 
 export function MatchScreen() {
   const { store, state } = useInteractions();
-  const { state: owner } = useOnboarding();
+  const { state: owner, store: onboarding } = useOnboarding();
   const restricted = owner.account?.state !== 'active';
   useFocusEffect(useCallback(() => { store.refresh(); return () => store.cancelPending(); }, [store]));
   const match = state.cleanupMatches.find(item => item.match_id === state.selectedMatchId);
@@ -68,7 +70,10 @@ export function MatchScreen() {
       {match && <>
         <Text style={styles.body}>{active ? 'You both liked each other in this fictional preview.'
           : match.state === 'unmatched' ? 'You are unmatched. New contact is unavailable.' : 'This connection is unavailable for new contact.'}</Text>
-        <Text style={styles.small}>Messaging is unavailable. This preview has no provider channel, messages or history access.</Text>
+        {active ? <>
+          <Text style={styles.small}>Messages with this match stay in this fictional preview session.</Text>
+          <Button label="Open conversation" testID="match-conversation" onPress={() => { chatFor(onboarding).store.select(match.match_id); router.push('/conversation'); }} />
+        </> : <Text style={styles.small}>Messaging is unavailable. This preview has no provider channel, messages or history access.</Text>}
         {match.state !== 'unmatched' && <>
           <Text style={styles.body}>Unmatching ends this connection. You can unmatch while your profile is paused or your account is restricted. This preview does not offer undo or rematching.</Text>
           <ActionButton label="Unmatch" testID="match-unmatch" disabled={state.status === 'pending'}

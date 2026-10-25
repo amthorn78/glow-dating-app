@@ -1,6 +1,6 @@
 # P06.2 — Chat integration
 
-- **Status:** brief revision 15, 24 October 2026, by App Manager 7. Revision 15's change: **C1-C1's re-review requires changes** (two should-fix findings in correction classes), so the correction pass C1-C2 is defined in "C1-C1's re-review, and C1-C2". Revision 14's change, the same day: **C1's exact-head review requires changes** (one hardening in a correction class, two record sentences), so the correction pass C1-C1 is defined in "C1's exact-head review, and C1-C1". **Stage B2 merged** on 24 October (PR31, `3572c41`; the evidence record, "Stage B2's merge receipt"), and **Stage C1** is in the draft PR32. Revision 13, the same day, applies the Dev Manager's DM-22 ([report](../continuity/dev-manager/reviews/2026-10-24-dm-22-p06-2-stage-c-read.md), `f9c624d`) as written, each condition marked with its DM-22 number, so it needs no further read (DM-03 G2): "Stage C under OD-45" points b to k, D5, C1's owned paths and acceptance check 6. Revision 12, the same day, added **"Stage C under OD-45"**: Stage C's design under Nathan's D8 answer, in two parts (C1, the server and the contracts; C2, the mobile interface), and changes item 5, D1's Stage C bullet, the owned paths, acceptance check 6 and the review plan to match. It also changes PF01 section 4's Chat row. The Dev Manager read revision 12, with C1's prompt, in DM-22. Revision 11, the same day: **B2-C4's exact-head re-review requires one change** (C4R1, the results' identifiers), so the correction pass B2-C5 is defined in "B2-C4's re-review, and B2-C5". Revision 10, the same day: **B2's exact-head review approved B2 to B2-C3** (one should-fix finding, eight nits), and the correction pass B2-C4 is defined in "B2's exact-head review, and B2-C4"; point ii marks M5's user creation an inference (AM7-06). Revision 9, the same day: **Nathan decided D8 as option (b)** (OD-45): the app holds no Stream credential, Glow's API serves history and new messages, Stream stays the provider behind Glow's server, and no provider feature may reach members unannounced. Revision 9 records the decision in D8, items 4 and 5 and the costing section; Stage C's design follows in a later revision, for the Dev Manager's read with Stage C's prompt. The rest is revision 8.
+- **Status:** brief revision 20, 25 October 2026, by App Manager 8. Revision 20's change: **C2-C4's audit observation is recorded as a follow-up** and the combined re-review of C2-C3 and C2-C4 is defined (DM-29, [report](../continuity/dev-manager/reviews/2026-10-25-dm-29-p06-2-c2-c4-observation.md), `006f786`), in "C2-C4's audit observation, and the combined re-review", with its conditions applied as written, so it needs no further read (DM-03 G2). Revision 19, 25 October 2026, by App Manager 8. Revision 19's change: **Codex's CX12 is fixed before the merge** in a correction pass, C2-C4 (DM-28, [report](../continuity/dev-manager/reviews/2026-10-25-dm-28-p06-2-cx12.md), `2d9f1e9`), defined in "Codex's CX12, and C2-C4", with its conditions applied as written, so it needs no further read (DM-03 G2). Revision 18, 25 October 2026, by App Manager 8. Revision 18's change: **the exact-head re-review's F1 is fixed before the merge** in a correction pass, C2-C3 (DM-27, [report](../continuity/dev-manager/reviews/2026-10-25-dm-27-p06-2-re-review-f1.md), `a9513a5`), defined in "The re-review's F1, and C2-C3", with its conditions applied as written, so it needs no further read (DM-03 G2); DM-27 1.1 amends DM-25 3.1. Revision 17, 25 October 2026, by App Manager 8. Revision 17's change: **Codex's CX9 and CX10 are corrected before the merge** in one correction pass, C2-C2 (DM-24, [report](../continuity/dev-manager/reviews/2026-10-25-dm-24-p06-2-cx9.md), `1a4fc1b`; DM-25, [report](../continuity/dev-manager/reviews/2026-10-25-dm-25-p06-2-re-review-order.md), `1809fde`), defined in "Codex's CX9 and CX10, and C2-C2", with their conditions applied as written, so it needs no further read (DM-03 G2). C2-C1's re-review did not run (AM7-13); one exact-head re-review follows C2-C2. Revision 16, 24 October 2026, by App Manager 7. Revision 16's change: **Codex's CX8 on PR33 is corrected before the merge** (DM-23, [report](../continuity/dev-manager/reviews/2026-10-24-dm-23-p06-2-cx8.md), `c8bc632`), so the correction pass C2-C1 is defined in "Codex's CX8, and C2-C1", with DM-23's conditions applied as written, so it needs no further read (DM-03 G2). **Stage C1 merged** on 24 October (PR32, `a8e9528`), and **Stage C2** is in PR33. Revision 15's change, the same day: **C1-C1's re-review requires changes** (two should-fix findings in correction classes), so the correction pass C1-C2 is defined in "C1-C1's re-review, and C1-C2". Revision 14's change, the same day: **C1's exact-head review requires changes** (one hardening in a correction class, two record sentences), so the correction pass C1-C1 is defined in "C1's exact-head review, and C1-C1". **Stage B2 merged** on 24 October (PR31, `3572c41`; the evidence record, "Stage B2's merge receipt"), and **Stage C1** is in the draft PR32. Revision 13, the same day, applies the Dev Manager's DM-22 ([report](../continuity/dev-manager/reviews/2026-10-24-dm-22-p06-2-stage-c-read.md), `f9c624d`) as written, each condition marked with its DM-22 number, so it needs no further read (DM-03 G2): "Stage C under OD-45" points b to k, D5, C1's owned paths and acceptance check 6. Revision 12, the same day, added **"Stage C under OD-45"**: Stage C's design under Nathan's D8 answer, in two parts (C1, the server and the contracts; C2, the mobile interface), and changes item 5, D1's Stage C bullet, the owned paths, acceptance check 6 and the review plan to match. It also changes PF01 section 4's Chat row. The Dev Manager read revision 12, with C1's prompt, in DM-22. Revision 11, the same day: **B2-C4's exact-head re-review requires one change** (C4R1, the results' identifiers), so the correction pass B2-C5 is defined in "B2-C4's re-review, and B2-C5". Revision 10, the same day: **B2's exact-head review approved B2 to B2-C3** (one should-fix finding, eight nits), and the correction pass B2-C4 is defined in "B2's exact-head review, and B2-C4"; point ii marks M5's user creation an inference (AM7-06). Revision 9, the same day: **Nathan decided D8 as option (b)** (OD-45): the app holds no Stream credential, Glow's API serves history and new messages, Stream stays the provider behind Glow's server, and no provider feature may reach members unannounced. Revision 9 records the decision in D8, items 4 and 5 and the costing section; Stage C's design follows in a later revision, for the Dev Manager's read with Stage C's prompt. The rest is revision 8.
   - Revision 8, 23 October 2026, by App Manager 7, with DM-20's conditions applied as written ([report](../continuity/dev-manager/reviews/2026-10-23-dm-20-p06-2-b2-live-rows-and-d8.md), `ca806e3`), so it needs no further read (DM-03 G2): **B2-C3 locked Video and Feeds and ran B2's live rows** (integrated at `6c88773`): 42 PASS, 2 RECORDED, 2 DIFFERENCE. **Row D10's difference is dispositioned** (DM-20 item 1: option (b)). Revision 8 adds "B2's live rows, and what they leave" and "The client-token question (D8): the options and the manager's costing", which the Dev Manager read in DM-20; each applied condition is marked with its DM-20 number. The rest is revision 7.
   - Revision 7, 23 October 2026, by App Manager 7, with DM-19's conditions applied as written ([report](../continuity/dev-manager/reviews/2026-10-23-dm-19-p06-2-stage-b2-c3-read.md), `821efc7`), so it needs no further read (DM-03 G2): **B2-C2 locked the chat target and stopped after its chat apply** (integrated at `cf27fef`), on a change the apply's plan did not cover: Stream re-created the chat type `agent` on the write, with `blocklist_behavior: "flag"`. Revision 7 adds D6, "B2-C3's design points" and B2-C3's owned paths, which the Dev Manager read with B2-C3's prompt in DM-19; each applied condition is marked with its DM-19 number. The rest is revision 6.
   - Revision 6, 23 October 2026, by App Manager 7, with DM-18's conditions applied as written ([report](../continuity/dev-manager/reviews/2026-10-23-dm-18-p06-2-stage-b2-c2-read.md), `f0a43c9`), so it needs no further read (DM-03 G2): **B2-C1's offline work is done and integrated (`9e24ca1`), and its live run stopped at its first command** on a fifth addition at Stream, the Video call type `audio_call`. Revision 6 adds D5, "B2-C2's design points" and B2-C2's owned paths, which the Dev Manager read with B2-C2's prompt in DM-18; each applied condition is marked with its DM-18 number. The rest is revision 5.
@@ -88,6 +88,10 @@ P06.2 delivers it at the scope PF01 allows before P11: a domain and persistence 
   - Stage C (under option (a), kept for the record): `apps/mobile/**`; `packages/contracts/**` only if a chat contract changes, with its generated outputs regenerated by the repository's tooling; the evidence record.
   - Stage C1 (revision 12): `services/api/**` for point b's port operation and its fixture and Stream adapters, point c's and point e's reads and cursor in the persistence adapter, point f's projections, and their tests. It adds no dependency and no migration, and leaves the runtime settings, URL configuration and configuration guards unchanged. Also: `proofs/postgres-ordering/**` for point c's forced cases (`reference.py` and its ten controls unchanged); `proofs/stream-chat/tests/test_conformance.py`, only to add the new operation to its `operations()` helper, since `test_refuse_all` asserts that the helper covers exactly `OPERATIONS` (DM-22 10.1); `packages/contracts/**`, with its generated outputs in `apps/mobile/src/contracts/generated/` regenerated by the repository's tooling; `docs/architecture/production-contracts.md` (F11) and the data model; the evidence record. No mobile source outside the generated contracts names `channel_ref`; if the session finds one, it stops and reports: that path is C2's (DM-22 10.3).
   - Stage C2 (revision 12): `apps/mobile/**`, except its dependency files and its generated contracts; the evidence record. A contract change is C1's, already merged: if C2 needs one, the session stops and reports.
+  - Stage C2-C1 (revision 16; DM-23 2.5): `apps/mobile/**`, except its dependency files (`package.json`, `package-lock.json`, `.npmrc`, `dependency-inventory.json`), its generated contracts (`src/contracts/generated/**`), `app.config.ts` and `scripts/development.mjs`; a new section "Stage C2-C1" in the evidence record. `Page`'s behaviour on every other screen is unchanged. No dependency or contract change: if a fix needs one, the session stops and reports.
+  - Stage C2-C2 (revision 17; DM-24 1.5, DM-25 3.5): `apps/mobile/src/chat/store.ts` and `src/chat/store.test.ts`; `src/chat/testing.ts`, only if a test needs a helper; `apps/mobile/README.md`'s revocation sentence, only if the change alters what it says, and its cursor sentence, which states DM-25 3.1; a new section "Stage C2-C2" in the evidence record. No change to the fixture adapter. No dependency or contract change (DM-23 2.5's unchanged list): if a fix needs one, the session stops and reports.
+  - Stage C2-C3 (revision 18; DM-27 1.3): `apps/mobile/src/chat/store.ts` and `src/chat/store.test.ts`; `src/chat/testing.ts`, only if a test needs a helper; `apps/mobile/README.md`'s cursor sentence, which states DM-27 1.1; a new section "Stage C2-C3" in the evidence record. DM-23 2.5's unchanged list, the fixture adapter, the revocation path (DM-24 1.1 to 1.3) and DM-25 3.2's triggers unchanged.
+  - Stage C2-C4 (revision 19; DM-28 1.5): `apps/mobile/src/chat/store.ts`, its class comment included, and `src/chat/store.test.ts`; `src/chat/testing.ts`, only for a test helper; a new section "Stage C2-C4" in the evidence record. The README unchanged. DM-23 2.5's list, the fixture adapter, the cursor rule, the revocation rule and DM-25 3.2's triggers for a merged page unchanged.
 - **Documents each stage updates** (DM-13 9.5):
   - the data model (`docs/architecture/data-model.md`): Stage A, for the new models, the consent purpose and the outbox flow;
   - `docs/architecture/interactions-fixtures.md`: Stage A, for what P06 and P11 now hold;
@@ -187,7 +191,7 @@ B2-C1's design points (approved in DM-17 items 2 to 6, with the conditions below
 - **iv. Why the general `configure --apply`** (approved in DM-17 item 2, over a differential chat apply). It is the reviewed command that set the chat target on 25 September. It re-sends the application `PATCH`, the default types and `glow-match`, every value the target's; Stream's updates change only the fields sent, so on today's state it changes only D1 and D4, and point iii's dry-run check shows that before it runs. **2.4:** it runs **outside the guard**, as `cmd_configure`'s own comment says, as on 25 September; that is accepted for one reviewed command with point iii's dry-run check and 2.3's comparison after it, since writing a differential chat apply now would add new apply code to a live correction pass. **For production,** a differential chat apply under a configure-scope guard, as the products have, is the better form; P11 carries it with the drift check (point vi).
 - **v. B2's three changes outside its prompt's words** (approved in DM-17 item 4, all three): the creator on channel creation (`created_by_id` = the first member, which Stream's server-side creation requires), a precision of DM-16 4.2, with the exact-head review confirming that `glow-match` grants no owner-scoped permission to any role; `services/api/pyproject.toml`'s mypy override, scoped to `getstream` and `getstream.*`; and the API README's paragraph. The prompt's owned paths should have named the last two (AM6-03). **For P11, recorded, not a condition:** ownership makes one member the target of any owner-scoped grant Stream might add to `glow-match`, as it added `schedule-message`; a server-only creator identity, provisioned once and never issued a token, removes that asymmetry, and P11 weighs it with the drift check.
 - **vi. Carried to P11, and a question before Stage C.** In four weeks Stream added a call type, a channel type, a settings section and a grant on an existing role, without notice. **The drift check is approved (DM-17 item 6):** point i's generic coverage, run before each deploy and on a schedule, with an alert; P11 owns it, with 2.4's differential chat apply under a guard, v's server-only creator, and P11's runtime client passing every pool setting (the harness's `ServerApi` lets the SDK read five pool-setting names, a recorded limit). The P11 plan records all four. **ADR 0003's trigger is met** (DM-17 item 6): "a client-reachable path appears that the display rule or a design constraint does not close", by D1 (a client write into the match channel, outside Glow's send checks), D2 (a Glow-issued token able to create and join calls with the other member) and D4 (client grants in a new chat type beside the match channel). The read-only constraint is a configuration Stream changed without notice, and only detection and a re-apply restore it. **So D8's alternative goes to Nathan** in OD-32's form after B2's live rows (run by B2-C3, since B2-C1 and B2-C2 stopped before them) and before Stage C's prompt: (a) keep the client token (`read-channel`) with the drift check before each deploy and on a schedule, an alert, and an application-wide token revocation on detection, whose exposure is the detection window; or (b) no client token, with Glow serving history and realtime itself, which closes every provider-side permission path by construction, needs Glow's own realtime transport, changes ADR 0003 and makes Stage C's client SDK adapter unnecessary, while B2's adapter and server sends stay. The message carries the manager's costing of (b) for P11 and Stage C; the Dev Manager recommends (b), subject to that costing, with (a) and its safeguards as the fallback and Nathan's risk acceptance. It does not block B2-C1, which is server-side.
-- **B2's findings** (DM-17 item 5). Delivery keeps the SDK's `KeyError` on an undecodable 2xx body as retryable (`provider_unavailable`), and treats the fixture's `ok` and the adapter's `already` for an earlier cut-off alike: both confirmed from `delivery.py`. **Follow-up:** the fixture answers `already` for an earlier cut-off, and the excluded row returns to the shared contract, at the next change to the fixture, before P11. The harness client's `npm ci` advisory is decided before Stage C; uv 0.12.17 in `scripts/bootstrap-toolchain.sh` is a follow-up. **B2's exact-head review (B2R5) adds two divergences to that change:** a creation on an existing channel whose members differ (the adapter `already`, the fixture `provider_rejected`) and a revocation of a deactivated user (the fixture `ok`, Stream `member_unavailable`, V13); delivery's order reaches neither.
+- **B2's findings** (DM-17 item 5). Delivery keeps the SDK's `KeyError` on an undecodable 2xx body as retryable (`provider_unavailable`), and treats the fixture's `ok` and the adapter's `already` for an earlier cut-off alike: both confirmed from `delivery.py`. **Follow-up:** the fixture answers `already` for an earlier cut-off, and the excluded row returns to the shared contract, at the next change to the fixture, before P11. The harness client's `npm ci` advisory is decided before Stage C (decided before C2, not before C1: the P11 plan carries the lock's update before the harness's next live run; AM7-11); uv 0.12.17 in `scripts/bootstrap-toolchain.sh` is a follow-up. **B2's exact-head review (B2R5) adds two divergences to that change:** a creation on an existing channel whose members differ (the adapter `already`, the fixture `provider_rejected`) and a revocation of a deactivated user (the fixture `ok`, Stream `member_unavailable`, V13); delivery's order reaches neither.
 
 **B2-C1's live run stopped, and B2-C2 (revision 6, with DM-18's conditions as written).** B2-C1 did its offline items 1 to 4 (integrated at `9e24ca1`; the evidence record, "Stage B2-C1" and "Manager verification of Stage B2-C1"). Its first live command, `baseline`, found B2's 15 lines, the nine `agent` chat lines point i expects, and three lines for a call type Stream added within four hours of B2's read, `audio_call` (D5), so it stopped as its rule required; nothing at Stream was changed. B2-C2 is a new session for the live part, with B2-C1's code. Its design points:
 
@@ -500,6 +504,381 @@ C1-C1 ran from its prompt's revision 1 (merged at `8b210ec`; run of record 40109
   - R5's dependency recorded in the P11 plan.
 - **The Dev Manager's read:** none for C1-C2's prompt. It authorizes no credential use, provider call or design change; each fix completes DM-22 3.2 or a review finding as written. Its exact-head re-review follows.
 
+### Codex's CX8, and C2-C1 (revision 16)
+
+C2 ran from its prompt's revision 1 (fast-forwarded at `676b49b`; run of record 40135312825; the evidence record, "Stage C2" and "Manager verification of Stage C2"). Its exact-head review, of `77c7073`, approved it with six nits, none in a correction class. **Codex's code review of PR33's final head `96ce36b` found CX8** (P2): the read cursor moves to the newest fetched message whenever the conversation is shown in the foreground, while the screen neither scrolls to the newest message nor tracks what is visible. So a long conversation's unread count clears before its newest messages are seen. That misses C2's prompt, item 8 ("when the member has seen newer messages"), and `store.test.ts:141` asserts the defect. The manager first carried CX8 to P11 and put the alternative to Nathan, who referred it to the Dev Manager (AM7-12). **DM-23** ([report](../continuity/dev-manager/reviews/2026-10-24-dm-23-p06-2-cx8.md), `c8bc632`, a read of `12a4d20`) chose (b): correct it before the merge, in C2-C1. CX8 does not join the P11 plan.
+
+- **The rule DM-23 applies:** a defect in a stage's own code that misses an item of that stage's prompt is fixed before the stage merges; a nit that misses no item is a follow-up.
+- **C2-C1, the correction pass,** offline, in `Glow App - No Stream`, with no provider call. **DM-23's conditions** (as written):
+
+  - **2.1 The rule.** The cursor moves forward only to the newest accepted message that has been inside the conversation's visible area, while the conversation was shown and the app was in the foreground.
+    - A page arriving never moves it by itself.
+    - The evidence that a message was viewed is the rendered layout: either visibility tracking on the message list, or the measured scroll position after scrolling to the message. It is never the fact that a fetch returned.
+  - **2.2 Opening and new messages.**
+    - The screen may open at the newest message by scrolling to it. If it does, the cursor moves only once the scroll has placed that message in view (a measured position or a visibility callback), not when the scroll is requested.
+    - A message that arrives while the member is scrolled away from the newest does not move the screen and is not marked read. It is marked read when it is scrolled into view.
+  - **2.3 The command.**
+    - At most one cursor command is in flight, as today.
+    - A command is sent only when the viewed position moves forward past a message from the other member, never on each scroll event.
+    - The existing rules hold: never backward, never to an unsent message, never for older pages.
+  - **2.4 Tests,** each with its reversal in a scratch copy outside the checkout, showing the test fails without the fix:
+    - **The store's tests:**
+      - a page that arrives in the foreground while the conversation is shown, with nothing reported as viewed, sends no cursor command;
+      - reporting a viewed message moves the cursor to it and no further;
+      - reporting an older message moves nothing;
+      - `store.test.ts:141` is replaced: with 25 messages and 13 unread, only the viewed messages clear.
+    - **A rendered test** (hosted CI), with a conversation longer than the viewport:
+      - the unread count does not clear until the newest message is in view;
+      - with the member scrolled up, a new message from the other member leaves one unread until it is scrolled into view.
+  - **2.5 Scope.**
+    - `apps/mobile` only, using React Native's own list or scroll interfaces.
+    - No dependency or contract change: `package.json`, `package-lock.json`, `dependency-inventory.json` and `src/contracts/generated/` unchanged.
+    - `Page`'s behaviour on every other screen is unchanged. If the conversation needs its own scroll container, it is the conversation's, and every other screen's rendered tests pass unchanged.
+    - The README's cursor sentence is corrected, with finding 1's sentence (3.1).
+    - The evidence record gains "Stage C2-C1".
+  - **2.6 The re-review.** Its prompt names item 8 and CX8, and has the reviewer read the store's cursor path, the replaced unit test and the long-conversation rendered test. Codex's review of the new final head follows.
+    - C2's exact-head review confirmed DM-22 6.1 to 7.2 but not item 8's "seen".
+    - My DM-22 conditions for C2 named no test for "seen" either. The re-review closes that gap; nothing else changes.
+
+- **DM-23 3.1** (as written):
+
+  **3.1 The change:**
+
+  - C2-C1 corrects finding 1's README sentence, because C2-C1 edits the README anyway and a README must not claim more than its test checks. The README says the test fails on "any socket or event-stream construction"; it fails on the forms DM-22 7.1 names.
+  - The rest stays a recorded follow-up, now due at the first change to `apps/mobile` after PR33 merges:
+    - finding 1's broader test;
+    - finding 4, restoring the draft on a final refusal;
+    - finding 5, the restricted-match assertions.
+
+- **Finding 3 does not ride along** (DM-23 item 2): it stays in the P11 plan's mobile-client entry, with its test.
+- **C2-C1's owned paths:** as the brief's owned paths list them for C2-C1 (2.5).
+- **The Dev Manager's read:** none for C2-C1's prompt, on DM-22 9.1's terms with 2.1 to 2.6 quoted as written (DM-23 item 2). A departure found while it is written goes back to the Dev Manager first. Its exact-head re-review follows (2.6), then Codex's code review of the new final head.
+
+### Codex's CX9 and CX10, and C2-C2 (revision 17)
+
+C2-C1 ran from its prompt's revision 1 (code `311b07e`, records `73ef97e`; run of record 40145402786; the evidence record, "Stage C2-C1" and "Manager verification of Stage C2-C1"). Its exact-head re-review did not run: Nathan withdrew its prompt as premature (AM7-13; OD-46). Codex then found two P2 defects, both verified by the manager:
+
+- **CX9** (C2's code): `revoke()` leaves the conversation's epoch unchanged, so a page, a send or a cursor command requested before a revocation can restore the cleared conversation, its status or the list's row. It misses C2's item 3 and its prompt's revocation class. **DM-24** ([report](../continuity/dev-manager/reviews/2026-10-25-dm-24-p06-2-cx9.md), `1a4fc1b`, a read of `568f446`) chose (b): correct it before the merge, in C2-C2.
+- **CX10** (C2-C1's cursor code): `lastRead` starts `null` at each opening and no contract carries the cursor's position (C2C1-X1), so the store tests only the loaded window for an incoming message. When the newest page holds none, viewing it sends no command, and the count stays above zero until the member views a later incoming message. It misses C2's item 8. **DM-25** ([report](../continuity/dev-manager/reviews/2026-10-25-dm-25-p06-2-re-review-order.md), `1809fde`, a read of `6fe07b1`) chose (b): fix it in C2-C2 as a separate item. DM-25 3.1 amends DM-23 2.3 while the position is unknown.
+
+Neither joins the P11 plan.
+
+- **C2-C2, the correction pass,** offline, in `Glow App - No Stream`, with no provider call. Two items: CX9 under DM-24 1.1 to 1.6, and CX10 under DM-25 3.1 to 3.6.
+- **DM-24's conditions** (as written; DM-25 3.5 amends 1.5's last sentence, below):
+
+  - **1.1 A revocation invalidates every request outstanding when it happens.**
+    - The conversation's requests: a head read, a queued head read, an older page, a cursor command and a send.
+    - The conversation list's read.
+    - **A response to any of them, success or failure, changes nothing:** not the messages, the status, the older-page state, the cursors, `lastRead`, the draft, the send state or the list. It starts nothing either: no follow-up head read and no cursor command.
+    - **A list response requested before the revocation does not put the revoked conversation's row back.**
+    - The session chooses the mechanism (for example, advancing the conversation's epoch in `revoke()` and marking list reads issued before it) and records why.
+  - **1.2 No send is left pending.** After the revocation, the send state shows no pending send and offers no retry, whether a send was in flight or not. The revoked notice is the only state shown.
+  - **1.3 Requests issued after the revocation keep today's behaviour,** such as the read on a return to the foreground or after an authority change. The server decides them: a resumed match can legitimately become readable again (DM-22 3.1's interim rule).
+  - **1.4 Tests,** each with its reversal in a scratch copy outside the checkout, showing the test fails without the fix. Each holds a request through `chatSetup`'s transport wrapper, then revokes through a send's refusal and, separately, through a cursor command's.
+    - **A held head read that then succeeds:** the conversation stays `revoked`, with no messages, no draft, no pending send, no new read and no cursor command.
+    - **A held older page that then succeeds:** the store's messages stay empty.
+    - **A held head read that then fails without ending access:** the status stays `revoked`, not `error`.
+    - **A held send that then succeeds:** no `sent` state and no head read.
+    - **A held cursor command that then succeeds:** no change to `lastRead` or the list.
+    - **A held list read that returns the conversation:** the row stays absent.
+    - **A read issued after the revocation, on a return to the foreground:** today's behaviour (1.3).
+  - **1.5 Scope:** `apps/mobile` only.
+    - **The paths:**
+      - `src/chat/store.ts` and `src/chat/store.test.ts`;
+      - `src/chat/testing.ts`, only if a test needs a helper;
+      - the README's revocation sentence, only if the change alters what it says;
+      - the evidence record's new section "Stage C2-C2".
+    - No dependency or contract change; DM-23 2.5's unchanged list holds.
+    - C2-C1's cursor behaviour and its tests stay unchanged, apart from the revocation path's effect on them.
+  - **1.6 The re-review of C2-C2's diff:**
+    - it names CX9, C2's item 3 and the prompt's revocation class;
+    - it checks each caller of `revoke()`, and a late response of each request type in 1.1, the list included;
+    - it searches the store's other asynchronous paths for any that can move a conversation out of `revoked` with a response requested before the revocation.
+
+    Codex's review of the new final head follows.
+
+- **DM-25's conditions for CX10** (as written):
+
+  - **3.1 An unknown position is not treated as known** (replaces c.1).
+    - **Why:** until a cursor command has succeeded in this opening, the store does not know where the server's cursor is (C2C1-X1). So the loaded window alone cannot show that a move to `seen` passes no unread message from the other member.
+    - **Until a command has succeeded,** a move to `seen` is sent when any of these holds:
+      - the loaded messages up to `seen` include one from the other member (DM-23 2.3, as today);
+      - the conversation's summary that the store holds shows an `unread_count` above zero. The summary is the conversation's entry in the store's list, as the last list read or cursor command returned it;
+      - the store holds no summary for the conversation, as when it was opened from the match's "Open conversation" with the list never read.
+    - **Once a command has succeeded,** DM-23 2.3 holds as written.
+    - **The target is always `seen`** (DM-23 2.1).
+    - **Why this is safe:** the server moves the cursor only forward (C1's `_move`), so a move to a message at or behind its cursor changes nothing.
+    - **A summary at 0 never suppresses a move** that the window's own evidence calls for.
+  - **3.2 A move the store held back is reconsidered when its evidence changes** (replaces c.2).
+    - **The two triggers:**
+      - an older page that adds messages before `seen`;
+      - a list read, or a cursor command's response, that changes the conversation's summary.
+    - Each reconsideration applies 3.1 and DM-23 2.3, and sends nothing when they do not hold.
+    - **What does not trigger one:**
+      - a viewing report (DM-23 2.3);
+      - a failed command, which is still tried again only after the next successful read (`store.test.ts:210`'s rule);
+      - a response that DM-24 1.1 makes ineffective, because it was requested before a revocation.
+  - **3.3 The existing rules hold** (c.3).
+    - Never backward, and never to an unsent message.
+    - At most one command in flight.
+    - The target is `seen`, the newest accepted message that has been in view while the conversation was shown and the app was in the foreground (DM-23 2.1).
+    - No command on each viewing report.
+  - **3.4 Tests** (replaces c.4). Each has its reversal in a scratch copy outside the checkout, showing that the test fails without the fix.
+    - **(a) The incoming message outside the window, with the list read first.** One incoming message, then 20 of the member's own; the incoming one is unread and outside the newest page, and the list's count is 1. Viewing the newest sends one command, to it, and the list's count clears.
+    - **(b) The same, with no list read.** The conversation is opened with no summary held: one command, and a list read afterwards shows 0.
+    - **(c) A summary that is out of date.** The summary held shows 0, from a list read before the incoming message and the 20 own arrived.
+      - Viewing the newest sends nothing.
+      - Loading the older page then sends one command, to `seen`, and the count clears.
+      - In a separate case, a list read that shows the count above zero does the same.
+    - **(d) Nothing unread.** The summary held shows 0, and the window holds no incoming message: no command, however often the messages are reported.
+    - **(e) The existing rules, unchanged:**
+      - once a command has succeeded, the member's own messages in view send nothing (`store.test.ts:193`);
+      - a failed command is still tried again only after the next read (`:210`).
+    - **The reversals:**
+      - 3.1 reverted to the window-only test fails (a) and (b);
+      - 3.2's older-page trigger removed fails (c)'s first case, and its summary trigger removed fails the second;
+      - a reconsideration on every report fails (d) or `:210`.
+  - **3.5 Scope** (replaces c.5).
+    - **The paths and the unchanged list:** DM-24 1.5's, with no change to the fixture adapter. A test can send the member's own messages through the transport.
+    - **DM-24 1.5's sentence on C2-C1's cursor behaviour** reads, for C2-C2: "C2-C1's cursor behaviour and its tests stay unchanged, apart from the revocation path's effect on them and DM-25 3.1 to 3.3".
+    - **C2-C1's cursor tests** change only where 3.1 to 3.3 change the rule. The record names each change.
+    - **The README's cursor sentence** states 3.1.
+    - **No contract change:** the cursor position stays out of the contracts (C2C1-X1, for P11).
+  - **3.6 The re-review** (replaces c.6). The re-review of item 1 also:
+    - names CX10 and C2's item 8 for this change;
+    - reads 3.1's three grounds and 3.2's triggers;
+    - checks that no path sends a command on a viewing report or to any target but `seen`;
+    - checks that a response DM-24 1.1 makes ineffective triggers no reconsideration;
+    - weighs one effect: a move reconsidered by a list read can be sent after the screen is left. C2-C1 already allows that for a `seen` set while shown and in the foreground ("a move to a message that was in view may now complete after the screen is left", the evidence record's "Stage C2-C1").
+
+- **DM-25 1.1 to 1.3, the order** (as written):
+
+  - **1.1 What the re-review reads.**
+    - **Its head:** the code commit that holds C2-C2's code, named as workflow step 6 says.
+    - **C2-C1's diff** against DM-23 2.1 to 2.6.
+    - **C2-C2's diff** against DM-24 1.1 to 1.6 and 3.1 to 3.6 here.
+    - **The store's cursor path and revocation path as they stand at that head,** because C2-C2 changes code C2-C1 wrote. DM-23 2.6's reading list (the cursor path, the replaced unit test, the long-conversation rendered test) is read at that head.
+    - **The run of record of C2-C2's code commit:** all eight jobs, and the rendered tests.
+    - **Its security focus areas, named in its prompt.** It is the only security reading of both passes (OD-41; workflow step 7):
+      - no history or composer after a revocation (OD-12; CX9);
+      - the display rule at the client boundary unchanged;
+      - no provider package, socket or network client added.
+  - **1.2 What "handled" means before the re-review prompt goes to Nathan.**
+    - Codex has reported on a head that holds C2-C2's code, and each finding is verified and dispositioned.
+    - A finding fixed before the re-review goes into a further pass under item 2's terms, so that the one re-review still reads one final head.
+    - A fix-or-carry choice that no correction class decides comes to me first (OD-32; AM7-12).
+  - **1.3 The close, completed.** Besides what the manager lists (Codex on the final head, the final run, the pre-merge checklist and the merge):
+    - the **CX10** thread is answered now and resolved with CX8's and CX9's once the fix is reviewed;
+    - **PR33's governing Markdown** has the Dev Manager's dispositions in the review log (item 4);
+    - **PR33's description** is brought up to date, as the handoff already says.
+
+- **DM-25 2.1 to 2.3, the terms for a further pass** (as written):
+
+  - **2.1 The terms.**
+    - **Which findings they cover:** a finding of the re-review in a correction class its prompt names, or a defect that misses an item of C2's prompt (DM-23's rule).
+    - **The conditions:** such a finding becomes a further pass, C2-C3, without a read of mine only if:
+      - it stays within `apps/mobile`, with no dependency or contract change (DM-23 2.5's unchanged list);
+      - it departs from nothing DM-22, DM-23, DM-24 or this report approved;
+      - it leaves two rules unchanged:
+        - the cursor rule, as DM-23 2.1 to 2.3 and 3.1 to 3.3 here set it;
+        - the revocation rule, as DM-24 1.1 to 1.3 set it.
+    - **Anything else** comes to me before the prompt goes to Nathan.
+  - **2.2 C2-C3's own checks.**
+    - **Before the merge:** C2-C3 gets its own exact-head re-review, of its delta and naming the finding it fixes, and then Codex's review of its head. Every new head needs its own review.
+    - **Nits:** a nit that misses no item of the prompts and is in no correction class is a recorded follow-up, not C2-C3.
+  - **2.3 The same terms cover a Codex finding on C2-C2's head** that is fixed before the re-review (1.2).
+
+- **C2-C2's owned paths:** as the brief's owned paths list them for C2-C2 (DM-24 1.5, DM-25 3.5).
+- **The Dev Manager's read:** none for C2-C2's prompt, on DM-24 item 3's terms (DM-22 9.1's), with DM-24 1.1 to 1.6 and DM-25 3.1 to 3.6 quoted as written. A departure found while it is written goes back to the Dev Manager first.
+- **Then:** Codex's review of C2-C2's code head, with each finding handled (DM-25 1.2); one exact-head re-review of that head (DM-25 1.1, 3.6; DM-23 2.6; DM-24 1.6); Codex on the final head, the final run, the CX8, CX9 and CX10 threads resolved, the Dev Manager's dispositions of PR33's governing Markdown, PR33's description, the pre-merge checklist and the merge (1.3).
+
+### The re-review's F1, and C2-C3 (revision 18)
+
+C2-C2 ran from its prompt's revision 1 (code `27999c7`; run of record 40152538074); Codex found nothing on `9fd22c0`; DM-26 approved its test-pairing departure. The exact-head re-review of C2-C1 and C2-C2 (code head `27999c7`) closed CX8 and CX9, and CX10 for the case raised, and asked for changes for **F1** (should fix, in a correction class): after a head read answered `stale` reloads only the newest page, `lastRead` can fall outside the window while `cursorKnown` still holds a move back, so an incoming message stays unread. It misses C2's item 8 on that path. **DM-27** ([report](../continuity/dev-manager/reviews/2026-10-25-dm-27-p06-2-re-review-f1.md), `a9513a5`, a read of `ba30b73`) chose (b): fix it before the merge in C2-C3. F1 does not join the P11 plan.
+
+- **The amendment to DM-25 3.1** (DM-27 1.1): "Once a command has succeeded, DM-23 2.3 holds as written" reads "While `lastRead` is among the loaded accepted messages, DM-23 2.3 holds as written". The cursor rule is now as DM-23 2.1 to 2.3, DM-25 3.1 to 3.3 and DM-27 1.1 set it (DM-27 3.1).
+- **C2-C3, the correction pass,** offline, in `Glow App - No Stream`, with no provider call. **DM-27's conditions** (as written):
+
+  - **1.1 The position is known only while `lastRead` is among the loaded accepted messages** (replaces d.1).
+    - **Why one test suffices:** `lastRead` is set only by a successful command and cleared wherever the store forgets the position. So this one test covers both "a command has succeeded in this opening" and "the window still holds it".
+    - **While it holds,** DM-23 2.3 holds as written. **Otherwise,** DM-25 3.1's three grounds apply.
+    - **`cursorKnown` is removed,** since it would add nothing. The record says so, and why.
+    - **The amendment:** DM-25 3.1's "Once a command has succeeded, DM-23 2.3 holds as written" reads "While `lastRead` is among the loaded accepted messages, DM-23 2.3 holds as written".
+  - **1.2 Tests** (replaces d.2). Each has its reversal in a scratch copy outside the checkout, showing that the test fails without the fix. The test transport answers one head read `stale`, as the reviewer's did.
+    - **(a) The reviewer's sequence, with no summary held.**
+      - Jules sends A; it is viewed, and the command succeeds.
+      - Jules sends B; then a full page of the member's own messages is accepted.
+      - The next head read is answered `stale`.
+      - After the reload, viewing the newest sends one command, to `seen`, and the count clears.
+    - **(b) The same, with a summary held at 0.** The list was read before, and the earlier command's response left the summary at 0.
+      - Viewing the newest sends nothing (DM-25 3.4 (c)'s rule).
+      - The next list read sends one command, to `seen`, and the count clears.
+    - **(c) A `stale` reload that keeps `lastRead` within the newest page,** with no summary held, so that only the known position holds the move back: the member's own newer messages in view send nothing (DM-23 2.3).
+    - **The reversals:**
+      - the position treated as known once a command has succeeded, whatever the window holds (today's code), fails (a) and (b);
+      - the position treated as unknown even with `lastRead` in the window fails (c) or `store.test.ts:193`.
+    - **The existing tests:** every one passes unchanged, the CX9 and CX10 tests included. Any change is named in the record, with the rule that makes it.
+    - **F2:** it needs no test, since 1.1 removes the flag.
+  - **1.3 Scope** (replaces d.3).
+    - **The paths:**
+      - `apps/mobile/src/chat/store.ts` and `store.test.ts`;
+      - `src/chat/testing.ts`, only if a test needs a helper;
+      - the README's cursor sentence, which states 1.1. It now ties the fallback to "until a command has succeeded", and 1.1 changes that;
+      - the evidence record's new section "Stage C2-C3".
+    - **Unchanged:**
+      - DM-23 2.5's unchanged list, and the fixture adapter;
+      - the revocation path (DM-24 1.1 to 1.3);
+      - DM-25 3.2's triggers.
+  - **1.4 What follows** (replaces d.4).
+    - **First,** Codex's review of C2-C3's code head, with each finding handled, as DM-25 1.2 sets it.
+    - **Then C2-C3's exact-head re-review,** of its delta from `27999c7` (DM-25 2.2). It:
+      - names F1, CX10 and C2's item 8;
+      - reads 1.1 at the head;
+      - searches every assignment to `accepted` and `lastRead` (`mergeHead`'s newest branch, `loadOlder`, `revoke`, `resetConversation`, the command's success) for any path that leaves the position treated as known while `lastRead` is outside the window.
+    - **Its prompt names:**
+      - its correction classes (DM-25 2.1);
+      - its security focus: the revocation path and the client boundary unchanged, and no provider package, socket or network client added.
+    - **Then,** Codex on the final head, the final run, the CX8, CX9 and CX10 threads resolved, the pre-merge checklist and the merge.
+
+- **The terms for a further pass** stay DM-25 2.1 to 2.3, with the cursor rule as above.
+- **C2-C3's owned paths:** as the brief's owned paths list them for C2-C3 (DM-27 1.3).
+- **The Dev Manager's read:** none for C2-C3's prompt, on DM-27 3.1's terms, with 1.1 to 1.4 quoted as written. A departure found while it is written goes back to the Dev Manager first.
+
+### Codex's CX12, and C2-C4 (revision 19)
+
+C2-C3 ran from its prompt's revision 1 (code `85b9844`; run of record 40160547922). Codex found nothing on `9776c6f`; its pass on `9422d9e` (the same code) posted **CX12**, a verified P2 in C2's code: an older-page request outstanding when a `stale` answer's reload replaces the window is merged into the reload's window and sets `olderCursor` from the discarded window, leaving a silent gap in the open conversation's history. It misses C2's items 5 and 7 on that path. **DM-28** ([report](../continuity/dev-manager/reviews/2026-10-25-dm-28-p06-2-cx12.md), `2d9f1e9`, a read of `771b870`) chose (b): fix it before the merge in C2-C4. CX12 does not join the P11 plan. C2-C3's held re-review is withdrawn (DM-28 2.1).
+
+- **C2-C4, the correction pass,** offline, in `Glow App - No Stream`, with no provider call. **DM-28's conditions** (as written):
+
+  - **1.1 Replacing the window invalidates every older-page request outstanding at that moment** (replaces e.1).
+    - **Where:** at the replacement itself, `mergeHead`'s newest branch, not at the `stale` answer.
+      - A request made after the `stale` answer and before the reload's page is merged was asked from the window being discarded.
+      - So it is invalidated too.
+      - **Where it bites:** otherwise the newest branch runs only on the first read after a reset or a revocation, and while the conversation holds no accepted message (C1 then gives no newer cursor). In both cases `olderCursor` is null, so no older page can be outstanding. 1.1 changes behaviour only on the `stale` path.
+    - **An invalidated response, success or failure, changes nothing.**
+      - It does not change `accepted`, `unsent`, `olderCursor`, `newerCursor` or `hasOlder`.
+      - It shows no older-page error.
+      - It starts nothing: no cursor command (DM-25 3.2's older-page trigger does not fire), and no read.
+    - **The exception: a refusal that ends access** (`unavailable` or `signed_out`), unless the conversation's epoch has moved on first (a revocation, another conversation or another account; DM-24 1.1). It revokes the conversation, as a refusal of an older page does today (`store.ts:289`).
+      - **Why:** after a revocation, a late refusal adds nothing, so DM-24 1.1 drops it. Here the conversation is still open, and the refusal may be Glow's first word that access has ended. Dropping it would leave the history on screen until the next poll is refused.
+      - e.1 as written would have dropped it. That contradicts e.4's "the revocation rule … unchanged".
+    - **The session chooses the mechanism,** and records why. For example:
+      - an older-page epoch advanced by the replacement;
+      - or a comparison of the request's captured cursor with `olderCursor` before merging. A cursor is opaque, so that comparison tests identity; it computes no position.
+    - **A comparison may merge a page whose cursor is identical to the current `olderCursor`.** The page then continues the new window exactly, so that is not a departure.
+  - **1.2 "Show earlier messages" stays usable** (replaces e.2).
+    - **No invalidated request leaves the older-page state `loading`.**
+      - The state is `idle` once the replacement is merged, or at the latest once the invalidated request completes.
+      - Which of the two depends on the mechanism. The record says which.
+      - As e.1 and e.2 were written, the cursor comparison would have left it `loading` for good: the state comes from the old request, and e.1 forbade its response to change it.
+    - **A request made after the replacement** asks with the reload's `older_cursor` and keeps today's behaviour:
+      - at most one for the current window at a time;
+      - its page merges;
+      - its failure shows the error;
+      - a refusal that ends access revokes.
+  - **1.3 Tests** (replaces e.3). Each has its reversal in a scratch copy outside the checkout, showing that the test fails without its part of the fix.
+    - **The tools:** C2-C3's `staleOnce` and the CX9 gate compose.
+      - A helper the gate lacks goes in `store.test.ts`, or in `testing.ts` (1.5).
+      - Examples: a held page answered with a refusal, or held requests released one at a time.
+    - **(a) CX12's sequence,** in Codex's numbers or any others that leave a gap between the held page and the reload's page.
+      - **The steps:**
+        - 25 messages, with the window holding 6–25;
+        - the older page, 1–5, held;
+        - 25 more messages arrive;
+        - one head read is answered `stale`, and the reload shows 31–50;
+        - the held page is released.
+      - **Expected:**
+        - the window is the reload's page alone, with the reload's `olderCursor`;
+        - the release starts no request;
+        - "Show earlier messages" then reaches 11–30 and 1–10, in order, each message once.
+      - **Reversal:** today's code.
+    - **(b) The same, with the held page failing** without ending access.
+      - **Expected:**
+        - the window and its cursor are unchanged;
+        - no older-page error is shown;
+        - the state is `idle`, at the latest after the failure;
+        - "Show earlier messages" reaches the gap.
+      - **Reversal:** today's code, which shows the error.
+    - **(c) The same, with the held page refused because access has ended.**
+      - **Expected:** the conversation is revoked, as `assertRevoked` checks.
+      - **Reversal:** 1.1's exception removed.
+    - **(d) An older page requested after the `stale` answer and before the reload's page is merged.** The reload is held, and the older page is released after it.
+      - **Expected:** as (a).
+      - **Reversal:** a mechanism that invalidates only the requests made before the `stale` answer.
+    - **The existing tests:** every one passes unchanged, including the CX9 and CX10 tests and C2-C3's (a) to (c). Any change is named in the record, with the rule that makes it.
+  - **1.4 The audit** (new).
+    - **The record lists each piece of window-bound state across a replacement,** with the code that handles it, as section 3 does:
+      - `accepted`, `unsent`, both cursors and `hasOlder`;
+      - an outstanding older page, and the older-page state;
+      - `lastRead`, `seen` and `visible`;
+      - `cursorRetry`, and a cursor command, a send and a list read in flight.
+    - **A defect found beyond CX12** is recorded as a finding outside the work, with its path. It is not fixed in C2-C4. The manager brings it to me (DM-25 1.2).
+  - **1.5 Scope** (replaces e.4).
+    - **The paths:**
+      - `apps/mobile/src/chat/store.ts`, its class comment included, and `store.test.ts`;
+      - `src/chat/testing.ts`, only for a test helper;
+      - the evidence record's new section "Stage C2-C4".
+    - **The README is unchanged.** Its step 3, "**Show earlier messages** follows the page's `older_cursor`", stays true.
+    - **Unchanged:**
+      - DM-23 2.5's list, and the fixture adapter;
+      - the cursor rule, as DM-23 2.1 to 2.3, DM-25 3.1 to 3.3 and DM-27 1.1 set it;
+      - the revocation rule (DM-24 1.1 to 1.3), under which every refusal that ends access still revokes;
+      - DM-25 3.2's triggers, for a page that is merged.
+
+- **The terms for a further pass** stay DM-25 2.1 to 2.3, with the cursor rule as DM-23 2.1 to 2.3, DM-25 3.1 to 3.3 and DM-27 1.1 set it, and the revocation rule as DM-24 1.1 to 1.3 set it (DM-28 3.1).
+- **C2-C4's owned paths:** as the brief's owned paths list them for C2-C4 (DM-28 1.5).
+- **The Dev Manager's read:** none for C2-C4's prompt, on DM-28 3.1's terms, with 1.1 to 1.5 quoted as written. A departure found while it is written goes back to the Dev Manager first.
+- **Then:** Codex on C2-C4's code head, with each finding handled; one exact-head re-review of the head holding C2-C3 and C2-C4 (DM-28 2.2 to 2.4), given only after Codex's pass on the commit that holds its prompt; Codex on the final head, the final run, the CX8 to CX12 threads resolved, DM-25 1.3's pre-merge items and the merge.
+
+### C2-C4's audit observation, and the combined re-review (revision 20)
+
+C2-C4 ran from its prompt's revision 1 (code `d3d7300`, records `b60409b`; run of record 40206318661). Its audit (DM-28 1.4) found no defect beyond CX12 and one observation: an older-page error shown before a window replacement survives it, because the replacement turns only `loading` into `idle` (`store.ts:245`). The manager added an edge: a reload with no older cursor hides the button while the text stays. The record-or-fix choice went to the Dev Manager as DM-29, with the manager's recommendation to record it. Codex found nothing on `33bae36` (holding `d3d7300`).
+
+- **DM-29's conditions on the observation** (as written):
+
+> - **1.1 The follow-up.** It goes beside DM-23 3.1's list (the C2 review's findings 1, 4 and 5), due at the first change to `apps/mobile` after PR33 merges.
+>   - **The change:** a replacement leaves the older-page state `idle` whatever it was, `error` included (`store.ts:245`).
+>     - Any older-page state from before a replacement concerns the window it discarded.
+>   - **A test, with its reversal:**
+>     - an older page fails offline while its window is current;
+>     - then a head read is answered `stale`;
+>     - **expected:** after the reload, no older-page error is shown, and "Show earlier messages" asks with the reload's `older_cursor`;
+>     - **reversal:** today's `:245`, which resets only `loading`.
+>   - **With it,** the class comment's sentence (`:65`) is true as written.
+> - **1.2 If a further correction pass runs before PR33 merges** for any other reason, it takes 1.1 with it. It is in the same files, and its scope is DM-28 1.5's.
+> - **1.3 The records say what the code does now.** This is a records change only.
+>   - **The evidence record's two lines** (`:3794`, `:3803`) get the manager's annotation: a `loading` state becomes `idle`, and an `error` from before the replacement is kept until 1.1 lands (DM-29 1.3).
+>   - ***Implementation Control*'s phrase** gets the same correction.
+>   - **The class comment** stays until 1.1 makes it true. The re-review's prompt names it (2.2).
+> - **1.4 The manager's edge goes with the follow-up as a second reason for it,** and not to the P11 plan.
+>   - 1.1 removes the edge.
+>   - **The guard:** if 1.1 has not landed when a later phase lets a readable conversation lose accepted messages (a deletion or a moderation feature), that phase takes 1.1 first.
+
+- **DM-29's conditions on the combined re-review** (as written):
+
+> - **2.1 It goes as DM-28 2.2 to 2.4 set it, without a further read.**
+>   - It quotes DM-27 1.1 and 1.4, and DM-28 1.1 to 1.5, as written.
+>   - It adds 1.1 to 1.4 here to what it names.
+>   - C2-C4's delta from `85b9844` holds both code commits (`a328bc7`, `d3d7300`). Its run of record is 40206318661, on `d3d7300`.
+> - **2.2 It names these, for the reviewer to confirm or challenge at the head:**
+>   - the observation's path;
+>   - the manager's edge, with my trace of C1 (section 3);
+>   - the class comment's sentence at `:65`.
+>   - **How they are classed:**
+>     - A finding on them that adds nothing to what this report states is the follow-up (1.1), not a further pass.
+>     - A finding that adds an effect or a path is a finding in its own right, classed as usual.
+> - **2.3 Its gates are the manager's two:**
+>   - **Codex on a head holding `d3d7300`: met.** As I read PR33 at about 16:20 UTC, Codex's summary shows its code review of `33bae36` completed at 15:53 UTC, with no findings.
+>   - **Codex's pass on the commit that holds the prompt** (DM-28 2.4) still applies, since that commit comes later.
+>   - **A pass shown running with no result is not a completed pass.** The manager re-triggered the stalled pass at `ab05992` at Nathan's direction, and that was right.
+>   - **Optional, and Nathan's to decide; nothing waits on it.** He could give a standing direction: the manager may post `@codex review` once, when a pass shows no result after a wait he names.
+>     - **It gains** the hour lost at `ab05992`.
+>     - **It costs** one more comment, on a PR whose threads the manager already answers.
+>     - Until he decides, the manager asks, as it did at `ab05992`.
+
+- **The combined re-review's prompt** quotes DM-27 1.1 and 1.4, DM-28 1.1 to 1.5 and DM-29 1.1 to 1.4 as written, with DM-28 2.2 and 2.3's scope, classes and focus, and DM-29 2.2's three items. It needs no further read (DM-29 2.1).
+- **Then:** Codex's pass on the commit holding the prompt; the re-review; Codex on the final head, the final run, the CX8 to CX12 threads resolved, DM-25 1.3's pre-merge items and the merge.
+
 ## Sessions
 
 - **Stage A implementation** ([prompt](../ephemeral/2026-10-05-p06-2-stage-a-implementation-prompt.md), revision 1): **done** (5 October; Nathan's pick, Opus 5.5 at extra high, TypeSafe's reading). Branch `claude/dazzling-lovelace-f2mtts`, code head `3b92122`, final head `1a7fd9a`. Push run 37372546600: the database job passed on both subjects (reference 56 of 56 cases and every control; adapter 81 of 81 cases, every planted control, 0 design violations; delivery 7 of 7), but its gate failed because three jobs got no runner. The manager verified it and integrated it at `e8eb5d3`. **Run of record:** PR29's run 37383940454 on `8bbad57` (code unchanged from `3b92122`), every job passed and the gate printed `Application checks passed`; the session established it (`e50865d`, integrated at `5f44d4e`). See the evidence record, "Manager verification of Stage A" and "Stage A run of record".
@@ -524,3 +903,23 @@ C1-C1 ran from its prompt's revision 1 (merged at `8b210ec`; run of record 40109
 - **Stage C1-C1 exact-head re-review** (of the head that holds its prompt; [prompt](../ephemeral/2026-10-24-p06-2-stage-c1-c1-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at extra high. Given to Nathan on 24 October; Nathan's pick, Opus 5.5 at extra high, TypeSafe's reading. **Done** (24 October): **changes required**, with two should-fix findings in correction classes (R1, `set_autocommit(False)` passes both guards; R2, the lock-order case uses only the lower member as reader) and three nits. Recorded in the evidence record, "Exact-head review of Stage C1-C1", with the dispositions; R1 to R3 and R5 go to C1-C2, and R4 and R5's dependency to the P11 plan.
 - **Stage C1-C2** (the correction pass after C1-C1's re-review: R1 to R3 and R5; [prompt](../ephemeral/2026-10-24-p06-2-stage-c1-c2-correction-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high. Given to Nathan on 24 October. **Done** (24 October; Nathan's pick not recorded): R1 to R3 and R5, with one approved departure (R1's refusal in `_run`, the manager's direction at `09d8fe4`). Branch `claude/glow-c1-c2-correction-w417el`, code `4a6a81a`, records `716f9d6`; merged into the manager branch. Run of record: push run 40127834532 on `4a6a81a`, all eight jobs passed (API 366 tests, proof 160; read phase 62/62 with three read controls; database job 7 min 29 s). Recorded in the evidence record, "Stage C1-C2" and "Manager verification of Stage C1-C2".
 - **Stage C1-C2 exact-head re-review** (of the head that holds its prompt; [prompt](../ephemeral/2026-10-24-p06-2-stage-c1-c2-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at extra high. Given to Nathan on 24 October. **Done** (24 October; Nathan's pick not recorded): **approve**, with four nits. N1, a sentence in the session's R2 reading, is corrected in place; N4, the P11 plan's line, is corrected; N2 and N3, two notes in `read_phase.py`, are recorded follow-ups. Recorded in the evidence record, "Exact-head review of Stage C1-C2". Next: Codex's code review of PR32's final head (OD-41), the final head's run, and the merge.
+- **PR32's merge** (24 October): Codex's code review of the final head `737a7af` found nothing; run 40130871253 on `737a7af`, all eight jobs passed; merged at `a8e9528`. Receipt in the evidence record, "Stage C1's merge receipt". Next: Stage C2.
+- **Stage C2** (the mobile interface, point g; [prompt](../ephemeral/2026-10-24-p06-2-stage-c2-implementation-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high (boundary with extra high). No Dev Manager read, on DM-22 9.1's terms. Given to Nathan on 24 October. **Done** (24 October; Nathan's pick not recorded): all 13 items, no departure; branch `claude/p06-2-stage-c2-37vrqt`, code `cb3a6a6`, records `676b49b`; run of record push run 40135312825, all eight jobs passed (rendered 94 passed); the manager branch fast-forwarded to it; the draft PR33. Findings C2-X1 (fixture fidelity, a limit) and C2-X2 (the send's expected version, to the P11 plan). Recorded in the evidence record, "Stage C2" and "Manager verification of Stage C2".
+- **Stage C2 exact-head review** ([prompt](../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Fable 5.1 at max. Given to Nathan on 24 October. **Done** (24 October; Nathan's pick not recorded): **approve**, with six nits, none in a correction class, so no correction pass runs. Finding 2 annotated in place; findings 3 and 6 to the P11 plan; findings 1, 4 and 5 recorded follow-ups. Recorded in the evidence record, "Exact-head review of Stage C2", with P06.2's closing record (DM-22 8.1).
+- **PR33's Codex review and DM-23** (24 October): Codex's code review of `96ce36b` found CX8 (P2, verified). The manager put the fix-or-carry choice to Nathan, who referred it to the Dev Manager (AM7-12). DM-23 ([consultation](../ephemeral/2026-10-24-dm-23-p06-2-cx8.md); report `c8bc632`, merged at `d53bb18`) chose a correction pass before the merge, C2-C1, with 2.1 to 2.6 and 3.1 (revision 16).
+- **Stage C2-C1** (the correction of CX8; [prompt](../ephemeral/2026-10-24-p06-2-stage-c2-c1-correction-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high. No Dev Manager read, on DM-23 item 2's terms. Given to Nathan on 24 October. **Done** (25 October; Nathan's pick not recorded): all five items, no departure; visibility tracking measured from the rendered layout in the conversation's own scroll container; branch `claude/pensive-pascal-82j52l`, code `311b07e`, records `73ef97e`; run of record push run 40145402786, all eight jobs passed (rendered 97 passed); the manager branch fast-forwarded to it. Recorded in the evidence record, "Stage C2-C1" and "Manager verification of Stage C2-C1".
+- **Stage C2-C1 exact-head re-review** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c1-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at extra high. Names C2's item 8 and CX8 (DM-23 2.6). Given to Nathan on 25 October. **Not run:** Nathan withdrew it as premature, since the manager gave it while Codex's review of C2-C1's head was still running and DM-24 may change that code (AM7-13).
+- **Codex's CX9 and DM-24** (25 October): Codex's code review of C2-C1's head `73ef97e` found CX9 (P2, verified; in C2's code): a revocation leaves the conversation's outstanding requests valid, so a late page can restore a revoked conversation. The fix-or-carry choice went to the Dev Manager first (OD-32; AM7-12): DM-24 ([consultation](../ephemeral/2026-10-25-dm-24-p06-2-cx9.md)), with the manager's recommendation of a correction pass, C2-C2, before the merge. PR33's merge is held until DM-24 is answered. DM-24 revision 2 states that C2-C1's re-review did not run, and proposes one exact-head re-review after any correction pass, given once Codex has reported on that head. Nathan carries it, and App Manager 8 receives the answer. [App Manager 8, 25 October: Nathan had carried revision 1; DM-24's report (`1a4fc1b`, a read of `568f446`) chose (b), C2-C2 before the merge, with conditions 1.1 to 1.6, which revision 17 will apply as written. Its item 2 assumed C2-C1's re-review was with Nathan, so the order went back as DM-25 ([consultation](../ephemeral/2026-10-25-dm-25-p06-2-re-review-order.md)); revision 17 and C2-C2's prompt follow its answer.]
+- **Stage C2-C2** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c2-correction-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high; with Nathan. CX9 under DM-24 1.1 to 1.6 and CX10 under DM-25 3.1 to 3.6; then Codex on its code head and one exact-head re-review of the head holding C2-C1 and C2-C2 (DM-25 1.1 to 1.3).
+  - C2-C2 ran from its prompt's revision 1 (Nathan's pick not recorded): items 1 to 6 done; branch `claude/glow-stage-c2-c2-correction-fk8kxe`, code `27999c7`, records `3ff47a7`; run of record push run 40152538074, all eight jobs passed; the manager branch fast-forwarded to it. One deviation in DM-24 1.4's test pairings, for the Dev Manager. The evidence record, "Stage C2-C2" and "Manager verification of Stage C2-C2".
+- **Codex on C2-C2's head and DM-26** (25 October): Codex's code review of `9fd22c0` found nothing. DM-26 ([report](../continuity/dev-manager/reviews/2026-10-25-dm-26-p06-2-c2-c2-deviation.md), `f5d0b13`) approved C2-C2's departure from DM-24 1.4's pairings; C2C2-X1 to the P11 plan as a requirement, C2C2-X2 as a limit.
+- **Stages C2-C1 and C2-C2 exact-head re-review** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-re-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; code head `27999c7`; TypeSafe v8.2: Opus 5.5 at high; with Nathan.
+  - It ran from revision 1 (Nathan's pick not recorded): **changes required, for F1** (should fix; after a `stale` newer cursor, a cursor move is held back), with nits F2 to F4; recorded in the evidence record, "Exact-head review of Stages C2-C1 and C2-C2". F1's fix-or-carry goes to the Dev Manager as DM-27.
+- **DM-27 and Stage C2-C3** (25 October): DM-27 ([report](../continuity/dev-manager/reviews/2026-10-25-dm-27-p06-2-re-review-f1.md), `a9513a5`) chose to fix F1 before the merge. **C2-C3** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c3-correction-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high; with Nathan.
+  - C2-C3 ran from its prompt's revision 1 (Nathan's pick not recorded): items 1 to 4 done, no departure; branch `claude/busy-turing-ics7ou`, code `85b9844`, records `ccf8392`; run of record push run 40160547922, all eight jobs passed; the manager branch fast-forwarded to it. Codex's CX11 on `1506986` is F1 in Codex's words, addressed by C2-C3. The evidence record, "Stage C2-C3" and "Manager verification of Stage C2-C3".
+- **Stage C2-C3 exact-head re-review** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c3-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; code head `85b9844`; TypeSafe v8.2: Opus 5.5 at high. Codex found nothing on `9776c6f`. Held after CX12, then withdrawn without running (DM-28 2.1).
+- **DM-28 and Stage C2-C4** (25 October): Codex's CX12 on `9422d9e`; C2-C3's re-review held, then withdrawn (DM-28 2.1). DM-28 ([report](../continuity/dev-manager/reviews/2026-10-25-dm-28-p06-2-cx12.md), `2d9f1e9`) chose to fix CX12 before the merge. **C2-C4** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c4-correction-prompt.md), revision 1): offline, in `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high; to Nathan after Codex's pass on the commit that holds it (DM-28 3.1).
+  - Codex's automatic pass on `ab05992` stalled; at Nathan's direction the manager re-triggered it, and the manual pass found nothing (14:50 UTC). C2-C4 then ran from its prompt's revision 1 (`ab05992`; Nathan's pick not recorded): items 1 to 5 done, no departure; branch `claude/upbeat-thompson-yis6d0`, code `a328bc7` then `d3d7300` (tests only), records `b60409b`; run of record push run 40206318661 on `d3d7300`, all eight jobs passed; the manager branch fast-forwarded to it. The mechanism is a window epoch advanced at the replacement, with the older-page slot keyed by the window. Its audit found no defect and one observation (an older-page error shown before a replacement survives it), which goes to the Dev Manager as DM-29 ([consultation](../ephemeral/2026-10-25-dm-29-p06-2-c2-c4-observation.md)). The evidence record, "Stage C2-C4" and "Manager verification of Stage C2-C4".
+- **DM-29 and the combined re-review** (25 October): Codex found nothing on `33bae36`. DM-29 ([report](../continuity/dev-manager/reviews/2026-10-25-dm-29-p06-2-c2-c4-observation.md), `006f786`) recorded the observation as a follow-up (1.1 to 1.4) and approved the combined re-review (2.1 to 2.3). **The combined exact-head re-review of C2-C3 and C2-C4** ([prompt](../ephemeral/2026-10-25-p06-2-stage-c2-c3-c4-review-prompt.md), revision 1): offline, in `Glow App - No Stream`; code head `d3d7300`; TypeSafe v8.2: Opus 5.5 at high; to Nathan after Codex found nothing on `c3cce7a`.
+  - It ran from revision 1 (Nathan's pick not recorded): **approve**, with no blocking or should-fix finding and 13 nits, none in a correction class (F1, CX11 and CX12 closed; CX10 and C2's items 5, 7 and 8 met); recorded in the evidence record, "Exact-head review of Stages C2-C3 and C2-C4". Findings 8, 10, 12 and 13 are applied in records; finding 1 and the follow-up's scope go to the Dev Manager as DM-30 ([consultation](../ephemeral/2026-10-25-dm-30-p06-2-re-review-and-pre-merge.md)), with the pre-merge read.
+- **DM-30 and the close** (25 October): DM-30 ([report](../continuity/dev-manager/reviews/2026-10-25-dm-30-p06-2-re-review-and-pre-merge.md), `6bf6f5d`) approved finding 1's guard (its own standing entry, 1.1 to 1.3), the follow-up's riders (2.1, 2.2), PR33's governing Markdown (item 3) and the close (4.1 to 4.4).

@@ -2970,3 +2970,1088 @@ App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed 
 3. The pre-merge checklist, and the merge.
 
 The governing Markdown PR32 carries is PF01 1.12, read in DM-22 as written; no other governing file changed since `main`.
+
+## Stage C1's merge receipt (24 October 2026)
+
+- **PR32 merged** at 20:48:24 UTC on 24 October, by App Manager 7. The merge commit is `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae`; its parents are `3572c41`, `main` before, and `737a7af6e55688df25eb100375da1494323c18f6`, the final head, pinned with the merge's expected head. Checked: `origin/main` is `a8e9528`, and its tree (`12c7f74`) equals `737a7af`'s.
+- **The pre-merge checklist** (PR32's description):
+  - **The exact-head reviews:** C1's review of `ee3ce7e` (changes required, made by C1-C1), C1-C1's re-review of `8a753c3` (changes required, made by C1-C2) and C1-C2's re-review of `4eac142` (approve, four nits: N1 corrected in place, N2 and N3 recorded follow-ups, N4 fixed in the P11 plan). The final head's code is `4a6a81a`'s; `737a7af` adds Markdown records only.
+  - **The Dev Manager's read:** DM-22 (`f9c624d`, of `d1f7ea1`) covers PF01 1.12 as written, with its conditions applied as written at `2fa6cb2`; PF01 is unchanged since. No other governing file differs from `main` at `3572c41`.
+  - **Codex's code review** completed on `737a7af` at 20:44:46 UTC, triggered by marking the PR ready, with no findings and no review thread. Its security reviews are no longer available (OD-41).
+  - **The final head's run:** PR run [40130871253](https://github.com/amthorn78/glow-dating-app/actions/runs/40130871253) on `737a7af`.
+    - All eight jobs passed, and the gate printed `Application checks passed`.
+    - The database job ran from 20:41:03Z to 20:47:26Z and ended `VERDICT: PASS`.
+    - The second run on the used database exited 1 with "refusing a used database", and the row counts were unchanged. The container and the credential and marker files were removed.
+  - **Classification:** the trusted base policy reports `behavior-or-empty` (full scope).
+- **Branch state at the merge** (`git ls-remote --heads`, each head checked as an ancestor of `origin/main` with `git merge-base --is-ancestor`). Six remain. Nathan had already deleted the eight branches given to him at PR31's merge.
+  - **Kept:** `main` (`a8e9528`); `claude/magical-wozniak-yfmmx2`, fast-forwarded to `a8e9528` for Stage C2; `claude/dev-manager` (`f9c624d`), kept by name, its head in `main`.
+  - **Fully merged, for Nathan to delete:** C1's, C1-C1's and C1-C2's session branches, each head in `main`: `claude/gallant-bardeen-k6xjwf` (`13acf7a`), `claude/youthful-faraday-dakcvg` (`bdd2043`) and `claude/glow-c1-c2-correction-w417el` (`716f9d6`).
+- **What stays open for P11** (the P11 plan, "The reads' limits from P06.2 Stage C1"):
+  - the history read's live row, a prerequisite to serving the reads (DM-22 8.2);
+  - the history policy question to Nathan before the reads are served (DM-22 3.1);
+  - the receipt order requirement, the list's locked set and the serving rule for the reads' transactions.
+- **Next:** Stage C2, the mobile interface (the brief's point g). Its prompt goes to Nathan without a further read on DM-22 9.1's terms. P06.2 is done when C2 merges, and its closing record states DM-22 8.1.
+
+## Stage C2
+
+The mobile interface of Stage C under OD-45 (the brief's "Stage C under OD-45", point g, with DM-22 7.1 and 7.2, consuming points d, e and f): the conversation list, a conversation and its composer under `apps/mobile`, on an in-process chat fixture with C1's semantics, against C1's merged contracts. **All thirteen items done; no departure, no contract change, no dependency change.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `b23253b216eb08fc0578171df42d79e834f08b4e`.
+- **Start:** `b23253b216eb08fc0578171df42d79e834f08b4e`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/p06-2-stage-c2-37vrqt`, under the workflow's `claude/**` push filter.
+- **Code commit:** `cb3a6a6dae0f3ad629a1cbd92ea299fcd5cab03a`. **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40135312825](https://github.com/amthorn78/glow-dating-app/actions/runs/40135312825) on `cb3a6a6` (check 7).
+- **Times:** 24 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing). `compgen -e | grep -E '^STREAM_'` printed nothing: the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`). Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it; the installs got the proxy and CA variables by reference, never printed.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only b23253b…` on the session branch; `git rev-parse HEAD` printed `b23253b216eb08fc0578171df42d79e834f08b4e`; `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`; `git diff --stat b23253b… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing; `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2'` printed `0`. The reading list was read before the first change, and Expo's index and React Native's `AppState` page (0.87, the installed 0.86.3's API unchanged) were read as `apps/mobile/AGENTS.md` asks.
+
+### The design, the routes and the module
+
+- **The adapter interface:** `ChatTransport` (`src/chat/transport.ts:13`): `conversations()`, `messages(MessagePageRequest)`, `send(MessageIntent)`, `readCursor(ReadCursorIntent)`, each resolving with the untrusted response body. C2's only implementation is the in-process fixture; there is no network client, API URL or route. P11 connects the interface to Glow's API with `fetch`.
+- **The fixture adapter:** `FixtureChatAdapter` in `src/chat/fixture-adapter.ts:83`, composed in `src/chat/context.ts:24` (`chatFor`) beside P05's interactions fixture, as `src/interactions/context.ts` composes P05's.
+- **The client boundary:** `ChatClient` (`src/chat/client.ts:45`).
+- **The presentation store:** `ChatStore` (`src/chat/store.ts:59`), with the intervals as constants (`:6`, `:8`).
+- **The screens:** `src/chat/screen.tsx` (`ConversationsScreen` `:26`, `ConversationScreen` `:81`, the composer `:68`); the labeled fixture controls `src/chat/controls.tsx`; Glow's wording `src/chat/copy.ts`.
+- **The routes:** `/conversations` (`src/app/conversations.tsx`) and `/conversation` (`src/app/conversation.tsx`), fixed and query-free, in `SAFE_ROUTES` (`src/onboarding/routes.ts:7`), guarded in `src/app/_layout.tsx:49` by `canAccessRoute` (`routes.ts:32`: a current active account only). Reachable from a match: **Open conversation** on an active match's detail (`src/interactions/screen.tsx:75`) and **Your conversations** on **Your matches** (`:50`).
+
+**The choices made** (within the prompt's words, recorded for the review):
+
+- **Responses as bodies, validated at one boundary.** The fixture returns the JSON bodies Glow's API will return, an `AppResponse` envelope or an `Error`; `ChatClient.accept` (`client.ts:51`) runs `parseAppResponse` (the generated `validateAppResponse` and `assertUniqueKeys`), then the DTO's own generated validator, the expected `kind` and the request's `match_id`. Anything else, including a valid `Error` body that is not answered as one, is refused whole. Because the shared key-uniqueness rule covers `items` and `selections` only (the production contracts' "Uniqueness"), the client also refuses a page naming a `submission_id` twice and a list naming a `match_id` twice: the app keys messages on `submission_id`. `src/contracts/validation.ts` is unchanged, so the shared rule stays identical to Python's.
+- **Point c in the fixture.** Every request makes the interactions fixture's own contact check (`FixtureInteractionAdapter.contact(matchId).eligible`: the match active and its pair current), so an unmatch, a block either way, a pause, a withdrawn consent, a policy or eligibility change and the other member's suspension or deletion all refuse the list, the page, the send and the cursor (`fixture-adapter.ts:171`, `grant`). The member's own session gone is `unauthenticated`; the member's own account suspended or deletion-pending is the generic `not_found`, as C1's projection maps `account_not_active`. No member-state model was added.
+- **"Each member the fixture can show."** The fixture shows the signed-in member through the transport and fictional Jules (and, for one test, Iris) through `developmentMember` (`fixture-adapter.ts:328`), answered by the same checks. A fictional member is shown only inside the signed-in member's session, as P05's `developmentSession` is.
+- **Order and cursors.** Accepted messages come in acceptance order (a fixture clock tick at acceptance), with C1's page algorithm: the newest page, then pages after `newer_cursor` or before `older_cursor`, the member's own pending and failed submissions on a page at the head only. A page cursor is `c1.<o|n>.<match>.<submission>` in hex, opaque to the app, refused as `stale_version` unless it names an accepted message of the requested match (`:50`, `:236`).
+- **Polling.** `CONVERSATION_POLL_MS = 3_000` and `CONVERSATION_LIST_POLL_MS = 30_000` (`store.ts:6`, `:8`), on an injected timer (fixture time in the tests) and React Native's `AppState` (`context.ts:15`): only `active` is the foreground, so iOS's transitional `inactive` polls nothing either. Leaving a screen clears its interval; returning, or returning to the foreground, reads once and restarts it. A change in Glow's match projections (the interactions fixture's change signal) reads the selected conversation and the shown list at once in the foreground, so a hidden, retained conversation is revoked promptly; in the background it waits for the foreground (`store.ts:129`).
+- **The send's `expected_version`** is the current match projection's `version` (`src/chat/authority.ts`), which equals the fixture's contact version; the contracts do not name which projection carries the contact version (a question for P11, below).
+- **Retry.** The store keeps the parsed `MessageIntent` and sends the same object again (`store.ts:287`); an `offline`, a retryable temporary error and an unconfirmed (`invalid_response`) send are retryable; a refusal is final. Keys are `chat-message:<serial>-<random>`.
+- **The read cursor** (`store.ts:243`) moves to the newest accepted message, forward only, only after a newest or newer page added the other member's accepted messages while the conversation is shown in the foreground. Older pages, own messages and polls with nothing new never move it.
+- **Revocation** (`store.ts:260`): any `unavailable` or `signed_out` refusal drops the history, unsent rows, draft and cursors, removes the conversation from the list, shows **This conversation is unavailable.** and stops its polling. Another account, sign-out or a restricted account clears everything (`store.ts:134`).
+- **The page size** the app asks for is `CONVERSATION_PAGE_LIMIT = 20` (`store.ts:10`); the contract allows 1 to 50.
+- **One inherited rendered assertion changed.** `rendered/interactions.spec.ts`'s test "two committed fictional likes … with no messaging grant" asserted `Messaging is unavailable` on an active match's detail; item 5 now gives an active match a conversation. The test (renamed "… whose messages open only on the guarded conversation route") asserts the new sentence, that **Open conversation** is shown, that the detail has no composer, and keeps every other assertion (no private field; no "send message" or "start chat" button on the match screen). The restricted and suspended details still say `Messaging is unavailable`, and the suspended test's assertion is unchanged. No other inherited test changed.
+
+### Items 1 to 13
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the chat fixture adapter** (points b, e, f; 6.1 to 6.4) | Done. The list, a page older and newer, a send (`MessageIntent` → `MessageSubmission`) and the read cursor (`ReadCursorIntent` → `ConversationSummary`), with C1's semantics: acceptance order; own pending or failed to the sender only, the other member's never; "unavailable" one state with no reason when the stored text is not exactly the text Glow sent (the digest's canonical string compared); the marker over visible rows, no text; unread over the other member's accepted messages after the cursor; the cursor forward only, to an accepted message of that match; the page cursor opaque and bound to its match; a send authorized, then deduplicated by actor and key; a text-read failure fails a page with accepted messages, never one with none; a provider-only message never reaches a page | `src/chat/fixture-adapter.ts:83`; `summary` `:195`, `message` `:210`, `list` `:224`, `page` `:236`, `submit` `:269`, `moveCursor` `:298` | `src/chat/fixture-adapter.test.ts`: `:22`, `:32` (F11), `:49` (2.1, 6.2), `:59` (2.2, 6.3), `:73` (6.1, 6.3), `:91` (point e), `:106` (6.4), `:129` (idempotency), `:155` (2.4) |
+| **2, validation at the boundary** | Done. Every response passes `parseAppResponse` (generated validator and `assertUniqueKeys`) and its DTO's generated validator before the store sees it; every intent passes `parseAppIntent`; `MessagePageRequest` passes its generated validator; a refused response is refused whole as Glow's error state | `src/chat/client.ts:45`, `accept` `:51` | `src/chat/client.test.ts:29`, `:40`, `:63`, `:78`; `src/chat/display-rule.test.ts` |
+| **3, a conversation follows its match** (point c; DM-22 3.1) | Done. Only a match the interactions fixture holds; its contact check refuses every read, send and cursor, for the member and for fictional Jules, for an unmatch by either, a block by either, the member's pause, consent withdrawal and preference-policy change, and Jules's suspension or deletion; the member's own suspended or deletion-pending account sees nothing; a member of another match can neither read nor send; each refusal is Glow's bare `not_found` (`unauthenticated` for the member's own session). The store drops a revoked conversation's history at once, retained or shown | `fixture-adapter.ts:159` (`member`), `:171` (`grant`); `store.ts:260` (`revoke`) | `fixture-adapter.test.ts:180` (nine revocations), `:204`, `:212`, `:224`, `:236`; `store.test.ts:213`, `:232`; `rendered/chat.spec.ts:104` |
+| **4, retry and lost responses** | Done. P05's scenarios (normal, offline, lost response, delayed) on the fixture; a retried send is the same intent object, so the same key and payload, and the conversation shows one message keyed on `submission_id` | `fixture-adapter.ts:146` (`respond`), `gate`; `store.ts:287`, `:291` | `store.test.ts:177` (offline and lost response: the two sends deep-equal, one submission, one message), `:199` (delayed); `fixture-adapter.test.ts:129`; `rendered/chat.spec.ts:65`, `:78` |
+| **5, keys and order** | Done. Messages keyed on `submission_id` (`mergeHead` and the React key), shown in the order the pages give; newer with the page's `newer_cursor`, older with `older_cursor`; no position from `at`. A message accepted after a later one reaches the reader's next poll and counts as unread (DM-22 2.2) | `store.ts:206` (`mergeHead`), `:224` (`loadOlder`); `screen.tsx:105` | `store.test.ts:22`, `:89` (2.2), `:105`, `:127`, `:245` (two messages with one `at`); `fixture-adapter.test.ts:59`; `rendered/chat.spec.ts:91` |
+| **6, no transport in C2** | Done. The screens read through `ChatTransport`; its only implementation is the in-process fixture; no network client, API URL or route; fixture data lives under `apps/mobile/src/` (the shared `interactions-v1.json` is read, unchanged); `packages/` unchanged | `src/chat/transport.ts:13`; `context.ts:24` | `fixture-adapter.test.ts:212` (`fetch` replaced by a thrower throughout); `no-provider.test.ts:65` |
+| **7, the screens** | Done. The list (unread, latest time, no text), a conversation with older pages, polling, retry and the revoked state, and the composer; routes guarded as `/matches` is, for an active account; reachable from a match; Glow's wording for every state (`copy.ts`), "unavailable" with no reason; no other member's read state anywhere | `src/chat/screen.tsx`; `src/app/conversations.tsx`, `conversation.tsx`; `_layout.tsx:49`; `routes.ts:7`, `:32`; `interactions/screen.tsx:50`, `:75` | `src/chat/routes.test.ts:9`, `:23`, `:30`; `rendered/chat.spec.ts` (all ten) |
+| **8, the read cursor** (point e) | Done. Forward only with `ReadCursorIntent` after the member has seen newer messages from the other member in the foreground *(Manager's note, from Codex's CX8: the code moves the cursor when a page with the other member's newer messages arrives while the conversation is shown in the foreground, whether or not those messages are scrolled into view; see "Codex's code review of PR33's final head")*; never backward, never for older pages | `store.ts:243` | `store.test.ts:141`, `:89`; `fixture-adapter.test.ts:91`; `rendered/chat.spec.ts:34` |
+| **9, polling** (point d; DM-22 7.2) | Done. 3 s in an open conversation in the foreground; the list when shown and every 30 s; nothing in the background or `inactive`, a match change there included; stops when the screen is left; resumes with one read on return to the screen or the foreground | `store.ts:6`, `:8`, `:117`, `:129`, `:150` | `store.test.ts:16`, `:22`, `:41`, `:55` (background and inactive: no request), `:75` |
+| **10, the display-rule test** (ADR 0003; point g) | Done. For each of fifteen provider-field cases (a member object, a user object, custom data, `member.updated`, `ai_indicator.update`, `.clear` and `.stop`, a channel name, image and object, a provider message, channel and user ID, a provider timestamp, a provider's error text), a response carrying it is refused by the validators and the store shows Glow's error state, keeps nothing of it (no planted marker, no message it carried), and offers the same send again; the messages shown carry only the contract's six fields | `fixture-adapter.ts:394` (`plantProviderField`); `client.ts:51` | `display-rule.test.ts:17` (×15), `:48`, `:58` (every case in every response kind), `:80` (7.2, 6.2); `rendered/chat.spec.ts:122`, `:146` |
+| **11, the no-provider test** (DM-22 7.1) | Done. Fails on any package whose name contains `stream-chat`, `getstream` or `@stream-io/` in `package.json`, `package-lock.json` (every path, name, `resolved` and dependency key, and the raw text) or any import, `require` or dynamic import under the app's source; and on any construction of `WebSocket` or `EventSource` (`new X`, `new a.b.X`, `new a?.X`, `new a['X']`, `Reflect.construct(X`) in `src/`, the app's top-level files and `scripts/`. Its patterns are built from fragments, so the file scans itself | `src/chat/no-provider.test.ts` | `no-provider.test.ts:65`, `:70`; the planted failures (check 6) |
+| **12, the rendered journeys** | Done. `rendered/chat.spec.ts`, ten tests: the list, unread and the read cursor; polling and a send; an offline send and its retry; a lost response; an older page; the revoked state (two: the member blocks, Jules blocks); the provider-field error state (five cases, then the list); "unavailable"; anonymous chat routes | `apps/mobile/rendered/chat.spec.ts` | Hosted CI (check 7); a local informational run (check 4) |
+| **13, the README** | Done. "P06.2 C2 chat walkthrough" with its verified limits; `src/chat` in the implementation boundary; the P05.3 paragraph's "no … chat-history access" sentence brought up to date | `apps/mobile/README.md` | — |
+
+**Which test covers each DM-22 condition.**
+- **6.1:** `fixture-adapter.test.ts:73` (the other member's pending submission neither counts nor moves the member's marker; the marker's keys are `at` and `submission_id`).
+- **6.2:** `fixture-adapter.test.ts:49` (the six keys only; `content: unavailable`, `text: null`); `display-rule.test.ts:80`; `client.test.ts:40` (a reason beside "unavailable" is refused); `rendered/chat.spec.ts:146`.
+- **6.3:** `fixture-adapter.test.ts:59`, `:73`; `store.test.ts:89`.
+- **6.4:** `fixture-adapter.test.ts:106` (a cursor from another match, the binding alone with a boundary of the requested match under another match's field, a pending boundary, an unissued cursor).
+- **7.1:** `no-provider.test.ts:65` and `:70`, with the fourteen planted failures (check 6).
+- **7.2:** `store.test.ts:55` (background and inactive on fixture time: no request, a match change included; the foreground resumes); `display-rule.test.ts:80` and `rendered/chat.spec.ts:146` ("This message is unavailable.", no reason).
+- DM-22 2.1, 2.2 and 2.4 as the fixture consumes them: `fixture-adapter.test.ts:49`, `:59`, `:155`; `store.test.ts:89`.
+
+### Fix reversals
+
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths; the changed file was restored from the checkout after each, and the copy's 65 chat unit tests passed before and after the series. *(Manager's note, from the exact-head review's finding 2: the head has 67 chat unit tests, which is 583 minus 516. Which two the copy did not run is not recorded.)* **All 36 reversals made their tests fail.** `git status` in the checkout showed only this work's changes throughout.
+
+- **Item 1 (11):** order by writing (the 2.2 tests in the adapter and the store); the other member's unsent on a page (F11); unread counting the member's own (6.3); the marker over the other member's pending (6.1); the cursor moving back; the cursor to an unaccepted message (point e); the page cursor not bound to its match (6.4); text shown without the digest check (2.1, and the store's "unavailable" test); an empty page failing the text read (2.4); a replay deduplicated before authorizing; no idempotent replay (the adapter's and the store's lost-response test).
+- **Item 3 (5):** no contact check (twelve revocation and store tests); a member of another match acting in this one; the member's own inactive account answering like an active one; a revocation keeping the history; another account keeping the conversation.
+- **Item 2 (5) and item 10 (1):** the envelope not validated; the DTO kind not checked; a page of another match accepted; a submission twice accepted; an intent sent without `parseAppIntent`; and both validation layers removed, which fails 16 of the 18 display-rule tests (the error-text case is still refused, as an `Error` body with an extra field, on its own path; the "unavailable" wording test does not depend on validation).
+- **Item 9 (6):** each interval changed; polling ignoring the background; a match change in the background reading at once; polling after the screen is left; the list polling after it is hidden.
+- **Item 5 (3):** newer reads without the page's newer cursor; messages keyed on `at`; older pages without the page's older cursor.
+- **Item 8 (2):** the cursor moving when not shown; the cursor moving on every read.
+- **Item 4 (2):** a retry building a new intent with a new key; an unconfirmed send not retryable.
+- **Item 7 (1):** the chat routes open to a restricted account.
+
+One line was removed instead of reversed: a check of the fictional member's own account in `member()` that no test could fail, because the interactions fixture's contact check already refuses that member's suspension, deletion or revoked session. The membership check that does distinguish members is reversed above.
+
+### Checks
+
+1. **The diff.** `git diff --check b23253b… cb3a6a6` printed nothing. `git diff --name-only b23253b… cb3a6a6` (24 paths): `apps/mobile/README.md`; `apps/mobile/rendered/{chat.spec.ts,interactions.spec.ts}`; `apps/mobile/src/app/{_layout.tsx,conversation.tsx,conversations.tsx}`; `apps/mobile/src/chat/{authority.ts,client.test.ts,client.ts,context.ts,controls.tsx,copy.ts,display-rule.test.ts,fixture-adapter.test.ts,fixture-adapter.ts,no-provider.test.ts,routes.test.ts,screen.tsx,store.test.ts,store.ts,testing.ts,transport.ts}`; `apps/mobile/src/interactions/screen.tsx`; `apps/mobile/src/onboarding/routes.ts`. The records commit adds this section. All owned paths.
+2. **Classification**, the trusted policy from `main` (`a8e9528…`) extracted to a temporary directory outside the tree, `python3 -I change_scope.py --base b23253b… --head cb3a6a6… --merge-base`: `"full": true`, `"reason": "behavior-or-empty"`, 24 paths. Full scope, as expected.
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile` and `packages/contracts`, each exit 0 (`npm audit` reported advisories as before; no change).
+4. **The offline checks**, at the start and at `cb3a6a6`:
+   - **The contracts:** `npm run generate`, then no diff under `packages/contracts` or `apps/mobile/src/contracts/generated` (both times); `npm run check`: `Generated types and runtime validators match schemas.`, corpus **586 → 586** of 586.
+   - **The mobile app:** `npm run check` (typecheck, lint, unit tests): **516 → 583** of 583, `ℹ fail 0`; `EXPO_OFFLINE=1 npm run check:expo`: `Dependencies are up to date`, exit 0 both times; `EXPO_OFFLINE=1 npm run export:development`: iOS and Android development bundles in `.work/native-export`, `Exported`, exit 0 both times.
+   - **`npm run test:rendered`, informational, not the pinned browser:** the container has Chromium revision 1243 under `/opt/pw-browsers`, not the 1234 `@playwright/test` 1.62.1 pins, and `playwright install` was not run. An uncommitted configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it: the chat and interactions specs **24 passed (1.8 min)**, then the whole suite **94 passed (4.3 min)**: 84 inherited and 10 new.
+5. **What stays unchanged.** `git diff b23253b… cb3a6a6` is empty over `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`; `apps/mobile/src/contracts/generated/`; `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`; and `packages/`, `services/`, `proofs/` and `.github/`.
+6. **DM-22 7.1's planted failures** (item 11), in the same scratch copy, each restored after: the test passed before (2 of 2), and each plant made it fail (1 of 2) with its finding:
+   - `package.json`: a dependency `stream-chat` ("package.json names stream-chat"), a dev dependency `@stream-io/video-react-native-sdk`, a dependency `getstream`;
+   - `package-lock.json`: an entry `node_modules/stream-chat`, a nested `node_modules/expo/node_modules/@stream-io/react-native-webrtc`, a dependency key `getstream` on `node_modules/expo`;
+   - imports under `src/`: `import { StreamChat } from 'stream-chat'` ("src/chat/store.ts imports stream-chat"), `require('getstream')`, `import('@stream-io/video-react-native-sdk')`, `import 'stream-chat/dist/css'`;
+   - constructions: `new WebSocket(` in `src/chat/store.ts` ("src/chat/store.ts constructs a socket or event stream"), `new EventSource(` in `src/chat/fixture-adapter.ts`, `new globalThis.WebSocket(` in `src/chat/context.ts`, and `new WebSocket(` in `app.config.ts`.
+
+   After the series the test passed again (2 of 2).
+7. **The run of record:** Foundation push run [40135312825](https://github.com/amthorn78/glow-dating-app/actions/runs/40135312825), attempt 1, on `cb3a6a6dae0f3ad629a1cbd92ea299fcd5cab03a`, branch `claude/p06-2-stage-c2-37vrqt`, 24 October 2026 21:41:13 to 21:49:06 UTC. **All eight jobs `success`**: Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate, whose step printed `Application checks passed` (its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`). The run was not re-run or dispatched.
+   - **Mobile checks**, 21:41:24 to 21:47:40: **6 min 16 s against its 15-minute timeout**, so 8 min 44 s to spare (not within 3 minutes of it). The rendered step ("Render and exercise account onboarding"), 21:43:06 to 21:47:37: **4 min 31 s**. Against `737a7af`'s run 40130871253 (5 min 36 s, rendered 3 min 30 s): +40 s and +61 s, the ten new specs.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 583`, `ℹ pass 583`, `ℹ fail 0` (516 before this work).
+     - `check:expo`: `Dependencies are up to date`; `export:development`: `Exported: .work/native-export`.
+     - The rendered tests: **`94 passed (4.5m)`**, against the pinned Chromium the job installs; the new specs, all passing: `chat.spec.ts:34` the list, opening a conversation, unread and the read cursor (10.6 s); `:54` a message from the other member arrives by polling, and a send shows once (5.2 s); `:65` an offline send is not confirmed, and its retry sends the same message once (2.1 s); `:78` a lost response shows the message once, before and after its retry (4.8 s); `:91` an older page loads with the page's own cursor and keeps the order (5.2 s); `:105` the revoked state when the member blocks (2.1 s) and when the other member blocks (2.1 s); `:122` a response carrying a provider field shows only Glow's error state (34.9 s); `:146` a message whose stored text changed shows Glow's "unavailable", with no reason (5.1 s); `:155` anonymous chat routes show no conversation (0.8 s). The changed inherited test, `interactions.spec.ts:73`, passed (1.7 s).
+   - **API mobile smoke:** `success`; `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs**, unchanged by this work and passing: API checks (21:41:24 to 21:42:19), API artifact checks (to 21:41:43), Stream proof checks (to 21:42:50), Database proof checks (21:41:23 to 21:48:59; its suite 21:42:13 to 21:48:54).
+8. **Secret scan** over the whole diff (the code commit and this section): JWT shapes, private-key headers, cloud key prefixes, credential assignments, e-mail addresses, runs of 32 or more hexadecimal characters, and the HDE and `STREAM_*` names: no secret, token, API key, password or e-mail address. The only hexadecimal runs of 32 or more are the full commits quoted in this section.
+
+### Deviations, findings and limits
+
+- **No departure stopped at; no contract, dependency, workflow or service change.** The one change to an inherited test is recorded under "The choices made".
+- **Findings outside the work:** none in a fix-here class.
+  - **C2-X1, fixture fidelity (recorded, no change).** The interactions fixture's pair check treats the other member's revoked session as ineligible, so the chat fixture closes a conversation for both members when one member's session ends (`fixture-adapter.test.ts:224`). C1's reads check only each requester's own session and the other account's state. The fixture fails closed, so nothing is shown that C1 would refuse; it can refuse what C1 would serve.
+  - **C2-X2, a question for P11.** The production contracts name no projection that carries a match's contact version, which a `MessageIntent`'s `expected_version` must equal. The fixture uses the match projection's `version`, which equals its contact version; P11 states which value a client sends.
+- **Limits:**
+  - **No transport exists.** The screens are proven against the in-process fixture only. P11's `fetch` transport, its status-code mapping, timeouts and the served reads (and DM-22 8.1: the history read's provider half is unproven live; serving it waits on the P11 plan's live row) are unproven.
+  - **The fixture is a presentation substitute.** It applies C1's semantics in TypeScript; the Python reads in `services/api` stay authoritative. Its point-c checks are the interactions fixture's, not C1's locks and two checks around a provider call.
+  - **Background behavior** is shown on fixture time with an injected app state. React Native's `AppState` on devices, iOS's `inactive` and the rendered harness's page visibility are not exercised natively; native builds, push (P06.3), keyboard behavior and VoiceOver/TalkBack are unverified.
+  - **Retained history is not bounded** in the store; the fixture bounds a session at 1,000 submissions.
+  - **The rendered provider-field journey covers five of the fifteen cases** (and the list); the unit tests cover all fifteen in every response kind.
+  - **Local rendered runs used Chromium 1243, not the pinned 1234**; the pinned-browser evidence is the run of record's.
+
+### What the exact-head review must know
+
+- **The boundary** is `ChatClient.accept` (`src/chat/client.ts:51`); nothing reaches `ChatStore` except through it, and the screens render only `ChatStore`'s state and Glow's match projections (names).
+- **The fixture's point-c check** is `grant` (`src/chat/fixture-adapter.ts:171`), which defers to `FixtureInteractionAdapter.contact`. No new member-state model.
+- **Polling and the foreground** are `schedule`, `activityChanged` and `authorityChanged` (`src/chat/store.ts:150`, `:117`, `:129`); the intervals are `:6` and `:8`.
+- **The revoked state** is `revoke` (`store.ts:260`); a revocation drops history even for a retained, hidden screen.
+- **The no-provider test** is `src/chat/no-provider.test.ts`; its patterns are deliberately built from fragments.
+- **The one inherited test change** is `rendered/interactions.spec.ts:73` (above).
+- **The run of record** is [40135312825](https://github.com/amthorn78/glow-dating-app/actions/runs/40135312825) on `cb3a6a6`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2
+
+App Manager 7, 24 October 2026, against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/p06-2-stage-c2-37vrqt`: code commit `cb3a6a6dae0f3ad629a1cbd92ea299fcd5cab03a`, records commit `676b49b639919d243711e14613f209c7d3d7f2ab` (tree `ad7b4be`), both as reported. The prompt's commit `b23253b` is their parent.
+- **Changed paths.** 24 against `b23253b`, every one inside C2's owned paths: 23 code paths under `apps/mobile/src/` and `apps/mobile/rendered/`, and `apps/mobile/README.md` (2,266 lines added, 7 removed). The records commit changes only this file. `git diff --check` is clean.
+- **Classification** (the trusted policy from `main` at `a8e9528`, run outside the tree): `"full": true`, `behavior-or-empty`.
+- **Unchanged:** an empty diff from `b23253b` over `apps/mobile/package.json`, `package-lock.json`, `.npmrc`, `dependency-inventory.json`, `src/contracts/generated/`, `app.config.ts` and `scripts/development.mjs`, and over `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+- **The evidence record:** the first 619,444 bytes at `676b49b` equal the whole file at `b23253b`, so the earlier sections are byte-identical and "Stage C2" is appended.
+- **What the manager read in the code:**
+  - `store.ts` sets `CONVERSATION_POLL_MS = 3_000` and `CONVERSATION_LIST_POLL_MS = 30_000`;
+  - no `fetch(`, `new WebSocket`, `new EventSource` or `XMLHttpRequest` appears in the app's non-test source;
+  - `no-provider.test.ts` builds its package and construction patterns from fragments, so that it does not match itself, and scans the manifest, the lock and the app's source;
+  - the routes are guarded by `canAccessRoute`, for an active account only, which is stricter than `/matches` (active, suspended or deletion-pending);
+  - the conversation is chosen through the store (`store.select`), not a query parameter, as P05's match route is;
+  - the changed inherited assertion (`rendered/interactions.spec.ts`, the active match's detail) now asserts the new wording, the "Open conversation" button and that the detail has no composer.
+- **Run of record.** Foundation push run 40135312825 on `cb3a6a6`.
+  - All eight jobs concluded `success`, and the gate printed `Application checks passed`.
+  - The Mobile job ran from 21:41:24 to 21:47:40 UTC (6 min 16 s of 15). Its rendered step ran from 21:43:06 to 21:47:37 and printed `94 passed (4.5m)`.
+  - The unit counts (contracts 586, app 583) are the session's reading of the log.
+- **The session's findings:**
+  - **C2-X1** (the fixture closes a conversation for both members when the other member's session is revoked; C1 checks only the requester's own session): a fixture-fidelity limit, stricter, never looser. The exact-head review judges whether it shows one member another's sign-out in the fixture.
+  - **C2-X2** (no contract names the projection carrying the version a send's `expected_version` must match): the server's send carries the domain's `contact_version` (`SendCommand.contact_version`), and neither `MatchProjection` nor `ChannelEntitlement` names it as such. The manager proposes it as a contract question for P11, before the send is served, and the P11 plan carries it. The review judges it.
+- **Integration.** The session branched from the manager branch's head `b23253b`, so the manager branch fast-forwarded to `676b49b`. The draft PR33 carries it.
+
+**Next:** C2's exact-head review ([prompt](../../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), revision 1), then Codex's code review of PR33's final head (OD-41).
+
+## Exact-head review of Stage C2 (24 October 2026)
+
+- **Prompt:** [revision 1](../../ephemeral/2026-10-24-p06-2-stage-c2-review-prompt.md), from `77c7073d99fd7ac41802ebc986aa172b03d54312`; offline, in `Glow App - No Stream`.
+- **The model and level:** not named in the relay; Nathan's pick is not recorded. TypeSafe's reading was Fable 5.1 at max.
+- **Start gate and classification:** every check passed. One merge base, `a8e9528`. The head's code is identical to `cb3a6a6`'s. The shortstat is as expected. The trusted policy reports `"full": true`, `behavior-or-empty`. Every non-Markdown path is under `apps/mobile/src/` or `apps/mobile/rendered/`, with no symlink or executable mode.
+- **What the reviewer read:**
+  - everything the prompt lists, plus the two capture helpers the revocation path depends on, the chat DTOs' and `CommandMeta`'s schemas, the P11 plan's C2-X2 entry and PR33's description;
+  - the run of record's Mobile job (2,792 lines, its step headers and result lines) and the gate's whole log, but not the other jobs' logs.
+- **Its checks at `HEAD`,** in a clean environment:
+  - **the contracts:** `npm ci`; `npm run generate` with no diff; `npm run check` 586/586. Its first run failed only because the mobile install had not finished (the corpus test loads the app's generated validators), and CI installs the app first;
+  - **the mobile app:** `npm run check` 583/583; `check:expo` and `export:development` exit 0; the chat unit tests 67/67;
+  - **rendered, informational** (Chromium 1243, not the pinned 1234; no `playwright install`): 94 passed (4.6m);
+  - **DM-22 7.1's planted failures,** reproduced: six plants each failed the test with its named finding.
+- **Confirmed:**
+  - the display rule at one validating boundary, with no provider text reaching a render, the store or a log through an error path;
+  - every revocation the fixture models refused, with history, unsent rows, draft, cursors and the retryable intent dropped;
+  - polling only while shown and in the foreground;
+  - messages keyed on `submission_id`, with retries of the same intent;
+  - DM-22 6.1 to 6.4, 7.1 and 7.2;
+  - the routes' stricter guard, which is right under point c;
+  - the changed inherited assertion, an honest replacement;
+  - C2-X1, a correctly recorded fixture limit;
+  - C2-X2, a contract question for P11, not a C2 finding.
+
+**Verdict: approve.** There is no blocking or should-fix finding; the review gave six nits, none in a correction class. **No correction pass runs.**
+
+| # | Severity | Finding | Correction class | Disposition |
+|---|---|---|---|---|
+| 1 | Nit | `no-provider.test.ts:17-22`: the test matches the forms DM-22 7.1 names. In a scratch copy, an aliased constructor (`const S = globalThis.WebSocket; new S(u)`) and a concatenated specifier (`import('stream' + '-chat')`) passed it. The README says it fails on "any socket or event-stream construction" (`apps/mobile/README.md:427-430`) | No: every named form fails, and evasion needs intent | **The README sentence: corrected in C2-C1** (DM-23 3.1). **The broader test: a recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1): optionally, the test flags any bare `WebSocket` or `EventSource` identifier in the app's source |
+| 2 | Nit | "Stage C2", the reversals: "the copy's 65 chat unit tests"; the head has 67 | No: it claims fewer | **Annotated in place** by the manager, marked as a manager's note |
+| 3 | Nit, hardening | `store.ts:162-185`: when a fresh list omits the selected conversation, or the list read is refused as signed out, the retained history stays until that conversation's own next read is refused. On reopening a retained screen, the cached messages show for one request's latency | No (the reviewer's judgement, which the manager accepts): the server refuses the read, the member saw that history legitimately, and the fixture's authority signal revokes promptly | **To the P11 plan,** as a client requirement before P11 connects the adapter to Glow's API, since the window exists only with a real transport. Not taken now: the reviewer's first question |
+| 4 | Nit | `store.ts:282-284`: the draft is cleared before the result, so a final refusal (`stale`, `conflict`, `unavailable`) loses it | No | **Recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1): restore the draft on a final refusal |
+| 5 | Nit | `rendered/interactions.spec.ts:115-128`, `:145-169`: the restricted-match tests do not assert that `match-conversation` is absent | No: the route guard and `routes.test.ts` cover access | **Recorded follow-up,** due at the first change to `apps/mobile` after PR33 merges (DM-23 3.1) |
+| 6 | Nit, P11 | `store.ts:129-133`: each match-projection change in the foreground reads a hidden retained conversation, one page read per change signal per retained conversation | No | **To the P11 plan,** where P11 defines the authority signal: the reviewer's second question |
+
+- **The review's limits:**
+  - its rendered evidence is informational; the pinned-browser evidence is the run of record's;
+  - the other five jobs' logs were not read;
+  - only DM-22 7.1's plants were reproduced, not the session's 36 reversals;
+  - native `AppState` behaviour stays unverified, as recorded.
+- **No question goes to Nathan.**
+
+**Next:**
+1. P06.2's closing record (below).
+2. PR33 marked ready for Codex's code review of its final head (OD-41).
+3. The final head's run, the pre-merge checklist and the merge.
+
+PR33 carries no governing Markdown.
+
+## P06.2's closing record (24 October 2026)
+
+P06.2, the chat integration (PF01 P06), is complete when PR33 merges. Nathan resumed it on 5 October 2026 (OD-38).
+
+- **What it delivered,** in three stages, each merged before the next:
+  - **Stage A** (PR29, `02072f4`): the send and revocation design in the app, its persistence adapter run through P06.DB's race suite on a disposable PostgreSQL;
+  - **Stage B** (PR30, `3272eed`; PR31, `3572c41`): the outbox and the Stream adapter. B2's 46 live rows ran against the development application (42 PASS, 2 RECORDED, and 2 DIFFERENCE: M5 and D10), and DM-20 dispositioned D10, the blocking one, as option (b);
+  - **Stage C** under Nathan's D8 decision (OD-45):
+    - C1 (PR32, `a8e9528`): the history read, the conversation list, the read cursor and their contracts;
+    - C2 (PR33): the mobile interface on fixtures.
+- **What is unproven** (DM-22 8.1): **the history read's provider half is unproven live.** It is proved offline against the SDK's request shape, and serving the read waits on the live text-read row, a prerequisite in the P11 plan (DM-22 8.2).
+- **Nothing is served.** No app runtime gains a database, real authentication or a live provider; P11 wires them.
+- **What P11 carries** (the P11 plan, the chat entries):
+  - before the harness's next live run: B2C4-X1, the console lines, C5R1, CX7 and the client lock's `follow-redirects` advisory;
+  - before the reads are served: the live text-read row, the receipt order, the list's locked set, the serving rule for the reads' transactions, and the history policy question to Nathan (DM-22 3.1);
+  - before the send is served: C2-X2, the send's expected version;
+  - when P11 connects the mobile client: the C2 review's findings 3 and 6.
+- **Recorded follow-ups:** the handoff's list, including the C2 review's findings 1, 4 and 5 and `read_phase.py`'s N2 and N3.
+- **Next item:** M04, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
+
+## Codex's code review of PR33's final head (24 October 2026)
+
+- **The review:** Codex's code review of `96ce36b` completed at 23:02:17 UTC, triggered by marking PR33 ready, with one finding. Its security reviews are no longer available (OD-41).
+- **CX8, P2** (`apps/mobile/src/chat/store.ts:245-247`; [thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4368852429)): "Advance the read cursor only through visible messages".
+- **The manager's verification: the problem is real.**
+  - `moveReadCursor` (`store.ts:243-259`) targets the newest accepted message whenever the conversation is shown in the foreground and newer messages from the other member arrived.
+  - `Page` (`apps/mobile/src/components/ui.tsx:13-19`) renders the conversation in a plain `ScrollView`, with no scroll to the newest message and no visibility tracking.
+  - So in a conversation longer than the screen, the unread count can clear before the newest messages are seen.
+  - C2's prompt, item 8, asked for the cursor to move "when the member has seen newer messages". The session's item 8 row is annotated above.
+- **Class:** outside C2's correction classes. The app serves nothing before P11.
+- **Disposition: corrected before the merge, in C2-C1** (DM-23, [report](../continuity/dev-manager/reviews/2026-10-24-dm-23-p06-2-cx8.md), `c8bc632`, a read of `12a4d20`).
+  - The manager first carried CX8 to the P11 plan, following CX4 to CX7, and replied on the thread ("not fixed in this PR"). It then put the alternative, a correction pass before the merge, to Nathan.
+  - Nathan referred the question to the Dev Manager (AM7-12), and [DM-23](../../ephemeral/2026-10-24-dm-23-p06-2-cx8.md) carried it.
+  - **DM-23's verdict: (b).** CX8 misses C2's own item 8, and `store.test.ts:141` asserts the defect. CX4 to CX7 needed P11's environment to be shown; CX8 does not. The rule: a defect in a stage's own code that misses an item of that stage's prompt is fixed before the stage merges.
+  - CX8 does not join the P11 plan. The manager updated Codex's thread to say the fix comes before the merge.
+  - C2-C1's conditions, 2.1 to 2.6, are in the brief's revision 16, "Codex's CX8, and C2-C1".
+  - **PR33's merge waits on C2-C1, its exact-head re-review and Codex's review of the new final head.**
+
+## Stage C2-C1
+
+The correction of Codex's CX8 on PR33 (DM-23, conditions 2.1 to 2.6 and 3.1; the brief's revision 16, "Codex's CX8, and C2-C1"): the read cursor moved to the newest fetched message whenever a page arrived while the conversation was shown in the foreground, so a long conversation's unread count cleared before its newest messages were seen. **All five items done; no departure, no contract change, no dependency change.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `e578b08cccb25b8767584a5540a7836cf29636be`.
+- **Start:** `e578b08cccb25b8767584a5540a7836cf29636be`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/pensive-pascal-82j52l`, under the workflow's `claude/**` push filter.
+- **Code commit:** `311b07e11b7131147becd0f045665f30d29856fa` (tree `a1a39eb8e0d3da067273a79e2d3881d9e227e139`). **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786) on `311b07e` (check 7). The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 24 and 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing). `compgen -e | grep -E '^STREAM_'` printed nothing: the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`). Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it; the installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only e578b08…` on the session branch; `git rev-parse HEAD` printed `e578b08cccb25b8767584a5540a7836cf29636be`; `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`; `git diff --quiet cb3a6a6… HEAD -- apps packages services proofs .github scripts` printed `C2's code`; `git diff --stat e578b08… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing; `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C1'` printed `0`. The reading list was read before the first change. As `apps/mobile/AGENTS.md` asks, React Native's ScrollView page (0.87; `onScroll`'s `contentOffset` and `layoutMeasurement`, `scrollEventThrottle`) and its layout-measurement page were read, with the installed type definitions of `measureLayout` (`react-native` 0.86.3: coordinates "relative to the origin x, y of the ancestor view") and React Native Web 0.21.0's `onLayout` and `measureLayout` sources.
+
+### The visibility mechanism, and why
+
+**Visibility tracking on the message list, computed from the measured layout** (DM-23 2.1's first form), with React Native's own interfaces only:
+
+- **The conversation's own scroll container,** `ConversationPage` (`src/chat/screen.tsx:132`): `Page`'s structure (safe area, keyboard avoidance, the same `ScrollView` props), plus the scroll view's `onLayout` (the visible area's height) and `onScroll` (`contentOffset.y` and `layoutMeasurement.height`, `scrollEventThrottle={16}`), with the content in one view whose origin is the scroll content's origin. **`Page` (`src/components/ui.tsx`) is unchanged,** so every other screen is too.
+- **Each row is measured** with `measureLayout` against that content view (`screen.tsx:109`), after every render (`:114`) and every size change of the content (`ConversationPage`'s content `onLayout`). Each pass starts empty, so a row not yet measured in the current pass is never in view.
+- **The rule** (`src/chat/visibility.ts:16`): a row is in view when its whole box lies inside the visible area, within one pixel of rounding, or, for a row taller than the area, when it fills the area. An unmeasured row or area is never in view.
+- **The report** (`useViewedMessages`, `screen.tsx:96`): the IDs of the rows in view go to `ChatStore.viewed` on each measurement, scroll and layout event, and when the screen gains focus. The screen sends nothing itself.
+
+**Why this mechanism:**
+
+- **Not a `FlatList` with `onViewableItemsChanged`:** the conversation's composer, controls and navigation share its scroll; a virtualized list would need them as header and footer, and virtualization would change which rows the inherited rendered tests can count.
+- **Not cached `onLayout` positions alone:** React Native Web reports `onLayout` through a `ResizeObserver`, so on size changes only. A row that moves without resizing, such as every row when an earlier page loads above it, would keep a stale position and could be counted in view before it is. Hence the re-measurement after every render, which the rendered test `chat.spec.ts:108` covers (reversal RR4).
+- **Not scrolling to the newest message on opening:** DM-23 2.2 allows it but does not require it. The screen opens at the top, as before; a member reaches the newest message by scrolling. Recorded as a limit.
+
+### The store's cursor path
+
+- **`viewed(submissionIds)`** (`src/chat/store.ts:129`): ignored while the conversation is not shown. Otherwise it keeps the report and, in the foreground, moves `seen` forward to the newest *accepted* message in it (`noteSeen`, `:138`), never backward. An unsent message never counts.
+- **`moveReadCursor`** (`:280`) sends `ReadCursorIntent` to `seen` only when `seen` is past the last cursor the store moved and the messages between include one from the other member; only in the foreground; at most one in flight. A move made while one is in flight follows it once it succeeds (`:298`). A command that fails without ending access is tried again after the next successful read (`:226`), not on each report.
+- **A page arriving never moves it** (`:226`): the page's only effect is that retry. Older pages, the member's own messages and polls move nothing.
+- **The foreground:** a report made in the background counts when the app returns, if the screen is still shown, and a deferred move is sent then (`:155`). Leaving the screen clears the report (`:121`); a revocation, another conversation or another account clears `seen` too.
+- **One behaviour changed beyond the cursor's target:** a move to a message that was in view may now complete after the screen is left; before, `moveReadCursor` required the screen to be shown. The message was in view while shown and in the foreground, so 2.1 holds, and a fast exit no longer leaves a seen message unread.
+
+### Items 1 to 5
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the read cursor** (2.1 to 2.3) | Done | `src/chat/store.ts:129` (`viewed`), `:138` (`noteSeen`), `:280` (`moveReadCursor`); `src/chat/screen.tsx:96` (`useViewedMessages`), `:132` (`ConversationPage`); `src/chat/visibility.ts` | `store.test.ts:161`, `:173`, `:193`, `:210`, `:226`; `visibility.test.ts:7`, `:17`, `:22`, `:28`; `rendered/chat.spec.ts:87`, `:108`, `:121` |
+| **2, the tests** (2.4) | Done. The store's four, with `store.test.ts:141` replaced by `:226`, plus a retry test; the rendered test's two cases, plus a re-measurement case; each with its reversal (check 6) | `src/chat/store.test.ts`, `src/chat/visibility.test.ts`, `rendered/chat.spec.ts` | Check 6 |
+| **3, the scope** (2.5) | Done. `apps/mobile` only; React Native's `ScrollView`, `onLayout`, `onScroll` and `measureLayout`; the conversation's own scroll container; `Page` unchanged; every other screen's rendered tests unchanged and passing | `git diff --name-only` (check 1) | Check 4 (local), check 7 (hosted) |
+| **4, the README** (2.5, 3.1) | Done. The cursor sentence states 2.1's rule, that a page never moves it, that the screen opens at the top, and 2.2 and 2.3; finding 1's sentence names the forms the no-provider test checks (DM-22 7.1) and says it does not catch an aliased constructor or a computed module name | `apps/mobile/README.md:397`, `:435` | — |
+| **5, the record** | Done: this section | This file | — |
+
+**Which test covers each of DM-23's conditions:**
+
+- **2.1** (in view, shown, foreground; a page never moves it; the layout is the evidence): `store.test.ts:161` (a page in the foreground, nothing reported: no command); `:226` (opening a 25-message conversation clears nothing; a report while not shown is ignored; one in the background sends nothing until the foreground); `visibility.test.ts:7` to `:28`; `chat.spec.ts:87` (opened at the top: some unread remain; scrolled to message 23: one; to 25: none), `:108`.
+- **2.2** (no move on arrival; marked read when scrolled into view): `chat.spec.ts:121` (scrolled up, the arrival leaves `scrollTop` 0 and one unread, until scrolled into view); `:87`; `store.test.ts:226`. The screen does not scroll on opening, so 2.2's first point has no case.
+- **2.3** (one in flight; only when passing a message from the other member; never backward, unsent or for older pages): `store.test.ts:173` (one in flight, the follow-up to the newest viewed), `:193` (older, the same, and only the member's own newer messages: no command, over 60 reports), `:210` (a failed command retried after the next read, not on each report), `:226` (older pages and own messages).
+- **2.4:** the replaced `store.test.ts:141` is `:226` ("only the viewed messages clear": 13 → 8 → 1 → 0). **The test at `:94`** (DM-22 2.2) asserted that the cursor moved on opening; it now reports the shown message as viewed first, and asserts one unread while the late message is shown but not reported, then none.
+- **2.5:** check 1 (paths), check 5 (unchanged files), check 4 and check 7 (every other screen's rendered tests pass unchanged; `rendered/chat.spec.ts`'s ten inherited tests are unchanged).
+
+### Fix reversals
+
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths; the changed file was restored from the checkout after each, and `diff -r` showed the copy equal to the checkout after each series. **All fifteen reversals made their tests fail.** `git status` in the checkout showed only this work's changes throughout.
+
+**The store and visibility tests** (`node --test src/chat/store.test.ts src/chat/visibility.test.ts`, 24 tests; all passed before and after the series):
+
+- **R1, a page arriving moves the cursor to the newest fetched (CX8 restored):** 4 failed: `:94`, `:161`, `:173`, `:226`.
+- **R2, the command targets the newest fetched, not the newest viewed:** 2 failed: `:173`, `:226`.
+- **R3, no forward-only check (an older report moves the cursor):** 3 failed: `:193`, `:210`, `:226`.
+- **R4, more than one command in flight:** 2 failed: `:173`, `:226`.
+- **R5, a report counts and a command is sent in the background:** 1 failed: `:226`.
+- **R6, a report counts while the conversation is not shown:** 1 failed: `:226`.
+- **R7, no follow-up after a command in flight:** 1 failed: `:173`.
+- **R8, the member's own newer messages move it (no "passes the other member" check):** 1 failed: `:193`.
+- **R11, a failed command is never tried again:** 1 failed: `:210`.
+- **R9, any overlap counts as in view:** 3 failed: `visibility.test.ts:7`, `:17`, `:28`.
+- **R10, an unmeasured area counts:** 1 failed: `visibility.test.ts:22`.
+
+The labels are the reversal script's; R11 was added after the first series, with the retry test.
+
+The first series showed two gaps, which were closed before the series of record: R3 as first written also left the "passes the other member" check in place, which blocks a backward target by itself, so it removed no protection and passed; it now removes both. R8 passed because no test viewed only the member's own newer messages; `:193` now does.
+
+**The rendered tests** (`rendered/chat.spec.ts`, the read-cursor tests `:34`, `:87`, `:108`, `:121`, informational, on the container's Chromium 1243; all four passed before the series):
+
+- **RR1, the screen reports every rendered message as viewed (a fetch as evidence):** `:87`, `:108`, `:121` failed (`No unread messages` where 1 to 12, or 1, were expected).
+- **RR2, the store's CX8 behaviour restored:** `:87`, `:108`, `:121` failed, as RR1.
+- **RR3, the screen follows each arrival to the newest message:** `:87` and `:121` failed (`scrollTop` 4882, expected 0).
+- **RR4, rows measured once and never again:** `:108` failed (`No unread messages`, expected `1 unread message`).
+
+`:34`, the inherited one-message test, passed under every reversal: one message always fits the screen, as DM-23 says.
+
+### Checks
+
+1. **The diff.** `git diff --check e578b08… 311b07e` printed nothing. `git diff --name-only e578b08… 311b07e` (7 paths): `apps/mobile/README.md`, `apps/mobile/rendered/chat.spec.ts`, `apps/mobile/src/chat/{screen.tsx,store.test.ts,store.ts,visibility.test.ts,visibility.ts}`; the two new files are mode `100644`. The records commit adds this section. All owned paths.
+2. **Classification**, the trusted policy from `main` (`a8e9528…`) extracted to a temporary directory outside the tree, run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base e578b08… --head 311b07e… --merge-base` printed `"full": true`, `"reason": "behavior-or-empty"`, the 7 paths. Full scope, as expected. (Run first from inside the temporary directory, it printed `comparison-unavailable`, also full: the script reads the repository from its working directory.)
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then `packages/contracts`, each exit 0.
+4. **The offline checks**, at `e578b08` (start) and at `311b07e`:
+   - **The contracts:** `npm run generate`, then no diff (both times); `npm run check`: `Generated types and runtime validators match schemas.`, **586 → 586** of 586.
+   - **The mobile app:** `npm run check` (typecheck, lint, unit tests): **583 → 591** of 591, `ℹ fail 0` (the chat unit tests 67 → 74: the store's five new tests replace one, and four visibility tests). `EXPO_OFFLINE=1 npm run check:expo`: `Dependencies are up to date`, exit 0 both times. `EXPO_OFFLINE=1 npm run export:development`: `Exported: .work/native-export`, exit 0 both times.
+   - **`npm run test:rendered`, informational, not the pinned browser:** Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` 1.62.1 pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it. The whole suite at the final code: **97 passed (4.6m)**, 94 inherited and 3 new; an earlier run, before the re-measurement test was added, 96 passed (4.5m). Before the re-measurement test was added, the three read-cursor tests then present (`:34` and the first two new ones), five times each (`--repeat-each=5`): 15 passed, no failure.
+5. **What stays unchanged.** `git diff e578b08… 311b07e` is empty over `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`; `apps/mobile/src/contracts/generated/`; `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`; `apps/mobile/src/components/ui.tsx`; and `packages/`, `services/`, `proofs/` and `.github/`.
+6. **The reversals:** above, fifteen, each failing its tests.
+7. **The run of record:** Foundation push run [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786), attempt 1, on `311b07e11b7131147becd0f045665f30d29856fa`, branch `claude/pensive-pascal-82j52l`, 25 October 2026 00:06:33 to 00:14:15 UTC. **All eight jobs `success`**: Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate, whose step printed `Application checks passed` (its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`). Nothing was pushed to the branch until the run had finished; the run was not re-run or dispatched.
+   - **Mobile checks**, 00:06:44 to 00:13:32: **6 min 48 s against its 15-minute timeout**, so 8 min 12 s to spare (not within 3 minutes of it). The rendered step ("Render and exercise account onboarding"), 00:08:33 to 00:13:28: **4 min 55 s**. Against Stage C2's run 40135312825 (6 min 16 s, rendered 4 min 31 s): +32 s and +24 s, the three new specs. The whole log (2,829 lines) was read for these lines.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 591`, `ℹ pass 591`, `ℹ fail 0` (583 before this work).
+     - `check:expo`: `Dependencies are up to date`; `export:development`: `Exported: .work/native-export`.
+     - The rendered tests: **`97 passed (4.9m)`**, against the pinned Chromium the job installs, with no failure or retry. The read-cursor tests, all passing: `chat.spec.ts:34` the list, opening a conversation, unread and the read cursor (10.5 s); `:87` a long conversation: unread does not clear until the newest message is in view (5.6 s); `:108` after an earlier page loads above them, messages are measured again (5.4 s); `:121` scrolled up, a new message from the other member stays unread until it is scrolled into view (8.3 s).
+   - **API mobile smoke:** `success`; `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs**, unchanged by this work and passing: API checks (00:06:44 to 00:07:20), API artifact checks (to 00:06:59), Stream proof checks (to 00:08:18), Database proof checks (00:06:44 to 00:14:09; its suite 00:07:31 to 00:14:05). Their logs were not read beyond their conclusions.
+8. **Secret scan** over the whole diff (the code commit and this section): JWT shapes, private-key headers, cloud key prefixes, token prefixes, credential assignments, e-mail addresses, runs of 32 or more hexadecimal characters, and the HDE and `STREAM_*` names. The code diff matched none. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at; no contract, dependency, workflow or service change; `Page` unchanged.**
+- **Inherited tests changed:** `store.test.ts:141` replaced (2.4); `store.test.ts:94` (DM-22 2.2) now reports the shown message as viewed, since it asserted the cursor moving on opening, the behaviour CX8 removes; its 2.2 assertions are kept. No rendered test outside the new ones changed.
+- **Findings outside the work:** none in a fix-here class.
+  - **C2C1-X1, an observation for P11 (no change).** The contracts carry no member cursor position, so after the store is reset (another conversation, another account, a reload) the first viewed message may be at or behind the cursor the server holds. The command is then a no-op: the fixture, as C1's server, moves the cursor forward only. One such command per opening at most, after which the store's own position applies.
+- **Limits:**
+  - **Rendered on React Native Web only.** `measureLayout`, `onScroll` and `onLayout` on iOS and Android, the keyboard's effect on the visible area, and native scroll insets are unverified; native builds and devices are not run.
+  - **The screen opens at the top** and does not scroll to the newest message (2.2's "may"); whether it should is a presentation choice for later.
+  - **A message is in view only when wholly inside the visible area** (or filling it), within one pixel. A partly visible message is not counted.
+  - **Every row is measured after every render.** Retained history is not bounded in the store (Stage C2's limit), so a very long retained conversation measures many rows per render.
+  - **Local rendered runs used Chromium 1243, not the pinned revision;** the pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know
+
+- **Item 8 and CX8** (DM-23 2.6): the store's cursor path is `viewed`, `noteSeen` and `moveReadCursor` (`src/chat/store.ts:129`, `:138`, `:280`), with the retry at `:226` and the foreground at `:155`; the replaced unit test is `store.test.ts:226`, with `:161`, `:173`, `:193` and `:210`; the long-conversation rendered tests are `rendered/chat.spec.ts:87`, `:108` and `:121`.
+- **The evidence of viewing** is the screen's measurement (`src/chat/screen.tsx:96` to `:141`) and the rule `src/chat/visibility.ts:16`. The store trusts only what the shown screen reports, and counts only accepted messages it holds.
+- **The rendered tests press controls in place** (a DOM `click()`, which React Native Web's `Pressable` handles as a press) so that Playwright does not scroll the conversation, and wait two animation frames and a task after each scroll for the scroll event and the measurement. The fixture answers in microtasks.
+- **The one behaviour change beyond the target** (a move may complete after the screen is left) is under "The store's cursor path".
+- **The run of record** is [40145402786](https://github.com/amthorn78/glow-dating-app/actions/runs/40145402786) on `311b07e`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2-C1
+
+App Manager 7, 25 October 2026 (UTC), against the pushed branch, after Nathan relayed the session's report. The relay did not name the model and level, so Nathan's pick is not recorded.
+
+- **Branch and heads.** `claude/pensive-pascal-82j52l`: code commit `311b07e11b7131147becd0f045665f30d29856fa` (tree `a1a39eb`), records commit `73ef97e2d8719e5141de78a249b2031ac9f82dea` (tree `cd40804`), both as reported. The prompt's commit `e578b08` is their parent.
+- **Changed paths.** Seven code paths against `e578b08`, every one inside C2-C1's owned paths (2.5):
+  - `apps/mobile/README.md` and `rendered/chat.spec.ts`;
+  - in `src/chat/`: `screen.tsx`, `store.ts` and `store.test.ts`, and the new `visibility.ts` and `visibility.test.ts` (mode 100644).
+
+  In all, 402 lines are added and 40 removed. The records commit changes only this file. `git diff --check` is clean.
+- **Classification** (the trusted policy from `main` at `a8e9528`, run from the repository root): `"full": true`, `behavior-or-empty`.
+- **Unchanged:** an empty diff from `e578b08` over the mobile app's dependency files, `src/contracts/generated/`, `app.config.ts`, `scripts/development.mjs` and `src/components/ui.tsx` (`Page`), and over `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+- **The evidence record:** the first 663,777 bytes at `73ef97e` equal the whole file at `e578b08`, so "Stage C2-C1" is appended.
+- **What the manager read in the code** (`store.ts` at `311b07e`):
+  - **`viewed()`** (`:129`) records the visible set only while the conversation is shown.
+  - **`noteSeen()`** moves `seen` forward only, to the newest accepted message in view, and only while the conversation is shown and the app is in the foreground. On a return to the foreground, what stayed in view counts.
+  - **`moveReadCursor()`** (`:280`) targets `seen`, never the newest fetched message. It sends only when the move passes a message from the other member, holds one command in flight with a follow-up after it, and never sends in the background or after a revocation.
+  - **A page arriving** (`:226`) only retries a failed move.
+  - **The replaced test** (the old `store.test.ts:141`) is now the 25-message, 13-unread case that clears only the viewed messages. Four more store tests cover 2.1 and 2.3.
+- **Run of record.** Foundation push run 40145402786 on `311b07e`.
+  - All eight jobs concluded `success`, and the gate printed `Application checks passed`.
+  - The Mobile job ran from 00:06:44 to 00:13:32 UTC (6 min 48 s of 15). Its rendered step ran from 00:08:33 to 00:13:28 and printed `97 passed (4.9m)`.
+  - The unit counts (contracts 586, app 591) are the session's reading of the log.
+- **What the re-review must weigh** (from the session's record):
+  - **an inherited test changed:** `store.test.ts:94` (DM-22 2.2) now reports the message as viewed before the cursor moves, keeping its 2.2 assertions;
+  - **a behaviour change beyond the target:** a move to a message that was in view while shown and in the foreground can now complete after the member leaves the screen;
+  - **the measurement** is proved on React Native Web only. A row counts only when wholly in view (or when it fills the area), and the screen opens at the top, which 2.2 allows;
+  - **the rendered tests** press controls with a DOM `click()`, so that Playwright does not scroll the conversation.
+- **C2C1-X1** (the session's observation; no change): the contracts carry no cursor position. So the first command after the store resets may target a message at or behind the server's cursor, and the server, which moves cursors forward only, does nothing. The P11 plan's mobile-client entry notes it.
+- **Integration.** The session branched from the manager branch's head `e578b08`, so the manager branch fast-forwarded to `73ef97e`.
+
+**Next:** C2-C1's exact-head re-review, which names C2's item 8 and CX8 (DM-23 2.6), then Codex's code review of PR33's final head (OD-41).
+
+## Codex's code review of C2-C1's head (25 October 2026)
+
+- **The review:** Codex's code review of `73ef97e`, triggered by the new commits, started at 00:22:36 UTC and posted one finding at 00:25 UTC. Its review of `83ce64d`, a records-only commit, started at 00:24:59 UTC.
+- **CX9, P2** (`apps/mobile/src/chat/store.ts:302`; [thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4369075844)), "Invalidate outstanding reads when revoking a conversation", quoted:
+
+  > When a message-page request overlaps a send or read-cursor request that refuses access, `revoke()` clears the conversation without changing `conversationEpoch`. A successful page response arriving afterward therefore passes `readHead()`'s epoch check, restores the private messages, and sets the conversation back to `ready`, making the history and composer visible again despite the refusal. An outstanding older-page response can likewise repopulate the cleared history. Invalidate outstanding requests on revocation so responses issued before access ended cannot restore that state.
+
+- **The manager's verification, at `311b07e`: the problem is real.**
+  - `revoke()` (`store.ts:300-309`) clears the history, cursors and draft and publishes `revoked`, but leaves `conversationEpoch` unchanged.
+  - `readHead()` (`:212-239`) checks only `epoch !== this.conversationEpoch` when its page returns. A page requested before the revocation passes that check. `mergeHead` then restores the messages, and `publishConversation({ status: 'ready' })` brings back the message list and the composer (`screen.tsx:150-171`).
+  - `loadOlder()` (`:258-275`) makes the same check. Its page puts its messages back into the store's state, though the status stays `revoked`, so the screen keeps the revoked notice.
+  - **What can revoke while a read is outstanding:** a send's refusal (`run()`, `:347`), a cursor command's (`:296`), or another read's. The codes that end access are `unavailable` and `signed_out` (`:37`).
+  - **It is C2's code.** C2-C1's change to `revoke()` adds only the cleared `visible`, `seen` and `cursorRetry` (the diff from `676b49b`). Codex's review of `96ce36b` did not report it.
+  - **Reachability:** the fixture answers a read without a delay (its `delayed` scenario holds commands only: `fixture-adapter.ts`, `gate`), so the preview app hardly opens the window. A unit test can hold a read through `chatSetup`'s transport wrapper (`testing.ts`). With a real transport, the window is a request's round trip.
+  - **Against C2's prompt:** its "Findings outside this work" names, as a class a session fixes here, a finding that could "let a revoked member see a conversation's history or send in it". After the revoked state is shown, a late page shows the history and the composer again.
+- **Class:** the decision to fix it before the merge or carry it is a review decision. It goes to the Dev Manager (OD-32; AM7-12): [DM-24](../../ephemeral/2026-10-25-dm-24-p06-2-cx9.md), with the manager's recommendation of a correction pass, C2-C2, before the merge.
+- **PR33's merge is held** until DM-24 is answered. [Corrected by App Manager 7, 25 October 2026: this line first said that C2-C1's exact-head re-review, already with Nathan, continued. It did not run. The manager had given its prompt while Codex's review of C2-C1's head was still running, and DM-24 may change the code under review, so Nathan withdrew it as premature (AM7-13). DM-24 revision 2 states this. The exact-head re-review that follows is decided after DM-24's answer, which App Manager 8 receives.]
+- **DM-24's verdict** (`1a4fc1b`, a read of revision 1 at `568f446`): **(b), corrected before the merge** in a correction pass, C2-C2, with the Dev Manager's conditions 1.1 to 1.6 (DM-24 1.1 adds the conversation list's read to the requests a revocation invalidates). CX9 does not join the P11 plan. The manager answered Codex's thread that the fix comes before the merge. The order of C2-C2 and the re-review went back to the Dev Manager as DM-25, since DM-24's item 2 assumed C2-C1's re-review was with Nathan (review log, "DM-24").
+
+## Codex's CX10 on C2-C1's cursor code (25 October 2026)
+
+- **The finding:** Codex posted CX10, P2, at 00:42 UTC on `apps/mobile/src/chat/store.ts:283-284` ([thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4369117573)), "Account for unread messages outside the loaded page". It was posted on a review of a records head after `73ef97e`; the code it reads is C2-C1's `311b07e`. Neither App Manager 7's handover nor App Manager 8's first records batch recorded it (AM8-01).
+- **The manager's verification, at `311b07e`: the problem is real.**
+  - `lastRead` starts `null` when a conversation opens (`:177`), since no contract carries the cursor position (C2C1-X1). `moveReadCursor()` (`:281-284`) therefore looks for a message from the other member only in the loaded window, `accepted.slice(0, to + 1)`.
+  - When the newest page (20 messages) holds only the member's own messages and an earlier incoming message is unread, no cursor command is sent, and the list's `unread_count` stays above zero after the member has seen everything.
+  - `loadOlder()` prepends the older page. Viewing the incoming message there gives an index below `seen`'s, so `noteSeen()` (`:138-142`) returns and the move is never retried.
+  - It follows from DM-23 2.3 ("a command is sent only when the viewed position moves forward past a message from the other member") applied to the loaded window alone. It is C2-C1's code.
+  - **Against C2's prompt:** item 8 moves the cursor "when the member has seen newer messages".
+- **Class:** fixing it changes C2-C1's cursor rule, which DM-24 1.5 keeps unchanged, so the fix-or-carry choice goes to the Dev Manager: DM-25 revision 2, item 3, with the manager's recommendation to fix it in C2-C2. Codex's thread is answered after the verdict.
+- **DM-25's verdict** (`1809fde`, a read of `6fe07b1`): **(b), fixed before the merge in C2-C2,** as a separate item beside CX9, with conditions 3.1 to 3.7, which replace the manager's c.1 to c.6. CX10 does not join the P11 plan. Codex's thread is answered.
+- **The outcome, stated exactly (DM-25 3.7):** the conversation's unread count stays above zero until the member views a later message from the other member; that move passes an incoming message in the window, and the server's cursor then moves past the old one too. [Corrected by App Manager 8, 25 October 2026: this section and the manager's records first said the count "never clears".]
+- **The reach, stated exactly (DM-25 3.7):** through this app it takes a missed view, since the composer sits below the messages in the same scroll area and sending usually brings the incoming message into view: a row that passes the visible area between two scroll reports, or a cursor command that failed and was not retried before the store reset. Another client could also cause it later. A unit test still shows the defect offline. [Corrected by App Manager 8: "any member who sends 20 messages in a row after an unread one" overstated it.]
+
+
+## Stage C2-C2
+
+The correction of Codex's CX9 and CX10 on PR33 (DM-24, conditions 1.1 to 1.6; DM-25, conditions 3.1 to 3.6; the brief's revision 17, "Codex's CX9 and CX10, and C2-C2"). **CX9:** a revocation left the conversation's epoch unchanged, so a page, a send, a cursor command or a list read requested before it could restore the cleared conversation, its status or the list's row. **CX10:** with the cursor's position unknown at each opening, the store tested only the loaded window, so a move past an unread incoming message outside it was never sent. **All six items done; no departure from a design condition, no contract change, no dependency change, no fixture-adapter change.** One test-matrix limit of DM-24 1.4 is recorded below (two of its fourteen pairings cannot exist). Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `91e2ccf25f4c52bdf12286cd9dff3035b565c629`.
+- **Start:** `91e2ccf25f4c52bdf12286cd9dff3035b565c629`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/glow-stage-c2-c2-correction-fk8kxe`, under the workflow's `claude/**` push filter.
+- **Code commit:** `27999c7bd9b79fd1a1c68136b3de62b14bd32a34` (tree `2aa4d03480c04007389476f1b285f2b74d61147f`). **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40152538074](https://github.com/amthorn78/glow-dating-app/actions/runs/40152538074) on `27999c7` (check 7). The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing). `compgen -e | grep -E '^STREAM_'` printed nothing: the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`). Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it; the installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only 91e2ccf…` on the session branch; `git rev-parse HEAD` printed `91e2ccf25f4c52bdf12286cd9dff3035b565c629`; `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`; `git diff --quiet 311b07e… HEAD -- apps packages services proofs .github scripts` printed `C2-C1's code`; `git diff --stat 91e2ccf… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing (the manager branch's head was `91e2ccf` itself); `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C2'` printed `0`. The reading list was read before the first change. The change touches no Expo or React Native interface (`store.ts` and its tests are plain TypeScript), so no versioned Expo page was needed.
+
+### CX9: the mechanism, and why (item 1)
+
+**Two epochs, both advanced by `revoke()`** (`src/chat/store.ts:337`, the advance at `:339`):
+
+- **The conversation's epoch** (`conversationEpoch`, `:77`) was already carried by every conversation request and tested when it answers: the head read (`readHead`, `:229`), the read queued behind it (`headAgain`, tested in `readHead`'s `finally`), the older page (`loadOlder`, `:275`), the cursor command (`moveReadCursor`, `:308`) and the send (`run`, `:370`, through `Submission.epoch`). `resetConversation` advanced it; `revoke()` did not. Advancing it there makes every response to a request made before the revocation return before it touches anything, success or failure, and start nothing: no `mergeHead`, no `ready` or `error`, no `older` state, no `lastRead`, no list update, no `sent`, no follow-up head read and no cursor command.
+- **The list's epoch** (`listEpoch`, `:75`) replaces `ownerEpoch`, which only `readList` used. It is advanced by another owner, as before, and now by each revocation, so a list response requested before a revocation is not used at all (`:216`, `:222`) and cannot put the revoked row back.
+- **No send is left pending** (1.2): `revoke()` clears `sending` and always publishes the idle send state (`:344`); before, it kept a pending send's state, which an invalidated response could then never clear. After a send's own refusal the store now also shows idle, not the refusal's error: the revoked notice is the only state.
+- **Requests made afterwards keep today's behaviour** (1.3): their in-flight markers (`headInFlight`, `olderInFlight`, `cursorInFlight`, `listInFlight`) are keyed on the epoch they were made in, so a read on a return to the foreground or after an authority change starts at once, even while a request made before the revocation is still outstanding, and Glow decides it.
+
+**Why this mechanism:** the epoch was already the store's own test for "a response to an earlier request", applied at every response site, so advancing it is the smallest change that covers every request type at once and leaves no response site to remember. A per-request "revoked" flag, or ignoring responses while the status is `revoked`, would also block 1.3's later requests (reversal V6 shows that the 1.3 tests catch it). A filter on the list's late response (dropping only the revoked row) would still let that response change the list, which 1.1 forbids.
+
+**Every caller of `revoke()`** (1.6): `readHead`'s refusal (`:247`), `loadOlder`'s (`:293`), the cursor command's (`:327`) and the send's (`:385`). Each calls it only after its own epoch test passes, so a response made invalid by an earlier revocation cannot revoke twice or publish over it.
+
+### CX10: the mechanism, and why (item 3)
+
+- **"A command has succeeded in this opening"** is `cursorKnown` (`:93`): set only when a cursor command's response is accepted (`:322`), and cleared wherever `lastRead` is cleared: `resetConversation` (another conversation, another owner) and `revoke()`. Closing and reopening the same conversation keeps it, as it keeps `lastRead`. So "this opening" is the span since the store last forgot the position.
+- **The rule** (`moveReadCursor`, `:308`; the test at `:315`): forward only (`to <= from` returns), and a move to `seen` is sent when the window from `lastRead` to `seen` holds a message from the other member (DM-23 2.3) or, while `cursorKnown` is false, when the summary held (`summary()`, `:297`: the conversation's entry in the store's list) shows `unread_count` above zero or no summary is held (3.1). A summary at 0 suppresses only a move the window does not call for. The target is always `seen`; at most one command per epoch is in flight.
+- **3.2's triggers:**
+  - **an older page that adds messages before `seen`:** `loadOlder` reconsiders after merging when it added any message and `seen` is set (`:289`); every message it adds precedes the loaded ones, so it precedes `seen`;
+  - **a list read that changes the summary:** `readList` compares the conversation's entry before and after (`sameSummary`, `:39`: state, unread count and latest marker) and reconsiders when it changed (`:220`);
+  - **a cursor command's response:** the existing follow-up after each successful command (`:329`), C2-C1's "a move made while one is in flight follows it". The response sets `cursorKnown` first, so that reconsideration applies DM-23 2.3 alone.
+- **Not triggers:** a viewing report (`noteSeen`, `:151`, still calls `moveReadCursor` only when `seen` advances); a failed command (`cursorRetry`, retried only after the next successful head read, as before; a later successful list read or older page that changes the evidence is also a successful read); a failed list read; and any response DM-24 1.1 makes ineffective, since every trigger sits after its request's epoch test, and `moveReadCursor` sends nothing while the conversation is revoked.
+- **Why this is safe** (3.1): the server moves a cursor only forward (C1's `_move`, `services/api/glow_chat/reads.py:662`; the fixture's `moveCursor`), so a move at or behind the server's position changes nothing. At most one such move per opening is needed before the store's own position applies.
+
+### Items 1 to 6
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, CX9's revocation** (DM-24 1.1 to 1.3) | Done | `src/chat/store.ts:337` (`revoke`, `:339` the epochs, `:344` the idle send), `:75` and `:216`, `:222` (`readList`'s `listEpoch`) | `store.test.ts:490`, `:504`, `:521`, `:532`, `:544`, `:562`, `:574` |
+| **2, CX9's tests** (DM-24 1.4) | Done: each 1.4 case, twice; reversals V1 to V6 (check 6) | `src/chat/store.test.ts:425` (`gate`), `:454` (`revokeThrough`), `:467`, `:479` | Check 6 |
+| **3, CX10's cursor rule** (DM-25 3.1 to 3.3) | Done | `src/chat/store.ts:93` (`cursorKnown`), `:297` (`summary`), `:308` to `:329` (`moveReadCursor`), `:289` (older-page trigger), `:220` with `:39` (summary trigger) | `store.test.ts:281`, `:295`, `:306`, `:326`, with `:193` and `:210` |
+| **4, CX10's tests** (DM-25 3.4) | Done: (a) to (e); reversals W1 to W6 (check 6). No C2-C1 cursor test changed | `src/chat/store.test.ts:267` (`ownSends`, through the transport) and the four tests above | Check 6 |
+| **5, the README** | Done. The cursor sentence states 3.1 and 3.2's triggers (`apps/mobile/README.md:405`). The revocation sentence (item 8 of the walkthrough) is unchanged: it says the screen drops the history, draft and cursors, stops polling and the list no longer shows the conversation; the change makes that hold against late responses but does not alter what it says | `apps/mobile/README.md` | — |
+| **6, the record** | Done: this section | This file | — |
+
+**Which test covers each condition:**
+
+- **DM-24 1.1** (every outstanding request invalidated; its response changes nothing and starts nothing; the list row stays absent): the head read and the read queued behind it, `store.test.ts:490` (the snapshot is the same object after the release and three poll intervals; no request of any kind); the older page, `:504` (messages stay empty); the failing head read, `:521` (`revoked`, not `error`); the send, `:532`; the cursor command, `:544` (the snapshot unchanged, so the list too; `lastRead` unchanged, shown by a fresh command to the same message once readable again); the list read, `:562` (the row stays absent; nothing started).
+- **DM-24 1.2** (no pending send, no retry, only the revoked notice): `assertRevoked` (`:479`, run after every revocation in these tests: send state `idle`, no error, no retry, no draft); `:532` (a send pending at the revocation shows idle at once, and its success publishes nothing).
+- **DM-24 1.3** (requests made afterwards keep today's behaviour): `:574`: with a head read and a list read made before the revocation still held, a return to the foreground issues a new read and list read at once, the conversation is `ready` with its message and the row is back (the fixture still serves the match, as a resumed one may), the held responses then change nothing, and a real block afterwards revokes again.
+- **DM-24 1.4:** the fourteen tests above, with reversals V1 to V6.
+- **DM-25 3.1** (the three grounds; a summary at 0 never suppresses the window's evidence): (a) `:281` (summary 1), (b) `:295` (no summary), (d) `:326` (summary 0, no incoming message: nothing, over 80 reports, three polls and a list read); the window's own ground with no summary and with a summary, the inherited `:173`, `:193`, `:226`.
+- **DM-25 3.2** (the two triggers; no trigger on a report or a failure): (c) `:306`, twice: an older page, then a list read; `:210` (a failed command is not retried on reports).
+- **DM-25 3.3** (never backward or to an unsent message, one at a time, target `seen`, no command per report): the inherited `:173`, `:193`, `:210`, `:226`, unchanged; (a) to (c) assert the single target `seen`.
+- **DM-25 3.4:** (a) `:281`, (b) `:295`, (c) `:306` (both cases), (d) `:326`, (e) `:193` and `:210`, unchanged; reversals W1 to W6.
+
+### C2-C1's cursor tests
+
+**None changed.** All five (`store.test.ts:161`, `:173`, `:193`, `:210`, `:226`) and `:94` pass unchanged under 3.1 to 3.3: each either views a message from the other member in its first move, or reaches the member's own messages only after a command has succeeded. The new tests were placed after `:226`, so C2-C1's line references still hold.
+
+### DM-24 1.4's pairings: a recorded limit
+
+1.4 asks for each case to revoke through a send's refusal and, separately, through a cursor command's. Two of those fourteen pairings cannot exist under the store's rules:
+
+- **a held send revoked through a send's refusal:** one send at a time (C2's delayed-send test), so no second send can be made while the first is held;
+- **a held cursor command revoked through a cursor command's refusal:** at most one command in flight (DM-23 2.3, DM-25 3.3).
+
+In those two cases the test revokes through the other named refusal and, in place of the impossible one, through a head read's refusal (`revokeThrough`, `:454`): `:532` runs a cursor command's refusal and a head read's; `:544` runs a send's refusal and a head read's. Every other case runs both named refusals. This changes no rule and no behaviour; it is recorded for the re-review and the manager rather than treated as a departure.
+
+The refusals come from the test's transport wrapper (`gate`, `:425`): it answers one chosen request with Glow's `not_found` envelope, as the server answers once access has ended, and holds another chosen request's response until released. A held request reaches the fixture at once, so its response is the one built before the revocation. Because the refusal is one request's, the fixture still serves the match afterwards, which is what lets `:574` show 1.3.
+
+### Fix reversals
+
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths, through a script that edits the copy's `store.ts`, runs `node --test src/chat/store.test.ts` there and restores the file. After the series the copy's `store.ts` equalled the checkout's, and the unreversed copy passed 39 of 39. `git status` in the checkout showed only this work's changes throughout. **Every reversal made its tests fail** (39 store tests):
+
+- **R0, the whole `store.ts` at the start commit (CX9 and CX10 restored):** 18 failed: (a), (b), both (c) cases, and all fourteen CX9 tests.
+- **V1, `revoke()` advances no conversation epoch:** 10 failed: `:490` ×2, `:504` ×2, `:521` ×2, `:544` ×2, `:574` ×2. (The send tests still pass: `revoke()` clearing `sending` alone stops a late send's response; V3 removes that.)
+- **V2, no list epoch:** 4 failed: `:562` ×2, `:574` ×2.
+- **V3, `revoke()` keeps a send in flight pending (C2's send handling):** 8 failed: `:532` ×2, and the six tests that revoke through a send's refusal (`:490`, `:504`, `:521`, `:544`, `:562`, `:574`), whose revoked state then shows the refusal's error.
+- **V4, a head read made after a revocation waits for one made before:** 2 failed: `:574` ×2.
+- **V5, a list read made after a revocation waits for one made before:** 2 failed: `:574` ×2.
+- **V6, a revoked conversation reads nothing more (revocation made permanent):** 4 failed: `:544` ×2, `:574` ×2.
+- **W1, 3.1 reverted to the window-only test:** 3 failed: (a), (b), and (c) by a list read.
+- **W2, 3.2's older-page trigger removed:** 1 failed: (c) by an older page.
+- **W3, 3.2's summary trigger removed:** 1 failed: (c) by a list read.
+- **W4, a reconsideration on every viewing report:** 1 failed: `:210`. (d) still passes, since 3.1's grounds do not hold there; DM-25 3.4 names "(d) or `:210`".
+- **W5, 3.1's grounds kept after a command has succeeded:** 1 failed: `:193`.
+- **W6, a summary at 0 treated as no summary:** 3 failed: both (c) cases and (d).
+
+### Checks
+
+1. **The diff.** `git diff --check 91e2ccf… 27999c7` printed nothing. `git diff --name-only 91e2ccf… 27999c7` (3 paths): `apps/mobile/README.md`, `apps/mobile/src/chat/store.test.ts`, `apps/mobile/src/chat/store.ts`; 313 lines added, 16 removed. The records commit adds this section after the existing sections, which are unchanged. All owned paths.
+2. **Classification**, the trusted policy from `main` (`a8e9528…`) extracted to a temporary directory outside the tree, run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base 91e2ccf… --head 27999c7… --merge-base` printed `{"full": true, "reason": "behavior-or-empty", "paths": [the 3 paths]}`. Full scope, as expected.
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then `packages/contracts`, each exit 0.
+4. **The offline checks**, at `91e2ccf` (start) and at `27999c7`:
+   - **The contracts:** `npm run generate`, then no diff (both times); `npm run check`: `Generated types and runtime validators match schemas.`, **586 → 586** of 586.
+   - **The mobile app:** `npm run check` (typecheck, lint, unit tests): **591 → 610** of 610, `ℹ fail 0` (the store's tests 20 → 39). `EXPO_OFFLINE=1 npm run check:expo`: `Dependencies are up to date`, exit 0 both times. `EXPO_OFFLINE=1 npm run export:development`: `Exported: .work/native-export`, exit 0 both times.
+   - **`npm run test:rendered`, informational, not the pinned browser:** the container's Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` 1.62.1 pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it. At `27999c7`: **97 passed (4.8m)**, all of `rendered/chat.spec.ts`'s thirteen among them (`:87` the long conversation, `:108`, `:121`, `:195` the revoked state both ways).
+5. **What stays unchanged.** `git diff 91e2ccf… 27999c7` is empty over `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`; `apps/mobile/src/contracts/generated/`; `apps/mobile/src/chat/fixture-adapter.ts`; `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`; and `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+6. **The reversals:** above, thirteen, each failing its tests.
+7. **The run of record:** Foundation push run [40152538074](https://github.com/amthorn78/glow-dating-app/actions/runs/40152538074), attempt 1, on `27999c7bd9b79fd1a1c68136b3de62b14bd32a34`, branch `claude/glow-stage-c2-c2-correction-fk8kxe`, 25 October 2026 01:56:18 to 02:05:21 UTC. **All eight jobs `success`**: Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate, whose step printed `Application checks passed` (its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`). Nothing was pushed to the branch until the run had finished; the run was not re-run or dispatched.
+   - **Mobile checks**, 01:56:28 to 02:02:59: **6 min 31 s against its 15-minute timeout**, so 8 min 29 s to spare. The rendered step ("Render and exercise account onboarding"), 01:58:02 to 02:02:57: **4 min 55 s**. Against C2-C1's run 40145402786 (6 min 48 s, rendered 4 min 55 s): 17 s shorter and the same. The whole log (2,848 lines) was read for these lines, with no failure or retry in it.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 610`, `ℹ pass 610`, `ℹ fail 0` (591 before this work).
+     - `check:expo`: `Dependencies are up to date`; `export:development`: `Exported: .work/native-export`.
+     - The rendered tests: **`97 passed (4.9m)`**, against the pinned Chromium the job installs. All thirteen of `rendered/chat.spec.ts` passed, among them the read-cursor tests `:34` (11.1 s), **`:87` a long conversation: unread does not clear until the newest message is in view (5.7 s)**, `:108` (5.4 s) and `:121` (8.4 s), and the revoked state `:195`, both ways (2.2 s, 2.1 s).
+   - **API mobile smoke:** `success`; `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs**, unchanged by this work and passing: Change scope (01:56:21 to 01:56:26), API checks (01:56:29 to 01:57:17), API artifact checks (01:56:28 to 01:56:43), Stream proof checks (01:56:29 to 01:57:50), Database proof checks (01:56:28 to 02:05:17; its suite 01:57:19 to 02:05:12). Their logs were not read beyond their conclusions.
+8. **Secret scan** over the code diff's added lines: JWT shapes, private-key headers, cloud key prefixes, token prefixes, credential assignments, e-mail addresses, runs of 32 or more hexadecimal characters, and the HDE and `STREAM_*` names: no match. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at:** no design condition departed from; no contract, dependency, fixture-adapter, screen, workflow or service change.
+- **DM-24 1.4's two impossible pairings,** above: filled with a head read's refusal. For the manager to confirm.
+- **Behaviour changes beyond the defects, both required by the conditions:**
+  - after a send's own refusal the send state is idle rather than the refusal's error (1.2: the revoked notice is the only state); the composer was already hidden in the revoked state, so nothing shown changes;
+  - a list read made after a revocation may overlap one made before it, and a head read likewise; the earlier one's answer is ignored (1.3).
+- **Findings outside the work:** none in a fix-here class.
+  - **C2C2-X1, an observation (no change; presentation, not a fix-here class).** A read made after a revocation (1.3) sets the conversation to `loading` while it is in flight, as it did before this change; the screen then shows the composer, with no history, until Glow answers. A send made in that window goes to Glow, which refuses it if access has ended, and the refusal revokes again; no history is shown. DM-24 1.3 keeps this behaviour, so it is not changed here. Whether `loading` after a revocation should keep the revoked notice is a presentation question for the follow-ups or P11. [Added by App Manager 8, DM-26 2.2:] Disposition (DM-26 2.1): not a fix-here class; a P11 requirement before P11 connects the client. [Corrected by App Manager 8, the re-review's F4 and DM-27 item 2: for an ended match, `send()` refuses locally before any request, since `contactVersion` is `null`; otherwise Glow refuses it.]
+  - **C2C2-X2, an observation (no change).** At most one cursor command is in flight per epoch, as for a conversation switch today. After a revocation and a read that makes the conversation readable again (1.3), a new command can be sent while one made before the revocation is still outstanding; the earlier one's answer is ignored, and the server moves cursors forward only. Blocking the new one until the old answered would need a follow-up from an invalidated response, which 1.1 forbids.
+  - **The README's last sentence** still names "Stage C2" and "Stage C2-C1" as the record's sections; adding "Stage C2-C2" is outside the README sentences this pass owns. A follow-up.
+- **Limits:**
+  - **3.6's weighed effect, confirmed:** a move reconsidered by a list read can be sent while the list is shown and the conversation is not, for a `seen` set earlier while it was shown and in the foreground, as C2-C1 already allows.
+  - **The cursor's position** stays out of the contracts (C2C1-X1, for P11). Until a command succeeds, one move per opening may be a no-op at the server; on 3.1's second and third grounds the store relies on the server's forward-only rule, which P11 must keep (DM-25 3.7).
+  - **A failed list read** (including one that ends access and clears the list) triggers no reconsideration; only an accepted list response does.
+  - **Local rendered runs used Chromium 1243, not the pinned revision;** the pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know
+
+- **CX9, C2's item 3 and the prompt's revocation class** (DM-24 1.6): the mechanism is the two epochs advanced in `revoke()` (`src/chat/store.ts:337` to `:347`). The callers of `revoke()` are `:247`, `:293`, `:327` and `:385`. The response sites, each behind its epoch test: `readList` `:216` and `:222`, `readHead` (its success, failure and `finally`), `loadOlder`, `moveReadCursor` and `run`. The late-response tests are `store.test.ts:490` to `:574`, one per request type in 1.1, the list included.
+- **The other asynchronous paths** searched for a way out of `revoked` with an earlier response: the foreground hook, the authority hook, the poll timer, `openConversation`, `retryRead`, `send`, `retrySend` and the cursor follow-up all start new requests (1.3) or are gated on the epoch; none reuses an earlier response. A read made after a revocation moves the status to `loading` (C2C2-X1).
+- **CX10 and C2's item 8** (DM-25 3.6): 3.1's three grounds are the test at `:315` with `summary()` (`:297`); 3.2's triggers are `:289` (an older page) and `:220` (a list read), plus the follow-up at `:329` after a successful command. `noteSeen` (`:151`) still calls `moveReadCursor` only when `seen` advances, and every command targets `seen`. Each trigger sits after its request's epoch test. The tests are `store.test.ts:281` to `:326`, with `:193` and `:210` unchanged.
+- **The run of record** is [40152538074](https://github.com/amthorn78/glow-dating-app/actions/runs/40152538074) on `27999c7`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2-C2 (25 October 2026)
+
+- **Integrated** by fast-forward of the manager branch to the session's head `3ff47a7` (code `27999c7`, records `3ff47a7`; branch `claude/glow-stage-c2-c2-correction-fk8kxe`, under the push filter). Every non-Markdown path at the integrating head is byte-identical to `27999c7`.
+- **The diff, read whole** (`91e2ccf..3ff47a7`): `apps/mobile/src/chat/store.ts` (+68 −16 with comments), `store.test.ts` (+254), `apps/mobile/README.md` (the cursor sentence) and this record's new section, appended (the earlier text unchanged). All owned paths; no dependency, contract, fixture-adapter, screen or workflow file changed.
+- **CX9 (DM-24 1.1 to 1.3), as read in the code:** `revoke()` advances `conversationEpoch` and the new `listEpoch` (which replaces `ownerEpoch` and is also advanced on another owner), clears `sending`, and always publishes the idle send state. Every response site already returns on an epoch mismatch before changing state or starting anything (`readList`, `readHead` with its queued read, `loadOlder`, `moveReadCursor`, `run`). In-flight markers are keyed to the epoch, so a request made after the revocation is not blocked by one made before (1.3).
+- **CX10 (DM-25 3.1 to 3.3), as read in the code:** `cursorKnown` is set only when a command's response is accepted and cleared with `lastRead`. `moveReadCursor` holds a move back only when the window passes no incoming message and either the position is known or the held summary shows `unread_count` 0; the target is always `seen`. The two 3.2 triggers are an older page that adds messages (with `seen` set) and a list read whose entry for the conversation changed (`sameSummary`); the existing follow-up after a successful command remains. No viewing report, failed command or invalidated response triggers one.
+- **The run of record:** push run [40152538074](https://github.com/amthorn78/glow-dating-app/actions/runs/40152538074) on `27999c7`, read by the manager: all eight jobs `success`, the six application jobs run (not skipped), Mobile checks 01:56:28 to 02:02:59 (rendered step 4 min 55 s), Database proof checks to 02:05:17, Foundation gate success.
+- **The session's DM-24 1.4 deviation:** two pairings 1.4 names cannot exist (a held send revoked by a second send's refusal; a held cursor command revoked by a second command's refusal), since one send and one command are in flight at a time. The session used a head read's refusal in those two tests (`store.test.ts:532`, `:544`) and ran both named refusals everywhere else. It changes no rule; it is a departure from a test condition's wording, so it goes to the Dev Manager with the handling of Codex's review of this head (DM-25 1.2).
+- **The session's findings outside the work** (none in a fix-here class): C2C2-X1, a read after a revocation shows `loading` with the composer until Glow answers, a send in that window being refused (DM-24 1.3 keeps it); C2C2-X2, a new cursor command after a revocation and a re-read can overlap one made before, whose answer is ignored. Follow-up: the README's last sentence names only "Stage C2" and "Stage C2-C1" as record sections.
+- **Next:** Codex's review of this head's code; then the Dev Manager's read of the deviation with any Codex finding; then one exact-head re-review (DM-25 1.1 to 1.3).
+- **Codex's code review of `9fd22c0`** (which holds C2-C2's code `27999c7`): completed at 02:13 UTC with no finding. The deviation and the session's two findings go to the Dev Manager as [DM-26](../../ephemeral/2026-10-25-dm-26-p06-2-c2-c2-deviation.md).
+- **DM-26's verdict** (`f5d0b13`, a read of `4eda522`): the departure from DM-24 1.4's pairings is approved as written; C2C2-X1 goes to the P11 plan as a requirement with a test (2.1, 2.2) and C2C2-X2 as a limit (2.3), neither fixed in PR33; the README's last sentence is a follow-up with the C2 review's findings 1, 4 and 5; the re-review prompt goes to Nathan without a further read, on 3.1 to 3.4.
+
+## Exact-head review of Stages C2-C1 and C2-C2 (25 October 2026)
+
+- **The review:** an exact-head re-review session Nathan ran from the [prompt](../../ephemeral/2026-10-25-p06-2-stage-c2-re-review-prompt.md), revision 1, from `b5a57ea` (Nathan's pick not recorded), of code head `27999c7`, in `Glow App - No Stream`. Environment clean; every start-gate check passed (merge base `a8e9528`; code identical to `27999c7` at the prompt's commit and on the live branch; shortstats 7/402/40, 3/313/16 and 26/2925/7); classification `"full": true`, `behavior-or-empty`, with no non-Markdown path outside `apps/mobile/src/` and `rendered/`. It changed nothing.
+- **Verdict: changes required, for one should-fix finding (F1).** CX8 and CX9 closed; CX10 closed for the case it was raised on, with F1's path open; C2's item 3 met, and item 8 met except on F1's path.
+- **F1, should fix, in a correction class** ("fail to mark read, by the rules of … DM-25 3.1 to 3.2, a message that has been in view (CX10)"; it also misses item 8 on its path) — `store.ts:315`. Once a command has succeeded, `cursorKnown` stays true even when `lastRead` is no longer in the loaded messages. A head read answered `stale` reloads only the newest page, so `lastRead` can fall outside it; `from` is then −1, `passesOther` reads only that page, and `cursorKnown` suppresses DM-25 3.1's fallback. Shown offline in the reviewer's scratch copy: Jules sends A, viewed, command succeeds; Jules sends B; 20 of the member's own accepted; the next poll answered `stale`; viewing the newest sends no command, and the count stays at 1. Reach: only a real transport answers `stale` to a head read. Suggested fix: `(this.cursorKnown && from >= 0)` at `:315`, with a test whose transport answers `stale`; in scratch, the probe then sent the command and all 39 store tests passed.
+- **F2, nit:** removing the clear of `cursorKnown` in `revoke()` or in `resetConversation` leaves all 39 store tests passing; correct today, untested.
+- **F3, nit:** a revocation's `listEpoch` advance also drops a list read begun after the authority change that led to it; the list waits for the next 30-second poll, or stays on "Loading your conversations…" if it was the first read. A conservative consequence of DM-24 1.1; only a real transport's timing opens it.
+- **F4, nit (record):** the session's C2C2-X1 line says a send in that window "goes to Glow"; for an ended match `send()` refuses locally first (`contactVersion` is `null`). DM-26 2.1's text and the P11 plan say it correctly.
+- **DM-26's verdicts:** the reviewer agreed with each: the substituted pairings (`:532` asserts the send `pending`, `:544` the command held, before revoking; the other five run both refusals); C2C2-X1 not a fix-here class nor a defect against item 3; C2C2-X2 a limit; the idle send state after a send's own refusal; reads overlapping across a revocation.
+- **Reversals:** each of the six named reversals failed its tests (the conversation epoch: 10; the list epoch: 4; 3.1 window-only: (a), (b), (c) by a list read; each 3.2 trigger: its (c) case; a reconsideration on every report: `:210`; C2-C1's cursor target: 17 unit tests, and rendered `:87`, `:108`, `:121`). The two `cursorKnown` clears (F2) failed nothing. No inherited test was loosened.
+- **Scope and security:** no dependency, contract, generated, configuration, `Page`, fixture-adapter, client or transport change; no new import, `fetch`, socket, `EventSource`, `console` or timer in application code; no history and no successful send through any late response; the display rule and the validation boundary unchanged.
+- **The run of record** 40152538074 read by the reviewer: all eight jobs `success`, the Mobile log whole (586, 610, `97 passed (4.9m)`, `chat.spec.ts:87` 5.7 s), gate `Application checks passed`.
+- **Offline checks at HEAD:** mobile `npm ci`, `npm run check` 610/610, `check:expo` and `export:development` as expected; contracts `npm ci`, `generate` no diff, `check` 586/586; `test:rendered` 97 passed (4.7m), informational (Chromium 1243, uncommitted config).
+- **Limits:** offline, no device runs (native `measureLayout`, `onScroll` and the keyboard unverified); Notion not read. A record note: the P11 plan's C2C1-X1 text says "one move to the newest viewed message"; the first command goes to whatever `seen` is then, with no effect on the result.
+- **The manager's verification of F1** at `27999c7`: `readHead`'s `stale` branch sets `newerCursor = null` and queues a read, `mergeHead(page, true)` replaces `accepted` with the newest page, and `moveReadCursor` (`:309-318`) returns when `cursorKnown` is set and the window passes no incoming message. The path is real.
+- **Class:** F1 is in a correction class, but its fix changes DM-25 3.1's "Once a command has succeeded, DM-23 2.3 holds as written", which DM-25 2.1 keeps unchanged for a pass without the Dev Manager's read; the reviewer also put the fix-or-carry choice to the Dev Manager. It goes as [DM-27](../../ephemeral/2026-10-25-dm-27-p06-2-re-review-f1.md), with the manager's recommendation of a correction pass, C2-C3. PR33's merge is held.
+- **DM-27's verdict** (`a9513a5`, a read of `ba30b73`): **F1 is fixed before the merge, in C2-C3,** with conditions 1.1 to 1.4: the position is known only while `lastRead` is among the loaded accepted messages, `cursorKnown` is removed, and DM-25 3.1's "Once a command has succeeded, DM-23 2.3 holds as written" reads "While `lastRead` is among the loaded accepted messages, DM-23 2.3 holds as written". F2 is answered by 1.1 (the flag goes); F3 is a limit in the P11 plan, with 2.1; F4 is annotated above. **F1's reach, stated exactly:** C1 answers `stale_version` to a newer cursor only when the cursor cannot be read, or its match or boundary cannot be placed (`reads.py:389-411`; `CursorError`), which normal operation does not produce; the path also needs an unviewed incoming message followed by a full page of the member's own; the fixture never answers `stale`. On that path a later list read does not heal it; an incoming message coming back into the window does.
+
+## Stage C2-C3
+
+The correction of the exact-head re-review's F1 on PR33 (DM-27, conditions 1.1 to 1.4; the brief's revision 18, "The re-review's F1, and C2-C3"). **F1:** once a cursor command had succeeded, `cursorKnown` stayed true even when `lastRead` was no longer among the loaded messages. A head read answered `stale` reloads only the newest page, so `lastRead` could fall before the window, and `cursorKnown` then held back a move that DM-25 3.1's grounds called for: an incoming message before the window stayed unread. **All four items done; no departure from a design condition, no contract change, no dependency change, no fixture-adapter change, no existing test changed.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `1506986440e5c7bfa7039e58cea66792d7f52777`.
+- **Start:** `1506986440e5c7bfa7039e58cea66792d7f52777`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/busy-turing-ics7ou`, under the workflow's `claude/**` push filter.
+- **Code commit:** `85b98444320326742e642e8f2d01f720cfb77f27` (tree `9e357930bddca256083e6b29d444c6246f154fc6`). **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40160547922](https://github.com/amthorn78/glow-dating-app/actions/runs/40160547922) on `85b9844` (check 7). The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the prompt's loop printed nothing). `compgen -e | grep -E '^STREAM_'` printed nothing: the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`). Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it; the installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+`git fetch origin claude/magical-wozniak-yfmmx2 main`; `git merge --ff-only 1506986…` on the session branch; `git rev-parse HEAD` printed `1506986440e5c7bfa7039e58cea66792d7f52777`; `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`; `git diff --quiet 27999c7… HEAD -- proofs .github services scripts apps packages` printed `C2-C2's code`; `git diff --stat 1506986… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing (the manager branch's head was `1506986` itself); `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C3'` printed `0`. The reading list was read before the first change. The change touches no Expo or React Native interface (`store.ts` and its tests are plain TypeScript), so no versioned Expo page was needed.
+
+### The rule, and why one test suffices (item 1, DM-27 1.1)
+
+- **The rule** (`apps/mobile/src/chat/store.ts:313`, in `moveReadCursor` at `:306`): a move to `seen` that passes no message from the other member is held back only when `from >= 0`, that is, while `lastRead` is among the loaded accepted messages (`from` is `indexOf(lastRead)` over `accepted`, `:310` [`:309` at `85b9844`: App Manager 8, per the exact-head re-review of C2-C3 and C2-C4, finding 12]`), or when the summary held shows `unread_count` 0. So while `lastRead` is in the window, DM-23 2.3 holds as written; otherwise DM-25 3.1's three grounds apply: the window from its start up to `seen` holds a message from the other member, or the summary held shows a count above zero, or no summary is held. A summary at 0 still never suppresses the window's own evidence (`passesOther` is tested first). The target is always `seen`; at most one command per epoch is in flight; 3.2's triggers are unchanged.
+- **Why one test suffices:** `lastRead` is set only by a successful command (`:320`) and cleared wherever the store forgets the position: `resetConversation` (`:186`; another conversation or another owner) and `revoke()` (`:338`). It starts `null` (`:83`). So "a command has succeeded in this opening" is `lastRead !== null`, and `from >= 0` implies it; the one window test covers both that a command has succeeded and that the window still holds its position. The test is computed from `accepted` at each call, not stored, so no assignment to `accepted` can leave the position treated as known while `lastRead` is outside the window.
+- **`cursorKnown` is removed,** in every place it stood at `27999c7`: its declaration and comment (`:89-93` there), its clear in `resetConversation` (`:191` there), its set on the command's success (`:322` there), its clear in `revoke()` (`:341` there) and its use in the hold-back test (`:315` there). It was set with `lastRead` and cleared with it, so it was true exactly when `lastRead` was set and added nothing to the window test (DM-27 item 1); with it gone, F2 (its two clears untested) has nothing left to test (DM-27 1.2).
+- **The amendment** (DM-27 1.1): DM-25 3.1's "Once a command has succeeded, DM-23 2.3 holds as written" reads "While `lastRead` is among the loaded accepted messages, DM-23 2.3 holds as written". The comments at `store.ts:58-60` (the class) and `:298-304` (`moveReadCursor`) state it.
+
+### Items 1 to 4
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the rule** (DM-27 1.1) | Done | `apps/mobile/src/chat/store.ts:313` (the test), `:310` [`:309`; re-review finding 12] (`from`), `:298-304` and `:58-60` (the comments); `cursorKnown` removed (above) | `store.test.ts:649` (a), `:660` (b), `:673` (c), with `:193` |
+| **2, the tests** (DM-27 1.2) | Done: (a), (b), (c); reversals S1, S1b, S2 (check 6). No existing test changed | `apps/mobile/src/chat/store.test.ts:613` (`stale`), `:619` (`staleOnce`, the test transport), `:635` (`staleReload`), `:649`, `:660`, `:673` | Check 6 |
+| **3, the README** (DM-27 1.3) | Done. The cursor sentence now ties the fallback to the window, not to "until a command has succeeded" | `apps/mobile/README.md:405-410` | — |
+| **4, the record** | Done: this section | This file | — |
+
+**Which test covers each of DM-27 1.1 and 1.2's cases:**
+
+- **1.1, the position unknown once `lastRead` leaves the window:** (a) `store.test.ts:649` and (b) `:660`. **1.1, the position known while `lastRead` is in the window:** (c) `:673`, and the inherited `:193`.
+- **1.2 (a), the reviewer's sequence with no summary held** (`:649`): Jules sends A; the conversation is opened with no list read; A is viewed and the command to it succeeds (its response leaves the store's list empty, so no summary is held); Jules sends B; 20 of the member's own are accepted through the transport; the next poll's head read is answered `stale_version`, and the store reloads the newest page alone (the last `messages` request has cursor `null`; A and B lie before it). Viewing the newest sends one command, to `seen` (`Mine 20.`), and a list read then shows 0.
+- **1.2 (b), the same with a summary held at 0** (`:660`): the list is read after A arrives (count 1), and the command to A leaves the summary at 0. After the `stale` reload, viewing the newest sends nothing (DM-25 3.4 (c)'s rule); the next list read (count 1, a changed summary, DM-25 3.2) sends one command, to `seen`, and the count clears, then reads 0 again.
+- **1.2 (c), a `stale` reload that keeps `lastRead` within the newest page** (`:673`): A is viewed and its command succeeds; 19 of the member's own follow, so the reloaded newest page holds A as its oldest message (`from` is 0); no summary is held. Reporting the member's own newer messages in view, five times over, and three polls send nothing: only the known position holds the move back (DM-23 2.3).
+- **The test transport** (`staleOnce`, `:619`): composed with `cursorLog` through `chatSetup`'s transport wrapper; once armed, it answers the next `messages` request made with a cursor with Glow's `stale_version` envelope (`:613`), as C1 answers a newer cursor whose boundary it cannot place. Each test asserts that exactly one head read was so answered. The fixture adapter is unchanged.
+
+### Existing tests
+
+**None changed.** Every existing store test passes unchanged at the code head, the CX9 tests (`store.test.ts:490` to `:574`) and the CX10 tests (`:281` to `:326`) included, with C2-C1's `:94`, `:161`, `:173`, `:193`, `:210` and `:226`. In each of them a successful command's `lastRead` stays in the window: nothing there replaces the window after a command, and `loadOlder` and the head read's incremental merge only add messages. The new tests were appended after the last test (`:597`), so no earlier line reference in this record moves.
+
+### Fix reversals
+
+Each reversal ran in a copy outside the repository (`$scratchpad/rev/apps/mobile`, made with `tar` from the checkout without `node_modules` and `.work`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's), with absolute paths, through a script that writes the copy's `store.ts`, prints its diff against the fixed file, runs `node --test src/chat/store.test.ts` there and restores the file. After the series the copy's `store.ts` equalled the checkout's (`cmp`), and `git status` in the checkout showed only this work's three files. Of 42 store tests:
+
+- **S0, the fixed `store.ts` (the control):** 42 of 42 passed.
+- **S1, the position treated as known once a command has succeeded, whatever the window holds: the whole `store.ts` at the start commit (today's code, with `cursorKnown`):** 2 failed: **(a)** `:649`, at `:655` (`log.targets.slice(1)` was `[]`: no command), and **(b)** `:660`, at `:667` (no command after the list read). (c) passed.
+- **S1b, the same with the flag gone: `from >= 0` replaced by `this.lastRead !== null`:** the same 2 failed, (a) and (b), at the same lines.
+- **S2, the position treated as unknown even with `lastRead` in the window: `from >= 0 ||` removed from the hold-back test:** 2 failed: **`:193`**, at `:207` (2 commands, expected 1: the member's own newer messages sent one), and **(c)** `:673`, at `:680` (2 commands, expected 1).
+
+### Checks
+
+1. **The diff.** `git diff --check 1506986… 85b9844` printed nothing. `git diff --name-only 1506986… 85b9844` (3 paths): `apps/mobile/README.md`, `apps/mobile/src/chat/store.test.ts`, `apps/mobile/src/chat/store.ts`; 92 lines added, 23 removed. The records commit adds this section after the existing sections, which are unchanged. All owned paths; `testing.ts` unchanged (no helper was needed).
+2. **Classification**, the trusted policy from `main` (`a8e9528…`) extracted to a temporary directory outside the tree, run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base 1506986440e5c7bfa7039e58cea66792d7f52777 --head 85b98444320326742e642e8f2d01f720cfb77f27 --merge-base` printed `{"full": true, "reason": "behavior-or-empty", "paths": ["apps/mobile/README.md", "apps/mobile/src/chat/store.test.ts", "apps/mobile/src/chat/store.ts"]}`. Full scope, as expected.
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then `packages/contracts`, each exit 0.
+4. **The offline checks**, at `1506986` (start) and at `85b9844`:
+   - **The contracts:** `npm run generate`, then no diff (both times); `npm run check`: `Generated types and runtime validators match schemas.`, **586 → 586** of 586.
+   - **The mobile app:** `npm run check` (typecheck, lint, unit tests): **610 → 613** of 613, `ℹ fail 0` (the store's tests 39 → 42). `EXPO_OFFLINE=1 npm run check:expo`: `Dependencies are up to date`, exit 0 both times. `EXPO_OFFLINE=1 npm run export:development`: `Exported: .work/native-export`, exit 0 both times.
+   - **`npm run test:rendered`, informational, not the pinned browser:** the container's Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it. At the code change: **97 passed (4.8m)**, among them `rendered/chat.spec.ts:87`, the long conversation (5.8 s).
+5. **What stays unchanged.** `git diff 1506986… 85b9844` is empty over `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`; `apps/mobile/src/contracts/generated/`; `apps/mobile/src/chat/fixture-adapter.ts` and `testing.ts`; `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`; and `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+6. **The reversals:** above, three (with the control), each failing the tests DM-27 1.2 names.
+7. **The run of record:** Foundation push run [40160547922](https://github.com/amthorn78/glow-dating-app/actions/runs/40160547922), attempt 1, on `85b98444320326742e642e8f2d01f720cfb77f27`, branch `claude/busy-turing-ics7ou`, 25 October 2026 04:04:35 to 04:11:40 UTC. **All eight jobs `success`**: Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate, whose step printed `Application checks passed` (its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`). Nothing was pushed to the branch until the run had finished; the run was not re-run or dispatched.
+   - **Mobile checks**, 04:04:44 to 04:11:20: **6 min 36 s against its 15-minute timeout**, so 8 min 24 s to spare. The rendered step ("Render and exercise account onboarding"), 04:06:24 to 04:11:15: **4 min 51 s**. Against C2-C2's run 40152538074 (6 min 31 s, rendered 4 min 55 s): 5 s longer, and 4 s shorter. The whole log (2,850 lines) was searched for these lines and for any failure or retry: none (its one `##[warning]` is the runner's Node.js 20 deprecation notice for `actions/upload-artifact`).
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 613`, `ℹ pass 613`, `ℹ fail 0` (610 before this work), with F1 (a), (b) and (c) among them.
+     - `check:expo`: `Dependencies are up to date`; `export:development`: `Exported: .work/native-export`.
+     - The rendered tests: **`97 passed (4.8m)`**, against the pinned Chromium the job installs. All thirteen of `rendered/chat.spec.ts` passed, among them the read-cursor tests `:34` (10.9 s), **`:87` a long conversation: unread does not clear until the newest message is in view (5.7 s)**, `:108` and `:121` (8.3 s), and the revoked state `:195`, both ways (2.1 s, 2.0 s).
+   - **API mobile smoke:** `success`; `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs**, unchanged by this work and passing: Change scope (04:04:37 to 04:04:42), API checks (04:04:44 to 04:05:34), API artifact checks (04:04:44 to 04:05:03), Stream proof checks (04:04:45 to 04:06:25), Database proof checks (04:04:44 to 04:11:33; its suite 04:05:26 to 04:11:28). Their logs were not read beyond their conclusions.
+8. **Secret scan** over the code diff's 92 added lines: JWT shapes, private-key headers, cloud key prefixes, token prefixes, credential assignments, e-mail addresses, runs of 32 or more hexadecimal characters, and the HDE and `STREAM_*` names: no match. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at:** no design condition departed from; no contract, dependency, fixture-adapter, `testing.ts`, screen, workflow or service change; the revocation path (DM-24 1.1 to 1.3) and DM-25 3.2's triggers are unchanged (the diff touches `revoke()` and `resetConversation` only to drop `cursorKnown`'s clear).
+- **One choice recorded:** the tests are appended at the end of `store.test.ts`, not beside the CX10 tests, so that every earlier line reference in this record still holds.
+- **Findings outside the work:** none in a fix-here class.
+- **Limits:**
+  - **F1's reach** is as DM-27 states it: C1 answers `stale_version` to a newer cursor only when the cursor cannot be read, or its match or boundary cannot be placed; the fixture answers a page request `stale_version` only for a cursor that names no accepted message of the match, which the app never sends. The tests reach the path only through the test transport.
+  - **A position known from `lastRead` is the store's own.** While `lastRead` is in the window, the store relies on Glow's cursor being at least there (Glow moves it forward only), as DM-23 2.3 did; an older page that brings `lastRead` back into the window makes the position known again on the same ground.
+  - **The cursor's position** stays out of the contracts (C2C1-X1, for P11).
+  - **Local rendered runs used Chromium 1243, not the pinned revision;** the pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know
+
+- **F1, CX10 and C2's item 8** (DM-27 1.4): the rule is `store.ts:313`, with `from` at `:310` [`:309`; re-review finding 12]; the comments at `:58-60` and `:298-304` state it. The tests are `store.test.ts:649` (a), `:660` (b) and `:673` (c), with the transport at `:613` to `:647`; `:193` and `:210` unchanged.
+- **Every assignment to `accepted`** at the code head, and what it does to the position:
+  - `resetConversation`, `:186`: emptied, with `lastRead = null` on the same line; unknown.
+  - `mergeHead`'s newest branch, `:256`: replaced by the newest page. Reached with cursor `null`: the first read after a reset or a revocation (`lastRead` already `null`), or the read queued after a `stale` answer (`:244`). `lastRead` may fall outside; `from` is then −1 and 3.1's grounds apply (F1's path, tests (a) and (b)); if the page still holds it, the position stays known (test (c)).
+  - `mergeHead`'s incremental branch, `:265`: messages replaced in place or appended; none removed, so `lastRead` keeps its place.
+  - `loadOlder`, `:281`: older messages prepended; none removed. It can bring `lastRead` back into the window, which makes the position known again; its 3.2 trigger (`:285`) is unchanged.
+  - `revoke()`, `:338`: emptied, with `lastRead = null` on the same line.
+- **Every assignment to `lastRead`:** its initial `null` (`:83`), `resetConversation` (`:186`), the command's success (`:320`, to the target, which was in `accepted` when the command was sent) and `revoke()` (`:338`). After the success, the follow-up (`:327`) re-applies the rule with the window as it then stands, so a reload made while the command was in flight is covered by the same test.
+- **No stored flag remains:** the hold-back test reads `accepted` and `lastRead` at each call, so no path can leave the position treated as known while `lastRead` is outside the window.
+- **Security focus:** the revocation path is unchanged apart from dropping `cursorKnown`'s clear in `revoke()` and `resetConversation`; the client boundary, the validators and the display rule are untouched; no import, provider package, `fetch`, socket, `EventSource`, `console` or timer is added; the test transport lives in the test file only.
+- **The run of record** is [40160547922](https://github.com/amthorn78/glow-dating-app/actions/runs/40160547922) on `85b9844`; the records commit is Markdown-only.
+
+## Manager verification of Stage C2-C3 (25 October 2026)
+
+- **Integrated** by fast-forward of the manager branch to the session's head `ccf8392` (code `85b9844`, records `ccf8392`; branch `claude/busy-turing-ics7ou`, under the push filter). Every non-Markdown path at the integrating head is byte-identical to `85b9844`. The session's final report was not relayed in full (its worker restarted after the code push); the manager verified from the pushed branch and its record.
+- **The diff, read whole** (`1506986..ccf8392`): `store.ts` (+14 −16 [corrected from "+16 −14" by App Manager 8, per the re-review's finding 13; AM8-09]), `store.test.ts` (+70), `apps/mobile/README.md` (the cursor sentence) and this record's new section, appended (the earlier text unchanged). All owned paths; `testing.ts`, the fixture adapter and every file on DM-23 2.5's list unchanged.
+- **DM-27 1.1, as read in the code:** `cursorKnown` is removed in all five places (declaration, two clears, the set on success, the hold-back test); the hold-back test at `moveReadCursor` reads `!passesOther && (from >= 0 || held summary at 0)`, so a move is held back by the known position only while `lastRead` is among the loaded accepted messages. `revoke()` and `resetConversation` change only by dropping the flag's clear; DM-25 3.2's triggers are unchanged.
+- **DM-27 1.2:** tests (a) `store.test.ts:649`, (b) `:660`, (c) `:673`, with a `staleOnce` test transport (`:613` to `:647`); no existing test changed; the session's reversals S1 and S1b fail (a) and (b), S2 fails (c) and `:193`, as 1.2 names.
+- **The run of record:** push run [40160547922](https://github.com/amthorn78/glow-dating-app/actions/runs/40160547922) on `85b9844`, read by the manager: all eight jobs `success`, the six application jobs run (not skipped), Mobile checks 04:04:44 to 04:11:20 (rendered step 4 min 51 s), Database proof checks to 04:11:33, Foundation gate success.
+- **Codex's CX11** (P2, posted 03:45 UTC on its review of `1506986`; [thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4369549700), `store.ts:315` at `27999c7`), "Reconsider cursor knowledge after replacing the loaded window", is the re-review's F1 in Codex's words: after a `stale` newer page, the cursorless reload leaves `cursorKnown` true while `lastRead` lies outside the window. The manager answered its thread that the fix is C2-C3's. C2-C3's code addresses it; the thread stays open until C2-C3's re-review.
+- **Next:** Codex's review of this head's code (DM-27 1.4); then C2-C3's exact-head re-review of its delta from `27999c7`.
+- **Codex's code review of `9776c6f`** (which holds C2-C3's code `85b9844`): completed at 04:35 UTC with no finding. C2-C3's exact-head re-review [prompt](../../ephemeral/2026-10-25-p06-2-stage-c2-c3-review-prompt.md) goes to Nathan (DM-27 1.4).
+- **Codex's CX12** (P2, posted 04:38 UTC on its review of `9422d9e`, a records commit whose code is `85b9844`; [thread](https://github.com/amthorn78/glow-dating-app/pull/33#discussion_r4369664712), `store.ts:282`), "Invalidate older-page reads when replacing the loaded window". Its review of `9776c6f`, the same code, had found nothing two minutes earlier.
+  - **The manager's verification, at `85b9844`: the problem is real.** `loadOlder` (`:271-291`) tests only `conversationEpoch` when its page returns. `readHead`'s `stale` branch (`:244` [corrected from `:248` per DM-28 4.3]; the queued read at `:249`) clears `newerCursor` and queues a cursorless read, whose page goes through `mergeHead`'s newest branch (`:255-256`) and replaces `accepted` and `olderCursor` without advancing any epoch. A late older page then prepends its messages to the new window and sets `olderCursor` from its own page, so the history between the two windows cannot be reached by "Show earlier messages" in that opening (Codex's example: 6–25 loaded, 1–5 held, reload 31–50, release: 1–5 then 31–50, `olderCursor` null, 6–30 unreachable).
+  - **It is C2's code** (the `stale` branch is at `cb3a6a6`); C2-C3 did not touch it. Its reach needs the same narrow `stale` answer as F1, with an older-page request in flight. No other member's data, no revoked state and no send is affected.
+  - **The re-review held:** C2-C3's re-review prompt (revision 1 at `9422d9e`) had gone to Nathan; a fix would change the code under it, so the manager told Nathan to hold it (AM7-13).
+  - **Class:** the fix-or-carry choice goes to the Dev Manager as [DM-28](../../ephemeral/2026-10-25-dm-28-p06-2-cx12.md), with the manager's recommendation of a correction pass, C2-C4, before the merge.
+- **DM-28's verdict** (`2d9f1e9`, a read of `771b870`): **CX12 is fixed before the merge, in C2-C4,** with conditions 1.1 to 1.5 (the replacement itself invalidates every older-page request outstanding then, except that a refusal ending access still revokes; "Show earlier messages" never left `loading`; four tests; an audit of the window-bound state; the README unchanged). CX12 does not join the P11 plan. C2-C3's held re-review prompt is withdrawn (2.1); one exact-head re-review of C2-C3 and C2-C4 follows (2.2 to 2.4).
+- **CX12's effect, stated exactly (DM-28 section 3):** the messages stay in order, with a silent gap (in Codex's example, 5 shows directly above 31); "Show earlier messages" disappears, or, if the late page brings an older cursor of its own, loads history before it while the gap stays unreachable. It lasts while the conversation stays selected (leaving and reopening keeps the window: `select()` returns at once for the conversation already selected, `:124`), and ends when another conversation is selected or the account changes, at a revocation, at another `stale` reload, or when the app restarts. An older-page request made after the `stale` answer and before the reload's page is merged is exposed too. [Corrected by App Manager 8: this record and the consultation first said "history out of order and partly unreachable … until it is reopened" (AM8-06).]
+- **Codex on `771b870`:** completed at 04:42 UTC with no new review or comment; its summary's findings flag counts the open threads (CX8 to CX12).
+
+## Stage C2-C4
+
+The correction of Codex's CX12 on PR33 (DM-28, conditions 1.1 to 1.5; the brief's revision 19, "Codex's CX12, and C2-C4"). **CX12:** an older-page request outstanding when a `stale` answer's cursorless reload replaced the loaded window passed `loadOlder`'s epoch check, was put in front of the reload's window, and set `olderCursor` from the discarded window. The history between the two windows was then shown with a silent gap and could not be reached. **All five items done; no departure from a design condition, no contract change, no dependency change, no fixture-adapter change, no README change, no existing test or helper changed.** Offline throughout: no provider call, no network client, no database.
+
+- **Prompt:** revision 1, from commit `ab05992b86965f14e555e3b52050181e37b1af03`.
+- **Start:** `ab05992b86965f14e555e3b52050181e37b1af03`, the head of the manager branch `claude/magical-wozniak-yfmmx2`; `main` was `a8e952895ebd3ffc9ef0e4d195c8a7111c69b3ae` (PR32's merge).
+- **Session branch:** `claude/upbeat-thompson-yis6d0`, under the workflow's `claude/**` push filter.
+- **Code commits:**
+  - `a328bc7449da339a39e6f2557f0b6f1cbb204d46`: the fix and tests (a) to (e);
+  - **`d3d73002c454416f41ef7d787a139e8970759d89`** (tree `61c6ef812af214c0bfbd6796a3ba68c82e038bcd`), the code head: (e) strengthened and (f) added, after this session's own review (below). It changes only the test file.
+- **Records commit:** the commit that adds this section; it changes only this Markdown file.
+- **Run of record:** Foundation push run [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661) on `d3d7300` (check 7). The run on `a328bc7`, [40205573422](https://github.com/amthorn78/glow-dating-app/actions/runs/40205573422), also passed; it finished before `d3d7300` was pushed, and it is not the run of record. The records commit changes only Markdown, so its own run skips the application jobs.
+- **Times:** 25 October 2026, UTC.
+
+### Environment check (names only)
+
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set: the prompt's loop printed nothing. `compgen -e | grep -E '^STREAM_'` printed nothing, so this is the `Glow App - No Stream` environment. `ls -a . apps/mobile packages/contracts | grep -x '\.env'` printed nothing.
+- With `$HOME/.local/bin` first on PATH: `node --version` `v24.19.0`, `npm --version` `11.9.0` (and `python3.12 --version` `Python 3.12.14`).
+- Every mobile and contracts command ran under `env -i PATH=… HOME="$HOME" LANG=C.UTF-8`, plus `EXPO_OFFLINE=1` where the README uses it. The installs got the proxy and CA variables by name reference, never printed.
+
+### Start gate
+
+- `git fetch origin claude/magical-wozniak-yfmmx2 main`, then `git merge --ff-only ab05992…` on the session branch.
+- `git rev-parse HEAD` printed `ab05992b86965f14e555e3b52050181e37b1af03`.
+- `git merge-base --is-ancestor a8e9528… HEAD` printed `C1 present`.
+- `git diff --quiet 85b9844… HEAD -- proofs .github services scripts apps packages` printed `C2-C3's code`.
+- `git diff --stat ab05992… origin/claude/magical-wozniak-yfmmx2 -- apps/ packages/ services/ proofs/ .github/` printed nothing (the manager branch's head was `ab05992` itself).
+- `git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-10-05-p06-2-chat-integration.md | grep -c '^## Stage C2-C4'` printed `0`.
+- The reading list was read before the first change. The change touches no Expo or React Native interface (`store.ts` and its tests are plain TypeScript), so no versioned Expo page was needed.
+
+### The mechanism, and why (items 1 and 2, DM-28 1.1 and 1.2)
+
+**The mechanism: an older-page window epoch, advanced by the replacement itself.**
+
+- **`windowEpoch`** (`apps/mobile/src/chat/store.ts:86`) is advanced in `mergeHead`'s newest branch (`:266`), on the same step that replaces `accepted`, `unsent` and both cursors (`:267`). That is the replacement, not the `stale` answer (`:254`), so a request made after the `stale` answer and before the reload's page is merged carries the old value and is invalidated with the rest.
+- **`loadOlder`** (`:282-305`) captures `windowId = this.windowEpoch` with the conversation's epoch and the cursor (`:283`).
+  - **A success** returns before any change when either epoch has moved (`:291`): nothing is merged into `accepted`, `olderCursor` is not set, nothing is published, and DM-25 3.2's older-page trigger (`:298`) is not reached.
+  - **A failure that does not end access** publishes the older-page error only while `windowId` is still current (`:303`). From an earlier window it publishes nothing and starts nothing.
+  - **A refusal that ends access** (`unavailable` or `signed_out`) revokes whichever window it was asked from (`:303`), unless the conversation's epoch has moved on first (`:300`, unchanged, DM-24 1.1). That is 1.1's exception.
+  - **The one-at-a-time slot** `olderInFlight` is keyed by the window (`:285-286`), not by the conversation's epoch, and cleared only by the request that holds it (`:304`). So an invalidated request neither blocks a request asked from the reload's window nor frees that request's slot when it completes.
+- **The older-page state** (`:244-246`): when `readHead` merges a page asked with no cursor, a `loading` older-page state becomes `idle` in the same publish. At that moment any older request outstanding was asked from the window just replaced, so it is invalidated and can no longer clear the state itself.
+
+**Why this mechanism and not the cursor comparison.**
+
+- An epoch tests the request's own origin. A comparison of the captured cursor with the current `olderCursor` would also have to decide the one-at-a-time slot and the `loading` state separately (DM-28 1.2's note), and it lets an identical cursor through. The epoch needs neither.
+- It follows the store's existing pattern, `conversationEpoch` and `listEpoch` (CX9). No position is computed from a cursor or from `at`.
+
+**Where it bites** (DM-28 1.1). The newest branch otherwise runs only on the first read after a reset or a revocation, and while the conversation holds no accepted message. In both cases `olderCursor` is null, so no older page can be outstanding and the epoch's advance changes nothing. A `loading` state can then not exist either. So the change alters behaviour only on the `stale` path.
+
+**Why the slot cannot collide across conversations.** `olderCursor` is null after `resetConversation` (`:194`) and `revoke()` (`:352`). It is set only at the newest branch (`:267`, after `:266` advances the window) or by a merged older page (`:295`, after `:291` checks both epochs). So whenever `loadOlder` can ask in a conversation's epoch, `windowEpoch` has already moved past every value captured in an earlier one. The comment at `:284` says so.
+
+**When the older-page state becomes `idle`:** once the replacement is merged (`:245`), not when the invalidated request completes. [Annotated by App Manager 8 (DM-29 1.3): a `loading` state becomes `idle` at the replacement; an `error` from before the replacement is kept until DM-29 1.1 lands.] A request asked after the replacement is allowed at once, with the reload's `older_cursor`. It keeps today's behaviour: at most one for the current window at a time, its page merges, its failure shows the error, and a refusal that ends access revokes. Test (e) covers all four.
+
+**The class comment** (`:61-66`) states the rule: "Replacing the window (CX12, DM-28 1.1 and 1.2)".
+
+### Items 1 to 5
+
+| Item | Done | Where | Test |
+|---|---|---|---|
+| **1, the invalidation** (DM-28 1.1) | Done | `store.ts:86`, `:266`, `:283`, `:291`, `:300-303`; the class comment `:61-66` | (a) `store.test.ts:759`, (b) `:773`, (c) `:788`, (d) `:799`, (f) `:845` |
+| **2, the older-page state** (DM-28 1.2) | Done: `idle` once the replacement is merged [a `loading` state; an earlier `error` is kept until DM-29 1.1 lands: App Manager 8, DM-29 1.3]; per-window slot | `store.ts:244-246`, `:284-286`, `:304` | (a), (b), (d) and (e) `:817`; every CX12 test checks `idle` after the replacement (`assertReloaded`, `:730`) |
+| **3, the tests** (DM-28 1.3) | Done: (a) to (d) as DM-28 sets them, plus (e) and (f). Reversals R1 to R9 (check 6). No existing test or helper changed | `store.test.ts:683` to the end | Check 6 |
+| **4, the audit** (DM-28 1.4) | Done: below. One observation beyond CX12, which is not a defect and is not fixed | This section | — |
+| **5, the record** | Done: this section | This file | — |
+
+**Which test covers each of DM-28 1.1 to 1.3:**
+
+- **The helpers** (all appended after C2-C3's last test):
+  - **`pages()`** (`:691`), the test transport. It holds the next `messages` requests chosen, and releases each on its own, so a reload and an older page can be released in either order. A held request reaches the fixture at once, so its page is the one built when it was asked. It is released to succeed, to fail offline, or to be refused with the CX9 gate's `not_found` envelope (as the server answers once access has ended). It records each page's `older_cursor` by the cursor it was asked with.
+  - **The composition:** `cx12()` (`:754`) is `chatSetup(transport => stalled.wrap(paged.wrap(transport)))`, with C2-C3's `staleOnce` outermost. So the `stale` answer bypasses the hold, and the cursorless reload behind it can be held (test (d)).
+  - **The other helpers:**
+    - `windowThenLater` (`:716`): 25 seeded messages, with the window holding 6–25.
+    - `later` (`:721`): Jules sends 26–50, as "Later message n.".
+    - `staleAnswer` (`:723`): the next poll's head read is answered `stale`. It asserts that one was answered and that the last `messages` request had cursor `null`.
+    - `assertReloaded` (`:730`): the window is 31–50 alone, `hasOlder` is true, the older-page state is `idle`, and the reload's page carried an older cursor.
+    - `reachTheGap` (`:737`): "Show earlier messages" is asked with the reload's own `older_cursor` and reaches 11–30, then 1–10, in order, with 50 distinct `submission_id`s and `hasOlder` false at the end.
+    - `heldOlder` (`:748`).
+  - C2-C3's `staleOnce` and the CX9 `gate` are used as they are, unchanged.
+- **1.1 and 1.3 (a), CX12's sequence in Codex's numbers** (`:759`): 6–25 loaded; the older page 1–5 held; 26–50 arrive; one head read answered `stale`, and the reload shows 31–50 with its own `older_cursor`. Releasing the held page publishes nothing (the snapshot object is identical) and starts no request (the fixture's request log is unchanged). Then `reachTheGap`.
+- **1.1, 1.2 and 1.3 (b), the held page failing offline** (`:773`): the window and its cursor are unchanged (same snapshot), there is no older-page error, the state is `idle` (already after the replacement, and still after the failure), no request is started, then `reachTheGap`.
+- **1.1's exception and 1.3 (c), the held page refused** (`:788`): `assertRevoked` (`:479`).
+- **1.1 and 1.3 (d), asked after the `stale` answer and before the reload's merge** (`:799`): the reload is held, and the window 6–25 is still loaded. The older page is then asked with the discarded window's `older_cursor` (asserted to differ from the reload's) and held. The reload is released first (`assertReloaded`), then the older page: nothing published, no request, then `reachTheGap`.
+- **1.2, (e), a request asked after the replacement** (`:817`, for success, failure and refusal): with the invalidated page still held, a second older page is asked with the reload's cursor, and a third press sends nothing. Releasing the invalidated one publishes nothing, so the state stays `loading`. A press after that still sends nothing (`:834`): the slot is still the current window's. Then the current one is released:
+  - its page merges (11–50, `idle`);
+  - or its failure shows the error (31–50, `error`);
+  - or its refusal revokes (`assertRevoked`).
+- **1.1's "starts nothing: no cursor command", (f)** (`:845`): after the reload, the newest message is viewed while the fixture is offline. Its command is sent and fails (`read_cursor` count +1), so a move is waiting to be retried. Releasing the held older page publishes nothing and starts no request. The waiting move follows the next poll, as DM-23 2.3 has it.
+
+### Existing tests
+
+**None changed, and no existing helper changed.** Every existing store test passes unchanged at the code head: the CX9 tests (`store.test.ts:490` to `:574`), the CX10 tests (`:281` to `:326`), C2-C3's (a) to (c) (`:649`, `:660`, `:673`) and C2-C1's. The new code is appended after C2-C3's last test (`:681`), so no earlier line reference in this record moves. `testing.ts` is unchanged: no helper was needed there.
+
+### The audit (item 4, DM-28 1.4)
+
+Each piece of window-bound state across a replacement (`mergeHead`'s newest branch, `store.ts:265-268`), with the code that handles it, at `d3d7300`. [Annotated by App Manager 8: the exact-head re-review of C2-C3 and C2-C4 confirmed this audit and named five omissions (its finding 8), listed in "Exact-head review of Stages C2-C3 and C2-C4".] This is this session's own trace, checked independently by its review (below).
+
+- **`accepted`, `unsent`, `olderCursor`, `newerCursor`:** replaced from the reload's page (`:267`). `hasOlder` is recomputed from `olderCursor` on every publish (`:125`). Nothing of the discarded window survives.
+- **An outstanding older page:** invalidated at the replacement (`:266`).
+  - Its success changes nothing and starts nothing (`:291`).
+  - Its failure shows nothing (`:303`).
+  - Its refusal that ends access revokes (`:303`).
+  - Its slot does not block or free the current window's (`:285-286`, `:304`).
+  - Tests (a) to (f).
+- **The older-page state:**
+  - **`loading`** becomes `idle` in the replacement's publish (`:245`).
+  - **`error`** is kept: see the observation below.
+- **`lastRead`:** not changed by the replacement. `moveReadCursor` reads it against the window at each call (`:323`; `indexOf` is −1 outside it), so a position outside the window is treated as unknown (DM-27 1.1; C2-C3's tests).
+- **`seen`:** not changed by the replacement, and it may fall before the new window. `moveReadCursor` then finds `to` = −1 and sends nothing until the screen reports a message in view. `noteSeen` (`:155-161`) then moves `seen` to the newest accepted message in view, which is a forward move: a newest page that does not hold `seen` holds only later messages.
+  - DM-28 section 3 notes that CX12's join could move `seen` backward (viewing the late page's messages). The fix removes that path: no page from a discarded window is merged.
+- **`visible`:** the screen's last report, by `submission_id`. It is compared with `accepted` only when a report or the return to the foreground calls `noteSeen`, and an ID outside the new window matches nothing. Not window-bound.
+- **`cursorRetry`:** retried after the next read (`:249`) against the window as it then stands. The retry reads `seen` and `lastRead` against `accepted` at that call. Test (f) shows a waiting retry is neither started by an invalidated page nor lost.
+- **A cursor command in flight:** its success sets `lastRead` to its target (`:334`), which may lie outside the new window, where DM-27 1.1 treats the position as unknown. Its follow-up (`:341`) re-applies the rule to the window as it then stands. Its failure sets `cursorRetry`, and a refusal that ends access revokes (`:339`). Unchanged.
+- **A send in flight:** not tied to the window. Its success asks for a head read (`:390`), which the reload's slot queues behind it (`headAgain`, `:236`) and which then uses the reload's `newer_cursor`. Own unsent messages come from the reload's page (`:267`). Unchanged.
+- **A list read in flight:** not tied to the window (the summary is per conversation). A changed summary calls `moveReadCursor`, which reads the current window. Unchanged.
+- **A head read, and one queued behind it:** the reload is the only head read in flight (`:236`). A read queued behind it (`headAgain`) is sent after it with the reload's `newer_cursor` (`:259`). The `stale` branch itself sets `headAgain` (`:254`). Unchanged.
+
+**One observation beyond CX12, recorded and not fixed: an older-page error from before the replacement survives it.** This is not a defect, by this session's reading.
+
+- **The path:** the window holds 6–25. "Show earlier messages" fails offline while that window is current, so the error is published (`:303`; the request was not invalidated). Then a head read is answered `stale`, and the reload replaces the window. `:245` resets only `loading`, so "Earlier messages could not be loaded. Try again." (`screen.tsx:166`) stays shown over the reload's window until the next press.
+- **Why it is not a defect:**
+  - The button stays enabled (`screen.tsx:165` disables it only while `loading`), and a press asks with the reload's `older_cursor`.
+  - The text stays true of the member's last attempt.
+  - It is today's behaviour: before this change, `readHead`'s publish never touched `older`, so an older-page error already survived every head read, the reload included.
+  - DM-28 1.1 rules out an error shown by an *invalidated* response, and this failure completed before the replacement.
+- **For the Dev Manager:** whether the replacement should also clear an earlier `error`. That is a one-word change at `:245`. It is recorded here, with its path, under DM-28 1.4 and DM-25 1.2, and is not in C2-C4.
+
+**What the code does not need**, as DM-28 section 3 states and this audit confirms:
+
+- `stale` to a cursorless read, and `stale` to an older cursor while the newer one still reads, need no change. The contracts give `stale_version` to a read only for its cursor.
+- C1's `reads.py` gives a newest page a `newer_cursor` whenever it holds an accepted message, and an `older_cursor` only with one. So a cursorless head read with an older cursor held occurs only after a `stale` answer.
+
+### The session's own review (before the records commit)
+
+After the first code commit (`a328bc7`), three independent reviewers read the diff, without being given this session's conclusions:
+
+- **correctness,** against DM-28 1.1 and 1.2 and the unchanged rules;
+- **an independent audit** of the window-bound state (DM-28 1.4);
+- **test adequacy,** against DM-28 1.3.
+
+Each finding was then given to a skeptic told to refute it. Each reviewer ran mutations only in the scratch copy.
+
+- **Correctness:** no defect. It confirmed:
+  - the slot cannot collide across conversations;
+  - two successive `stale` reloads, with requests from both earlier windows released out of order, change nothing;
+  - a reload that fails offline leaves an older page from the same window to merge normally.
+- **The audit:** no defect. It raised the error observation above. Its skeptic refuted it as a defect, for the reasons given, so it is recorded as an observation.
+- **Test adequacy:**
+  - **Confirmed, and fixed in `d3d7300`:** at `a328bc7`, removing the window guard from `loadOlder`'s `finally` (`:304`) left every test passing. (e) asked a second time only while the invalidated request was still held. (e) now asks again after it completes (`:834`); reversal R9.
+  - **A nit, also taken in `d3d7300`:** no CX12 test could detect DM-25 3.2's trigger firing on an invalidated page, because `seen` was null. (f) holds a failed move waiting to be retried; reversal R8.
+  - **Refuted:** that the whole-file reversal (R1) stops at the `idle` check before reaching the merge. It does, and the record cites the targeted reversals (R4, R7) for the merge and the error. R1 still fails every CX12 test, as DM-28 1.3 requires.
+
+### Fix reversals
+
+**The setup:**
+
+- Each reversal ran in a copy outside the repository: `$scratchpad/rev/apps/mobile`, made with `tar` from the checkout without `node_modules` and `.work`, with `packages/contracts/fixtures` and `production` beside it and `node_modules` linked to the checkout's.
+- Every path was absolute. A script wrote each variant of the copy's `store.ts`, printed its diff against the fixed file, ran `node --test src/chat/store.test.ts` there, and restored the file.
+- After the series, the copy's `store.ts` equalled the checkout's (`cmp`). `git status` in the checkout showed nothing but this work.
+
+**The results**, over 50 store tests, each failure at its first failing assertion:
+
+- **R0, the fixed `store.ts` (the control):** 50 of 50 passed.
+- **R1, today's code** (`store.ts` at `ab05992`, the reversal DM-28 1.3 names for (a), (b) and (d)): 8 failed, every CX12 test: (a), (b), (c), (d), (e) ×3 and (f), each at `:733`. After the reload, the older-page state was `loading`, not `idle`: the held request still held it. The 42 earlier tests passed.
+- **R2, 1.1's exception removed** (an invalidated refusal that ends access dropped: `:300` also tests `windowId`): 1 failed, **(c)** `:788`. Not revoked.
+- **R3, a mechanism that invalidates only the requests made before the `stale` answer** (`windowEpoch` advanced in `readHead`'s `stale` branch instead of at `:266`): 1 failed, **(d)** `:799`, at `:812` ("nothing published"). The page asked after the `stale` answer was merged into the reload's window.
+- **R4, an invalidated failure shows the error** (`:303`'s `windowId` test removed): 1 failed, **(b)** `:773`, at `:782` ("nothing published"). Today's error.
+- **R5, no `idle` at the replacement** (`:245`'s reset removed): 8 failed, every CX12 test, at `:733` (`loading`).
+- **R6, today's one-at-a-time guard** (`olderInFlight` keyed by the conversation's epoch, `:285-286` and `:304`): 3 failed, **(e)** ×3 `:817`, at `:751`. The request asked after the replacement was never sent while the invalidated one was held.
+- **R7, a successful page from a replaced window is merged** (the window test removed from `:291` only: CX12's merge itself): 6 failed:
+  - **(a)** `:759`, at `:768` ("nothing published": 1–5 were joined in front of 31–50 and `olderCursor` was replaced);
+  - **(d)** at `:812`;
+  - **(e)** ×3, at the invalidated release;
+  - **(f)** at `:860`.
+- **R8, an invalidated success fires DM-25 3.2's trigger before returning:** 1 failed, **(f)** `:845`, at `:860`. The waiting move was sent on the release, and its response published the list.
+- **R9, the `finally` clears the slot whichever window it was asked from** (`:304` unguarded): 3 failed, **(e)** ×3, at `:834`. A second request for the current window was sent after the invalidated one completed.
+
+### Checks
+
+1. **The diff.**
+   - `git diff --check ab05992… d3d7300` printed nothing.
+   - `git diff --name-only ab05992… d3d7300` printed 2 paths: `apps/mobile/src/chat/store.test.ts` and `apps/mobile/src/chat/store.ts`.
+   - 204 lines added, 7 removed.
+   - The records commit adds this section after the existing sections, which are byte-identical.
+   - All owned paths. `testing.ts` and the README are unchanged.
+2. **Classification**, with the trusted policy from `main` (`a8e9528…`), extracted to a temporary directory outside the tree and run from the repository root: `python3 -I "$policy_dir/change_scope.py" --base ab05992b86965f14e555e3b52050181e37b1af03 --head d3d73002c454416f41ef7d787a139e8970759d89 --merge-base` printed `{"full": true, "reason": "behavior-or-empty", "paths": ["apps/mobile/src/chat/store.test.ts", "apps/mobile/src/chat/store.ts"]}`. Full scope, as expected.
+3. **Installs**, in clean processes: `npm ci --ignore-scripts` in `apps/mobile`, then in `packages/contracts`, each exit 0.
+4. **The offline checks**, at `ab05992` (the start, with the change stashed) and at the code:
+   - **The contracts:** `npm run generate`, then no diff (both times). `npm run check`: `Generated types and runtime validators match schemas.`, then **586 → 586** of 586.
+   - **The mobile app, `npm run check`** (typecheck, lint, unit tests): **613 → 621** of 621, `ℹ fail 0`. The store's tests went 42 → 50: 49 at `a328bc7`'s content (620), 50 at `d3d7300` (621).
+   - **The mobile app, the Expo checks:** `EXPO_OFFLINE=1 npm run check:expo` printed `Dependencies are up to date`, and `EXPO_OFFLINE=1 npm run export:development` printed `Exported: .work/native-export`. Each exited 0 both times. At the head they ran on `a328bc7`'s content, whose `store.ts` is `d3d7300`'s; `d3d7300` changes only a unit-test file.
+   - **`npm run test:rendered`, informational, not the pinned browser:**
+     - It used the container's Chromium 1243 under `/opt/pw-browsers`, not the revision `@playwright/test` pins; `playwright install` was not run. A configuration in the scratchpad pointed the unchanged `playwright.config.ts` at it.
+     - On the fixed `store.ts`: **97 passed (4.9m)**, among them `rendered/chat.spec.ts:87`, the long conversation (6.0 s).
+5. **What stays unchanged.** `git diff ab05992… d3d7300` is empty over all of the following:
+   - `apps/mobile/README.md`;
+   - `apps/mobile/package.json`, `package-lock.json`, `.npmrc` and `dependency-inventory.json`;
+   - `apps/mobile/src/contracts/generated/`;
+   - `apps/mobile/src/chat/fixture-adapter.ts` and `testing.ts`;
+   - `apps/mobile/app.config.ts` and `apps/mobile/scripts/development.mjs`;
+   - `packages/`, `services/`, `proofs/`, `.github/` and `scripts/`.
+6. **The reversals:** R0 to R9, above. Each fails the tests DM-28 1.3 names, and R6, R8 and R9 fail those of (e) and (f).
+7. **The run of record:** Foundation push run [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661), attempt 1, on `d3d73002c454416f41ef7d787a139e8970759d89`, branch `claude/upbeat-thompson-yis6d0`, 25 October 2026 15:18:35 to 15:26:25 UTC.
+   - **All eight jobs `success`:** Change scope, API checks, API artifact checks, API mobile smoke, Mobile checks, Stream proof checks, Database proof checks and Foundation gate.
+   - **The gate's step printed `Application checks passed`.** Its `RESULTS` show `scope` `full: "true"` and the six application jobs `success`.
+   - Nothing was pushed to the branch after `d3d7300` until the run had finished. The run was not re-run or dispatched.
+   - **Mobile checks,** 15:18:46 to 15:25:27: **6 min 41 s against its 15-minute timeout**, so 8 min 19 s to spare. The rendered step ("Render and exercise account onboarding"), 15:20:31 to 15:25:23: **4 min 52 s**. Against C2-C3's run 40160547922 (6 min 36 s, rendered 4 min 51 s): 5 s longer and 1 s longer.
+     - The whole log (2,859 lines) was searched for these lines and for any failure: no `✖`, `not ok` or `##[error]`. Its one `##[warning]` is the runner's Node.js 20 deprecation notice for `actions/upload-artifact`.
+     - The contracts' `npm run check`: `Generated types and runtime validators match schemas.`, then `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`.
+     - The app's `npm run check`: `ℹ tests 621`, `ℹ pass 621`, `ℹ fail 0` (613 before this work), with all eight CX12 tests (`✔ CX12`, eight lines) among them.
+     - `check:expo`: `Dependencies are up to date`. `export:development`: `Exported: .work/native-export`.
+     - **The rendered tests: `97 passed (4.8m)`,** against the pinned Chromium the job installs. All thirteen of `rendered/chat.spec.ts` passed, among them `:34` (10.7 s), **`:87` a long conversation: unread does not clear until the newest message is in view (5.5 s)**, `:108` (5.3 s), `:121` (8.3 s), `:181` the older page (5.1 s), and the revoked state `:195`, both ways (2.0 s each).
+   - **API mobile smoke:** `success`. It printed `PASS: spawned loopback API -> mobile TypeScript client; live 200, ready 503, deterministic pending fixtures, writes 405.`, then `ℹ tests 1`, `ℹ pass 1`, `ℹ fail 0`.
+   - **The other jobs,** unchanged by this work and passing: Change scope (15:18:37 to 15:18:44), API checks (15:18:46 to 15:19:30), API artifact checks (15:18:46 to 15:19:05), Stream proof checks (15:18:46 to 15:20:24), and Database proof checks (15:18:46 to 15:26:21; its suite 15:19:33 to 15:26:17). Their logs were not read beyond their conclusions.
+   - **The run on `a328bc7`,** [40205573422](https://github.com/amthorn78/glow-dating-app/actions/runs/40205573422): `completed`, `success`, 15:09:08 to 15:16:37 UTC. It is not the run of record, and its jobs were not read.
+8. **Secret scan** over the code diff's added lines (204), and again after `d3d7300`. The patterns:
+   - JWT shapes, private-key headers, cloud key prefixes and token prefixes;
+   - credential assignments and e-mail addresses;
+   - runs of 32 or more hexadecimal characters;
+   - the HDE and `STREAM_*` names.
+
+   No match. In this section, the only matches are the full commit and tree SHAs it quotes and the variable names the environment check names.
+
+### Deviations, findings and limits
+
+- **No departure stopped at.**
+  - No design condition was departed from.
+  - There is no contract, dependency, fixture-adapter, `testing.ts`, README, screen, workflow or service change.
+  - The revocation path (`revoke()`, and every `ends(code)` branch) is unchanged.
+  - The cursor rule and DM-25 3.2's triggers for a merged page are unchanged: `moveReadCursor` is untouched, and `:298` still fires for a merged older page.
+- **Two choices recorded:**
+  - **Two code commits:** `a328bc7` was pushed before this session's own review had reported, and the review's two test findings were taken in `d3d7300`. The run of record is `d3d7300`'s. `a328bc7`'s run finished before `d3d7300` was pushed.
+  - **Two tests beyond DM-28 1.3's four:** (e) for 1.2's request made after the replacement, and (f) for 1.1's "no cursor command". DM-28 1.3's (a) to (d) are as written.
+- **Findings outside the work:** none in a fix-here class. One observation (an older-page error surviving the replacement) is recorded in the audit, with its path, for the Dev Manager. It is not fixed.
+- **Limits:**
+  - **CX12's reach** is as DM-28 states it: C1 answers `stale_version` to a newer cursor only when the cursor cannot be read, or its boundary cannot be placed (`reads.py:389-411`). The fixture never answers it to a cursor the app sends, so the tests reach the path only through C2-C3's `staleOnce`.
+  - **The cursor's position** stays out of the contracts (C2C1-X1, for P11).
+  - **Local rendered runs used Chromium 1243, not the pinned revision.** The pinned-browser evidence is the run of record's.
+
+### What the exact-head re-review must know (DM-28 2.2)
+
+**Every request that can be outstanding when the window is replaced** (`mergeHead`'s newest branch, `store.ts:265-268`), and how each is handled:
+
+- **A head read:** none but the reload itself. One head read at a time per conversation epoch (`:236`), and the reload is sent from the `stale` read's `finally` (`:259`).
+- **A head read queued behind it** (`headAgain`, from a return to the foreground, an authority change, `retryRead` or a send's success): sent after the reload with the reload's `newer_cursor` (`:259`). Unchanged.
+- **An older page** asked before the `stale` answer, or after it and before the merge: invalidated by `:266`. Its success is dropped at `:291`. Its non-ending failure is dropped at `:303`. Its refusal that ends access revokes at `:303`, unless the conversation's epoch moved (`:300`). Its slot is the old window's (`:285-286`, `:304`). Tests (a) to (f).
+- **An older page asked after the merge:** today's behaviour, under the per-window slot. Test (e).
+- **A cursor command:** not invalidated (it names a `submission_id`, not a window). Its success sets `lastRead`, which DM-27 1.1 reads against the window at each call. Its follow-up (`:341`) and its retry (`:249`) re-apply the rule to the window as it stands. Unchanged, from C2-C3.
+- **A send:** not invalidated. Its success queues a head read behind the reload. Unchanged.
+- **A list read:** not invalidated (per conversation, not per window). Unchanged.
+
+**Further points for the re-review:**
+
+- **The window-bound state:** the audit above, which DM-28 2.2 asks the re-review to check, not take from this record. It includes the one observation (an older-page `error` kept across the replacement, `:245`).
+- **The delta from `85b9844`:**
+  - `store.ts` +21 −7: the class comment, `windowEpoch`, `:244-246`, `:266` and `loadOlder`;
+  - `store.test.ts` +183, appended after `:681`.
+  - The security focus is unchanged: no import, provider package, `fetch`, socket, `EventSource`, `console` or timer is added. The test transport lives in the test file only.
+- **The run of record** is [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661) on `d3d7300`. The records commit is Markdown-only.
+
+## Manager verification of Stage C2-C4 (25 October 2026)
+
+- **Codex on `ab05992`** (the commit holding C2-C4's prompt, DM-28 3.1): its automatic pass showed "running" from 13:30:47 UTC with no result for over an hour. At Nathan's direction the manager posted `@codex review` at 14:48 UTC ([comment](https://github.com/amthorn78/glow-dating-app/pull/33#issuecomment-6399086333)); the manual pass completed at 14:50 UTC, "Didn't find any major issues", with no new review thread. C2-C4's prompt then went to Nathan with its start commit `ab05992`.
+- **Integrated** by fast-forward of the manager branch to the session's head `b60409b` (code `d3d7300`, records `b60409b`; branch `claude/upbeat-thompson-yis6d0`, under the push filter). Every non-Markdown path at `b60409b` is byte-identical to `d3d7300` (the records commit changes only this file).
+- **The diff, read whole** (`ab05992..b60409b`): `store.ts` (+21 −7), `store.test.ts` (+183, appended after C2-C3's last test) and this record's new section, appended (the earlier text unchanged). `git diff --check` is clean. All owned paths; `testing.ts`, the README, the fixture adapter and every file on DM-23 2.5's list unchanged.
+- **Classification** with the trusted policy from `main` (`a8e9528`), run with `python3 -I` outside the tree, `--base ab05992… --head b60409b… --merge-base`: `{"full": true, "reason": "behavior-or-empty"}`, over the three paths above.
+- **DM-28 1.1 and 1.2, as read in the code:**
+  - `windowEpoch` (`store.ts:86`) is advanced in `mergeHead`'s newest branch (`:266`), the replacement itself, so a request asked after the `stale` answer (`:254`) and before the merge is invalidated too.
+  - `loadOlder` captures the window with the conversation's epoch (`:283`). An invalidated success returns before any change, so DM-25 3.2's trigger (`:298`) is not reached (`:291`); an invalidated failure publishes nothing (`:303`); a refusal that ends access revokes unless the conversation's epoch has moved on (`:300`, `:303`).
+  - The one-at-a-time slot is keyed by the window and cleared only by its holder (`:285-286`, `:304`). It cannot collide across conversations: `olderCursor` is null after `resetConversation` (`:194`) and `revoke()` (`:352`), and is set only by a newest merge (after `:266` advances the window) or by an older page merged after both epochs are checked.
+  - `readHead` turns a `loading` older-page state to `idle` when it merges a cursorless page (`:244-246`). An `error` is kept: the observation below.
+  - The cursor rule, the revocation rule and DM-25 3.2's triggers for a merged page are unchanged.
+- **DM-28 1.3:** tests (a) `store.test.ts:759`, (b) `:773`, (c) `:788`, (d) `:799`, plus (e) `:817` (a request asked after the replacement: success, failure, refusal) and (f) `:845` (no cursor command from an invalidated page), on a new `pages()` transport composed under C2-C3's `staleOnce`. No existing test or helper changed. The session's reversals R1 to R9 each fail the tests 1.3 names; R7 (CX12's merge restored) fails (a), (d), (e) and (f).
+- **The run of record:** push run [40206318661](https://github.com/amthorn78/glow-dating-app/actions/runs/40206318661) on `d3d7300`, read by the manager: all eight jobs `success`, the six application jobs run (not skipped); Mobile checks 15:18:46 to 15:25:27 (rendered step 15:20:31 to 15:25:23, 4 min 52 s, against the 15-minute timeout); Database proof checks to 15:26:21; Foundation gate success. The earlier run on `a328bc7` (40205573422) also passed; it is not the run of record.
+- **Two code commits:** the session pushed `a328bc7` before its own three-reviewer check reported; that check confirmed one test gap (the slot guard at `:304`) and one nit (DM-25 3.2's trigger undetectable), both covered in `d3d7300` (test-only). No push followed `d3d7300` until its run finished (AM5-14).
+- **The audit (DM-28 1.4):** recorded by the session, with no defect beyond CX12, and one **observation:** an older-page error shown before a replacement survives it, because `:245` resets only `loading` ("Earlier messages could not be loaded. Try again.", `screen.tsx:166`, stays over the reload's window until the next press; the button stays enabled, `:165`, and asks with the reload's cursor). It is today's behaviour, and DM-28 1.1 rules out only an error from an *invalidated* response. Under DM-28 1.4 and DM-25 1.2 it goes to the Dev Manager as [DM-29](../../ephemeral/2026-10-25-dm-29-p06-2-c2-c4-observation.md), with the manager's recommendation to record it as a follow-up and not fix it in PR33.
+- **Next:** Codex's review of this head's code; DM-29's answer; then the exact-head re-review of the head holding C2-C3 and C2-C4 (DM-28 2.2 to 2.4), given only after Codex's pass on the commit that holds its prompt. It is held until both (AM7-13).
+- **Codex on `33bae36`** (holding C2-C4's code `d3d7300`): completed at 15:53 UTC with no findings and no new thread. CI on `33bae36`: push run 40208863272 and PR run 40208867308, all eight jobs `success` in each.
+- **DM-29's verdict** ([report](../../continuity/dev-manager/reviews/2026-10-25-dm-29-p06-2-c2-c4-observation.md), `006f786`, a read of `33bae36`; merged at `ef58117`): **(a), the observation is recorded as a follow-up,** with conditions 1.1 to 1.4. It misses no item of C2's prompt and is in no correction class; its reach is the `stale` path's.
+  - **1.1:** at the first change to `apps/mobile` after PR33 merges, beside DM-23 3.1's list, a replacement leaves the older-page state `idle` whatever it was, `error` included (`store.ts:245`), with a test and its reversal; that makes the class comment's sentence (`:65`) true as written.
+  - **1.2:** a further correction pass before the merge, run for any other reason, takes 1.1 with it.
+  - **1.3:** this record's two lines in "Stage C2-C4" are annotated (above), and *Implementation Control*'s phrase corrected; the class comment stays until 1.1.
+  - **1.4:** the manager's edge (a reload with no older cursor hides the button and keeps the text) has no path in C1: a readable conversation's accepted history never shrinks. It goes with the follow-up, not to the P11 plan; a later phase that lets a readable conversation lose accepted messages takes 1.1 first.
+  - **The re-review (2.1 to 2.3):** approved without a further read, quoting DM-27 1.1 and 1.4, DM-28 1.1 to 1.5 and DM-29 1.1 to 1.4 as written, and naming the path, the edge with the Dev Manager's trace of C1, and the class comment's sentence. Its first Codex gate is met (`33bae36`); its second, Codex's pass on the commit holding its prompt, still applies.
+
+## Exact-head review of Stages C2-C3 and C2-C4 (25 October 2026)
+
+- **The review:** the combined exact-head re-review ([prompt](../../ephemeral/2026-10-25-p06-2-stage-c2-c3-c4-review-prompt.md), revision 1, from `c3cce7a`; Nathan's pick not recorded), offline, in `Glow App - No Stream`, of code head `d3d7300`. Codex had passed `33bae36` (15:53 UTC) and `c3cce7a` (17:08 UTC) with no finding (DM-28 2.4; DM-29 2.3). It is the only security reading of C2-C3 and C2-C4 (OD-41).
+- **Start gate and classification:** every check passed (the three shortstats matched exactly); the trusted base policy gave `{"full": true, "reason": "behavior-or-empty"}`, and no non-Markdown path outside `apps/mobile/(src|rendered)/` changed. Environment: no `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `STREAM_*` name; Node 24.19.0, npm 11.9.0, Python 3.12.14; every command in `env -i`.
+- **Verdict: approve.** No blocking or should-fix finding, and none in a correction class. **F1 and CX11 closed; CX10 met** (a position is never treated as known when it is not, the `stale` path included); **CX12 closed; C2's items 5 and 7 met on the `stale` path; item 8 met.**
+- **Its checks:** mobile `npm run check` 621 of 621, `check:expo` "Dependencies are up to date", the development export; contracts `generate` with no diff and 586 of 586; rendered 97 passed (4.7m), **informational only** (preinstalled Chromium 1243, not the pinned browser, through an uncommitted scratch config). The run of record 40206318661, read through the GitHub tools: all eight jobs `success`, the gate's "Application checks passed", Mobile 6 min 41 s of 15, rendered "97 passed (4.8m)", `chat.spec.ts:87` in 5.5 s. `git status` clean at the end.
+- **Reversals, in scratch copies:** C2-C3's S1 and S2 and C2-C4's R1 to R9, with R1b, each reproduced as the records state. Three further mutations pass every test (findings 3 to 5), and a no-op `stale` branch passes F1 (c) (finding 6).
+- **The focus areas,** each confirmed: every assignment to `accepted` and `lastRead` (DM-27 1.4); CX12's invalidation, the exception for a refusal that ends access, and the per-window slot, with seven probes across conversations, revocations and successive reloads; the `stale` path traced independently (each outstanding request and each piece of window-bound state); DM-23 2.1 to 2.3, DM-25 3.2's triggers and DM-24 1.1 to 1.3 unchanged; `staleOnce` and `pages()` faithful stand-ins; scope and security clean (only `store.ts`, `store.test.ts` and the README's cursor sentence changed across both passes; no import, `fetch`, socket, `EventSource`, `console`, timer or poll added; the revocation path unchanged in effect).
+- **DM-29 2.2's three items:** the observation's path confirmed (cosmetic); the manager's edge confirmed, with no path in C1; the class comment's sentence at `:65` false as written only in DM-29's `error` case (with finding 2's ordering), which is the DM-29 1.1 follow-up.
+- **Findings,** all nits, none in a correction class, each with its disposition:
+  1. **An older page answered `stale` shows a retryable error and no reload follows** (`store.ts:299-303`; `reads.py:409-411`; `glow_domain/chat_projections.py:132-133`): the cursor is kept, polls keep the newer cursor, and the older history stays out of reach. C1 cannot reach it; it needs the kind of later phase DM-29 1.4 names, and DM-29 1.1 would not fix it. It predates C2-C4 (`85b9844`, `:289`). Under DM-29 2.2 it is a finding in its own right. **Disposition:** to the Dev Manager as [DM-30](../../ephemeral/2026-10-25-dm-30-p06-2-re-review-and-pre-merge.md) item 1, with the manager's recommendation to widen DM-29 1.4's guard in the records (no fix in PR33).
+  2. **DM-29's observation also arises in the gap** between the `stale` answer and the reload's merge (`:245`, `:283`, `:303`): an older page asked from the window about to be discarded fails before the merge, so its error survives the reload. Same cosmetic effect; by DM-29 2.2 it is the follow-up. **Disposition:** DM-29 1.1's test gains this ordering (DM-30 item 2).
+  3. **No test pins the conversation-epoch check in `loadOlder`'s catch** (`:300`; with it removed, 50 of 50 pass). The code is correct. **Disposition:** a CX9-style test rides with the follow-up (DM-30 item 2).
+  4. **No test pins `cursor === null` at `:245`.** **Disposition:** an added assertion in test (e) rides with the follow-up (DM-30 item 2).
+  5. **No test pins the per-window slot across conversations or revocations.** The code is correct. **Disposition:** an optional test rides with the follow-up (DM-30 item 2).
+  6. **The helpers' "then the newest page alone" check reads only the last logged request, and F1 (c) passes with a no-op `stale` branch** (`store.test.ts:645-646`, `:727`, `:673`); the reversal that matters fails other tests, so DM-27 1.2 is met. **Disposition:** count the requests in the helpers, with the follow-up (DM-30 item 2).
+  7. **`staleOnce`'s doc comment says "made with a newer cursor"; it answers any non-null cursor** (`store.test.ts:615-624`). **Disposition:** with the follow-up (DM-30 item 2).
+  8. **C2-C4's audit is correct but incomplete:** the reload from `:259` goes out in the foreground whether or not the screen is shown (in the background it waits for the next read); a reload that fails without ending access leaves the old window current with `newerCursor` null; a read queued behind the one answered `stale` is merged into the one reload, not sent after it; when `seen` falls before the new window, a `cursorRetry` retry does nothing until a newer message is viewed; and finding 2's ordering. **Disposition:** recorded here, with an annotation at the audit (done).
+  9. **After a `stale` answer the reload is sent even if the screen has been left** (`:257-259`): one read, no timer, no polling; nothing in the background. It predates both passes (`cb3a6a6`), as `:390` does, and is outside the class. **Disposition:** an optional `conversationShown` gate rides with the follow-up (DM-30 item 2); recorded here.
+  10. **While the position is unknown and commands keep failing, each forward move of `seen` over the member's own messages sends one more command** (`:155-161`, `:327`, `:339`): within DM-25 3.1's grounds, and older than C2-C3. **Disposition:** recorded here as a limit.
+  11. **The README's cursor sentence ties the known position to "since the conversation was opened"; `lastRead` survives closing and reopening the same conversation** (`apps/mobile/README.md:405-408`): it understates. **Disposition:** at the first change to `apps/mobile` after the merge, with the README's other follow-up (DM-30 item 2).
+  12. **The C2-C3 record cites `from` at `:310`; it is at `:309` at `85b9844`.** **Disposition:** annotated in place (done).
+  13. **"Manager verification of Stage C2-C3" gave `store.ts` as +16 −14; the numstat is +14 −16.** **Disposition:** corrected in place (done; AM8-09).
+- **Refuted on verification:** a list read refused because access has ended does not revoke the open conversation (`:225-229`). It predates both passes, is already recorded (the C2 review's finding 3, a P11 requirement), is outside DM-28's class (DM-24 1.1 separates the list read), and the next head poll revokes.
+- **The reviewer's open question,** whether findings 3 to 6 ride with DM-29 1.1 and how DM-29 1.4's guard is worded, goes to the Dev Manager as DM-30, with the pre-merge read of PR33's governing Markdown.
+- **DM-30's verdict** ([report](../../continuity/dev-manager/reviews/2026-10-25-dm-30-p06-2-re-review-and-pre-merge.md), `6bf6f5d`, a read of `c2b7929`; merged at `ec6e4f6`):
+  - **Finding 1: approved, with 1.1 to 1.3; no fix in PR33.** C1's page cursor is a fixed encoding with no key (`chat_reads.py:98-121`), a cursor-version change would refuse the newer cursor too (so the head's own reload heals it), and a lost boundary has no C1 path. **1.1** words the guard: a phase that lets a readable conversation lose an accepted message, or changes how a page cursor's boundary is placed, takes DM-29 1.1's follow-up first and decides, with the contract it changes, what the client does when an older page is answered `stale_version` (the simplest rule: drop the older cursor and reload the newest page, with a test covering a head read in flight, since `:280` keeps a page's newer cursor; reversal, today's `:303`). **1.2:** the guard is its own standing entry in the handoff's recorded follow-ups. **1.3:** the P11 plan's history-policy item points to it. The Dev Manager records as its share that DM-28 judged this answer needed no change and DM-29 1.4 guarded only 1.1.
+  - **The follow-up's scope: approved, with 2.1 and 2.2.** Findings 2 to 7, 9 and 11 ride with DM-29 1.1 in one entry (5 and 9 optional), each test named with the reversal that must fail it; finding 4 adds to the existing test (e). Both entries are in the handoff's recorded follow-ups.
+  - **PR33's governing Markdown: approved.** DM-25 4.1 to 4.3 are applied as written at `91e2ccf`; the only governing changes from `main` are the owner-direction register, the next-manager procedure and the Dev Manager start prompt (`ba5812d`, `dda3110`, `2ef4b1b`, `91e2ccf`), and they may merge. **3.1:** a governing change after `c2b7929` comes to the Dev Manager before the merge, unless it only applies a Dev Manager finding's own text.
+  - **The close: approved, with 4.1 to 4.4:** the final head's code equals `d3d7300` and touches no governing path; Codex's pass on it has completed; the checklist's run is the **PR run** on the final head, whose gate prints "Application checks passed"; PR33's description carries the checklist, what PR33 carries and what it leaves.
+  - **A correction (4.3):** the manager's chat messages labelled the two runs of `ab05992`, `c3cce7a` and `c2b7929` the wrong way round. On a Markdown-only commit, the **push** run skips the application jobs (for `c2b7929`, 40241120470) and the **PR** run, compared from the merge base, runs them all (40241125870). This record's labels for `33bae36` are right (40208863272 is the push run). AM8-10.

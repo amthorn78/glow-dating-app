@@ -35,6 +35,7 @@ Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical 
 - `src/data/recommendations.ts`: credential-free, bounded GET to `/api/v1/development/recommendations`, retained for layout/HTTP smoke with cancellation and response validation. This does not supply the P05.2 queue. No writes.
 - `src/discovery`: bounded in-memory recommendation and broader-discovery composition, current per-candidate eligibility, continuation/adoption guards and shared fictional source corpus. See [discovery semantics](../../docs/architecture/discovery-fixtures.md).
 - `src/interactions`: current-session fixture commands, immutable-receipt retry, committed consumption, participant-scoped matches and revocation. The Python domain remains authoritative; this presentation substitute follows shared contract cases.
+- `src/chat`: P06.2 C2's conversation list, conversation and composer on an in-process chat fixture behind the `ChatTransport` interface, with the generated validators as the boundary. No network client, API URL, socket or provider package; see the P06.2 C2 walkthrough below.
 - `src/config/development.ts`: explicit fixture configuration and origin validation.
 - `app.config.ts` and `src/app/_layout.tsx`: build-config and runtime development guards.
 
@@ -330,7 +331,8 @@ profile leaves **Your matches** available from the owner profile so an active
 participant can still unmatch. Restricted and unmatched rows show a generic
 connection status, with the former profile removed. Unblock and resume do not
 reactivate a historical match. There is no undo, automatic rematch, provider
-channel, messaging token or chat-history access.
+channel or messaging token. An active match opens a fictional conversation (see
+the P06.2 C2 walkthrough); an unmatched or restricted one shows no history.
 
 The developer controls include normal, offline, lost-response and delayed
 delivery. Select offline, submit a command, return delivery to normal, and choose
@@ -362,3 +364,94 @@ against the official [SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/)
 No package or native-directory change was needed. Actual check results belong in
 [P05.3 evidence](../../docs/testing/p05-3-checkpoint.md); Chromium rendering does
 not establish native keyboard, VoiceOver/TalkBack or signed-device acceptance.
+
+## P06.2 C2 chat walkthrough
+
+Under OD-45 the app holds no provider credential, SDK or connection: Glow's API will
+serve a conversation's history and its new messages, and P11 connects the screens to it.
+Until then the screens read through the `ChatTransport` interface
+(`src/chat/transport.ts`), whose only implementation is the in-process fixture
+`src/chat/fixture-adapter.ts`. Every response passes the generated validators at the
+client boundary (`src/chat/client.ts`) before the screens see it; every intent passes
+`parseAppIntent`. A response the validators refuse, including any carrying a provider
+field, is refused whole and shows Glow's own error state.
+
+1. Use the explicit eligible fictional scenario, submit **Submit fictional Jules
+   reciprocal like** on **Development scenarios**, then like Fictional Jules. Open
+   **Your matches**, **View match with Fictional Jules**, then **Open conversation**.
+   **Your matches** also offers **Your conversations**, the list (`/conversations`);
+   a conversation is `/conversation`. Both are fixed, query-free routes guarded like
+   `/matches`, for a current active account only: a restricted account can still end a
+   connection but reaches no conversation.
+2. The list shows each conversation's unread count and the time of its latest message,
+   never its text. Names come from Glow's match projection, never from a chat response.
+   The list is read when shown and every 30 seconds while it stays shown; **Refresh
+   conversations** reads it now.
+3. An open conversation asks for newer messages every 3 seconds while the app is in
+   the foreground, with the page's own `newer_cursor`. Leaving the screen or the
+   foreground stops polling; returning resumes it with one read. **Show earlier
+   messages** follows the page's `older_cursor`. Messages are keyed on `submission_id`
+   and shown in the order the pages give, never by their time.
+4. Write in **Message** and choose **Send message**. Your own pending and failed
+   messages appear to you only, marked **Sending** or **Not delivered**; the other
+   person's never appear until accepted. Your own read cursor moves forward only to the
+   newest accepted message that has been wholly inside the conversation's visible area (or,
+   for a message taller than that area, has filled it) while the conversation was shown
+   and the app was in the foreground, as the rendered layout measures it (each message's measured box against the scroll view's measured offset and
+   height). A page arriving never moves it, and opening a long conversation clears only the
+   messages in view; the screen opens at the top and does not scroll to the newest message.
+   A message that arrives while you are scrolled away stays unread until it is scrolled into
+   view. A command is sent only when that position passes a message from the other person,
+   one at a time, never backward. The app knows where Glow holds your cursor only while the
+   message its last successful command moved it to is among the loaded messages: not before
+   a command has succeeded since the conversation was opened, nor once a reload of the newest
+   page leaves that message out. Otherwise it also sends one when the conversation's entry in
+   the list shows an unread count above zero, or when it holds no entry for it (as when the
+   conversation is opened from a match); Glow moves a cursor forward only. A move held back
+   is reconsidered when an earlier page or a list read brings new evidence, never on each
+   scroll. The other person's read state is never shown, and read receipts are not built.
+5. **Show chat fixture controls** opens the **SYNTHETIC CHAT TEST CONTROLS**. Fictional
+   Jules can send a message, or one held in delivery that **Deliver held fictional
+   messages** accepts later; it then reaches your next poll after the message accepted
+   before it, and counts as unread. **Seed 25 fictional history messages** gives an
+   older page. **Fictional Jules sends a message whose stored text then changes** shows
+   **This message is unavailable.**, with no reason. **Your next messages** holds or
+   fails your own deliveries.
+6. **Chat offline fixture**, **Chat lost response fixture** and **Chat delayed fixture**
+   are P05's delivery scenarios. An unconfirmed send offers **Retry the same message**,
+   which reuses the same idempotency key and payload, so the conversation shows one
+   message for it. **Fail the text read** gives Glow's retryable "could not be loaded"
+   state, never a page of unavailable messages.
+7. **Provider field: …** plants one provider field (a member or user object, custom
+   data, `member.updated`, `ai_indicator.*`, a channel name or image, a provider ID or
+   timestamp, or a provider's error text) in every response. The validators refuse it,
+   and the screens show **Messages could not be shown. Try again.** with nothing of the
+   response. **Provider field: none** restores normal responses.
+8. **Block fictional Jules**, **Fictional Jules blocks you**, an unmatch, a pause, a
+   withdrawn consent, a suspension or a deletion the interactions fixture models all
+   refuse the conversation as they refuse a send (the brief's point c, the interim rule
+   of DM-22 3.1). The screen shows **This conversation is unavailable.** with no
+   reason, drops the history, draft and cursors, and stops polling; the list no longer
+   shows it. Signing out or another account clears everything.
+
+**Verified limits.** All people, messages and times are fictional and last only for the
+current in-memory session. The fixture applies C1's semantics as a presentation
+substitute; the Python reads in `services/api` remain authoritative, and P11 serves them.
+There is no network client, API URL, WebSocket, `EventSource`, push or realtime service.
+`src/chat/no-provider.test.ts` checks the forms DM-22 7.1 names: it fails on a package
+whose name contains `stream-chat`, `getstream` or `@stream-io/` in `package.json`,
+`package-lock.json` or a literal import, `require` or dynamic import in the app's source,
+and on a construction of `WebSocket` or `EventSource` written directly (`new WebSocket(`,
+`new a.b.WebSocket(`, `new a?.WebSocket(`, `new a['WebSocket'](` or
+`Reflect.construct(WebSocket`). It does not catch an aliased constructor or a computed
+module name. The fixture shows another member (fictional Jules) only within the signed-in
+member's session. A send's `expected_version` is the match projection's version, which
+equals the fixture's contact version; which projection carries the contact version is
+P11's to fix. Background polling uses React Native's `AppState` (on the rendered web
+harness, the page's visibility); native background behavior, push (P06.3), keyboard
+behavior, VoiceOver/TalkBack and devices are unverified. Unit tests run on fixture time
+(`src/chat/*.test.ts`); the rendered journeys are `rendered/chat.spec.ts`, whose
+pinned-browser evidence comes from hosted CI. The read cursor's visibility measurement is
+shown in Chromium only; on devices, `measureLayout` and `onScroll` are unverified. Results
+are in the [P06.2 evidence record](../../docs/testing/evidence/2026-10-05-p06-2-chat-integration.md),
+"Stage C2" and "Stage C2-C1".

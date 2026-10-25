@@ -97,6 +97,22 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM7-06 | 24 Oct 2026 | accuracy | The brief's revision 8, point ii, said Stream's server-side send "creates that user (M5)" as fact; the evidence record marks it an inference (C4's read found the user absent before M5, D10's read found it after) | Stage B2's exact-head review |
 | AM7-07 | 24 Oct 2026 | follow-through | The handoff's branch list kept `claude/dev-manager` at `821efc7` (DM-19, merge `5480b99`) through DM-20's integration, when its head became `ca806e3` (merge `855a92b`) | App Manager 7, checking the remote branches at B2-C4's integration |
 | AM7-08 | 24 Oct 2026 | accuracy | PR31's body and Implementation Control said B2-C4 generalized "every run identifier" in the conformance results, repeating the session's claim; strings already passed through `_generic` keep their random part | B2-C4's exact-head re-review (C4R1) |
+| AM7-09 | 24 Oct 2026 | follow-through | After DM-21, the manager told Nathan "NOTHING NEEDED" and left its own next steps (Codex's review, the final run, PR31's merge) waiting on his next message | Nathan: *"You don't have a planned next step?"* |
+| AM7-10 | 24 Oct 2026 | accuracy | The P11 plan said the reads' guards meant "no enclosing Django transaction can hold their locks", and carried a session's raw-`BEGIN` limit unchecked; `set_autocommit(False)` passed both guards | C1-C1's exact-head re-review (R1) |
+| AM7-11 | 24 Oct 2026 | follow-through | DM-17's follow-up on the harness client's `npm ci` advisory was due "before Stage C", and was not decided before C1 ran and merged | App Manager 7, updating the handoff after PR32 merged |
+| AM7-12 | 24 Oct 2026 | follow-through | After verifying Codex's CX8 on PR33, the manager carried it to P11 and put the alternative (a correction pass before the merge) to Nathan as a question, instead of consulting the Dev Manager first (OD-32) | Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"* |
+| AM7-13 | 25 Oct 2026 | process | The manager gave Nathan C2-C1's exact-head re-review prompt while Codex's review of C2-C1's head was still running; Codex then found CX9, and the manager sent DM-24, which can change the code under review, while telling Nathan the re-review should continue | Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation"* |
+| AM7-14 | 25 Oct 2026 | accuracy | Nathan directed the manager to create App Manager 8; the manager read his words as his own hand start, recorded OD-46, the handoff and Notion that way, and told him to start it | Nathan: *"i told you to create the Glow App Manager 8 session"* |
+| AM8-01 | 25 Oct 2026 | follow-through | The first report and DM-25 revision 1 went to Nathan without checking PR33's open review threads; Codex's CX10 (00:42 UTC), unrecorded since App Manager 7's handover, was missed | App Manager 8, reading PR33's threads after Codex's next summary reported unresolved findings |
+| AM8-02 | 25 Oct 2026 | accuracy | Notion's DM-24 row named the records commit `1ec5186` as the merge of DM-24's report; the merge is `f87f3b5` | Dev Manager 3, start note section 5 |
+| AM8-03 | 25 Oct 2026 | accuracy | CX10's records and DM-25 said the unread count "never clears" and that any member sending 20 messages in a row would reach it; both overstated the code | Dev Manager 3, DM-25 section 5 |
+| AM8-04 | 25 Oct 2026 | accuracy | Notion paraphrased the re-review's F3 as a revocation dropping "a list read begun after it started", which reads as the reverse of the finding | Dev Manager 3, DM-27 4.1 |
+| AM8-05 | 25 Oct 2026 | accuracy | DM-27's proposed d.2 asked for tests of two `cursorKnown` clears that, under d.1, could never fail | Dev Manager 3, DM-27 section 3 |
+| AM8-06 | 25 Oct 2026 | accuracy | CX12's records said "history out of order … until it is reopened"; the messages stay in order with a gap, and reopening the same conversation does not clear it; and `:248` for `:244` | Dev Manager 3, DM-28 section 3 and 4.3 |
+| AM8-07 | 25 Oct 2026 | follow-through | The Work Register row's Next Action property was left at `9776c6f` when its page body was updated for CX12 and DM-28 | Dev Manager 3, DM-28 4.1 |
+| AM8-08 | 25 Oct 2026 | accuracy | *Implementation Control* said "Show earlier messages" is idle once the reload merges; the code turns only `loading` into `idle` | Dev Manager 3, DM-29 1.3 |
+| AM8-09 | 25 Oct 2026 | accuracy | "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14; the numstat is +14 −16 | The combined re-review, finding 13 |
+| AM8-10 | 25 Oct 2026 | accuracy | Chat reports labelled the push and PR runs of three Markdown-only commits the wrong way round | Dev Manager 3, DM-30 4.3 |
 
 ## App Manager 2
 
@@ -730,3 +746,127 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision or a member. The re-review caught it before PR32 merges, and nothing is served.
 - **Correction:** the P11 plan's line and the manager's verification note are corrected in place, marked as corrections. C1-C2 closes the path in code.
 - **Prevention:** AM7-08's rule applies to the manager's own summaries as well as to a session's claims. A record says "no", "never" or "every" only when the manager has checked the paths it covers. Otherwise it states what the mechanism does.
+
+### AM7-11 — A follow-up due "before Stage C" not decided when Stage C started (follow-through)
+
+- **What happened:** DM-17 (item 5) approved B2-C1's handling of the harness client's `npm ci` advisory, and set its follow-up to be decided before Stage C, "whose mobile app has its own lock". App Manager 7 kept it among the handoff's recorded follow-ups. It then wrote Stage C's design and C1's prompt without deciding it, and C1 ran and merged first.
+- **Caught by:** App Manager 7, updating the handoff after PR32 merged.
+- **Effect:** none. C1 changed no dependency. The advisory's package, `follow-redirects` 1.16.0, is only in the harness's client lock: the mobile app's and the contracts' locks hold none. No live harness run has occurred since.
+- **Correction:** decided before C2. The P11 plan carries the lock's update as a fix required before the harness's next live run.
+- **Prevention:** before writing a stage's first prompt, the manager reads the handoff's recorded follow-ups for any due "before" that stage, and decides or schedules each one first.
+
+### AM7-12 — A review question put to Nathan instead of the Dev Manager (follow-through)
+
+- **What happened:** after verifying Codex's CX8 on PR33 (the read cursor advances past messages not yet scrolled into view), App Manager 7 carried it to the P11 plan, following CX4 to CX7, and replied on Codex's thread. In the same message it asked Nathan whether to fix it before the merge instead. That choice is a review question that no correction class decides. OD-32 sends such questions to the Dev Manager first, and Nathan receives only what the Dev Manager refers to him. The manager's carry disposition had also not weighed that CX8 misses item 8 of C2's own prompt ("when the member has seen newer messages").
+- **Caught by:** Nathan: *"I don't feel comfortable answering that question. It should be an escalationf for the dev manager"*.
+- **Effect:** none on the code or a member. PR33's merge is held for the Dev Manager's read, and the reply on Codex's thread ("not fixed in this PR") may need correcting.
+- **Correction:** DM-23 to the Dev Manager, with a recommendation of a correction pass, C2-C1. The merge is held.
+- **Prevention:** when a verified finding leaves a choice between fixing it before a merge and carrying it, and no correction class decides it, the manager consults the Dev Manager before saying anything to Nathan. A finding that misses an item of the stage's own prompt is weighed as such, not only by the precedent of earlier carried findings.
+
+### AM7-13 — An exact-head review requested before Codex had reported on that head (process)
+
+- **What happened:**
+  - App Manager 7 integrated C2-C1 and gave Nathan its exact-head re-review prompt from `83ce64d` on 25 October. Codex's automatic review of C2-C1's head `73ef97e` had started at 00:22:36 UTC and was still running.
+  - Codex posted CX9 at 00:25 UTC, a verified defect in the code under review. The manager sent DM-24, whose recommended outcome, a correction pass, changes that code.
+  - In the same message, it told Nathan that the re-review should continue because "its report covers C2-C1's own diff". A review of a head that is about to change certifies nothing for the merge, and the work goes to waste.
+- **Caught by:** Nathan: *"You requested a premature review, and now you are looking for a dev manager consultation. ... I have not submitted "review session for P06.2 Stage C2-C1" and will not due to your confused context. Your subsequent dev manager escalation invalidates that."*
+- **Effect:** none on the code or a member. C2-C1's re-review never ran; its prompt is withdrawn. DM-24 revision 1 assumed the re-review was in flight, so revision 2 corrects that. App Manager 8 receives DM-24's answer (OD-46).
+- **Correction:**
+  - the re-review prompt is marked withdrawn;
+  - DM-24 revision 2 states that the re-review did not run, and proposes one exact-head re-review after any correction pass, given only after Codex has reported on that head;
+  - the evidence record, the brief's Sessions, the handoff and Notion are corrected.
+- **Prevention:**
+  - Codex reviews each new head within minutes. Before giving Nathan an exact-head review prompt, the manager waits for Codex's review of the head's code commit to report, and handles any finding first.
+  - When a new finding may change the code under a review that is already with Nathan, the manager tells Nathan to hold that review. It never tells him to continue it.
+
+### AM7-14 — A direction to create the successor read as Nathan's own hand start (accuracy)
+
+- **What happened:** Nathan wrote: *"It's time to create a new Glow App Manager Session. ... I will submit the DM-24 request, create a new session to receive it. It will be Glow App Manager 8."* App Manager 7 read "create a new session" as Nathan's own act. It recorded OD-46, the handoff, the start procedure and Notion as a hand start, with a replacement PR for PR33. It then told Nathan to start App Manager 8 himself.
+- **Caught by:** Nathan: *"i told you to create the Glow App Manager 8 session"*.
+- **Effect:** a delay, and records that briefly named the wrong path (a replacement PR instead of the manager branch as the successor's outcome branch). No PR was closed and no branch was created.
+- **Correction:**
+  - OD-46, the handoff, the start procedure, DM-24's header and Notion are corrected;
+  - App Manager 7 creates App Manager 8 with the remote-session tools, in `Glow App - No Stream`, with the manager branch as its outcome branch (OD-31).
+- **Prevention:** a direction to the outgoing manager that says it is time to create a new manager session is OD-31's case: the outgoing manager creates the successor. When the words leave unclear who creates it, the manager asks in one line before recording either path.
+
+## App Manager 8
+
+### AM8-01 — A start report and a consultation sent without reading the PR's open threads (follow-through)
+
+- **What happened:** App Manager 8 started, read the handoff, found DM-24's report and sent Nathan its first report with DM-25 revision 1, saying nothing else was open. It read PR33's check runs and body, but not its review threads. Codex had posted CX10 at 00:42 UTC (on C2-C1's cursor code), before App Manager 7's handover commit; the handover did not record it, and App Manager 8 did not find it.
+- **Caught by:** App Manager 8, reading PR33's review threads when Codex's next summary reported unresolved findings.
+- **Effect:** DM-25 revision 1 went to Nathan without CX10, which needs the same Dev Manager read (its fix changes DM-23 2.3's rule). If carried, the Dev Manager would have answered without it. No code, prompt or merge was affected.
+- **Correction:** CX10 verified and recorded in the evidence record; DM-25 revision 2 adds it as item 3 and replaces revision 1; Nathan is told to carry revision 2 only.
+- **Prevention:** at start, and before any message that says nothing else is open on a PR, the manager lists the PR's review threads and Codex's latest summary, and checks each unresolved thread against the records.
+
+### AM8-02 — A records commit named as a merge commit (accuracy)
+
+- **What happened:** App Manager 8 wrote on Notion's *Dev Manager — reviews and approvals* that DM-24 was "merged at `1ec5186`". `1ec5186` is the records commit after the merge; the merge is `f87f3b5`, as earlier rows name the merge itself. The review log named no SHA.
+- **Caught by:** Dev Manager 3, comparing Notion with the repository in its start note.
+- **Effect:** none on a decision; a reader following the SHA finds the records, not the merge.
+- **Correction:** the review log and Notion name `f87f3b5`.
+- **Prevention:** when a record names a merge, the manager takes the SHA from `git log --merges -1` after the merge, not from the batch's last commit.
+
+### AM8-03 — A defect's effect and reach overstated (accuracy)
+
+- **What happened:** recording CX10, App Manager 8 wrote that the unread count "never clears" and that the defect reaches "any member who sends 20 messages in a row after an unread one", in the evidence record, DM-25, the review log and Notion. The count clears once the member views a later incoming message, and through this app the defect takes a missed view, since sending usually brings the incoming message into view.
+- **Caught by:** Dev Manager 3, DM-25 section 5.
+- **Effect:** none on the verdict, which DM-25 reached on C2's item 8; the records overstated the defect.
+- **Correction:** the evidence record's CX10 section, the review log's DM-25 row and the Work Register row state the outcome and reach in DM-25 3.7's terms, marked as corrections.
+- **Prevention:** AM7-05's and AM7-10's rule applies to a defect's effect as well as to a fix: "never", "any" and "every" only when the manager has traced the paths that end it. For a stuck state, the manager names what clears it.
+
+### AM8-04 — A finding paraphrased into its reverse (accuracy)
+
+- **What happened:** writing *Implementation Control*'s status after the re-review, App Manager 8 summarized F3 as "a revocation drops a list read begun after it started". Read with "it" as the revocation, that says the opposite of the finding: a list read made after a revocation is kept (DM-24 1.3). The review's words are "begun after the authority change that led to it".
+- **Caught by:** Dev Manager 3, DM-27 4.1.
+- **Effect:** none on a decision; the repository's records used the review's words.
+- **Correction:** Notion's line now uses the review's words; the P11 plan's F3 limit quotes them.
+- **Prevention:** a finding's timing or causal clause is copied in the source's words, not shortened, in every summary.
+
+### AM8-05 — Proposed tests that could never fail (accuracy)
+
+- **What happened:** DM-27's proposed d.2 asked C2-C3 for one test per clear of `cursorKnown` (F2), beside d.1's `cursorKnown && from >= 0`. `lastRead` and `cursorKnown` are set and cleared together, so under d.1 neither clear can change a result, and no such test can fail under its reversal: the same kind of error as DM-24 1.4's impossible pairings (DM-26 item 1).
+- **Caught by:** Dev Manager 3, DM-27 section 3, before any session met it.
+- **Effect:** none; DM-27 1.1 removes the flag and drops the tests.
+- **Correction:** C2-C3's prompt quotes DM-27 1.1 to 1.4, not d.1 to d.4.
+- **Prevention:** before proposing a test condition, the manager checks that a reversal of the code it covers can make it fail, given every other condition proposed with it.
+
+### AM8-06 — A stuck state's effect and end stated without tracing them (accuracy)
+
+- **What happened:** recording CX12, App Manager 8 wrote that the history is "out of order and partly unreachable in the open conversation until it is reopened", and cited `:248` for the `stale` branch. The messages stay in order with a silent gap; leaving and reopening the same conversation keeps the window (`select()` returns at once, `:124`), so the state lasts until another conversation or account is selected, a revocation, another `stale` reload or a restart. The branch is at `:244`.
+- **Caught by:** Dev Manager 3, DM-28 section 3 and 4.3.
+- **Effect:** none on the verdict; the records overstated one part and misstated the end.
+- **Correction:** the evidence record's CX12 lines, marked as corrections.
+- **Prevention:** AM8-03's prevention ("for a stuck state, the manager names what clears it") repeated here. So before writing a stuck state's end, the manager now traces every call that could reset it (here `select`, `closeConversation`, `resetConversation`, `revoke`), and cites a line only after reading it at the commit named.
+
+### AM8-07 — A Notion property left behind its page body (follow-through)
+
+- **What happened:** writing CX12 and DM-28 to the Work Register row, App Manager 8 updated the page body but not the Next Action property, which stayed at `9776c6f`.
+- **Caught by:** Dev Manager 3, DM-28 4.1.
+- **Effect:** a reader of the property saw a step already past; no decision used it.
+- **Correction:** the property is updated in this batch.
+- **Prevention:** this repeats AM5-02 and AM5-03, whose prevention is already the manager workflow's checklist item ("update every property and page body that states it"). The manager now writes the Work Register's property and body together on every update, and reads both back.
+
+### AM8-08 — A state change stated without its scope (accuracy)
+
+- **What happened:** writing C2-C4 to *Implementation Control*, App Manager 8 wrote that "Show earlier messages" is idle once the reload merges. The code turns only a `loading` state into `idle` at the replacement; an earlier `error` is kept (`store.ts:245`). The manager's own verification in the evidence record stated it correctly; the Notion summary dropped the qualifier, as DM-28 1.2's words and the session's record had.
+- **Caught by:** Dev Manager 3, DM-29 1.3.
+- **Effect:** a reader of Notion could take the observation DM-29 decided as already fixed; no decision used it.
+- **Correction:** the phrase is corrected in this batch, and the evidence record's two unscoped lines are annotated (DM-29 1.3).
+- **Prevention:** a summary of a state change names which state changes, in the code's terms, and is checked against the verification it summarizes before it is written (AM8-03 and AM8-04's kind: a summary that says more than its source).
+
+### AM8-09 — A diffstat written in the wrong order (accuracy)
+
+- **What happened:** "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14 for `1506986..ccf8392`; `git diff --numstat` gives 14 added and 16 removed.
+- **Caught by:** the combined exact-head re-review of C2-C3 and C2-C4, finding 13.
+- **Effect:** none on a decision; a record figure was reversed.
+- **Correction:** corrected in place, with an annotation.
+- **Prevention:** a diffstat in a record is pasted from `git diff --numstat` or `--shortstat` output, not retyped.
+
+### AM8-10 — Push and PR runs swapped (accuracy)
+
+- **What happened:** reporting CI on `ab05992`, `c3cce7a` and `c2b7929` to Nathan, App Manager 8 called the run whose application jobs all ran the push run, and the run that skipped them the PR run. It is the other way round: on a Markdown-only commit, the push run compares with the branch's previous head and skips the application jobs; the PR run compares from the merge base with `main` and runs them all.
+- **Caught by:** Dev Manager 3, DM-30 4.3 (for `c2b7929`); the manager then checked the others with `get_workflow_run`.
+- **Effect:** none on a decision; no repository record carried the swap (the evidence record's labels for `33bae36` are right).
+- **Correction:** recorded in the evidence record (DM-30's lines).
+- **Prevention:** a run is named by the `event` field of `get_workflow_run`, never by which jobs it skipped; the pre-merge checklist names the PR run on the final head (DM-30 4.3).
