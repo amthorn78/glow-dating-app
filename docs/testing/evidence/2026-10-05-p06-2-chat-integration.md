@@ -3222,7 +3222,7 @@ P06.2, the chat integration (PF01 P06), is complete when PR33 merges. Nathan res
   - before the send is served: C2-X2, the send's expected version;
   - when P11 connects the mobile client: the C2 review's findings 3 and 6.
 - **Recorded follow-ups:** the handoff's list, including the C2 review's findings 1, 4 and 5 and `read_phase.py`'s N2 and N3.
-- **Next item:** M04, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29).
+- **Next item:** M04, "Branch hygiene: automatic cleanup of merged branches" (OD-39), after P06.2 merges (OD-29). [Annotated on 25 October 2026, after the merge: Nathan's direction OD-48 put the whole-project review, M05, first; M04 follows it.]
 
 ## Codex's code review of PR33's final head (24 October 2026)
 
@@ -4072,4 +4072,4 @@ Each finding was then given to a skeptic told to refute it. Each reviewer ran mu
 - **What stays open:**
   - **for P11** (the P11 plan): the harness's carried fixes before its next live run; the reads' live row, receipt order, locked set and serving rule; the history-policy question to Nathan, with DM-30 1.3's pointer; C2-X2 before the send is served; the mobile-client entries (the C2 review's findings 3 and 6, C2C1-X1, C2C2-X1, C2C2-X2 and F3);
   - **the recorded follow-ups** (the current handoff): the window-replacement follow-up (DM-29 1.1 with DM-30 2.1 and 2.2), the guard for an older page answered `stale_version` (DM-30 1.1), the C2 review's findings 1, 4 and 5, and the README's sentences.
-- **Next:** M04, branch hygiene (OD-39): its brief, then the Dev Manager's read.
+- **Next:** M04, branch hygiene (OD-39): its brief, then the Dev Manager's read. [Annotated on 25 October 2026, after the merge: Nathan's direction OD-48 put the whole-project review, M05, first; M04 follows it.]
