@@ -1,6 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useLayoutEffect, useRef, type PropsWithChildren } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View,
+  type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ConversationMessage } from '../contracts/generated/gapp-api-v1';
 import { Button, Field, Page, PreviewNotice, ScreenTitle, colors, styles } from '../components/ui';
 import { ActionButton } from '../interactions/action-button';
@@ -8,6 +10,8 @@ import { useInteractions } from '../interactions/context';
 import { useChat } from './context';
 import { ChatFixtureControls } from './controls';
 import { DELIVERY_COPY, LIST_COPY, READ_COPY, REVOKED_DETAIL, SEND_COPY, UNAVAILABLE_MESSAGE, timeLabel, unreadLabel } from './copy';
+import type { ChatStore } from './store';
+import { visibleMessages, type Box, type VisibleArea } from './visibility';
 
 /** Names come from Glow's own match projections, never from a chat response (ADR 0003, decision 1). */
 function useMatchNames() {
@@ -53,10 +57,10 @@ export function ConversationsScreen() {
   </Page>;
 }
 
-function MessageRow({ message, name }: { message: ConversationMessage; name: string }) {
+function MessageRow({ message, name, rowRef }: { message: ConversationMessage; name: string; rowRef: (node: View | null) => void }) {
   const own = message.author === 'own';
   const delivery = own && message.delivery ? ` · ${DELIVERY_COPY[message.delivery]}` : '';
-  return <View style={[styles.notice, own ? chat.own : chat.other]} testID={`message-${message.submission_id}`}>
+  return <View ref={rowRef} style={[styles.notice, own ? chat.own : chat.other]} testID={`message-${message.submission_id}`}>
     <Text style={styles.eyebrow}>{own ? 'YOU' : name.toUpperCase()}</Text>
     {message.content === 'text' && message.text !== null
       ? <Text style={styles.body} testID="message-text">{message.text}</Text>
@@ -78,14 +82,74 @@ function Composer() {
   </View>;
 }
 
+type Viewing = ReturnType<typeof useViewedMessages>;
+
+/**
+ * Which messages are inside the conversation's visible area (CX8; DM-23 2.1 and 2.2), from
+ * the rendered layout: each row measured against the scroll content's origin with React
+ * Native's `measureLayout`, and the scroll view's `onLayout` height and `onScroll` offset.
+ * Rows are measured again after every render and size change, since a row can move without
+ * resizing (a page of earlier messages above it, a notice), and React Native Web's `onLayout`
+ * reports size changes only. A row not yet measured in the current pass is never in view.
+ * The store decides what the report moves (`ChatStore.viewed`); nothing here sends anything.
+ */
+function useViewedMessages(store: ChatStore, messages: readonly ConversationMessage[]) {
+  const content = useRef<View>(null);
+  const rows = useRef(new Map<string, View>());
+  const boxes = useRef(new Map<string, Box>());
+  const area = useRef<VisibleArea>({ offset: 0, height: 0 });
+  const order = useRef<readonly string[]>([]);
+  const report = useCallback(() => { store.viewed(visibleMessages(order.current, boxes.current, area.current)); }, [store]);
+  const measure = useCallback(() => {
+    const origin = content.current;
+    const pass = new Map<string, Box>();
+    boxes.current = pass;
+    report();
+    if (!origin) return;
+    rows.current.forEach((node, id) => node.measureLayout(origin, (_left, top, _width, height) => {
+      if (boxes.current !== pass) return;
+      pass.set(id, { top, height }); report();
+    }, () => undefined));
+  }, [report]);
+  useLayoutEffect(() => { order.current = messages.map(message => message.submission_id); measure(); });
+  const rowRef = useCallback((id: string) => (node: View | null) => {
+    if (node) rows.current.set(id, node); else rows.current.delete(id);
+  }, []);
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    area.current = { ...area.current, height: event.nativeEvent.layout.height }; report();
+  }, [report]);
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    area.current = { offset: contentOffset.y, height: layoutMeasurement.height || area.current.height }; report();
+  }, [report]);
+  return { content, rowRef, measure, report, onLayout, onScroll };
+}
+
+/**
+ * The conversation's own scroll container: `Page`'s structure, unchanged for every other
+ * screen, with the content in one view whose origin is the scroll content's origin.
+ */
+function ConversationPage({ viewing, children }: PropsWithChildren<{ viewing: Viewing }>) {
+  return <SafeAreaView style={styles.safe} testID="screen-conversation"><KeyboardAvoidingView style={styles.flex}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    {/* RNWeb dismisses on programmatic scroll too; preserve browser input focus. */}
+    <ScrollView testID="conversation-scroll" keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'on-drag'}
+      scrollEventThrottle={16} onLayout={viewing.onLayout} onScroll={viewing.onScroll}>
+      <View ref={viewing.content} style={styles.page} onLayout={viewing.measure}>{children}</View>
+    </ScrollView>
+  </KeyboardAvoidingView></SafeAreaView>;
+}
+
 export function ConversationScreen() {
   const { store, state } = useChat();
   const names = useMatchNames();
-  useFocusEffect(useCallback(() => { store.openConversation(); return () => store.closeConversation(); }, [store]));
   const { conversation, selectedMatchId } = state;
+  const viewing = useViewedMessages(store, conversation.messages);
+  const { report } = viewing;
+  useFocusEffect(useCallback(() => { store.openConversation(); report(); return () => store.closeConversation(); }, [store, report]));
   const revoked = selectedMatchId === null || conversation.status === 'revoked';
   const name = selectedMatchId ? names.get(selectedMatchId) ?? null : null;
-  return <Page testID="screen-conversation">
+  return <ConversationPage viewing={viewing}>
     <PreviewNotice />
     <ScreenTitle>{!revoked && name ? `Conversation with ${name}` : 'Conversation'}</ScreenTitle>
     {revoked ? <View style={styles.notice} testID="conversation-revoked">
@@ -102,14 +166,15 @@ export function ConversationScreen() {
       {conversation.older === 'error' && <Text style={styles.error} accessibilityRole="alert">Earlier messages could not be loaded. Try again.</Text>}
       <View style={styles.group} testID="message-list">
         {conversation.status === 'ready' && conversation.messages.length === 0 && <Text style={styles.body} testID="conversation-empty">No messages yet.</Text>}
-        {conversation.messages.map(message => <MessageRow key={message.submission_id} message={message} name={name ?? 'Your match'} />)}
+        {conversation.messages.map(message => <MessageRow key={message.submission_id} message={message} name={name ?? 'Your match'}
+          rowRef={viewing.rowRef(message.submission_id)} />)}
       </View>
       <Composer />
     </>}
     <ChatFixtureControls matchId={revoked ? null : selectedMatchId} />
     <Button label="Back to your conversations" testID="conversation-back" secondary onPress={() => router.replace('/conversations')} />
     <ChatNavigation />
-  </Page>;
+  </ConversationPage>;
 }
 
 const chat = StyleSheet.create({

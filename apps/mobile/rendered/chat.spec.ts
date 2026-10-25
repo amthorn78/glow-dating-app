@@ -51,6 +51,96 @@ test('the list, opening a conversation, unread and the read cursor', async ({ pa
   await expect(rows.first()).toContainText('No unread messages');
 });
 
+// CX8 (DM-23 2.4): a conversation longer than the viewport. Controls are pressed where they
+// are, without Playwright scrolling the conversation to them, so that only the test moves the
+// scroll position; each check waits for the browser's scroll event and the layout measurement.
+const scroller = (page: Page) => active(page, 'conversation-scroll');
+const historyMessage = (page: Page, number: number) => messageTexts(page).filter({ hasText: new RegExp(`^Fictional history message ${number}\\.$`) });
+const pressInPlace = (locator: ReturnType<typeof active>) => locator.evaluate(element => (element as HTMLElement).click());
+const settled = (page: Page) => page.evaluate(() => new Promise<void>(resolve =>
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+async function scrollToTop(page: Page) { await scroller(page).evaluate(element => element.scrollTo(0, 0)); await settled(page); }
+/** The whole message row (its text's parent), the box the screen measures. */
+const rowOf = (text: ReturnType<typeof active>) => text.locator('xpath=..');
+async function scrollToBottomEdge(page: Page, text: ReturnType<typeof active>) {
+  await rowOf(text).evaluate(element => element.scrollIntoView({ block: 'end' })); await settled(page);
+}
+async function longConversation(page: Page) {
+  await conversation(page);
+  await controls(page);
+  await scrollToTop(page);
+  await pressInPlace(active(page, 'chat-seed'));
+  await expect(messageTexts(page)).toHaveCount(20);
+  await settled(page);
+}
+async function backToList(page: Page) {
+  await pressInPlace(active(page, 'conversation-back'));
+  await expect(active(page, 'screen-conversations')).toBeVisible();
+  return active(page, 'conversation-list').locator('[data-testid^="conversation-unread-"]').first();
+}
+async function reopen(page: Page) {
+  await page.getByRole('button', { name: 'Open conversation with Fictional Jules', exact: true }).click();
+  await expect(messageTexts(page)).toHaveCount(20);
+  await settled(page);
+}
+
+test('a long conversation: unread does not clear until the newest message is in view', async ({ page }) => {
+  await longConversation(page);
+  // It opens at the top: the newest of 25 messages (13 from fictional Jules) is below the fold.
+  await expect(historyMessage(page, 25)).not.toBeInViewport();
+  let unread = await backToList(page);
+  await expect(unread).toHaveText(/^([1-9]|1[0-2]) unread messages?$/, { useInnerText: true });
+  // Scrolled to message 23, short of the newest: only the newest stays unread.
+  await reopen(page);
+  await scrollToBottomEdge(page, historyMessage(page, 23));
+  await expect(rowOf(historyMessage(page, 23))).toBeInViewport({ ratio: 1 });
+  await expect(historyMessage(page, 25)).not.toBeInViewport();
+  unread = await backToList(page);
+  await expect(unread).toHaveText('1 unread message');
+  // The newest in view: nothing unread.
+  await reopen(page);
+  await scrollToBottomEdge(page, historyMessage(page, 25));
+  await expect(rowOf(historyMessage(page, 25))).toBeInViewport({ ratio: 1 });
+  unread = await backToList(page);
+  await expect(unread).toHaveText('No unread messages');
+});
+
+test('after an earlier page loads above them, messages are measured again: the newest stays unread until in view', async ({ page }) => {
+  await longConversation(page);
+  await pressInPlace(active(page, 'conversation-older'));
+  await expect(messageTexts(page)).toHaveCount(25);
+  await settled(page);
+  // Every row moved down without resizing; a position measured before the page would be stale.
+  await scrollToBottomEdge(page, historyMessage(page, 23));
+  await expect(rowOf(historyMessage(page, 23))).toBeInViewport({ ratio: 1 });
+  await expect(rowOf(historyMessage(page, 25))).not.toBeInViewport();
+  const unread = await backToList(page);
+  await expect(unread).toHaveText('1 unread message');
+});
+
+test('scrolled up, a new message from the other member stays unread until it is scrolled into view', async ({ page }) => {
+  await longConversation(page);
+  await scrollToBottomEdge(page, historyMessage(page, 25));
+  await scrollToTop(page);
+  await pressInPlace(active(page, 'chat-other-send'));
+  const arrived = messageTexts(page).filter({ hasText: 'Hello from fictional Jules, message 1.' });
+  await expect(arrived).toHaveCount(1);
+  await expect(messageTexts(page).last()).toHaveText('Hello from fictional Jules, message 1.');
+  await settled(page);
+  // The arrival does not move the screen, and is not in view.
+  expect(await scroller(page).evaluate(element => element.scrollTop)).toBe(0);
+  await expect(arrived).not.toBeInViewport();
+  let unread = await backToList(page);
+  await expect(unread).toHaveText('1 unread message');
+  await page.getByRole('button', { name: 'Open conversation with Fictional Jules', exact: true }).click();
+  await expect(arrived).toHaveCount(1);
+  await settled(page);
+  await scrollToBottomEdge(page, arrived);
+  await expect(rowOf(arrived)).toBeInViewport({ ratio: 1 });
+  unread = await backToList(page);
+  await expect(unread).toHaveText('No unread messages');
+});
+
 test('a message from the other member arrives by polling, and a send shows once', async ({ page }) => {
   await conversation(page);
   await controls(page);

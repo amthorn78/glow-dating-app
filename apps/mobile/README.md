@@ -394,9 +394,16 @@ field, is refused whole and shows Glow's own error state.
    and shown in the order the pages give, never by their time.
 4. Write in **Message** and choose **Send message**. Your own pending and failed
    messages appear to you only, marked **Sending** or **Not delivered**; the other
-   person's never appear until accepted. When the other person's newer messages have
-   been shown in the foreground, the app moves your own read cursor forward; the other
-   person's read state is never shown, and read receipts are not built.
+   person's never appear until accepted. Your own read cursor moves forward only to the
+   newest accepted message that has been wholly inside the conversation's visible area (or,
+   for a message taller than that area, has filled it) while the conversation was shown
+   and the app was in the foreground, as the rendered layout measures it (each message's measured box against the scroll view's measured offset and
+   height). A page arriving never moves it, and opening a long conversation clears only the
+   messages in view; the screen opens at the top and does not scroll to the newest message.
+   A message that arrives while you are scrolled away stays unread until it is scrolled into
+   view. A command is sent only when that position passes a message from the other person,
+   one at a time, never backward. The other person's read state is never shown, and read
+   receipts are not built.
 5. **Show chat fixture controls** opens the **SYNTHETIC CHAT TEST CONTROLS**. Fictional
    Jules can send a message, or one held in delivery that **Deliver held fictional
    messages** accepts later; it then reaches your next poll after the message accepted
@@ -424,16 +431,21 @@ field, is refused whole and shows Glow's own error state.
 **Verified limits.** All people, messages and times are fictional and last only for the
 current in-memory session. The fixture applies C1's semantics as a presentation
 substitute; the Python reads in `services/api` remain authoritative, and P11 serves them.
-There is no network client, API URL, WebSocket, `EventSource`, push or realtime service,
-and `src/chat/no-provider.test.ts` fails on any provider package in `package.json`,
-`package-lock.json` or an import, or any socket or event-stream construction in the
-app's source. The fixture shows another member (fictional Jules) only within the signed-in
+There is no network client, API URL, WebSocket, `EventSource`, push or realtime service.
+`src/chat/no-provider.test.ts` checks the forms DM-22 7.1 names: it fails on a package
+whose name contains `stream-chat`, `getstream` or `@stream-io/` in `package.json`,
+`package-lock.json` or a literal import, `require` or dynamic import in the app's source,
+and on a construction of `WebSocket` or `EventSource` written directly (`new WebSocket(`,
+`new a.b.WebSocket(`, `new a?.WebSocket(`, `new a['WebSocket'](` or
+`Reflect.construct(WebSocket`). It does not catch an aliased constructor or a computed
+module name. The fixture shows another member (fictional Jules) only within the signed-in
 member's session. A send's `expected_version` is the match projection's version, which
 equals the fixture's contact version; which projection carries the contact version is
 P11's to fix. Background polling uses React Native's `AppState` (on the rendered web
 harness, the page's visibility); native background behavior, push (P06.3), keyboard
 behavior, VoiceOver/TalkBack and devices are unverified. Unit tests run on fixture time
 (`src/chat/*.test.ts`); the rendered journeys are `rendered/chat.spec.ts`, whose
-pinned-browser evidence comes from hosted CI. Results are in the
-[P06.2 evidence record](../../docs/testing/evidence/2026-10-05-p06-2-chat-integration.md),
-"Stage C2".
+pinned-browser evidence comes from hosted CI. The read cursor's visibility measurement is
+shown in Chromium only; on devices, `measureLayout` and `onScroll` are unverified. Results
+are in the [P06.2 evidence record](../../docs/testing/evidence/2026-10-05-p06-2-chat-integration.md),
+"Stage C2" and "Stage C2-C1".
