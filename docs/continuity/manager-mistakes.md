@@ -117,6 +117,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-12 | 26 Oct 2026 | process | The current handoff kept over its 5 KB limit, with follow-ups whose only home it was | M05 review, finding 38 |
 | AM8-13 | 26 Oct 2026 | follow-through | The `89f2601` Notion sync left two Implementation Control bullets stale ("No PR is open" with PR34 open; DM-31 "goes to it next" after its answer), repeating AM8-11 | App Manager 8, at the `72c60dd` sync |
 | AM8-14 | 26 Oct 2026 | records | M04's brief recorded its implementation prompt's TypeSafe reading in its Sessions line, which step 3 keeps to the prompt's header and the uses table (DM-01 P8) | App Manager 8, at M04's integration |
+| AM8-15 | 26 Oct 2026 | accuracy | PR37's description named a PR run ID, 40367951219, that the manager had not read; the run did not exist yet | App Manager 8, on rereading the description it had just posted |
 
 ## App Manager 2
 
@@ -906,3 +907,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision. The brief repeated, correctly, what the header holds; a reader could take it for a recommendation that outlives the prompt.
 - **Correction:** the line now points to the prompt's header and the uses table, in M04's PR.
 - **Prevention:** before a records commit that names a prompt, search the changed briefs, handoffs and reports for a model name with a rung (`grep -nE '(Fable|Opus|Sonnet|Haiku) [0-9.]+ at'`); only Nathan's pick, the cell he ran, may stand there.
+
+### AM8-15 — A run ID written before it was read (accuracy)
+
+- **What happened:** opening the docs-only PR37, the manager wrote its pre-merge checklist with a PR run ID, 40367951219, and ticked the item. No run had been read: the PR had just been opened, and its run did not exist yet. The ID was a placeholder that looked like evidence.
+- **Caught by:** App Manager 8, minutes later, when it checked the runs on the head to fill in that item.
+- **Effect:** for a few minutes PR37's description claimed a run of record that no one had read. Nothing was merged on it.
+- **Correction:** the description now names the real PR run, 40375587337 on `7bc15c0`, read with its jobs and the gate's line (`Ordinary documentation: application jobs intentionally skipped`).
+- **Prevention:** the claims checklist's rule applies to PR descriptions too: an ID, a count or a result goes into any record only after it is read, and an item not yet checked stays unticked and says "pending".
