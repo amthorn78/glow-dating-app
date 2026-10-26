@@ -46,6 +46,8 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 - **F4:** the git credential helper answers `get` for any host. It answers only when git's input names `host=github.com`, with a test.
 - **F6:** four guards with no failing reversal get tests: the token mask in `diagnostic()`, the strict UTF-8 decode and the SHA check in `read_heads()`, and the non-printable escaping in `cell()`.
 - **The re-review's nit 1:** F2's redirect test asserts `Refused` with its reason (`assertRaisesRegex(branch_cleanup.Refused, "HTTPError")`).
+- **DM-33's log line** (item 2): print `deleting <name> at <head>` to the log just before each push, so that even a run killed during a push names that branch.
+- **DM-33's nit** (item 1), at the CI policy's next change: "App Builder 1 uses scoped branches/PRs" names a historical role; "the managers use" fits.
 
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 
