@@ -69,4 +69,4 @@ Glow is a new iOS and Android dating app built around Glow-owned accounts, profi
 - Since 25 September, 39,250 Markdown lines were added against 10,564 lines of application code and tests, and 248 records commits against 58 code commits.
 - 19 correction passes ran, of which 18 changed code. Of 24 exact-head reviews, 15 found code or test defects; Codex found 13 more after the reviews.
 - 12 of the 31 days had commits. The two gaps, 4.9 and 16.0 days, have no recorded cause.
-- Seven App Managers and three Dev Managers served in 32 days; the mistakes log holds 92 rows, 57 of them accuracy slips.
+- Seven App Managers and three Dev Managers served in 32 days; the mistakes log held 92 rows at the review, 57 of them accuracy slips (94 with AM8-11 and AM8-12).
