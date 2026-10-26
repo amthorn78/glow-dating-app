@@ -45,6 +45,7 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 
 - **F4:** the git credential helper answers `get` for any host. It answers only when git's input names `host=github.com`, with a test.
 - **F6:** four guards with no failing reversal get tests: the token mask in `diagnostic()`, the strict UTF-8 decode and the SHA check in `read_heads()`, and the non-printable escaping in `cell()`.
+- **The re-review's nit 1:** F2's redirect test asserts `Refused` with its reason (`assertRaisesRegex(branch_cleanup.Refused, "HTTPError")`).
 
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 
