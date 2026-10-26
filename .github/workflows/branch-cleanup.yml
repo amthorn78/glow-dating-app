@@ -1,0 +1,49 @@
+name: Branch cleanup
+
+# M04 (OD-39): delete every remote branch whose commits are all in main, except the
+# keep-list in scripts/branch_cleanup.py and any branch that is an open PR's head or
+# base. Its own file, so the write permission never reaches the Foundation jobs (D1).
+# No pull_request or pull_request_target trigger, ever (D2).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report the decisions without deleting; only an exact false deletes'
+        type: boolean
+        default: true
+
+permissions: {}
+
+# A running cleanup is never cancelled; a newer pending run replaces an older pending
+# one (DM-32 1.6).
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete merged branches
+    # A dispatch of this file on any other branch runs nothing (D2).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      # The full history and every branch head, for the ancestry checks.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # D3 and D8: the token, the event and the input reach the script through this
+      # step's environment only; the script hands the token to git by a credential
+      # helper that reads it from the environment.
+      - name: Select and delete fully merged branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLEANUP_EVENT: ${{ github.event_name }}
+          CLEANUP_DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 -I scripts/branch_cleanup.py
