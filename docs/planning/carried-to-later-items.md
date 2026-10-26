@@ -39,6 +39,13 @@ This file holds what a later work item must take up when that item has no brief 
 - **The API README's lines** (M05 P-13): the dormant signer's descriptions and Stage C1's modules.
 - **The pin test's gap** (M05 finding 13; DM-32 1.11): `services/api/tests/test_toolchain_pins.py` does not read `proofs/stream-chat/package.json`, so a changed Node or npm pin there passes it. The test reads it, with a reversal that fails it. The bootstrap script's "both package.json files" wording stays with the M02 brief's hardening item, since a Setup-script change needs Nathan to paste it.
 
+## Carried to the next change to the branch cleanup (M04's exact-head review)
+
+Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the M04 record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "Exact-head review of M04"):
+
+- **F4:** the git credential helper answers `get` for any host. It answers only when git's input names `host=github.com`, with a test.
+- **F6:** four guards with no failing reversal get tests: the token mask in `diagnostic()`, the strict UTF-8 decode and the SHA check in `read_heads()`, and the non-printable escaping in `cell()`.
+
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 
 - **What it is** (M05 E3; PF01 A04): before P09 and P11B, a list of each account and service completion needs (Apple and Google developer accounts, Railway app services, the Stream production plan, Cloudflare, mail and push), each with its published price rechecked and dated.
