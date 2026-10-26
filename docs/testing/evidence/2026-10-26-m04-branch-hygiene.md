@@ -35,7 +35,7 @@ The cleanup workflow for fully merged branches (Nathan, 5 October 2026; OD-39) a
 - **Mobile timeout: 25 minutes.** Run 40243775584's Mobile job took 6 min 24 s (Chromium install 23 s, rendered suite 4 min 47 s). Run 40029112295's job hit its 15-minute timeout after an 11 min 27 s Chromium install, with the rendered suite cancelled after 2 min 47 s. That install plus a normal job is about 17.5 minutes, so 25 leaves about 7.5 minutes. Measured with my GitHub tools' job reads.
 - **The cleanup job's timeout: 10 minutes.** The script runs one `ls-remote`, a few API pages and one push per deletion.
 - **The token's route into git:** the step's `GITHUB_TOKEN`, read by a credential helper given with `-c` on the two commands that reach the remote (`ls-remote`, `push`): `-c credential.helper=` first drops every helper configured earlier, then `credential.helper=!f() { … printf "username=x-access-token\npassword=%s\n" "$GITHUB_TOKEN"; }; f` answers `get` only. The argument names the variable, never its value. Local git commands run without `GITHUB_TOKEN` in their environment (`git()`, `:45`). A scratch check with a repository-level `store` helper and a URL-scoped one showed neither was handed the credential.
-- **No fetch in the script.** It relies on checkout's `fetch-depth: 0`, which in `actions/checkout` v7.0.1 fetches `+refs/heads/*:refs/remotes/origin/*` (`src/ref-helper.ts`, read in a shallow clone at `3d3c42e`). A head pushed after the checkout is not in the object store, so it is kept as unresolvable; if `main` moved there, the run refuses, and the run its push queued follows.
+- **No fetch in the script.** It relies on checkout's `fetch-depth: 0`, which in `actions/checkout` v7.0.1 fetches `+refs/heads/*:refs/remotes/origin/*` (`src/ref-helper.ts`, read in a shallow clone at `3d3c42e`). A head pushed after the checkout is not in the object store, so it is kept as unresolvable. If `main` moved after checkout, the run refuses only when `main`'s head, as `ls-remote` read it, is not a commit in the checkout, and the run its push queued follows; a `main` moved to a commit the checkout already holds is decided against the new head, which is correct. [Corrected in M04-C1: the exact-head review's F5]
 - **Read order:** the remote, then `main`, then the open PRs, so the listing is as close to the deletions as it can be.
 - **The keep-list's location:** a constant in the script (D5).
 - **The summary's format:** a Markdown header with the mode and `main`'s head and the restore command, a PR table, then one row per branch in name order. Each name is a code span with a fence longer than any backtick run in it, `|` escaped and non-printable characters shown as `\uXXXX`. Every line also goes to the log.
@@ -125,7 +125,7 @@ Open PRs read: #35, head `claude/magical-wozniak-yfmmx2`, base `main`. **Expecte
   - A branch pushed after `ls-remote`: the lease refuses, and the row says so. The push also carries the checked head as the ref's old value, so the server refuses an update that moved after its advertisement.
   - A branch created after `ls-remote` is not considered.
   - A head pushed after checkout is unresolvable, so it is kept.
-  - `main` moved after checkout: the run refuses.
+  - `main` moved after checkout: the run refuses when `main`'s head, as `ls-remote` read it, is not a commit in the checkout; when the checkout already holds that commit, the run decides against the new head, which is correct. [Corrected in M04-C1: the exact-head review's F5]
   - `main` moved or rewound after selection: the selection used `main` as `ls-remote` read it; a rewind of `main`, which the branch policy forbids, could leave a deleted branch's commits reachable only from the summary's head.
   - A PR opened or closed during or after the listing: see section 6.
   - Two cleanup runs never overlap (one concurrency group); a pending run can be replaced by a newer one, and the run that remains reads the state afresh.
@@ -182,3 +182,59 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 - **The threat model** (DM-32 1.16) agrees with section 7, adding F3's in-flight push and F5's resolvable `main`. The token reaches the script's environment, the two network git commands' helper (on `get` only) and the API header; nothing else. A branch's own copy of a workflow is bounded only by push access and the review of workflow changes; no ruleset protects `main` or the kept branches, which the reviewer asks to add to OD-51's branch-controls question.
 - **Checks the reviewer ran:** at `55fc64a`, 14 and 16 tests OK, `py_compile` OK, `git diff --check` clean. Reversals R5, R7, R10, R12b, R13 and R15 fail their tests; V1's and F2's (M1) pass the suite; of the reviewer's own, M2, M6, M7, M9 and M10 fail their tests, and M3, M4, M5 and M8 pass the suite (F6). Runs 40270021713, 40269750327, 40269779556 and the PR run 40315206331 on `55fc64a` (8 jobs `success`, `Application checks passed`, both artifacts with 14 days) match the record. A dry run at `55fc64a` decided as section 4, with the manager branch at `06608f2`.
 - **Limits the reviewer named:** the GitHub path is untested before the first run on `main` (DM-32 1.10); the helper-list check ran on git 2.43.0, not the runner's 2.55.0; the redirect check used loopback HTTP; six of the record's 17 reversals were reproduced.
+
+## Correction pass M04-C1 (26 October 2026)
+
+### Identity
+
+- **Prompt:** M04-C1, revision 1, at commit `e4045c8d5f2c7e32aa057f333e6c6bae8029d75b` of the manager branch `claude/magical-wozniak-yfmmx2`, from Nathan.
+- **Session branch:** `claude/blissful-volta-coypr6`, set to `e4045c8` before any work. Commits:
+  - `0274096` **code head**: the two tests (F1, F2);
+  - the commit that adds this section and the CI policy's and this record's corrections (F3, F5; Markdown only), pushed after the code commit's run had finished.
+- **Run of record:** push run 40347076599 on `0274096` (15:12:43 to 15:19:29 UTC): all eight jobs `success`, gate `Application checks passed`. No PR run: this session opens no PR.
+- **Environment:** `Glow App - No Stream`. None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the loop printed nothing); `compgen -e | grep -E '^STREAM_'` printed nothing. The names `GITHUB_TOKEN` and `GH_TOKEN` are present; their values were never read. Every repository command ran under `env -i PATH="$HOME/.local/bin:$PATH" HOME="$HOME" LANG=C.UTF-8`, without them. `python3.12 --version`: Python 3.12.14, in `$HOME/.local/bin`; `/usr/bin/python3` is 3.13.17; git 2.43.0.
+- **Start gate:** every check passed. `HEAD` = `e4045c8…`, an ancestor of the live manager branch (= `e4045c8`); nothing under `.github`, `scripts`, `services`, `apps`, `packages` or `proofs` differs from M04's code head `27ef2f6`, or between `e4045c8` and the live branch; the live record had no "Correction pass M04-C1" heading (count 0).
+
+### The four items
+
+| # | Item | State | Where |
+|---|---|---|---|
+| 1 | F1 (V1): a test for the credential-helper reset | Done | `scripts/test_branch_cleanup.py:435-460`, `test_helpers_configured_earlier_never_see_the_token` |
+| 2 | F2: a test for the redirect refusal | Done | `scripts/test_branch_cleanup.py:462-498`, `test_redirected_listing_is_refused` |
+| 3 | F3: the restore record's sentence | Done | `docs/operations/ci-and-branch-policy.md:63` |
+| 4 | F5: the two sentences on a moved `main` | Done | this record, section 3 (`:38`) and section 7 (`:128`), each marked |
+
+- **F1's test.** `GIT_CONFIG_GLOBAL` names a scratch config with `credential.helper` and `credential.https://github.com.helper`, each a recording script (given as `!<path> generic` and `!<path> scoped`) that appends its arguments and its input to a scratch log. `git <NETWORK> credential fill` for `protocol=https`, `host=github.com`, with the fake `TOKEN` as `GITHUB_TOKEN` and `GIT_TERMINAL_PROMPT=0`, prints `username=x-access-token` and the token as the password; `git <NETWORK> credential approve` with that output exits 0; the log does not exist. **The control:** the same two commands with `-c credential.helper=<the script's helper>` alone print the same credential, and the log then holds exactly `generic get`, `scoped get`, `generic store` and `scoped store`. The control builds its argument from `CREDENTIAL_HELPER`, not from `NETWORK`, so it is unchanged by the reversal.
+- **F2's test.** A `ThreadingHTTPServer` on `127.0.0.1`, port 0, in a daemon thread, answers `/repos/owner/repo/pulls` with a 302 to `/elsewhere`, which would answer 200 with `[]` and no `Link` header. With `branch_cleanup.API` patched to `http://127.0.0.1:<port>`, `read_open_prs("owner/repo", TOKEN, urlopen=branch_cleanup._open)` raises `Refused`, and the server served only the pulls path. During the call every `*_proxy` variable, in either case, is removed from `os.environ` and `NO_PROXY` and `no_proxy` are `127.0.0.1` (`mock.patch.dict`, restored after). The clean-up shuts the server down, closes it and joins the thread.
+- **F3.** The bullet now says each deletion's row is written as soon as its push returns, so a run whose script fails midway still names every head it deleted, and the restore command; then that a run killed while a push is in flight may leave that one deletion unrecorded, and its commits are in `main`. The rest of the bullet and of the file is byte-identical.
+- **F5.** Both sentences now say the run refuses only when `main`'s head, as `ls-remote` read it, is not a commit in the checkout, and that a `main` moved to a commit the checkout already holds is decided against the new head, which is correct.
+
+### Checks
+
+| # | Check | Command | Result |
+|---|---|---|---|
+| 1 | The diff | `git diff --check e4045c8… HEAD`; `git diff --name-only e4045c8… HEAD` clean; `docs/operations/ci-and-branch-policy.md`, this record, `scripts/test_branch_cleanup.py`: the three owned paths only, all mode `100644` |
+| 2 | Classification | trusted `scripts/change_scope.py` from `origin/main` = `85bbd4d`, extracted to a scratch directory; `/usr/bin/python3 -I … --base e4045c8… --head <h> --merge-base` at `0274096`: `{"full": true, "reason": "behavior-or-empty", "paths": ["scripts/test_branch_cleanup.py"]}`; at the records head, the same with the two Markdown paths added. Full scope, as expected |
+| 3 | The tests at the start (`e4045c8`) | `env -i … python3.12 -I -m unittest discover -s scripts -p 'test_branch_cleanup.py' -v`, and the same for `test_change_scope.py` | 16 OK; 14 OK |
+| 3 | The tests at the head | the same `test_branch_cleanup.py` 18 OK (the 16, unchanged, and the two new); `test_change_scope.py` 14 OK, unchanged |
+| 3 | The new tests with loopback proxy variables set | the same, with `HTTP_PROXY`, `http_proxy` and `HTTPS_PROXY` = `http://127.0.0.1:9`, `-k redirected -k helpers_configured` | 2 OK |
+| 4 | F1's reversal | scratch copy; `"-c", "credential.helper=",` dropped from `NETWORK` | `test_helpers_configured_earlier_never_see_the_token` FAIL: `self.assertFalse(log.exists())`, `True is not false`; the other 17 pass (`FAILED (failures=1)` of 18) |
+| 4 | F2's reversal | scratch copy; `build_opener(_NoRedirect)` → `build_opener()` in `_open()` | `test_redirected_listing_is_refused` FAIL: `Refused not raised`; the other 17 pass (`FAILED (failures=1)` of 18) |
+| 4 | The real code | as check 3 | both new tests pass |
+| 5 | Foundation on `0274096` | read with the GitHub tools; nothing re-run or dispatched run 40347076599 (push): Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks and Foundation gate all `success`; the gate's log line `Application checks passed`. API checks' policy step on the runner (Python 3.12.14): `test_change_scope.py` `Ran 14 tests` OK; `test_branch_cleanup.py` `Ran 18 tests` OK, both new tests `ok`; then the API suite's 366 and the contracts' 39 OK. I searched the job's 1,960-line log for these lines and did not read it otherwise |
+| 6 | Secret scan | added lines of `git diff e4045c8… HEAD`, for GitHub, AWS, Slack and OpenAI-style keys, private-key headers, `password=`, `token = "`, `api_key` and e-mail shapes | hits, none a secret: the F1 test's assertion on `password={TOKEN}`, the existing fake token; this section's environment line, which names `HD_API_KEY` and `GEO_API_KEY`; and this row, which names the patterns |
+
+### Deviations and limits
+
+- **PATH.** In this container `/nix/var/nix/profiles/default/bin` comes before `$HOME/.local/bin` on the inherited `PATH`. It holds no Python, so `python3.12` resolved to `$HOME/.local/bin` either way; every `env -i` command put `$HOME/.local/bin` first explicitly.
+- **The push ran outside `env -i`.** Under `env -i` git cannot reach the session's GitHub proxy (`could not read Username`), so `git push -u origin claude/blissful-volta-coypr6` ran in the session's own environment. No credential was read or printed.
+- **F1's control writes the fake token to a scratch log**: the recorder is handed `store` with the password, which is the harm the reset prevents. The log is in the test's temporary directory, removed at tear-down, and the token is the existing fake `TOKEN`.
+- **Length:** this section takes the record from 184 to about 240 lines, past the 150-line target (step 5), because each pass keeps its own identity, checks and limits; nothing the re-review must know is cut.
+- **F3's wording:** the restore command stays attached to the first sentence, and the in-flight case is its own sentence after it.
+- **Limits:** F1's test ran here on git 2.43.0; on the runner it passed on the runner's git, whose version I did not read (check 5). F2's test is loopback HTTP, not HTTPS against GitHub; the GitHub path stays unexercised before the first run on `main` (DM-32 1.10). F4 and F6 stay carried, as the review disposed.
+
+### What the re-review must know
+
+- The code head is `0274096`; `scripts/branch_cleanup.py`, both workflows, `scripts/change_scope.py` and its tests are byte-identical to `27ef2f6`, and the 16 existing tests are unchanged. The test file's diff is three imports and the two tests after the last existing one.
+- Each new test fails with its guard reversed and passes with the real code; F1's has a control that fails if the recorder never runs.
+- F3 and F5 change records only; no behaviour claim beyond the review's F3 and F5 is added.
