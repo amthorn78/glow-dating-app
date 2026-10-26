@@ -213,7 +213,7 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 
 | # | Check | Command | Result |
 |---|---|---|---|
-| 1 | The diff | `git diff --check e4045c8… HEAD`; `git diff --name-only e4045c8… HEAD` clean; `docs/operations/ci-and-branch-policy.md`, this record, `scripts/test_branch_cleanup.py`: the three owned paths only, all mode `100644` |
+| 1 | The diff | `git diff --check e4045c8… HEAD`; `git diff --name-only e4045c8… HEAD` | clean; `docs/operations/ci-and-branch-policy.md`, this record, `scripts/test_branch_cleanup.py`: the three owned paths only, all mode `100644` |
 | 2 | Classification | trusted `scripts/change_scope.py` from `origin/main` = `85bbd4d`, extracted to a scratch directory; `/usr/bin/python3 -I … --base e4045c8… --head <h> --merge-base` at `0274096`: `{"full": true, "reason": "behavior-or-empty", "paths": ["scripts/test_branch_cleanup.py"]}`; at the records head, the same with the two Markdown paths added. Full scope, as expected |
 | 3 | The tests at the start (`e4045c8`) | `env -i … python3.12 -I -m unittest discover -s scripts -p 'test_branch_cleanup.py' -v`, and the same for `test_change_scope.py` | 16 OK; 14 OK |
 | 3 | The tests at the head | the same `test_branch_cleanup.py` 18 OK (the 16, unchanged, and the two new); `test_change_scope.py` 14 OK, unchanged |
@@ -221,7 +221,7 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 | 4 | F1's reversal | scratch copy; `"-c", "credential.helper=",` dropped from `NETWORK` | `test_helpers_configured_earlier_never_see_the_token` FAIL: `self.assertFalse(log.exists())`, `True is not false`; the other 17 pass (`FAILED (failures=1)` of 18) |
 | 4 | F2's reversal | scratch copy; `build_opener(_NoRedirect)` → `build_opener()` in `_open()` | `test_redirected_listing_is_refused` FAIL: `Refused not raised`; the other 17 pass (`FAILED (failures=1)` of 18) |
 | 4 | The real code | as check 3 | both new tests pass |
-| 5 | Foundation on `0274096` | read with the GitHub tools; nothing re-run or dispatched run 40347076599 (push): Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks and Foundation gate all `success`; the gate's log line `Application checks passed`. API checks' policy step on the runner (Python 3.12.14): `test_change_scope.py` `Ran 14 tests` OK; `test_branch_cleanup.py` `Ran 18 tests` OK, both new tests `ok`; then the API suite's 366 and the contracts' 39 OK. I searched the job's 1,960-line log for these lines and did not read it otherwise |
+| 5 | Foundation on `0274096` | read with the GitHub tools; nothing re-run or dispatched | run 40347076599 (push): Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks and Foundation gate all `success`; the gate's log line `Application checks passed`. API checks' policy step on the runner (Python 3.12.14): `test_change_scope.py` `Ran 14 tests` OK; `test_branch_cleanup.py` `Ran 18 tests` OK, both new tests `ok`; then the API suite's 366 and the contracts' 39 OK. I searched the job's 1,960-line log for these lines and did not read it otherwise |
 | 6 | Secret scan | added lines of `git diff e4045c8… HEAD`, for GitHub, AWS, Slack and OpenAI-style keys, private-key headers, `password=`, `token = "`, `api_key` and e-mail shapes | hits, none a secret: the F1 test's assertion on `password={TOKEN}`, the existing fake token; this section's environment line, which names `HD_API_KEY` and `GEO_API_KEY`; and this row, which names the patterns |
 
 ### Deviations and limits
@@ -238,3 +238,11 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 - The code head is `0274096`; `scripts/branch_cleanup.py`, both workflows, `scripts/change_scope.py` and its tests are byte-identical to `27ef2f6`, and the 16 existing tests are unchanged. The test file's diff is three imports and the two tests after the last existing one.
 - Each new test fails with its guard reversed and passes with the real code; F1's has a control that fails if the recorder never runs.
 - F3 and F5 change records only; no behaviour claim beyond the review's F3 and F5 is added.
+
+## Manager verification of M04-C1 (26 October 2026, App Manager 8)
+
+- **Scope:** `git diff --name-status e4045c8 ab38a80` lists the three owned paths, mode `100644`; `git diff --check` is clean. The code delta is `scripts/test_branch_cleanup.py` alone, 68 added lines; the script, both workflows, `change_scope.py` and its tests are byte-identical to `27ef2f6`.
+- **The tests, read whole and run here** in scratch copies of `ab38a80` under `env -i`, `python3.12` 3.12.14: `test_branch_cleanup.py` 18 OK, `test_change_scope.py` OK. F1's reversal fails only F1's test; F2's fails only F2's. F1's control proves the recorder runs; F2's `served` assertion proves the request reached the server, so its `Refused` is the redirect's, not a connection failure's.
+- **The runs, read with the GitHub tools:** 40347076599 on `0274096`, all eight jobs `success`, the gate `Application checks passed`, the API job `Ran 18 tests` with both new tests `ok`, then 14, 366 and 39; 40348682976 on `ab38a80`, the six application jobs `skipped` as documentation and the gate `success`.
+- **Integration:** the manager branch fast-forwarded to `ab38a80`. The trusted policy from `85bbd4d` classifies PR36 full scope, 20 paths.
+- **One cosmetic correction:** rows 1 and 5 of C1's checks table had the command and the result in one cell; the cells are split, words unchanged.
