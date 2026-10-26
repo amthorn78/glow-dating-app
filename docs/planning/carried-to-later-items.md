@@ -37,6 +37,7 @@ This file holds what a later work item must take up when that item has no brief 
 - **The epoch-bump question** (DM-31 item 4): whether a session-epoch bump still revokes provider tokens once no client token exists. It is a security-boundary question, so it goes to the Dev Manager before P06.2-T's brief settles it.
 - **The refusal lists** (M05 finding 22, E15): a `PG*` prefix rule and the Railway, Redis and `STREAM_*` names, in the API and in the database proof together. ADR 0004's sentence changes again when the list widens.
 - **The API README's lines** (M05 P-13): the dormant signer's descriptions and Stage C1's modules.
+- **The pin test's gap** (M05 finding 13; DM-32 1.11): `services/api/tests/test_toolchain_pins.py` does not read `proofs/stream-chat/package.json`, so a changed Node or npm pin there passes it. The test reads it, with a reversal that fails it. The bootstrap script's "both package.json files" wording stays with the M02 brief's hardening item, since a Setup-script change needs Nathan to paste it.
 
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 

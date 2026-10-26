@@ -2,7 +2,7 @@
 
 - **Work ID:** M04 (cross-cutting).
 - **Owner:** Nathan Amthor, by his direction of 5 October 2026 (OD-39); next in the order he resumed on 26 October (OD-49). **Manager:** App Manager 8. **Implementer:** one implementation session, started by Nathan.
-- **Revision 1, 26 October 2026,** for the Dev Manager's read (DM-32).
+- **Revision 2, 26 October 2026,** applying DM-32's conditions 1.1 to 1.16 ([report](../continuity/dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)). Revision 1 went to the Dev Manager as DM-32.
 - **Starting point:** `main` at `4aa66e2` (PR34), with the manager branch's Markdown records after it. The prompt names the exact commit.
 - **Prompt:** written after DM-32, in `docs/ephemeral/`, for `Glow App - No Stream`.
 - **Evidence home:** `docs/testing/evidence/<date>-m04-branch-hygiene.md`, written by the session; the prompt names the date.
@@ -29,16 +29,20 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
 
 - **D1 — Its own workflow file,** `.github/workflows/branch-cleanup.yml`, so write permission never reaches the Foundation jobs.
 - **D2 — Triggers:** `push` to `main`, which a merge makes, and `workflow_dispatch`. No `pull_request` or `pull_request_target` trigger, ever. The job runs only when `github.ref` is `refs/heads/main`, so a dispatch on another branch runs nothing.
-- **D3 — Permissions:** `permissions: {}` at the top; the one job gets `contents: write` and `pull-requests: read`. It uses `GITHUB_TOKEN` alone and references no secret. Actions are pinned to full commit SHAs from the CI policy's table. The token reaches only the step that deletes, where that is practical. Otherwise the job runs nothing but `main`'s own reviewed script and `git`.
+- **D3 — Permissions:** `permissions: {}` at the top; the one job gets `contents: write` and `pull-requests: read`, and a bounded `timeout-minutes`. It uses `GITHUB_TOKEN` alone and references no secret. Actions are pinned to full commit SHAs from the CI policy's table. **The token's reach** (DM-32 1.1):
+  - checkout keeps `persist-credentials: false`;
+  - only the step that runs the script has `GITHUB_TOKEN` in its environment, for the PR listing and the deletions;
+  - the script never prints the token, and never writes it to disk or to git config.
 - **D4 — The selection rule** (a standard-library Python script, `scripts/branch_cleanup.py`, which runs no candidate code). It reads the remote's `refs/heads/*`, the current `main`, and the head and base branch of every open PR. A branch is deleted only when all of these hold:
   - its head commit is an ancestor of `main` (`git merge-base --is-ancestor`). A squash-merged branch therefore stays, as does any head the job cannot resolve;
   - it is not on the keep-list;
-  - it is neither the head nor the base of an open PR. A same-named branch from a fork also keeps it;
+  - it is neither the head nor the base of an open PR. A same-named branch from a fork also keeps it. **The listing is complete** (DM-32 1.3): it reads every page and fails closed on any error, and the summary lists the open PRs it read (number, head and base);
   - its name came from the remote listing, and it is passed as an argument, never interpolated into a shell.
+  - **The fresh-branch case** (DM-32 1.4): a branch whose head is a commit of `main` counts as merged, so a session branch pushed at its start commit, before any work, is deleted at the next merge once that commit is in `main`. Its next push re-creates it. The CI policy says so, so that sessions and managers do not read it as a fault.
 - **D5 — The keep-list is held on `main`,** in the script or in a non-Markdown file beside it, so a change to it is full scope: `main`, the manager branch `claude/magical-wozniak-yfmmx2` and `claude/dev-manager`, by name (DM-13 item 10; the manager and Dev Manager branches are always fully merged after integration).
-- **D6 — Deletion only at the checked head.** Each deletion is conditional on the head the selection checked, using `git push --force-with-lease=refs/heads/<b>:<sha> origin :refs/heads/<b>` or an equivalent precondition. A push in between leaves the branch. Deleting a merged branch loses no commit. The summary records each deleted branch's head, so `git push origin <sha>:refs/heads/<name>` restores it.
-- **D7 — Fail closed.** If listing open PRs, reading the remote or resolving `main` fails, nothing is deleted and the run fails. A concurrency group queues runs; it never cancels them.
-- **D8 — Dry run and summary.** `workflow_dispatch` takes a `dry_run` input that defaults to true. The push run deletes. Every run writes a job summary with one row per branch: name, head, decision (deleted, kept, would delete), and reason (keep-list, open PR, unmerged, unresolvable).
+- **D6 — Deletion only at the checked head.** Each deletion is conditional on the head the selection checked, using `git push --force-with-lease=refs/heads/<b>:<sha> origin :refs/heads/<b>` or an equivalent precondition. A push in between leaves the branch. Deleting a merged branch loses no commit. **The summary is the restore record** (DM-32 1.5): each deletion's row, with its head, is written as it happens, so a run that fails midway still names every head it deleted, and `git push origin <sha>:refs/heads/<name>` restores it. The summary escapes branch names, as data.
+- **D7 — Fail closed.** If listing open PRs, reading the remote or resolving `main` fails, nothing is deleted and the run fails. A concurrency group with `cancel-in-progress: false` never cancels a running run, but a newer pending run replaces an older pending one, as GitHub documents; the CI policy says so (DM-32 1.6).
+- **D8 — Dry run and summary.** The event sets the mode (DM-32 1.7): a push deletes. `workflow_dispatch` takes a `boolean` `dry_run` input that defaults to true, passed to the script through `env:`, never through `${{ }}` inside `run:`; on a dispatch, any value but an exact `false` means a dry run. Every run writes a job summary with one row per branch: name, head, decision (deleted, kept, would delete), and reason (keep-list, open PR, unmerged, unresolvable).
 - **D9 — The Foundation changes:**
   - `!cancelled() && (…)` replaces `always() && (…)` on the six application jobs, and the gate keeps `always()` (finding 10);
   - the Mobile job's timeout gets measured margin, 25 minutes unless the session's measurements argue otherwise, with no cache action added (finding 11);
@@ -49,13 +53,11 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
   - GitHub's "automatically delete head branches" setting. Session branches are integrated by fast-forward, not merged as PR heads, so it would not delete them, and it would delete the manager branch at each PR merge.
   - A manual list at each merge (OD-39's option 2). Nathan did not choose it.
 
-## Questions for the Dev Manager (DM-32)
+## The Dev Manager's answers (DM-32)
 
-1. **The first run.** Recommended: the push run at M04's merge deletes for real. The protections are the tests, the pre-merge dry run, the lease and recoverability. The alternative is to ship with push runs in dry-run mode, read one summary on `main`, then flip deletion on in a second small full-scope PR, at the cost of one more review cycle.
-2. **The push filter** (AM7-02; the P06.2 brief's B2-C2 point vi). A harness-named session branch (`ccr-…`) starts no Foundation run, so its run of record waits for the manager's integration.
-   - Recommended: add `'ccr-**'` to the push filter.
-   - The cost is more runs. The Actions minutes quota for this private repository and its use were not checked from a session.
-3. **Finding 12 in M04** (recommended): it makes M04 a classification-policy change too, under the rules in `AGENTS.md`. **Finding 13** (the pin test misses `proofs/stream-chat/package.json`): recommended for P06.2-T, which changes `services/api` anyway, not M04.
+1. **The first run deletes for real** (approved, with 1.10). M04's merge receipt names the expected deletions in advance, and says that the first run is the first test of the workflow's GitHub path: the token's write permission, the PR listing and the lease against GitHub. No pre-merge check reaches that path, since the job runs only on `main`.
+2. **The push filter:** `'ccr-**'` is approved only while the repository stays public (DM-32 3.4). GitHub reports it public, though ADR 0001 and the CI policy say private; whether that is intended is Nathan's. If it stays public, Actions minutes on standard runners are free (GitHub's documentation, read on 26 October 2026) and the line is added. If it becomes private, the filter is unchanged.
+3. **Finding 12 is in M04** (approved). **Finding 13 goes to P06.2-T** (1.11): the test is in the carried-items file's "Carried to P06.2-T" and its row, and the bootstrap script's wording stays with the hardening item in the [M02 brief](claude-setup-optimization.md), since a Setup-script change needs Nathan to paste it.
 
 ## Owned paths (the implementation session's)
 
@@ -67,13 +69,20 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
   - its evidence record.
 - **The CI policy's changes:**
   - the cleanup workflow, with its write permission named as the one exception to "read-only contents permissions";
-  - the trust limit for it;
-  - the cancel paragraph and the upload-artifact row in final form (DM-31 3.7; M05's P-9 as their starting text);
+  - **the trust limit** (DM-32 1.2): the `main`-only condition stops an accidental dispatch, but not a branch's own edited copy. A branch that adds or edits a workflow can run it, on push or on dispatch, with the permissions it declares, and a merged change to the cleanup workflow or its script acts at its own merge. The protection is the review of workflow changes (`AGENTS.md`);
+  - the fresh-branch case (D4) and the concurrency wording (D7);
+  - the cancel paragraph and the upload-artifact row in final form (DM-31 3.7; M05's P-9 as their starting text). They say, after D9 (DM-32 1.13): a newer run of the same ref cancels an earlier run's application jobs; the earlier run's gate still runs and fails, and that run is not evidence; so a push before a code run finishes discards that run;
   - the push filter, if it changes.
 
 ## Manager-owned
 
-This brief and the prompt; the manager workflow's step 5 push-run sentence, in final form (DM-31 3.7; M05's P-7 as its starting text), and step 7's "Report the branch state", which reads the cleanup run's summary once M04's first run of record holds; the handoff, the register, the review log and Notion.
+This brief and the prompt; in the manager workflow (all for the Dev Manager's pre-merge read):
+
+- step 5's push-run sentence, in final form (DM-31 3.7; M05's P-7 as its starting text). It states the rule and cites the CI policy for the mechanism, without restating it (DM-32 1.12);
+- step 3's "Say when a session may push again" (AM5-04, AM5-14), which describes the old mechanism; after D9 that rule is what saves a run of record (DM-32 1.14);
+- step 7's "Report the branch state", which reads the cleanup run's summary once M04's first run of record holds.
+
+Also the handoff, the register, the review log and Notion.
 
 ## Exclusions
 
@@ -89,7 +98,7 @@ OD-39 and OD-49; DM-13 item 10; DM-31 items 3.7 and 4; M05 findings 10 to 14; AM
 
 ## Acceptance checks
 
-1. The cleanup workflow's text shows D1 to D3 and D8: its triggers, the `main`-only condition, the permissions, no `secrets.` reference, and full-SHA pins.
+1. The cleanup workflow's text shows D1 to D3 and D8: its triggers, the `main`-only condition, the permissions, the job's `timeout-minutes` (DM-32 1.8), `persist-credentials: false`, the token in one step's environment, the dispatch input through `env:`, no `secrets.` reference, and full-SHA pins.
 2. **Selection tests,** each with a recorded reversal that fails it. They run on a temporary repository with a bare remote:
    - a merged branch is selected;
    - an unmerged branch is kept;
@@ -97,12 +106,15 @@ OD-39 and OD-49; DM-13 item 10; DM-31 items 3.7 and 4; M05 findings 10 to 14; AM
    - the head and the base of an open PR are kept;
    - a branch moved after selection is kept, because the lease is refused;
    - an unresolvable head is kept;
-   - a failed PR listing deletes nothing;
+   - a failed PR listing deletes nothing, and a two-page listing is read whole (DM-32 1.3);
+   - a run that fails midway has already written each deletion's row (DM-32 1.5);
+   - on a dispatch, any `dry_run` value but an exact `false` is a dry run (DM-32 1.7);
    - a dry run deletes nothing and selects the same set;
    - a name with shell metacharacters is handled as data.
 3. **Foundation:**
    - the PR run on the exact head passes every job and prints `Application checks passed`;
-   - two quick pushes to the session's branch show the earlier run's application jobs `cancelled`, with the newer run's gate as the result;
+   - the PR run's artifacts list shows `p04-empty-form-layout` and `p06-db-proof-results`, with their names and retention, since both uploads use `if-no-files-found: ignore` and the pin moves from v4 (DM-32 1.9);
+   - two quick pushes to a branch the push filter covers show the earlier run's application jobs `cancelled` and its gate failed, with the newer run as the result. The prompt checks the session's branch name, or the manager runs the test after integration; the session runs it before its final code push, then waits for that push's run (DM-32 1.15);
    - the Mobile job's duration and timeout are recorded;
    - the new upload-artifact pin's release and commit are recorded;
    - with finding 12, the submodule test and its reversal are recorded.
@@ -121,11 +133,12 @@ Full scope: a workflow, scripts and tests. The manager classifies with the trust
   1. the implementation session;
   2. the manager's verification and integration;
   3. Codex's review of the code head;
-  4. an exact-head code and security review that Nathan runs. Its focus is the selection rule, the triggers and permissions, the lease, injection, and the classifier change;
+  4. an exact-head code and security review that Nathan runs. Its focus is the selection rule, the triggers and permissions, the lease, injection, and the classifier change. It carries a short written threat model: the token's reach, a branch's own copy of the workflow, injection through names and inputs, the listing's completeness, and races (DM-32 1.16; Codex's security reviews are no longer available, OD-41);
   5. Codex on the final head;
   6. the Dev Manager's read of the CI policy and manager workflow changes before the merge.
-- **After the merge:** the first cleanup run is recorded in the merge receipt.
+- **After the merge:** the first cleanup run is recorded in the merge receipt, against the expected deletions it named (DM-32 1.10).
 
 ## Sessions
 
-- **Revision 1** (26 October 2026): to the Dev Manager as DM-32.
+- **Revision 1** (26 October 2026): to the Dev Manager as DM-32 (`515bd72`).
+- **DM-32** (26 October 2026; report `3abbc81`): approved with conditions 1.1 to 1.16, all accepted and applied as **revision 2**, which needs no further read (DM-03 G2). The push filter's `'ccr-**'` waits on Nathan's answer on the repository's visibility (DM-32 3.4).

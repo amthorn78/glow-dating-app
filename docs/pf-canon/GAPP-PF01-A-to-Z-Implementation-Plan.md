@@ -619,7 +619,7 @@ Affected tasks: the new slices SV1 to SV4, P06.3, P07, P09.3 and P10, whose inpu
 
 1.15 — records Nathan's decisions N4 and N2 of 26 October 2026 (OD-50), with the texts the Dev Manager found fit to put to him (DM-31 3.2):
 
-- A04: before P09 and P11B the manager keeps a costed list of completion's accounts and services, and Nathan approves each line when its phase needs it; nothing is spent before then. Nathan reports the Stream Maker application's status when it changes; the dated clause is in the register, OD-22 (M05's P-3, with DM-31's change; finding 3; N2).
+- A04: before P09 and P11B the manager keeps a costed list of completion's accounts and services, and Nathan approves each line when its phase needs it; no account is created and nothing is spent before then. Nathan reports the Stream Maker application's status when it changes; the dated clause is in the register, OD-22 (M05's P-3, with DM-31's change; finding 3; N2).
 - A05: the open A05 questions go to Nathan in OD-32's form before P07's brief (M05's P-6; finding 6; N4). The matrix (§7) compares the candidate list he chose, recorded in OD-50.
 
 Affected tasks: P07, P08, P09 and P11B. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.

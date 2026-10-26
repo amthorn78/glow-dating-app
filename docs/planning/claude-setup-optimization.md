@@ -220,7 +220,7 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 
 **Moved from the current handoff on 26 October 2026** (M05 finding 38), with what M05 found:
 
-- **The hardening item also takes:** the pin test's missing `proofs/stream-chat/package.json` (M05 finding 13: a changed Node or npm pin there passes `test_toolchain_pins.py`), and `scripts/bootstrap-toolchain.sh`'s "both package.json files" wording; and uv 0.12.17 in `scripts/bootstrap-toolchain.sh`, since the API README's lock commands name it and Stage B2 and B2-C1 used a scratch install.
+- **The hardening item also takes:** `scripts/bootstrap-toolchain.sh`'s "both package.json files" wording, and uv 0.12.17 in `scripts/bootstrap-toolchain.sh`, since the API README's lock commands name it and Stage B2 and B2-C1 used a scratch install. The pin test's missing `proofs/stream-chat/package.json` (M05 finding 13: a changed Node or npm pin there passes `test_toolchain_pins.py`) moved to P06.2-T on 26 October 2026, which changes `services/api` anyway (DM-32 1.11; the [carried-items file](carried-to-later-items.md), "Carried to P06.2-T").
 - **The stale-documentation sweep** was done by M05 in `docs/architecture/`, `docs/testing/` and `docs/operations/` (commit `300a24d`; its record, findings 35 to 37), so this item is closed.
 
 ## Review and merge gates
