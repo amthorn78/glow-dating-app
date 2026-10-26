@@ -75,7 +75,7 @@ Conditions that wait on a later event. The manager keeps this table current, and
 | DM-32 3.4: whether the repository's public visibility is intended; it decides `'ccr-**'`, and if intended a branch-controls question follows | Nathan's answer | **Done:** public, kept (OD-51); `'ccr-**'` in M04's brief, revision 3 |
 | OD-51: which branch controls to turn on while they are free (protected branches or rulesets), weighed against Nathan's planned return to private | The Dev Manager first, then Nathan in OD-32's form | Open |
 | OD-51: when the repository goes private again, `'ccr-**'` comes out or its minutes are approved (DM-32 3.4), the records return to "private", and the Actions minutes line of M07 applies | Nathan's notice that he will make it private | Open |
-| DM-32: the pre-merge read of the CI policy and of the manager workflow's steps 3, 5 and 7 | M04's PR, before it merges | Open |
+| DM-32: the pre-merge read of the CI policy and of the manager workflow (steps 3, 5 and 7, and the handover checklist's keep-list line), at M04's final head; with it, confirm PF01 1.15's entry, which applies DM-32's optional nit, and the start prompts' OD-51 and keep-list lines | M04's PR, before it merges | Open |
 | DM-31 item 4: E7's epoch-bump question to the Dev Manager | P06.2-T's brief (E7) | Open (the carried-items file) |
 | DM-31 item 4: the matrix's prompt names an environment that can read the web; DM-31 item 3: it states it is not legal advice | The matrix's prompt | Open (the carried-items file) |
 | DM-31 3.2 on P-5: P07's brief shows the disposable WordPress runs in CI at no cost, or brings a fallback | P07's brief | Open (the carried-items file) |

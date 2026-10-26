@@ -116,6 +116,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-11 | 26 Oct 2026 | follow-through | Notion's standing status bullets on Implementation Control left at App Manager 7's state; read-backs checked only the edited strings | M05 review, finding 30 |
 | AM8-12 | 26 Oct 2026 | process | The current handoff kept over its 5 KB limit, with follow-ups whose only home it was | M05 review, finding 38 |
 | AM8-13 | 26 Oct 2026 | follow-through | The `89f2601` Notion sync left two Implementation Control bullets stale ("No PR is open" with PR34 open; DM-31 "goes to it next" after its answer), repeating AM8-11 | App Manager 8, at the `72c60dd` sync |
+| AM8-14 | 26 Oct 2026 | records | M04's brief recorded its implementation prompt's TypeSafe reading in its Sessions line, which step 3 keeps to the prompt's header and the uses table (DM-01 P8) | App Manager 8, at M04's integration |
 
 ## App Manager 2
 
@@ -897,3 +898,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** for about an hour Notion misstated the open PR and DM-31's state. No decision rested on it.
 - **Correction:** both bullets, the phase and next-items bullets and the branch heads corrected and read back at the `72c60dd` sync.
 - **Prevention:** AM8-11's, applied to every sync: after the edits, fetch the page and check every status bullet against the handoff, not only the edited strings. The claims checklist's last line already says so.
+
+### AM8-14 — A TypeSafe reading in a brief (records)
+
+- **What happened:** the commit that gave M04's prompt to Nathan wrote the prompt's reading ("Opus 5.5 at extra high, flagged at the boundary with max") into the brief's Sessions line. Step 3 says the readings live in the prompt's header and the Notion uses table only, not in briefs, handoffs or reports (DM-01 P8). PR35 merged it.
+- **Caught by:** App Manager 8, rereading the Sessions line to add the integration.
+- **Effect:** none on a decision. The brief repeated, correctly, what the header holds; a reader could take it for a recommendation that outlives the prompt.
+- **Correction:** the line now points to the prompt's header and the uses table, in M04's PR.
+- **Prevention:** before a records commit that names a prompt, search the changed briefs, handoffs and reports for a model name with a rung (`grep -nE '(Fable|Opus|Sonnet|Haiku) [0-9.]+ at'`); only Nathan's pick, the cell he ran, may stand there.

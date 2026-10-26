@@ -129,3 +129,36 @@ Open PRs read: #35, head `claude/magical-wozniak-yfmmx2`, base `main`. **Expecte
   - `main` moved or rewound after selection: the selection used `main` as `ls-remote` read it; a rewind of `main`, which the branch policy forbids, could leave a deleted branch's commits reachable only from the summary's head.
   - A PR opened or closed during or after the listing: see section 6.
   - Two cleanup runs never overlap (one concurrency group); a pending run can be replaced by a newer one, and the run that remains reads the state afresh.
+
+## Manager verification of M04 (26 October 2026, App Manager 8)
+
+App Manager 8 read the relayed report against the pushed branch `claude/laughing-meitner-ywjnk1` (head `7f9e6e7`, code head `27ef2f6`) before integrating it. This section takes the record past the 150-line target (step 5): it is what the exact-head review must know of the manager's own checks.
+
+- **Scope:** `git diff --name-only bbd461b 7f9e6e7` lists the 8 owned paths only, all mode `100644`; `git diff --check` is clean. The trusted classifier from `main` (`4aa66e2`) prints full scope.
+- **The code, read whole:** `branch-cleanup.yml` (triggers, the `main`-only condition, `permissions: {}`, the job's `contents: write` and `pull-requests: read`, `timeout-minutes: 10`, `persist-credentials: false`, `fetch-depth: 0`, the token as `${{ github.token }}` in one step's `env:`, no `secrets.` and no `${{` inside `run:`); `branch_cleanup.py` (the mode, the paged listing with redirects refused and the Authorization header unredirected, fail-closed reads, the keep-list, the lease, the environment-only credential helper behind an empty-helper reset, the token stripped from local git commands, names as argument elements, the row-by-row summary); `foundation.yml`'s D9 lines; the classifier's flag and its test; the CI policy's changes.
+- **The tests, run here** in a scratch worktree at `7f9e6e7`, `env -i`, `python3.12` 3.12.14: `test_change_scope.py` 14 tests OK; `test_branch_cleanup.py` 16 tests OK.
+- **Seven reversals of the manager's own**, each in a scratch copy with `discover -k`, with two unmodified controls passing:
+  - the lease removed: `test_branch_moved_after_selection_is_kept_by_the_lease` fails;
+  - open PRs ignored: `test_open_pr_head_and_base_are_kept` fails (3 subtests);
+  - a dispatch deleting unless `true`: `test_dispatch_deletes_only_on_exact_false` fails (12 subtests);
+  - `claude/dev-manager` off the keep-list: `test_keep_list_names_are_kept_while_merged` fails;
+  - the next page ignored: `test_two_page_listing_is_read_whole` fails;
+  - the submodule flag removed: `test_submodule_ignore_setting_cannot_hide_a_gitlink_move` fails;
+  - **the empty `credential.helper=` reset dropped: every test still passes.** The record says the reset was shown by a scratch check, not a test (section 3), so no claim is wrong; it is a coverage gap (V1 below).
+- **The runs, read with the GitHub tools:**
+  - run of record 40270021713 (push, `27ef2f6`): all eight jobs `success`; the gate log prints `Application checks passed`; Mobile 04:37:35 to 04:44:07 (6 min 32 s of 25); artifacts `p04-empty-form-layout` (64,386 bytes) and `p06-db-proof-results` (20,841 bytes), each expiring 9 November (14 days);
+  - the cancel test, run 40269750327 (`2d3566d`): all six application jobs `cancelled`; API checks, smoke and artifact had finished every step; Stream proof, Database and Mobile stopped mid-step at 04:35:46 to 04:35:52; the Database job's clean-up step still ran; the gate failed. Run 40269779556 skipped the application jobs as documentation;
+  - the records run 40270835083 (`7f9e6e7`): `success`.
+- **The pin:** `git ls-remote https://github.com/actions/upload-artifact` names `cf430e030ddbb5b0abf93d22962f4752f3646cd9` for both `v7` and `v7.0.2`.
+- **The integration:** PR35 merged first, as `85bbd4d`. The manager branch was brought to `85bbd4d` and the session branch merged into it with a merge commit, `39b6141` (parents `85bbd4d` and `7f9e6e7`). `git diff --name-only 85bbd4d 39b6141` lists the 8 paths, and they are byte-identical to `7f9e6e7`. The manager's records for V2 to V4 and V6, and this section, followed in the next commit; of these paths they change only the CI policy's opening line and this record.
+
+**Findings, for the exact-head review:**
+
+| # | Finding | Class | Disposition |
+|---|---|---|---|
+| V1 | The empty-helper reset that keeps an earlier credential helper from receiving the token has no test: a reversal that drops it passes the suite | Test coverage, security-relevant | To the exact-head review, which decides fix or carry (step 6's rule) |
+| V2 | The CI policy's opening line still says "the new private application repository" (the session flagged it, outside its listed changes) | Records | Corrected in M04's PR, with the two start prompts' "private repository" (OD-51) |
+| V3 | The cancel stop is delayed (71 to 77 s); the manager workflow's steps 3 and 5 must say so, citing the CI policy (DM-32 1.12 to 1.14) | Records | Steps 3 and 5 rewritten in M04's PR, with step 5's push-filter line and step 7's checklist and branch-state texts, for the Dev Manager's pre-merge read |
+| V4 | The keep-list names one manager branch; a new manager branch is deleted once fully merged unless a full-scope keep-list change lands first | Process | Added to the handover checklist and the next-manager start prompt, in M04's PR, for the Dev Manager's read |
+| V5 | Past 100 open PRs, a PR closing between page reads can move another across a page unread; a PR opened after the listing is unseen | Race, recorded by the session | To the exact-head review's threat model; one open PR today |
+| V6 | `GITHUB_TOKEN` and `GH_TOKEN` are present, by name, in this session's and the manager's containers; never read | Environment | Noted in the [environment inventory](../../operations/environment-inventory.md), "Claude cloud environments" |
