@@ -111,4 +111,4 @@ The Dev Manager runs in its own Claude Code cloud session, started in the enviro
 | The Dev Manager's reports | `docs/continuity/dev-manager/reviews/` |
 | The status and State of the App: a snapshot, refreshed only for a periodic review | `docs/continuity/state-of-the-app.md` |
 | Coordination copies | Notion: *Dev Manager — reviews and approvals* and *Status and State of the App*, under Implementation Control |
-| Notion's copy of the operational guidance and the owner-direction register | Implementation Control and its register page. The repository wins on any difference, and every records batch checks the match (OD-26, OD-27) |
+| Notion's summary of the operational guidance and its copy of the owner-direction register | Implementation Control and its register page. The repository wins on any difference, and every records batch checks the summary and the register's match (OD-26, OD-27, OD-53) |

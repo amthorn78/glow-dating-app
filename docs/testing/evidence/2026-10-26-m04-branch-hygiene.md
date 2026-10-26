@@ -165,7 +165,7 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 
 ## Exact-head review of M04 (26 October 2026)
 
-- **The review:** an exact-head code and security review that Nathan ran from [the review prompt](../../ephemeral/2026-10-26-m04-review-prompt.md), revision 1, at `55fc64a`, for code head `27ef2f6`, relayed on 26 October. Nathan's pick: not yet recorded. The report is relayed only, so its findings and checks are summarized here.
+- **The review:** an exact-head code and security review that Nathan ran from [the review prompt](https://github.com/amthorn78/glow-dating-app/blob/4794d3e99012c348a0fb78d8a12a6e6d1cd20f8e/docs/ephemeral/2026-10-26-m04-review-prompt.md), revision 1, at `55fc64a`, for code head `27ef2f6`, relayed on 26 October. Nathan's pick: not yet recorded. The report is relayed only, so its findings and checks are summarized here.
 - **Gate and scope:** every start-gate check passed; the trusted policy from `85bbd4d` classified the PR full scope, with exactly the six code paths. The environment check found no HDE or `STREAM_*` name; `GITHUB_TOKEN` and `GH_TOKEN` were present and never read, and every repository command ran under `env -i`.
 - **Verdict: changes required,** for two should-fix findings in the correction class "a guard of D3, D6 or D7 that no test fails without". No blocking finding. The selection rule, triggers and permissions, the token's reach, the lease, fail-closed, the injection handling, the Foundation and classifier changes, and every run claim checked out; every DM-32 condition and every item of the implementation prompt is met at this head.
 
@@ -249,7 +249,7 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 
 ## Re-review of M04-C1 (26 October 2026)
 
-- **The review:** Nathan ran [the re-review prompt](../../ephemeral/2026-10-26-m04-c1-re-review-prompt.md), revision 1, at `968d8b0`, for code head `0274096`, relayed on 26 October. Nathan's pick: not yet recorded. Every start-gate check passed; the trusted policy from `85bbd4d` classified the PR full scope.
+- **The review:** Nathan ran [the re-review prompt](https://github.com/amthorn78/glow-dating-app/blob/4794d3e99012c348a0fb78d8a12a6e6d1cd20f8e/docs/ephemeral/2026-10-26-m04-c1-re-review-prompt.md), revision 1, at `968d8b0`, for code head `0274096`, relayed on 26 October. Nathan's pick: not yet recorded. Every start-gate check passed; the trusted policy from `85bbd4d` classified the PR full scope.
 - **Verdict: approve.** F1, F2, F3 and F5 are closed; no blocking or should-fix finding; nothing in a correction class; every DM-32 condition still met, the script and workflows being unchanged.
 - **What it checked:** both tests run the real code; F1's scoped helper is one git really consults for `github.com` (re-scoped to another host, the test fails); F1's recorder path is safe for a temporary directory holding quotes, `$`, `;` and backticks; F2's request stays on loopback with every proxy variable set to a dead proxy; no thread, file descriptor, temporary directory or environment change outlives either test, on the passing or the reversed path (`-X dev`).
 - **Reversals:** F1's and F2's each fail only their own test. Of the reviewer's own, a recorder that writes nowhere, the reset placed after the script's helper, a server never reached, the proxy stripping removed, and a scoped helper on another host each fail.
@@ -263,3 +263,23 @@ App Manager 8 read the relayed report against the pushed branch `claude/laughing
 
 - **Limits it named:** the reversals ran on git 2.43.0, the runner shows only the passing direction; F2 is loopback HTTP, so the GitHub path waits for the first run on `main` (DM-32 1.10); `erase` is not tested separately, the same reset covering it.
 - **Its open question,** for the Dev Manager's pre-merge read: F3's wording narrows DM-32 1.5's "written as it happens" to name the in-flight window. It is in DM-33.
+
+## M04's merge receipt (26 October 2026)
+
+- **PR36 merged** at 17:09 UTC on 26 October, by App Manager 8, under the standing app-only authorization. The merge commit is `4794d3e99012c348a0fb78d8a12a6e6d1cd20f8e`; its parents are `85bbd4d`, `main` before, and `9d1570ebbe1c2daa4b5da81a23670e02fc955456`, the final head, pinned with the merge's expected head. `main`'s tree equals the final head's (`git diff --quiet`).
+- **The pre-merge checklist** (PR36's description):
+  - **classification:** full scope from the trusted policy on `main` (`85bbd4d`), 23 paths, one merge base; the final head's code is byte-identical to `0274096`;
+  - **the run:** PR run 40364422379 on `9d1570e` (event `pull_request`): all eight jobs `success`, the gate `Application checks passed`; both artifacts, 14 days;
+  - **the reviews:** the exact-head review of `27ef2f6` and the re-review of M04-C1's `0274096` (sections above);
+  - **Codex:** its code review of `9d1570e` completed with no finding;
+  - **governing Markdown:** DM-33 (`8855163`, a read of `f4d7df5`) approved; no governing path changed after `f4d7df5`.
+- **`main`'s push run** 40366011370: all eight jobs `success`. Mobile checks took 16 min 4 s of its 25 (the Chromium install 9 min 52 s, as in run 40029112295's 11 min 27 s), so the old 15-minute timeout would have stopped it (finding 11).
+- **The first cleanup run, M04's run of record** (DM-32 1.10; acceptance check 5): run 40366011457, push on `4794d3e`, job "Delete merged branches" 17:09:48 to 17:10:02, `success`. It was the first test of the GitHub path: the token's write permission, the PR listing and the lease against GitHub. From the job's log, which carries every summary line:
+  - mode **delete** (event `push`); `main` `4794d3e`; **open pull requests read: 0** (PR36 had just merged);
+  - **deleted**, each "merged into main": `claude/blissful-volta-coypr6` (`ab38a80ca3692369c16882188e2376f6701c21e4`), `claude/laughing-meitner-ywjnk1` (`7f9e6e7aa224372f2a5a273c195f66230d1b4280`) and `claude/zen-thompson-5fdqqz` (`e27f7c7c02693bb1ed5223d9a0b06b3f67b40fd5`), exactly the three expected;
+  - **kept**, keep-list: `claude/dev-manager` (`8855163`), `claude/magical-wozniak-yfmmx2` (`9d1570e`) and `main` (`4794d3e`);
+  - the token appears in the log only as `***`; each row names the restore command's head.
+
+  `git ls-remote --heads` afterwards lists the three kept branches only. The summary matches section 4's dry run, apart from what changed in between: M04-C1's branch, and PR35's and PR36's merges.
+- **Pruned in this batch,** with their links pinned at `4794d3e`: M04's implementation, review, correction and re-review prompts, and the DM-32 and DM-33 consultations.
+- **What stays open:** DM-33's branch-controls recommendation, to Nathan in OD-32's form; the follow-ups in the carried-items file (F4, F6, the re-review's nit 1, DM-33's log line and nit).

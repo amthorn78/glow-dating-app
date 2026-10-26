@@ -51,7 +51,7 @@ You are **App Manager <N>**, the Claude implementation manager for Nathan Amthor
    Read these when you need them: the frozen `docs/continuity/claude-code-handoff.md` (the history to 24 September; its code map predates P06), the last State of the App snapshot (`docs/continuity/state-of-the-app.md`), `docs/operations/environment-inventory.md`, and the archived handoffs in `docs/continuity/history/`.
 
    Then read Notion, under the Glow Operations Hub, and reconcile the task state with it, as PF00's "Start here" requires:
-   - [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c): the current status, and its operating procedure, a matching copy of the repository's;
+   - [Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c): the current status, and its operating procedure, a summary that links into the repository at a named commit (OD-53);
    - its Work Register, with the rows for the current item;
    - the [owner-direction register (copy of the repository)](https://app.notion.com/p/3e64590a05eb81beaf78d6fa9d64a600);
    - [Dev Manager — reviews and approvals](https://app.notion.com/p/3e64590a05eb81e29903ca6fccd94268);

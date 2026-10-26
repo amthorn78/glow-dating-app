@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.15 · **Date:** 26 October 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.16 · **Date:** 26 October 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
@@ -37,7 +37,7 @@ Voice/video, public feeds, consumer web parity, custom chat infrastructure, spec
 
 | Surface | Established location | What it owns |
 |---|---|---|
-| Operational control | [Glow Dating App — Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) | Current state, active work, blockers, next action and exact authoritative links. It also carries a matching copy of the operational guidance and of the owner-direction register (OD-26). Where a copy differs from the repository, the repository wins and Notion is corrected (OD-27) |
+| Operational control | [Glow Dating App — Implementation Control](https://app.notion.com/p/3e44590a05eb8118bf02f0dc0c3ea57c) | Current state, active work, blockers, next action and exact authoritative links. It also carries a summary of the operational guidance, with links into the repository at the commit it names, and a matching copy of the owner-direction register (OD-26, as amended by OD-53). Where Notion differs from the repository, the repository wins and Notion is corrected (OD-27) |
 | Work register | [Glow Dating App — Work Register](https://app.notion.com/p/71b769915b5b4e00830663770bc95f7e) | Task/decision/dependency/risk status and evidence pointers; never a second technical specification |
 | Persistent planning | `docs/planning/` | Durable plans, briefs, source snapshots, decisions and database audit evidence |
 | Separate application canon | `docs/pf-canon/` | Current GAPP-PF00 and GAPP-PF01, in Markdown |
@@ -468,7 +468,7 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | D01 | Fresh application foundation with maintained component reuse; existing assets assessed, not automatically inherited | Owner chose the scratch-build direction and clarified optional reuse |
 | D02 | Preserve current HDE and its database; no app-side engine reimplementation | Owner's explicit integration priority |
 | D03 | Production DB connection/database-dependent integration in P11; data design early | Owner's implementation brief |
-| D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09. Notion also carries a matching copy of the operational guidance and the owner-direction register (OD-26); where they differ, the repository wins (OD-27) | Owner brief and 24 September transition direction |
+| D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09. Notion also carries a summary of the operational guidance, with links into the repository at a named commit, and a matching copy of the owner-direction register (OD-26, as amended by OD-53); where they differ, the repository wins (OD-27) | Owner brief and 24 September transition direction |
 | D05 | Separate GAPP-PF canon; no automatic approval at each phase. The single capable session is superseded by D09's manual relay and D10's Dev Manager | Owner's implementation brief |
 | D06 | Expo/RN + modular Django/DRF baseline, managed capabilities behind adapters | Selected planning design from research; exact pins and bounded reuse ADR in P01 |
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
@@ -623,3 +623,9 @@ Affected tasks: the new slices SV1 to SV4, P06.3, P07, P09.3 and P10, whose inpu
 - A05: the open A05 questions go to Nathan in OD-32's form before P07's brief (M05's P-6; finding 6; N4). The matrix (§7) compares the candidate list he chose, recorded in OD-50.
 
 Affected tasks: P07, P08, P09 and P11B. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.
+
+1.16 — records Nathan's decision S5 of 26 October 2026 (OD-53; M05's proposal S5, with DM-31's view):
+
+- §2 and D04: Notion carries a summary of the operational guidance, with links into the repository at the commit it names, and a matching copy of the owner-direction register, in place of a full copy of the guidance (OD-26 as amended by OD-53). The repository still wins on any difference (OD-27).
+
+Affected tasks: none. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.

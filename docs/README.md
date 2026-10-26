@@ -1,6 +1,6 @@
 # Repository documentation guide
 
-All project documentation is Markdown (`.md`). The repository is the durable implementation authority; no assignment requires Google Drive. Notion coordinates status, ownership, blockers and evidence links. It also carries a matching copy of the operational guidance and of the owner-direction register (OD-26); where they differ, the repository wins and Notion is corrected (OD-27). Keep decisions, specifications and evidence here even when first discussed in Notion or chat.
+All project documentation is Markdown (`.md`). The repository is the durable implementation authority; no assignment requires Google Drive. Notion coordinates status, ownership, blockers and evidence links. It also carries a summary of the operational guidance, with links into the repository at a named commit, and a matching copy of the owner-direction register (OD-26, as amended by OD-53); where they differ, the repository wins and Notion is corrected (OD-27). Keep decisions, specifications and evidence here even when first discussed in Notion or chat.
 
 | Location | Keep here | Lifetime / naming |
 |---|---|---|

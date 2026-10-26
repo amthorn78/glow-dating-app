@@ -1,6 +1,6 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.10 · **Recorded:** 29 September 2026
+**Identity:** GAPP-PF00 · **Revision:** 1.11 · **Recorded:** 26 October 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
@@ -28,7 +28,7 @@ The plan owns the initial governing direction, phase acceptance, architectural b
 |---|---|
 | Current task, blocker, next action and execution status | Notion coordination plus repository current handoff; durable scope/evidence in Markdown |
 | Nathan's standing directions, with dates and quotes | [Owner-direction register](../continuity/owner-directions.md); Notion carries a copy |
-| Operational guidance: the relay, review paths, one item at a time, records | Repository Markdown: `AGENTS.md`, `CLAUDE.md`, the manager workflow, the Dev Manager charter and the CI policy. Notion's Implementation Control carries a matching copy (OD-26); where they differ, the repository wins and Notion is corrected (OD-27) |
+| Operational guidance: the relay, review paths, one item at a time, records | Repository Markdown: `AGENTS.md`, `CLAUDE.md`, the manager workflow, the Dev Manager charter and the CI policy. Notion's Implementation Control carries a summary with links into the repository at a named commit (OD-26, as amended by OD-53); where they differ, the repository wins and Notion is corrected (OD-27) |
 | Governing implementation sequence and project-level constraints | Current GAPP-PF01 |
 | Implementation contracts, code, runtime configuration definitions, tests and runbooks | Application repository after recorded establishment |
 | Durable architectural rationale | Repository ADRs once established; initial decisions remain in GAPP-PF01 until transferred |
@@ -70,3 +70,5 @@ Use stable titles and document IDs for durable references. Record the concrete s
 1.9 — the authority map records that Notion carries a matching copy of the operational guidance and of the owner-direction register, and that the repository wins on any difference (OD-26, OD-27, 25 September 2026). No other change to authority.
 
 1.10 — the current session authority adds that Nathan may direct a manager to create its successor (OD-31), as `AGENTS.md` does (DM-07, 29 September 2026). No other change to authority.
+
+1.11 — the authority map records that Notion's Implementation Control carries a summary of the operational guidance with links into the repository at a named commit, not a full copy (OD-53, S5; 26 October 2026). The repository still wins on any difference. No other change to authority.
