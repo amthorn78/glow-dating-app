@@ -2,10 +2,10 @@
 
 - **Work ID:** M04 (cross-cutting).
 - **Owner:** Nathan Amthor, by his direction of 5 October 2026 (OD-39); next in the order he resumed on 26 October (OD-49). **Manager:** App Manager 8. **Implementer:** one implementation session, started by Nathan.
-- **Revision 2, 26 October 2026,** applying DM-32's conditions 1.1 to 1.16 ([report](../continuity/dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)). Revision 1 went to the Dev Manager as DM-32.
+- **Revision 3, 26 October 2026:** revision 2 applied DM-32's conditions 1.1 to 1.16 ([report](../continuity/dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)); revision 3 adds `'ccr-**'` to the push filter and corrects the records that say private, after Nathan kept the repository public for now, for budget reasons (OD-51). Revision 1 went to the Dev Manager as DM-32.
 - **Starting point:** `main` at `4aa66e2` (PR34), with the manager branch's Markdown records after it. The prompt names the exact commit.
-- **Prompt:** written after DM-32, in `docs/ephemeral/`, for `Glow App - No Stream`.
-- **Evidence home:** `docs/testing/evidence/<date>-m04-branch-hygiene.md`, written by the session; the prompt names the date.
+- **Prompt:** [`docs/ephemeral/2026-10-26-m04-implementation-prompt.md`](../ephemeral/2026-10-26-m04-implementation-prompt.md), revision 1, for `Glow App - No Stream`.
+- **Evidence home:** `docs/testing/evidence/2026-10-26-m04-branch-hygiene.md`, written by the session.
 
 ## Why
 
@@ -48,6 +48,7 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
   - the Mobile job's timeout gets measured margin, 25 minutes unless the session's measurements argue otherwise, with no cache action added (finding 11);
   - upload-artifact moves to its current release, with its commit resolved by `git ls-remote`, and its release notes checked for the inputs used (finding 14);
   - the API job's candidate-policy step also runs `scripts/test_branch_cleanup.py`;
+  - the push filter adds `'ccr-**'`, so a harness-named session branch starts a run (AM7-02; OD-51);
   - with finding 12, `change_scope.py`'s `git diff` adds `--ignore-submodules=none`, with a test: a trusted base `.gitmodules` set to `ignore = all`, plus a gitlink move and a docs edit, classifies full scope, and the reverted flag fails the test.
 - **Considered and not chosen:**
   - GitHub's "automatically delete head branches" setting. Session branches are integrated by fast-forward, not merged as PR heads, so it would not delete them, and it would delete the manager branch at each PR merge.
@@ -56,7 +57,7 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
 ## The Dev Manager's answers (DM-32)
 
 1. **The first run deletes for real** (approved, with 1.10). M04's merge receipt names the expected deletions in advance, and says that the first run is the first test of the workflow's GitHub path: the token's write permission, the PR listing and the lease against GitHub. No pre-merge check reaches that path, since the job runs only on `main`.
-2. **The push filter:** `'ccr-**'` is approved only while the repository stays public (DM-32 3.4). GitHub reports it public, though ADR 0001 and the CI policy say private; whether that is intended is Nathan's. If it stays public, Actions minutes on standard runners are free (GitHub's documentation, read on 26 October 2026) and the line is added. If it becomes private, the filter is unchanged.
+2. **The push filter adds `'ccr-**'`.** DM-32 approved it only while the repository stays public (3.4), and Nathan keeps it public for now, for budget reasons; he intends to make it private again (OD-51). Actions minutes on standard runners are free for public repositories (GitHub's documentation, read on 26 October 2026). When it goes private, `'ccr-**'` comes out or he approves its minutes.
 3. **Finding 12 is in M04** (approved). **Finding 13 goes to P06.2-T** (1.11): the test is in the carried-items file's "Carried to P06.2-T" and its row, and the bootstrap script's wording stays with the hardening item in the [M02 brief](claude-setup-optimization.md), since a Setup-script change needs Nathan to paste it.
 
 ## Owned paths (the implementation session's)
@@ -72,7 +73,8 @@ M05 and DM-31 add CI fixes that change the same workflow file, so they ride with
   - **the trust limit** (DM-32 1.2): the `main`-only condition stops an accidental dispatch, but not a branch's own edited copy. A branch that adds or edits a workflow can run it, on push or on dispatch, with the permissions it declares, and a merged change to the cleanup workflow or its script acts at its own merge. The protection is the review of workflow changes (`AGENTS.md`);
   - the fresh-branch case (D4) and the concurrency wording (D7);
   - the cancel paragraph and the upload-artifact row in final form (DM-31 3.7; M05's P-9 as their starting text). They say, after D9 (DM-32 1.13): a newer run of the same ref cancels an earlier run's application jobs; the earlier run's gate still runs and fails, and that run is not evidence; so a push before a code run finishes discards that run;
-  - the push filter, if it changes.
+  - the push filter's `'ccr-**'`, and that it is removed, or its minutes approved, when the repository goes private again (OD-51; DM-32 3.4);
+  - **the public repository** (OD-51): the "Branch enforcement limitation" section and the Dependabot bullet say that the repository is public for now, for budget reasons, and that Nathan intends to make it private again; that while it is public, protected branches and rulesets are available at no cost (GitHub's documentation, read on 26 October 2026) and none is configured; and that the procedural substitutes stay in force until Nathan decides which controls to use, and after it is private again. The 23 September observation stays, as history.
 
 ## Manager-owned
 
@@ -80,7 +82,7 @@ This brief and the prompt; in the manager workflow (all for the Dev Manager's pr
 
 - step 5's push-run sentence, in final form (DM-31 3.7; M05's P-7 as its starting text). It states the rule and cites the CI policy for the mechanism, without restating it (DM-32 1.12);
 - step 3's "Say when a session may push again" (AM5-04, AM5-14), which describes the old mechanism; after D9 that rule is what saves a run of record (DM-32 1.14);
-- step 7's "Report the branch state", which reads the cleanup run's summary once M04's first run of record holds.
+- step 7's "Report the branch state", which reads the cleanup run's summary once M04's first run of record holds, and its line "Branch protection is not enforceable on this repository", corrected as the CI policy is (OD-51).
 
 Also the handoff, the register, the review log and Notion.
 
@@ -94,7 +96,7 @@ Also the handoff, the register, the review log and Notion.
 
 ## Dependencies and inputs
 
-OD-39 and OD-49; DM-13 item 10; DM-31 items 3.7 and 4; M05 findings 10 to 14; AM7-02; the current Foundation workflow, classifier and CI policy. No credential is needed. The session's GitHub tools read the open PRs for the dry run. `git ls-remote` resolves the upload-artifact commit; M05's session did so from `Glow App - No Stream`.
+OD-39, OD-49 and OD-51; DM-13 item 10; DM-31 items 3.7 and 4; M05 findings 10 to 14; AM7-02; the current Foundation workflow, classifier and CI policy. No credential is needed. The session's GitHub tools read the open PRs for the dry run. `git ls-remote` resolves the upload-artifact commit; M05's session did so from `Glow App - No Stream`.
 
 ## Acceptance checks
 
@@ -141,4 +143,6 @@ Full scope: a workflow, scripts and tests. The manager classifies with the trust
 ## Sessions
 
 - **Revision 1** (26 October 2026): to the Dev Manager as DM-32 (`515bd72`).
-- **DM-32** (26 October 2026; report `3abbc81`): approved with conditions 1.1 to 1.16, all accepted and applied as **revision 2**, which needs no further read (DM-03 G2). The push filter's `'ccr-**'` waits on Nathan's answer on the repository's visibility (DM-32 3.4).
+- **DM-32** (26 October 2026; report `3abbc81`): approved with conditions 1.1 to 1.16, all accepted and applied as **revision 2**, which needs no further read (DM-03 G2). The push filter's `'ccr-**'` waited on Nathan's answer on the repository's visibility (DM-32 3.4).
+- **Revision 3** (26 October 2026): Nathan keeps the repository public for now, for budget reasons, and intends to make it private again (OD-51), so the push filter adds `'ccr-**'` and the records that say private are corrected. It applies his decision and DM-32 3.4's conditional approval, so it needs no further read.
+- **The implementation prompt, revision 1** (26 October 2026; TypeSafe v8.2: Opus 5.5 at extra high, flagged at the boundary with max): given to Nathan. The records since PR34 merge first as their own docs-only PR, so that M04's PR carries M04 alone (DM-31 item 4).

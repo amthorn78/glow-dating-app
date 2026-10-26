@@ -69,10 +69,12 @@ Conditions that wait on a later event. The manager keeps this table current, and
 | DM-31 3.2: P-1, P-2, P-3 and P-6 | Nathan's N1, N4 and N2 (and N5's order for the matrix) | **Done:** P-1 and P-2 (OD-49; PF01 1.14), P-3 and P-6 (OD-50; PF01 1.15) |
 | DM-31 item 3: the identity slice's exact-head review carries a written threat model | SV1 (N1 is (a), OD-49) | Open (the carried-items file, "Carried to SV1") |
 | DM-31 item 4: M04's brief to the Dev Manager; with finding 12, the classification-policy rules | M04's brief | **Done:** DM-32 approved it with conditions; revision 2 applies them |
-| DM-32 1.1 to 1.9 and 1.12 to 1.16: M04's design, checks and texts | M04's prompt, its implementation and review | Open (M04's brief, revision 2) |
+| DM-32 1.1 to 1.9 and 1.12 to 1.16: M04's design, checks and texts | M04's prompt, its implementation and review | Open (M04's brief, revision 3) |
 | DM-32 1.10: the expected deletions, and the first run as the first test of the GitHub path | M04's merge receipt | Open |
 | DM-32 1.11: finding 13's test in P06.2-T | P06.2-T's brief | Open (the carried-items file) |
-| DM-32 3.4: whether the repository's public visibility is intended; it decides `'ccr-**'`, and if intended a branch-controls question follows | Nathan's answer | Open (with Nathan) |
+| DM-32 3.4: whether the repository's public visibility is intended; it decides `'ccr-**'`, and if intended a branch-controls question follows | Nathan's answer | **Done:** public, kept (OD-51); `'ccr-**'` in M04's brief, revision 3 |
+| OD-51: which branch controls to turn on while they are free (protected branches or rulesets), weighed against Nathan's planned return to private | The Dev Manager first, then Nathan in OD-32's form | Open |
+| OD-51: when the repository goes private again, `'ccr-**'` comes out or its minutes are approved (DM-32 3.4), the records return to "private", and the Actions minutes line of M07 applies | Nathan's notice that he will make it private | Open |
 | DM-32: the pre-merge read of the CI policy and of the manager workflow's steps 3, 5 and 7 | M04's PR, before it merges | Open |
 | DM-31 item 4: E7's epoch-bump question to the Dev Manager | P06.2-T's brief (E7) | Open (the carried-items file) |
 | DM-31 item 4: the matrix's prompt names an environment that can read the web; DM-31 item 3: it states it is not legal advice | The matrix's prompt | Open (the carried-items file) |
@@ -562,7 +564,7 @@ App Manager 8 read the report (`3abbc81`, a read of `515bd72`) against the relay
 |---|---|---|---|
 | 1 M04's brief | Approved with conditions 1.1 to 1.16 | **Accepted** | M04's brief, revision 2: D3 (1.1), D4 (1.3, 1.4), D6 (1.5), D7 (1.6), D8 (1.7), the acceptance checks (1.8, 1.9, 1.15), the CI policy's texts (1.2, 1.4, 1.6, 1.13), the manager-owned steps 3, 5 and 7 (1.12, 1.14), the review plan (1.16), the merge receipt (1.10) |
 | 1, question 1 | Approved, with 1.10 | **Accepted** | The brief's answers; M04's merge receipt names the expected deletions |
-| 1, question 2 | `'ccr-**'` only while the repository stays public | **Referred to Nathan** (3.4) | The brief's answers; the push filter waits on his answer |
+| 1, question 2 | `'ccr-**'` only while the repository stays public | **Referred to Nathan** (3.4); **he keeps it public** (OD-51) | The brief's answers; revision 3 adds `'ccr-**'` |
 | 1, question 3 | Approved; finding 13 one home (1.11) | **Accepted:** P06.2-T takes the test | The carried-items file, "Carried to P06.2-T"; P06.2-T's row; the M02 brief's hardening item points there and keeps the script's wording |
 | 1, the CI policy as the home | Approved, with 1.12 to 1.15 | **Accepted** | M04's brief, "Owned paths" and "Manager-owned" |
 | 2 The governing changes since PR34 | Approved, with two optional nits | **Accepted, nits applied** | PF01 1.15's entry adds "no account is created"; OD-12's State cell reads "stayed paused until OD-49". PR34's application of DM-31 (`30b1224`) is confirmed |

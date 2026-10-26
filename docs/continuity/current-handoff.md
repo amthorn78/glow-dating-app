@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; DM-32 integrated; the repository's visibility with Nathan)
+# Current handoff — App Manager 8 (26 October 2026; OD-51; M04's implementation with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -8,8 +8,9 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch.
 - **M05, the whole-project review** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): its records and DM-31's texts merged as PR34 (`4aa66e2`). **Nathan resumed the plan** (OD-49: N5 (b), N1 (a); PF01 1.14) and answered N4 (b) and N2 (a), with the Maker application still pending (OD-50; PF01 1.15). M05 closes with his third decision message: S2, S5 and D1.
-- **Current item: M04** with the CI hardening (OD-39; M05 findings 10, 11, 12 and 14): [brief](../planning/m04-branch-hygiene.md), revision 2, applying [DM-32](dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)'s conditions 1.1 to 1.16. DM-32 also approved OD-49's and OD-50's rows and PF01 1.14 and 1.15.
-- **The repository is public** (DM-32 3.4; confirmed by the manager on 26 October), though ADR 0001 and the CI policy say private. Whether that is intended is Nathan's: it decides the push filter's `'ccr-**'`, and, if intended, a branch-controls question follows as its own item.
+- **Current item: M04** with the CI hardening (OD-39; M05 findings 10, 11, 12 and 14): [brief](../planning/m04-branch-hygiene.md), revision 3, applying [DM-32](dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)'s conditions and OD-51; its [implementation prompt](../ephemeral/2026-10-26-m04-implementation-prompt.md), revision 1, is with Nathan.
+- **The records since PR34** (OD-49 to OD-51, PF01 1.14 and 1.15, M04's brief and prompt) merge first as their own docs-only PR, so that M04's PR carries M04 alone (DM-31 item 4); M04's code is integrated only after it merges.
+- **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M03, P06.1, P06.DB and P06.2.
 - **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-32, with "Deferred conditions".
@@ -19,14 +20,14 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (a decision, since 26 October) | Whether the repository's public visibility is intended (DM-32 3.4) | M04's prompt is written without `'ccr-**'`, which a later change can add |
+| App Manager 8 | Nathan's relay of the M04 session (since 26 October) | The session's report | Ask Nathan whether it started; meanwhile merge the docs-only PR once Codex completes |
 
 ## Next actions (App Manager 8)
 
-1. **Nathan's answer on the visibility:** record it; if public is intended, correct the records that say private (ADR 0001 marked, the CI policy's "Branch enforcement limitation" with M04, step 7's line) and put the branch-controls question to him as its own item.
-2. **M04's implementation prompt** for `Glow App - No Stream`, from brief revision 2, with its TypeSafe reading.
+1. **The docs-only PR** of the records since PR34: merge it after its PR run and Codex's completed review, with the checklist (the register's OD-51 row and ADR 0001's note go to the next consultation to confirm).
+2. **M04's report:** verify it against the pushed branch, integrate it after the docs-only PR merges, then Codex and the exact-head review with its threat model; the Dev Manager's pre-merge read of the CI policy and steps 3, 5 and 7, with the branch-controls question (OD-51) and OD-51's row.
 3. **The third decision message** to Nathan: S2 (on DM-31's terms), S5 and D1, and DM-29 2.3's optional direction on `@codex review`.
-4. **Then** M06, P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49). The harness's carried fixes (the P11 plan) land before P11's live run.
+4. **Then** M06, P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 
