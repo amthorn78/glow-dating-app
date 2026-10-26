@@ -68,7 +68,7 @@ Conditions that wait on a later event. The manager keeps this table current, and
 | DM-31 3.2: P-1, P-2, P-3 and P-6 | Nathan's N1, N4 and N2 (and N5's order for the matrix) | Open |
 | DM-31 item 3: the identity slice's exact-head review carries a written threat model | The identity slice, if N1 is (a) | Open |
 | DM-31 item 4: M04's brief to the Dev Manager; with finding 12, the classification-policy rules | M04's brief | Open |
-| DM-31 item 4: E7's epoch-bump question to the Dev Manager | E7's brief | Open (the carried-items file) |
+| DM-31 item 4: E7's epoch-bump question to the Dev Manager | P06.2-T's brief (E7) | Open (the carried-items file) |
 | DM-31 item 4: the matrix's prompt names an environment that can read the web; DM-31 item 3: it states it is not legal advice | The matrix's prompt | Open (the carried-items file) |
 | DM-31 3.2 on P-5: P07's brief shows the disposable WordPress runs in CI at no cost, or brings a fallback | P07's brief | Open (the carried-items file) |
 | DM-31 item 2: S2's terms (the delta re-review reads every touched path at the head); D1's "not given", never "pending" | Nathan's third message | Open |
@@ -558,7 +558,7 @@ App Manager 8 read the report (`8d51446`, a read of `bc6d08a`) against the relay
 | 2 The process proposals | K1, S1, S3, S4, S6, S7, S8 approved; S2, S5, D1 Nathan's | **Accepted** | The workflow (S1 as 3.4, S3, S4 and S6 in "Batching records", S7, S8); Nathan's third message (S2 on its terms, S5, D1) |
 | 3 N1 to N6 | Approved with conditions | **Accepted** | Three messages, decisions only: N5 and N1; N4 and N2, with C30 to C35 for information; S2, S5 and D1, with DM-29 2.3's optional direction. N1 carries the identity slice's threat model, N2 the rule of no account or spend before each line's approval, N4 the matrix's "not legal advice" |
 | 4 The path | Approved with conditions | **Accepted** | M05's records and these texts merge as their own docs-only PR first; M04 next, its brief to the Dev Manager; E8's assessment just after M04; the matrix's prompt names an environment that can read the web; E7 with E15's lists, its epoch-bump question to the Dev Manager |
-| 5 The homes | Approved with conditions | **Accepted** | Work Register rows for E2, E7, E8, E11 and the block-writer case; [`carried-to-later-items.md`](../../planning/carried-to-later-items.md) for E12, with the guard's pointers from P07 and P08; the P11 plan's history item points to "the Standing guard below"; E6 inside E2 |
+| 5 The homes | Approved with conditions | **Accepted** | Work Register rows P09.3a (E2), P06.2-T (E7, with E15's lists), M06 (E8), P06.2-F (E11) and P07.2a (the block-writer case); [`carried-to-later-items.md`](../../planning/carried-to-later-items.md) for E12, with the guard's pointers from P07 and P08; the P11 plan's history item points to "the Standing guard below"; E6 inside E2 |
 | 6 OD-48's row | Approved; may merge | **Accepted** | The docs-only PR |
 | 7 The Dev Manager's role | 31, 41, 49 accepted; 42 in part; S1's estimate disputed | **Accepted** | "Deferred conditions" below; the answer is recorded beside the review's findings in the M05 record |
 | 8 Notion | No mismatch | **Accepted** | — |

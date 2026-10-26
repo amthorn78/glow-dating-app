@@ -25,8 +25,8 @@ This file holds what a later work item must take up when that item has no brief 
 - **Its prompt names an environment that can read public web sources** (DM-31 item 4; OD-40, OD-43); `Glow App - No Stream`'s network policy may not allow it.
 - **Its countries** are the launch countries Nathan names, or the candidate list under comparison until he names them (N4).
 
-## Carried to E7 (the OD-45 token cleanup), with E15's refusal lists
+## Carried to P06.2-T (M05's E7, the OD-45 token cleanup), with E15's refusal lists
 
-- **The epoch-bump question** (DM-31 item 4): whether a session-epoch bump still revokes provider tokens once no client token exists. It is a security-boundary question, so it goes to the Dev Manager before E7's brief settles it.
+- **The epoch-bump question** (DM-31 item 4): whether a session-epoch bump still revokes provider tokens once no client token exists. It is a security-boundary question, so it goes to the Dev Manager before P06.2-T's brief settles it.
 - **The refusal lists** (M05 finding 22, E15): a `PG*` prefix rule and the Railway, Redis and `STREAM_*` names, in the API and in the database proof together. ADR 0004's sentence changes again when the list widens.
 - **The API README's lines** (M05 P-13): the dormant signer's descriptions and Stage C1's modules.
