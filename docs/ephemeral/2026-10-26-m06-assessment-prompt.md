@@ -50,8 +50,8 @@ You are the **M06 assessment session** for the Glow dating app, in the public re
 git fetch origin claude/magical-wozniak-yfmmx2 main
 git switch -C <your session branch> <START_SHA>   # your branch starts at this prompt's commit
 git rev-parse HEAD                                  # must print <START_SHA>
-git merge-base --is-ancestor 35a582716910d51d464e9fe51701873042999ec4 HEAD && echo "PR37 present"   # must print "PR37 present"
-git diff --name-only 35a582716910d51d464e9fe51701873042999ec4 HEAD | grep -v -E '\.md$'               # must print nothing
+git merge-base --is-ancestor 1ce2fcbe1c1b81db5c4f0a8a9e513c806bb4d932 HEAD && echo "PR37 present"   # PR37's final head; main's merge 35a5827 has the same tree. Must print "PR37 present"
+git diff --name-only 35a582716910d51d464e9fe51701873042999ec4 HEAD | grep -v -E '\.md$'               # against main: must print nothing
 git show origin/claude/magical-wozniak-yfmmx2:docs/planning/m06-dependency-remediation.md | grep -c '^- \*\*The assessment\*\* ('   # must print 0: no assessment recorded yet
 grep -E '"(expo|expo-router|react-native)":' apps/mobile/package.json   # expected: expo 57.0.24, expo-router 57.0.22, react-native 0.86.3
 ```
