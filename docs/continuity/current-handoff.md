@@ -8,8 +8,8 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch.
 - **M05, the whole-project review** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): its records and DM-31's texts merged as PR34 (`4aa66e2`). **Nathan resumed the plan** (OD-49: N5 (b), N1 (a); PF01 1.14) and answered N4 (b) and N2 (a), with the Maker application still pending (OD-50; PF01 1.15). M05 closes with his third decision message: S2, S5 and D1.
-- **Current item: M04** with the CI hardening (OD-39; M05 findings 10, 11, 12 and 14): [brief](../planning/m04-branch-hygiene.md), revision 3, applying [DM-32](dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)'s conditions and OD-51; its [implementation prompt](../ephemeral/2026-10-26-m04-implementation-prompt.md), revision 1, ran: branch `claude/laughing-meitner-ywjnk1`, code head `27ef2f6`, records `7f9e6e7`, run of record 40270021713. The manager verified it; its notes join the evidence record at integration.
-- **The records since PR34** (OD-49 to OD-51, PF01 1.14 and 1.15, M04's brief and prompt) merge first as their own docs-only PR, so that M04's PR carries M04 alone (DM-31 item 4); M04's code is integrated only after it merges. It is [PR35](https://github.com/amthorn78/glow-dating-app/pull/35): its run passed, and Codex's review has shown "running" since 04:03 UTC with no result.
+- **Current item: M04** with the CI hardening (OD-39; M05 findings 10, 11, 12 and 14): [brief](../planning/m04-branch-hygiene.md), revision 3, applying [DM-32](dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)'s conditions and OD-51; its [implementation prompt](../ephemeral/2026-10-26-m04-implementation-prompt.md), revision 1, ran (code head `27ef2f6`, run of record 40270021713) and is verified; the notes join its record at integration.
+- **The records since PR34** (OD-49 to OD-51, PF01 1.14 and 1.15, M04's brief and prompt) merge first as their own docs-only PR, so that M04's PR carries M04 alone (DM-31 item 4); M04's code is integrated only after it merges (PR35; Codex shows "running" since 04:03 UTC).
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M03, P06.1, P06.DB and P06.2.
@@ -31,8 +31,9 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 
-## Branches and PRs (`git ls-remote`, 26 October 2026, at PR34's merge)
+## Branches and PRs (`git ls-remote`, 26 October 2026, 09:00 UTC)
 
-- **Open PRs:** none. PR34 merged at `4aa66e2` on 26 October; the manager branch's next records open a new PR.
-- **Kept:** `main` (`4aa66e2`), the manager branch, and `claude/dev-manager` (`8d51446`, in `main`).
-- **For Nathan to delete, fully merged:** `claude/zen-thompson-5fdqqz` (M05, `e27f7c7`).
+- **Open PR:** [PR35](https://github.com/amthorn78/glow-dating-app/pull/35), the records since PR34, docs only; it waits on Codex.
+- **Kept:** `main` (`4aa66e2`), the manager branch (PR35's head), and `claude/dev-manager` (`3abbc81`, in the manager branch).
+- **Unmerged, kept until M04 merges:** `claude/laughing-meitner-ywjnk1` (M04's session, `7f9e6e7`).
+- **For Nathan to delete, fully merged:** `claude/zen-thompson-5fdqqz` (M05, `e27f7c7`); else M04's first run deletes it.
