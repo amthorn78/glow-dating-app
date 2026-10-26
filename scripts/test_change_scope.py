@@ -98,6 +98,22 @@ class ChangeScopeTests(unittest.TestCase):
         self.assertTrue(result["full"])
         self.assertIn("scripts/test_change_scope.py", result["paths"])
 
+    def test_submodule_ignore_setting_cannot_hide_a_gitlink_move(self):
+        # M05 finding 12: a trusted base .gitmodules with `ignore = all` hides a gitlink
+        # move from git diff unless --ignore-submodules=none overrides it.
+        self.write(".gitmodules", '[submodule "sub"]\n\tpath = vendor/sub\n\turl = ./sub\n\tignore = all\n')
+        self.git("add", ".gitmodules")
+        self.git("update-index", "--add", "--cacheinfo", f"160000,{self.base},vendor/sub")
+        self.git("commit", "-qm", "submodule ignored by its settings")
+        base = self.git("rev-parse", "HEAD")
+        self.git("update-index", "--cacheinfo", f"160000,{base},vendor/sub")
+        self.write("docs/testing/evidence/notes.md", "docs\n")
+        self.git("add", "docs/testing/evidence/notes.md")
+        self.git("commit", "-qm", "gitlink moved with a docs edit")
+        result = classify(base, self.git("rev-parse", "HEAD"))
+        self.assertTrue(result["full"])
+        self.assertIn("vendor/sub", result["paths"])
+
     def test_unknown_base_empty_and_zero_fail_closed(self):
         for base in ["0" * 40, "a" * 40, "--help", self.base]:
             self.assertTrue(classify(base, self.base)["full"])

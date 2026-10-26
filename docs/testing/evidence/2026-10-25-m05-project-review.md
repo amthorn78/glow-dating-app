@@ -870,6 +870,16 @@ Every other proposal's verdict, and where each condition is applied, is in the [
 - **Branch state at the merge** (`git ls-remote --heads`): four. Kept: `main` (`4aa66e2`), the manager branch (fast-forwarded to `4aa66e2`), `claude/dev-manager` (`8d51446`, in `main`). Fully merged, for Nathan to delete: `claude/zen-thompson-5fdqqz` (M05's review, `e27f7c7`).
 - **What stays open for M05:** Nathan's second and third decision messages (N4 and N2; S2, S5 and D1), and the texts P-3 and P-6 that wait on them. Nathan's first answer, N5 (b) and N1 (a), is OD-49, applied as PF01 1.14 after this merge.
 
+## PR35's merge receipt (26 October 2026)
+
+- **PR35 merged** at 11:15 UTC on 26 October, by App Manager 8, under the standing app-only authorization. It carried the records since PR34: OD-49 to OD-51, PF01 1.14 and 1.15, DM-32 and its disposition, and M04's brief and prompt. The merge commit is `85bbd4d000f97f6a857dc0f5519a8a3501dc40d3`; its parents are `4aa66e2`, `main` before, and `6bec3fad7d88c83dfe951c2989facd22df39e117`, the final head. `main`'s tree equals the final head's (`git diff --quiet`).
+- **The pre-merge checklist** (PR35's description):
+  - **classification:** `ordinary-docs-only` from the trusted policy on `main` (`4aa66e2`), 15 Markdown paths, one merge base;
+  - **the run:** PR run 40313531566 on `6bec3fa` (event `pull_request`): `success`, on the documentation exemption. The push run on `main`, 40313776461, also passed;
+  - **Codex:** its code review of `6bec3fa` completed with no finding. Its review of the PR's first head had shown "running" from 04:03 UTC with no result; the records pushes at 11:12 and 11:14 started fresh reviews, and the one on `6bec3fa` completed;
+  - **governing Markdown:** DM-32 item 2 approved PF01 1.14 and 1.15 at `515bd72`. The one later governing change, in PF01 1.15's entry, applies DM-32's own optional nit ("no account is created"), which the charter's one-commit rule allows; the next consultation confirms it. OD-51's row and the ADR note are not governing; its texts in the CI policy and the manager workflow reach the Dev Manager's read with M04's PR.
+- **Branch state at the merge** (`git ls-remote --heads`): five. Kept: `main` (`85bbd4d`), the manager branch, `claude/dev-manager` (`3abbc81`, in `main`). Unmerged: `claude/laughing-meitner-ywjnk1` (M04's session, `7f9e6e7`), which M04's PR integrates. Fully merged: `claude/zen-thompson-5fdqqz` (M05's review, `e27f7c7`), which M04's first cleanup run is expected to delete.
+
 ## Nathan's decisions (26 October 2026)
 
 | Decision | His answer | Recorded as | Applied in |
