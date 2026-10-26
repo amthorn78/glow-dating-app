@@ -48,6 +48,11 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 - **The re-review's nit 1:** F2's redirect test asserts `Refused` with its reason (`assertRaisesRegex(branch_cleanup.Refused, "HTTPError")`).
 - **DM-33's log line** (item 2): print `deleting <name> at <head>` to the log just before each push, so that even a run killed during a push names that branch.
 
+## Carried from DM-34's optional items (the CI policy's next change; the manager's next Notion batch)
+
+- **The CI policy's gate sentence** (DM-34 3.1): in "Documentation and agent-review policy", "require the gate as well when enforceable repository controls become available" reads as if no control were available; under OD-52 they are, and Nathan chose none. The report's wording: "require the gate as well only if Nathan chooses enforced controls (OD-52 chose none), after the change DM-33 6.2 names". Due with the CI policy's next change.
+- **The superseded copy in Notion** (DM-34 section 5): Implementation Control's "Superseded: the full copy of the procedure" moves to a child page. It is most of the page, and it was the copy that drifted (M05 finding 30).
+
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 
 - **What it is** (M05 E3; PF01 A04): before P09 and P11B, a list of each account and service completion needs (Apple and Google developer accounts, Railway app services, the Stream production plan, Cloudflare, mail and push), each with its published price rechecked and dated.
