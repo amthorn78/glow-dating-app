@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; M04 merged; the branch-controls decision with Nathan)
+# Current handoff — App Manager 8 (26 October 2026; M04 done; OD-52; the third decision message with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -9,7 +9,8 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch.
 - **M05, the whole-project review** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): its records and DM-31's texts merged as PR34 (`4aa66e2`). **Nathan resumed the plan** (OD-49: N5 (b), N1 (a); PF01 1.14) and answered N4 (b) and N2 (a), with the Maker application still pending (OD-50; PF01 1.15). M05 closes with his third decision message: S2, S5 and D1.
 - **M04 is done** (OD-39; M05 findings 10, 11, 12 and 14): PR36 merged at `4794d3e`; the first cleanup run deleted the three expected branches ([record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "M04's merge receipt"). Since then, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup").
-- **Now:** [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s branch-controls recommendation (section 6.4) is with Nathan in OD-32's form (OD-51).
+- **Branch controls:** Nathan chose none, procedure only (OD-52), against [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s recommended ruleset. The CI policy's three sentences that record it wait for the Dev Manager's read with the next PR.
+- **Now:** the third decision message (M05's N6: S2, S5 and D1, with DM-29 2.3's `@codex review` direction) is with Nathan.
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M04, P06.1, P06.DB and P06.2.
@@ -20,13 +21,13 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (a decision, from 26 October, 17:40 UTC) | The branch controls: (a) one ruleset, (b) (a) and the gate later, or (c) none (DM-33 6.4) | Nothing changes: the procedures and the keep-list stay the protection; the manager asks once more with the third decision message |
+| App Manager 8 | Nathan (a decision, from 26 October, 17:52 UTC) | S2, S5, D1 and the `@codex review` direction | They stay open, and the process stays as it is; M06's brief goes ahead, since none of them gates it |
 
 ## Next actions (App Manager 8)
 
-1. **The branch-controls answer:** record it in the register; if (a), Nathan creates the ruleset, and the CI policy, step 7, the handover checklist and OD-51's going-private row record it (DM-33 section 7), for the Dev Manager's read.
-2. **The third decision message** to Nathan: S2 (on DM-31's terms), S5 and D1, and DM-29 2.3's standing direction on `@codex review`.
-3. **Then** M06, P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
+1. **The third decision message's answers:** record them in the register and apply them (S2 in the manager workflow, S5 in Notion, D1 in the uses table), with the Dev Manager's read of any governing change; M05 then closes.
+2. **M06's brief,** named to Nathan before it starts (OD-49).
+3. **Then** P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 

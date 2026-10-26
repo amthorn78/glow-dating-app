@@ -21,13 +21,13 @@ Mobile SDK checks and JavaScript exports use Expo offline mode against the insta
 
 On 23 September 2026 the authenticated GitHub branch-protection form at `https://github.com/amthorn78/glow-dating-app/settings/branch_protection_rules/new` reported: "Your rules won't be enforced on this private repository until you move to a GitHub Team or Enterprise organization account." No ineffective rule is represented as protection. No account subscription, ownership transfer or public-visibility change was performed.
 
-**The repository is public for now** (OD-51). GitHub reported it public on 26 October 2026 (DM-32 3.4). Nathan keeps it public for now, for budget reasons, and intends to make it private again. While it is public, protected branches and rulesets are available at no cost (GitHub's documentation, as M04's brief records it on 26 October 2026), and none is configured. The procedural substitutes below stay in force until Nathan decides which controls to use, and after the repository is private again.
+**The repository is public for now** (OD-51). GitHub reported it public on 26 October 2026 (DM-32 3.4). Nathan keeps it public for now, for budget reasons, and intends to make it private again. While it is public, protected branches and rulesets are available at no cost (GitHub's documentation, as M04's brief records it on 26 October 2026), and none is configured: Nathan chose none, procedure only (OD-52, 26 October 2026). The procedural substitutes below stay in force, now and after the repository is private again.
 
-Until Nathan decides which branch controls to use, App Builder 1 uses scoped branches/PRs and checks the exact candidate's actual CI results before an authorized merge. This procedural discipline is not equivalent to platform-enforced checks. Do not force-push or bypass failing checks. Any account-level protection solution is a later concrete owner/account decision; local implementation remains available.
+Under OD-52 the managers use scoped branches/PRs and check the exact candidate's actual CI results before an authorized merge. This procedural discipline is not equivalent to platform-enforced checks. Do not force-push or bypass failing checks. Any account-level protection solution is a later concrete owner/account decision; local implementation remains available.
 
 **No paid plan** (Nathan, 25 September 2026; OD-24): *"No paid plan at this time; there is no budget for it. Use the review and branch controls available at no additional cost, document any protection we cannot enforce, and revisit a paid plan when there is a budget."*
 
-- **Not enforced on this repository** (none is configured while it is public, and by the 23 September observation none is enforceable once it is private again):
+- **Not enforced on this repository** (none is configured: Nathan chose none while it is public (OD-52), and by the 23 September observation none is enforceable once it is private again):
   - required status checks;
   - required reviews;
   - blocking direct pushes to `main`;

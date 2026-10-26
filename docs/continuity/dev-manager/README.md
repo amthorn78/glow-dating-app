@@ -74,7 +74,8 @@ Conditions that wait on a later event. The manager keeps this table current, and
 | DM-32 1.10: the expected deletions, and the first run as the first test of the GitHub path | M04's merge receipt | **Done:** run 40366011457 deleted exactly the three expected branches (the M04 record, "M04's merge receipt") |
 | DM-32 1.11: finding 13's test in P06.2-T | P06.2-T's brief | Open (the carried-items file) |
 | DM-32 3.4: whether the repository's public visibility is intended; it decides `'ccr-**'`, and if intended a branch-controls question follows | Nathan's answer | **Done:** public, kept (OD-51); `'ccr-**'` in M04's brief, revision 3 |
-| OD-51: which branch controls to turn on while they are free (protected branches or rulesets), weighed against Nathan's planned return to private; with it, M04's review's question: a ruleset that blocks deletion of the three kept branches, the platform backstop for the keep-list | Nathan, in OD-32's form | DM-33 section 6 recommends (a), one ruleset; to Nathan after PR36 merges. If he chooses it, the CI policy and step 7 record it as configured, the handover checklist names it, and OD-51's going-private row adds it as not enforced (DM-33 section 7) |
+| OD-51: which branch controls to turn on while they are free (protected branches or rulesets), weighed against Nathan's planned return to private; with it, M04's review's question: a ruleset that blocks deletion of the three kept branches, the platform backstop for the keep-list | Nathan, in OD-32's form | **Done:** DM-33 recommended (a), one ruleset; Nathan chose (c), no ruleset, procedure only (OD-52, 26 October) |
+| OD-52: the CI policy's three sentences and step 7's citation that record it, with DM-33's "the managers" nit applied in the same sentence | The next PR, before it merges | Open |
 | OD-51: when the repository goes private again, `'ccr-**'` comes out or its minutes are approved (DM-32 3.4), the records return to "private", and the Actions minutes line of M07 applies | Nathan's notice that he will make it private | Open |
 | DM-32: the pre-merge read of the CI policy and of the manager workflow (steps 3, 5 and 7, and the handover checklist's keep-list line), at M04's final head; with it, confirm PF01 1.15's entry, which applies DM-32's optional nit, and the start prompts' OD-51 and keep-list lines; and M04's review's F3, the restore record's wording against DM-32 1.5 (a run killed during a push may miss that one deletion) | M04's PR, before it merges | **Done:** approved (DM-33) |
 | DM-31 item 4: E7's epoch-bump question to the Dev Manager | P06.2-T's brief (E7) | Open (the carried-items file) |
@@ -563,10 +564,10 @@ App Manager 8 read the report (`8855163`, a read of `f4d7df5`) against the relay
 
 | Item | Verdict | Disposition | Where applied |
 |---|---|---|---|
-| 1 The pre-merge read | Approved; one optional nit | **Accepted.** PR36 merges with these texts. The nit ("App Builder 1" in the CI policy's procedural sentence; "the managers" fits) waits for the CI policy's next change, as the report places it | The carried-items file, "Carried to the next change to the branch cleanup" |
+| 1 The pre-merge read | Approved; one optional nit | **Accepted.** PR36 merges with these texts. The nit ("App Builder 1" in the CI policy's procedural sentence; "the managers" fits) is applied with OD-52's change of that sentence | The CI policy |
 | 2 F3 against DM-32 1.5 | Confirmed; an optional log line | **Accepted.** The line (`deleting <name> at <head>` before each push) is carried | The same section |
 | 3 PF01 1.15's entry | Confirmed, with OD-12's cell | **Accepted** | — |
-| 4 The branch controls | Recommendation (a): one ruleset | **To Nathan** in OD-32's form after PR36 merges, with the report's 6.4 and its optional note on secret scanning | Deferred conditions, OD-51's row |
+| 4 The branch controls | Recommendation (a): one ruleset | **To Nathan** in OD-32's form after PR36 merges, with the report's 6.4 and its optional note on secret scanning. **He chose (c),** no ruleset (OD-52) | The register; the CI policy's "Branch enforcement limitation" |
 | 5 The Deferred conditions | Right; DM-31 3.7 met; the pre-merge read row closes | **Accepted** | "Deferred conditions" above |
 | Notion | No mismatch | **Accepted** | — |
 
