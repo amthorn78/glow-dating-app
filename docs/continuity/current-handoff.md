@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; M04 done; OD-52; the third decision message with Nathan)
+# Current handoff — App Manager 8 (26 October 2026; M04 and M05 done; DM-34's pre-merge read of the records PR)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -7,10 +7,11 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch.
-- **M05, the whole-project review** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): its records and DM-31's texts merged as PR34 (`4aa66e2`). **Nathan resumed the plan** (OD-49: N5 (b), N1 (a); PF01 1.14) and answered N4 (b) and N2 (a), with the Maker application still pending (OD-50; PF01 1.15). M05 closes with his third decision message: S2, S5 and D1.
+- **M05 is done** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): PR34 (`4aa66e2`) and Nathan's three answers (OD-49, OD-50, OD-53).
 - **M04 is done** (OD-39; M05 findings 10, 11, 12 and 14): PR36 merged at `4794d3e`; the first cleanup run deleted the three expected branches ([record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "M04's merge receipt"). Since then, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup").
 - **Branch controls:** Nathan chose none, procedure only (OD-52), against [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s recommended ruleset. The CI policy's three sentences that record it wait for the Dev Manager's read with the next PR.
-- **Now:** the third decision message (M05's N6: S2, S5 and D1, with DM-29 2.3's `@codex review` direction) is with Nathan.
+- **OD-53:** S2 (delta re-reviews for small corrections), S5 (Notion's procedure as a summary), D1 (no pick asked or recorded) and `@codex review` after a 60-minute stall, all adopted.
+- **Now:** the records PR since PR36, docs only, waits for [DM-34](../ephemeral/2026-10-26-dm-34-od-52-od-53-pre-merge-read.md), the Dev Manager's read of OD-52's and OD-53's texts.
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M04, P06.1, P06.DB and P06.2.
@@ -21,11 +22,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (a decision, from 26 October, 17:52 UTC) | S2, S5, D1 and the `@codex review` direction | They stay open, and the process stays as it is; M06's brief goes ahead, since none of them gates it |
+| App Manager 8 | Nathan (a relay to Dev Manager 3) | DM-34's report | The manager asks Nathan whether the session is available; the records PR does not merge without the read |
 
 ## Next actions (App Manager 8)
 
-1. **The third decision message's answers:** record them in the register and apply them (S2 in the manager workflow, S5 in Notion, D1 in the uses table), with the Dev Manager's read of any governing change; M05 then closes.
+1. **The records PR:** DM-34's read, then Codex and the merge with the checklist (docs only).
 2. **M06's brief,** named to Nathan before it starts (OD-49).
 3. **Then** P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 

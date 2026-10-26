@@ -1,10 +1,11 @@
 # M05 — Whole-project review: an independent assessment toward completion
 
 - **Work ID:** M05 (cross-cutting).
+- **Status: done** (26 October 2026). Its records merged as PR34 (`4aa66e2`); Nathan's three decision messages are answered (OD-49, OD-50, OD-53). Its prompts are pruned, their links pinned at `4794d3e`.
 - **Owner:** Nathan Amthor, by his direction of 25 October 2026 (OD-48). **Manager:** App Manager 8. **Reviewer:** one review session, started by Nathan.
 - **Revision 1, 25 October 2026.**
 - **Starting point:** `main` at `5b9bcb1` (PR33's merge; P06.2 done), with the Markdown records of the manager branch `claude/magical-wozniak-yfmmx2` after it. The prompt names the exact commit the review reads.
-- **Prompt:** [`docs/ephemeral/2026-10-25-m05-project-review-prompt.md`](../ephemeral/2026-10-25-m05-project-review-prompt.md).
+- **Prompt** (pruned): [`docs/ephemeral/2026-10-25-m05-project-review-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/4794d3e99012c348a0fb78d8a12a6e6d1cd20f8e/docs/ephemeral/2026-10-25-m05-project-review-prompt.md).
 - **Evidence home:** `docs/testing/evidence/2026-10-25-m05-project-review.md`, written by the review session on its own branch. The manager adds "Manager verification of M05", with a disposition for each finding.
 
 ## Why
@@ -87,3 +88,4 @@ The review's own change is ordinary documentation: Markdown only, with no `.clau
 - **The review** (26 October 2026): session branch `claude/zen-thompson-5fdqqz`, head `e27f7c7` (corrections `300a24d`, record `e27f7c7`). Verdict "at risk": 51 findings, 0 critical and 11 major; every offline check passed. The manager verified it and integrated it by fast-forward (the record's "Manager verification of M05", with every finding's disposition). Its governing and process proposals and N1 to N6 went to the Dev Manager as DM-31.
 - **DM-31** (26 October 2026; report `8d51446`, a read of `bc6d08a`): the texts approved with conditions and applied (PF01 1.13, the workflow, the charter, the start procedure, the CI policy's database bullet, the register, ADR 0004, the HDE request, `CLAUDE.md`, the matrix and the map); three of them wait for M04 and four for Nathan. K1, S1, S3, S4, S6, S7 and S8 adopted; S2, S5 and D1 are Nathan's. N1 to N6 go to him in three messages, decisions only. M05's records merge as their own docs-only PR before M04. The review log's "DM-31" holds every disposition.
 - **PR34** merged at `4aa66e2` (26 October, 02:42 UTC; the record's "PR34's merge receipt"). **Nathan's first answer** (N5 (b), N1 (a)) is OD-49, applied as PF01 1.14. **His second** (N4 (b), N2 (a); the Maker application still pending) is OD-50, applied as PF01 1.15. S2, S5 and D1 follow (the record's "Nathan's decisions").
+- **Nathan's third answer** (26 October 2026): *"I accept your recommendations"*, OD-53: S2 (a), on DM-31's terms; S5 (a); D1 (a); and the `@codex review` permission after 60 minutes (DM-29 2.3). **M05 is done:** its decisions are complete (the record's "Nathan's decisions").

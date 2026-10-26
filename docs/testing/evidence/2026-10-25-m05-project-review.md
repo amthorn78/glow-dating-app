@@ -4,7 +4,7 @@ The independent whole-project review Nathan directed on 25 October 2026 (OD-48):
 
 ## 1. Identity
 
-- **Prompt:** revision 1, at commit `f669f37f2ba52033ef0410c00c7f40ba234a5d7c` of the manager branch `claude/magical-wozniak-yfmmx2` ([prompt](../../ephemeral/2026-10-25-m05-project-review-prompt.md)).
+- **Prompt:** revision 1, at commit `f669f37f2ba52033ef0410c00c7f40ba234a5d7c` of the manager branch `claude/magical-wozniak-yfmmx2` ([prompt](https://github.com/amthorn78/glow-dating-app/blob/4794d3e99012c348a0fb78d8a12a6e6d1cd20f8e/docs/ephemeral/2026-10-25-m05-project-review-prompt.md)).
 - **Session branch:** `claude/zen-thompson-5fdqqz`, set to `f669f37` before the first commit. Its final head is given in the report Nathan relays (commits: section 11).
 - **Date:** 26 October 2026 (UTC). Environment: `Glow App - No Stream`, as the prompt named.
 - **Environment check (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set (the loop printed nothing); `compgen -e | grep -E '^STREAM_'` printed nothing (exit 1). Toolchain in `$HOME/.local/bin`: `node` v24.19.0, `npm` 11.9.0, `python3.12` 3.12.14; `/usr/bin/python3` is 3.13.17. Every command ran in `env -i PATH="$HOME/.local/bin:$PATH" HOME="$HOME" LANG=C.UTF-8` plus its own variables; installs and `npm audit` got the proxy and CA variables by reference, never printed.
@@ -889,5 +889,9 @@ Every other proposal's verdict, and where each condition is applied, is in the [
 | N4, launch countries and age assurance | (b): the matrix compares the US, the UK and the EU, and he decides before P07's brief | OD-50 | PF01 1.15 (A05, P-6); the carried-items file, "Carried to P09.3a" and "Carried to P07" |
 | N2, the budget | (a), a costed list, each line approved when its phase needs it | OD-50 | PF01 1.15 (A04, P-3 with DM-31's change); the carried-items file, "Carried to M07" |
 | The Stream Maker application (E13) | *"Maker: pending"* | OD-50; OD-22's State | — |
+| S2, a delta re-review for a small correction | (a), on DM-31's terms | OD-53 | The manager workflow, step 6 |
+| S5, Notion's procedure as a summary | (a) | OD-53 | The manager workflow; `AGENTS.md`; `docs/README.md`; PF01 1.16; PF00 1.11; the charter; the next-manager start prompt; Implementation Control |
+| D1, the uses table's pick column | (a), dropped: the pick is no longer asked or recorded | OD-53 | Steps 3 and 4; the reasoning-strength matrix; the uses table |
+| DM-29 2.3, `@codex review` after a stall | (a), after 60 minutes | OD-53 | Step 6 |
 
-N3 folded into N5's order (DM-31 item 3). The third message, S2, S5 and D1 with DM-29 2.3's optional direction, remains; M05 closes with its answer.
+N3 folded into N5's order (DM-31 item 3). The third message's answer, *"I accept your recommendations"*, is OD-53. **M05's decisions are complete, and M05 is done** (26 October 2026).
