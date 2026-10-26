@@ -37,7 +37,8 @@ def classify(base: str, head: str, *, merge_base: bool = False) -> dict:
             if len(bases) != 1:
                 return {"full": True, "reason": "multiple-merge-bases", "paths": []}
             base = bases[0]
-        fields = git("diff", "--raw", "--no-abbrev", "--no-renames", "-z", base, head, "--").split(b"\0")
+        # No .gitmodules or config setting may hide a gitlink move (M05 finding 12).
+        fields = git("diff", "--raw", "--no-abbrev", "--no-renames", "--ignore-submodules=none", "-z", base, head, "--").split(b"\0")
         paths = []
         full = False
         for i in range(0, len(fields) - 1, 2):
