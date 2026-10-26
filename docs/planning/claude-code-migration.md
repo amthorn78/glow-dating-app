@@ -8,7 +8,7 @@ Owner: Nathan Amthor. Coordinator: App Planner 1. Direction received 24 Septembe
 - `docs/planning/`: newly established for persistent plans/briefs, decisions and recovered source evidence.
 - `docs/pf-canon/`: existing canonical PF00/PF01 confirmed and amended for D09; Markdown retained.
 - `docs/README.md`: documentation map/naming/pruning and behavior classification.
-- `docs/continuity/claude-code-handoff.md`: full receiving brief, code map, exact environment inventory, Stream setup and prioritized owner inputs.
+- `docs/continuity/claude-code-handoff.md`: full receiving brief, code map, Stream setup and prioritized owner inputs, frozen on 25 September 2026; the exact environment inventory moved to the [environment inventory](../operations/environment-inventory.md) on 25 September 2026 (DM-03 E2) [Corrected by M05, finding 36: this said the handoff holds the exact environment inventory].
 - `docs/planning/claude-code-initiation.md`: persistent paste-ready initiation for this transition; `manager-workflow.md` defines bounded coordination.
 
 ## Material recovered
@@ -29,7 +29,7 @@ Earlier completed session prompts remain historical provenance where referenced 
 
 PF00/PF01 now route to repository planning, source snapshots and handoff; PF01 D09 records the owner's transition. Obsolete “database audit issued, not executed” references in resource ownership, configuration, migration planning and ADR 0002 point to completed repository audit evidence. Root README reflects completed P05 fixture scope. Root/mobile `CLAUDE.md` import applicable AGENTS; root `AGENTS.md` owns documentation and AI review behavior. The Expo template license text is retained verbatim with `.md` extension. Machine-readable schemas, fixtures, workflows and dependency locks remain their native formats.
 
-The API's new `.env.example` contains only safe fixture settings. Mobile's existing safe example is retained. No live credential variable or loader is invented. Full variable/provisioning/secrecy distinctions are in the handoff; future secret slots are explicitly absent from fixture environments.
+The API's new `.env.example` contains only safe fixture settings. Mobile's existing safe example is retained. No live credential variable or loader is invented. Full variable/provisioning/secrecy distinctions are in the [environment inventory](../operations/environment-inventory.md) [Corrected by M05, finding 36: this said "in the handoff"; the inventory moved on 25 September 2026, DM-03 E2]; future secret slots are explicitly absent from fixture environments.
 
 ## CI and reviews
 

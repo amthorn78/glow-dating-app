@@ -2,6 +2,8 @@
 
 Dated audit evidence migrated from [Notion](https://app.notion.com/p/3e44590a05eb81908661fc44eca0ce20?pvs=204) on 2026-09-24. The observations below are from 2026-09-23, not a fresh database inspection. No connection, DDL or role change was performed for the migration. Physical integration remains P11. Future changes must reverify ownership and protect HDE.
 
+> **Superseded in part (25 September 2026; OD-18).** The app gets its own logical database on this PostgreSQL service, with its own roles ([ADR 0004](../adr/0004-app-database-placement.md)). The outcome, the recommended architecture and the "Decision" below record the earlier same-logical-database preference (OD-03); the observations stay dated evidence. [Added by M05, finding 36]
+
 > **Outcome:** The existing Railway PostgreSQL target can safely host the new app in the same logical database **only after role/schema isolation is designed and reviewed**. Preserve the complete `hde` schema and `public.hde_body_graphs_current`. Do not reuse the legacy `public` tables as the new app's live store. No database, deployment, repository, or HDE mutation was performed.
 ## Audit identity
 - Audit ID: `AB1-DBA-001`

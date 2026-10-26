@@ -46,7 +46,7 @@ Not proposed:
 2. Environment variables: only the Stream development application's `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, added at Nathan's direction on 24 September. These are recorded in the [environment inventory](../operations/environment-inventory.md); the secret is recorded by name only. Never copy HDE `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `PORT` into it.
 3. Set Network access to Custom: allowed domains `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com` and `getstream.io`, with "Also include default list of common package managers" checked.
 4. Paste the full `scripts/bootstrap-toolchain.sh` into Setup script, unchanged. It links by default. Paste the file again whenever it changes, not only when its pins change, once that change has merged.
-5. Start manager, implementation and review sessions for this repository in that environment.
+5. Start only sessions that call Stream in that environment; start every other session in `Glow App - No Stream`, which holds no Stream variables (OD-36) [Corrected by M05, finding 36: this said to start manager, implementation and review sessions in `Glow app`; OD-36 (29 September 2026) assigns `Glow app` only to sessions that call Stream].
 
 ## Completed directly by App Manager 1 (at Nathan's direction)
 

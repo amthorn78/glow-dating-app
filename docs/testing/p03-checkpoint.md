@@ -109,7 +109,9 @@ service has no bounded P03 purpose. Future service-specific settings are concret
 in [build/deploy preparation](../operations/build-and-deploy.md).
 
 The owner now prefers clean app storage in HDE's logical database using app-owned
-schema/roles and appropriate structural reuse. No legacy users need migration.
+schema/roles and appropriate structural reuse. [Added by M05, finding 47: superseded by
+OD-18 on 25 September 2026, the app's own logical database on HDE's PostgreSQL service
+(ADR 0004).] No legacy users need migration.
 Existing app structures and 32 provisional models require an object-level map;
 `public` is not an app-only deletion boundary. The separately issued
 [AP1-DBA-001](https://drive.google.com/file/d/1-AW7Jj_nDnMQiDrLgP0293ZfUuMJScP6/view)
