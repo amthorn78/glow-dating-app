@@ -1,13 +1,16 @@
 """Exercise the cleanup's selection on real Git histories with a bare remote (M04)."""
 
 import contextlib
+import http.server
 import io
 import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import tempfile
+import threading
 import unittest
 from unittest import mock
 import urllib.error
@@ -428,6 +431,71 @@ class BranchCleanupTests(unittest.TestCase):
         absent = subprocess.run(fill, input=query, capture_output=True, text=True, env={**self.env, "GIT_TERMINAL_PROMPT": "0"})
         self.assertNotEqual(absent.returncode, 0)
         self.assertNotIn("password=", absent.stdout)
+
+    # D3 (M04-C1, F1): the empty helper before the script's own drops every helper
+    # configured earlier, generic or URL-scoped, so none is asked to get or store the
+    # token. The control, without the reset, shows the recorder does run.
+    def test_helpers_configured_earlier_never_see_the_token(self):
+        log = self.root / "recorder.log"
+        recorder = self.root / "recorder"
+        recorder.write_text(f'#!/bin/sh\n{{ printf "run: %s\\n" "$*"; cat; }} >> {shlex.quote(str(log))}\n')
+        recorder.chmod(0o755)
+        config = self.root / "global.gitconfig"
+        for key, label in [("credential.helper", "generic"), ("credential.https://github.com.helper", "scoped")]:
+            self.git("config", "--file", str(config), key, f"!{shlex.quote(str(recorder))} {label}")
+        env = {**self.env, "GIT_CONFIG_GLOBAL": str(config), "GITHUB_TOKEN": TOKEN, "GIT_TERMINAL_PROMPT": "0"}
+        query = "protocol=https\nhost=github.com\n\n"
+
+        def fill_and_approve(network):
+            fill = subprocess.run(["git", *network, "credential", "fill"], input=query, capture_output=True, text=True, env=env)
+            self.assertEqual(fill.returncode, 0, fill.stderr)
+            self.assertIn(f"username=x-access-token\npassword={TOKEN}\n", fill.stdout)
+            approve = subprocess.run(["git", *network, "credential", "approve"], input=fill.stdout, capture_output=True, text=True, env=env)
+            self.assertEqual(approve.returncode, 0, approve.stderr)
+
+        fill_and_approve(branch_cleanup.NETWORK)
+        self.assertFalse(log.exists())
+        fill_and_approve(("-c", "credential.helper=" + branch_cleanup.CREDENTIAL_HELPER))
+        runs = [line for line in log.read_text().splitlines() if line.startswith("run: ")]
+        self.assertEqual(sorted(runs), ["run: generic get", "run: generic store", "run: scoped get", "run: scoped store"])
+
+    # D7 (M04-C1, F2): a redirected listing refuses. Followed, the redirect would drop
+    # the Authorization header and take the new location's empty listing as complete.
+    def test_redirected_listing_is_refused(self):
+        served = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                path = urllib.parse.urlsplit(self.path).path
+                served.append(path)
+                if path == "/repos/owner/repo/pulls":
+                    self.send_response(302)
+                    self.send_header("Location", "/elsewhere")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", "2")
+                    self.end_headers()
+                    self.wfile.write(b"[]")
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        # The request stays on loopback whatever proxy variables the process has.
+        local = {key: value for key, value in os.environ.items() if not key.lower().endswith("_proxy")}
+        local.update(NO_PROXY="127.0.0.1", no_proxy="127.0.0.1")
+        with mock.patch.dict(os.environ, local, clear=True), mock.patch.object(branch_cleanup, "API", f"http://127.0.0.1:{server.server_address[1]}"):
+            with self.assertRaises(branch_cleanup.Refused):
+                branch_cleanup.read_open_prs("owner/repo", TOKEN, urlopen=branch_cleanup._open)
+        self.assertEqual(served, ["/repos/owner/repo/pulls"])
 
 
 if __name__ == "__main__":
