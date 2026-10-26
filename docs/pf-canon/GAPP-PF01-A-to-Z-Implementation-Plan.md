@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.13 · **Date:** 26 October 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.15 · **Date:** 26 October 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
@@ -205,7 +205,7 @@ WordPress itself needs a database to boot. If native plugin validation is requir
 - The evidence records what the proof tested and its result. The database is disposed of with the job.
 - Applying migrations is setup there, not DB01 acceptance. The proof partially evidences DB06 and DB09, and P11A and P11B still rerun them on the real target.
 
-Other requests to bring real database integration forward require a concrete technical reason and an explicit plan amendment; development convenience alone is insufficient.
+Other requests to bring real database integration forward require a concrete technical reason and an explicit plan amendment; development convenience alone is insufficient. The server slices (§8) are that amendment for the production server.
 
 ### Migration and connection safety
 
@@ -242,7 +242,7 @@ The first application of the rule is the chat display rule in [ADR 0003](../adr/
 
 **Billing.** Until the owner chooses paid launch, keep entitlements behind a port and leave purchase UI disabled. If paid: verify store/RevenueCat webhook signatures and replay handling; handle restore, refund, revocation, grace and cross-device state. Do not treat a WordPress payment or client receipt assertion as an entitlement. Obtain actual product and budget decisions when needed.
 
-**Mobile/store readiness.** Maintain a dated requirements matrix for Apple and Google covering distinctive dating-product value, UGC moderation/report/block/contact, adults-only eligibility, child-safety duties, privacy disclosures, account deletion, sign-in, subscriptions, permissions and review access. Recheck official policies and build requirements when producing release artifacts. Validate supported iOS/Android SDKs, native-library compatibility, privacy manifests/Data Safety disclosures, deep links, denied permissions, accessibility, large text, keyboard behavior, offline recovery and real-device performance. A successful Expo preview or JavaScript test is not a signed native-build or store-approval proof.
+**Mobile/store readiness.** Before P06.3's and P07's briefs, prepare and then maintain a dated requirements matrix for Apple and Google, for the launch countries (A05), or the candidate list under comparison until Nathan chooses them, covering distinctive dating-product value, UGC moderation/report/block/contact, adults-only eligibility, child-safety duties, privacy disclosures, account deletion, sign-in, subscriptions, permissions and review access. Recheck official policies and build requirements when producing release artifacts. Validate supported iOS/Android SDKs, native-library compatibility, privacy manifests/Data Safety disclosures, deep links, denied permissions, accessibility, large text, keyboard behavior, offline recovery and real-device performance. A successful Expo preview or JavaScript test is not a signed native-build or store-approval proof.
 
 ## 8. Work sequence and dependency model
 
@@ -265,6 +265,8 @@ The following phases are checkpoints, not separate required sessions or automati
 | P12 | Verified release-candidate handoff | P11 mandatory acceptance | Verification and readiness record; public release remains separate |
 
 **P06.DB** (OD-17) is the early disposable-PostgreSQL proof in §6. It runs after P06.1 closes and before P06.2.
+
+**Server slices** (Nathan, 26 October 2026; OD-49). Before P10, the production HTTP API, maintained authentication (django-allauth headless with the mail adapter) and the ORM persistence adapters of each domain are built as four slices: SV1, identity (sign-in and the mail adapter); SV2, profiles and media; SV3, eligibility, discovery and interactions; SV4, chat's HTTP surface. Each is proven on a disposable PostgreSQL in CI under P06.DB's rules (no shared or production database, CI-generated credentials, the runtime guards kept). The runtime stays sealed until P11 wires it. A slice's database proof partially evidences its P11 cases, and P11A and P11B still rerun them on the real target.
 
 Logical parallel work is possible: P03 operations preparation can overlap P04 UI; P05 domain rules and P06 provider capability work can progress independently once contracts agree; public policy/support drafting can overlap P07; P09 checks run incrementally throughout. This is scheduling flexibility for one session, not authorization or a requirement to spawn agents. Keep one active work item in the register unless a concrete asynchronous operation is being tracked.
 
@@ -481,8 +483,8 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | A01 | Final HDE chart, compatibility, version/cache and deletion contract | P11B | Build fixtures/adapter now; live HDE acceptance stays blocked until supported contract exists. Owner: Nathan, who holds the Product Owner, HDE owner and integration owner roles (OD-23). The app's contract-requirements document goes into HDE's own process, where Nathan sets the delivery date (not yet set). The app records the delivered contract as a receipt; HDE governs its text |
 | A02 | HDE/legacy/app logical DB and role ownership, existing production users/data | Before any P11 target mutation or retirement | Inspect source/config metadata early; verify protected target at P11; no automatic import, overwrite or deletion. Placement decided: the app's own logical database on HDE's service (OD-18, ADR 0004). Still open: the capacity and operational-limits inspection before P11C, the roles' implementation and the legacy disposition |
 | A03 | Reusable old app code and preferred repo/resource placement | P01 | Bounded evidence-based assessment; fresh private app base is default |
-| A04 | Provider accounts, budget, signing credentials, domain ownership and admin access | P03/P06/P09/P11 as used | Prepare code/config first; request only the exact missing access or spend when action is ready. Stream: the Maker Account application was submitted by 25 September 2026 and is pending; Stream estimates about two weeks, which is not an approval date (OD-22). The $0 budget stands (OD-12) |
-| A05 | Launch geography/language, preference policy, moderation/support ownership and retention | P05/P07/P08 before final policy/launch | Use explicitly recorded provisional fixtures; owner resolves product/operating commitments. One person, Nathan, holds every human role (OD-23), so P07 plans moderation, escalation, child-safety duties, support and appeals for a single operator |
+| A04 | Provider accounts, budget, signing credentials, domain ownership and admin access | P03/P06/P09/P11 as used | Prepare code/config first; request only the exact missing access or spend when action is ready. Stream: the Maker Account application was submitted by 25 September 2026 and is pending; Stream estimates about two weeks, which is not an approval date (OD-22). The $0 budget stands (OD-12). Before P09 and P11B the manager keeps a costed list of each account and service completion needs (Apple and Google developer accounts, Railway app services, the Stream production plan, Cloudflare, mail and push), with its published price rechecked; Nathan approves each line when its phase needs it, and no account is created and nothing is spent before he approves it (OD-50). Nathan reports the Stream Maker application's status when it changes (OD-22) |
+| A05 | Launch geography/language, preference policy, moderation/support ownership and retention | P05/P07/P08 before final policy/launch | Use explicitly recorded provisional fixtures; owner resolves product/operating commitments. One person, Nathan, holds every human role (OD-23), so P07 plans moderation, escalation, child-safety duties, support and appeals for a single operator. The open A05 questions (launch geography, age assurance, the preference taxonomy, resurfacing and rematch, the history policy, retention, moderation operators) go to Nathan in OD-32's form before P07's brief (OD-50) |
 | A06 | Paid launch and entitlement product scope | P08 | Default no active paid feature; do not buy a plan or invent pricing |
 | A07 | HDE throughput and supported recommendation granularity | P11B before release acceptance | Bounded candidate strategy; measure actual contract; band ordering if that is all permitted. Owner and date as A01 (OD-23) |
 | A08 | Chat provider can enforce app-owned match/block send authorization | P06 capability proof; rerun P11 | Prove SDK/permission behavior; change design/provider if bypass cannot be closed |
@@ -523,7 +525,7 @@ Required final acceptance covers the complete account-to-profile-to-recommendati
 | R02 — HDE contract changes or remains unfinished | Versioned adapter, honest fixture states, bounded application-owned presentation | Final supported contract unavailable or requires app product change |
 | R03 — Shared legacy/HDE infrastructure is accidentally changed | Exact identity map, protected service/volume list, no shared credentials or blanket cleanup | Ownership/consumer mapping ambiguous before a mutation |
 | R04 — Managed chat safety bypass or unacceptable cost | Early permission proof and quote; app-owned entitlement; vendor-independent port | Direct client path can bypass block/match checks or price exceeds approved budget |
-| R05 — Store/safety/operations gap | Build policy/UGC/deletion/support matrix early; native builds and named operators. With one human operator (OD-23), P07 plans capacity explicitly: what is automated, what response times one person can meet, and what must be in place before launch | Missing accountable safety operation or unresolved release-policy requirement |
+| R05 — Store/safety/operations gap | Build the store, legal and safety matrix (§7) before P06.3 and P07; native builds and named operators. With one human operator (OD-23), P07 plans capacity explicitly: what is automated, what response times one person can meet, and what must be in place before launch | Missing accountable safety operation or unresolved release-policy requirement |
 | R06 — Duplicate docs and misleading progress | Single authority transfer, linked evidence, Notion live status, explicit claim levels | Plan, repository and deployed behavior disagree; stop affected work and reconcile |
 
 No calendar delivery promise is made from the earlier research's team-based estimates. The first implementation checkpoints provide actual task throughput, access constraints and defect rates. Reforecast from completed evidence, preserve scope priorities, and distinguish hands-on effort from external waiting time.
@@ -607,3 +609,17 @@ No phase acceptance, D08 authority or HDE boundary changes.
 - **Phase acceptance changes** (M05 finding 5; DM-31 3.1 and 3.2): P06's completion names the evidence that proves its safety path, with the limits those records state; P06.3 gains acceptance of its own; P07's completion names its tests against a disposable WordPress.
 
 Affected tasks: P06, P06.3 and P07. No D08 authority, source or contract, or HDE boundary changes. The texts for the server slices, the requirements matrix, the costed list and A05's questions (M05's P-1, P-2, P-3 and P-6) wait on Nathan's decisions, each in a later revision.
+
+1.14 — records Nathan's decisions N5 and N1 of 26 October 2026 (OD-49), with the texts the Dev Manager found fit to put to him (DM-31 3.2):
+
+- §8 gains the server slices SV1 to SV4, built before P10 on disposable PostgreSQL in CI, and §6 names them as its plan amendment (M05's P-1; finding 1; N1).
+- §7's requirements matrix is prepared before P06.3's and P07's briefs, for the launch countries or the candidate list under comparison, and R05's mitigation says so (M05's P-2; finding 2; N3, folded into N5's order).
+
+Affected tasks: the new slices SV1 to SV4, P06.3, P07, P09.3 and P10, whose inputs now include the slices. No D08 authority, source or contract, or HDE boundary changes. The texts for the costed list and A05's questions (M05's P-3 and P-6) wait on Nathan's N2 and N4.
+
+1.15 — records Nathan's decisions N4 and N2 of 26 October 2026 (OD-50), with the texts the Dev Manager found fit to put to him (DM-31 3.2):
+
+- A04: before P09 and P11B the manager keeps a costed list of completion's accounts and services, and Nathan approves each line when its phase needs it; no account is created and nothing is spent before then. Nathan reports the Stream Maker application's status when it changes; the dated clause is in the register, OD-22 (M05's P-3, with DM-31's change; finding 3; N2).
+- A05: the open A05 questions go to Nathan in OD-32's form before P07's brief (M05's P-6; finding 6; N4). The matrix (§7) compares the candidate list he chose, recorded in OD-50.
+
+Affected tasks: P07, P08, P09 and P11B. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.

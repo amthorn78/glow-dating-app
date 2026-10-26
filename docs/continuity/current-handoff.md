@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; DM-31 applied; M05's PR and Nathan's decisions)
+# Current handoff — App Manager 8 (26 October 2026; M04 implemented and verified; PR35 waits on Codex)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -6,33 +6,34 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch. App Managers 6 and 7 push nothing after their handover commits.
-- **Current item: M05, the whole-project review** (OD-48; [brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)). Its report is integrated, and **DM-31** ([review log](dev-manager/README.md), "DM-31") approved its texts with conditions. They are applied: PF01 1.13, the workflow, the charter, the start procedure, the register and the rest. M05 closes when its records merge to `main` and Nathan has his decisions.
-- **Nathan's decisions** (DM-31 item 3), three messages, decisions only: (1) N5 and N1; (2) N4 and N2, with the HDE request's C30 to C35 for information; (3) S2, S5 and D1, with DM-29 2.3's optional direction.
-- **Next item: M04** with the CI hardening (OD-39; M05 findings 10, 11 and 14). It waits on none of the decisions; its brief goes to the Dev Manager.
-- **Done:** P00 to P05 (fixture scope), M01 to M03, P06.1, P06.DB and P06.2 (PR33, `5b9bcb1`).
-- **[HDE contract request](../planning/hde-contract-request.md)** (OD-23): in Nathan's own process; C30 to C35 added on 26 October.
-- **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-31, with "Deferred conditions".
+- **Manager: App Manager 8** (OD-46), in `Glow App - No Stream`, with the manager branch `claude/magical-wozniak-yfmmx2` as its outcome branch.
+- **M05, the whole-project review** ([brief](../planning/m05-whole-project-review.md); [record](../testing/evidence/2026-10-25-m05-project-review.md)): its records and DM-31's texts merged as PR34 (`4aa66e2`). **Nathan resumed the plan** (OD-49: N5 (b), N1 (a); PF01 1.14) and answered N4 (b) and N2 (a), with the Maker application still pending (OD-50; PF01 1.15). M05 closes with his third decision message: S2, S5 and D1.
+- **Current item: M04** with the CI hardening (OD-39; M05 findings 10, 11, 12 and 14): [brief](../planning/m04-branch-hygiene.md), revision 3, applying [DM-32](dev-manager/reviews/2026-10-26-dm-32-m04-brief.md)'s conditions and OD-51; its [implementation prompt](../ephemeral/2026-10-26-m04-implementation-prompt.md), revision 1, ran (code head `27ef2f6`, run of record 40270021713) and is verified; the notes join its record at integration.
+- **The records since PR34** (OD-49 to OD-51, PF01 1.14 and 1.15, M04's brief and prompt) merge first as their own docs-only PR, so that M04's PR carries M04 alone (DM-31 item 4); M04's code is integrated only after it merges (PR35; Codex shows "running" since 04:03 UTC).
+- **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
+- **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
+- **Done:** P00 to P05 (fixture scope), M01 to M03, P06.1, P06.DB and P06.2.
+- **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-32, with "Deferred conditions".
 - **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
 ## Waiting checkpoint (26 October 2026, App Manager 8)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (a decision) | His answer on N5 and N1, the first decision message | M04's brief proceeds; nothing that depends on N1 or N5 starts |
+| App Manager 8 | Nathan (a decision, since 26 October 09:00 UTC) | Whether the manager may post `@codex review` on PR35 (DM-29 2.3) | PR35 waits; a records push may start a fresh Codex review |
 
 ## Next actions (App Manager 8)
 
-1. **M05's docs-only PR** from the manager branch to `main`: the review, its records and DM-31's applied texts (DM-31 item 4). Classified `ordinary-docs-only`; the pre-merge checklist in its description; merge under the standing app-only authorization; receipt in the M05 record.
-2. **The decisions:** after each answer, record it in the register and apply its texts (P-1 on N1, P-2 with N5's order, P-3 on N2, P-6 on N4); then the next message.
-3. **M04** (unless the decisions reorder it): brief, the Dev Manager's read, then the implementation prompt for `Glow App - No Stream`. Starting points: push to `main` and manual dispatch only, never a pull-request event; `contents: write` for that job only, no secrets, pinned actions; delete only a branch whose head is in `main`, off a keep-list held on `main` (`main`, the manager branch, and `claude/dev-manager` by name, DM-13 item 10) and heading no open PR; dry-run mode and a job summary; selection tests and a run of record; the CI policy updated, classified with the pre-change policy, the whole workflow diff read; exact-head review, Codex and the Dev Manager's read. Also weigh adding the session harness's branch pattern to the push filter (AM7-02; the brief's B2-C2 point vi). M05 adds `!cancelled()` on the application jobs (finding 10), the Mobile job's margin (11) and the upload-artifact pin (14).
-4. **Then,** as DM-31 set the path: M06 (E8's assessment), the matrix (P09.3a), P06.2-F (E11), P06.3, and the server slices if N1 is (a); P06.2-T and P07.2a as the Work Register places them. The harness's carried fixes (the P11 plan) land before P11's live run.
+1. **PR35:** once Codex's review completes on its head, merge it with the checklist (OD-51's row and ADR 0001's note go to the next consultation to confirm).
+2. **M04's integration:** merge the session branch into the manager branch, add "Manager verification of M04" to its record, apply V2 to V4 (the CI policy's opening line; steps 3, 5 and 7; the handover checklist's keep-list line), open M04's PR, then Codex on the code head and the exact-head review prompt with its threat model and V1; the Dev Manager's pre-merge read, with the branch-controls question (OD-51).
+3. **The third decision message** to Nathan: S2 (on DM-31's terms), S5 and D1, and DM-29 2.3's standing direction on `@codex review`, if not already answered.
+4. **Then** M06, P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 
-## Branches and PRs (`git ls-remote`, 26 October 2026)
+## Branches and PRs (`git ls-remote`, 26 October 2026, 09:00 UTC)
 
-- **Open PRs:** the manager branch's docs-only PR for M05 (next action 1), once opened.
-- **Kept:** `main` (`5b9bcb1`), the manager branch, and `claude/dev-manager` (`6bf6f5d`).
-- **For Nathan to delete, fully integrated:** `claude/zen-thompson-5fdqqz` (M05, `e27f7c7`).
-- **Deleted by Nathan** after PR33 merged: the eight session branches of C1 to C2-C4 (OD-48).
+- **Open PR:** [PR35](https://github.com/amthorn78/glow-dating-app/pull/35), the records since PR34, docs only; it waits on Codex.
+- **Kept:** `main` (`4aa66e2`), the manager branch (PR35's head), and `claude/dev-manager` (`3abbc81`, in the manager branch).
+- **Unmerged, kept until M04 merges:** `claude/laughing-meitner-ywjnk1` (M04's session, `7f9e6e7`).
+- **For Nathan to delete, fully merged:** `claude/zen-thompson-5fdqqz` (M05, `e27f7c7`); else M04's first run deletes it.

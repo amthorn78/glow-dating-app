@@ -115,6 +115,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-10 | 25 Oct 2026 | accuracy | Chat reports labelled the push and PR runs of three Markdown-only commits the wrong way round | Dev Manager 3, DM-30 4.3 |
 | AM8-11 | 26 Oct 2026 | follow-through | Notion's standing status bullets on Implementation Control left at App Manager 7's state; read-backs checked only the edited strings | M05 review, finding 30 |
 | AM8-12 | 26 Oct 2026 | process | The current handoff kept over its 5 KB limit, with follow-ups whose only home it was | M05 review, finding 38 |
+| AM8-13 | 26 Oct 2026 | follow-through | The `89f2601` Notion sync left two Implementation Control bullets stale ("No PR is open" with PR34 open; DM-31 "goes to it next" after its answer), repeating AM8-11 | App Manager 8, at the `72c60dd` sync |
 
 ## App Manager 2
 
@@ -888,3 +889,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** the handoff changed in most records batches, and gated follow-ups lived only in a routing file.
 - **Correction:** on 26 October the follow-ups moved to their owning homes (the P06.2 brief's "Carried to later changes", the M02 brief and the P11 plan), and the handoff went under 5 KB.
 - **Prevention:** each records batch checks the handoff's size with `wc -c` before its commit. M05's P-7 proposes the standing rule (DM-31).
+
+### AM8-13 — Two status bullets left stale again (follow-through)
+
+- **What happened:** the sync that stamped Implementation Control at `89f2601` updated the lead paragraph but not the `main` bullet, which said "No PR is open" while PR34 was open, nor the Dev Manager bullet, which said DM-31 "goes to it next" after Dev Manager 3 had answered it (`8d51446`). AM8-11's prevention, reading the whole status section back, was not applied to that sync.
+- **Caught by:** App Manager 8, reading the whole status section at the `72c60dd` sync.
+- **Effect:** for about an hour Notion misstated the open PR and DM-31's state. No decision rested on it.
+- **Correction:** both bullets, the phase and next-items bullets and the branch heads corrected and read back at the `72c60dd` sync.
+- **Prevention:** AM8-11's, applied to every sync: after the edits, fetch the page and check every status bullet against the handoff, not only the edited strings. The claims checklist's last line already says so.
