@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.12 · **Date:** 24 October 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.13 · **Date:** 26 October 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
@@ -43,6 +43,7 @@ Voice/video, public feeds, consumer web parity, custom chat infrastructure, spec
 | Separate application canon | `docs/pf-canon/` | Current GAPP-PF00 and GAPP-PF01, in Markdown |
 | Working material | `docs/ephemeral/` | Prunable single-use Markdown prompts and temporary handoffs after promotion of unique evidence |
 | Application repository | Private `amthorn78/glow-dating-app`, default branch `main` | All durable implementation documentation and code; no operational Drive dependency |
+| Proof harnesses | `proofs/` | Provider and database proof harnesses (P06.1, P06.DB); outside the app runtime, checked in CI |
 
 **Three documentation layers remain distinct.** Repository implementation documents describe the actual code, contracts, configuration, testing and operation. The **GAPP-PF** canon owns application-level governing rules and durable architectural constraints. Ephemeral files are noncanonical. These are logical layers: the application canon may live in a clearly separated `docs/pf-canon/` directory inside the application repository. It never joins or renumbers the HDE PF canon.
 
@@ -233,7 +234,7 @@ The first application of the rule is the chat display rule in [ADR 0003](../adr/
 
 **Media.** Issue short-lived upload grants; enforce ownership, size/count/type limits and safe decoding. Strip metadata, quarantine originals, moderate before publication and expose only approved variants through authorized delivery. Handle abandoned uploads, reordering, retries, removal and downstream purge. Neither an uploaded filename nor a successful vendor upload proves that an image is safe or publicly eligible.
 
-**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, stale tokens, existing channels, retries, reconnect and cross-device behavior. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default. On 25 September 2026 Nathan accepted the display rule for P06.1's finding S15: the app never displays chat-provider user or member data ([ADR 0003](../adr/0003-chat-display-rule.md); confirmed live by the I1 review on 25 September 2026). The [P06.1 brief](../planning/p06-1-chat-provider-proof.md) records the finding and its consequences for P06.1's later sessions and P06.2.
+**Chat and notifications.** A mutual match is required to obtain a channel entitlement and send. Use server-controlled channel membership and app-authorized sending; prove provider permissions prevent clients bypassing that route. Stream's documented before-message-send hook can allow messages through when the hook fails, so that hook alone is insufficient as Glow's match/block gate. Prove fail-closed behavior using the chosen provider configuration; otherwise change the provider/design before launch. Serialize or otherwise define the linearization of send versus block/unmatch: no newly authorized send after the block/unmatch commit. Test in-flight messages, existing channels, retries, reconnect and cross-device behavior; under OD-45 the app holds no provider token, so stale-token cases apply only to a server-held or leaked token. Decide the policy for existing conversation history separately from future contact. Push copy must not expose birth details, sensitive compatibility data or message bodies by default. On 25 September 2026 Nathan accepted the display rule for P06.1's finding S15: the app never displays chat-provider user or member data ([ADR 0003](../adr/0003-chat-display-rule.md); confirmed live by the I1 review on 25 September 2026). The [P06.1 brief](../planning/p06-1-chat-provider-proof.md) records the finding and its consequences for P06.1's later sessions and P06.2.
 
 **Safety, privacy and operations.** Block/report are available from profile and chat, including after unmatch. Moderation actions, evidence retention, appeal and urgent escalation have named operational owners. WordPress staff authentication is distinct from dating-user authentication; privileged API calls enforce scope and audit the staff actor. Draft real public community/child-safety/support policies, then have the owner confirm the actual operating responsibilities. Configure least privilege and redaction; no raw birth data, chat bodies, tokens or SQL parameters in routine logs.
 
@@ -344,12 +345,13 @@ Logical parallel work is possible: P03 operations preparation can overlap P04 UI
 - **Objective:** useful communication with enforceable dating safety boundaries.
 - **Inputs:** match/block contracts, chat-provider access and explicit capability proof requirements.
 - **Operations:** evaluate provider permission model, data terms, quota and actual cost; obtain spending approval before paid activation. Configure sandbox channels, push identities and delivery ownership to prevent duplicate notification paths.
-- **Development:** chat adapter and UI, server-mediated send authorization, controlled membership, unread/pagination/reconnect states, idempotent message submission, token lifecycle, notification preferences and retry/deduplication. Keep app entitlements authoritative.
+- **Development:** chat adapter and UI, server-mediated send authorization, controlled membership, unread/pagination/reconnect states, idempotent message submission, notification preferences (OD-45: no client token lifecycle) and retry/deduplication. Keep app entitlements authoritative.
 - **Documentation:** provider permission proof, send-versus-block ordering, history policy, notification data flow and failure runbook.
 - **Dependencies/HDE:** no HD data in chat authorization; only approved compatibility presentation may appear in the UI. Provider inability to enforce safety is a design blocker, not a future polish item.
-- **Validation:** client bypass attempts, wrong-channel membership, direct SDK send restrictions, stale tokens, block/unmatch during send, provider outage, duplicate deliveries and privacy-safe push. Record which results require live persistence and must be rerun in P11.
-- **Completion:** selected design has a credible tested provider-level safety path; transport/UI and synthetic workflows work. Any unproven capability remains explicitly blocked.
+- **Validation:** client bypass attempts, wrong-channel membership, block/unmatch during send (OD-45: no client SDK or token), provider outage, duplicate deliveries and privacy-safe push. Record which results require live persistence and must be rerun in P11.
+- **Completion:** the selected design's provider-level safety path is proven by the P06.1 matrix and the P06.2 suites named in their evidence records, with the limits those records state; transport/UI and synthetic workflows work. Any unproven capability remains explicitly blocked.
 - **Handoff:** messaging/notification integration settings, evidence and deferred real-state cases.
+- **P06.3 acceptance:** notification content comes only from Glow's server path and carries no birth details, compatibility data or message body by default; preferences and device registration follow their contracts at fixture scope; real push transport is deferred to P09/P11 with its credentials.
 
 ### P07 — Build safety, WordPress operations and support
 
@@ -360,7 +362,7 @@ Logical parallel work is possible: P03 operations preparation can overlap P04 UI
 - **Documentation:** moderation/support runbooks, staff permission matrix, audit semantics, public policy drafts and temporary CMS-storage exception if used.
 - **Dependencies/HDE:** engine outputs are not abuse determinations; operators cannot alter HDE tables or calculation rules through app moderation tools.
 - **Validation:** role separation, object-level authorization, malicious evidence content, escalation paths, report-after-unmatch, block across discovery/chat and safe failure of operator APIs.
-- **Completion:** workflows and staff UI are demonstrable; operating ownership and final public policy approval remain named launch dependencies where unresolved.
+- **Completion:** each workflow passes its fixture and contract tests and the staff views pass their scoped-API tests against a disposable WordPress; operating ownership and final public policy approval remain named launch dependencies where unresolved.
 - **Handoff:** safety state and operator controls ready for privacy lifecycle and real-provider integration.
 
 ### P08 — Implement privacy lifecycle and conditional monetization
@@ -465,12 +467,12 @@ On 24 September 2026 Nathan directed migration from ChatGPT web to Claude Code a
 | D02 | Preserve current HDE and its database; no app-side engine reimplementation | Owner's explicit integration priority |
 | D03 | Production DB connection/database-dependent integration in P11; data design early | Owner's implementation brief |
 | D04 | Notion coordination; repository Markdown owns all operational documentation; historical Drive planning superseded by D09. Notion also carries a matching copy of the operational guidance and the owner-direction register (OD-26); where they differ, the repository wins (OD-27) | Owner brief and 24 September transition direction |
-| D05 | Separate GAPP-PF canon; one capable session; no automatic approval at each phase | Owner's implementation brief |
+| D05 | Separate GAPP-PF canon; no automatic approval at each phase. The single capable session is superseded by D09's manual relay and D10's Dev Manager | Owner's implementation brief |
 | D06 | Expo/RN + modular Django/DRF baseline, managed capabilities behind adapters | Selected planning design from research; exact pins and bounded reuse ADR in P01 |
 | D07 | Stream preferred only if permissions and economics pass; paid services/billing conditional | Architecture safeguard, not purchase approval |
-| D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; current controlling permission record |
+| D08 | App Builder 1 has full create/modify authority for the application across GitHub/Railway/Drive/Notion, excluding all HDE-affecting changes; App Planner 1 coordinates and receives progress | Owner's explicit session authorization, 23 September 2026; the controlling app-only permission, which governs the manual relay's sessions (`AGENTS.md`; OD-01; the named sessions are historical) |
 | D09 | Repository Markdown operational authority; Claude manager with bounded implementation sessions run as Nathan's manual relay; feature pause and setup optimization first | Owner direction, 24 September 2026 |
-| D10 | Dev Manager: a persistent second-layer management and review session that the manager creates and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions and keeps documentation chains traceable; no scoring. The primary manager keeps coordination; Nathan decides disagreements. See the [Dev Manager charter](../planning/dev-manager.md) | Owner direction, 25 September 2026 |
+| D10 | Dev Manager: a persistent second-layer management and review session that the manager creates and consults by manual relay. It reviews, challenges and approves consequential architectural, implementation, workflow and process decisions and keeps documentation chains traceable; no scoring. The primary manager keeps coordination; Nathan decides disagreements. See the [Dev Manager charter](../planning/dev-manager.md) | Owner direction, 25 September 2026; the outgoing Dev Manager creates its successor at Nathan's direction (OD-35; the charter) |
 
 ### Provisional assumptions and dependencies
 
@@ -597,3 +599,11 @@ No product scope, phase acceptance, D08 authority or HDE boundary changes.
 - Under OD-45, P06's "token lifecycle", and its validation's "direct SDK send restrictions" and "stale tokens", no longer apply to the app. The server's dormant token code stays until a later cleanup (DM-22 11.2).
 
 No phase acceptance, D08 authority or HDE boundary changes.
+
+1.13 — after the M05 whole-project review (OD-48) and the Dev Manager's DM-31 read (26 October 2026):
+
+- D05, D08 and D10 are brought up to date: the single session is superseded by D09 and D10, D08's named sessions are historical (OD-01), and the outgoing Dev Manager creates its successor (OD-35) (M05 finding 4; DM-31 3.2).
+- §2 names `proofs/`. §7's chat testing line and P06's development and validation lines say that under OD-45 the app holds no provider token (M05 finding 4).
+- **Phase acceptance changes** (M05 finding 5; DM-31 3.1 and 3.2): P06's completion names the evidence that proves its safety path, with the limits those records state; P06.3 gains acceptance of its own; P07's completion names its tests against a disposable WordPress.
+
+Affected tasks: P06, P06.3 and P07. No D08 authority, source or contract, or HDE boundary changes. The texts for the server slices, the requirements matrix, the costed list and A05's questions (M05's P-1, P-2, P-3 and P-6) wait on Nathan's decisions, each in a later revision.

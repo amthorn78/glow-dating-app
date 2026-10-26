@@ -848,3 +848,13 @@ Status: complete
 | 1 to 7, 31, 32, 39 to 41, 45 and 49 to 51, with P-1 to P-12, P-14, P-16's start-procedure line, P-18 and P-19 | **Referred to the Dev Manager, DM-31** (governing, canon or process; OD-32; the charter), with N1 to N6, S1 to S8, D1, the path in section 7 and the next item. Nothing governing changes, and nothing goes to Nathan, before its read |
 | 10, 11, 12, 13 (the test), 14, 15, 17, 18, 19, 20 (with P-13's mobile lines), 22 (the code), 24 (E7, with P-13's API README lines), 25, 27 (optional), 29 (E8) and 44 | **Recorded as work items** (E1 to E15 and section 7). Their order is set after DM-31, one at a time (OD-29). Finding 44 is a manager records batch |
 | 21 | **Confirmed; no new home.** It is already the P11 plan's C2C2-X1 |
+
+## The Dev Manager's answer (DM-31, 26 October 2026)
+
+Dev Manager 3 read this record at `bc6d08a` ([DM-31 report](../../continuity/dev-manager/reviews/2026-10-26-dm-31-m05-project-review.md)). Its answer on the findings about its own role, recorded here beside them (DM-31 item 7):
+
+- **Findings 31, 41 and 49: accepted.** The Dev Manager wrote DM-28 2.4 and DM-30 4.2 and 4.3 as one item's conditions and never asked for them to be standing rules; it saw the repeated claim slips without invoking DM-01 P8. Its reports will give verdicts, conditions and reasons, and not restate what they read.
+- **Finding 42: accepted in part.** Most items are the manager's to apply. The Dev Manager's share is tracking, so the review log now keeps a "Deferred conditions" table, which each governing read checks.
+- **S1: accepted with limits (DM-31 3.4); its estimate disputed.** Under the rule with those limits, about 2 of Stage C2's 8 consultations would have gone (DM-29, and DM-30's nit half), not 5. DM-23 created the rule and reversed a carry of CX8; DM-24 and DM-28 touched the revocation path; DM-25 and DM-27 changed a cursor rule a Dev Manager had set; DM-26 answered a departure from a Dev Manager condition. Their weight was the fix conditions, which corrected defects in the proposals, and a Dev Manager condition was itself wrong once (DM-24 1.4, which cost DM-26).
+
+Every other proposal's verdict, and where each condition is applied, is in the [review log](../../continuity/dev-manager/README.md), "DM-31".
