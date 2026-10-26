@@ -65,8 +65,8 @@ Conditions that wait on a later event. The manager keeps this table current, and
 | DM-23 3.1, DM-26 item 2, DM-29 1.1 with DM-30 2.1 and 2.2: the README sentences and the window-replacement follow-up | The first change to `apps/mobile` (E11) | Open (the P06.2 brief's "Carried to later changes") |
 | DM-30 1.1 and 1.2: the standing guard | A phase that lets a readable conversation lose an accepted message, or changes a page cursor's boundary | Open (the P11 plan, "Standing guard"; pointers in the carried-items file for P07 and P08) |
 | DM-31 3.7: P-7's push-run sentence, P-9's cancel bullet and upload-artifact row | M04's change of `always()` and the pin | Open |
-| DM-31 3.2: P-1, P-2, P-3 and P-6 | Nathan's N1, N4 and N2 (and N5's order for the matrix) | Open |
-| DM-31 item 3: the identity slice's exact-head review carries a written threat model | The identity slice, if N1 is (a) | Open |
+| DM-31 3.2: P-1, P-2, P-3 and P-6 | Nathan's N1, N4 and N2 (and N5's order for the matrix) | **P-1 and P-2 done** (OD-49; PF01 1.14). P-3 and P-6 open, on N2 and N4 |
+| DM-31 item 3: the identity slice's exact-head review carries a written threat model | SV1 (N1 is (a), OD-49) | Open (the carried-items file, "Carried to SV1") |
 | DM-31 item 4: M04's brief to the Dev Manager; with finding 12, the classification-policy rules | M04's brief | Open |
 | DM-31 item 4: E7's epoch-bump question to the Dev Manager | P06.2-T's brief (E7) | Open (the carried-items file) |
 | DM-31 item 4: the matrix's prompt names an environment that can read the web; DM-31 item 3: it states it is not legal advice | The matrix's prompt | Open (the carried-items file) |

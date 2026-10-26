@@ -18,6 +18,12 @@ This file holds what a later work item must take up when that item has no brief 
 - **ADR 0003's condition (b)** (open for P07 and P08): as in P07's section; P08's deletion orchestration takes it if P07 has not.
 - **The message spool's retention** (M05 finding 23): `MessageSubmission.text` is kept on every accepted submission. The retention decision, and deletion and export while it is kept, are in the P11 plan, "The message spool", and the privacy rules' spool row.
 
+## Carried to SV1 (the identity slice; OD-49)
+
+- **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
+- **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
+- **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
+
 ## Carried to P09.3a (the store, legal and safety requirements matrix)
 
 - **CSAM detection and the reporting duty** (M05 E6; DM-31 item 5) are inside the matrix's scope as a requirement, not an option.
