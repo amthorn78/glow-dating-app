@@ -196,7 +196,9 @@ P05.1 is not all of P05. P05.2 discovery queues/pagination/ranking presentation 
 P05.3 likes/matches/unmatch remain separate Planned tasks. Eligibility is not
 contact/history permission. DB01–DB13, PV01–PV08, PR01, N01 and R01 remain open;
 see the [P05.1 carryforward](p11-deferred-acceptance.md). Same logical DB/app-schema
-and restricted-role design remain P11 preparation. No fixture completes real
+and restricted-role design remain P11 preparation. [Added by M05, finding 47: the same
+logical database was superseded by OD-18 on 25 September 2026, the app's own logical
+database on HDE's service (ADR 0004).] No fixture completes real
 authentication, transaction/concurrency, provider enforcement, durable events,
 restore, native signing/device/accessibility or release acceptance.
 

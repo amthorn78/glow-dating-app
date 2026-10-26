@@ -19,7 +19,7 @@ The full procedure is in `docs/planning/manager-workflow.md`.
   - Keep changes within the owned paths.
   - Push your own session branch and report as the prompt requires. The manager integrates branches, merges and syncs Notion.
 
-**Environment.** App sessions run in the dedicated app cloud environment: no HDE variables, and the pinned toolchain from `scripts/bootstrap-toolchain.sh`. At session start, check variable names only. If `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is present, the session is in the HDE-shared environment:
+**Environment.** App sessions run in one of Nathan's two dedicated app cloud environments (OD-36): `Glow app`, which holds the Stream development variables, only for a session that calls Stream, and `Glow App - No Stream` for every other. Neither has HDE variables, and both carry the pinned toolchain from `scripts/bootstrap-toolchain.sh`. At session start, check variable names only. If `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is present, the session is in the HDE-shared environment:
 
 - tell Nathan;
 - never read, print or use those values;

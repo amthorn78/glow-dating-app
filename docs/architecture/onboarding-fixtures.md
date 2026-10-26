@@ -46,6 +46,11 @@ an alternate permission model.
 | `/restricted` | Restricted stage |
 | `/recommended`, `/explore` | Explicit eligible development stage |
 | `/development` | Enclosing development-only runtime guard; controls replace synthetic state |
+| `/profile`, `/profile-edit`, `/preferences`, `/profile-preview`, `/media` | Active account and valid session [Added by M05, finding 37] |
+| `/matches`, `/match` | Valid session of an active, suspended or deletion-pending account [Added by M05, finding 37] |
+| `/conversations`, `/conversation` | Active account and valid session [Added by M05, finding 37] |
+
+[Added by M05, finding 37] The last three rows are the routes P04.2 to P06.2 added; `apps/mobile/src/onboarding/routes.ts` (`canAccessRoute`) is their source.
 
 `+native-intent.ts` sanitizes incoming destinations before stateful navigation.
 Only allowlisted fixed paths or their `glow-development://` equivalents survive;

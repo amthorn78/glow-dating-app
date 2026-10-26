@@ -63,7 +63,7 @@ recommendation rule or market-capacity claim.
 | Synthetic provider bookkeeping | At most **2 replay keys per candidate** in the Python fixture, with diagnostic call identities retained in a **120-entry** bounded deque; counters are scalar and no public cards are cached there |
 | Provider batch | At most **2 page candidates / 6 provider attempts per page read**, within the existing service cap of **20 distinct candidates** per call |
 | Provider retry | **1–3 total attempts** for declared transient failures, with current eligibility/mapping checks before each attempt |
-| Queue lifetime | **300,000 milliseconds / 5 minutes** from creation under the injected numeric lifetime clock |
+| Queue lifetime | **300,000 milliseconds / 5 minutes** from creation under the injected numeric lifetime clock (mobile). In Python every fixture clock change already invalidates a queue through its captured time guard, so the lifetime bound is not separately observable there [Added by M05, finding 27: a scratch reversal removing the Python lifetime check, `discovery.py:421`, failed no test] |
 | Refresh | Explicitly replaces the selected mode's queue; no automatic replenishment or browsing write |
 
 The mobile adapter keeps the lifetime clock separate from the fixed civil-day

@@ -91,7 +91,7 @@ models remain provisional until compared with the actual ownership/reuse map.
 ## Non-secret variable matrix
 
 `D/T` means development/test; `S/P definition` means offline staging/production
-planning only. Owner `App Builder 1` means implementation/configuration preparation,
+planning only. Owner `App Builder 1` (a historical session name, OD-01; today an implementation session under the manual relay) [Added by M05, finding 35] means implementation/configuration preparation,
 not an invented production on-call appointment. Account/resource owner remains
 Nathan; operating assignments and provider access are resolved under A04/A05.
 No current template contains a deployment credential or real application target.

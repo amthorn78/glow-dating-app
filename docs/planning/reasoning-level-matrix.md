@@ -1,6 +1,6 @@
-# Reasoning-strength matrix and the TypeSafe request v5
+# Reasoning-strength matrix and the history of TypeSafe requests v5 and v6
 
-**Status:** in force from 27 September 2026 (OD-33, OD-34). This file is the home of the matrix, of the request in force (v6; v5 is kept below as history) and of its pre-registered rule; the Notion page *TypeSafe effort scorer — Glow app usage log* carries a matching copy and the uses table. Where the two differ, this file wins (OD-27).
+**Status:** in force from 27 September 2026 (OD-33, OD-34). This file is the home of the matrix and of the history of requests v5 and v6; the request in force is v8.2, carried with its rule by Nathan's installed skill `typesafe-scoring`, their authority (OD-42; workflow step 3) [Corrected by M05, finding 40; DM-31]; the Notion page *TypeSafe effort scorer — Glow app usage log* carries a matching copy and the uses table. Where the two differ, this file wins (OD-27).
 
 **Why it exists.** Nathan, 27 September 2026: *"I am feeling less trust about the scoring. There is a huge gap between fable extra high and opus extra high. I want you to make sure all strength levels are researched and included in this matrix for both models. They are Low, Medium, High, Extra, Max, and Ultracode for both models. It's important that your semantic query contains enough information for actual informed decisions. Revise and then re-score the last task."* The earlier requests, v4 (a level) and m1 (a model), sent TypeSafe one paragraph about the work and criteria of one line each; neither said what a level costs or does on either model, and v4's second question was written for another project.
 

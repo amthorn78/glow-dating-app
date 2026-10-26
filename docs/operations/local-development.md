@@ -7,11 +7,11 @@ Use a real clone of `amthorn78/glow-dating-app`, not a reconstructed snapshot's 
 Use Python **3.12.14**, Node **24.19.0** and npm **11.9.0**. The pins live in:
 
 - `services/api/.python-version`;
-- the `engines` and `packageManager` fields of `apps/mobile/package.json` and `packages/contracts/package.json`;
+- the `engines` and `packageManager` fields of `apps/mobile/package.json`, `packages/contracts/package.json` and `proofs/stream-chat/package.json` [Corrected by M05, finding 13: this line named only the first two files; `proofs/stream-chat/package.json` carries the same pins];
 - `.github/workflows/foundation.yml` (`python-version`, `node-version`, `npm@…`);
 - the `Dockerfile` Python tag.
 
-There is no `.node-version` file. `scripts/bootstrap-toolchain.sh` carries the same pins, and `services/api/tests/test_toolchain_pins.py` fails, naming the diverging file, when any of them disagree. Do not upgrade pins during this migration.
+There is no `.node-version` file. `scripts/bootstrap-toolchain.sh` carries the same pins, and `services/api/tests/test_toolchain_pins.py` fails, naming the diverging file, when any of them disagree, except `proofs/stream-chat/package.json`, which it does not read [Corrected by M05, finding 13: this said the test covers every pin; a changed Node and npm pin in that file passed the test in M05's scratch reversal]. Do not upgrade pins during this migration.
 
 Install the tools with your environment's normal trusted tool manager. On Linux x86_64 you can instead run `bash scripts/bootstrap-toolchain.sh`, which installs all three from hash-verified downloads (see [Claude Code cloud sessions](#claude-code-cloud-sessions)).
 
@@ -21,7 +21,7 @@ Install the tools with your environment's normal trusted tool manager. On Linux 
 npm install --global npm@11.9.0
 ```
 
-From repository root, in a clean shell without inherited database/provider configuration, check the versions, then create the API virtual environment with `python3.12`. `python3` may be a different version; the Claude cloud container's is 3.11.
+From repository root, in a clean shell without inherited database/provider configuration, check the versions, then create the API virtual environment with `python3.12`. `python3` may be a different version; the Claude cloud container's `/usr/bin/python3` was 3.13.17 on 26 October 2026 [Corrected by M05, finding 35: this said 3.11; `python3 --version` in the M05 session, in `Glow App - No Stream`, printed 3.13.17].
 
 ```bash
 python3.12 --version   # Python 3.12.14
@@ -87,6 +87,8 @@ PYTHONPATH=. .venv/bin/python -m unittest discover -s ../../packages/contracts/t
 GLOW_ENV=test .venv/bin/python -m glow_persistence.static_check
 ```
 
+`glow_persistence.static_check` is not a step of the Foundation workflow; CI runs its `inspect_definitions()` inside `manage.py test`, in `tests/test_model_definitions.py`. The proofs' offline checks, which CI runs as Stream proof checks and Database proof checks, are in `proofs/stream-chat/README.md` and `proofs/postgres-ordering/README.md`. [Added by M05, finding 16]
+
 From `apps/mobile/` when the assignment needs rendering/export proof:
 
 ```bash
@@ -138,6 +140,6 @@ If a tool is missing or has the wrong version, the Setup script did not produce 
 
 - Network installs in such a clean environment also need the session's proxy and CA variables, passed through by reference and never printed: add `HTTPS_PROXY="$HTTPS_PROXY" NODE_EXTRA_CA_CERTS="$NODE_EXTRA_CA_CERTS"` for `npm ci`. Without them, npm failed with `SELF_SIGNED_CERT_IN_CHAIN` in the `Glow app` environment on 24 September 2026. curl and pip use the system trust store and worked. These are infrastructure settings, not application or provider credentials.
 
-**Rendered tests.** The container's preinstalled Chromium is revision 1194, while `@playwright/test` 1.62.1 expects revision 1234, and the Playwright download host is not on the allowlist. Never run `playwright install` in the cloud container. Rendered acceptance comes from hosted CI (Foundation, Mobile checks). A local run against the preinstalled browser, through an uncommitted configuration, is informational only.
+**Rendered tests.** The container's preinstalled Chromium (`/opt/pw-browsers`) was revision 1243 on 26 October 2026 [Corrected by M05, finding 35: this said revision 1194; the M05 session found `chromium-1243` only], while `@playwright/test` 1.62.1 expects revision 1234, and the Playwright download host is not on the allowlist. Never run `playwright install` in the cloud container. Rendered acceptance comes from hosted CI (Foundation, Mobile checks). A local run against the preinstalled browser, through an uncommitted configuration, is informational only.
 
 **Other limits.** The container has no Docker daemon, so the API artifact checks also rely on hosted CI.

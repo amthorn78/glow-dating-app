@@ -46,7 +46,7 @@ Not proposed:
 2. Environment variables: only the Stream development application's `STREAM_APP_ID`, `STREAM_API_KEY` and `STREAM_API_SECRET`, added at Nathan's direction on 24 September. These are recorded in the [environment inventory](../operations/environment-inventory.md); the secret is recorded by name only. Never copy HDE `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or `PORT` into it.
 3. Set Network access to Custom: allowed domains `www.python.org`, `docs.expo.dev`, `*.stream-io-api.com` and `getstream.io`, with "Also include default list of common package managers" checked.
 4. Paste the full `scripts/bootstrap-toolchain.sh` into Setup script, unchanged. It links by default. Paste the file again whenever it changes, not only when its pins change, once that change has merged.
-5. Start manager, implementation and review sessions for this repository in that environment.
+5. Start only sessions that call Stream in that environment; start every other session in `Glow App - No Stream`, which holds no Stream variables (OD-36) [Corrected by M05, finding 36: this said to start manager, implementation and review sessions in `Glow app`; OD-36 (29 September 2026) assigns `Glow app` only to sessions that call Stream].
 
 ## Completed directly by App Manager 1 (at Nathan's direction)
 
@@ -217,6 +217,11 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 - **Rendered-test failures.** Intermittent failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
 - **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
 - **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
+
+**Moved from the current handoff on 26 October 2026** (M05 finding 38), with what M05 found:
+
+- **The hardening item also takes:** the pin test's missing `proofs/stream-chat/package.json` (M05 finding 13: a changed Node or npm pin there passes `test_toolchain_pins.py`), and `scripts/bootstrap-toolchain.sh`'s "both package.json files" wording; and uv 0.12.17 in `scripts/bootstrap-toolchain.sh`, since the API README's lock commands name it and Stage B2 and B2-C1 used a scratch install.
+- **The stale-documentation sweep** was done by M05 in `docs/architecture/`, `docs/testing/` and `docs/operations/` (commit `300a24d`; its record, findings 35 to 37), so this item is closed.
 
 ## Review and merge gates
 

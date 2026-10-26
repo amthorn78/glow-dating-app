@@ -12,8 +12,10 @@ protected. See [resource ownership](resource-ownership.md),
 
 ## Ownership and prerequisites
 
-App Builder 1 owns code/configuration preparation and evidence; App Planner 1
-coordinates dependencies; Nathan owns unresolved product and operating decisions.
+Implementation sessions under the manual relay (D09) own code/configuration preparation
+and evidence, and the manager coordinates dependencies; Nathan owns unresolved product and
+operating decisions [Corrected by M05, finding 35: this named App Builder 1 and App
+Planner 1, historical sessions (OD-01), as current owners].
 An on-call, security-response, moderation or recovery operator has not been named.
 A05 must establish actual operating owners, retention and recovery objectives
 before activation. Do not turn those role descriptions into assumed staffing.

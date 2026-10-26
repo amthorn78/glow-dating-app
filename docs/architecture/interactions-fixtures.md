@@ -239,9 +239,11 @@ What P06 now holds (5 October 2026):
   consent refuse a send. These fixture interactions are unchanged: their contact
   decision still always denies send, and no fixture path calls the adapter.
 
-What stays with later work: the Stream adapter and its live conformance run (P06.2
-Stage B); the mobile chat interface under the display rule (Stage C); push and
-notifications (P06.3); allauth and the real session identifier, which the adapter
+What stays with later work [Corrected by M05, finding 37: this list began with the Stream
+adapter and its live conformance run (P06.2 Stage B) and the mobile chat interface
+(Stage C), both merged by 25 October 2026; the mobile chat fixture (C2) accepts fictional
+sends on the contact decision's `eligible` and `contactVersion`, ignoring `canSend`, and
+calls no provider adapter]: push and notifications (P06.3); allauth and the real session identifier, which the adapter
 takes as given (the item that serves authentication); and wiring the adapter, the
 delivery worker and the migrations into a runtime with a real database (P11). The API
 runtime has no database, real authentication or live provider, and imports none of

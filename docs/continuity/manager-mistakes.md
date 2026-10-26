@@ -113,6 +113,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-08 | 25 Oct 2026 | accuracy | *Implementation Control* said "Show earlier messages" is idle once the reload merges; the code turns only `loading` into `idle` | Dev Manager 3, DM-29 1.3 |
 | AM8-09 | 25 Oct 2026 | accuracy | "Manager verification of Stage C2-C3" gave `store.ts` as +16 −14; the numstat is +14 −16 | The combined re-review, finding 13 |
 | AM8-10 | 25 Oct 2026 | accuracy | Chat reports labelled the push and PR runs of three Markdown-only commits the wrong way round | Dev Manager 3, DM-30 4.3 |
+| AM8-11 | 26 Oct 2026 | follow-through | Notion's standing status bullets on Implementation Control left at App Manager 7's state; read-backs checked only the edited strings | M05 review, finding 30 |
+| AM8-12 | 26 Oct 2026 | process | The current handoff kept over its 5 KB limit, with follow-ups whose only home it was | M05 review, finding 38 |
 
 ## App Manager 2
 
@@ -870,3 +872,19 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on a decision; no repository record carried the swap (the evidence record's labels for `33bae36` are right).
 - **Correction:** recorded in the evidence record (DM-30's lines).
 - **Prevention:** a run is named by the `event` field of `get_workflow_run`, never by which jobs it skipped; the pre-merge checklist names the PR run on the final head (DM-30 4.3).
+
+### AM8-11 — Notion's standing status bullets left stale (follow-through)
+
+- **What happened:** each records batch updated the lead paragraph of Notion's *Implementation Control* and read back the strings it had edited. The page's standing bullets (Manager, Dev Manager, `main`, branches, mistakes, phase, next items) stayed at App Manager 7's state of 24 October, and its procedure copy stayed stamped `51844a5`. The match check compared only what each batch changed. App Manager 7's batches had done the same.
+- **Caught by:** the M05 review, finding 30.
+- **Effect:** for about two days Notion misstated the manager, the Dev Manager, `main` and the branches. No decision rested on it.
+- **Correction:** the bullets corrected and read back on 26 October. The procedure copy goes with M05's proposal S5 to DM-31.
+- **Prevention:** the match check reads the whole status section, not only the edited strings. M05's claims checklist (P-7, for DM-31) carries it.
+
+### AM8-12 — The handoff over its 5 KB limit (process)
+
+- **What happened:** the documentation map keeps the current handoff under 5 KB (DM-01 P3). It was last under at `2542a06` on 23 October and reached 20.9 KB by PR33's merge. App Manager 8's archive at `f669f37` halved it to 10.9 KB but left it over, with follow-ups whose only home was the handoff.
+- **Caught by:** the M05 review, finding 38.
+- **Effect:** the handoff changed in most records batches, and gated follow-ups lived only in a routing file.
+- **Correction:** on 26 October the follow-ups moved to their owning homes (the P06.2 brief's "Carried to later changes", the M02 brief and the P11 plan), and the handoff went under 5 KB.
+- **Prevention:** each records batch checks the handoff's size with `wc -c` before its commit. M05's P-7 proposes the standing rule (DM-31).

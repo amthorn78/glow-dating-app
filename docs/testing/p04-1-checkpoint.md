@@ -276,7 +276,8 @@ Consuming that saved report does not repeat its database connection or inherit
 its audit exception. P04.1 adds no database connection, migration, role/grant
 change, cleanup, HDE/provider request, Railway deployment or service configuration.
 The same-project/same-logical-database preference remains intact; this fixture
-work does not select or activate a physical schema.
+work does not select or activate a physical schema. [Added by M05, finding 47: the
+same-logical-database preference was superseded by OD-18 on 25 September 2026 (ADR 0004).]
 
 ## Retained limitations and next work
 

@@ -34,7 +34,7 @@ equivalent linkage/version facility, the app will reuse it and retain only its
 necessary ownership references. Provisional interfaces must adapt to HDE, not
 require HDE to reproduce the scaffold.
 
-Application PostgreSQL is the planned dating-domain system of record. Current development has no domain persistence. Changes that must agree atomically belong in one future application transaction, with provider side effects dispatched after commit through an outbox. There is no proposed cross-provider two-phase transaction. HDE production access, application database connection and database-dependent proof remain P11 work.
+Application PostgreSQL is the planned dating-domain system of record. The served runtime has no domain persistence; `glow_chat`'s ORM adapter runs only under the disposable-PostgreSQL proof in CI (OD-17) [Corrected by M05, finding 28: this said "Current development has no domain persistence", which predates P06.DB and P06.2 Stage A]. Changes that must agree atomically belong in one future application transaction, with provider side effects dispatched after commit through an outbox. There is no proposed cross-provider two-phase transaction. HDE production access, application database connection and database-dependent proof remain P11 work.
 
 P05.3's [interaction fixture composition](interactions-fixtures.md) joins trusted
 discovery membership to directional actions, one canonical match, immutable

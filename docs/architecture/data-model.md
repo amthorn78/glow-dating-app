@@ -132,7 +132,7 @@ row that privileged actions lock. These are requirements, not working locks.
 | Consent, profile, preference, pause or birth correction | Expected revision check, affected data, aggregate and directional counters, mapping/snapshot invalidation, idempotency receipt, outbox events | Resolution/invalidation/notification task dispatch; worker rechecks current version |
 | Like and reciprocal match | Ordered account/pair locks, full eligibility recheck, directional action, one canonical pair match if reciprocal, one logical match event and receipt | Channel provisioning/notification through bounded deduplicated worker |
 | Block/unmatch/suspend/delete access | Relevant account/pair locks and counters, contact revocation, session epoch/revocation as applicable, durable provider steps, outbox; deletion job+tombstone when deleting | Provider revocation/purge. Worker must not reactivate a revoked binding from a late completion |
-| Send | Same revocation lock boundary, current two-party eligibility/contact version, dedup digest, bounded submission spool and outbox | Recheck contact version before provider dispatch; prove no direct SDK bypass and in-flight policy in P06/P11 |
+| Send | Same revocation lock boundary, current two-party eligibility/contact version, dedup digest, bounded submission spool and outbox | No contact-version recheck at dispatch: a message authorized before a revocation committed is delivered ahead of the removal that follows it, and delivery refuses only a revoked, failed or in-doubt binding ("Delivery" below; the P06.2 brief, D6); P11 proves the in-flight policy and per-channel order across retries [Corrected by M05, finding 26: this said "Recheck contact version before provider dispatch"; `glow_chat/delivery.py` compares no contact version, by design] |
 | Staff action | Validated external actor/scope and object ownership, reasoned transition, immutable staff audit and outbox | Narrow provider action/reconciliation with no elevated WordPress database access |
 | Inbox or worker completion | Verify signature outside data mutation; then unique event receipt/digest, current identity/version check, derived state and new outbox event if needed | Acknowledgment; stale/duplicate events cannot overwrite current state |
 
@@ -280,7 +280,10 @@ DB06 and DB09). Nothing in Stage B1 reconciles.
 session at its account's current epoch, of an `active` account with an `active` chat
 identity, which means provisioned and not deactivated (DM-15 5.1: a `pending` identity
 is refused with `no_chat_identity`); it refuses after suspension or deletion. It signs
-nothing; P11 serves the endpoint and Stage B2's adapter signs.
+nothing. Under OD-45 (24 October 2026) no client token is issued: the rule, B1's grant
+and B2's signer stay in the code, dormant and unserved, until a later cleanup (the P06.2
+brief, point h), and P11 serves no token endpoint [Corrected by M05, finding 24: this said
+"P11 serves the endpoint and Stage B2's adapter signs", which predates OD-45].
 
 **The grant's transaction** (B1; F1, DM-14 item 3; closes Stage A's F1 gap).
 `OrmContactPersistence.grant_token` runs the rule in one transaction: the account row,

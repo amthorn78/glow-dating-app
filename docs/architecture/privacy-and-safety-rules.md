@@ -68,6 +68,7 @@ Closed schemas reject extra fields; they cannot replace server object authorizat
 |---|---|---|
 | Account-private | Identity linkage, consent, profile/preferences, private birth input | A05 retention and deletion policy; lifecycle purpose ends or explicit request |
 | Provider-managed | Media bytes, message bodies, delivery/device records | Actual processor contract, export/purge rights and verification; A04/A08 |
+| App delivery spool [Added by M05, finding 23] | `MessageSubmission.text` (`services/api/glow_persistence/models.py`): the delivery code keeps it on every submission, accepted ones included, though the model's comment says it is removed after receipt | A05/P08 retention decision before P11 serves sends; deletion and export include it while it is kept (the P11 plan, "the message spool") |
 | Safety-restricted | Reports, evidence references, cases, appeals, staff actions | A05 named moderation/child-safety owner, lawful purpose and specific retention schedule |
 | Operational-minimized | Idempotency receipts, outbox/inbox, job progress | Bounded replay/retry and reconciliation requirements with an approved schedule |
 | Restore-replay | Deletion tombstones and provider-step completion facts | A05 retention plus P11 recovery-window/backup behavior; no deleted-account resurrection |

@@ -1,6 +1,6 @@
 # HDE contract request: what the app needs from HDE's supported contract
 
-- **Status:** written on 25 September 2026 by App Manager 3, for Nathan to take into HDE's own process (OD-23). No delivery date is set yet.
+- **Status:** written on 25 September 2026 by App Manager 3, for Nathan to take into HDE's own process (OD-23). No delivery date is set yet. 26 October 2026: C30 to C35 added (M05 finding 45; DM-31 3.2).
 - **Who holds each role.** Nathan is the Product Owner, the HDE owner and the app's integration owner (OD-23): *"there is only one human involved in any of this, me"*.
   - He takes this request into HDE's own process, outside this repository and outside the app sessions' authority, and sets the delivery date there.
   - HDE's own sessions and canon produce the contract.
@@ -100,6 +100,12 @@ HDE's contract answers each question below. **"Not supported" is a complete answ
 | C27 | When a user deletes their account, what may the app ask HDE to do? Which operation does it call, and what evidence shows completion? The app never assumes a deletion right. |
 | C28 | How is a chart that HDE also uses elsewhere handled on deletion (a shared chart)? It must not be destroyed through assumed ownership (PV02). |
 | C29 | How does HDE protect birth details, and does it log them? Users' birth details are private in the app. |
+| C30 | Does HDE tell the app when a chart or a result changes, or when a deletion completes (a callback or event), and how is that message authenticated? Otherwise, what must the app poll? |
+| C31 | Can the app obtain what HDE holds about a user, for that user's data-export request (PV07)? |
+| C32 | Are deletion requests idempotent and safe to replay after the app restores a backup (DB13)? If HDE restores its own backup, how does the app learn that a deleted chart has returned? |
+| C33 | What must HDE do when a user withdraws the consent that covers birth-data processing? |
+| C34 | Where are birth details stored and processed, and is HDE a processor for the app's users? |
+| C35 | Which deployment identity serves each environment the app calls (PF01 §5: the HDE commit and deployment)? |
 
 ## 3. What the app commits to
 
