@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; M04 and M05 done; PR37 merged; M06 next)
+# Current handoff — App Manager 8 (26 October 2026; M04 and M05 done; M06's assessment with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -11,7 +11,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **M04 is done** (OD-39; M05 findings 10, 11, 12 and 14): PR36 merged at `4794d3e`; the first cleanup run deleted the three expected branches ([record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "M04's merge receipt"). Since then, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup").
 - **Branch controls:** Nathan chose none, procedure only (OD-52), against [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s recommended ruleset. The CI policy's three sentences that record it wait for the Dev Manager's read with the next PR.
 - **OD-53:** S2 (delta re-reviews for small corrections), S5 (Notion's procedure as a summary), D1 (no pick asked or recorded) and `@codex review` after a 60-minute stall, all adopted.
-- **Now:** M06's brief, named to Nathan before it starts (OD-49). PR37, the records since PR36, merged at `35a5827` (the [M05 record](../testing/evidence/2026-10-25-m05-project-review.md), "PR37's merge receipt"). [DM-34](dev-manager/reviews/2026-10-26-dm-34-od-52-od-53-pre-merge-read.md) approved OD-52's and OD-53's texts, with D1.1 applied: the manager sets the pick to "not recorded" in place of the skill's "pending".
+- **Now:** M06, dependency remediation and the Expo SDK assessment ([brief](../planning/m06-dependency-remediation.md), revision 1). Its research session, from the [assessment prompt](../ephemeral/2026-10-26-m06-assessment-prompt.md), is with Nathan; it changes no dependency, and its Markdown record needs no code review. PR37, the records since PR36, merged at `35a5827` (the [M05 record](../testing/evidence/2026-10-25-m05-project-review.md), "PR37's merge receipt").
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M04, P06.1, P06.DB and P06.2.
@@ -22,11 +22,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 8 | M06's brief, named to him before it starts (OD-49) | — |
+| App Manager 8 | Nathan (the M06 assessment session) | Its report | The manager asks Nathan whether the session ran; nothing in the dependencies changes without it |
 
 ## Next actions (App Manager 8)
 
-1. **M06's brief** (dependency remediation and the Expo SDK assessment; M05 finding 29 and E8), named to Nathan before it starts (OD-49).
+1. **M06:** verify the assessment against its branch (the brief's review plan); then the Dev Manager reads the recommendation, with the second stage's brief revision if remediation is recommended; Nathan decides any advisory left unfixed.
 2. **Then** P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
