@@ -84,3 +84,4 @@ The review's own change is ordinary documentation: Markdown only, with no `.clau
 ## Sessions
 
 - **Revision 1** (25 October 2026): the prompt is with Nathan, for `Glow App - No Stream`.
+- **The review** (26 October 2026): session branch `claude/zen-thompson-5fdqqz`, head `e27f7c7` (corrections `300a24d`, record `e27f7c7`). Verdict "at risk": 51 findings, 0 critical and 11 major; every offline check passed. The manager verified it and integrated it by fast-forward (the record's "Manager verification of M05", with every finding's disposition). Its governing and process proposals and N1 to N6 went to the Dev Manager as DM-31.

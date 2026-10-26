@@ -28,6 +28,8 @@ No real users or legacy-user information are needed. No database, HDE/provider c
 
 ## Codebase overview and flows
 
+> **Out of date since P06** (added 26 October 2026; M05 finding 43). This section predates P06.1, P06.DB, P06.2 and OD-45, which put a server-side Stream adapter in the API's development lock and gave the app no Stream credential. Read the code and the P06 briefs instead.
+
 Paths below are repository-relative. Read the actual code before selecting an implementation change.
 
 | Path | Responsibility / important entry points |
@@ -83,6 +85,8 @@ Give fresh sessions complete prompts. Preserve unrelated work, and give concurre
 Moved on 25 September 2026 to its living home, the [environment inventory](../operations/environment-inventory.md#environment-variable-inventory) (DM-03 E2). Git history keeps the text as it stood here.
 
 ## Stream Chat setup — current facts and future proof
+
+> **Out of date since P06** (added 26 October 2026; M05 finding 43). This section predates P06.1, P06.DB, P06.2 and OD-45, which put a server-side Stream adapter in the API's development lock and gave the app no Stream credential. Read the code and the P06 briefs instead.
 
 ### What exists now
 

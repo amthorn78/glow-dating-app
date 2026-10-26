@@ -880,6 +880,28 @@ C2-C4 ran from its prompt's revision 1 (code `d3d7300`, records `b60409b`; run o
 - **The combined re-review's prompt** quotes DM-27 1.1 and 1.4, DM-28 1.1 to 1.5 and DM-29 1.1 to 1.4 as written, with DM-28 2.2 and 2.3's scope, classes and focus, and DM-29 2.2's three items. It needs no further read (DM-29 2.1).
 - **Then:** Codex's pass on the commit holding the prompt; the re-review; Codex on the final head, the final run, the CX8 to CX12 threads resolved, DM-25 1.3's pre-merge items and the merge.
 
+## Carried to later changes (moved from the current handoff on 26 October 2026)
+
+These were the handoff's "recorded follow-ups" for P06.2. They move here, their owning home, because the handoff only routes and stays under 5 KB (M05 finding 38). Each keeps its source.
+
+- **At the first change to `apps/mobile` after PR33 merged** (DM-23 3.1; DM-26 item 2), with the mobile hardening item M05 proposes (its E11):
+  - the README's last sentence, which names only "Stage C2" and "Stage C2-C1" as record sections, and M05's P-13 lines for `apps/mobile/README.md` (`:18` and `:440`);
+  - the C2 review's finding 1's broader test (optionally, a bare `WebSocket` or `EventSource` identifier check; its README sentence was corrected in C2-C1), finding 4 (restore the draft on a final send refusal) and finding 5 (the restricted-match tests assert `match-conversation` absent);
+  - **the window-replacement follow-up** (one entry; DM-29 1.1 with DM-30 2.1 and 2.2, on DM-28 1.5's scope). A window replacement leaves the older-page state `idle` whatever it was, `error` included, at `store.ts:245`, which makes the class comment's sentence at `:65` true. Each test comes with the reversal that must fail it:
+    - DM-29 1.1's test, with the ordering in the gap (the re-review's finding 2: the reload released after the failed page; reversal, today's `:245`);
+    - a CX9-style test of `loadOlder`'s catch (finding 3: the page released to fail, then to be refused, publishes nothing and starts nothing; reversal, `:300`'s epoch check removed);
+    - test (e) extended by one poll while the current window's page is held, the state staying `loading` (finding 4, DM-30 2.2; reversal, `cursor === null &&` removed from `:245`);
+    - optionally, the per-window slot across conversations and a revocation (finding 5; reversal, a slot not keyed by the window);
+    - the helpers `staleReload` and `staleAnswer` counting requests (finding 6; reversal, a no-op `stale` branch, which must then fail F1 (c));
+    - `staleOnce`'s doc comment (finding 7);
+    - optionally, the re-send after `stale` gated on the screen being shown (finding 9; reversal, today's ungated `:259`);
+    - the README's cursor sentence (finding 11).
+
+    A later phase that lets a readable conversation lose accepted messages takes this entry first (DM-29 1.4).
+- **The guard for an older page answered `stale_version`** (DM-30 1.1 and 1.2): a standing entry, not struck when the follow-up lands. Its text is in the [P11 plan](../testing/p11-deferred-acceptance.md), "Standing guard", which is now its home. The simplest rule is to drop the older cursor and reload the newest page, as a `stale` head read does, with a test that covers a head read in flight at that moment (`store.ts:280` keeps a page's newer cursor) and its reversal, today's `:303`.
+- **`proofs/postgres-ordering/glow_ordering_proof/read_phase.py`, at its next change:** C1-C2's re-review notes N2 (`read.autocommit_off`'s note when a wait was observed) and N3 (the module docstring's reader).
+- **The fixture adapter's `already` for an earlier cut-off** (DM-17 item 5), so its contract row returns to the shared suite, at the fixture's next change and before P11. The P11 plan also holds it.
+
 ## Sessions
 
 - **Stage A implementation** ([prompt](../ephemeral/2026-10-05-p06-2-stage-a-implementation-prompt.md), revision 1): **done** (5 October; Nathan's pick, Opus 5.5 at extra high, TypeSafe's reading). Branch `claude/dazzling-lovelace-f2mtts`, code head `3b92122`, final head `1a7fd9a`. Push run 37372546600: the database job passed on both subjects (reference 56 of 56 cases and every control; adapter 81 of 81 cases, every planted control, 0 design violations; delivery 7 of 7), but its gate failed because three jobs got no runner. The manager verified it and integrated it at `e8eb5d3`. **Run of record:** PR29's run 37383940454 on `8bbad57` (code unchanged from `3b92122`), every job passed and the gate printed `Application checks passed`; the session established it (`e50865d`, integrated at `5f44d4e`). See the evidence record, "Manager verification of Stage A" and "Stage A run of record".

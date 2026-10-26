@@ -218,6 +218,11 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 - **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
 - **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
 
+**Moved from the current handoff on 26 October 2026** (M05 finding 38), with what M05 found:
+
+- **The hardening item also takes:** the pin test's missing `proofs/stream-chat/package.json` (M05 finding 13: a changed Node or npm pin there passes `test_toolchain_pins.py`), and `scripts/bootstrap-toolchain.sh`'s "both package.json files" wording; and uv 0.12.17 in `scripts/bootstrap-toolchain.sh`, since the API README's lock commands name it and Stage B2 and B2-C1 used a scratch install.
+- **The stale-documentation sweep** was done by M05 in `docs/architecture/`, `docs/testing/` and `docs/operations/` (commit `300a24d`; its record, findings 35 to 37), so this item is closed.
+
 ## Review and merge gates
 
 1. Manager verification of the relayed report against the pushed branch.

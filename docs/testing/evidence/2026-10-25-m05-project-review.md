@@ -814,3 +814,37 @@ Counts I took from the subagents without repeating them: the mistakes log's clas
 The exact outputs are in the report Nathan relays.
 
 Status: complete
+
+## Manager verification of M05 (26 October 2026, App Manager 8)
+
+- **The branch:** `claude/zen-thompson-5fdqqz`, head `e27f7c7`, two commits on `f669f37` (`300a24d`, `e27f7c7`), integrated into the manager branch by fast-forward.
+  - Its 24 paths are regular Markdown files (mode `100644`) inside the write scope, and none is governing.
+  - The trusted policy from `main` classified `f669f37..e27f7c7` as `ordinary-docs-only`, and `git diff --check` printed nothing.
+- **Read:** the whole of `300a24d`, and this record whole.
+- **Re-checked by the manager against primary sources:**
+  - **the remote heads:** `main`, the manager branch, `claude/dev-manager` and this review's branch; the eight session branches are gone (finding 9);
+  - **finding 1:** `glow_api/urls.py` serves only the two health routes and a development route;
+  - **finding 10:** run 40162341984 reads `cancelled`, with all eight jobs `success`, the gate included; the application jobs and the gate run under `always()` in `foundation.yml`;
+  - **finding 13:** `test_toolchain_pins.py:14` names two package files;
+  - **finding 17:** the guard at `_layout.tsx:58`, which no test imports;
+  - **finding 22:** `FORBIDDEN_CONNECTION_NAMES` is a list of exact names;
+  - **finding 23:** `accepted()` in `delivery.py` updates `state` and `version` only, and `reads.py`'s `_unsent` reads the text of pending and failed submissions only, so clearing it at acceptance changes no read;
+  - **finding 26:** `delivery.py` compares no contact version;
+  - **finding 27:** the queue lifetime check at `discovery.py:421`;
+  - **finding 29:** `npm audit --package-lock-only` on `apps/mobile`'s lock gave 1 critical, 6 high and 7 moderate, the same seven packages;
+  - **finding 32:** the start procedure's steps 2 and 3 read as quoted;
+  - **finding 38:** the handoff was 10,905 bytes.
+- **Not re-checked:** the reversals (about 70, run by the review's subagents in scratch copies), the mistakes log's classes, the per-item pass counts and Codex's thread states. The record marks these as taken from its subagents.
+
+### Dispositions
+
+| Findings | Disposition |
+|---|---|
+| 13 (the documentation), 16, 22 (the inventory note), 23 (the P11 plan and the privacy row), 24 (the data model), 26, 27 (the documentation), 28 (the boundaries document), 29 (the annotation), 33, 34, 35, 36, 37, 46 and 47 | **Accepted.** Corrected on the review's branch in `300a24d`; the manager read each corrected line |
+| 9 and 38 | **Accepted; applied by the manager.** The handoff's branch list is current, and the handoff is under 5 KB: its follow-ups moved to the P06.2 brief ("Carried to later changes"), the M02 brief and the P11 plan (P-15). AM8-12 |
+| 43 | **Accepted.** The State of the App is refreshed from this review, and the 25 September snapshot moved to `docs/continuity/history/`. The frozen Claude handoff carries out-of-date notes at its code-map and Stream sections. P-16's start-procedure line goes to DM-31 |
+| 42 | **Accepted in part.** P-17's three annotations are applied in the review log, and the inventory's No Stream note was added by the review. P-4's D10 pointer, P-18 and E12 go to DM-31 |
+| 8, 30 and 48, with section 9 | **Accepted for the stale facts:** Implementation Control's status bullets, the Dev Manager page's lead, and the Work Register rows M03, M04, P00.1, P00.2, D10, A01 and A07, corrected in Notion and read back (AM8-11). The procedure copy's stamp and gaps go with S5, and the uses table's pick column with D1: both to DM-31, then Nathan's call |
+| 1 to 7, 31, 32, 39 to 41, 45 and 49 to 51, with P-1 to P-12, P-14, P-16's start-procedure line, P-18 and P-19 | **Referred to the Dev Manager, DM-31** (governing, canon or process; OD-32; the charter), with N1 to N6, S1 to S8, D1, the path in section 7 and the next item. Nothing governing changes, and nothing goes to Nathan, before its read |
+| 10, 11, 12, 13 (the test), 14, 15, 17, 18, 19, 20 (with P-13's mobile lines), 22 (the code), 24 (E7, with P-13's API README lines), 25, 27 (optional), 29 (E8) and 44 | **Recorded as work items** (E1 to E15 and section 7). Their order is set after DM-31, one at a time (OD-29). Finding 44 is a manager records batch |
+| 21 | **Confirmed; no new home.** It is already the P11 plan's C2C2-X1 |
