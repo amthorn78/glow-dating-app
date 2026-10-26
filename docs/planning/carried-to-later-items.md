@@ -11,6 +11,7 @@ This file holds what a later work item must take up when that item has no brief 
 - **ADR 0003's condition (b)**, open for P07 and P08: deletion and export (PV07) include member custom data held at Stream. It lives on the membership of the match channel, and a hard delete removes the channel, so export reads the memberships first. ADR 0003's decision 2 also binds P07's views: no Stream member or user custom data reaches exports, staff or WordPress views, push content or analytics (DM-02 B1).
 - **The disposable WordPress** (DM-31 3.2, on P-5): the brief shows that the disposable WordPress P07's completion names runs in CI at no cost, or brings a fallback to the Dev Manager.
 - **The standing guard** for an older page answered `stale_version` (DM-30 1.1 and 1.2): moderation that removes a message from a readable conversation triggers it. Its text is in the P11 plan, "Standing guard".
+- **The open A05 questions go to Nathan before this brief** (OD-50; PF01 A05), each in OD-32's form: launch geography (from the matrix's candidate list), age assurance, the preference taxonomy, resurfacing and rematch, the history policy, retention and moderation operators. The history read's question above is one of them.
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
@@ -29,10 +30,17 @@ This file holds what a later work item must take up when that item has no brief 
 - **CSAM detection and the reporting duty** (M05 E6; DM-31 item 5) are inside the matrix's scope as a requirement, not an option.
 - **It is research with dated sources, not legal advice,** and it says so (DM-31, on N4). Whether to take legal advice is Nathan's.
 - **Its prompt names an environment that can read public web sources** (DM-31 item 4; OD-40, OD-43); `Glow App - No Stream`'s network policy may not allow it.
-- **Its countries** are the launch countries Nathan names, or the candidate list under comparison until he names them (N4).
+- **Its countries:** the candidate list Nathan chose, the US, the UK and the EU (OD-50, N4 (b)). He names the launch countries from it before P07's brief.
 
 ## Carried to P06.2-T (M05's E7, the OD-45 token cleanup), with E15's refusal lists
 
 - **The epoch-bump question** (DM-31 item 4): whether a session-epoch bump still revokes provider tokens once no client token exists. It is a security-boundary question, so it goes to the Dev Manager before P06.2-T's brief settles it.
 - **The refusal lists** (M05 finding 22, E15): a `PG*` prefix rule and the Railway, Redis and `STREAM_*` names, in the API and in the database proof together. ADR 0004's sentence changes again when the list widens.
 - **The API README's lines** (M05 P-13): the dormant signer's descriptions and Stage C1's modules.
+
+## Carried to M07 (the costed list of completion's accounts and services; OD-50)
+
+- **What it is** (M05 E3; PF01 A04): before P09 and P11B, a list of each account and service completion needs (Apple and Google developer accounts, Railway app services, the Stream production plan, Cloudflare, mail and push), each with its published price rechecked and dated.
+- **Research only:** no account is created and nothing is spent before Nathan approves its line, when its phase needs it; OD-12's $0 stands until then (DM-31, on N2).
+- **The Stream line** depends on the Maker application, pending since 25 September 2026 (OD-22; confirmed pending in OD-50).
+- **Its environment** must read public price pages (OD-40, OD-43), as the matrix's must.

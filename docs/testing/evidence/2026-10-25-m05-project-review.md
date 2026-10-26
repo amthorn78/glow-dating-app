@@ -869,3 +869,15 @@ Every other proposal's verdict, and where each condition is applied, is in the [
   - **governing Markdown:** OD-48's row approved in DM-31 item 6; every other governing text applies DM-31's own wording or instruction.
 - **Branch state at the merge** (`git ls-remote --heads`): four. Kept: `main` (`4aa66e2`), the manager branch (fast-forwarded to `4aa66e2`), `claude/dev-manager` (`8d51446`, in `main`). Fully merged, for Nathan to delete: `claude/zen-thompson-5fdqqz` (M05's review, `e27f7c7`).
 - **What stays open for M05:** Nathan's second and third decision messages (N4 and N2; S2, S5 and D1), and the texts P-3 and P-6 that wait on them. Nathan's first answer, N5 (b) and N1 (a), is OD-49, applied as PF01 1.14 after this merge.
+
+## Nathan's decisions (26 October 2026)
+
+| Decision | His answer | Recorded as | Applied in |
+|---|---|---|---|
+| N5, resuming the remaining work | (b), a standing resume in order, one item at a time | OD-49 | The register; PF01 1.14; the handoff |
+| N1, where the production server is built | (a), the server slices SV1 to SV4 before P10 | OD-49 | PF01 1.14 (§6 and §8); the carried-items file, "Carried to SV1" |
+| N4, launch countries and age assurance | (b): the matrix compares the US, the UK and the EU, and he decides before P07's brief | OD-50 | PF01 1.15 (A05, P-6); the carried-items file, "Carried to P09.3a" and "Carried to P07" |
+| N2, the budget | (a), a costed list, each line approved when its phase needs it | OD-50 | PF01 1.15 (A04, P-3 with DM-31's change); the carried-items file, "Carried to M07" |
+| The Stream Maker application (E13) | *"Maker: pending"* | OD-50; OD-22's State | — |
+
+N3 folded into N5's order (DM-31 item 3). The third message, S2, S5 and D1 with DM-29 2.3's optional direction, remains; M05 closes with its answer.
