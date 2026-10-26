@@ -3,7 +3,7 @@ name: Foundation
 on:
   pull_request:
   push:
-    branches: [main, 'app-builder-1/**', 'app-planner-1/**', 'claude/**']
+    branches: [main, 'app-builder-1/**', 'app-planner-1/**', 'claude/**', 'ccr-**']
 
 permissions:
   contents: read
@@ -50,7 +50,7 @@ jobs:
 
   api:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API checks
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -64,9 +64,11 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12.14'
-      - name: Test candidate scope policy after trusted classification
+      - name: Test candidate scope and branch cleanup policies after trusted classification
         working-directory: ${{ github.workspace }}
-        run: python -I -m unittest discover -s scripts -p 'test_change_scope.py' -v
+        run: |
+          python -I -m unittest discover -s scripts -p 'test_change_scope.py' -v
+          python -I -m unittest discover -s scripts -p 'test_branch_cleanup.py' -v
       - run: python -m pip install --require-hashes -r requirements-dev.lock
       - run: python -m pip check
       - run: python manage.py check && python manage.py test tests --verbosity 2
@@ -77,10 +79,10 @@ jobs:
 
   mobile:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: Mobile checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       EXPO_OFFLINE: '1'
     defaults:
@@ -109,7 +111,7 @@ jobs:
         run: npm run test:rendered
       - name: Save empty-form layout evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: p04-empty-form-layout
           path: |
@@ -121,7 +123,7 @@ jobs:
 
   smoke:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API mobile smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -146,7 +148,7 @@ jobs:
 
   artifact:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: API artifact checks
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -163,7 +165,7 @@ jobs:
 
   proof:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: Stream proof checks
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -195,7 +197,7 @@ jobs:
 
   database:
     needs: scope
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.full != 'false') }}
     name: Database proof checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -408,7 +410,7 @@ jobs:
           echo "refusal: $refusal"
       - name: Save the results table's JSON
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: p06-db-proof-results
           path: proofs/postgres-ordering/.work/results.json
