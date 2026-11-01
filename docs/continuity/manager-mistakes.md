@@ -121,6 +121,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-16 | 26 Oct 2026 | follow-through | After PR37 merged, the manager named M06 as the next item and ended its turn "NOTHING NEEDED", with no brief and no handoff for Nathan | Nathan: *"ok, why did you not give me a handoff for the next task?"* |
 | AM8-17 | 1 Nov 2026 | accuracy | M06 stage two's prompt required `npm audit signatures` and limited the network to the npm registry and `docs.expo.dev`; the command needs Sigstore's TUF host, so the session had to deviate | The stage-two session, which logged the deviation |
 | AM8-18 | 1 Nov 2026 | follow-through | M06 stage two's record raised "one precision for the Dev Manager" (`noxcturnal` published by GitHub Actions without provenance), and the manager's verification did not route it | The exact-head review, finding 2 |
+| AM8-19 | 1 Nov 2026 | records | Nine prompts and consultations pruned on 26 October and 1 November (M05's, DM-31 to DM-33, M04's four, M06's assessment) left their Notion links on the manager branch, where the files no longer exist | The manager, while pinning M06's links in Notion |
 
 ## App Manager 2
 
@@ -942,3 +943,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none yet; PR38 had not merged. The note would have reached the merge unread by the Dev Manager.
 - **Correction:** DM-36 carries it with the review's finding 1, before the merge.
 - **Prevention:** the manager's verification lists every item a session addresses to the Dev Manager or to Nathan, and routes each in the same batch.
+
+### AM8-19 — Pruned prompts left with unpinned Notion links (records)
+
+- **What happened:** when the manager pruned M05's prompt and DM-31's consultation (`7bc15c0`), M04's four prompts with DM-32's and DM-33's consultations (`1bf067b`), and M06's assessment prompt (`0139b10`), it pinned the repository's links but left Implementation Control's links to those files on the manager branch. Nine links there pointed at files that no longer exist.
+- **Caught by:** the manager, listing Implementation Control's ephemeral links while pinning M06's after PR38 merged.
+- **Effect:** a reader following those links in Notion got GitHub's "not found" from 26 October or 1 November until this fix. No decision rested on them; the repository's links were pinned.
+- **Correction:** the nine links, and M06's three, now point at the commit before each prune. Every remaining manager-branch ephemeral link in the page names a file that exists.
+- **Prevention:** a prune batch lists every link to the pruned files in the repository and in Notion (Implementation Control and the Work Register rows), pins each to a commit that holds the file, and reads Notion back before it reports the prune.

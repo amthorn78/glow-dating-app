@@ -1,6 +1,6 @@
 # Glow Dating App — A-to-Z Implementation Plan
 
-**Document identity:** GAPP-PF01 · **Revision:** 1.16 · **Date:** 26 October 2026
+**Document identity:** GAPP-PF01 · **Revision:** 1.17 · **Date:** 1 November 2026
 **Purpose:** governing implementation sequence, acceptance criteria and continuity baseline for the application.
 **Current direction:** Nathan's standing directions, including which feature work is paused or resumed, are in the [owner-direction register](../continuity/owner-directions.md). Current status and routing are in the [current handoff](../continuity/current-handoff.md). This plan no longer restates status; it changes only when a rule does (DM-01 P3).
 **Execution model:** Nathan's manual relay. A Claude manager session prepares bounded briefs and prompts; Nathan starts each implementation or review session himself and relays its report. A Dev Manager session, which the manager creates and relays to, reviews consequential decisions (D10). App Planner 1 prepared the transition; it and App Builder 1 are historical roles. Use repository Markdown, code and Notion as primary context, without importing prompt libraries or automatic phase-approval machinery (D09).
@@ -242,7 +242,7 @@ The first application of the rule is the chat display rule in [ADR 0003](../adr/
 
 **Billing.** Until the owner chooses paid launch, keep entitlements behind a port and leave purchase UI disabled. If paid: verify store/RevenueCat webhook signatures and replay handling; handle restore, refund, revocation, grace and cross-device state. Do not treat a WordPress payment or client receipt assertion as an entitlement. Obtain actual product and budget decisions when needed.
 
-**Mobile/store readiness.** Before P06.3's and P07's briefs, prepare and then maintain a dated requirements matrix for Apple and Google, for the launch countries (A05), or the candidate list under comparison until Nathan chooses them, covering distinctive dating-product value, UGC moderation/report/block/contact, adults-only eligibility, child-safety duties, privacy disclosures, account deletion, sign-in, subscriptions, permissions and review access. Recheck official policies and build requirements when producing release artifacts. Validate supported iOS/Android SDKs, native-library compatibility, privacy manifests/Data Safety disclosures, deep links, denied permissions, accessibility, large text, keyboard behavior, offline recovery and real-device performance. A successful Expo preview or JavaScript test is not a signed native-build or store-approval proof.
+**Mobile/store readiness.** Before P06.3's and P07's briefs, prepare and then maintain a dated requirements matrix for Apple and Google, for the launch countries (A05), or the candidate list under comparison until Nathan chooses them, covering distinctive dating-product value, UGC moderation/report/block/contact, adults-only eligibility, child-safety duties, privacy disclosures, account deletion, sign-in, subscriptions, permissions and review access. Recheck official policies and build requirements when producing release artifacts. A request to publish to the stores, invite external testers or enable public traffic lists each matrix row that would then bind in the launch countries, with its state; a row not met is a named launch dependency for Nathan to decide. Validate supported iOS/Android SDKs, native-library compatibility, privacy manifests/Data Safety disclosures, deep links, denied permissions, accessibility, large text, keyboard behavior, offline recovery and real-device performance. A successful Expo preview or JavaScript test is not a signed native-build or store-approval proof.
 
 ## 8. Work sequence and dependency model
 
@@ -629,3 +629,9 @@ Affected tasks: P07, P08, P09 and P11B. No phase acceptance, D08 authority, sour
 - §2 and D04: Notion carries a summary of the operational guidance, with links into the repository at the commit it names, and a matching copy of the owner-direction register, in place of a full copy of the guidance (OD-26 as amended by OD-53). The repository still wins on any difference (OD-27).
 
 Affected tasks: none. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.
+
+1.17 — after P09.3a's requirements matrix and the Dev Manager's DM-37 read (1 November 2026):
+
+- §7, "Mobile/store readiness", gains a release gate, in DM-37 2.7's words: a request to publish to the stores, invite external testers or enable public traffic lists each matrix row that would then bind in the launch countries, with its state, and a row not met is a named launch dependency for Nathan to decide.
+
+Affected tasks: P09, P12 and any release request. No phase acceptance, D08 authority, source or contract, or HDE boundary changes.

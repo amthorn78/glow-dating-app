@@ -2,6 +2,14 @@
 
 This file holds what a later work item must take up when that item has no brief yet. Each section names the item, and each entry names its source. When the item's brief is written, the brief folds its section in and this file keeps a pointer to the brief. The item's Work Register row points here (the manager workflow, "Batching records"; DM-31 3.6, which closes the gap M05 finding 42 found: DM-02's items for P07 had no home and were nearly lost).
 
+## From P09.3a's matrix: rules for every brief that takes a row (DM-37)
+
+The [store, legal and safety requirements matrix](store-legal-safety-requirements.md) holds each requirement and gap; the sections below point to its gap IDs (G-01 to G-16) and rows. Every brief that takes a row:
+
+- **rechecks the row on the day the brief is written** (DM-37 5.1), on any trigger in the matrix's section 10 (5.2), not only PF01 §7's points;
+- **states the condition it assumes** (for example "UK links", "covered platform", "social media platform"), and never says Glow is, or would be, compliant: the matrix is a dated record, not an applicability finding (DM-37 1.1);
+- **re-reads the original or plans for the stricter reading** of an UNCONFIRMED row or a quote read only through WebFetch; for example, UK-05's 48-hour duty is treated as in force (DM-37 1.2).
+
 ## Carried to P07 (safety, WordPress operations and support)
 
 - **WordPress for staff** (DM-02 B5; recorded as A4 under OD-19, "the Dev Manager's safeguards go to the P07 brief"): if WordPress stays for staff, the brief names its hosting, update policy, staff multi-factor authentication and plugin allowlist.
@@ -11,26 +19,68 @@ This file holds what a later work item must take up when that item has no brief 
 - **ADR 0003's condition (b)**, open for P07 and P08: deletion and export (PV07) include member custom data held at Stream. It lives on the membership of the match channel, and a hard delete removes the channel, so export reads the memberships first. ADR 0003's decision 2 also binds P07's views: no Stream member or user custom data reaches exports, staff or WordPress views, push content or analytics (DM-02 B1).
 - **The disposable WordPress** (DM-31 3.2, on P-5): the brief shows that the disposable WordPress P07's completion names runs in CI at no cost, or brings a fallback to the Dev Manager.
 - **The standing guard** for an older page answered `stale_version` (DM-30 1.1 and 1.2): moderation that removes a message from a readable conversation triggers it. Its text is in the P11 plan, "Standing guard".
-- **The open A05 questions go to Nathan before this brief** (OD-50; PF01 A05), each in OD-32's form: launch geography (from the matrix's candidate list), age assurance, the preference taxonomy, resurfacing and rematch, the history policy, retention and moderation operators. The history read's question above is one of them.
+- **The open A05 questions go to Nathan before this brief** (OD-50; PF01 A05), each in OD-32's form, in three messages (DM-37 4.1 to 4.5): first, launch geography and language, age assurance, and where the business is established and whether it is an individual or a legal entity; second, before SV2's brief, the preference taxonomy, resurfacing and rematch, and the history policy; third, before this brief, retention and moderation operators. The history read's question above is the second message's history policy.
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 to 2.6):
+  - **P07.1:** G-02 (CSAM detection choice, reporting routes, registrations and named contacts, report evidence, staff access); G-04's notices, pages, policies and filings (state dating-safety notices, Colorado's filing and report, 47 U.S.C. 230(d)'s notice); G-06 (the UK Online Safety Act documents), conditional on the launch countries; G-05's trigger: a CyberTipline or NCA report opens a hold (USF-04, UK-18), which P08.1 designs and P08.2 enforces (2.4).
+  - **P07.2:** G-03 (intimate-image notice and removal, 48 hours) and G-15 (notices from non-users, statements of reasons) share one route for non-users, in the app and on the public site; P07's brief says which sub-item builds it (2.6). G-04's fraud-ban notices, from SV4's recipient records.
+  - **P07's capacity plan** (R05 asks for it) names the 48-hour clock for one operator (2.5). PV04 covers photo detection; chat detection, if chosen, needs its own P11 case (2.6).
+  - **Statutory notice text:** when a statute prescribes a notice's wording (UST-01 to UST-21), P07.1 takes the text from the statute, not from the matrix's quote (DM-37 1.2).
+  - **Before this brief:** P07's rows for the launch countries that are UNCONFIRMED, or rest on a source not read (Ofcom's and the ICO's guidance, New York's SAFE rule text, Connecticut's 2026 acts, New Jersey's current code), are re-read from their originals, by Nathan's CLI agent if the cloud still cannot reach them (OD-43); otherwise the brief carries them as UNCONFIRMED (DM-37 5.3). The UK's 6 and 12 November 2026 events (UK-22, UK-23) are read then, for a UK launch.
+  - **PF01 §7's release gate** (1.17; DM-37 2.7) is in force before this brief: a request to publish, invite external testers or enable public traffic lists each binding row with its state.
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
 - **The standing guard** (DM-30 1.1 and 1.2): deletion that removes an accepted message from a readable conversation triggers it. Its text is in the P11 plan, "Standing guard".
 - **ADR 0003's condition (b)** (open for P07 and P08): as in P07's section; P08's deletion orchestration takes it if P07 has not.
 - **The message spool's retention** (M05 finding 23): `MessageSubmission.text` is kept on every accepted submission. The retention decision, and deletion and export while it is kept, are in the P11 plan, "The message spool", and the privacy rules' spool row.
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 to 2.6):
+  - **P08.1:** G-05's hold design (P08.2 enforces it against deletion; the P11 plan's PV07 is extended to holds); G-09 (GDPR and UK GDPR representatives, the DSA's contact points and legal representative, the intake for authority orders), with a representative's cost in M07; G-11 (DPIA, records of processing, the DPO decision, automated decisions, transfers, breach procedure, UK complaints), with P09 keeping incident escalation. It reads SV4's G-12 classification.
+  - **P08.3:** G-07 (consumer and subscription law), only if Nathan chooses a paid launch (A06); no PF01 line now.
 
 ## Carried to SV1 (the identity slice; OD-49)
 
 - **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
 - **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
 - **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1, 2.2 and 3.2). SV1 keeps room for these and builds none of the owning briefs' work:
+  - **G-01's age state:** the account's recorded age state. If Nathan has not answered the age-assurance question by SV1's brief, the brief keeps age assurance behind a seam, a recorded age state with the method left open, and chooses no method (3.2). G-01's umbrella row in the Work Register tracks the parts.
+  - **G-13:** Google's Restore Credentials for apps with sign-in, from April 2027 (GP-36), as SV1's scope.
+  - **G-14:** any review sign-in path for the stores' reviewers goes inside SV1's threat model; P09 owns the reviewer account.
+  - **G-04:** Vermont's account-change notice.
+
+## Carried to SV2 (profiles and media; OD-49)
+
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
+  - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
+  - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), after Nathan's A05 answer on the preference taxonomy.
+
+## Carried to SV3 (eligibility, discovery and interactions; OD-49)
+
+- **From P09.3a's matrix** (DM-37 2.2): eligibility reads G-01's account age state. Without an answer on resurfacing and rematch, the brief keeps the recorded defaults and says so: no resurfacing or rematch (the interactions fixtures) (4.5).
+
+## Carried to SV4 (chat's HTTP surface; OD-49)
+
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.3):
+  - **G-04's records:** who received (and responded to) a member's messages, kept after unmatch and block, for fraud-ban notices.
+  - **G-05's hold:** a hold that survives deletion, which P08.1 designs.
+  - **G-12,** if the EU is a launch country: the recorded classification of whether the chat is a number-independent interpersonal communications service. It decides whether ePrivacy's confidentiality rule covers what SV4 stores (EU-30), including the conversations OD-12 keeps for safety reports, and whether chat scanning needs Regulation 2026/1881's conditions (EU-26). P07.1 and P08.1 read it. If the EU is not a launch country, G-12 is carried, conditional, to an EU launch.
+  - **Without an answer on the history policy,** the brief keeps the recorded default and says so: reads refuse whatever refuses a send (the P11 plan) (4.5).
+
+## Carried to P06.3 (notifications)
+
+- **From P09.3a's matrix** (DM-37 3.1): the brief rechecks AP-50, AP-51 and GP-51, all planned.
+
+## Carried to P09 (security, native quality and release preparation)
+
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.2):
+  - **G-01's store parts:** the native age signals in P09.2 (Apple's Declared Age Range, Google's Play Age Signals); Restrict Minor Access in Play Console (GP-11).
+  - **G-14:** the reviewer account for both stores, which no fixture adapter or test-account privilege can turn into access to real users (PF01 P12).
+  - **G-16:** EU monthly active recipients on request, UK monthly users against the thresholds, and evidence of micro or small status, in the observability scope.
+  - **G-11's incident escalation** stays with P09.
 
 ## Carried to P09.3a (the store, legal and safety requirements matrix)
 
-- **CSAM detection and the reporting duty** (M05 E6; DM-31 item 5) are inside the matrix's scope as a requirement, not an option.
-- **It is research with dated sources, not legal advice,** and it says so (DM-31, on N4). Whether to take legal advice is Nathan's.
-- **Its prompt names an environment that can read public web sources** (DM-31 item 4; OD-40, OD-43); `Glow App - No Stream`'s network policy may not allow it.
-- **Its countries:** the candidate list Nathan chose, the US, the UK and the EU (OD-50, N4 (b)). He names the launch countries from it before P07's brief.
+- **Folded into its brief,** [P09.3a](p09-3a-requirements-matrix.md): CSAM in scope as a requirement, not legal advice, an environment that reads the web, and the candidate countries (DM-31 items 3 to 5; OD-50).
 
 ## Carried to P06.2-T (M05's E7, the OD-45 token cleanup), with E15's refusal lists
 
@@ -66,3 +116,8 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 - **The Stream line** depends on the Maker application, pending since 25 September 2026 (OD-22; confirmed pending in OD-50).
 - **Its environment** must read public price pages (OD-40, OD-43), as the matrix's must.
 - **GitHub Actions minutes** (OD-51): the repository is public for now only for budget reasons, and Nathan intends to make it private again. Private, it gets GitHub Free's 2,000 Actions minutes a month, then $0.006 a minute on Linux, and CI is blocked once they are used if no payment method is on file (GitHub's documentation, read on 26 October 2026). October's use was past 2,000 minutes (DM-32 3.4's estimate). So the list carries an Actions line, priced from the month's measured use, with the cheaper options beside it: fewer runs, or a paid plan.
+- **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.5 and 5.4):
+  - **G-08:** the store and regulator account decisions (individual or organization, trader status, Android developer verification, Google's 12-tester closed test, the ICO fee), for Nathan to decide before any account is created.
+  - **G-02's lines:** a detection-service line, and the registrations and named contacts (NCMEC, the NCA, Google's child-safety contact), as lines in M07's list, which A04 already names.
+  - **G-09:** a representative service's cost.
+  - **Before Nathan approves an account's line,** that account's rows are rechecked: opening an account starts store deadlines, for example Google's trader declaration on account creation, and by 1 February 2027 at the latest (GP-59).
