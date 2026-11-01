@@ -76,6 +76,9 @@ for (const retained of [false, true]) {
     await reachBirth(page);
     if (retained) {
       await active(page, 'birth-back').click();
+      // Router 58 applies a navigation after the click's task. Wait for eligibility
+      // before using the development link that both screens show.
+      await expect(active(page, 'screen-eligibility')).toBeVisible();
       await active(page, 'development-link').click();
       await active(page, 'return-current').click();
       await expect(active(page, 'screen-birth')).toBeVisible();
@@ -113,6 +116,8 @@ for (const retained of [false, true]) {
 test('same-task birth input events preserve both fields in a retained correction', async ({ page }) => {
   await reachBirth(page);
   await active(page, 'birth-back').click();
+  // Router 58 applies a navigation after the click's task (as above).
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
   await active(page, 'development-link').click();
   await active(page, 'return-current').click();
   await expect(active(page, 'screen-birth')).toBeVisible();
@@ -148,6 +153,8 @@ test('same-task birth input events preserve both fields in a retained correction
 test('retained eligibility consent cannot silently restore withdrawn consent', async ({ page }) => {
   await reachBirth(page);
   await active(page, 'birth-back').click();
+  // Router 58 applies a navigation after the click's task (as above).
+  await expect(active(page, 'screen-eligibility')).toBeVisible();
   await active(page, 'development-link').click();
   await active(page, 'return-current').click();
   await active(page, 'birth-back').click();

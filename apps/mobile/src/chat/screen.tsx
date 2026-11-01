@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type PropsWithChildren } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View,
-  type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+  type HostInstance, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ConversationMessage } from '../contracts/generated/gapp-api-v1';
 import { Button, Field, Page, PreviewNotice, ScreenTitle, colors, styles } from '../components/ui';
@@ -57,7 +57,7 @@ export function ConversationsScreen() {
   </Page>;
 }
 
-function MessageRow({ message, name, rowRef }: { message: ConversationMessage; name: string; rowRef: (node: View | null) => void }) {
+function MessageRow({ message, name, rowRef }: { message: ConversationMessage; name: string; rowRef: (node: HostInstance | null) => void }) {
   const own = message.author === 'own';
   const delivery = own && message.delivery ? ` · ${DELIVERY_COPY[message.delivery]}` : '';
   return <View ref={rowRef} style={[styles.notice, own ? chat.own : chat.other]} testID={`message-${message.submission_id}`}>
@@ -94,8 +94,8 @@ type Viewing = ReturnType<typeof useViewedMessages>;
  * The store decides what the report moves (`ChatStore.viewed`); nothing here sends anything.
  */
 function useViewedMessages(store: ChatStore, messages: readonly ConversationMessage[]) {
-  const content = useRef<View>(null);
-  const rows = useRef(new Map<string, View>());
+  const content = useRef<HostInstance>(null);
+  const rows = useRef(new Map<string, HostInstance>());
   const boxes = useRef(new Map<string, Box>());
   const area = useRef<VisibleArea>({ offset: 0, height: 0 });
   const order = useRef<readonly string[]>([]);
@@ -112,7 +112,7 @@ function useViewedMessages(store: ChatStore, messages: readonly ConversationMess
     }, () => undefined));
   }, [report]);
   useLayoutEffect(() => { order.current = messages.map(message => message.submission_id); measure(); });
-  const rowRef = useCallback((id: string) => (node: View | null) => {
+  const rowRef = useCallback((id: string) => (node: HostInstance | null) => {
     if (node) rows.current.set(id, node); else rows.current.delete(id);
   }, []);
   const onLayout = useCallback((event: LayoutChangeEvent) => {

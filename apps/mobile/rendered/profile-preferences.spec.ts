@@ -324,6 +324,9 @@ test('logout and account switching remove unsaved profile values from visible an
   await active(page, 'profile-name').fill('Previous owner fictional name');
   await active(page, 'profile-summary').fill('Previous owner fictional private draft.');
   await active(page, 'profile-leave').click();
+  // Router 58 applies a navigation after the click's task. Wait for the profile screen
+  // before using the logout control that both screens show.
+  await expect(active(page, 'screen-profile')).toBeVisible();
   await active(page, 'logout').click();
   await expect(active(page, 'screen-account')).toBeVisible();
   await noInputContains(page, 'Previous owner');

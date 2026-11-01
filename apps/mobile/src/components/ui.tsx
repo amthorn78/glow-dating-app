@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type PropsWithChildren } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { AccessibilityInfo, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type HostInstance, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { DevelopmentProfile } from '../contracts/recommendations';
 
@@ -27,7 +27,7 @@ function enteringText(element: Element | null): boolean {
   return element instanceof HTMLTextAreaElement || element.isContentEditable;
 }
 
-export function focusText(node: Text | null) {
+export function focusText(node: HostInstance | null) {
   if (!node) return;
   if (Platform.OS === 'web') {
     // React Native Web exposes its host element through the ref. Keep DOM-only
@@ -43,7 +43,7 @@ export function focusText(node: Text | null) {
 }
 
 export function ScreenTitle({ children }: { children: string }) {
-  const ref = useRef<Text>(null);
+  const ref = useRef<HostInstance>(null);
   useFocusEffect(useCallback(() => {
     const frame = requestAnimationFrame(() => focusText(ref.current));
     return () => cancelAnimationFrame(frame);
@@ -52,7 +52,7 @@ export function ScreenTitle({ children }: { children: string }) {
 }
 
 export function Feedback({ error, message, busy }: { error: string | null; message: string | null; busy: boolean }) {
-  const ref = useRef<Text>(null);
+  const ref = useRef<HostInstance>(null);
   useEffect(() => {
     if (!error) return;
     const frame = requestAnimationFrame(() => focusText(ref.current));

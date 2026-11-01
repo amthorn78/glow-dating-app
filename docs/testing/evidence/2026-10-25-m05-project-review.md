@@ -895,3 +895,14 @@ Every other proposal's verdict, and where each condition is applied, is in the [
 | DM-29 2.3, `@codex review` after a stall | (a), after 60 minutes | OD-53 | Step 6 |
 
 N3 folded into N5's order (DM-31 item 3). The third message's answer, *"I accept your recommendations"*, is OD-53. **M05's decisions are complete, and M05 is done** (26 October 2026).
+
+## PR37's merge receipt (26 October 2026)
+
+- **PR37 merged** at 18:48 UTC on 26 October, by App Manager 8, under the standing app-only authorization. It carried the records since PR36: M04's merge receipt, DM-33 and DM-34 with their dispositions, OD-52 and OD-53 (PF01 1.16, PF00 1.11), M05's close and DM-34's D1.1. The merge commit is `35a582716910d51d464e9fe51701873042999ec4`; its parents are `4794d3e`, `main` before, and `1ce2fcbe1c1b81db5c4f0a8a9e513c806bb4d932`, the final head. `main`'s tree equals the final head's (`git diff --quiet`).
+- **The pre-merge checklist** (PR37's description):
+  - **classification:** `ordinary-docs-only` from the trusted policy on `main` (`4794d3e`), 28 Markdown paths, one merge base (`9d1570e`);
+  - **the run:** PR run 40380824623 on `1ce2fcb` (event `pull_request`): `success`, on the documentation exemption. The push run on `main`, 40381087270, also passed;
+  - **Codex:** its code review of `1ce2fcb` completed at 18:48 UTC with no finding. On the PR's first head it had answered "To use Codex here, create an environment for this repo" (18:12 UTC); at Nathan's direction ("try the codex review again") the manager posted `@codex review` at 18:30 UTC, and the review of `79713c5` completed with no finding;
+  - **governing Markdown:** DM-34 approved OD-52's and OD-53's texts at `79713c5`, with one condition, D1.1. The one later governing change, D1.1 in step 3 and the matrix, applies the report's own instruction, which the charter's one-commit rule allows; the next consultation confirms it.
+- **The branch cleanup,** run 40381087475 on `35a5827`: open PRs read 0; `main` (`35a5827`), the manager branch (`1ce2fcb`) and `claude/dev-manager` (`be8f6ae`) kept, all on the keep-list; nothing deleted. `git ls-remote --heads` agrees: three branches.
+- **Pruned after the merge:** the DM-34 consultation, its link in the review log pinned at `35a5827`.
