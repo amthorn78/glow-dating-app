@@ -75,6 +75,11 @@ test('sign in and synthetic recovery remain separate; errors and neutral receipt
   // reset step stays unreachable. Recovery then offers no reset either.
   await expect(active(page, 'screen-account')).toBeVisible();
   await expect(active(page, 'screen-reset-password')).toHaveCount(0);
+  // The landing P06.2-F chooses (DM-36 section 6; M06's exact-head review, findings 5 and 6):
+  // account entry, with the reset's generic error as its alert, and the reset screen
+  // unmounted, not only hidden.
+  await expect(active(page, 'screen-account').getByRole('alert').filter({ hasText: 'The synthetic request could not be completed. Check the fixture and try again.' })).toBeVisible();
+  await expect(page.getByTestId('screen-reset-password')).toHaveCount(0);
   await active(page, 'recover-access').click();
   await expect(active(page, 'screen-recovery')).toBeVisible();
   await expect(active(page, 'open-reset')).toHaveCount(0);
