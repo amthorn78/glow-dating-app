@@ -3,8 +3,8 @@
 - **Work:** P06.2-F, the mobile hardening ([brief](../../planning/p06-2-f-mobile-hardening.md), revision 1; Outcome items 1 to 7, D1 to D6).
 - **Prompt:** [`docs/ephemeral/2026-11-01-p06-2-f-implementation-prompt.md`](../../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), revision 1, from `67b02013a954c441f1d84d6a82da43a6afcf4009` of the manager branch `claude/magical-wozniak-yfmmx2`.
 - **Session:** one implementation session, started by Nathan, 1 November 2026. Branch `claude/practical-wozniak-fg1e2i`, started at `67b0201`.
-- **Code head:** `3db50d876e2c9423d25ee197735855a77228f93c`. **Records head:** the commit that adds this file (no code after the code head).
-- **Run of record:** see "The run of record" below.
+- **Code head:** `3db50d876e2c9423d25ee197735855a77228f93c`. **Records head:** the last commit on the branch, Markdown only (this record); no code after the code head.
+- **Run of record:** push run **41359462167** on `3db50d8`: all eight jobs `success`, `Application checks passed`, rendered `97 passed (4.3m)`, Mobile 5 min 56 s of 25.
 
 ## Environment check (names only)
 
@@ -156,15 +156,30 @@ All in `apps/mobile`, in the clean environment.
 | **`npm run check`** at the code head | exit 0; `ℹ tests 649`, `ℹ pass 649`, `ℹ fail 0` (621 at M05's count; 638 after item 4) |
 | **`EXPO_OFFLINE=1 npm run check:expo`** | exit 0; `Dependency validation is unreliable in offline-mode`, `Dependencies are up to date` |
 | **`EXPO_OFFLINE=1 npm run export:development`** | exit 0; `iOS Bundled 24288ms … (1361 modules)`, `Android Bundled 24282ms … (1358 modules)`, iOS 8.2 MB, Android 8.1 MB, `Exported: .work/native-export` |
-| `npx playwright test -c .work/local-rendered.config.ts …` (scratch config, preinstalled Chromium 1243) | **informational only:** the item 5 and 7 baselines and reversals above; the whole suite: see "What could not run" |
+| `npx playwright test -c .work/local-rendered.config.ts …` (scratch config, preinstalled Chromium 1243) | **informational only:** the item 5 and 7 baselines and reversals above; the whole suite at the code head, `97 passed (6.1m)` |
 
 ## The run of record
 
-Pending: push run 41355778256 on the code head `3db50d8` was in progress when this draft was committed; its results replace this line.
+**Push run 41359462167** ([run](https://github.com/amthorn78/glow-dating-app/actions/runs/41359462167)), on the code head `3db50d876e2c9423d25ee197735855a77228f93c`, read through the GitHub tools after it completed:
+
+| Job | Conclusion | Duration (job start to completion) |
+|---|---|---|
+| Change scope | success: `COMPARE_BASE` `67b0201…`, `COMPARE_HEAD` `3db50d8…`; the trusted policy (from `origin/main`) printed `{"full": true, "reason": "behavior-or-empty", "paths": [...]}`, listing the 25 changed paths | 6 s |
+| API checks | success | 48 s |
+| Mobile checks | success: `npm run check && npm run check:expo`, `export:development`, the pinned Chromium installed by the workflow, and the rendered suite **`97 passed (4.3m)`**; the empty-form layout artifact uploaded (2 files) | **5 min 56 s of the 25-minute timeout** (22:54:52 to 23:00:48 UTC) |
+| API mobile smoke | success (`node scripts/smoke.mjs && node --test scripts/smoke.test.mjs`) | 1 min 24 s |
+| API artifact checks | success | 19 s |
+| Stream proof checks | success (offline checks; no provider call) | 1 min 39 s |
+| Database proof checks | success | 7 min 12 s of 30 |
+| Foundation gate | success; its line: **`Application checks passed`** | 3 s |
+
+The rendered suite's 97 includes the three restricted-match tests with finding 5's assertions and the reset test with item 7's two, each passing on the pinned browser.
+
+**How this run came about (a session error, recorded).** The first push run on the code head, **41355778256**, was **cancelled**: the session pushed the draft of this record (`51c98e7`, Markdown only) while it was running, and the workflow's `concurrency` (`cancel-in-progress: true`) cancelled it at 22:14:40 UTC, mid-way through the rendered suite (12 chat cases had passed) and the database suite; its gate then failed. The draft's own run, **41356042982**, compared `3db50d8..51c98e7` (Markdown only) and skipped the application jobs, so it is not a run of the code. The prompt forbids the session a re-run, so the session asked Nathan, who directed it to push to trigger a run. The session then moved the remote branch back to the start commit `67b0201` (`git push --force-with-lease=…:51c98e7`; its run, **41359453519**, was cancelled by the next push) and pushed `3db50d8` as a fast-forward from it, so the workflow compared `67b0201..3db50d8`: the complete change. The records commits were pushed only after 41359462167 completed. No commit was rewritten; the branch's history is unchanged from the session's local history.
 
 ## What could not run, and limits
 
-- **The rendered suite on the pinned browser** runs only in CI (`playwright install` is forbidden here). Local rendered results used Chromium 1243 through an uncommitted config and are informational; the run of record is CI's.
+- **The rendered suite on the pinned browser** runs only in CI (`playwright install` is forbidden here). Local rendered results used Chromium 1243 through an uncommitted config under the ignored `.work/` and are informational (the whole suite at the code head: `97 passed (6.1m)`); the pinned-browser result is the run of record's `97 passed (4.3m)`.
 - **Expo's documentation** was not read (no network beyond the npm registry). Item 1's comment rests on the installed `@expo/cli` 58.1.18 source.
 - **Source-reading tests.** The layout's gate (item 1), the render rule (item 2), the provider wording (item 3) and the list's open control (item 4) are checked from source, because those modules import Expo Router or React Native and cannot load in Node. A determined edit can evade any such check (a name built from fragments, for example); they catch the forms the findings name and the planted forms each test lists. The provider-wording check reads the whole screen file, so a future identifier named `provider` in one of those four screens would also fail it.
 - **Finding 9** (optional) is not done; the reason is in item 6.
