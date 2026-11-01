@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { ChatClient, ChatFailure } from './client.ts';
+import * as copy from './copy.ts';
 import { LIST_COPY, READ_COPY, SEND_COPY, UNAVAILABLE_MESSAGE } from './copy.ts';
 import { PROVIDER_FIELD_CASES, PROVIDER_SENTINEL, plantProviderField } from './fixture-adapter.ts';
 import type { ChatTransport } from './transport.ts';
@@ -12,6 +14,8 @@ import { chatSetup, settle } from './testing.ts';
  * nothing of it reaches the store, which is all the screens render.
  */
 const MESSAGE_KEYS = ['at', 'author', 'content', 'delivery', 'submission_id', 'text'];
+/** A provider's name, its objects or its wording (ADR 0003, decision 3). */
+const PROVIDER_TERMS = /\b(provider|stream|getstream|channel|member|custom|ai)\b/i;
 const state = (fixture: Awaited<ReturnType<typeof chatSetup>>) => JSON.stringify(fixture.store.getSnapshot());
 
 for (const field of PROVIDER_FIELD_CASES) test(`a response carrying ${field.replaceAll('_', ' ')} is refused and shows Glow's error state`, async () => {
@@ -36,7 +40,7 @@ for (const field of PROVIDER_FIELD_CASES) test(`a response carrying ${field.repl
   assert.equal(state(fixture).includes(PROVIDER_SENTINEL), false);
   assert.equal(state(fixture).includes('Arrived with the planted field.'), false);
   // Glow's wording for that state names no provider and gives no reason.
-  for (const copy of [READ_COPY.invalid_response, LIST_COPY.invalid_response, SEND_COPY.invalid_response]) assert.doesNotMatch(copy, /\b(provider|stream|channel|member|custom|ai)\b/i);
+  for (const text of [READ_COPY.invalid_response, LIST_COPY.invalid_response, SEND_COPY.invalid_response]) assert.doesNotMatch(text, PROVIDER_TERMS);
   // Back to Glow's own data: the messages it shows carry only the contract's fields.
   fixture.fixture.setProviderField(null); await fixture.timers.advance(3_000);
   snapshot = fixture.store.getSnapshot();
@@ -86,4 +90,76 @@ test('"unavailable" is Glow\'s own wording with no reason (DM-22 7.2, 6.2)', asy
   assert.deepEqual([message!.content, message!.text], ['unavailable', null]);
   assert.equal(UNAVAILABLE_MESSAGE, 'This message is unavailable.');
   assert.equal(state(fixture).includes('Changed later'), false);
+});
+
+test('every copy table and label in copy.ts names no provider (M05 finding 18; ADR 0003, decision 3)', () => {
+  const texts: string[] = [];
+  for (const [name, value] of Object.entries(copy)) {
+    if (typeof value === 'string') texts.push(value);
+    else if (name === 'timeLabel') texts.push(copy.timeLabel('2026-09-23T12:00:05Z'));
+    else if (name === 'unreadLabel') texts.push(...[0, 1, 2].map(count => copy.unreadLabel(count)));
+    else for (const entry of Object.values(value as Record<string, string>)) texts.push(entry);
+  }
+  // Every export is read: the six tables and constants and the two labels.
+  assert.deepEqual(Object.keys(copy).sort(), ['DELIVERY_COPY', 'LIST_COPY', 'READ_COPY', 'REVOKED_DETAIL', 'SEND_COPY', 'UNAVAILABLE_MESSAGE', 'timeLabel', 'unreadLabel']);
+  assert.equal(texts.length, 3 * 8 + 3 + 2 + 1 + 3);
+  for (const text of texts) {
+    assert.equal(typeof text, 'string');
+    assert.doesNotMatch(text, PROVIDER_TERMS, text);
+  }
+});
+
+/**
+ * The render rule (M05 finding 18): the screens show only contract fields, whatever a response
+ * carried, so a provider-shaped field (a message's `name`, a member, custom data) is never read
+ * even if a validator let it through. Nothing renders `screen.tsx` in Node, so its source is
+ * read: every property it reads from a message, a conversation, the list, the store's state or a
+ * match is one this list names, and no cast, spread or reflective read can reach another.
+ */
+const RENDERED_PATHS = new Set([
+  // ConversationMessage: the contract's six fields.
+  'message.submission_id', 'message.author', 'message.delivery', 'message.content', 'message.text', 'message.at',
+  // ConversationSummary, as a list row.
+  'conversation.match_id', 'conversation.unread_count', 'conversation.latest', 'conversation.latest.at',
+  // The store's conversation state.
+  'conversation.status', 'conversation.error', 'conversation.hasOlder', 'conversation.older', 'conversation.messages',
+  'conversation.messages.length', 'conversation.messages.map',
+  'list.status', 'list.error', 'list.conversations', 'list.conversations.length', 'list.conversations.map', 'list.conversations.match_id',
+  'state.draft', 'state.send', 'state.send.status', 'state.send.error', 'state.send.canRetry', 'state.matches', 'state.matches.filter',
+  // Glow's own match projection, for names (ADR 0003, decision 1).
+  'match.match_id', 'match.state', 'match.profile', 'match.profile.display_name',
+]);
+const ROOTS = /\b(message|conversation|list|state|match)((?:!?\??\.[A-Za-z_$][\w$]*|\[\d+\]\??)*)/g;
+function readSource(path: string) {
+  return readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*.*?\*\/\}/g, '');
+}
+function renderedPaths(source: string) {
+  const paths = new Set<string>();
+  for (const [, root, chain] of source.matchAll(ROOTS)) {
+    const segments = chain!.replace(/\[\d+\]/g, '').replace(/[!?]/g, '').split('.').filter(Boolean);
+    for (let index = 1; index <= segments.length; index++) paths.add([root, ...segments.slice(0, index)].join('.'));
+  }
+  return paths;
+}
+function renderRuleViolations(source: string) {
+  const violations = [...renderedPaths(source)].filter(path => !RENDERED_PATHS.has(path));
+  if (/[\w)\]!]\s+as\s+(?!const\b)/.test(source)) violations.push('a type cast');
+  if (/\bany\b/.test(source.replace(/'[^'\n]*'|`[^`\n]*`/g, ''))) violations.push('an any type');
+  if (/\b(Object|Reflect|JSON)\s*\./.test(source)) violations.push('a reflective read');
+  if (/\.\.\.\s*(message|conversation|list|state|match)\b/.test(source)) violations.push('a spread');
+  if (/\b(message|conversation|list|state|match)\s*\[\s*(?!\d+\s*\])/.test(source)) violations.push('a computed read');
+  return violations;
+}
+
+test('the chat screens render only the contract\'s fields: no provider-shaped field is read, whatever the validators let through (M05 finding 18)', () => {
+  const source = readSource('./screen.tsx');
+  assert.deepEqual(renderRuleViolations(source), []);
+  // Each message field the screen reads is one of the contract's.
+  const read = [...renderedPaths(source)].filter(path => path.startsWith('message.')).map(path => path.slice('message.'.length));
+  assert.deepEqual(read.filter(key => !MESSAGE_KEYS.includes(key)), []);
+  // The checker itself refuses the forms a provider field would take.
+  for (const planted of ['{message.name}', '{(message as { name?: string }).name}', '{String(message[\'name\'])}', '<Text {...message} />',
+    '{Object.values(message).join()}', '{conversation.member?.name}', '{(message as any).user}']) {
+    assert.notDeepEqual(renderRuleViolations(`${source}\n${planted}`), [], planted);
+  }
 });

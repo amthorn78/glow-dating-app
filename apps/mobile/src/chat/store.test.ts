@@ -415,6 +415,19 @@ test('another account replaces the session: nothing private survives and late re
   assert.equal(JSON.stringify(snapshot).includes('Before the switch.'), false);
 });
 
+for (const change of ['signing out', 'another account'] as const) test(`${change} clears the conversation list at once, before any read (M05 finding 18; store.ts's list clear)`, async () => {
+  const fixture = await chatSetup();
+  julesSends(fixture, 'Listed.');
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 1, 'the list holds the conversation');
+  if (change === 'signing out') fixture.owner.logout(); else fixture.owner.scenario('eligible');
+  // Read at once, before any request the change starts can complete: the clear is the account change's own.
+  const { list } = fixture.store.getSnapshot();
+  assert.deepEqual([list.conversations, list.error], [[], null], 'nothing of the earlier account\'s list is kept');
+  assert.notEqual(list.status, 'ready');
+  assert.equal(JSON.stringify(fixture.store.getSnapshot()).includes(fixture.matchId), false);
+});
+
 type Operation = keyof ChatTransport;
 const refusal = { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000ff', code: 'not_found', retryable: false };
 /**
