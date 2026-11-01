@@ -140,3 +140,16 @@ That limitation fits the recommendation, and it does not close the UK or the EU 
 **D2, with this:** (a) the US only first, the EU later; or (d) the US and the EU together. **I recommend (a), with the EU as the second launch** once P07 and P08 have built the items above and M07 has priced the representatives. The EU items are mostly documents and processes Glow needs anyway, and they become a launch decision you can take later, under PF01's new release gate. D3 is (a) either way: while Glow is micro, the EU's age-verification guidelines do not apply, though any age check needs a DPIA (EU-24, EU-25).
 
 **DECISION NEEDED:** D2, (a) or (d). A reply of "a" or "d" is enough, and I record D1 to D3 as one owner direction.
+
+**Nathan:** "so I need two people"
+
+**The manager's reply, as sent:**
+
+**Two appointments, not two hires.** Each is a person or firm already established in the EU that Glow's US company appoints in writing, usually a paid representative service (EU-06, EU-34):
+
+- **the DSA legal representative,** in an EU country where Glow is offered, named publicly and liable for Glow's DSA duties;
+- **the GDPR representative,** in an EU country where your users are, named in the privacy notice.
+
+Whether one firm may hold both roles is not in the matrix. M07 checks it when it prices them, since a single provider would be one contract. Everything else on the list is yours to run: you can be both published contact points (EU-04, EU-05), as you hold every other role (OD-23).
+
+**DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
