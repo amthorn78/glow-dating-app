@@ -120,6 +120,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-15 | 26 Oct 2026 | accuracy | PR37's description named a PR run ID, 40367951219, that the manager had not read; the run did not exist yet | App Manager 8, on rereading the description it had just posted |
 | AM8-16 | 26 Oct 2026 | follow-through | After PR37 merged, the manager named M06 as the next item and ended its turn "NOTHING NEEDED", with no brief and no handoff for Nathan | Nathan: *"ok, why did you not give me a handoff for the next task?"* |
 | AM8-17 | 1 Nov 2026 | accuracy | M06 stage two's prompt required `npm audit signatures` and limited the network to the npm registry and `docs.expo.dev`; the command needs Sigstore's TUF host, so the session had to deviate | The stage-two session, which logged the deviation |
+| AM8-18 | 1 Nov 2026 | follow-through | M06 stage two's record raised "one precision for the Dev Manager" (`noxcturnal` published by GitHub Actions without provenance), and the manager's verification did not route it | The exact-head review, finding 2 |
 
 ## App Manager 2
 
@@ -933,3 +934,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** one contact with a host outside the prompt, fetching public signed key data with no credential. The command then failed on another package's attestation, and the session checked the registry signatures locally instead.
 - **Correction:** recorded in the stage-two record's "Manager verification".
 - **Prevention:** before a prompt requires a command, the manager checks which hosts it contacts and names them in the prompt's network line, or drops the command.
+
+### AM8-18 — A session's note for the Dev Manager not routed (follow-through)
+
+- **What happened:** M06 stage two's record said "one precision for the Dev Manager": the brief names `noxcturnal`'s maintainer, not its publishing identity, and the version was published by GitHub Actions through npm's trusted publishing without a provenance attestation. The manager's verification checked the package's facts but did not route the note to the Dev Manager.
+- **Caught by:** the exact-head review, finding 2.
+- **Effect:** none yet; PR38 had not merged. The note would have reached the merge unread by the Dev Manager.
+- **Correction:** DM-36 carries it with the review's finding 1, before the merge.
+- **Prevention:** the manager's verification lists every item a session addresses to the Dev Manager or to Nathan, and routes each in the same batch.
