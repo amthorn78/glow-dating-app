@@ -166,3 +166,7 @@ Whether one firm may hold both roles is not in the matrix. M07 checks it when it
 So someone established in the EU has to hold both roles. It can be an individual rather than a firm: the DSA says "legal or natural person". But the DSA representative can be held liable for Glow's DSA duties (EU-06), so whoever takes it on carries that risk. A later UK launch works the same way: *"a representative in the United Kingdom"* (UK-27).
 
 **DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
+
+**Nathan:** "ok, then we are stuck with the US for now, then"
+
+**Recorded** as OD-55: D1 (b), a US legal entity; D2 (a), the US, all states, in English, for now; D3 (a), by his rule that it follows the geography.
