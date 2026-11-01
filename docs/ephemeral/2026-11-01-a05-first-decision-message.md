@@ -112,3 +112,31 @@ That limitation fits the recommendation, and it does not close the UK or the EU 
 - **So D2 stays (a), the US first, all states, in English,** and D3 is then (a): a self-entered birth date plus the stores' age signals, behind SV1's seam.
 
 **DECISION NEEDED:** shall I record D2 as (a), the US first, all states, in English? A "yes" records D1 to D3 as one owner direction; otherwise name the option.
+
+**Nathan:** "tell me what I need for EU access at least"
+
+**The manager's reply, as sent:**
+
+**For an EU launch, a US company with no EU presence needs two appointed representatives, about a dozen documents and processes, and one legal reading on the chat.** While Glow stays a micro-enterprise, most of the heavier EU platform rules do not apply. From the matrix (EU rows); not legal advice, and it does not show compliance.
+
+| Area | What you need | Rows |
+|---|---|---|
+| **People you appoint** | A Digital Services Act legal representative in an EU country where Glow is offered: a written mandate, notified to that country's regulator, named publicly, and liable for Glow's DSA duties. A GDPR representative in a country where your users are, named in the privacy notice | EU-06, EU-34 |
+| **Published contacts** | One electronic contact point for EU authorities, with its languages; one for users that reaches a person | EU-04, EU-05 |
+| **In the stores** | The trader declarations, in both stores | AP-56, GP-59 |
+| **Documents** | Terms and community rules that describe moderation and any automated tools; a privacy notice; records of processing; a DPIA (a data protection impact assessment) before processing starts, since orientation data, matching and age checks are high-risk; contracts with every processor (chat, storage, hosting, email); a transfer basis for each US vendor (the EU-US Data Privacy Framework, or standard contractual clauses) | EU-07, EU-38, EU-43, EU-46, EU-42, EU-48 |
+| **Safety processes** | A report form open to anyone, members or not, with an acknowledgment and a reasoned decision; a statement of reasons for every removal, hidden profile or suspension; acting on authority orders; telling the police promptly about threats to life or safety | EU-09, EU-10, EU-03, EU-11 |
+| **Privacy features** | Explicit, withdrawable consent for the fields that reveal orientation (gender plus "who I want to see"); a lawful basis for each purpose; access, export, correction and deletion within one month; consent before non-essential SDKs or device access; private-by-default settings | EU-36, EU-35, EU-37, EU-39, EU-53, EU-50, EU-41 |
+| **Incidents** | A breach runbook: 72 hours, to every EU regulator where affected users live | EU-45 |
+| **Numbers** | The ability to give EU monthly users on request; evidence that Glow is a micro-enterprise | EU-18, EU-13 |
+| **Access** | No blocking or different terms between EU countries | EU-65 |
+
+- **One open reading:** whether Glow's chat counts as an electronic communications service under EU law. If it does, confidentiality, security-incident and notice rules for messaging also apply (EU-30, EU-52, EU-63, EU-64; gap G-12). No source settles it, so it is a question for a lawyer, if you take advice.
+- **Not needed while Glow is a micro-enterprise:** transparency reports, an internal complaints system, trusted flaggers, the minors' rules and their age-verification guidelines, recommender transparency, and the DSA's dark-pattern rule (EU-08, EU-14 to EU-24); the Accessibility Act (EU-60). Consumer-law duties apply only with paid features (EU-54 to EU-59).
+- **Not in the matrix:** each EU country's own laws.
+- **Cost:** the two representatives and the DPIA work are not priced yet (M07).
+- **Where the work sits:** the safety processes in P07, the privacy work and representatives in P08, already routed (gaps G-09, G-11, G-15).
+
+**D2, with this:** (a) the US only first, the EU later; or (d) the US and the EU together. **I recommend (a), with the EU as the second launch** once P07 and P08 have built the items above and M07 has priced the representatives. The EU items are mostly documents and processes Glow needs anyway, and they become a launch decision you can take later, under PF01's new release gate. D3 is (a) either way: while Glow is micro, the EU's age-verification guidelines do not apply, though any age check needs a DPIA (EU-24, EU-25).
+
+**DECISION NEEDED:** D2, (a) or (d). A reply of "a" or "d" is enough, and I record D1 to D3 as one owner direction.
