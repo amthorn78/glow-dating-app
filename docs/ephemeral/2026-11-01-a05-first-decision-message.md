@@ -153,3 +153,16 @@ That limitation fits the recommendation, and it does not close the UK or the EU 
 Whether one firm may hold both roles is not in the matrix. M07 checks it when it prices them, since a single provider would be one contract. Everything else on the list is yours to run: you can be both published contact points (EU-04, EU-05), as you hold every other role (OD-23).
 
 **DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
+
+**Nathan:** "so I cannot take on both roles myself?"
+
+**The manager's reply, as sent:**
+
+**No, not while you are outside the EU.** Both laws place the representative in the EU:
+
+- **GDPR:** *"the controller or the processor shall designate in writing a representative in the Union"* (EU-34);
+- **DSA:** a provider with no EU establishment designates *"a legal or natural person to act as their legal representative"* in an EU country where it offers its services (EU-06).
+
+So someone established in the EU has to hold both roles. It can be an individual rather than a firm: the DSA says "legal or natural person". But the DSA representative can be held liable for Glow's DSA duties (EU-06), so whoever takes it on carries that risk. A later UK launch works the same way: *"a representative in the United Kingdom"* (UK-27).
+
+**DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
