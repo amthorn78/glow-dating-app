@@ -15,13 +15,13 @@ npm start
 
 The `start`, `android`, and `ios` scripts explicitly select development fixture mode when unset. They reject any request for a different mode. On a suitably equipped workstation, `npm run android` or `npm run ios` opens the installed emulator/simulator. Native runtime and device acceptance have not yet been performed. Consumer web delivery is outside scope; only iOS/Android are configured. React DOM/web packages are pinned Router peers, not a web product.
 
-The earlier nonpersistent API layout transport remains available for smoke checks. Its optional development origin is configured as follows after starting the isolated API:
+The earlier nonpersistent API layout transport remains available for smoke checks. Since P05.2 no screen mounts a loader for it, so setting `EXPO_PUBLIC_GLOW_API_BASE_URL` for `npm start` changes no screen. `app.config.ts` still allows the name, and the root smoke script checks an origin with the same rules (`src/config/development.ts`). It is set as follows after starting the isolated API:
 
 ```sh
 EXPO_PUBLIC_GLOW_API_BASE_URL=http://127.0.0.1:8000 npm start
 ```
 
-Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. The transport loader uses bundled layout fixtures when no origin is configured. A configured loader failure remains an error without silently falling back to bundled data. P05.2 recommendation and broader-discovery screens use their separate, explicitly in-memory discovery composition, not this anonymous layout endpoint; setting an origin does not turn that journey into authenticated API discovery. The root HTTP/mobile smoke script exercises the retained transport.
+Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical device requires a deliberately configured reachable development origin; loopback would point at the phone itself. This code does not change native cleartext networking policies: device HTTP transport must be verified separately. The transport (`src/data/recommendations.ts`) reports a failed request as an error and never falls back to bundled data; the screen loader and the bundled layout fixtures it used were removed in P06.2-F, having had no importer since P05.2. P05.2 recommendation and broader-discovery screens use their separate, explicitly in-memory discovery composition, not this anonymous layout endpoint; setting an origin does not turn that journey into authenticated API discovery. The root HTTP/mobile smoke script exercises the retained transport.
 
 `EXPO_PUBLIC_*` variables are public application configuration, never secrets. `.env.example` lists names and purposes. No production/HDE origin or secret belongs in this preview. Normal builds allow only `EXPO_PUBLIC_GLOW_MODE` and `EXPO_PUBLIC_GLOW_API_BASE_URL`, without echoing rejected names or values. The rendered test harness additionally accepts Expo's injected `EXPO_PUBLIC_PROJECT_ROOT` only when it exactly equals this app-config directory; arbitrary values remain rejected. This checks names, not the semantic contents of the allowed app values; the API-origin validator still rejects credentials. Official [Expo environment guidance](https://docs.expo.dev/guides/environment-variables/) confirms these values are embedded in client code. Reopen/reload Metro after changing environment configuration.
 
@@ -37,7 +37,7 @@ Use `http://10.0.2.2:8000` for the Android emulator's host loopback. A physical 
 - `src/interactions`: current-session fixture commands, immutable-receipt retry, committed consumption, participant-scoped matches and revocation. The Python domain remains authoritative; this presentation substitute follows shared contract cases.
 - `src/chat`: P06.2 C2's conversation list, conversation and composer on an in-process chat fixture behind the `ChatTransport` interface, with the generated validators as the boundary. No network client, API URL, socket or provider package; see the P06.2 C2 walkthrough below.
 - `src/config/development.ts`: explicit fixture configuration and origin validation.
-- `app.config.ts` and `src/app/_layout.tsx`: build-config and runtime development guards.
+- `app.config.ts` and `src/app/_layout.tsx`: build-config and runtime development guards; the layout's predicate is `src/config/release-guard.ts`, so a unit test covers it.
 
 Recommended and broader discovery use finite queues with accessible browsing controls, explicit refresh and honest exhaustion. Each mode preserves its own progress; switching modes does not reset it. Browsing records no like or pass, and no chat action is available. Portraits are synthetic placeholders, not real people or approved brand assets. Typography and color remain provisional implementation styling, not a brand lock.
 
@@ -220,7 +220,7 @@ files. Originals are represented by **Private photo placeholder**, never rendere
    and **Move photo 1 later**, with unavailable directions disabled. Ordering uses
    the current complete approved collection and its aggregate version.
 5. Choose **Remove photo 1**. Delivery eligibility is revoked immediately;
-   **Removal pending** remains until the developer-only **Provider: retry or confirm Photo 1 purge**
+   **Removal pending** remains until the developer-only **Storage: retry or confirm Photo 1 purge**
    succeeds. **Removed** means synthetic acknowledgment only. An error or
    interruption does not prove byte deletion.
 
@@ -384,7 +384,9 @@ field, is refused whole and shows Glow's own error state.
    `/matches`, for a current active account only: a restricted account can still end a
    connection but reaches no conversation.
 2. The list shows each conversation's unread count and the time of its latest message,
-   never its text. Names come from Glow's match projection, never from a chat response.
+   never its text. Names come from Glow's match projection, never from a chat response. A
+   conversation the list marks closed shows **This conversation is unavailable.**, with no count,
+   time or reason, and cannot be opened from the list.
    The list is read when shown and every 30 seconds while it stays shown; **Refresh
    conversations** reads it now.
 3. An open conversation asks for newer messages every 3 seconds while the app is in
@@ -437,7 +439,7 @@ field, is refused whole and shows Glow's own error state.
 **Verified limits.** All people, messages and times are fictional and last only for the
 current in-memory session. The fixture applies C1's semantics as a presentation
 substitute; the Python reads in `services/api` remain authoritative, and P11 serves them.
-There is no network client, API URL, WebSocket, `EventSource`, push or realtime service.
+The chat code has no network client, API URL, WebSocket, `EventSource`, push or realtime service; the app's only network code is the retained development transport in `src/data/recommendations.ts`, used by the root smoke script.
 `src/chat/no-provider.test.ts` checks the forms DM-22 7.1 names: it fails on a package
 whose name contains `stream-chat`, `getstream` or `@stream-io/` in `package.json`,
 `package-lock.json` or a literal import, `require` or dynamic import in the app's source,
@@ -454,4 +456,5 @@ behavior, VoiceOver/TalkBack and devices are unverified. Unit tests run on fixtu
 pinned-browser evidence comes from hosted CI. The read cursor's visibility measurement is
 shown in Chromium only; on devices, `measureLayout` and `onScroll` are unverified. Results
 are in the [P06.2 evidence record](../../docs/testing/evidence/2026-10-05-p06-2-chat-integration.md),
-"Stage C2" and "Stage C2-C1".
+"Stage C2" to "Stage C2-C4", with their manager verifications and exact-head reviews, and in the
+[P06.2-F record](../../docs/testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md).

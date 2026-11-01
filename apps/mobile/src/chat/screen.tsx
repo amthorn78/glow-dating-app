@@ -9,7 +9,8 @@ import { ActionButton } from '../interactions/action-button';
 import { useInteractions } from '../interactions/context';
 import { useChat } from './context';
 import { ChatFixtureControls } from './controls';
-import { DELIVERY_COPY, LIST_COPY, READ_COPY, REVOKED_DETAIL, SEND_COPY, UNAVAILABLE_MESSAGE, timeLabel, unreadLabel } from './copy';
+import { DELIVERY_COPY, LIST_COPY, READ_COPY, REVOKED_DETAIL, SEND_COPY, UNAVAILABLE_MESSAGE, timeLabel } from './copy';
+import { conversationRow } from './rows';
 import type { ChatStore } from './store';
 import { visibleMessages, type Box, type VisibleArea } from './visibility';
 
@@ -40,16 +41,14 @@ export function ConversationsScreen() {
     <View style={styles.group} testID="conversation-list">
       {list.status === 'loading' && <Text style={styles.body}>Loading your conversations…</Text>}
       {list.status === 'ready' && list.conversations.length === 0 && <Text style={styles.body} testID="conversations-empty">No conversations yet. A conversation opens with a mutual match.</Text>}
-      {list.conversations.map(conversation => {
-        const name = names.get(conversation.match_id) ?? 'Your match';
-        return <View key={conversation.match_id} style={styles.notice} testID={`conversation-row-${conversation.match_id}`}>
-          <Text style={styles.subtitle} accessibilityRole="header">{name}</Text>
-          <Text style={styles.body} testID={`conversation-unread-${conversation.match_id}`}>{unreadLabel(conversation.unread_count)}</Text>
-          <Text style={styles.small}>{conversation.latest ? `Latest message ${timeLabel(conversation.latest.at)}` : 'No messages yet'}</Text>
-          <Button label={`Open conversation with ${name}`} testID={`conversation-open-${conversation.match_id}`} secondary
-            onPress={() => { store.select(conversation.match_id); router.push('/conversation'); }} />
-        </View>;
-      })}
+      {list.conversations.map(conversation => conversationRow(conversation, names)).map(row =>
+        <View key={row.matchId} style={styles.notice} testID={`conversation-row-${row.matchId}`}>
+          <Text style={styles.subtitle} accessibilityRole="header">{row.name}</Text>
+          <Text style={styles.body} testID={`conversation-unread-${row.matchId}`}>{row.status}</Text>
+          {row.latest !== null && <Text style={styles.small}>{row.latest}</Text>}
+          {row.openable && <Button label={`Open conversation with ${row.name}`} testID={`conversation-open-${row.matchId}`} secondary
+            onPress={() => { store.select(row.matchId); router.push('/conversation'); }} />}
+        </View>)}
     </View>
     <Button label="Refresh conversations" testID="conversations-refresh" secondary onPress={() => store.refreshList()} />
     <ChatFixtureControls matchId={list.conversations[0]?.match_id ?? null} compact />

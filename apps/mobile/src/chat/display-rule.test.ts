@@ -112,15 +112,16 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
 /**
  * The render rule (M05 finding 18): the screens show only contract fields, whatever a response
  * carried, so a provider-shaped field (a message's `name`, a member, custom data) is never read
- * even if a validator let it through. Nothing renders `screen.tsx` in Node, so its source is
- * read: every property it reads from a message, a conversation, the list, the store's state or a
+ * even if a validator let it through. Nothing renders `screen.tsx` in Node, so its source, with
+ * the list rows' model (`rows.ts`), is read: every property it reads from a message, a conversation, the list, the store's state or a
  * match is one this list names, and no cast, spread or reflective read can reach another.
  */
 const RENDERED_PATHS = new Set([
   // ConversationMessage: the contract's six fields.
   'message.submission_id', 'message.author', 'message.delivery', 'message.content', 'message.text', 'message.at',
-  // ConversationSummary, as a list row.
-  'conversation.match_id', 'conversation.unread_count', 'conversation.latest', 'conversation.latest.at',
+  // ConversationSummary, as a list row (rows.ts), and the row the screen renders.
+  'conversation.match_id', 'conversation.state', 'conversation.unread_count', 'conversation.latest', 'conversation.latest.at',
+  'row.matchId', 'row.name', 'row.openable', 'row.status', 'row.latest',
   // The store's conversation state.
   'conversation.status', 'conversation.error', 'conversation.hasOlder', 'conversation.older', 'conversation.messages',
   'conversation.messages.length', 'conversation.messages.map',
@@ -129,7 +130,7 @@ const RENDERED_PATHS = new Set([
   // Glow's own match projection, for names (ADR 0003, decision 1).
   'match.match_id', 'match.state', 'match.profile', 'match.profile.display_name',
 ]);
-const ROOTS = /\b(message|conversation|list|state|match)((?:!?\??\.[A-Za-z_$][\w$]*|\[\d+\]\??)*)/g;
+const ROOTS = /\b(message|conversation|list|state|match|row)((?:!?\??\.[A-Za-z_$][\w$]*|\[\d+\]\??)*)/g;
 function readSource(path: string) {
   return readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*.*?\*\/\}/g, '');
 }
@@ -145,21 +146,21 @@ function renderRuleViolations(source: string) {
   const violations = [...renderedPaths(source)].filter(path => !RENDERED_PATHS.has(path));
   if (/[\w)\]!]\s+as\s+(?!const\b)/.test(source)) violations.push('a type cast');
   if (/\bany\b/.test(source.replace(/'[^'\n]*'|`[^`\n]*`/g, ''))) violations.push('an any type');
-  if (/\b(Object|Reflect|JSON)\s*\./.test(source)) violations.push('a reflective read');
-  if (/\.\.\.\s*(message|conversation|list|state|match)\b/.test(source)) violations.push('a spread');
-  if (/\b(message|conversation|list|state|match)\s*\[\s*(?!\d+\s*\])/.test(source)) violations.push('a computed read');
+  if (/\b(Object\s*\.\s*(?!freeze\b)\w+|Reflect\s*\.|JSON\s*\.)/.test(source)) violations.push('a reflective read');
+  if (/\.\.\.\s*(message|conversation|list|state|match|row)\b/.test(source)) violations.push('a spread');
+  if (/\b(message|conversation|list|state|match|row)\s*\[\s*(?!\d+\s*\])/.test(source)) violations.push('a computed read');
   return violations;
 }
 
 test('the chat screens render only the contract\'s fields: no provider-shaped field is read, whatever the validators let through (M05 finding 18)', () => {
-  const source = readSource('./screen.tsx');
+  const source = `${readSource('./screen.tsx')}\n${readSource('./rows.ts')}`;
   assert.deepEqual(renderRuleViolations(source), []);
   // Each message field the screen reads is one of the contract's.
   const read = [...renderedPaths(source)].filter(path => path.startsWith('message.')).map(path => path.slice('message.'.length));
   assert.deepEqual(read.filter(key => !MESSAGE_KEYS.includes(key)), []);
   // The checker itself refuses the forms a provider field would take.
   for (const planted of ['{message.name}', '{(message as { name?: string }).name}', '{String(message[\'name\'])}', '<Text {...message} />',
-    '{Object.values(message).join()}', '{conversation.member?.name}', '{(message as any).user}']) {
+    '{Object.values(message).join()}', '{conversation.member?.name}', '{(message as any).user}', '{row.custom}', '{Object.entries(conversation)}']) {
     assert.notDeepEqual(renderRuleViolations(`${source}\n${planted}`), [], planted);
   }
 });
