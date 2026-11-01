@@ -9,6 +9,8 @@
 
 ## Summary
 
+> **Partly superseded on 1 November 2026:** see "Manager verification" and DM-35. On that date `node-forge` is fixable in range (1.4.2), the bundled `decode-uri-component` carries a new high, the mobile lock lists 25 advisories, and the Dev Manager chose path (B), SDK 58 now (DM-35 item 2). The summary below is as of 26 October.
+
 - **Counts at the starting locks** match the manager's run exactly:
   - `apps/mobile`: 1 critical, 6 high, 7 moderate, 0 low (14 packages);
   - `packages/contracts`: 1 moderate (1);
