@@ -406,8 +406,9 @@ field, is refused whole and shows Glow's own error state.
    view. A command is sent only when that position passes a message from the other person,
    one at a time, never backward. The app knows where Glow holds your cursor only while the
    message its last successful command moved it to is among the loaded messages: not before
-   a command has succeeded since the conversation was opened, nor once a reload of the newest
-   page leaves that message out. Otherwise it also sends one when the conversation's entry in
+   a command has succeeded for that conversation in this session (closing and reopening the
+   same conversation keeps the position; selecting another conversation or account, or a
+   revocation, clears it), nor once a reload of the newest page leaves that message out. Otherwise it also sends one when the conversation's entry in
    the list shows an unread count above zero, or when it holds no entry for it (as when the
    conversation is opened from a match); Glow moves a cursor forward only. A move held back
    is reconsidered when an earlier page or a list read brings new evidence, never on each

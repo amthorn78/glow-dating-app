@@ -242,8 +242,9 @@ export class ChatStore {
       const page = await this.client.messages(matchId, cursor, CONVERSATION_PAGE_LIMIT);
       if (epoch !== this.conversationEpoch) return;
       this.mergeHead(page, cursor === null);
-      // An older page asked from the replaced window no longer holds the older-page state (DM-28 1.2).
-      const older = cursor === null && this.state.conversation.older === 'loading' ? 'idle' : this.state.conversation.older;
+      // A replacement leaves the older-page state `idle` whatever it was, `error` included: any state
+      // from before it concerns the window it discarded (DM-28 1.2; DM-29 1.1). A newer page keeps it.
+      const older = cursor === null ? 'idle' : this.state.conversation.older;
       this.publishConversation({ status: 'ready', error: null, older });
       this.schedule();
       // A page never moves the cursor itself (DM-23 2.1); it only retries a failed move to `seen`.
