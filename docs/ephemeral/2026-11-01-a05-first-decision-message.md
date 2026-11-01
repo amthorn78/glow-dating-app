@@ -75,3 +75,26 @@ That is your decision (DM-31), and this message takes no side. The decisions abo
 **The rest of A05 comes later,** in two messages: before SV2's brief, the preference taxonomy, resurfacing and rematch, and the history policy; before P07's brief, retention and moderation operators.
 
 **DECISION NEEDED:** your answer to D1 (the country of establishment, and (a) or (b)), D2 ((a) to (d), and the language) and D3 ((a) to (c)). A reply like "D1: <country>, b; D2: a, English; D3: a" is enough.
+
+---
+
+## Follow-up (1 November 2026)
+
+**Nathan's answer:** "1) I will establish a legal entity in the US. Does this mean we can't publish in the EU or UK? 2) Same questions 3) This will depend on where I can launch"
+
+**The manager's reply, as sent:**
+
+No. A US company can publish in the UK and the EU; it carries more duties there, not a bar. Nothing in the matrix stops a US entity from launching in either.
+
+| | What a US entity adds |
+|---|---|
+| **UK** | A UK representative for UK GDPR (UK-27). Its exemption covers only occasional processing without large-scale special-category data, and Glow's preference fields reveal orientation (UK-29), so expect to need one. The Online Safety Act still applies to a provider outside the UK with UK links (UK-02). As a non-UK provider, Glow reports to the NCA only UK-linked content (UK-15). Whether a controller outside the UK pays the ICO fee is unconfirmed (UK-44) |
+| **EU** | A DSA legal representative, in a Member State where Glow offers services, notified to its regulator, named publicly and liable for Glow's DSA duties (EU-06). A GDPR representative, on the same exemption test (EU-34). A breach is notified to every EU authority where affected users live (EU-45). Each Member State's own law is not in the matrix |
+
+Representative services are not priced yet; M07 would price them before you approve any line.
+
+- **D1** is answered: a US legal entity, option (b).
+- **D2's options are unchanged, and my recommendation stands, with D1 making it stronger: (a), the US first, all states, in English.** As a US entity, the US option needs no representative; the UK and the EU each add one or two, plus their own assessments and notices. A UK or EU launch can follow later: the matrix's rows stay ready for it.
+- **D3 follows from D2,** as you say: the US alone, or the EU alone while Glow is micro, takes (a), a self-entered birth date plus the stores' age signals behind SV1's seam; any option with the UK takes (c), verified or estimated age for UK members.
+
+**DECISION NEEDED:** D2 only. A reply like "D2: a, English" is enough; D3 then follows as above, and I record D1 to D3 as one owner direction.
