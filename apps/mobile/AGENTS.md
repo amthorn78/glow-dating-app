@@ -37,6 +37,7 @@ Change dependencies only when an assignment requires it.
 2. Reinstall with `npm ci --ignore-scripts` and review the complete `package-lock.json` diff, including new transitive packages and install scripts.
 3. Update `dependency-inventory.json` (lockfile package entries with license metadata) to match the lockfile.
 4. Run the checks above. A dependency change is full scope for CI and review.
+5. **`noxcturnal` stays unloaded** (DM-36). Expo SDK 58 installs `noxcturnal`, a native Metro transform whose published versions carry no provenance attestation, but the build does not load it: `@expo/cli` turns its worker on only when `app.config.ts` sets `experiments.noxcturnalTransformWorker`. A change that sets that flag, imports `noxcturnal`, or upgrades `expo`, `@expo/cli` or `@expo/metro-config` records whether `export:development` loads `noxcturnal`'s native addon, by a load trace like M06's exact-head review ran. If it does, the change goes to the Dev Manager before its exact-head review, and that review names it.
 
 ## Navigation & Routing
 
