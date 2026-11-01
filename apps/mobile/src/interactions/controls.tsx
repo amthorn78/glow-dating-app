@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { router, useIsFocused } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Text, View, type HostInstance } from 'react-native';
 import { Button, focusText, styles } from '../components/ui';
 import type { DiscoveryMode } from '../discovery/fixture-adapter';
 import { useInteractions } from './context';
@@ -9,7 +9,7 @@ import { ActionButton } from './action-button';
 export function InteractionFeedback() {
   const { store, state } = useInteractions();
   const focused = useIsFocused();
-  const ref = useRef<Text>(null);
+  const ref = useRef<HostInstance>(null);
   useEffect(() => {
     // Retained hidden routes must never steal focus after a shared-store update.
     if (!focused || (!state.error && !state.message)) return;
