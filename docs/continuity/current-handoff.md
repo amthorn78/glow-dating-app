@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (1 November 2026; M06 stage two, SDK 58, waits on Nathan's risk acceptance)
+# Current handoff — App Manager 8 (1 November 2026; M06 stage two, the SDK 58 upgrade, with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -11,7 +11,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **M04 is done** (OD-39; M05 findings 10, 11, 12 and 14): PR36 merged at `4794d3e`; the first cleanup run deleted the three expected branches ([record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "M04's merge receipt"). Since then, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup").
 - **Branch controls:** Nathan chose none, procedure only (OD-52), against [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s recommended ruleset. The CI policy's three sentences that record it wait for the Dev Manager's read with the next PR.
 - **OD-53:** S2 (delta re-reviews for small corrections), S5 (Notion's procedure as a summary), D1 (no pick asked or recorded) and `@codex review` after a 60-minute stall, all adopted.
-- **Now:** M06's stage two, the SDK 58 upgrade ([brief](../planning/m06-dependency-remediation.md), revision 2). [DM-35](dev-manager/reviews/2026-11-01-dm-35-m06-recommendation.md) chose path (B), SDK 58 now before E11, with conditions 3.1 to 3.11 and a new-package review; (C) declined. Before it runs, Nathan decides on the advisories it cannot fix (DM-35 item 5): `glob` and `minimatch` (moderate) and `zod` (high, expected to clear in range), all tooling. The stage-one record is [here](../testing/evidence/2026-10-26-m06-dependency-assessment.md).
+- **Now:** M06's stage two, the SDK 58 upgrade ([brief](../planning/m06-dependency-remediation.md), revision 2), from its [prompt](../ephemeral/2026-11-01-m06-stage-two-prompt.md), with Nathan. [DM-35](dev-manager/reviews/2026-11-01-dm-35-m06-recommendation.md) chose path (B) with conditions 3.1 to 3.11 and a new-package review; Nathan accepted the advisories it cannot fix, `zod`, `glob` and `minimatch`, all tooling (OD-54). The stage-one record is [here](../testing/evidence/2026-10-26-m06-dependency-assessment.md).
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M04, P06.1, P06.DB and P06.2.
@@ -22,11 +22,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan | His answer on the advisories stage two cannot fix (DM-35 item 5) | Stage two's prompt waits; the manager asks again |
+| App Manager 8 | Nathan (the stage-two session) | Its report and its run of record | The manager asks Nathan whether the session ran; nothing merges without the run, Codex and the exact-head review |
 
 ## Next actions (App Manager 8)
 
-1. **M06:** Nathan's answer, recorded in the register; then stage two's prompt (TypeSafe reading), its run of record with the rendered suite, the new-package review, the exact-head review, Codex and the merge.
+1. **M06:** verify stage two against its branch and run of record; its PR; Codex; the exact-head code and security review (3.11); the final head's advisory list against OD-54; the merge and its receipt.
 2. **Then** P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
