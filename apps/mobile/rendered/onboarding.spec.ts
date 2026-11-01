@@ -64,11 +64,19 @@ test('sign in and synthetic recovery remain separate; errors and neutral receipt
   await active(page, 'recovery-submit').click();
   await expect(page.getByText(/If this address can receive a recovery message/).filter({ visible: true })).toBeVisible();
   await active(page, 'open-reset').click();
+  // Router 58 applies a navigation after the click's task. Wait for the reset screen
+  // before using the fixture outcomes that both screens show.
+  await expect(active(page, 'screen-reset-password')).toBeVisible();
   await outcome(page, 'wrong_context');
   await active(page, 'reset-password').fill(password);
   await active(page, 'reset-submit').click();
-  await expect(active(page, 'screen-recovery')).toBeVisible();
+  // Router 58 renders a redirect for a route whose guard fails, where Router 57 removed
+  // it and fell back to recovery: the signed-out member reaches account entry, and the
+  // reset step stays unreachable. Recovery then offers no reset either.
+  await expect(active(page, 'screen-account')).toBeVisible();
   await expect(active(page, 'screen-reset-password')).toHaveCount(0);
+  await active(page, 'recover-access').click();
+  await expect(active(page, 'screen-recovery')).toBeVisible();
   await expect(active(page, 'open-reset')).toHaveCount(0);
   await active(page, 'recovery-email').fill('unrelated@example.invalid');
   await active(page, 'recovery-submit').click();
