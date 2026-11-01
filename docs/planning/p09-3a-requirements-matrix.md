@@ -1,7 +1,7 @@
 # P09.3a — The store, legal and safety requirements matrix
 
 - **Work ID:** P09.3a (P09; M05's E2, with E6 inside it; PF01 §7, "Mobile/store readiness"; R05).
-- **Status:** brief, revision 1. **Prompt:** [`docs/ephemeral/2026-11-01-p09-3a-matrix-prompt.md`](../ephemeral/2026-11-01-p09-3a-matrix-prompt.md), revision 1, for `Glow App - No Stream`.
+- **Status:** the matrix is written and verified; the gaps' routing and the A05 questions are with the Dev Manager (DM-37). Brief revision 1. **Prompt:** [`docs/ephemeral/2026-11-01-p09-3a-matrix-prompt.md`](../ephemeral/2026-11-01-p09-3a-matrix-prompt.md), revision 1, for `Glow App - No Stream`.
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): P09.3a after M06, before P06.2-F. N3 was folded into that order (DM-31). **Manager:** App Manager 8. **Session:** one research session, started by Nathan.
 - **Revision 1, 1 November 2026.**
 - **Starting point:** `main` at `fcd6ebc` (PR38's merge), with the manager branch's Markdown records after it. The prompt names the exact commit.
@@ -96,4 +96,4 @@ The matrix is done when it holds all of these:
 
 ## Sessions
 
-- None yet.
+- **The research session** (1 November 2026; prompt revision 1 at `f40f1d7`; branch `claude/stoic-pasteur-r24pz8`, head `1eefca1`; Nathan's pick: not recorded): the matrix, `docs/planning/store-legal-safety-requirements.md`, with 320 rows (31 on child safety, 85 with no owner) and 16 gaps, and its record. Every part of "Outcome" is done. The manager verified it (the record, "Manager verification"): 104 of 108 sampled rows matched their live sources, including all 31 child-safety rows; three corrections are marked. Fast-forwarded into the manager branch. Next: DM-37, on the gaps' routing and the A05 questions.
