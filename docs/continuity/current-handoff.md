@@ -10,7 +10,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **M06 is done** ([brief](../planning/m06-dependency-remediation.md); [record](../testing/evidence/2026-11-01-m06-sdk-58-upgrade.md), "M06's merge receipt"): PR38 merged at `fcd6ebc`, Expo SDK 58.0.22. Advisories left: `glob` and `minimatch` (moderate, tooling), accepted by Nathan (OD-54) and re-checked at each dependency change and before P09. `noxcturnal` stays unloaded: `apps/mobile/AGENTS.md`, "Dependency changes" 5 (DM-36).
 - **M05 and M04 are done:** PR34 (`4aa66e2`) and PR36 (`4794d3e`); since M04, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup"). Branch controls: none, procedure only (OD-52).
 - **P09.3a is done** ([brief](../planning/p09-3a-requirements-matrix.md); [matrix](../planning/store-legal-safety-requirements.md)): 320 rows, routed by [DM-37](dev-manager/reviews/2026-11-01-dm-37-p09-3a-gaps-and-a05.md) into the [carried-items file](../planning/carried-to-later-items.md); PF01 1.17's release gate. Research, not legal advice. **OD-55:** a US legal entity; the US, all states, in English, for now; a self-entered birth date plus the stores' age signals, behind SV1's seam.
-- **Now: P06.2-F**, the mobile hardening ([brief](../planning/p06-2-f-mobile-hardening.md); [prompt](../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), revision 1, for `Glow App - No Stream`): seven fixture-only items, each with a test and its reversal.
+- **Now: P06.2-F**, the mobile hardening ([brief](../planning/p06-2-f-mobile-hardening.md); [record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md)): implemented and verified, code head `3db50d8`, run of record 41359462167 (all eight jobs, rendered 97 passed). Next: its PR, Codex, and the exact-head code review.
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2 and P09.3a.
@@ -21,11 +21,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (the P06.2-F session) | The session's report | The manager asks Nathan whether the session ran |
+| App Manager 8 | GitHub Actions and Codex | The PR run and Codex's review on P06.2-F's PR head | A failed run is fixed or explained; Codex after 60 minutes with no result gets `@codex review` once (OD-53) |
 
 ## Next actions (App Manager 8)
 
-1. **P06.2-F:** verify the report; the PR; Codex on its head; the exact-head code review prompt; the merge and its receipt.
+1. **P06.2-F:** the PR; Codex on its head and on the review prompt's commit; the exact-head code review; the merge and its receipt.
 2. **Then** P06.3 and the slices, each named to Nathan before it starts (OD-49); the second A05 message (the preference taxonomy, resurfacing and rematch, the history policy) before SV2's brief.
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.

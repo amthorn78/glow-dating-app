@@ -106,7 +106,7 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 
 ## Carried to P06.2-F (E11, the mobile hardening; from M06's exact-head review)
 
-- **Folded into its brief,** [P06.2-F](p06-2-f-mobile-hardening.md), item 7, which chooses account entry, with the reset's generic error, as the landing (DM-36 section 6). The entries below stay until the item closes.
+- **Folded into its brief,** [P06.2-F](p06-2-f-mobile-hardening.md), item 7, which chooses account entry, with the reset's generic error, as the landing (DM-36 section 6); done in its code head `3db50d8`, with both assertions. The entries below stay until the item closes.
 
 - **The failed-reset landing** (finding 6): on SDK 58 a member whose reset fails lands on account entry with the generic error, where SDK 57 fell back to recovery (Router 58 renders a redirect for a failed guard). E11 decides the landing, for example a failure branch in `reset-password.tsx` that sends the member to `/recovery`. Not `redirectTo="/recovery"`, which would race the reset's own `router.replace('/account')`. A change that alters what a guard allows goes to the Dev Manager.
 - **Two assertions for that landing** (finding 5): the failure's alert is visible on account entry, and `page.getByTestId('screen-reset-password')` has a count of 0 without the visible filter, so the screen is shown unmounted, not just hidden (`rendered/onboarding.spec.ts:76-77` at `524d42f`).

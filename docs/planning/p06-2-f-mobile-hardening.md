@@ -1,7 +1,7 @@
 # P06.2-F — Mobile hardening and P06.2's carried follow-ups
 
 - **Work ID:** P06.2-F (P06; M05's E11, with findings 17 to 20).
-- **Status:** brief, revision 1. **Prompt:** [`docs/ephemeral/2026-11-01-p06-2-f-implementation-prompt.md`](../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), revision 1, for `Glow App - No Stream`.
+- **Status:** implemented and verified (code head `3db50d8`); the PR, Codex and the exact-head review follow. Brief revision 1. **Prompt:** [`docs/ephemeral/2026-11-01-p06-2-f-implementation-prompt.md`](../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), revision 1, for `Glow App - No Stream`.
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): P06.2-F after P09.3a, before P06.3's UI. **Manager:** App Manager 8. **Session:** one implementation session, started by Nathan.
 - **Revision 1, 1 November 2026.**
 - **Starting point:** `main` at `bac3c19` (PR39), with the manager branch's Markdown records after it. The prompt names the exact commit. The app is on Expo SDK 58.0.22 (M06).
@@ -81,4 +81,4 @@ The item is done when each of these holds, **each with a test and the reversal t
 
 ## Sessions
 
-- None yet.
+- **The implementation** (1 November 2026; prompt revision 1 at `67b0201`; branch `claude/practical-wozniak-fg1e2i`, code head `3db50d8`, records `02f1972`; Nathan's pick: not recorded): items 1 to 7, each with a test and its reversal; nothing met the stop rule. Optional entries done: item 5's finding 1, and item 6's finding 5; item 6's finding 9 not done, with its reason. Beyond the brief's list: `src/data/fixtures.ts` removed with the dead hook, a test against unimported modules, and more provider wording on the same screens. Run of record: push run 41359462167 on `3db50d8`, all eight jobs passed, rendered 97 passed, Mobile 5 min 58 s of 25. The first run was cancelled by the session's own records push (AM8-20); Nathan approved the re-push. The manager verified it (the record, "Manager verification": six reversals re-run, each failing) and fast-forwarded the manager branch. Next: the PR, Codex, and the exact-head code review.

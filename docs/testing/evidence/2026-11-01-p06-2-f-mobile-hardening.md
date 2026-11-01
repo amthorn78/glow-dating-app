@@ -185,3 +185,25 @@ The rendered suite's 97 includes the three restricted-match tests with finding 5
 - **Finding 9** (optional) is not done; the reason is in item 6.
 - **Records outside the owned paths** still name the removed hook: `docs/continuity/claude-code-handoff.md:41` and `docs/architecture/profiles-preferences-fixtures.md:213`. They are the manager's to update.
 - No guard's allowance changed (D2), no dependency or lock changed (D3), and no path outside the brief's owned paths changed. Nothing met the stop rule.
+
+## Manager verification (1 November 2026, App Manager 8)
+
+- **The branch:** `claude/practical-wozniak-fg1e2i`, code head `3db50d8`, records head `02f1972`: nine commits on `67b0201`, one per item, then the draft record and its completion. Integrated into the manager branch by fast-forward.
+  - The 25 paths of `67b0201..3db50d8` are all inside the brief's owned paths: 18 changed, 5 added, 2 removed (`src/hooks/use-recommendations.ts` and `src/data/fixtures.ts`, which only that hook imported). No `package.json`, lock or inventory changed. `02f1972` adds this record only.
+  - The trusted policy from `main` classified `bac3c19..02f1972` as full scope (`behavior-or-empty`), and `git diff --check` printed nothing.
+- **The guards, read in the diff:**
+  - `src/app/_layout.tsx` now calls `developmentPreviewAvailable(__DEV__, process.env.EXPO_PUBLIC_GLOW_MODE)`, which returns `isDevelopment && mode === 'fixture'`: the negation of the old `!__DEV__ || mode !== 'fixture'`, so the guard allows exactly what it did. The layout still passes the mode itself, so Expo still inlines it there.
+  - `app.config.ts` changes in its comment only.
+- **The behavior changes the brief asked for,** read in `src/chat/store.ts`: a newest-page reload sets the older-page state to `idle` whatever it was (the P06.2 brief's carried entry); a final refusal that does not end access restores the draft when none has been started (finding 4). `src/chat/rows.ts` makes a `closed` conversation show the unavailable wording with no open control.
+- **The run of record,** read by the manager: push run 41359462167 on `3db50d8`: all eight jobs succeeded; the gate printed `Application checks passed`; the rendered suite printed `97 passed (4.3m)`; Mobile 5 min 58 s of its 25 minutes, Database proof 7 min 12 s of 30. Runs 41355778256 (on `3db50d8`) and 41359453519 (on `67b0201`) are cancelled, and 41356042982 (on the draft record) ran change scope and the gate only, as the session's record says.
+- **Re-run by the manager,** in a scratch copy of `3db50d8` outside the checkout, in a clean environment: `npm ci --ignore-scripts` (651 packages); `npm test`, 649 of 649 passed. Six reversals, each restored afterwards (the copy's `git status` clean), each failing as the record says:
+  - `app.config.ts`'s allow-list turned into a deny-list of `production`: `build-guard.test.mjs`, 1 failure;
+  - the public-name allow-list turned into an `EXPO_PUBLIC_GLOW_` prefix rule: `build-guard.test.mjs`, 1 failure;
+  - `developmentPreviewAvailable` without `isDevelopment`: `release-guard.test.ts`, 1 failure;
+  - the older-page line restored to its `'loading'`-only form: `store.test.ts`, 2 failures;
+  - the draft restore disabled: `store.test.ts`, 3 failures;
+  - a `console.info` added to `src/chat/store.ts`: ESLint's `no-console`, 1 error.
+- **The push that cancelled the first run** was the prompt's gap: it did not tell the session to hold a records push while the code head's run was in progress (AM8-20). Nathan approved the session's `--force-with-lease` reset of its own branch to `67b0201` and the fast-forward push of `3db50d8`, which rewrote no commit.
+- **Not re-checked by the manager:** the rendered reversals (the session ran them against the preinstalled Chromium, informational), the remaining unit reversals, and item 3's added strings beyond the four the brief named, which the session's provider-wording test covers.
+- **Records outside the session's paths:** `docs/architecture/profiles-preferences-fixtures.md` describes the removed hook historically; a note now says it was removed in P06.2-F. `docs/continuity/claude-code-handoff.md:41` is the frozen handoff of 25 September and is left as it was.
+- **Next:** the PR, Codex's review of its head, and the exact-head code review of `3db50d8`.

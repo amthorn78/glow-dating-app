@@ -68,7 +68,7 @@ Conditions that wait on a later event. The manager keeps this table current, and
 |---|---|---|
 | DM-09 2 (b): `CLAUDE.md`'s environment phrase, the inventory's No Stream Setup script, a pointer to OD-35 in PF01's D10 | The next change to each file | **Done:** P-18; the inventory's M05 observation; PF01 1.13 |
 | DM-17 item 5: the fixture adapter's `already` for an earlier cut-off | The fixture's next change, before P11 | Open (the P06.2 brief's "Carried to later changes"; the P11 plan) |
-| DM-23 3.1, DM-26 item 2, DM-29 1.1 with DM-30 2.1 and 2.2: the README sentences and the window-replacement follow-up | The first change to `apps/mobile` (E11) | Open (the P06.2 brief's "Carried to later changes") |
+| DM-23 3.1, DM-26 item 2, DM-29 1.1 with DM-30 2.1 and 2.2: the README sentences and the window-replacement follow-up | The first change to `apps/mobile` (E11) | **Done in P06.2-F's code** (`3db50d8`; items 4 and 6), each test with its reversal; optional finding 9 not done, with its reason. Closes at P06.2-F's merge |
 | DM-30 1.1 and 1.2: the standing guard | A phase that lets a readable conversation lose an accepted message, or changes a page cursor's boundary | Open (the P11 plan, "Standing guard"; pointers in the carried-items file for P07 and P08) |
 | DM-31 3.7: P-7's push-run sentence, P-9's cancel bullet and upload-artifact row | M04's change of `always()` and the pin | **Done:** PR36 merged with these texts (`4794d3e`; DM-34 section 6) |
 | DM-31 3.2: P-1, P-2, P-3 and P-6 | Nathan's N1, N4 and N2 (and N5's order for the matrix) | **Done:** P-1 and P-2 (OD-49; PF01 1.14), P-3 and P-6 (OD-50; PF01 1.15) |

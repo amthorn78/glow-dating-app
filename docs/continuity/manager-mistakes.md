@@ -122,6 +122,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-17 | 1 Nov 2026 | accuracy | M06 stage two's prompt required `npm audit signatures` and limited the network to the npm registry and `docs.expo.dev`; the command needs Sigstore's TUF host, so the session had to deviate | The stage-two session, which logged the deviation |
 | AM8-18 | 1 Nov 2026 | follow-through | M06 stage two's record raised "one precision for the Dev Manager" (`noxcturnal` published by GitHub Actions without provenance), and the manager's verification did not route it | The exact-head review, finding 2 |
 | AM8-19 | 1 Nov 2026 | records | Nine prompts and consultations pruned on 26 October and 1 November (M05's, DM-31 to DM-33, M04's four, M06's assessment) left their Notion links on the manager branch, where the files no longer exist | The manager, while pinning M06's links in Notion |
+| AM8-20 | 1 Nov 2026 | prompt | P06.2-F's prompt told the session to push its code and read the run of record, but not to hold a records push while that run was in progress, though a newer push on the branch cancels the older run; the session's records push cancelled the run on its code head | The session itself |
 
 ## App Manager 2
 
@@ -951,3 +952,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** a reader following those links in Notion got GitHub's "not found" from 26 October or 1 November until this fix. No decision rested on them; the repository's links were pinned.
 - **Correction:** the nine links, and M06's three, now point at the commit before each prune. Every remaining manager-branch ephemeral link in the page names a file that exists.
 - **Prevention:** a prune batch lists every link to the pruned files in the repository and in Notion (Implementation Control and the Work Register rows), pins each to a commit that holds the file, and reads Notion back before it reports the prune.
+
+### AM8-20 — A prompt that let a records push cancel the code head's run (prompt)
+
+- **What happened:** P06.2-F's prompt said "Commit and push… The run of record is the one on your last code commit." The Foundation workflow cancels a branch's in-progress run when a newer push lands, and a Markdown-only push's run skips the application jobs. The session pushed its draft record while the run on its code head `3db50d8` was in progress, so that run was cancelled, and the records head's run covered no code.
+- **Caught by:** the session, which stopped and asked Nathan.
+- **Effect:** about 40 minutes and one extra cycle. Nathan approved a `--force-with-lease` reset of the session's own branch to `67b0201` and the fast-forward push of `3db50d8`; run 41359462167 is the run of record. No commit was rewritten.
+- **Correction:** none needed in the code; the record and the brief's "Sessions" say what happened.
+- **Prevention:** every implementation prompt that names a run of record says: push the code, wait for its run to complete, and push records only after it, or push code and records together in one push.

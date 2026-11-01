@@ -884,7 +884,7 @@ C2-C4 ran from its prompt's revision 1 (code `d3d7300`, records `b60409b`; run o
 
 These were the handoff's "recorded follow-ups" for P06.2. They move here, their owning home, because the handoff only routes and stays under 5 KB (M05 finding 38). Each keeps its source.
 
-- **At the first change to `apps/mobile` after PR33 merged** (DM-23 3.1; DM-26 item 2), with the mobile hardening item M05 proposes (its E11):
+- **At the first change to `apps/mobile` after PR33 merged** (DM-23 3.1; DM-26 item 2), with the mobile hardening item M05 proposes (its E11). **Done in P06.2-F** (code head `3db50d8`; its record, items 4 to 6), except the optional finding 9 below, which stays open: the line it would gate also sends the revalidation read an unmatch, block or pause queues for a hidden conversation:
   - the README's last sentence, which names only "Stage C2" and "Stage C2-C1" as record sections, and M05's P-13 lines for `apps/mobile/README.md` (`:18` and `:440`);
   - the C2 review's finding 1's broader test (optionally, a bare `WebSocket` or `EventSource` identifier check; its README sentence was corrected in C2-C1), finding 4 (restore the draft on a final send refusal) and finding 5 (the restricted-match tests assert `match-conversation` absent);
   - **the window-replacement follow-up** (one entry; DM-29 1.1 with DM-30 2.1 and 2.2, on DM-28 1.5's scope). A window replacement leaves the older-page state `idle` whatever it was, `error` included, at `store.ts:245`, which makes the class comment's sentence at `:65` true. Each test comes with the reversal that must fail it:
