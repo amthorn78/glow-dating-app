@@ -78,7 +78,7 @@ Each family's researcher machine-checked its quotes against its downloaded text 
 
 ### 3.3 How the rows were checked and merged
 
-- **Independent re-reads.** This session re-read, by its own fetches, the key clause of every row whose main topic is child safety, of 55 of the 85 no-owner rows, and of at least one row in every family (section 7). Every clause re-read matched its row. The 30 no-owner rows not re-read here rest on their researcher's verbatim extraction: AP-19 (secondary only); GP-15, GP-56, GP-57; UST-05, UST-06, UST-07, UST-09, UST-10, UST-11, UST-13, UST-18, UST-19, UST-21, UST-35 to UST-39; UK-14, UK-35, UK-37, UK-39, UK-40; EU-03, EU-25, EU-40, EU-52, EU-63, EU-64. The brief's review plan has the manager re-read every no-owner row.
+- **Independent re-reads.** This session re-read, by its own fetches, the key clause of all 31 rows tagged child safety (T4), of 55 of the 85 no-owner rows, and of at least one row in every family (section 7). Every clause re-read matched its row. The 30 no-owner rows not re-read here rest on their researcher's verbatim extraction: AP-19 (secondary only); GP-15, GP-56, GP-57; UST-05, UST-06, UST-07, UST-09, UST-10, UST-11, UST-13, UST-18, UST-19, UST-21, UST-35 to UST-39; UK-14, UK-35, UK-37, UK-39, UK-40; EU-03, EU-25, EU-40, EU-52, EU-63, EU-64. The brief's review plan has the manager re-read every no-owner row.
 - **Owner and current state.** This session filled the owner and current-state columns itself, from the repository at `f40f1d7` (D5): PF01 §§1, 4, 6–8, 10–11; the owner-direction register; the P06.2 brief; the P11 plan (`docs/testing/p11-deferred-acceptance.md`); M05's §7.1 (for P07.1 to P09.3); `docs/architecture/` (onboarding, profiles and preferences, private media, media provider mapping, interactions, production contracts, data model, privacy and safety rules); ADR 0003; `apps/mobile/app.config.ts`, `apps/mobile/AGENTS.md` and `apps/mobile/package.json`; `apps/mobile/src/app/`, `src/interactions/` and `src/chat/` (for which block, unmatch and report controls exist); `services/api/glow_persistence/models.py` (location and place fields). No application command was run. A fixture behaviour is never counted as an obligation met.
 - **Conflicts resolved from primary text:**
   - **UK s.66's commencement:** the XML annotations show s.66(1)–(2) in force on 7 April 2026 by S.I. 2026/262; an earlier commencement, S.I. 2025/371, was revoked by S.I. 2025/1062.
@@ -269,6 +269,7 @@ Each check below fetched the source afresh, extracted its text, and searched for
 | UK-03, UK-10 | OSA ss.9, 23 | the risk-assessment and record duties |
 | UK-05 | OSA s.10 | "…no later than 48 hours, after the provider receives the report"; inserted 29 June 2026 |
 | UK-12, UK-13 | OSA ss.35, 36, 230 | s.35(2); s.36 in force 10 January 2024; s.230(4) self-declaration |
+| UK-14 | OSA s.7 | s.7(4): services likely to be accessed by children must comply with ss.11 and 12 |
 | UK-15 | OSA s.66 | s.66(1)–(2); in force 7 April 2026 by S.I. 2026/262 |
 | UK-16 to UK-18 | S.I. 2026/268 | registration before the first report; priority 1 "immediately"; five-year reference retention |
 | UK-19, UK-21 | OSA s.69; Schedule 7 | false information; para 28A |
