@@ -98,3 +98,17 @@ Representative services are not priced yet; M07 would price them before you appr
 - **D3 follows from D2,** as you say: the US alone, or the EU alone while Glow is micro, takes (a), a self-entered birth date plus the stores' age signals behind SV1's seam; any option with the UK takes (c), verified or estimated age for UK members.
 
 **DECISION NEEDED:** D2 only. A reply like "D2: a, English" is enough; D3 then follows as above, and I record D1 to D3 as one owner direction.
+
+(Nathan's next message interrupted the reply above during its last sentence.)
+
+**Nathan:** "I will not be able to establish legal resident status in the UK or EU right away. I need to work within that limitation"
+
+**The manager's reply, as sent:**
+
+That limitation fits the recommendation, and it does not close the UK or the EU later.
+
+- **Neither needs you to be resident.** The UK and EU representatives are a person or firm already established there that the US company appoints in writing (UK-27, EU-06, EU-34), usually a paid service (not priced yet; M07). So a later UK or EU launch stays open without residency.
+- **What it settles:** Glow is a US company with no UK or EU establishment. A launch there would need those representatives, and Glow would report to the NCA only UK-linked content (UK-15).
+- **So D2 stays (a), the US first, all states, in English,** and D3 is then (a): a self-entered birth date plus the stores' age signals, behind SV1's seam.
+
+**DECISION NEEDED:** shall I record D2 as (a), the US first, all states, in English? A "yes" records D1 to D3 as one owner direction; otherwise name the option.
