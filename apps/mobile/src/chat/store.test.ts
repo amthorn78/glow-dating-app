@@ -383,6 +383,56 @@ test('delayed: one pending send at a time; it completes after release', async ()
   assert.deepEqual(texts(fixture), ['Delayed.']);
 });
 
+/** Answers the next send with Glow's error envelope, as the server refuses a message. */
+function refuseSend(code: string, retryable = false) {
+  let armed = true;
+  return (transport: ChatTransport): ChatTransport => ({ ...transport, conversations: () => transport.conversations(),
+    messages: request => transport.messages(request), readCursor: intent => transport.readCursor(intent),
+    send: async intent => {
+      if (!armed) return transport.send(intent);
+      armed = false; return { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fd', code, retryable };
+    } });
+}
+for (const [code, retryable, failure] of [['stale_version', false, 'stale'], ['idempotency_conflict', false, 'conflict'], ['state_conflict', false, 'temporary']] as const) {
+  test(`a final send refusal (${code}) restores the draft; the conversation stays open (the C2 review's finding 4)`, async () => {
+    const fixture = await chatSetup(refuseSend(code, retryable));
+    await open(fixture);
+    fixture.store.setDraft('Keep these words.'); await fixture.store.send();
+    const snapshot = fixture.store.getSnapshot();
+    assert.deepEqual([snapshot.send.status, snapshot.send.error, snapshot.send.canRetry], ['error', failure, false]);
+    assert.equal(snapshot.draft, 'Keep these words.', 'the refused message is back in the composer');
+    assert.equal(snapshot.conversation.status, 'ready');
+    assert.equal(fixture.fixture.inspect().submissions.length, 0, 'nothing was sent');
+    // Sending again is a new message with a new key.
+    await fixture.store.send(); await settle();
+    assert.deepEqual([fixture.store.getSnapshot().send.status, fixture.store.getSnapshot().draft], ['sent', '']);
+    assert.deepEqual(texts(fixture), ['Keep these words.']);
+  });
+}
+
+test('a final send refusal keeps a draft started while the message was pending (the C2 review\'s finding 4)', async () => {
+  const gated = { release: () => {} };
+  const fixture = await chatSetup(transport => ({ ...transport, conversations: () => transport.conversations(),
+    messages: request => transport.messages(request), readCursor: intent => transport.readCursor(intent),
+    send: () => new Promise(resolve => { gated.release = () => resolve({ contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fd', code: 'stale_version', retryable: false }); }) }));
+  await open(fixture);
+  fixture.store.setDraft('First.'); const sending = fixture.store.send(); await settle();
+  fixture.store.setDraft('Second, typed meanwhile.');
+  gated.release(); await sending; await settle();
+  assert.deepEqual([fixture.store.getSnapshot().send.error, fixture.store.getSnapshot().draft], ['stale', 'Second, typed meanwhile.']);
+});
+
+test('a retryable failure keeps the draft empty and offers the same message again; a refusal that ends access drops it', async () => {
+  const retry = await chatSetup(refuseSend('state_conflict', true));
+  await open(retry);
+  retry.store.setDraft('Retry me.'); await retry.store.send();
+  assert.deepEqual([retry.store.getSnapshot().send.canRetry, retry.store.getSnapshot().draft], [true, '']);
+  const ended = await chatSetup(refuseSend('not_found'));
+  await open(ended);
+  ended.store.setDraft('Gone.'); await ended.store.send();
+  assert.deepEqual([ended.store.getSnapshot().conversation.status, ended.store.getSnapshot().draft], ['revoked', '']);
+});
+
 test('a revocation in the foreground drops the history, draft and polling at once; another account retains nothing', async () => {
   const fixture = await chatSetup();
   julesSends(fixture, 'Private history.');

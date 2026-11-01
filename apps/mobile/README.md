@@ -445,8 +445,8 @@ whose name contains `stream-chat`, `getstream` or `@stream-io/` in `package.json
 `package-lock.json` or a literal import, `require` or dynamic import in the app's source,
 and on a construction of `WebSocket` or `EventSource` written directly (`new WebSocket(`,
 `new a.b.WebSocket(`, `new a?.WebSocket(`, `new a['WebSocket'](` or
-`Reflect.construct(WebSocket`). It does not catch an aliased constructor or a computed
-module name. The fixture shows another member (fictional Jules) only within the signed-in
+`Reflect.construct(WebSocket`), and on any bare use of either name, so an aliased constructor
+fails too (P06.2-F). It does not catch a computed module name or a name built from fragments. The fixture shows another member (fictional Jules) only within the signed-in
 member's session. A send's `expected_version` is the match projection's version, which
 equals the fixture's contact version; which projection carries the contact version is
 P11's to fix. Background polling uses React Native's `AppState` (on the rendered web
