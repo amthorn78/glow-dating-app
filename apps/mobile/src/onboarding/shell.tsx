@@ -27,7 +27,7 @@ export function FixtureOutcomeControl({ value, onChange, outcomes = ['success', 
   const labels: Record<FixtureOutcome, string> = { success: 'Success', invalid: 'Invalid', expired: 'Expired', wrong_context: 'Wrong context', replayed: 'Replayed', error: 'Temporary error', rate_limited: 'Rate limited' };
   return <View style={styles.notice}>
     <Button secondary label={expanded ? 'Hide fixture outcomes' : 'Choose fixture outcome'} testID="fixture-outcomes" onPress={() => setExpanded(!expanded)} />
-    <Text style={styles.small}>Development adapter only. Selected result: {labels[value]}. No real provider is contacted.</Text>
+    <Text style={styles.small}>Development adapter only. Selected result: {labels[value]}. No real service is contacted.</Text>
     {expanded && outcomes.map((outcome) => <Choice key={outcome} label={`Fixture outcome: ${labels[outcome]}`} selected={value === outcome}
       onPress={() => onChange(outcome)} testID={`outcome-${outcome}`} />)}
   </View>;
