@@ -1,11 +1,11 @@
 # M06 — Dependency remediation and the Expo SDK assessment
 
 - **Work ID:** M06 (cross-cutting).
-- **Status: the assessment is commissioned.** Remediation, if the assessment recommends any, follows it as M06's second stage, with its own brief revision, prompt and review.
+- **Status: the assessment is done and verified;** its recommendation is with the Dev Manager (DM-35). Remediation follows as M06's second stage, with its own brief revision, prompt and review.
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): M06 just after M04 (DM-31 item 4, which moved E8's assessment up). **Manager:** App Manager 8. **Assessment:** one research session, started by Nathan.
 - **Revision 1, 26 October 2026.**
 - **Starting point:** `main` at `35a5827` (PR37), with the manager branch's Markdown records after it. The prompt names the exact commit.
-- **Prompt:** [`docs/ephemeral/2026-10-26-m06-assessment-prompt.md`](../ephemeral/2026-10-26-m06-assessment-prompt.md), revision 1, for `Glow App - No Stream`.
+- **Prompt** (pruned once the assessment was integrated): [`docs/ephemeral/2026-10-26-m06-assessment-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/671d1a52632c6d015b22b6c70c78d7ee26f8367f/docs/ephemeral/2026-10-26-m06-assessment-prompt.md), revision 1, for `Glow App - No Stream`.
 - **Evidence home:** `docs/testing/evidence/2026-10-26-m06-dependency-assessment.md`, written by the session.
 
 ## Why
@@ -93,3 +93,4 @@ Then the manager verifies the record, and the Dev Manager reads the recommendati
 ## Sessions
 
 - **Revision 1** (26 October 2026): the assessment prompt, revision 1 (its TypeSafe reading is in its header and the uses table), given to Nathan.
+- **The assessment** (26 October 2026; branch `claude/gallant-einstein-rjyjdl`, head `359d73d`; Nathan's pick: not recorded): every part of "Outcome" done, with only the record changed. It found 10 advisories in the mobile app's 14 flagged packages, only `decode-uri-component` in the bundle, and the two trials passing D4's checks, SDK 58 after an 11-line type-only fix. It recommends (C): in-range fixes on SDK 57 now, E11 on 57, and SDK 58 as its own item before P06.3's UI. The manager verified it and fast-forwarded the manager branch to it. On 1 November its re-audit found the picture moved: `node-forge` fixable in range (1.4.2), a new high on the bundled `decode-uri-component` that only SDK 58 clears, and three new tooling advisories (the record's "Manager verification"). Next: [DM-35](../ephemeral/2026-11-01-dm-35-m06-recommendation.md), the Dev Manager's read of the path, the second stage's scope and the advisories left for Nathan.

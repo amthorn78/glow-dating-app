@@ -1,4 +1,4 @@
-# Current handoff — App Manager 8 (26 October 2026; M04 and M05 done; M06's assessment with Nathan)
+# Current handoff — App Manager 8 (1 November 2026; M06's assessment verified; DM-35 with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -11,22 +11,22 @@ This file only routes: the current item, what happens next and who waits on whom
 - **M04 is done** (OD-39; M05 findings 10, 11, 12 and 14): PR36 merged at `4794d3e`; the first cleanup run deleted the three expected branches ([record](../testing/evidence/2026-10-26-m04-branch-hygiene.md), "M04's merge receipt"). Since then, every merge into `main` deletes the fully merged branches (the CI policy, "Branch cleanup").
 - **Branch controls:** Nathan chose none, procedure only (OD-52), against [DM-33](dev-manager/reviews/2026-10-26-dm-33-pr36-pre-merge-read.md)'s recommended ruleset. The CI policy's three sentences that record it wait for the Dev Manager's read with the next PR.
 - **OD-53:** S2 (delta re-reviews for small corrections), S5 (Notion's procedure as a summary), D1 (no pick asked or recorded) and `@codex review` after a 60-minute stall, all adopted.
-- **Now:** M06, dependency remediation and the Expo SDK assessment ([brief](../planning/m06-dependency-remediation.md), revision 1). Its research session, from the [assessment prompt](../ephemeral/2026-10-26-m06-assessment-prompt.md), is with Nathan; it changes no dependency, and its Markdown record needs no code review. PR37, the records since PR36, merged at `35a5827` (the [M05 record](../testing/evidence/2026-10-25-m05-project-review.md), "PR37's merge receipt").
+- **Now:** M06, dependency remediation and the Expo SDK assessment ([brief](../planning/m06-dependency-remediation.md)). The assessment is done and verified ([record](../testing/evidence/2026-10-26-m06-dependency-assessment.md)); it recommends (C), SDK 57's in-range fixes now and SDK 58 before P06.3's UI. The manager's re-audit on 1 November found the picture moved (`node-forge` fixable in range; a new high on the bundled `decode-uri-component` that only SDK 58 clears). [DM-35](../ephemeral/2026-11-01-dm-35-m06-recommendation.md) asks the Dev Manager to choose the path and set the second stage's conditions.
 - **The repository is public for now** (OD-51), for budget reasons; Nathan intends to make it private again. When he does, `'ccr-**'` comes out or its minutes are approved, and the costed list (M07) carries GitHub Actions; he tells the manager first.
 - **The order after M04** (OD-49): M06, P09.3a, P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M04, P06.1, P06.DB and P06.2.
-- **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-34, with "Deferred conditions".
+- **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-35, with "Deferred conditions".
 - **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
 ## Waiting checkpoint (26 October 2026, App Manager 8)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 8 | Nathan (the M06 assessment session) | Its report | The manager asks Nathan whether the session ran; nothing in the dependencies changes without it |
+| App Manager 8 | Nathan (a relay to Dev Manager 3) | DM-35's report | The manager asks Nathan whether the session is available; no dependency changes without the read |
 
 ## Next actions (App Manager 8)
 
-1. **M06:** verify the assessment against its branch (the brief's review plan); then the Dev Manager reads the recommendation, with the second stage's brief revision if remediation is recommended; Nathan decides any advisory left unfixed.
+1. **M06:** DM-35's answer; its disposition; the brief's revision 2 with the second stage, and its prompt; Nathan's decision on the advisories left, in OD-32's form, when DM-35 places it.
 2. **Then** P09.3a, P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.

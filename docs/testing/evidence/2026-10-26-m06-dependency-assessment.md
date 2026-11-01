@@ -432,3 +432,31 @@ It installs `follow-redirects` but never executes it. The lock's one install scr
 - **Reach was read, not tested.** Reach rests on reading the installed packages' code paths, not on runtime instrumentation. It is a code-path analysis, not a proof that no path exists. In particular, the `decode-uri-component` fallback path was traced, not exercised.
 - **New packages unreviewed.** The SDK 58 lock adds packages (`2g`, `noxcturnal` and their platform binaries, `expo-modules-macros`) whose contents I did not review. I recorded their registry metadata only.
 - **Point in time.** The counts are as of 26 October 2026. The npm advisory database and the registry's dist-tags change over time, so a re-run later may differ.
+
+## Manager verification of the M06 assessment (App Manager 8, 1 November 2026)
+
+- **Scope:** the session branch `claude/gallant-einstein-rjyjdl` at `359d73d` starts at the prompt's commit `671d1a5` and changes only this record (one file, 434 lines added). The trusted classifier, from `main` at `35a5827`, reads it as `ordinary-docs-only`. The manager branch was fast-forwarded to `359d73d`.
+- **The counts at the record's run** match the manager's run of 26 October at `35a5827`: `apps/mobile` 14 (1 critical, 6 high, 7 moderate), `packages/contracts` 1 moderate, `proofs/stream-chat` 1 high.
+- **The critical and high rows,** checked in a scratch install of the starting tree (`npm ci --ignore-scripts`, exit 0):
+  - **`shell-quote`:** no installed `.js`, `.cjs` or `.mjs` file outside `shell-quote` itself requires or imports it. Matches the record.
+  - **`source-map-js`:** no CSS file under `src` or `rendered`. Matches.
+  - **`node-forge`:** `@expo/cli` 57.0.26's `getCodeSigningInfoAsync` (`build/src/utils/codesigning.js:173-263`) returns `null` without the `expo-expect-signature` header, without `extra.eas.projectId` and without `updates.codeSigningCertificate`. `app.config.ts` has neither. Matches.
+  - **`zod`:** checked through the lock's dependents only (`@expo/cli`, `eslint-plugin-react-hooks`, `zod-validation-error`). Matches.
+- **The advisory picture has moved since the record's run,** as its "Point in time" limit foresaw. Today, the same command on the same locks gives:
+  - **`apps/mobile`:** 33 vulnerable packages (1 critical, 7 high, 23 moderate, 2 low), from 25 advisories, against the record's 14 packages and 10 advisories. `packages/contracts` (1 moderate) and `proofs/stream-chat` (1 high) are unchanged.
+  - **`node-forge`:** 12 advisories now list versions up to 1.4.0, against the record's one: 6 high, 3 moderate and 3 low. **1.4.2 is now published** (registry modified 27 October), within `@expo/cli`'s `^1.4.0`, so an in-range fix exists, against the record's "no fix on either SDK".
+  - **`decode-uri-component`:** a new **high**, GHSA-qr28-fpjm-wq7f (up to 0.5.0; fixed in 0.5.1). It is the one package in the app's bundle. 0.5.1 is an ES module (`"type": "module"`), and `query-string` 7.1.3 requires `^0.2.2`, so it is no drop-in on SDK 57.
+  - **New tooling advisories:**
+    - `glob` GHSA-3g3m-2fjr-6pw4 (moderate): `glob` 13.0.6, under `@expo/cli`, `@expo/config`, `@expo/config-plugins`, `@expo/fingerprint` and `@expo/metro-config`;
+    - `minimatch` GHSA-g3hv-75wg-m249 (moderate): under ESLint, `@typescript-eslint` and `glob`;
+    - `deepmerge` GHSA-gcqx-w48m-w2h4 (low): under `@expo/config`.
+- **Both trials reproduced today on the locks alone.** Each ran `npm install --package-lock-only` with the trial's versions, then `npm update --package-lock-only shell-quote fast-uri`. This is an audit only, with no install or checks:
+  - **(a) SDK 57** (`expo` 57.0.31 and the five modules' versions in step 3): 27 packages from **6 advisories**. They are `decode-uri-component` (the high GHSA-qr28-fpjm-wq7f and the moderate GHSA-vcc3-ghjq-m6fr; runtime), `zod` (high; tooling), `glob` and `minimatch` (moderate; tooling), and `deepmerge` (low; tooling). `node-forge` resolves to 1.4.2 and clears.
+  - **(b) SDK 58** (`expo` 58.0.19, and the SDK 58 versions of the 17 modules the app lists from the `expo` package's `bundledNativeModules.json`): 23 packages from **3 advisories**. They are `zod` (high), `glob` and `minimatch` (moderate), all tooling. `query-string` and `decode-uri-component` are absent, and `node-forge` is 1.4.2. `noxcturnal` now resolves to 0.1.11, against the record's 0.1.10.
+  - **`packages/contracts` and `proofs/stream-chat`:** the in-range `fast-uri` and `follow-redirects` updates leave 0 advisories in each. Matches.
+- **What this changes for the recommendation:**
+  - (A) now clears `node-forge` too;
+  - (A) leaves the bundled `decode-uri-component` with a high advisory;
+  - the gap between (A) and (B) is now three advisories, one of them the only runtime high.
+
+  The record's reading of that package's reach still stands: Expo Router parses queries with `URLSearchParams`, and the routes are query-free. Its worst case is a client-side denial of service from a crafted deep link, in a fixture-only development preview with no release build. The recommendation goes to the Dev Manager with these facts (DM-35).
