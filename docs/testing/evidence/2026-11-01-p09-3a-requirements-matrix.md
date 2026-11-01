@@ -311,3 +311,10 @@ Each check below fetched the source afresh, extracted its text, and searched for
 - **Not re-checked by the manager:** the 212 rows outside the sample; the routes the session tested; the A05 section beyond its row references; whether each row's reading of its source, or its applicability condition, is right. The check confirms that each quote is in the cited source, not the legal reading.
 - **The session's early push** of its branch at `f40f1d7`, before any output, changed nothing.
 - **Next:** the gaps' routing and the A05 questions go to the Dev Manager (DM-37), then the A05 questions to Nathan in OD-32's form before P07's brief.
+
+## The records' merge receipt (1 November 2026, App Manager 8)
+
+- **PR39 merged** at 21:02 UTC as the merge commit `bac3c1983134f4e977f867ac30b3086b5318216f`, with parents `fcd6ebc` (`main`) and `05f4c3a` (the manager branch), by the expected-head guard. `main`'s tree equals `05f4c3a`'s. It carried the matrix, this record, DM-37's routing, PF01 1.17 and M06's receipt.
+- **Its checks:** the trusted policy read `ordinary-docs-only`; PR run 41349650700 passed change scope and the gate, with the application jobs skipped; Codex's review of `05f4c3a` completed with no finding.
+- **The cleanup run** 41349863365 passed and deleted `claude/stoic-pasteur-r24pz8`, this session's branch. `git ls-remote` after it: `main` at `bac3c19`, the manager branch at `05f4c3a`, `claude/dev-manager` at `0db8c42`, and nothing else.
+- **Left open:** Nathan's answer to the first A05 message.

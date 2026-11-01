@@ -24,13 +24,13 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Next actions (App Manager 8)
 
-1. **P09.3a:** the records PR and its merge; Nathan's answer recorded as an owner direction; then P09.3a closes and P06.2-F's brief and prompt follow (OD-49).
+1. **P09.3a:** Nathan's answer to the first A05 message, recorded as an owner direction; then P09.3a closes and P06.2-F's brief and prompt follow in the same message (OD-49; AM8-16).
 2. **Then** P06.2-F, P06.3 and the slices, each named to Nathan before it starts (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 
-## Branches and PRs (`git ls-remote`, 1 November 2026, 18:20 UTC)
+## Branches and PRs (`git ls-remote`, 1 November 2026, 21:03 UTC)
 
-- **No open PR.** PR38 merged at `fcd6ebc`. P09.3a's session branch `claude/stoic-pasteur-r24pz8` (`1eefca1`) is fast-forwarded into the manager branch.
-- **Kept, by the cleanup's keep-list:** `main` (`fcd6ebc`), the manager branch (on `6eaee35`, with the receipt, P09.3a's brief, prompt and matrix after it), and `claude/dev-manager` (`981d3ce`, in `main`).
-- **The cleanup run** 41336047901 deleted `claude/gallant-einstein-rjyjdl` and `claude/magical-lovelace-s0akbt`.
+- **No open PR.** PR39 (P09.3a's records) merged at `bac3c19`; PR38 (M06) at `fcd6ebc`.
+- **Kept, by the cleanup's keep-list:** `main` (`bac3c19`), the manager branch (`05f4c3a`, with this receipt after it), and `claude/dev-manager` (`0db8c42`, in `main`).
+- **The cleanup run** 41349863365 deleted `claude/stoic-pasteur-r24pz8`.
