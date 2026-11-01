@@ -455,6 +455,8 @@ Each topic PF01 §7 and the brief name, with the rows that cover it. "None found
 
 Each gap is a row with no owner, or a row whose owner's plan does not cover it. Each carries the smallest change that would give it an owner; the manager routes it (brief, Outcome 4). A gap that would change a phase's scope goes to the Dev Manager with the routing (brief, "Review plan"). The proposals are routing suggestions, not decisions.
 
+**Routed on 1 November 2026** (DM-37 2.1 to 2.6): each gap's home is in the [carried-items file](carried-to-later-items.md), under the item that receives it, with the rules every brief that takes a row follows. The gap's text stays here.
+
 | Gap | What is unowned | Rows | Smallest change that would give it an owner | Timing |
 |---|---|---|---|---|
 | **G-01** Age assurance and store age signals | Using the stores' age signals where the law requires (Apple's Declared Age Range, Google's Play Age Signals), the significant-change notices and consent revocation, the action taken on discovering a minor (COPPA deletion; Colorado's minors duties), and any method stronger than a self-entered birth date. PF01 places adult eligibility in P04, which is built at fixture scope with self-declaration; no item carries the rest | AP-14 to AP-17, AP-19; GP-15, GP-16; USF-11; UST-32 to UST-39, UST-41; UK-12 to UK-14; EU-24, EU-25, EU-62 | A Work Register row, "age assurance and store age signals", placed after Nathan's A05 answer on age assurance; its server part in SV1's brief scope and its native part in P09.2 (the release block stands until Nathan authorizes release work) | Texas now (since 4 June 2026); California and Alabama (unconfirmed) 1 January 2027; New York 25 January 2027; Utah 6 May 2027; Louisiana 1 July 2027 |
