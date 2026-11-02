@@ -124,6 +124,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-19 | 1 Nov 2026 | records | Nine prompts and consultations pruned on 26 October and 1 November (M05's, DM-31 to DM-33, M04's four, M06's assessment) left their Notion links on the manager branch, where the files no longer exist | The manager, while pinning M06's links in Notion |
 | AM8-20 | 1 Nov 2026 | prompt | P06.2-F's prompt told the session to push its code and read the run of record, but not to hold a records push while that run was in progress, though a newer push on the branch cancels the older run; the session's records push cancelled the run on its code head | The session itself |
 | AM8-21 | 1 Nov 2026 | accuracy | P06.2-F's Manager verification counted the diff as "18 changed, 5 added, 2 removed" (it is 17, 6 and 2) and repeated the session's "Expo still inlines it there" without reading a bundle | The exact-head review, findings 7 and 10 |
+| AM8-22 | 26 Oct to 2 Nov 2026 | follow-through | Implementation Control's standing status bullets (Phase, Next items, Manager, Main, Branches, Mistakes log) left at 26 October through M06, P09.3a, P06.2-F and the handover; the batches updated only the opening paragraph. A repeat of AM8-11 and AM8-13. Recorded by App Manager 9 | App Manager 9, reading the whole status section before its first sync |
+| AM9-01 | 2 Nov 2026 | accuracy | The first report told Nathan that Implementation Control's status section matched `76dbe4a`, after reading only its opening paragraph; its standing bullets did not (AM8-22) | App Manager 9, reading the whole section before its first sync |
 
 ## App Manager 2
 
@@ -969,3 +971,21 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** records only. The total of 25 was right, and the guard's behavior is unchanged.
 - **Correction:** both sentences corrected in place in the record, marked.
 - **Prevention:** a verification's counts come from a command's output (`git diff --name-status … | cut -c1 | sort | uniq -c`), quoted as counted; a claim about build output either comes from reading that output or is attributed to the session that made it.
+
+### AM8-22 — Implementation Control's standing bullets left at 26 October (follow-through)
+
+- **What happened:** from 26 October to the handover on 2 November, each Notion sync prepended a new entry to the opening paragraph of Implementation Control's "Current status" and left the section's standing bullets as they were. At `76dbe4a` they still said that App Manager 8 was the manager with PR37 open, that `main` was `35a5827` with PR38 open, the branch list of 26 October 18:50 UTC, M06 as the next item, a Phase line ending at M04, and a mistakes list ending at AM8-18. Recorded by App Manager 9.
+- **Caught by:** App Manager 9, reading the whole section before its first sync.
+- **Effect:** a reader of the bullets alone got a state a week old. The opening paragraph, the handoff and the Work Register row were current, and no decision rested on the bullets.
+- **Correction:** the six bullets are brought up to date in App Manager 9's first sync (at `c6108e4`'s records), and read back.
+- **Prevention:** it repeats AM8-11 and AM8-13, whose prevention is already in the manager workflow's claims checklist ("read back the whole status section, not only what changed"). The checklist item is unchanged; what was missing was running it: each sync's readback now lists the section's standing bullets by name with the state each states, against the handoff.
+
+## App Manager 9
+
+### AM9-01 — A Notion match claimed from its first paragraph (accuracy)
+
+- **What happened:** App Manager 9's first report told Nathan that "Implementation Control's status section and the P06.2-F Work Register row both match `76dbe4a`". The page is over 180,000 characters, and the manager had read only the status section's opening paragraph; the section's standing bullets did not match (AM8-22). The report said it had read only the status section, which was itself more than it had read.
+- **Caught by:** App Manager 9, reading the whole section before its first sync.
+- **Effect:** one line of one report to Nathan; nothing was decided on it.
+- **Correction:** this entry, the bullets' correction (AM8-22), and the next report to Nathan, which says so.
+- **Prevention:** the claims checklist's "say *every*, *no* or *never* only after tracing each path" covers a match claim: a match is stated only for the parts read, by name, or after reading the whole section.
