@@ -145,10 +145,11 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  * - a callback, inline or passed by reference (a declared function, a `useCallback` result, an
  *   object's method), whose parameter widens what the expected signature gives it, or whose
  *   return of Glow's data is widened by what the expected signature returns (C2);
- * - a type predicate or assertion signature declared in the two files, written or inferred, and
- *   a call whose resolved signature has one, unless the default library's (C2);
- * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier and by type,
- *   however aliased (C2);
+ * - a type predicate or assertion signature declared in the two files, written or inferred; a
+ *   call whose resolved signature has one; and a function with one given by reference rather
+ *   than called; each unless the default library's (C2);
+ * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier, by an
+ *   expression's type and by a destructuring's type, whatever its key (C2);
  * - a local generic or overload, whose types the check does not follow; any type error.
  * Its named exceptions: the value an Array predicate (`filter`, `some`, `every`, `find`…) returns,
  * which the predicate reads for truthiness alone; an element of a dependency list given to a
@@ -430,6 +431,8 @@ function typedViolations(files: ReadonlyMap<string, string>, served: ReadonlyMap
       }
       // The same, by name, wherever the identifier refers to the default library's global.
       if (ts.isIdentifier(node) && reflective(checker.getSymbolAtLocation(node), ['Reflect', 'Object']) && !freezing(node)) say('a reference to Reflect or an Object member', node);
+      // And by type in a destructuring, whatever its key (`{ 'Reflect': { get } } = globalThis`).
+      if ((ts.isBindingElement(node) || ts.isObjectBindingPattern(node)) && reflective(checker.getTypeAtLocation(node).getSymbol(), ['Reflect', 'ObjectConstructor'])) say('a reference to Reflect or an Object member', node);
       // Type predicates and assertion signatures (finding 3a): declared in the checked files,
       // written or inferred, and called, by the resolved signature, unless the default library's.
       if (ts.isTypePredicateNode(node)) say('a type predicate or assertion signature', node);
@@ -440,6 +443,11 @@ function typedViolations(files: ReadonlyMap<string, string>, served: ReadonlyMap
       if (ts.isCallExpression(node)) {
         const signature = checker.getResolvedSignature(node);
         if (signature && checker.getTypePredicateOfSignature(signature) && !libraryCall(signature)) say('a call to a type predicate or assertion', node);
+      }
+      // And one given by reference, not called (to the default library's `filter`, say).
+      if (ts.isExpression(node) && !inline(node) && !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+        && nonNull(checker.getTypeAtLocation(node)).some(part => part.getCallSignatures().some(signature => checker.getTypePredicateOfSignature(signature) && !libraryCall(signature)))) {
+        say('a type predicate or assertion by reference', node);
       }
       ts.forEachChild(node, visit);
     };
@@ -565,6 +573,10 @@ const PLANTED: readonly Planted[] = [
       before(SCREEN_START, '  const named = (entry: ConversationMessage): entry is ConversationMessage & { name: string } => entry.text !== null;'),
       after(REVOKED, '{conversation.messages.filter(named).map(entry => <Eyebrow key={entry.submission_id} entry={entry} />)}')),
     typed: 'a type predicate or assertion signature: entry is ConversationMessage & { name: string }' },
+  { form: 'C2-2e, an imported type guard given by reference to the default library\'s filter: all.filter(named), each given to <Eyebrow entry={entry} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), after(IMPORTS, 'import { named } from \'./planted-guard\';'),
+      before(SCREEN_START, '  const all = conversation.messages;'), after(REVOKED, '{all.filter(named).map(entry => <Eyebrow key={entry.submission_id} entry={entry} />)}')),
+    typed: 'a type predicate or assertion by reference: named' },
   // Outcome 3 (findings 3b, 3c; 2.6): Reflect, and Object other than freeze, however aliased.
   { form: 'C2-3a, an aliased Reflect: const { get: pick } = Reflect, rendering {String(pick(message, \'name\'))}',
     edit: both(before(ROW_START, '  const { get: pick } = Reflect;'), after(ROW_TIME, '<Text>{String(pick(message, \'name\'))}</Text>')),
@@ -572,6 +584,12 @@ const PLANTED: readonly Planted[] = [
   { form: 'C2-3b, an aliased Object.assign: const { assign: merge } = Object, then <Eyebrow entry={merge({ name: \'\' }, message)} />',
     edit: both(before(HELPERS, `${EYEBROW}\n`), before(ROW_START, '  const { assign: merge } = Object;'), after(ROW_TIME, '<Eyebrow entry={merge({ name: \'\' }, message)} />')),
     typed: 'a reference to Reflect or an Object member: Object' },
+  { form: 'C2-3c, Reflect reached by a string key: const { \'Reflect\': { get: pick } } = globalThis, rendering {String(pick(message, \'name\'))}',
+    edit: both(before(ROW_START, '  const { \'Reflect\': { get: pick } } = globalThis;'), after(ROW_TIME, '<Text>{String(pick(message, \'name\'))}</Text>')),
+    typed: 'a reference to Reflect or an Object member: \'Reflect\': { get: pick }' },
+  { form: 'C2-3d, Object reached by a computed key: const { [\'Object\']: { assign: merge } } = globalThis, then <Eyebrow entry={merge({ name: \'\' }, message)} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), before(ROW_START, '  const { [\'Object\']: { assign: merge } } = globalThis;'), after(ROW_TIME, '<Eyebrow entry={merge({ name: \'\' }, message)} />')),
+    typed: 'a reference to Reflect or an Object member: [\'Object\']: { assign: merge }' },
   // Outcome 4 (finding 4; 2.6): the two exceptions, narrowed to their words.
   { form: 'C2-4a, a dependency list outside a hook: keep([message]), where keep(list: DependencyList) renders JSON.stringify(list[0])',
     edit: both(swap(REACT_IMPORT, REACT_IMPORT.replace('type PropsWithChildren', 'type DependencyList, type PropsWithChildren')),
@@ -615,7 +633,7 @@ test('the render rule\'s checks refuse each planted form of a provider-shaped fi
   const screen = readFileSync(SCREEN, 'utf8');
   const rows = withoutComments(readFileSync(ROWS, 'utf8'));
   const planted = [...PLANTED, FALSE_POSITIVE].map((entry, index) => ({ ...entry, path: SCREEN.replace(/\.tsx$/, `.planted-${index}.tsx`), text: entry.edit(screen) }));
-  assert.equal(planted.length, 35 + 1);
+  assert.equal(planted.length, 38 + 1);
   const typed = typedViolations(new Map(planted.map(entry => [entry.path, entry.text])),
     new Map([[SCREEN.replace(/screen\.tsx$/, 'planted-guard.ts'), PLANTED_GUARD]])).violations;
   for (const entry of planted) {
