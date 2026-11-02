@@ -123,6 +123,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-18 | 1 Nov 2026 | follow-through | M06 stage two's record raised "one precision for the Dev Manager" (`noxcturnal` published by GitHub Actions without provenance), and the manager's verification did not route it | The exact-head review, finding 2 |
 | AM8-19 | 1 Nov 2026 | records | Nine prompts and consultations pruned on 26 October and 1 November (M05's, DM-31 to DM-33, M04's four, M06's assessment) left their Notion links on the manager branch, where the files no longer exist | The manager, while pinning M06's links in Notion |
 | AM8-20 | 1 Nov 2026 | prompt | P06.2-F's prompt told the session to push its code and read the run of record, but not to hold a records push while that run was in progress, though a newer push on the branch cancels the older run; the session's records push cancelled the run on its code head | The session itself |
+| AM8-21 | 1 Nov 2026 | accuracy | P06.2-F's Manager verification counted the diff as "18 changed, 5 added, 2 removed" (it is 17, 6 and 2) and repeated the session's "Expo still inlines it there" without reading a bundle | The exact-head review, findings 7 and 10 |
 
 ## App Manager 2
 
@@ -960,3 +961,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** about 40 minutes and one extra cycle. Nathan approved a `--force-with-lease` reset of the session's own branch to `67b0201` and the fast-forward push of `3db50d8`; run 41359462167 is the run of record. No commit was rewritten.
 - **Correction:** none needed in the code; the record and the brief's "Sessions" say what happened.
 - **Prevention:** every implementation prompt that names a run of record says: push the code, wait for its run to complete, and push records only after it, or push code and records together in one push.
+
+### AM8-21 — A miscount and an unchecked claim in a verification (accuracy)
+
+- **What happened:** P06.2-F's Manager verification said the 25 paths were "18 changed, 5 added, 2 removed"; `git diff --name-status 67b0201 3db50d8` gives 17 modified, 6 added and 2 deleted. It also said "Expo still inlines it there" of the layout's mode, repeating the session's sentence. The manager had read the diff, not a bundle; a development bundle reads the mode through Expo's env module, `_expoVirtualEnv.env.EXPO_PUBLIC_GLOW_MODE`, as it reads the two unchanged reads.
+- **Caught by:** the exact-head review, findings 7 and 10.
+- **Effect:** records only. The total of 25 was right, and the guard's behavior is unchanged.
+- **Correction:** both sentences corrected in place in the record, marked.
+- **Prevention:** a verification's counts come from a command's output (`git diff --name-status … | cut -c1 | sort | uniq -c`), quoted as counted; a claim about build output either comes from reading that output or is attributed to the session that made it.

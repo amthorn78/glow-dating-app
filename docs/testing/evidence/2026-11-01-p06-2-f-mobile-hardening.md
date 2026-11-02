@@ -189,10 +189,10 @@ The rendered suite's 97 includes the three restricted-match tests with finding 5
 ## Manager verification (1 November 2026, App Manager 8)
 
 - **The branch:** `claude/practical-wozniak-fg1e2i`, code head `3db50d8`, records head `02f1972`: nine commits on `67b0201`, one per item, then the draft record and its completion. Integrated into the manager branch by fast-forward.
-  - The 25 paths of `67b0201..3db50d8` are all inside the brief's owned paths: 18 changed, 5 added, 2 removed (`src/hooks/use-recommendations.ts` and `src/data/fixtures.ts`, which only that hook imported). No `package.json`, lock or inventory changed. `02f1972` adds this record only.
+  - The 25 paths of `67b0201..3db50d8` are all inside the brief's owned paths: 17 modified, 6 added, 2 deleted (`src/hooks/use-recommendations.ts` and `src/data/fixtures.ts`, which only that hook imported). [Corrected by App Manager 8 after the exact-head review, finding 7: this said "18 changed, 5 added, 2 removed"; `git diff --name-status` gives 17, 6 and 2 (AM8-21).] No `package.json`, lock or inventory changed. `02f1972` adds this record only.
   - The trusted policy from `main` classified `bac3c19..02f1972` as full scope (`behavior-or-empty`), and `git diff --check` printed nothing.
 - **The guards, read in the diff:**
-  - `src/app/_layout.tsx` now calls `developmentPreviewAvailable(__DEV__, process.env.EXPO_PUBLIC_GLOW_MODE)`, which returns `isDevelopment && mode === 'fixture'`: the negation of the old `!__DEV__ || mode !== 'fixture'`, so the guard allows exactly what it did. The layout still passes the mode itself, so Expo still inlines it there.
+  - `src/app/_layout.tsx` now calls `developmentPreviewAvailable(__DEV__, process.env.EXPO_PUBLIC_GLOW_MODE)`, which returns `isDevelopment && mode === 'fixture'`: the negation of the old `!__DEV__ || mode !== 'fixture'`, so the guard allows exactly what it did. The layout still passes the mode itself, so Expo rewrites that read as it rewrites the two unchanged reads (`onboarding/context.tsx`, `discovery/context.ts`): a development bundle reads it through Expo's env module, `_expoVirtualEnv.env.EXPO_PUBLIC_GLOW_MODE`. [Corrected by App Manager 8 after the exact-head review, finding 10: this said "so Expo still inlines it there", which the manager had not checked in a bundle (AM8-21).]
   - `app.config.ts` changes in its comment only.
 - **The behavior changes the brief asked for,** read in `src/chat/store.ts`: a newest-page reload sets the older-page state to `idle` whatever it was (the P06.2 brief's carried entry); a final refusal that does not end access restores the draft when none has been started (finding 4). `src/chat/rows.ts` makes a `closed` conversation show the unavailable wording with no open control.
 - **The run of record,** read by the manager: push run 41359462167 on `3db50d8`: all eight jobs succeeded; the gate printed `Application checks passed`; the rendered suite printed `97 passed (4.3m)`; Mobile 5 min 58 s of its 25 minutes, Database proof 7 min 12 s of 30. Runs 41355778256 (on `3db50d8`) and 41359453519 (on `67b0201`) are cancelled, and 41356042982 (on the draft record) ran change scope and the gate only, as the session's record says.
@@ -207,3 +207,33 @@ The rendered suite's 97 includes the three restricted-match tests with finding 5
 - **Not re-checked by the manager:** the rendered reversals (the session ran them against the preinstalled Chromium, informational), the remaining unit reversals, and item 3's added strings beyond the four the brief named, which the session's provider-wording test covers.
 - **Records outside the session's paths:** `docs/architecture/profiles-preferences-fixtures.md` describes the removed hook historically; a note now says it was removed in P06.2-F. `docs/continuity/claude-code-handoff.md:41` is the frozen handoff of 25 September and is left as it was.
 - **Next:** the PR, Codex's review of its head, and the exact-head code review of `3db50d8`.
+
+## Exact-head review of P06.2-F (2 November 2026)
+
+- **The review:** an exact-head code review that Nathan ran from the review prompt, revision 1 at `a007328`, of code head `3db50d8`. The start gate passed (one merge base, `05f4c3a`; no non-Markdown path changed after `3db50d8`), and the trusted classifier read full scope (`behavior-or-empty`). It changed nothing; Nathan relayed its report.
+- **Verdict: changes required,** in one test and the records. The runtime code needs no change:
+  - no guard allows anything new: `isDevelopment && mode === 'fixture'` is the exact negation of the old condition; the layout's read gets the same Expo rewrite as the two unchanged reads; `app.config.ts` changes in comments only; the route guards are unchanged; and no path opens a `closed` conversation (each other way in ends in a fresh read, which Glow refuses);
+  - no test is weakened: the 621 unit tests at `67b0201` are all present among the head's 649, the one renamed test aside, and 19 named reversals fail as recorded;
+  - the older-page state and the draft restore are correct, with DM-29 1.1 and DM-30 2.1 and 2.2 tested; optional finding 9's reason holds (that line also sends the `readHead(true)` an unmatch, block or pause queues for a hidden conversation);
+  - the removed modules have no importer; item 7's two assertions pin the landing; the README matches the code.
+- **Both runs passed:** push run 41359462167 on `3db50d8` (eight of eight jobs, `Application checks passed`, rendered `97 passed (4.3m)`, Mobile 5 min 58 s of 25), and PR run 41362003818 on `a007328` (eight of eight, `Application checks passed`).
+- **The manager confirmed finding 1** in a scratch copy of `3db50d8`, outside the checkout: with `MessageRow`'s binding renamed to `item` and `{'name' in item ? <Text …>{String(item.name)}</Text> : null}` added, `tsc` passed and so did the render-rule test. The file was restored and its hash checked.
+
+**The findings and their dispositions** (the manager, by step 6's rule):
+
+| # | Finding | Severity; class | Disposition |
+|---|---|---|---|
+| 1 | The render-rule check reads only paths reached through six variable names (`message`, `conversation`, `list`, `state`, `match`, `row`). A provider-shaped field rendered through a renamed binding, or through a loosely typed helper prop, passes `tsc` and the test (the helper form passes ESLint too). The record's limit said only "a determined edit" evades it | Should fix; in two classes (a test passes where it should fail; a record claims more than the tests show) | **Fixed before the merge,** by correction C1 (the brief, "Correction C1") |
+| 2 | The copy test's word list (`display-rule.test.ts:18`) has no plurals and lacks `cloudflare` and `allauth`, which item 3's list has | Nit | **In C1,** which changes the same file and the same family of tests |
+| 3 | No test fails when the restore's `!ends(failure.code)` is removed: `revoke()` clears the draft afterwards, but one snapshot in between holds the refused text | Nit | **A recorded follow-up,** in the P06.2 brief's "Carried to later changes", at the next change to `store.ts` |
+| 4 | The server and the fixture check the contact version before replaying an idempotent send, so a retry whose first attempt committed could be refused `stale_version`, and the restored draft would invite a duplicate under a new key. Not reachable at this head: the contact version rises only when contact ends, and the match-state check runs first | Nit; P11's | **To the P11 plan,** beside C2-X2 (rule (c)) |
+| 5 | Item 5's "unless the member started a new one while it was pending": the composer cannot be edited while a send is pending (`screen.tsx:75`); the case arises through Retry | Nit (records) | **Corrected in C1,** in the record |
+| 6 | The record gives Mobile 5 min 56 s; the job ran 22:54:52 to 23:00:50 UTC, 5 min 58 s | Nit (records) | **Corrected in C1** |
+| 7 | The Manager verification's "18 changed, 5 added, 2 removed"; `git diff --name-status` gives 17, 6 and 2 | Nit (records) | **Corrected above,** marked (AM8-21) |
+| 8 | The record says the checker is tested against "seven planted forms"; the test lists nine | Nit (records) | **Corrected in C1** |
+| 9 | `no-dead-modules.test.ts` counts a test as an importer, and does not resolve imports through the `@/` alias | Nit (a limit) | **Recorded here as a limit.** It fails loudly, not silently, and no file uses the alias today |
+| 10 | "Expo still inlines the mode there": a development bundle reads it through Expo's env module | Nit (records) | **Corrected** in the Manager verification above, marked (AM8-21), and in the record's item 1 by C1 |
+
+- **Outside this item:** the chat fixture controls label their synthetic test fields "Provider field: …" on development-preview screens (`chat/controls.tsx`); no finding.
+- **Codex** found nothing on `b924afa`, PR40's first head. It did not start on `a007328`; at Nathan's direction the manager posted `@codex review` once on PR40, and Codex's review of `a007328` completed with no finding (2 November, 00:28 UTC).
+- **Next:** correction C1, its run of record, Codex on its head, and a delta re-review (step 6: C1 changes no non-test line).

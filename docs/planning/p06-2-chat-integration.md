@@ -901,6 +901,7 @@ These were the handoff's "recorded follow-ups" for P06.2. They move here, their 
 - **The guard for an older page answered `stale_version`** (DM-30 1.1 and 1.2): a standing entry, not struck when the follow-up lands. Its text is in the [P11 plan](../testing/p11-deferred-acceptance.md), "Standing guard", which is now its home. The simplest rule is to drop the older cursor and reload the newest page, as a `stale` head read does, with a test that covers a head read in flight at that moment (`store.ts:280` keeps a page's newer cursor) and its reversal, today's `:303`.
 - **`proofs/postgres-ordering/glow_ordering_proof/read_phase.py`, at its next change:** C1-C2's re-review notes N2 (`read.autocommit_off`'s note when a wait was observed) and N3 (the module docstring's reader).
 - **The fixture adapter's `already` for an earlier cut-off** (DM-17 item 5), so its contract row returns to the shared suite, at the fixture's next change and before P11. The P11 plan also holds it.
+- **At the next change to `apps/mobile/src/chat/store.ts`** (P06.2-F's exact-head review, finding 3; [its record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md), "Exact-head review of P06.2-F"): a test that listens to every snapshot, so that removing `!ends(failure.code)` from the draft restore after a final send refusal fails it. Today `revoke()` clears the draft afterwards, so the final state is right, but one snapshot in between holds the refused text.
 
 ## Sessions
 
