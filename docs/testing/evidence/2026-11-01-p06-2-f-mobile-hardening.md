@@ -5,7 +5,7 @@
 - **Session:** one implementation session, started by Nathan, 1 November 2026. Branch `claude/practical-wozniak-fg1e2i`, started at `67b0201`.
 - **Code head:** `3db50d876e2c9423d25ee197735855a77228f93c`. **Records head:** the last commit on the branch, Markdown only (this record); no code after the code head.
 - **Run of record:** push run **41359462167** on `3db50d8`: all eight jobs `success`, `Application checks passed`, rendered `97 passed (4.3m)`, Mobile 5 min 58 s of 25. [Corrected in C1: this said "5 min 56 s"; the job ran 22:54:52 to 23:00:50 UTC (the exact-head review, finding 6).]
-- **Correction C1:** branch `claude/trusting-cori-gxlila`, code head `0881db514b96dd6b35ae54f8759af68dee20e3d7`; the section "Correction C1" below.
+- **Correction C1:** branch `claude/trusting-cori-gxlila`, code head `0881db514b96dd6b35ae54f8759af68dee20e3d7`; run of record push run 41383619096, all eight jobs `success`, `Application checks passed`, rendered `97 passed (5.0m)`, Mobile 7 min 27 s of 25; the section "Correction C1" below.
 
 ## Environment check (names only)
 
@@ -186,6 +186,144 @@ The rendered suite's 97 includes the three restricted-match tests with finding 5
 - **Finding 9** (optional) is not done; the reason is in item 6.
 - **Records outside the owned paths** still name the removed hook: `docs/continuity/claude-code-handoff.md:41` and `docs/architecture/profiles-preferences-fixtures.md:213`. They are the manager's to update.
 - No guard's allowance changed (D2), no dependency or lock changed (D3), and no path outside the brief's owned paths changed. Nothing met the stop rule.
+
+## Correction C1 (2 November 2026)
+
+- **Work:** the brief's "Correction C1", Outcome 1 to 3: the exact-head review's finding 1 (should fix), finding 2 (nit, same file) and the record's findings 5, 6, 8 and 10.
+- **Prompt:** [`docs/ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md`](../../ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md), revision 1, from `cdc7c487d26fe31c19878b6079750f9c5a42d59c` of the manager branch `claude/magical-wozniak-yfmmx2`. Started by Nathan.
+- **Branch:** `claude/trusting-cori-gxlila`, started at `cdc7c48`. **Code head:** `0881db514b96dd6b35ae54f8759af68dee20e3d7`, one commit, `apps/mobile/src/chat/display-rule.test.ts` only. **Records head:** the last commit on the branch, Markdown only (this record); no code after the code head.
+
+### Environment check (names only)
+
+- `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`: none present.
+- `STREAM_*`: no name present. The session ran in `Glow App - No Stream`.
+- `GH_TOKEN` and `GITHUB_TOKEN` are present; never read. Every app command ran without them.
+- **Toolchain:** `node --version` → `v24.19.0`; `npm --version` → `11.9.0`, both from `$HOME/.local/bin`. Every npm, Node and Expo command ran in `env -i PATH="$HOME/.local/bin:$PATH" HOME="$HOME" LANG=C.UTF-8`; `npm ci` also passed `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` by reference, never printed.
+
+### Start gate
+
+| Check | Result |
+|---|---|
+| `git fetch origin claude/magical-wozniak-yfmmx2 main` | fetched; `origin/claude/magical-wozniak-yfmmx2` = `cdc7c487d26fe31c19878b6079750f9c5a42d59c`, `origin/main` = `bac3c1983134f4e977f867ac30b3086b5318216f` |
+| `git switch -C claude/trusting-cori-gxlila cdc7c48…`; `git rev-parse HEAD` | `cdc7c487d26fe31c19878b6079750f9c5a42d59c` |
+| `git merge-base --is-ancestor cdc7c48… origin/claude/magical-wozniak-yfmmx2` | `this prompt's commit is on the live branch` |
+| `git diff --quiet 3db50d8… HEAD -- .github scripts services apps packages proofs` | `the code head under correction` |
+| `git diff --quiet 3db50d8… origin/claude/magical-wozniak-yfmmx2 -- …` (the same paths) | `no code on the live branch after 3db50d8` |
+| `git show origin/claude/magical-wozniak-yfmmx2:<this record> \| grep -c -E '^#+ Correction C1'` | `0` |
+| `git ls-remote origin refs/heads/claude/trusting-cori-gxlila` | nothing (a new branch) |
+
+**Read before the work:** root `AGENTS.md` and `CLAUDE.md`; `apps/mobile/AGENTS.md` and `CLAUDE.md`; the brief, whole; this record, whole, with "Exact-head review of P06.2-F"; ADR 0003; `src/chat/display-rule.test.ts`, `src/chat/screen.tsx`, `src/chat/rows.ts` and `src/components/provider-wording.test.ts`, whole. Expo's documentation was not needed: C1 touches no Expo API.
+
+### Finding 1: the mechanism and why
+
+**Both checks, in `display-rule.test.ts`.** The render-rule test now has two checks over `screen.tsx` and `rows.ts`:
+
+- **The source check** is the old one, kept whole: the six-name path list, and the refusals of a cast, `any`, a reflective read, a spread and a computed read. It gains one refusal: **an `in` check on a string literal** (`'name' in …`). It is kept because it is cheap, and the nine planted forms it was tested against must still fail it.
+- **The type check** is new. It builds the two files with the TypeScript compiler the app already declares (`typescript` 6.0.3, a devDependency; no dependency or lock change, D3), under the app's own `tsconfig.json`. It finds **Glow's data by type, not by name:** a value is Glow's data when its type declares a property in one of the files where Glow's data types live (`GLOW_DATA`): the two generated contracts (`gapp-api-v1.ts`, `gapp-dev-v1.ts`), the chat store (`chat/store.ts`), the row model (`chat/rows.ts`), and the interactions' state and match view (`interactions/store.ts`, `interactions/fixture-adapter.ts`). Through any binding, it refuses:
+  - **a field outside Glow's types:** a property read, or a destructured one, from Glow's data whose symbol is not declared in a Glow data file. This covers a field the compiler allows only after an `in` check (it comes from `Record<"name", unknown>`), a field read through `any`, and one the compiler refuses;
+  - **a computed or rest read** of Glow's data (or of `any`, `unknown` or a type parameter);
+  - **an `in` check** (any), **a `for…in` enumeration**, **a destructuring assignment** or **a spread** of Glow's data;
+  - **a widening:** Glow's data where the expected type declares a property the data's type does not, or is `any`, `unknown`, `object`, `{}`, or has an index signature, checked recursively through arrays, tuples and property types. The expected type is the contextual type (a prop, an annotation, a return, an assignment, an array element), or, for a call's argument, the resolved signature's instantiated parameter. Through `call`, `apply` or `bind`, it is the called function's own `this` or parameter. A loosely typed callback parameter is refused against what the caller passes. So `String(message)`, `JSON.stringify(message)` and `Object.values(message)` are refused as widenings too;
+  - **a local generic or a local overload,** whose types the check does not follow;
+  - **any type error** in the two files.
+- **Its named exceptions,** each needed by today's screen:
+  - the value an Array predicate (`filter`, `some`, `every`, `find`…, from the default library) returns, which it reads for truthiness alone. This is `useMatchNames`'s `match.state === 'active' && match.profile`;
+  - an element of a React hook's dependency list (`@types/react`'s `DependencyList`), which React compares by identity: `[store]` and `[store, report]`;
+  - the initializer of an unannotated object destructuring (`const { list } = state`), whose reads the pattern's own check covers. An annotated one is checked as a widening;
+  - a type parameter of a function outside the two files, which is inferred from the value.
+- **Why a type check, not a wider name list:** a name list is a deny list, and any name it lacks (a new binding, a helper's prop) is a way around it. The type check follows the value: whatever the binding is called, its type is still `ConversationMessage`, and every way that type can be dropped or widened in the file is either a refusal above or a type error. It needed no runtime change: today's `screen.tsx` and `rows.ts` pass it unchanged, so nothing met the stop rule.
+- **Cost:** one TypeScript program per test, about 2 to 2.5 s each locally; the file's 21 tests take about 5 s.
+
+**The planted forms.** The checker is now tested by a second test, `the render rule's checks refuse each planted form of a provider-shaped field (M05 finding 18; correction C1)`. It applies 22 planted edits to `screen.tsx`'s text in memory, each beside `screen.tsx` so its imports resolve, and builds them in one program. The nine old forms were text appended to the source; they are now placed in the screen (after `MessageRow`'s time line, the list row's status line, or the revoked notice) and must still fail the source check. Every form must fail the type check with the violation the test names, not only with a type error. The first test keeps its name and asserts that today's two files have no violation in either check.
+
+### Each planted form as a reversal
+
+Each form was also run as an **edit to `screen.tsx` in a scratch copy of `apps/mobile`** outside the checkout (`git archive HEAD apps/mobile packages` of the code head into the session's scratch directory, with the checkout's `node_modules` linked). The edits were generated from the test's own `PLANTED` list, so each is exactly the edit the test plants. For each: the edit written, `node --test src/chat/display-rule.test.ts`, `npx tsc --noEmit` and `npx eslint src/chat/screen.tsx` run, the file restored with `git checkout` and its SHA-256 checked against the original (`3aef02c3…`), and the test run again. **All 22 failed with the edit in place and passed once it was undone** (`ℹ pass 21`, `ℹ fail 0` each time). The failing output is the first test's violation list, from the first check that fails. The type check runs only when the source check passes, so a form the source check catches shows the source check's violation; the planted test shows the type check's verdict on every form.
+
+| # | Planted edit | `tsc` / ESLint with the edit | Test with the edit | Failing output (first test) |
+|---|---|---|---|---|
+| 1 | `{message.name}` | TS2339 / pass | 1 fail | `'message.name'` |
+| 2 | `{(message as { name?: string }).name}` | pass / pass | 1 fail | `'a type cast'` |
+| 3 | `{String(message['name'])}` | TS7053 / pass | 1 fail | `'a computed read'` |
+| 4 | `<Text {...message} />` | TS2559 / pass | 1 fail | `'a spread'` |
+| 5 | `{Object.values(message).join()}` | pass / pass | 1 fail | `'a reflective read'` |
+| 6 | `{conversation.member?.name}` | TS2339 / pass | 1 fail | `'conversation.member', 'conversation.member.name'` |
+| 7 | `{(message as any).user}` | pass / `no-explicit-any` | 1 fail | `'a type cast', 'an any type'` |
+| 8 | `{row.custom}` | TS2339 / pass | 1 fail | `'row.custom'` |
+| 9 | `{Object.entries(conversation)}` | pass / pass | 1 fail | `'a reflective read'` |
+| PA | `MessageRow`'s binding renamed (`{ message: item, name, rowRef }`, `item.` for `message.`), rendering `{'name' in item ? String(item.name) : null}` | **pass / pass** | 2 fail | `'an in check'` (the source check's new refusal); the planted test also fails, since the edit removed its anchors. In memory, the type check reports `an in check: 'name' in item` and `a field outside Glow's types: item.name` |
+| PB | `function Eyebrow({ entry }: { entry: { name?: string; text: string \| null } })` rendering `entry.name`, used as `<Eyebrow entry={message} />` | **pass / pass** | 1 fail | `'a widening to { name?: string \| undefined; text: string \| null; }: message'` (the source check passes it; the type check alone closes it) |
+| PC | the rename, then `const { name: label } = item;`, rendering `{label}` | TS2339 / pass | 2 fail | `"a type error: Property 'name' does not exist on type 'ConversationMessage'.", "a field outside Glow's types: name: label"` |
+| 13 | the rename, then `const loose: { name?: string; text: string \| null } = item;`, rendering `{loose.name}` | **pass / pass** | 2 fail | `'a widening to { name?: string \| undefined; text: string \| null; }: item'` |
+| 14 | `function Label<T extends { name?: string; text: string \| null }>({ entry }: { entry: T })` rendering `entry.name`, used as `<Label entry={item} />` | **pass / pass** | 2 fail | `'a local generic: function Label<T extends { name?: string; text: string \| null }>({ entry }: { en'` |
+| 15 | `{conversation.messages.map((entry: { name?: string; text: string \| null }) => entry.name).join()}` | **pass / pass** | 1 fail | `'a widening callback parameter: entry: { name?: string; text: string \| null }'` |
+| 16 | `{((entry: { name?: string; text: string \| null }) => entry.name).call(null, message)}` | **pass / pass** | 1 fail | `'a widening to { name?: string \| undefined; text: string \| null; }: message'` |
+| 17 | `{(function (this: { name?: string; text: string \| null }) { return this.name; }).call(message)}` | **pass / pass** | 1 fail | the same |
+| 18 | `{((entry: { name?: string; text: string \| null }) => entry.name).apply(null, [message])}` | **pass / pass** | 1 fail | `'a widening to [entry: { name?: string \| undefined; text: string \| null; }]: [message]', 'a widening to { name?: …; text: …; }: message'` |
+| 19 | the rename, then `const { name: label }: { name?: string; text: string \| null } = item;`, rendering `{label}` | **pass / pass** | 2 fail | `'a widening to { name?: string \| undefined; text: string \| null; }: item'` |
+| 20 | `function loud(entry: ConversationMessage): string;` with the implementation `function loud(entry: { name?: string; text: string \| null }) { return entry.name ?? ''; }`, rendered as `<Text>{loud(message)}</Text>` | **pass / pass** | 1 fail | `'a local overload: function loud(entry: ConversationMessage): string;'` |
+| 21 | `const loose: readonly { name?: string; text: string \| null }[] = conversation.messages;`, rendering `{loose[0]?.name}` | **pass / pass** | 1 fail | `'a widening to readonly { name?: string \| undefined; text: string \| null; }[]: conversation.messages'` |
+| 22 | `for (const { name: label } of conversation.messages) void label;` | TS2339 / pass | 1 fail | `"a type error: Property 'name' does not exist …", "a field outside Glow's types: name: label"` |
+
+"**pass / pass**" marks the forms that pass both `tsc` and ESLint, so only this test stands between them and the screen. **The test as it stood at `cdc7c48` passed all thirteen new forms** (PA, PB, PC and 13 to 22), each run as the same edit in the scratch copy (`exit 0` each), since none reads a field through the six names. **Forms of the session's own** are 13 to 22, beyond the brief's PA, PB and PC. Three of them came from probes the first version of the type check missed, and the check was extended for each before the code commit:
+- the `call` and `apply` forms (16 to 18), first missed because the method's type parameters are inferred from the argument itself. The check now compares against the called function's own `this` and parameters;
+- the annotated destructuring (19), first exempted as a destructuring;
+- the local overload (20).
+
+A probe with `// @ts-expect-error` above `message.name` also failed the test, at the source check (`'message.name'`).
+
+### Forms known to evade the check
+
+- **Anything in a module outside `screen.tsx` and `rows.ts`.** The check reads those two files only. A probe confirmed it: a new `src/chat/eyebrow.tsx` with `Eyebrow({ entry }: { entry: ConversationMessage })` rendering `(entry as { name?: string }).name`, used in `screen.tsx` as `<Eyebrow entry={message} />`. It passed the test (`ℹ pass 21`), `tsc` and ESLint, since the flow keeps the contract's exact type and the cast is in the other file. The same holds for the modules the screens import today (`controls.tsx`, `components/ui.tsx` and others), and for a module that hands the screen Glow's data under a wider or untyped type.
+- **A template literal's coercion of a message** (`` {`${message}`} ``) passed the test in a probe. It renders `[object Object]`, not a field, but it is not refused.
+- **A name built from fragments,** read without an element access (none known), and any form the probes above did not try. The check refuses the forms it names; it is not a proof over all programs.
+
+### Finding 2: the copy test's word list
+
+`PROVIDER_TERMS` in `display-rule.test.ts` (line 20 now) was `/\b(provider|stream|getstream|channel|member|custom|ai)\b/i`. It is now `/\b(providers?|stream|getstream|cloudflare|allauth|channels?|members?|custom|ai)\b/i`: item 3's terms, with its own and the plurals. It serves the copy-table test and the `invalid_response` assertions; both pass on today's `copy.ts`.
+
+**Reversal** (in the scratch copy): `READ_COPY.unavailable` (`copy.ts:21`) changed to `'Our providers cannot show this conversation.'`:
+- with the new test: `✖ every copy table and label in copy.ts names no provider (M05 finding 18; ADR 0003, decision 3)`, `AssertionError [ERR_ASSERTION]: Our providers cannot show this conversation.` (`ℹ pass 20`, `ℹ fail 1`);
+- with the test as it stood at `cdc7c48`: the same edit **passed** (`ℹ pass 1`, `ℹ fail 0` for that test), which is the gap finding 2 names.
+Then restored: `copy.ts`'s SHA-256 matches the checkout's (`cfa33b17…`), and the file's 21 tests pass.
+
+### Commands and results
+
+All in `apps/mobile`, in the clean environment.
+
+| Command | Result |
+|---|---|
+| `npm ci --ignore-scripts` (with the proxy and CA variables by reference) | `added 651 packages, and audited 652 packages in 22s`; `22 moderate severity vulnerabilities` (npm audit's line; no lock change) |
+| `node --test src/chat/display-rule.test.ts` | `ℹ tests 21`, `ℹ pass 21`, `ℹ fail 0` (20 at `cdc7c48`; the planted-forms test is new) |
+| `npx tsc --noEmit`; `npx eslint .` | no output (pass) |
+| `git diff --check` | no output |
+| **`npm run check`** at the code head | exit 0; `ℹ tests 650`, `ℹ pass 650`, `ℹ fail 0` (649 at `3db50d8`) |
+| The 22 reversals and finding 2's reversal above | each test run `exit 1` with the edit, `exit 0` restored; each file's hash checked |
+
+`check:expo` and `export:development` were not run: C1 changes one test file, which neither reads (the brief's D5 names them for the item; the prompt asks for `npm run check`). The run of record runs both.
+
+### The run of record
+
+**Push run 41383619096** ([run](https://github.com/amthorn78/glow-dating-app/actions/runs/41383619096)), on the code head `0881db514b96dd6b35ae54f8759af68dee20e3d7`, read through the GitHub tools after it completed (`status: completed`, `conclusion: success`). Nothing was pushed while it ran: the records commits were held locally until it completed (AM8-20).
+
+| Job | Conclusion | Duration (job start to completion) |
+|---|---|---|
+| Change scope | success: `COMPARE_BASE` `0000000…` (the branch's first push), `COMPARE_HEAD` `0881db5…`; the trusted policy printed `{"full": true, "reason": "missing-or-invalid-comparison", "paths": []}`, so every check ran | 5 s |
+| API checks | success | 54 s |
+| API artifact checks | success | 17 s |
+| API mobile smoke | success | 1 min 24 s |
+| Mobile checks | success: `npm run check`, `npm run check && npm run check:expo`, `export:development`, the pinned Chromium installed by the workflow, and the rendered suite **`97 passed (5.0m)`**; the empty-form layout artifact uploaded (2 files) | **7 min 27 s of the 25-minute timeout** (03:32:14 to 03:39:41 UTC) |
+| Stream proof checks | success (offline checks; no provider call) | 1 min 29 s |
+| Database proof checks | success | 7 min 20 s of 30 |
+| Foundation gate | success; its line: **`Application checks passed`** | 3 s |
+
+The session read the gate's and the Mobile job's log tails; it did not read the unit-test count from the Mobile job's log. The local `npm run check` count is 650.
+
+### What could not run, and limits
+
+- **The rendered suite on the pinned browser** runs only in CI (`playwright install` is forbidden here); it was not run locally. C1 changes no rendered path; the run of record runs the suite.
+- **The checks are tests over source.** The type check follows types inside two files; the forms it does not reach are listed above.
+- **No change outside the owned paths:** `git diff --name-only cdc7c48 HEAD` lists `apps/mobile/src/chat/display-rule.test.ts` and this record. No runtime file, guard, dependency or lock changed. Nothing met the stop rule.
 
 ## Manager verification (1 November 2026, App Manager 8)
 
