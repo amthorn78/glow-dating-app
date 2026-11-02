@@ -126,6 +126,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-21 | 1 Nov 2026 | accuracy | P06.2-F's Manager verification counted the diff as "18 changed, 5 added, 2 removed" (it is 17, 6 and 2) and repeated the session's "Expo still inlines it there" without reading a bundle | The exact-head review, findings 7 and 10 |
 | AM8-22 | 26 Oct to 2 Nov 2026 | follow-through | Implementation Control's standing status bullets (Phase, Next items, Manager, Main, Branches, Mistakes log) left at 26 October through M06, P09.3a, P06.2-F and the handover; the batches updated only the opening paragraph. A repeat of AM8-11 and AM8-13. Recorded by App Manager 9 | App Manager 9, reading the whole status section before its first sync |
 | AM9-01 | 2 Nov 2026 | accuracy | The first report told Nathan that Implementation Control's status section matched `76dbe4a`, after reading only its opening paragraph; its standing bullets did not (AM8-22) | App Manager 9, reading the whole section before its first sync |
+| AM9-02 | 2 Nov 2026 | process | One records batch pushed as two pushes five minutes apart (`c6108e4`, then `06ec8b6` for AM8-22 and AM9-01, at the stop hook's request); the second cancelled the push and PR runs on `c6108e4` (41445575445, 41445585520), whose gates then failed. A repeat of AM5-04's mechanism | App Manager 9, reading the cancelled runs |
+| AM9-03 | 2 Nov 2026 | accuracy | The verification of C1 repeated the session's "finds Glow's data by type through any binding" in the delta prompt, Notion and the reply on Codex's thread, after re-running only the session's planted forms and its one named evasion; the delta re-review found more than 20 edits in the two files that pass | C1's delta re-review (findings 1 to 5) |
 
 ## App Manager 2
 
@@ -989,3 +991,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** one line of one report to Nathan; nothing was decided on it.
 - **Correction:** this entry, the bullets' correction (AM8-22), and the next report to Nathan, which says so.
 - **Prevention:** the claims checklist's "say *every*, *no* or *never* only after tracing each path" covers a match claim: a match is stated only for the parts read, by name, or after reading the whole section.
+
+### AM9-03 — A session's completeness claim repeated after testing only its own forms (accuracy)
+
+- **What happened:** C1's record said its type check "finds Glow's data by type … through any binding" and that "every way that type can be dropped or widened in the file is either a refusal above or a type error". App Manager 9's verification re-ran PA, PB, PC and finding 2's reversal and confirmed the one evasion the record named, then wrote "through any binding" in its own words in the delta re-review prompt, the Work Register row, Implementation Control and its reply on Codex's thread (`display-rule.test.ts:133`). It tried no form of its own.
+- **Caught by:** C1's delta re-review, findings 1 to 5: more than 20 edits confined to `screen.tsx` or `rows.ts` pass the test, `tsc` and ESLint. The manager re-ran three; each passed.
+- **Effect:** the claim reached the prompt (which asked the reviewer to test it, so the review was not misled), Notion and a PR comment. No merge rested on it.
+- **Correction:** the record's "Delta re-review of correction C1" states the finding; Notion's texts are corrected at this batch's sync; the PR thread gets a reply when C2's fix is on the PR.
+- **Prevention:** it repeats the mechanism of AM7-08 and AM8-21's second half, a session's claim repeated unchecked. A verification that meets a completeness claim ("any", "every", "all") either tries forms the session did not list, at least two, recording each with its result, or quotes the claim as the session's and says it was not tested. This applies the claims checklist's first item (say *every*, *no* or *never* only after tracing each path) to a session's words as well as the manager's own.
