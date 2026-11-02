@@ -16,7 +16,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 3:** `session_01KVuPEpFRh9B22beZKTKb27` (OD-47); review log DM-01 to DM-37, with "Deferred conditions".
 - **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (2 November 2026, 13:20 UTC, App Manager 9)
+## Waiting checkpoint (2 November 2026, 16:35 UTC, App Manager 9)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
