@@ -143,7 +143,8 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   `bind` too; a prop; an annotation; a return; an assignment) declares a property the data's
  *   type does not, or is `any`, `unknown`, `object`, `{}` or an index signature;
  * - a callback, inline or passed by reference (a declared function, a `useCallback` result, an
- *   object's method), whose parameter widens what the expected signature gives it (C2);
+ *   object's method), whose parameter widens what the expected signature gives it, or whose
+ *   return of Glow's data is widened by what the expected signature returns (C2);
  * - a type predicate or assertion signature declared in the two files, written or inferred, and
  *   a call whose resolved signature has one, unless the default library's (C2);
  * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier and by type,
@@ -408,7 +409,8 @@ function typedViolations(files: ReadonlyMap<string, string>, served: ReadonlyMap
         const expected = carries(value) ? argumentType(node) ?? checker.getContextualType(node) : undefined;
         if (expected && !keeps(value, expected) && !destructured(node) && !dependency(node) && !((expected.flags & ts.TypeFlags.Unknown) && predicateValue(node))) say(`a widening to ${checker.typeToString(expected).slice(0, 120)}`, node);
         // A function passed, returned or assigned by reference (finding 2): each parameter is
-        // compared against what the expected signature gives it, as an inline callback's is.
+        // compared against what the expected signature gives it, and its return against what the
+        // expected signature returns, as an inline callback's are.
         const own = inline(node) ? [] : nonNull(value).flatMap(part => part.getCallSignatures());
         const wanted = own.length === 0 ? undefined : argumentType(node) ?? checker.getContextualType(node);
         for (const given of wanted ? nonNull(wanted).flatMap(part => part.getCallSignatures()) : []) {
@@ -418,6 +420,9 @@ function typedViolations(files: ReadonlyMap<string, string>, served: ReadonlyMap
               const parameter = parameterAt(signature, index);
               if (passed && parameter && carries(passed) && !keeps(passed, parameter)) say(`a widening by reference to ${checker.typeToString(parameter).slice(0, 120)}`, node);
             }
+            const returned = checker.getReturnTypeOfSignature(signature);
+            const expected = checker.getReturnTypeOfSignature(given);
+            if (carries(returned) && !keeps(returned, expected)) say(`a widening by reference of its return to ${checker.typeToString(expected).slice(0, 120)}`, node);
           }
         }
         // `Reflect`, and `Object` other than `Object.freeze`, as values however reached (finding 3b, 3c).
@@ -541,6 +546,10 @@ const PLANTED: readonly Planted[] = [
   { form: `C2-1d, an object's method: conversation.messages.map(view.line), where view.line(entry: ${LOOSE}) returns entry.name`,
     edit: both(before(SCREEN_START, `  const view = { line(entry: ${LOOSE}) { return entry.name ?? ''; } };`),
       after(REVOKED, '<Text>{conversation.messages.map(view.line).join()}</Text>')), typed: `a widening by reference to ${LOOSE_TYPE}: view.line` },
+  { form: 'C2-1e, a function returning Glow\'s data by reference into a wider type: conversation.messages.map<Loose>(identity), each read as entry.name',
+    edit: both(before(HELPERS, 'function identity(entry: ConversationMessage) { return entry; }\n'),
+      after(REVOKED, `<Text>{conversation.messages.map<${LOOSE}>(identity).map(entry => entry.name).join()}</Text>`)),
+    typed: `a widening by reference of its return to ${LOOSE_TYPE}: identity` },
   // Outcome 2 (finding 3a; 2.2): a type predicate or an assertion signature narrows Glow's data.
   { form: `C2-2a, a local type guard: named(message) && <Eyebrow entry={message} />, where named narrows to ConversationMessage & { name: string }`,
     edit: both(before(HELPERS, `${EYEBROW}\nfunction named(entry: ConversationMessage): entry is ConversationMessage & { name: string } { return entry.text !== null; }\n`),
@@ -606,7 +615,7 @@ test('the render rule\'s checks refuse each planted form of a provider-shaped fi
   const screen = readFileSync(SCREEN, 'utf8');
   const rows = withoutComments(readFileSync(ROWS, 'utf8'));
   const planted = [...PLANTED, FALSE_POSITIVE].map((entry, index) => ({ ...entry, path: SCREEN.replace(/\.tsx$/, `.planted-${index}.tsx`), text: entry.edit(screen) }));
-  assert.equal(planted.length, 34 + 1);
+  assert.equal(planted.length, 35 + 1);
   const typed = typedViolations(new Map(planted.map(entry => [entry.path, entry.text])),
     new Map([[SCREEN.replace(/screen\.tsx$/, 'planted-guard.ts'), PLANTED_GUARD]])).violations;
   for (const entry of planted) {
