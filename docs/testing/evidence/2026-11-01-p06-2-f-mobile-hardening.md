@@ -312,7 +312,7 @@ All in `apps/mobile`, in the clean environment.
 | API checks | success | 54 s |
 | API artifact checks | success | 17 s |
 | API mobile smoke | success | 1 min 24 s |
-| Mobile checks | success: `npm run check`, `npm run check && npm run check:expo`, `export:development`, the pinned Chromium installed by the workflow, and the rendered suite **`97 passed (5.0m)`**; the empty-form layout artifact uploaded (2 files) | **7 min 27 s of the 25-minute timeout** (03:32:14 to 03:39:41 UTC) |
+| Mobile checks | success: `npm run check` in `packages/contracts` (`@glow/contracts`), then in `apps/mobile` `npm run check && npm run check:expo`, `export:development`, the pinned Chromium installed by the workflow, and the rendered suite **`97 passed (5.0m)`**; the empty-form layout artifact uploaded (2 files). [Corrected in C2: this said "`npm run check`, `npm run check && npm run check:expo`", which reads as two steps of the mobile app. The first runs in `packages/contracts`, as the workflow's `working-directory` shows (`.github/workflows/foundation.yml`, the Mobile job); the delta re-review counted its 586 tests (nit 8).] | **7 min 27 s of the 25-minute timeout** (03:32:14 to 03:39:41 UTC) |
 | Stream proof checks | success (offline checks; no provider call) | 1 min 29 s |
 | Database proof checks | success | 7 min 20 s of 30 |
 | Foundation gate | success; its line: **`Application checks passed`** | 3 s |
@@ -431,3 +431,265 @@ The session read the gate's and the Mobile job's log tails; it did not read the 
 | 8 | **In C2** (nit): the Mobile row of "Correction C1"'s run of record names the `@glow/contracts` step as such |
 
 - **Next:** correction C2 (the brief, "Correction C2").
+
+## Correction C2 (2 November 2026)
+
+- **Work:** the brief's "Correction C2" (revision 2), Outcome 1 to 7: C1's delta re-review, findings 2 to 5 with nits 6 and 8, under DM-38's conditions 2.1 to 2.6. Finding 1 is not fixed; it is the named limit below (DM-38 2.3).
+- **Prompt:** [`docs/ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md`](../../ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md), revision 1, from `007377e81cdead1fbf0b67c23f99dcfad20e5c56` of the manager branch `claude/magical-wozniak-yfmmx2`. Started by Nathan.
+- **Branch:** `claude/inspiring-ramanujan-tjpril`, started at `007377e`.
+- **Code head:** `816cd607019e69442f99007ef6324c9aa00dd83c`. Three code commits, each to `apps/mobile/src/chat/display-rule.test.ts` only:
+  - `345e311`, the change;
+  - `082506f` and `816cd60`, two gaps in C2's own refusals that the session's probes found after the first push (below).
+- **Records head:** the last commit on the branch, Markdown only (this record); no code after the code head.
+- **Run of record:** push run **41513359474** on `816cd60`: all eight jobs `success`, `Application checks passed`, 650 unit tests, rendered `97 passed (4.9m)`, Mobile 7 min 31 s of 25.
+
+### Environment check (names only)
+
+- `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`: none present.
+- `STREAM_*`: no name present. The session ran in `Glow App - No Stream`.
+- `GH_TOKEN` and `GITHUB_TOKEN` are present; never read. Every app command ran without them.
+- **Toolchain:** `node --version` → `v24.19.0`; `npm --version` → `11.9.0`, both from `$HOME/.local/bin`. Every npm and Node command ran in `env -i PATH="$HOME/.local/bin:$PATH" HOME="$HOME" LANG=C.UTF-8`; `npm ci` also passed `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` by reference, never printed.
+
+### Start gate
+
+| Check | Result |
+|---|---|
+| `git fetch origin claude/magical-wozniak-yfmmx2 main` | fetched; `origin/claude/magical-wozniak-yfmmx2` = `007377e81cdead1fbf0b67c23f99dcfad20e5c56`, `origin/main` = `bac3c1983134f4e977f867ac30b3086b5318216f` |
+| `git switch -C claude/inspiring-ramanujan-tjpril 007377e…`; `git rev-parse HEAD` | `007377e81cdead1fbf0b67c23f99dcfad20e5c56` |
+| `git merge-base --is-ancestor 007377e… origin/claude/magical-wozniak-yfmmx2` | `this prompt's commit is on the live branch` |
+| `git diff --quiet 0881db5… HEAD -- .github scripts services apps packages proofs` | `the code head under correction` |
+| `git diff --quiet 0881db5… origin/claude/magical-wozniak-yfmmx2 -- …` (the same paths) | `no code on the live branch after 0881db5` |
+| `git show origin/claude/magical-wozniak-yfmmx2:<this record> \| grep -c -E '^#+ Correction C2'` | `0` |
+| `git ls-remote origin claude/inspiring-ramanujan-tjpril` | nothing (a new branch) |
+
+**Read before the work:** root `AGENTS.md` and `CLAUDE.md`; `apps/mobile/AGENTS.md` and `CLAUDE.md`; the brief, whole; this record's "Correction C1", "Manager verification of correction C1" and "Delta re-review of correction C1"; DM-38's report, whole; ADR 0003; `src/chat/display-rule.test.ts`, `src/chat/screen.tsx` and `src/chat/rows.ts`, whole. Expo's documentation was not needed: C2 touches no Expo API.
+
+### The change
+
+One file, `apps/mobile/src/chat/display-rule.test.ts`, +222 −39 from `007377e` to `816cd60`. `screen.tsx` and `rows.ts` are unchanged (SHA-256 `3aef02c3…` and `bdce90ca…`), and both pass both checks: no exception was added and nothing met the stop rule. The source check is unchanged. Every earlier refusal of the type check, and every earlier planted form with its assertion, is kept. What C2 adds to the type check:
+
+1. **A function given by reference** (finding 2; DM-38 2.1). Any expression with a call signature, other than an inline arrow or function expression, is compared against the expected signature. That signature is the call's resolved parameter, or the contextual type of an annotation, a return, an assignment or a prop.
+   - **Each parameter, `this` included:** a parameter that widens what the expected signature gives it is refused as `a widening by reference to <type>`.
+   - **The return** (`082506f`): a return of Glow's data that the expected signature's return widens is refused as `a widening by reference of its return to <type>`.
+
+   Inline callbacks keep C1's check.
+2. **Type predicates and assertion signatures** (finding 3a; 2.2). Each is refused unless its signature is the default library's:
+   - declared in the two files, by syntax (`x is T`, `asserts x`) and by the declaration's signature, which also catches an inferred predicate;
+   - at a call whose resolved signature has one, so a guard imported from another module is refused where it is called;
+   - given by reference rather than called (`816cd60`), so an imported guard given to the default library's `filter`, `find` or `every` is refused too.
+3. **`Reflect`, and `Object` other than as `Object.freeze`'s receiver** (findings 3b, 3c; 2.6). Each is refused three ways:
+   - by identifier, when it resolves to the default library's global;
+   - by an expression's type, when that type is the default library's `Reflect` or `ObjectConstructor`;
+   - by a destructuring's type, whatever its key (`816cd60`).
+
+   So these are all refused: `const { get: pick } = Reflect`, `const { assign: merge } = Object`, `globalThis.Object`, `const { 'Reflect': { get: pick } } = globalThis` and `const { ['Object']: { assign: merge } } = globalThis`.
+4. **The two exceptions narrowed to their words** (finding 4; 2.6):
+   - the dependency-list exception applies only to an array literal given as an argument of a call whose resolved signature is a function named `use…` declared in `@types/react`;
+   - the destructuring exception applies only when no enclosing pattern, up to the variable or parameter, is annotated.
+5. **`GLOW_DATA` is checked** (nit 6): the first test asserts that each listed path exists, and that the type check matched a declaration in each while checking today's two files. All six paths are matched today. `interactions/fixture-adapter.ts` is matched at `match.profile`, a field read.
+6. **The guarantee** (finding 5; 2.3, 2.4): the render-rule comment states DM-38 section 4's guarantee word for word (checked by a script against the report's text), then the refusals and exceptions in the check's own terms. It names finding 1's class as the limit an ordinary refactor reaches, with option (c) for the next change to how the screens hold or render chat data (2.5), and records the `FlatList` false positive with its failing output.
+7. **The false positive is pinned:** F0 is run by the planted test, which asserts that it fails closed, and for that one reason alone (`FALSE_POSITIVE`).
+
+The planted test now has 38 forms (C1's 22 and C2's 16) and the false positive. `typedViolations` takes an optional map of served modules, which the checked files may import but which are not checked themselves, for the imported-guard forms. It returns its violations together with the `GLOW_DATA` files it matched. "Through any binding" is gone from the test. In this record, "Correction C1"'s wording ("through any binding", in its "Finding 1" and its limit) is superseded by the guarantee below; this section does not edit it, since C2 changes only that section's Mobile row.
+
+**The guarantee, as the test states it:**
+
+> The check follows Glow's data by its own type: at a property read, a destructuring, a spread, an enumeration and an `in` check, and wherever the data is passed, returned, assigned, annotated, given as a prop, or given to a callback, inline or by reference. It refuses type predicates and assertion signatures, references to `Reflect` and to `Object` members other than `freeze` however aliased, and any type error. It does not follow data held inside another value (a group or section, a list's render-item wrapper, a view-model object, a closure or a container), another module, or a template literal's coercion. It refuses some harmless code, such as a list component over Glow's data. It is a test over two files' source, not a proof over all programs.
+
+**Its limits, as the test states them:**
+- **Finding 1's class.** Data held inside another value is the limit an ordinary refactor reaches, not only a deliberate evasion. Grouped sections, a render-item wrapper or a view model can carry a message to a loosely typed helper, which then renders a provider-shaped field, and the check passes it. The next change to how `screen.tsx` or `rows.ts` hold or render chat data moves them to view models built by explicit field copy, with its own check (DM-38 2.5).
+- **The false positive (DM-38 F0).** A harmless `<FlatList data={conversation.messages} keyExtractor={entry => entry.submission_id} renderItem={({ item }) => <Text>{item.text ?? ''}</Text>} />` fails with `a widening to Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages`, since `ArrayLike` has an index signature. It fails closed, and that change changes the design rather than loosening the check.
+
+**What this record claims.** Only the forms tested are claimed: the 38 planted forms, the reversals, and the session's own forms below. The probes found forms outside every limit (the session's findings, below). For those forms, the guarantee's words claim more than the check shows.
+
+### Each new planted form as a reversal
+
+Each form was also run as an **edit to `screen.tsx` in a scratch copy** of `apps/mobile` and `packages` outside the checkout, with the checkout's `node_modules` linked. The edits were generated from the test's own `PLANTED` list at `816cd60` (the test module loaded with `test` replaced by a no-op), so each is exactly the edit the test plants. For the imported-guard forms, the guard module was also written as a real `src/chat/planted-guard.ts` in the copy.
+
+For each edit, these ran:
+- the new test, `node --test src/chat/display-rule.test.ts`;
+- the test as it stood at `0881db5`, which is `007377e`'s;
+- `npx tsc --noEmit` and `npx eslint src/chat/screen.tsx`.
+
+Then `screen.tsx` was restored from the snapshot and its SHA-256 checked against the original (`3aef02c3…`, each time), the guard removed, and the new test run again.
+
+**All 17 failed the new test with the edit in place, and passed once undone** (`ℹ pass 21`, `ℹ fail 0` each time). Each with the edit gives `ℹ pass 19`, `ℹ fail 2`. The first test fails with the edit's violation (below). The planted test fails at F0's exact assertion, because F0's text carries the edit's violation as well; it fails closed. For C2-4a and F0 it fails earlier: their edits change an import line that a planted form anchors on (the review's nit 7).
+
+The column "at `0881db5`" gives that version's two checks run alone on the edit, by its own `sourceViolations` and `typedViolations`. Every edit passes `tsc` and ESLint.
+
+| # | Planted form | First test's failing output (new test) | At `0881db5`: source / type check |
+|---|---|---|---|
+| C2-1a | the review's `shout`: `[message].map(shout)`, with `shout(entry: { name?: string; text: string \| null })` returning `entry.name` | `a widening by reference to { name?: string \| undefined; text: string \| null; }: shout` | `[]` / `[]` |
+| C2-1b | a render function: `{conversation.messages.map(renderEntry)}`, with `renderEntry(entry: …)` rendering `entry.name` | the same kind, `…: renderEntry` | `[]` / `[]` |
+| C2-1c | a `useCallback` function: `const renderRow = useCallback((entry: …) => entry.name ?? '', [])`, used as `.map(renderRow)` | `…: renderRow` | `[]` / `[]` |
+| C2-1d | an object's method: `const view = { line(entry: …) { return entry.name ?? ''; } }`, used as `.map(view.line)` | `…: view.line` | `[]` / `[]` |
+| C2-1e | a function returning Glow's data by reference into a wider type: `function identity(entry: ConversationMessage) { return entry; }`, then `conversation.messages.map<…>(identity).map(entry => entry.name)` | `a widening by reference of its return to { name?: string \| undefined; text: string \| null; }: identity` | `[]` / `[]` |
+| C2-2a | a local type guard `named(entry: ConversationMessage): entry is ConversationMessage & { name: string }`, then `{named(message) && <Eyebrow entry={message} />}` (PB's loose helper) | `a call to a type predicate or assertion: named(message)`, `a type predicate or assertion by reference: named` and twice `a type predicate or assertion signature: …` | `[]` / `[]` |
+| C2-2b | a local assertion function `assertNamed(entry): asserts entry is ConversationMessage & { name: string }`, called in `MessageRow`, then `<Eyebrow entry={message} />` | `a call to a type predicate or assertion: assertNamed(message)`, with the by-reference and signature refusals | `[]` / `[]` (the old planted test failed, since the assertion also narrows `message` for old form 2) |
+| C2-2c | the same guard **imported** from another module (`./planted-guard`), then `{named(message) && <Eyebrow entry={message} />}` | `a type predicate or assertion by reference: named` (at the import), `a call to a type predicate or assertion: named(message)` | `[]` / `[]` |
+| C2-2d | a local guard given to the **default library's `filter`**: `conversation.messages.filter(named).map(entry => <Eyebrow key={entry.submission_id} entry={entry} />)` | `'conversation.messages.filter'` (the source check, which runs first); in memory the type check reports `a type predicate or assertion signature: entry is ConversationMessage & { name: string }` | `['conversation.messages.filter']` / `[]` |
+| C2-2e | an **imported** guard given by reference to the default library's `filter`: `const all = conversation.messages;`, then `all.filter(named).map(entry => <Eyebrow … entry={entry} />)` | `a type predicate or assertion by reference: named` (at the import and at the use) | `[]` / `[]` |
+| C2-3a | an aliased `Reflect`: `const { get: pick } = Reflect;`, rendering `{String(pick(message, 'name'))}` | `a reference to Reflect or an Object member: { get: pick }`, and twice `…: Reflect` (by identifier and by type) | `[]` / `[]` |
+| C2-3b | an aliased `Object.assign`: `const { assign: merge } = Object;`, then `<Eyebrow entry={merge({ name: '' }, message)} />` | `a reference to Reflect or an Object member: { assign: merge }`, and twice `…: Object` | `[]` / `[]` |
+| C2-3c | `Reflect` by a string key: `const { 'Reflect': { get: pick } } = globalThis;`, rendering `{String(pick(message, 'name'))}` | `a reference to Reflect or an Object member: 'Reflect': { get: pick }` and `…: { get: pick }` | `[]` / `[]` |
+| C2-3d | `Object` by a computed key: `const { ['Object']: { assign: merge } } = globalThis;`, then `<Eyebrow entry={merge({ name: '' }, message)} />` | `a reference to Reflect or an Object member: ['Object']: { assign: merge }` and `…: { assign: merge }` | `[]` / `[]` |
+| C2-4a | a dependency list outside a hook: `function keep(list: DependencyList) { return JSON.stringify(list[0]); }`, rendering `{keep([message])}` | `'a reflective read'` (the source check, at `JSON.`); in memory the type check reports `a widening to DependencyList: [message]` and `a widening to unknown: message` | `['a reflective read']` / `[]` |
+| C2-4b | a default under an annotated outer pattern: `const { inner: { name: label } = message }: { inner?: { name?: string; text: string \| null } } = {};`, rendering `{label}` | `a widening to { name?: string \| undefined; text: string \| null; } \| undefined: message` | `[]` / `[]` |
+| F0 | the harmless `FlatList` (the false positive, not a planted form) | `a widening to Readonly<ArrayLike<ConversationMessage>> \| undefined: conversation.messages` | `[]` / the same widening |
+
+**At `0881db5`, the type check alone passed all 16 new forms.** The source check refused two of them: C2-2d by its path list, and C2-4a at `JSON.`. For every new form, this test is the only check standing between it and the screen.
+
+**Each mechanism as a reversal.** Each new piece of the check was undone in a scratch copy of the test at `816cd60`. For each, the test was run, and the file restored and its hash checked (`262e20e3…`):
+
+| Reversal in the test | Result |
+|---|---|
+| R1: the by-reference comparison off | `ℹ fail 1`: `the type check: C2-1a, the review's shout … : []` |
+| R1b: the return comparison off | `ℹ fail 1`: `the type check: C2-1e …` |
+| R2: every predicate refusal off | `ℹ fail 1`: `the type check: C2-2a …` |
+| R2b: the declared-in-file refusals off | `ℹ fail 1`: `the type check: C2-2d …`. Before C2-2d was added, this reversal **passed**: the call refusal alone caught every predicate form then planted. So C2-2d was added before the first code commit, to pin 2.2's second half |
+| R2c: the call refusal off | `ℹ fail 1`: `the type check: C2-2a …` |
+| R2d: the by-reference predicate refusal off | `ℹ fail 1`: `the type check: C2-2e …` |
+| R3: every `Reflect` and `Object` refusal off | `ℹ fail 1`: `the type check: C2-3a …` |
+| R3b: the destructuring-type refusal off | `ℹ fail 1`: `the type check: C2-3c …` |
+| R4: the dependency-list exception as at C1 (any call) | `ℹ fail 1`: `the type check: C2-4a …` |
+| R5: the destructuring exception as at C1 (any binding element) | `ℹ fail 1`: `the type check: C2-4b …` |
+| R6: a `GLOW_DATA` path misspelled (`gapp-dev-v1` → `gapp-dev-v2`) | `ℹ fail 1`: `a GLOW_DATA path exists: …/gapp-dev-v2.ts` |
+| R7: an existing path no checked type comes from, added to `GLOW_DATA` (`./copy.ts`) | `ℹ fail 1`: `each GLOW_DATA path is one the type check found Glow's data in` |
+
+### Forms of the session's own
+
+**How they were tried.** Seven probe agents worked in parallel, each in its own scratch copy, each assigned the guarantee's mechanisms. Between them they tried **256 forms**, each as a real edit to `screen.tsx` or `rows.ts` (or a new module, for the "another module" limit). For every form they ran:
+- the render test, `tsc --noEmit` and ESLint;
+- then a restore of the file, with its hash checked.
+
+**The judging.** Each form was judged against the guarantee's words: caught, inside a named limit (which one), outside every limit, or a false positive. A second, adversarial agent per group then re-ran every form that passed and tried to refute its classification. The probes and verifiers ran against `345e311`'s test.
+
+**The consolidated re-run.** All 70 forms first judged outside every limit were then re-run against the code head `816cd60` (and against a scratch candidate, below), each time with `tsc` and the hashes checked.
+
+| Mechanism the guarantee names | Tried | Caught | Inside a limit | False positive | Outside every limit at `345e311` → still at `816cd60` |
+|---|---|---|---|---|---|
+| a property read | 9 | 4 | 0 | 1 | 4 → 4 (all **N1**) |
+| a destructuring | 7 | 2 | 0 | 1 | 4 → 4 (**N1**) |
+| a spread | 10 | 3 | 3 (a wrapper; arrays four deep) | 1 | 3 → 3 (**N1**) |
+| an enumeration | 9 | 6 | 1 (the context object) | 0 | 2 → 2 (**N3**, **N2**) |
+| an `in` check | 8 | 5 | 0 | 1 | 2 → 2 (**N3**) |
+| any type error | 12 | 5 | 0 | 0 | 7 → 7 (**N2**; T8 is **N3**) |
+| passed | 14 | 6 | 0 | 2 | 6 → 4 (**N4**, **N5**; P4 and P4b now caught) |
+| returned | 8 | 5 | 0 | 0 | 3 → 1 (**N4**; R3 and R8 now caught) |
+| assigned | 12 | 5 | 1 | 0 | 6 → 4 (**N4**, **N6**; A4 and A10 now caught) |
+| annotated | 16 | 13 | 1 (a view model) | 0 | 2 → 2 (**N1**) |
+| given as a prop | 14 | 11 | 0 | 0 | 3 → 3 (**N1**) |
+| given to a callback inline | 18 | 12 | 0 | 4 | 2 → 2 (**N1**) |
+| given to a callback by reference | 19 | 11 | 0 | 0 | 8 → 8 (**N3**, **N7**, **N8**) |
+| type predicates | 13 | 3 | 0 | 2 | 8 → 2 (**N9**; the imported-guard forms now caught) |
+| assertion signatures | 8 | 7 | 0 | 1 | 0 |
+| `Reflect`, however aliased | 13 | 7 | 1 (another module) | 0 | 5 → 0 (now caught) |
+| `Object` members other than `freeze` | 14 | 6 | 1 (another module) | 3 | 4 → 0 (now caught) |
+| data held inside another value | 27 | 14 | 12 (groups, wrappers, view models, closures, a ref) | 0 | 1 → 1 (**N4**) |
+| another module | 7 | 2 | 5 | 0 | 0 |
+| a template literal's coercion, and kin (`+`, `join`, a tagged template) | 9 | 1 | 8 | 0 | 0 |
+| harmless list components and array use | 9 | 0 | 0 | 9 | 0 |
+| **All** | **256** | **128** | **33** | **25** | **70 → 49** |
+
+**Two classes of the 70 fell inside C2's own items.** Each was fixed before the run of record, with planted forms, and each fix passes today's two files with no exception:
+- **a function returned by reference** (`082506f`; Outcome 1): `conversation.messages.map<Loose>(identity)` passed while the inline form was caught. Six forms. Now caught, and planted as C2-1e;
+- **`Reflect` or `Object` by a string or computed key, and an imported guard by reference** (`816cd60`; Outcomes 3 and 2):
+  - the destructuring forms: nine of them, such as `const { 'Reflect': { get: pick } } = globalThis`;
+  - the imported guards given to the default library's `filter`, `find`, `findLast` or `every`: six forms.
+
+  All are now caught, and planted as C2-3c, C2-3d and C2-2e.
+
+**The session's findings: forms outside every limit at the code head.** These classes are not among Outcome 1 to 5. Each passes the test, `tsc` and ESLint, except where noted. No guarantee wording was widened to cover them. Every one rests on the guarantee's words "by its own type" and the mechanisms it names, which these forms show the check does not follow:
+
+| # | Class | Forms (examples) | Why the check passes it |
+|---|---|---|---|
+| N1 | **Narrow first, then widen.** Glow's data is first given a type of its own declaring only some of its fields, then widened | `const plain: { text: string \| null } = message;` then `const loose: { text: string \| null; name?: string } = plain;` rendering `{loose.name}`. An intermediate component whose prop is `{ entry: { text: string \| null } }` hands it to PB's loose helper (X2, an ordinary refactor). `Object.freeze<{ text … }>(message)`, `useState<{ text … }>(message)`, two chained inline `map` callbacks (X3) | `keeps` accepts a narrowing, since every target field exists on the data. The narrowed type declares no field in a `GLOW_DATA` file, so the value is no longer Glow's data and nothing after it is checked. `Pick<>` and `Omit<>` keep the contract's declarations and are caught. Twenty forms (r1, r3, r4, r7, d1, d5, d6, d8, s1, s3, s7, X1, X2, X3, X5, X6, X7, X8b, P10, P10b). P10 alone renders nothing at runtime (its branch is dead); P10b, with `Symbol.hasInstance`, does |
+| N2 | **A suppressed type error** | `// @ts-expect-error` (or `@ts-ignore`, or `// @ts-nocheck` at the top) above `<Caption entry={message} />`, where `Caption`'s prop is `() => void` and renders `entry.name` (`Function.name`'s slot). A function-typed, `never` or primitive target, given Glow's data under a suppression | The suppressed diagnostic never reaches `getSemanticDiagnostics`, and a function, `never` or primitive target "keeps". Seven forms (E6, T2, T3, T4, T5, T10, T11, one in `rows.ts`). T5 fails ESLint (`ban-ts-comment`); the others pass it |
+| N3 | **Glow's data as `this` through `.call`** to a function that declares no `this` | `({}).hasOwnProperty.call(message, 'name')`; `const raw = ({}).valueOf.call(message)`, then a `for…in` over `raw` or a loose prop; `Array.prototype.map.call(conversation.messages, shout)`, `[].map.call(…)`, `Array.prototype.filter.call(…)` | With no declared `this`, the argument has no expected type to compare, and `Array.prototype.map`'s own `this` makes the callback's value `any`. Eight forms (E5, I4, I6, T8, R3, R14, R11, R20) |
+| N4 | **A container the check does not follow:** a tuple's later elements, and arrays nested four deep | `const pair = ['label', message] as const` given to `readonly (string \| Loose)[]` (P3, R6, A8); `[[[[message]]]]` given to `readonly Loose[][][][]` (P9, K6r) | `keeps` compares only a tuple's first element against an array target, and `carries` stops at depth 4 (three deep is caught). Five forms. Its verifier reads arrays four deep (P9, K6r) as the "container" limit, with the depth cap as the defect; the tuple forms are outside every limit, and a tuple whose message is at index 0 is caught |
+| N5 | **A thrown value** | `async function fail(entry: ConversationMessage) { throw entry; }`, then `fail(message).catch((entry: Loose) => …entry.name…)` (P5b) | A `throw` operand is never compared, and a rejection reason is `any`. One form. P5, the same through a `.then` arrow that captures `message`, its verifier places in the closure limit |
+| N6 | **A `for…of` into an existing target** | `let loose: Loose \| undefined; for (loose of conversation.messages) break;`, and `for (box.entry of conversation.messages)` | The loop's existing target gets no contextual check. Three forms (A2, A2b, A5) |
+| N7 | **`arguments`** | `function shout() { return String(arguments[0]?.name ?? ''); }` used as `[message].map(shout)`; the inline form; a render function the same way (R1, R2, R21) | `arguments` is `any`, and the by-reference comparison is per declared parameter. ESLint's `prefer-rest-params` refuses all three, so `npm run check` fails on them, but this test does not |
+| N8 | **An inline parameter typed only by its default** | `[message].map((entry = BLANK) => entry.name ?? '')`, with `BLANK: Loose` (R7) | C1's inline check skips a parameter without an annotation. The by-reference forms are caught (R6, R15). One form |
+| N9 | **`instanceof` narrowing** | `message instanceof NamedEntry && <Eyebrow entry={message} />`, with a local class `NamedEntry { name = '' }` and `static [Symbol.hasInstance]` returning true (P10b) | `instanceof` narrows the data to `ConversationMessage & NamedEntry`, which keeps its type at the loose prop. It is counted under N1 above, and listed here as its own mechanism |
+
+These are findings for the manager and, where a fix would change the design, for the Dev Manager. None was fixed in C2, since each lies outside Outcome 1 to 5 and DM-38 sends a change of design to the Dev Manager first.
+
+**A candidate, measured and not committed.** For that decision, the session tried a candidate in a scratch copy of the test at `816cd60`. It has three changes, ten lines of diff:
+- **a narrowing refused:** an object target that declares no field in a `GLOW_DATA` file, given Glow's data itself, does not keep;
+- **any `@ts-` directive refused;**
+- **`this` without a declared parameter treated as `unknown`:** Glow's data given as `this` through `.call` or `.apply` to a function that declares no `this`.
+
+Its results:
+- **today's code:** both files pass it, as does every planted form (`ℹ pass 21`);
+- **N1, N2 and N3:** it catches 36 of the 49 forms (N9's P10 and P10b with them);
+- **N4 to N8:** it catches none of the other 13 forms;
+- **harmless code:** it newly refuses five harmless controls:
+  - `const plain: { text: string | null } = message` reading only `.text`;
+  - a component prop typed `{ text: string | null }` rendering only `.text`;
+  - `stamp.call(message)` with `this` unused;
+  - `Array.prototype.map.call(conversation.messages, (entry: ConversationMessage) => entry.text ?? '')`;
+  - a comment that merely contains "@ts-expect-error".
+
+So N1's fix fails closed, but it refuses ordinary narrow helpers: a trade the Dev Manager would weigh against option (c), view models by explicit field copy (DM-38 2.5), which N1 also points to.
+
+**False positives found** (harmless code the check refuses; it fails closed). These are inside the guarantee's "it refuses some harmless code":
+- a `FlatList` (F0), a `VirtualizedList`, `Array.from` and `new Set` over the messages, since an `Iterable` or `ArrayLike` parameter has an index signature;
+- a spread of the messages, and a computed read with a constant key;
+- an `in` check on the screen's own `StyleSheet`;
+- `Object.is`, `Object.groupBy`, and `globalThis.Object.freeze` or `(Object).freeze` in `rows.ts`;
+- `conversation.messages.at(-1)`, `.toReversed()` and `.filter(…)`, refused by the source check's path list alone.
+
+**Two are new with C2:**
+- an inferred type predicate in harmless code, such as `.filter(text => text !== null)` over strings, since TypeScript infers `text is string`;
+- Node's `assert`, whose `asserts value` is not the default library's.
+
+**The adversarial verifiers** re-ran every form that passed, each in its own copy, and reproduced every result. They refuted two classifications: P5 (inside the closure limit, as written) and P10 (no runtime reach, as above). They disputed a third, K6r: arrays nested four deep read as the "container" limit, and the real defect is `carries`' silent depth cap. They upheld the rest, and added forms of their own in the same classes: P5d (N5, with no closure), and X5r and X6b (N1, X6b with no array).
+
+### Commands and results
+
+All in `apps/mobile`, in the clean environment, unless the row says otherwise.
+
+| Command | Result |
+|---|---|
+| `npm ci --ignore-scripts` (with the proxy and CA variables by reference) | `added 651 packages, and audited 652 packages in 18s`; `22 moderate severity vulnerabilities` (npm audit's line; no lock change) |
+| `node --test src/chat/display-rule.test.ts` at `007377e` | `ℹ tests 21`, `ℹ pass 21`, `ℹ fail 0` |
+| the same at `345e311`, `082506f` and `816cd60` | `ℹ tests 21`, `ℹ pass 21`, `ℹ fail 0` each time (the file's test count is unchanged; the planted test holds 38 forms and F0) |
+| `npx tsc --noEmit`; `npx eslint src/chat/display-rule.test.ts` | no output (pass), before each code commit |
+| `git diff --check` | no output |
+| **`npm run check`** before each code commit (`345e311`, `082506f`, `816cd60`) | exit 0; `ℹ tests 650`, `ℹ pass 650`, `ℹ fail 0` each time (650 at `0881db5`) |
+| The guarantee in the comment against DM-38's text (a script, comment markers removed) | `word for word: True` |
+| The 17 planted-form reversals and the 12 mechanism reversals above | each with the edit `exit 1`, restored `exit 0`; each file's hash checked |
+| The own forms: 256 by the probes, and the 70 gap forms re-run at `816cd60` | as above; every restore's hash matched |
+| `git diff --name-only 007377e HEAD` | `apps/mobile/src/chat/display-rule.test.ts` and this record |
+
+`check:expo` and `export:development` were not run locally: C2 changes one test file, which neither reads. The run of record runs both.
+
+### The run of record
+
+**Push run 41513359474** ([run](https://github.com/amthorn78/glow-dating-app/actions/runs/41513359474)), on the code head `816cd607019e69442f99007ef6324c9aa00dd83c`, read through the GitHub tools after it completed (`status: completed`, `conclusion: success`):
+
+| Job | Conclusion | Duration (job start to completion) |
+|---|---|---|
+| Change scope | success: `COMPARE_BASE` `082506f…`, `COMPARE_HEAD` `816cd60…`; the trusted policy printed `{"full": true, "reason": "behavior-or-empty", "paths": ["apps/mobile/src/chat/display-rule.test.ts"]}` | 6 s |
+| API checks | success | 45 s |
+| API artifact checks | success | 18 s |
+| API mobile smoke | success | 1 min 28 s |
+| Mobile checks | success. Its steps, in order:<br>- `npm run check` in `packages/contracts`: `@glow/contracts`, `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`;<br>- in `apps/mobile`, `npm run check && npm run check:expo`: `@glow/mobile`, **`ℹ tests 650`, `ℹ pass 650`, `ℹ fail 0`**, then `Dependencies are up to date`;<br>- `export:development`: `iOS Bundled … (1361 modules)`, `Android Bundled … (1330 modules)`, `Exported: .work/native-export`;<br>- the pinned Chromium installed by the workflow;<br>- the rendered suite, **`97 passed (4.9m)`**, with no failed, flaky or skipped line;<br>- the empty-form layout artifact uploaded (2 files) | **7 min 31 s of the 25-minute timeout** (19:49:02 to 19:56:33 UTC) |
+| Stream proof checks | success (offline checks; no provider call) | 1 min 39 s |
+| Database proof checks | success | 7 min 34 s of 30 |
+| Foundation gate | success; its line: **`Application checks passed`** | 4 s |
+
+**The earlier code heads' runs**, each complete before the next push, so no push cancelled a run (AM8-20):
+- **push run 41509123092** on `345e311`: eight of eight jobs `success`, with Mobile 19:21:17 to 19:28:36 UTC (7 min 19 s);
+- **push run 41510786950** on `082506f`: `conclusion: success`. Its jobs were not read one by one.
+
+The records commit was pushed only after 41513359474 completed.
+
+### What could not run, and limits
+
+- **The rendered suite on the pinned browser** runs only in CI (`playwright install` is forbidden here). It was not run locally; C2 changes no rendered path, and the run of record runs it.
+- **Expo's documentation** was not read; C2 touches no Expo API.
+- **The check is a test over two files' source.** The forms it does not reach are the guarantee's named limits and the findings N1 to N9 above. The candidate is a measurement for the decision, not a change.
+- **The probes and their verifiers ran against `345e311`'s test.** Only the 70 gap forms were re-run against `816cd60`. A form caught at `345e311` was not re-run at `816cd60`, which adds refusals and narrows nothing.
+- **No change outside the owned paths:** `git diff --name-only 007377e HEAD` lists `apps/mobile/src/chat/display-rule.test.ts` and this record. No runtime file, guard, dependency or lock changed. No exception was added. Nothing met the stop rule.
