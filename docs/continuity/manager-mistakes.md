@@ -128,6 +128,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-01 | 2 Nov 2026 | accuracy | The first report told Nathan that Implementation Control's status section matched `76dbe4a`, after reading only its opening paragraph; its standing bullets did not (AM8-22) | App Manager 9, reading the whole section before its first sync |
 | AM9-02 | 2 Nov 2026 | process | One records batch pushed as two pushes five minutes apart (`c6108e4`, then `06ec8b6` for AM8-22 and AM9-01, at the stop hook's request); the second cancelled the push and PR runs on `c6108e4` (41445575445, 41445585520), whose gates then failed. A repeat of AM5-04's mechanism. It recurred the same day: `903c41f`, then `3cf2ee1` for a wrong checkpoint time and AM8-22's addition, cancelled PR run 41482411075 | App Manager 9, reading the cancelled runs |
 | AM9-03 | 2 Nov 2026 | accuracy | The verification of C1 repeated the session's "finds Glow's data by type through any binding" in the delta prompt, Notion and the reply on Codex's thread, after re-running only the session's planted forms and its one named evasion; the delta re-review found more than 20 edits in the two files that pass | C1's delta re-review (findings 1 to 5) |
+| AM9-04 | 2 Nov 2026 | accuracy | Wrote the handoff's checkpoint and branch-list times from memory three times: 13:20 UTC for 16:32 (pushed at `903c41f`), 18:30 for 18:24 (pushed at `007377e`), and 20:30 for 21:51 (caught before its push) | App Manager 9, reading `date -u` after each |
 
 ## App Manager 2
 
@@ -1002,3 +1003,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
   - A verification that meets a completeness claim ("any", "every", "all") tries forms the session did not list, at least two, recording each with its result, **and** still attributes the claim to the session, with its own forms and their results beside it. No test over source proves "through any binding", so the manager never makes such a claim in its own words (DM-38 4.1).
   - Part of the cause was the brief: C1's Outcome 1 asked for a check that "fails … through any binding", which no source check can show, and the session then claimed exactly that. A brief asks for named forms and a stated guarantee with its limits, never "any" or "every" over arbitrary code (DM-38 4.2). Brief revision 2 applies it to C1's Outcome 1 and to C2.
   - This applies the claims checklist's first item (say *every*, *no* or *never* only after tracing each path) to a session's words as well as the manager's own.
+
+### AM9-04 — Times written from memory (accuracy)
+
+- **What happened:** the current handoff's waiting checkpoint and branch-list headings carry a time. App Manager 9 wrote them without reading the clock: "13:20 UTC" at 16:32 (`903c41f`, corrected at `3cf2ee1`), "18:30" at 18:24 (`007377e`, corrected in the batch after it), and "20:30" at 21:51, caught before its push.
+- **Caught by:** App Manager 9, reading `date -u` after writing each.
+- **Effect:** two pushed records said a wait or a listing began at a time it did not; no decision rested on either, and the waits' causes were right.
+- **Correction:** each time corrected from `date -u`.
+- **Prevention:** a time that goes into a record comes from a command run in the same step (`date -u +%H:%M`, or a tool result's timestamp), never from memory; the records script takes it as an argument.
