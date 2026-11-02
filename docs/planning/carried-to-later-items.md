@@ -37,6 +37,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 to 2.6):
   - **P08.1:** G-05's hold design (P08.2 enforces it against deletion; the P11 plan's PV07 is extended to holds); G-09 (GDPR and UK GDPR representatives, the DSA's contact points and legal representative, the intake for authority orders), carried, conditional, to a UK or EU launch, since Glow is a US company launching in the US for now (OD-55), with a representative's cost in M07 then; G-11 (DPIA, records of processing, the DPO decision, automated decisions, transfers, breach procedure, UK complaints), with P09 keeping incident escalation. It reads SV4's G-12 classification.
   - **P08.3:** G-07 (consumer and subscription law), only if Nathan chooses a paid launch (A06); no PF01 line now.
+- **A DPIA at a UK or EU launch** (DM-38 section 8): whether one is needed is read from the matrix's DPIA tests ("likely high risk", "large scale": EU-25, EU-46, EU-47), not from App Manager 8's follow-up reply under OD-55, which said one is needed "since orientation data, matching and age checks are high-risk". No decision rested on that reply, since the launch is the US only (OD-55).
 
 ## Carried to SV1 (the identity slice; OD-49)
 
@@ -66,6 +67,16 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **G-05's hold:** a hold that survives deletion, which P08.1 designs.
   - **G-12** is carried, conditional, to an EU launch, since the EU is not a launch country for now (OD-55). At an EU launch it is the recorded classification of whether the chat is a number-independent interpersonal communications service. It decides whether ePrivacy's confidentiality rule covers what SV4 stores (EU-30), including the conversations OD-12 keeps for safety reports, and whether chat scanning needs Regulation 2026/1881's conditions (EU-26). P07.1 and P08.1 read it then.
   - **Without an answer on the history policy,** the brief keeps the recorded default and says so: reads refuse whatever refuses a send (the P11 plan) (4.5).
+
+## Carried to the second A05 message (before SV2's brief; DM-37 4.5)
+
+- **The language** (DM-38 section 8, optional): OD-55 records English as the recommendation Nathan did not change, not as his answer; the second message confirms it in one line.
+
+## Carried to the next change to how the chat screens hold or render chat data (DM-38 2.5)
+
+- **Its trigger:** a change to how `apps/mobile/src/chat/screen.tsx` or `rows.ts` hold or render chat data, for example a list component, grouping, or a helper or control that takes messages (P07.2's report from chat is one candidate). Not P06.3 by name: P06.3 is notifications.
+- **What that change does** (option (c)): it builds view models by explicit field copy, as `rows.ts` does for the list; its render check becomes "no contract type reaches the screen", with planted forms; it gets a full exact-head review. Its brief may propose another design to the Dev Manager.
+- **Why:** the render-rule check after P06.2-F's C2 follows Glow's data only by its own type; data held inside another value (a group or section, a list's render-item wrapper, a view-model object, a closure or a container) is a named limit that an ordinary refactor reaches, and a harmless `FlatList` over Glow's data fails it (P06.2-F record, "Delta re-review of correction C1"; DM-38 section 4).
 
 ## Carried to P06.3 (notifications)
 

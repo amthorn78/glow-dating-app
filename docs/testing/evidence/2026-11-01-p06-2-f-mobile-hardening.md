@@ -415,3 +415,19 @@ The session read the gate's and the Mobile job's log tails; it did not read the 
 
 - **The manager's share:** its verification of C1 confirmed the planted forms and the one named evasion, and then repeated the session's "through any binding" in the review prompt, Notion and its reply on Codex's thread without trying forms of its own (AM9-03).
 - **Next:** the disposition. Step 6's rule (a) puts findings 1 to 5 before the merge, since each falls in a correction class the review prompt names; the fix's design (extend the check, narrow its claim with cheap hardening, or change how the screens hold data) and the display-rule boundary it guards go to the Dev Manager first (DM-38; the charter; step 6).
+- **Codex on `903c41f`** (2 November, 16:34 UTC) raised two P2 threads, both this review's findings: data held in an object wrapper (`display-rule.test.ts:215`, finding 1) and a callback passed by reference (`:339`, finding 2). The manager answered both; they stay open until C2 is on PR40.
+
+**The dispositions** (DM-38, [report](../../continuity/dev-manager/reviews/2026-11-02-dm-38-p06-2-f-render-rule-check.md), answered at `f019911`, accepted as written):
+
+| # | Disposition |
+|---|---|
+| 1 | **Not fixed; settled by the narrowed claim.** Data held inside another value (a group or section, a list's render-item wrapper, a view-model object, a closure or a container) becomes a named limit that an ordinary refactor reaches (DM-38 2.3), and option (c), view models by explicit field copy, is carried to the next change to how the chat screens hold their data (2.5; the carried-items file). Codex's thread at `:215` is answered on that basis when C2 is on PR40 |
+| 2 | **Fixed in C2** (2.1): a function passed by reference is compared against what the caller passes, as an inline callback is; planted forms for the review's `shout`, a render function, a `useCallback` function and a method. Codex's thread at `:339` closes with it |
+| 3 | **Fixed in C2** (2.2, 2.6): type predicates and assertion signatures refused by resolved signature, except the default library's, and when declared in the two files; `Reflect`, and `Object` members other than `freeze`, refused by identifier however aliased |
+| 4 | **Fixed in C2** (2.6): the dependency-list exception only as an argument of a React hook call; the destructuring exception only when no enclosing pattern is annotated |
+| 5 | **Fixed in C2:** the test comment, this record and the brief state DM-38 section 4's guarantee and limits, with the `FlatList` false positive recorded (2.4) |
+| 6 | **In C2** (nit): a missing or unexercised `GLOW_DATA` path fails the test |
+| 7 | **A recorded limit** (nit): the planted forms' anchors fail closed |
+| 8 | **In C2** (nit): the Mobile row of "Correction C1"'s run of record names the `@glow/contracts` step as such |
+
+- **Next:** correction C2 (the brief, "Correction C2").
