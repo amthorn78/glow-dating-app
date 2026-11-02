@@ -76,7 +76,10 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 - **Its trigger:** a change to how `apps/mobile/src/chat/screen.tsx` or `rows.ts` hold or render chat data, for example a list component, grouping, or a helper or control that takes messages (P07.2's report from chat is one candidate). Not P06.3 by name: P06.3 is notifications.
 - **What that change does** (option (c)): it builds view models by explicit field copy, as `rows.ts` does for the list; its render check becomes "no contract type reaches the screen", with planted forms; it gets a full exact-head review. Its brief may propose another design to the Dev Manager.
-- **Why:** the render-rule check after P06.2-F's C2 follows Glow's data only by its own type; data held inside another value (a group or section, a list's render-item wrapper, a view-model object, a closure or a container) is a named limit that an ordinary refactor reaches, and a harmless `FlatList` over Glow's data fails it (P06.2-F record, "Delta re-review of correction C1"; DM-38 section 4).
+- **The backstop** (DM-39 3.1): if the trigger is missed, (c) lands before P11 serves the chat reads, at the latest (the P11 plan, the chat section).
+- **Every brief that touches `src/chat/screen.tsx` or `rows.ts`** says whether this trigger applies, P06.3's included (DM-39 3.2).
+- **What (c)'s brief takes** (DM-39 1.3), from the P06.2-F record's "Correction C2" and DM-39 section 3: C2's 49 passing forms in nine classes (N1 to N9; N1's X2 an intermediate component with a narrower prop) as forms its check must refuse; the session's candidate's three rules with their measured results; that a narrower type built from the contract's own (`Pick<>`, `Omit<>`) keeps Glow's identity while one declared outside does not; and today's harmless controls (the candidate's five, F0's `FlatList` family) as forms its check must pass.
+- **Why:** the render-rule check after P06.2-F's C2 treats a value as Glow's data only while its type declares a field in a `GLOW_DATA` file; data held inside another value (a group or section, a list's render-item wrapper, a view-model object, a closure or a container) is a named limit that an ordinary refactor reaches, and a harmless `FlatList` over Glow's data fails it (P06.2-F record, "Delta re-review of correction C1"; DM-38 section 4).
 
 ## Carried to P06.3 (notifications)
 

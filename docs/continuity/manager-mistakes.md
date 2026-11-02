@@ -129,6 +129,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-02 | 2 Nov 2026 | process | One records batch pushed as two pushes five minutes apart (`c6108e4`, then `06ec8b6` for AM8-22 and AM9-01, at the stop hook's request); the second cancelled the push and PR runs on `c6108e4` (41445575445, 41445585520), whose gates then failed. A repeat of AM5-04's mechanism. It recurred the same day: `903c41f`, then `3cf2ee1` for a wrong checkpoint time and AM8-22's addition, cancelled PR run 41482411075 | App Manager 9, reading the cancelled runs |
 | AM9-03 | 2 Nov 2026 | accuracy | The verification of C1 repeated the session's "finds Glow's data by type through any binding" in the delta prompt, Notion and the reply on Codex's thread, after re-running only the session's planted forms and its one named evasion; the delta re-review found more than 20 edits in the two files that pass | C1's delta re-review (findings 1 to 5) |
 | AM9-04 | 2 Nov 2026 | accuracy | Wrote the handoff's checkpoint and branch-list times from memory three times: 13:20 UTC for 16:32 (pushed at `903c41f`), 18:30 for 18:24 (pushed at `007377e`), and 20:30 for 21:51 (caught before its push) | App Manager 9, reading `date -u` after each |
+| AM9-05 | 2 Nov 2026 | accuracy | Notion's status lead and P06.2-F's Work Register row said the manager recommended "view models as their own item"; DM-39's consultation and the review log asked (c)'s timing without recommending one. The commit message of `6a9a6b5` said the same | Dev Manager 3, DM-39 section 9 |
 
 ## App Manager 2
 
@@ -1011,3 +1012,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** two pushed records said a wait or a listing began at a time it did not; no decision rested on either, and the waits' causes were right.
 - **Correction:** each time corrected from `date -u`.
 - **Prevention:** a time that goes into a record comes from a command run in the same step (`date -u +%H:%M`, or a tool result's timestamp), never from memory; the records script takes it as an argument.
+
+### AM9-05 — A recommendation in Notion that the consultation did not make (accuracy)
+
+- **What happened:** syncing `6a9a6b5`, the manager wrote in Implementation Control's status lead and P06.2-F's Work Register row that DM-39 recommended restating the guarantee "and view models as their own item". The consultation's item 3 asked whether (c) should become its own item, and made no recommendation; the review log's row says the same. The commit message of `6a9a6b5` carries the same phrase.
+- **Caught by:** Dev Manager 3, DM-39 section 9.
+- **Effect:** Notion overstated the manager's position on one question for the time between the sync and this batch; the Dev Manager answered the question as asked, and nothing was decided on the Notion text.
+- **Correction:** both Notion texts corrected at this batch's sync to say the timing was asked, with DM-39's answer; the commit message stays as history.
+- **Prevention:** a Notion summary of a consultation is written from the consultation's own text, item by item ("recommended" only where it says so), and the readback compares each "recommended" in the summary with the consultation.
