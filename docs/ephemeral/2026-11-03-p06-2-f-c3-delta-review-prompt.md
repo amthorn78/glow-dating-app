@@ -1,11 +1,11 @@
 # P06.2-F correction C3 delta re-review prompt — what the render-rule check does, as a positive list
 
 - **Owner:** App Manager 9. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 3 November 2026.**
+- **Revision 1, 3 November 2026. Revision 2, 3 November 2026:** the start gate compares non-Markdown paths only (`':(exclude)*.md'`), since OD-57's notes changed two Markdown files under `apps/` after `f87e8b1`; nothing else changed.
 - **Durable brief:** [P06.2-F — Mobile hardening and P06.2's carried follow-ups](../planning/p06-2-f-mobile-hardening.md), revision 3, "Correction C3", its "Review" line. A delta re-review (manager workflow, step 6): C3 changes no non-test line. It is held to [DM-39](../continuity/dev-manager/reviews/2026-11-02-dm-39-p06-2-f-render-rule-after-c2.md) 1.2.
 - **Where the result goes:** the report Nathan relays. The manager records it in the P06.2-F record, "Delta re-review of correction C3", with a disposition for each finding, and in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 1.61 (confidence 0.61); rung probabilities low 0.03, medium 0.43, high 0.45, extra high 0.09, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 1.00, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 1.00). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.030, Opus 5.5 at medium 0.430, Opus 5.5 at high 0.450, Opus 5.5 at extra high 0.090, Opus 5.5 at max 0.000, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Flags: boundary between medium and high. Sent 2026-11-03T00:45:20Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 1.68 (confidence 0.65); rung probabilities low 0.02, medium 0.39, high 0.49, extra high 0.10, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 1.00, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 1.00). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.020, Opus 5.5 at medium 0.390, Opus 5.5 at high 0.490, Opus 5.5 at extra high 0.100, Opus 5.5 at max 0.000, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Flags: boundary between medium and high. Sent 2026-11-03T00:54:53Z. Nathan picks the cell.
 - **The Dev Manager's read:** none before it runs. The review authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29), after Codex's review of PR40's head, which holds this prompt and C3's code (manager workflow, step 6).
@@ -15,7 +15,7 @@
 
 ---
 
-You are the **delta re-review of correction C3 of P06.2-F**, the mobile hardening, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one correction at one exact code head. This prompt is revision 1, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are the **delta re-review of correction C3 of P06.2-F**, the mobile hardening, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one correction at one exact code head. This prompt is revision 2, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **The render-rule test** (`apps/mobile/src/chat/display-rule.test.ts`) checks from source that `src/chat/screen.tsx` and `src/chat/rows.ts` render only contract fields, never a provider-shaped one (ADR 0003). It has two parts: a source check, which is a text match, and a type check built on the TypeScript compiler. Corrections C1 and C2 built the type check and its planted forms.
@@ -33,7 +33,7 @@ You are the **delta re-review of correction C3 of P06.2-F**, the mobile hardenin
   - Mobile took 7 min 42 s of its 25.
 - **The manager verified it** (the record, "Manager verification of correction C3"). Both versions of the test, printed from their parse trees with comments removed, are identical. The core paragraph matches word for word. The coverage words appear only as the type `any`, the method `every`, the mandated "any other form", and limits ("does not follow"). The run's jobs and lines were read. The manager then integrated it by a merge commit.
 
-**The code head under review is `f87e8b1`.** You work at `<PROMPT_SHA>`, whose non-Markdown paths are byte-identical to `f87e8b1` (the start gate checks this).
+**The code head under review is `f87e8b1`.** You work at `<PROMPT_SHA>`, whose non-Markdown paths are byte-identical to `f87e8b1` (the start gate checks this). Two Markdown files under `apps/mobile/` changed after it, for Nathan's OD-57 (`AGENTS.md` and `README.md`: Playwright in a CLI environment). They are governing or ordinary documentation for the Dev Manager's read, not under this review.
 
 **Your scope (a delta review: every path C3 touches, read whole as it stands at the head, not the diff alone):**
 - **The test file:** `apps/mobile/src/chat/display-rule.test.ts`, whole. Use `git diff 816cd607019e69442f99007ef6324c9aa00dd83c f87e8b19110544b1ceddfc1afd44a8492350fb81` as the guide to what changed.
@@ -97,8 +97,8 @@ git switch --detach <PROMPT_SHA>
 git rev-parse HEAD                                    # must print <PROMPT_SHA>
 git merge-base --all origin/main HEAD                 # expected: one line, 05f4c3a0f78e72a5782fef62db4ef186a8558ac3
 git merge-base --is-ancestor <PROMPT_SHA> origin/claude/magical-wozniak-yfmmx2 && echo "this prompt's commit is on the live branch"
-git diff --quiet f87e8b19110544b1ceddfc1afd44a8492350fb81 HEAD -- .github scripts services apps packages proofs && echo "the code head under review"
-git diff --quiet f87e8b19110544b1ceddfc1afd44a8492350fb81 origin/claude/magical-wozniak-yfmmx2 -- .github scripts services apps packages proofs && echo "no code on the live branch after f87e8b1"
+git diff --quiet f87e8b19110544b1ceddfc1afd44a8492350fb81 HEAD -- .github scripts services apps packages proofs ':(exclude)*.md' && echo "the code head under review"
+git diff --quiet f87e8b19110544b1ceddfc1afd44a8492350fb81 origin/claude/magical-wozniak-yfmmx2 -- .github scripts services apps packages proofs ':(exclude)*.md' && echo "no code on the live branch after f87e8b1"
 git show origin/claude/magical-wozniak-yfmmx2:docs/testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md | grep -c -E '^#+ Delta re-review of correction C3'   # must print 0
 ```
 
@@ -139,7 +139,7 @@ Expected: `"full": true`. Anything else: stop and report.
 ## 4. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
+- the prompt revision (revision 2, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
 - **the verdict:** approve, approve with nits, or changes required;
 - **the findings,** in a table: number, severity, correction class or not, file and line, what is wrong, and the evidence;
 - **the passing forms you found outside the list,** as records lines, each with its class;
