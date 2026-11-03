@@ -36,6 +36,7 @@ Work as your charter says: read-only, your report file only, on `claude/dev-mana
   - **Finding 5 (should fix, low):** `VirtualizedList` is given F0's `ArrayLike` and `Iterable` reasons, but its `data` prop is `any`.
   - **Nits 6 to 9:** C2's probe IDs are not unique; the 49th form is N4 or N5; the comment and the record attribute the source-check misses differently; and "whatever its key" is a coverage phrase, since a union-typed key is not refused.
   - **Severity:** none is blocking, given fixture scope and the validator as the first guard.
+  - **Codex found findings 1 to 3 again** on `7983b31`, as three P2 threads (`display-rule.test.ts:452`, `:411`, `:448`), with the same forms.
 - **The manager's re-run** (a scratch copy of `f87e8b1`, each a real edit to `screen.tsx` with its SHA-256 checked after restore):
   - findings 1, 2 and 3 each passed the test (21 of 21) and `tsc`;
   - the arrow-property control was refused;
@@ -58,7 +59,7 @@ Work as your charter says: read-only, your report file only, on `claude/dev-mana
 1. **Findings 1 to 5.** The options:
    - **(a) C4 changes the comment and the records only (recommended):**
      - **the change:** the three listed items are narrowed to the syntax the check refuses, and the three forms are named as known passing classes;
-     - **the narrowed items:** an inline arrow or function expression; a declared function, a `useCallback` result or an object property holding a function, given by reference; the destructuring exception only when the parameter's type is annotated; a destructuring assignment only as an `=` expression;
+     - **the narrowed items:** an inline arrow or function expression; a declared function, a `useCallback` result or an object property holding a function, given by reference; the destructuring exception's claim that the pattern's own check covers its reads, limited to a pattern typed as Glow's data, with a contextually typed parameter named as a known passing class (the exception's code unchanged); a destructuring assignment only as an `=` expression;
      - **the other corrections:** the source-check paragraph says that its text match is evaded by spacing, comments, strings and bracket forms, which the type check refuses, with the review's examples; and the `VirtualizedList` reason is corrected;
      - **gains:** inside DM-39 1.1; the list becomes true; a small change;
      - **costs:** the list claims less than it did; a later round may find evasions inside the narrowed words, though naming syntax rather than categories makes that less likely.
