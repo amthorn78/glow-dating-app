@@ -884,3 +884,44 @@ The Mobile job's log was read in full from the job's log download; the counts ab
 - **Integrated** into the manager branch by a merge commit, `cfab39b`; every non-Markdown path at it is byte-identical to `f87e8b1`. The trusted classifier reads the PR full scope (`behavior-or-empty`), with one merge base, `05f4c3a`.
 - **Codex's threads at `:280` (N1) and `:415` (N8):** C3's list now names both classes as known passing forms, so the manager answers and resolves them once this batch is on PR40.
 - **Next:** the delta re-review ([prompt](../../ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md), revision 1, then revision 2 for its start gate after OD-57; TypeSafe v8.2: Opus 5.5 at high), after Codex on PR40's head, which holds it and C3's code. It is held to DM-39 1.2.
+
+## Delta re-review of correction C3 (3 November 2026)
+
+- **The review:** a delta re-review held to DM-39 1.2, which Nathan ran from the prompt, revision 2 at `b2904a4`, of code head `f87e8b1`. The start gate passed: one merge base, `05f4c3a`, and no non-Markdown path changed after `f87e8b1`. The trusted classifier read full scope (`behavior-or-empty`). The review changed nothing, and Nathan relayed its report.
+- **Verdict: changes required.**
+  - **What holds:** C3 changes only comments. The parse trees match without comments, as do the printed source (`af0654d8…`) and the emitted JavaScript (`47c23e92…`). The core paragraph is word for word. Every planted-form bracket and every "no planted form" bracket is true. Each known-passing example passes as written.
+  - **What does not:** three of the review's own forms evade refusals the comment lists, and render a provider-shaped field with the test, `tsc` and ESLint passing. Under DM-39 1.2, each is a finding.
+  - **How it tested:** about 90 forms, 45 of them as real edits, each file's SHA-256 checked after its restore.
+- **Both runs passed:**
+  - push run 41553218994 on `f87e8b1`;
+  - PR run 41556434433 on `b2904a4`: eight of eight jobs, `Application checks passed`, 650 unit tests, `97 passed (5.0m)`.
+  - Codex found nothing on `4d576d3` or `b2904a4`.
+- **The manager confirmed findings 1 to 3 and 5** in a scratch copy of `f87e8b1` outside the checkout. Findings 1 to 3 were real edits to `MessageRow` in `screen.tsx`, with `screen.tsx`'s SHA-256 (`3aef02c392c5`) checked after each restore:
+  - **Finding 1:** `const view: { line(entry: ConversationMessage): string } = { line(entry: Loose) { return entry.name ?? ''; } }` rendering `view.line(message)`. The test passed 21 of 21, and `tsc` passed.
+  - **Finding 2:** `const caption: (entry?: Loose) => string = ({ name } = message) => name ?? ''` rendering `caption()`. The test passed 21 of 21, and `tsc` passed.
+  - **Finding 3:** `let rest: Loose = { text: null }; for ({ ...rest } of [message]) break;` rendering `rest.name`. The test passed 21 of 21, and `tsc` passed.
+  - **A control:** the arrow-property form `{ line: (entry: Loose) => entry.name ?? '' }` was refused, with 19 passed and 2 failed.
+  - **Finding 5:** `@react-native/virtualized-lists`'s `VirtualizedList.d.ts:203` types `data` as `any`.
+
+  The review reported 20 of 21 for its edits, because its placement moved a planted form's anchor; the manager's placement did not. ESLint was not re-run by the manager.
+
+**The findings** (dispositions wait on DM-40, below). Line numbers are in `apps/mobile/src/chat/display-rule.test.ts` at `f87e8b1`.
+
+| # | Finding | Severity; class |
+|---|---|---|
+| 1 | **The listed refusal of a callback "passed by reference (… an object's method)" whose parameter widens:** an object literal's method shorthand (`{ line(entry: Loose) { … } }`) gets neither the inline check nor the by-reference check. It also passes as a JSX prop (C4), through an interface with overloads (C5), as a class instance under that interface type (C3), and in `rows.ts` (C15). The arrow property (C2), `{ line: shout }` (C13) and `{ line }` (C14) are refused. The comment is at `:162-165`; the code at `:418`, `:451-461` and `:469` | Should fix; in a correction class (a form evades a listed refusal) |
+| 2 | **The destructuring exception's "whose reads the pattern's own check covers"** (`:178-179`; code `:406-412`) is false when the parameter's type comes from context, not an annotation. The pattern is then typed `Loose`, not as Glow's data, and the Glow-data default is exempt. X1 is `const caption: (entry?: Loose) => string = ({ name } = message) => name ?? ''`; X2 is the same as a JSX prop. The annotated form X3 is refused. This is the same shape as C1's delta re-review finding 4 | Should fix; in a correction class (the exception claims more than the code; a widening passes through it) |
+| 3 | **The listed "destructuring assignment"** is refused only as an `=` expression (`:447-448`). A destructuring assignment in a `for…of` head passes (D5, `for ({ ...rest } of conversation.messages) break;`). It overlaps N6 | Should fix; in a correction class (a form evades a listed refusal) |
+| 4 | **The source check's text match misses more forms than the four the comment names** (`:120-126`): `(message)as{…}`, `message as/* */{…}`, `<{…}>conversation` in `rows.ts`, `'/*'` and `'*/'` in strings (which hide a read from the comment stripper), `any` between two apostrophes, `'name'in message`, `...(message)`, `Reflect['get']`, `Object['values']` and `const { stringify } = JSON`. The type check refused each one tried | Should fix (low); in a correction class (it evades the source check's listed refusals; the check as a whole refuses each) |
+| 5 | **`VirtualizedList` is grouped under F0's `ArrayLike` and `Iterable` reasons** (`:212-217`, and this record's "What harmless code it refuses"). Its `data` prop is `any`, so it fails as `a widening to unknown` and `a widening to any`. The corrected `Iterable` reason is true | Should fix (low); in a correction class (a false reason) |
+| 6 | **Probe IDs in "Correction C2" are not unique** (`R3` is "now caught" in one row and listed under N3; `R6` is in N4 and among the caught by-reference forms), so "(c)'s brief takes the forms by ID" is ambiguous | Nit (records) |
+| 7 | **The 49th form:** C2's mechanism table places it in the "passed" row (four forms, N4 and N5), whose class lists name only P3, P9 and P5b. So it is N4 or N5; P5, which the verifiers moved into the closure limit, is a candidate beside P5d | Nit (records) |
+| 8 | **The comment says "C3's probes found these"** of the four source-check misses (`:126`); the record says C3's verifiers found them | Nit |
+| 9 | **"whatever its key"** (`:171`) is a coverage phrase. A union-typed key gives a union type, which is not refused (O5, `globalThis[key]` with `key: 'Reflect' \| 'JSON'`, passes; no read through it was found) | Nit |
+
+- **Passing forms outside the list,** as records lines:
+  - finding 1's mechanism as a class, if it is disposed of as one: "a method whose parameter widens, given inside an object or instance" (C1, C3, C4, C5, C15);
+  - O5, a reflective global reached through a union-typed key (harmless as tried);
+  - the test name at `:670` ("whatever the validators let through"), a coverage phrase in a non-comment line, outside C3's scope.
+- **Focus 9, the planted-form specification:** the core paragraph's "planted forms are that list's specification" holds for the items that have planted forms, and the brackets state the gaps, so it is not an overclaim. The review's view is to keep them as marked, plant nothing before the merge (that would depart from DM-39 1.1 for a check that option (c) replaces), and carry the unpinned items, with its forms, to (c)'s brief. It is not a correction class.
+- **Next:** the disposition. Step 6's rule (a) puts findings 1 to 5 before the merge. Each can be closed in the comment and the records, by narrowing the listed items to what the check refuses and naming the forms, which is inside DM-39 1.1; or in the check, which departs from it. Either is a design choice for a member-privacy boundary, so it goes to the Dev Manager first, as DM-40, with OD-57's governing texts for its pre-merge read.
