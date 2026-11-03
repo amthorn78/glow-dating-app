@@ -122,9 +122,12 @@ test('an active participant can unmatch while paused and the restricted detail e
   await expect(matchRows(page).first()).toContainText('Connection unavailable');
   await page.getByRole('button', { name: 'View connection status', exact: true }).click();
   await expect(active(page, 'match-detail')).not.toContainText('Jules');
+  // No conversation opens from a restricted connection, shown or retained (the C2 review's finding 5).
+  await expect(page.getByTestId('match-conversation')).toHaveCount(0);
   await expect(active(page, 'match-unmatch')).toBeEnabled();
   await active(page, 'match-unmatch').click();
   await expect(active(page, 'match-detail')).toContainText('You are unmatched');
+  await expect(page.getByTestId('match-conversation')).toHaveCount(0);
 });
 
 test('blocking purges retained match details and unblocking does not restore a mutual match', async ({ page }) => {
@@ -157,10 +160,13 @@ for (const restriction of ['suspended', 'deletion_pending'] as const) {
     await page.getByRole('button', { name: 'View connection status', exact: true }).click();
     await expect(active(page, 'match-detail')).not.toContainText(/Fictional Jules|You both liked|birth_date|other_profile_id/);
     await expect(active(page, 'match-detail')).toContainText('Messaging is unavailable');
+    // No conversation opens for a restricted account, shown or retained (the C2 review's finding 5).
+    await expect(page.getByTestId('match-conversation')).toHaveCount(0);
     await expect(active(page, 'match-unmatch')).toBeEnabled();
     await active(page, 'match-unmatch').click();
     await expect(active(page, 'match-detail')).toContainText('You are unmatched');
     await expect(active(page, 'match-unmatch')).toHaveCount(0);
+    await expect(page.getByTestId('match-conversation')).toHaveCount(0);
     await active(page, 'logout').click();
     await expect(active(page, 'screen-account')).toBeVisible();
     await expect(page.getByTestId('match-detail')).toHaveCount(0);

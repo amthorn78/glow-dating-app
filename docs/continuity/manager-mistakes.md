@@ -122,6 +122,16 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM8-17 | 1 Nov 2026 | accuracy | M06 stage two's prompt required `npm audit signatures` and limited the network to the npm registry and `docs.expo.dev`; the command needs Sigstore's TUF host, so the session had to deviate | The stage-two session, which logged the deviation |
 | AM8-18 | 1 Nov 2026 | follow-through | M06 stage two's record raised "one precision for the Dev Manager" (`noxcturnal` published by GitHub Actions without provenance), and the manager's verification did not route it | The exact-head review, finding 2 |
 | AM8-19 | 1 Nov 2026 | records | Nine prompts and consultations pruned on 26 October and 1 November (M05's, DM-31 to DM-33, M04's four, M06's assessment) left their Notion links on the manager branch, where the files no longer exist | The manager, while pinning M06's links in Notion |
+| AM8-20 | 1 Nov 2026 | prompt | P06.2-F's prompt told the session to push its code and read the run of record, but not to hold a records push while that run was in progress, though a newer push on the branch cancels the older run; the session's records push cancelled the run on its code head | The session itself |
+| AM8-21 | 1 Nov 2026 | accuracy | P06.2-F's Manager verification counted the diff as "18 changed, 5 added, 2 removed" (it is 17, 6 and 2) and repeated the session's "Expo still inlines it there" without reading a bundle | The exact-head review, findings 7 and 10 |
+| AM8-22 | 26 Oct to 2 Nov 2026 | follow-through | Implementation Control's standing status bullets (Phase, Next items, Manager, Main, Branches, Mistakes log) left at 26 October through M06, P09.3a, P06.2-F and the handover; the batches updated only the opening paragraph. The Dev Manager page's consultations stopped at DM-32 likewise. A repeat of AM8-11 and AM8-13. Recorded by App Manager 9 | App Manager 9, reading the whole status section before its first sync |
+| AM9-01 | 2 Nov 2026 | accuracy | The first report told Nathan that Implementation Control's status section matched `76dbe4a`, after reading only its opening paragraph; its standing bullets did not (AM8-22) | App Manager 9, reading the whole section before its first sync |
+| AM9-02 | 2 Nov 2026 | process | One records batch pushed as two pushes five minutes apart (`c6108e4`, then `06ec8b6` for AM8-22 and AM9-01, at the stop hook's request); the second cancelled the push and PR runs on `c6108e4` (41445575445, 41445585520), whose gates then failed. A repeat of AM5-04's mechanism. It recurred the same day: `903c41f`, then `3cf2ee1` for a wrong checkpoint time and AM8-22's addition, cancelled PR run 41482411075 | App Manager 9, reading the cancelled runs |
+| AM9-03 | 2 Nov 2026 | accuracy | The verification of C1 repeated the session's "finds Glow's data by type through any binding" in the delta prompt, Notion and the reply on Codex's thread, after re-running only the session's planted forms and its one named evasion; the delta re-review found more than 20 edits in the two files that pass | C1's delta re-review (findings 1 to 5) |
+| AM9-04 | 2 Nov 2026 | accuracy | Wrote the handoff's checkpoint and branch-list times from memory three times: 13:20 UTC for 16:32 (pushed at `903c41f`), 18:30 for 18:24 (pushed at `007377e`), and 20:30 for 21:51 (caught before its push) | App Manager 9, reading `date -u` after each |
+| AM9-05 | 2 Nov 2026 | accuracy | Notion's status lead and P06.2-F's Work Register row said the manager recommended "view models as their own item"; DM-39's consultation and the review log asked (c)'s timing without recommending one. The commit message of `6a9a6b5` said the same | Dev Manager 3, DM-39 section 9 |
+| AM9-06 | 3 Nov 2026 | accuracy | C3's prompt and the brief's Outcome 1 asked each item of the check's refusal list to name, by ID, the planted forms that pin it, without the manager first checking that each item had one; several had none | Correction C3, its point 1 |
+| AM9-07 | 3 Nov 2026 | accuracy | Implementation Control's "Standing directions" line said the Notion register copy holds OD-01 to OD-54 after OD-55 and OD-56 were added to it; App Manager 9's readbacks covered the status section and missed it | App Manager 9, recording OD-57 |
 
 ## App Manager 2
 
@@ -951,3 +961,80 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** a reader following those links in Notion got GitHub's "not found" from 26 October or 1 November until this fix. No decision rested on them; the repository's links were pinned.
 - **Correction:** the nine links, and M06's three, now point at the commit before each prune. Every remaining manager-branch ephemeral link in the page names a file that exists.
 - **Prevention:** a prune batch lists every link to the pruned files in the repository and in Notion (Implementation Control and the Work Register rows), pins each to a commit that holds the file, and reads Notion back before it reports the prune.
+
+### AM8-20 — A prompt that let a records push cancel the code head's run (prompt)
+
+- **What happened:** P06.2-F's prompt said "Commit and push… The run of record is the one on your last code commit." The Foundation workflow cancels a branch's in-progress run when a newer push lands, and a Markdown-only push's run skips the application jobs. The session pushed its draft record while the run on its code head `3db50d8` was in progress, so that run was cancelled, and the records head's run covered no code.
+- **Caught by:** the session, which stopped and asked Nathan.
+- **Effect:** about 40 minutes and one extra cycle. Nathan approved a `--force-with-lease` reset of the session's own branch to `67b0201` and the fast-forward push of `3db50d8`; run 41359462167 is the run of record. No commit was rewritten.
+- **Correction:** none needed in the code; the record and the brief's "Sessions" say what happened.
+- **Prevention:** every implementation prompt that names a run of record says: push the code, wait for its run to complete, and push records only after it, or push code and records together in one push.
+
+### AM8-21 — A miscount and an unchecked claim in a verification (accuracy)
+
+- **What happened:** P06.2-F's Manager verification said the 25 paths were "18 changed, 5 added, 2 removed"; `git diff --name-status 67b0201 3db50d8` gives 17 modified, 6 added and 2 deleted. It also said "Expo still inlines it there" of the layout's mode, repeating the session's sentence. The manager had read the diff, not a bundle; a development bundle reads the mode through Expo's env module, `_expoVirtualEnv.env.EXPO_PUBLIC_GLOW_MODE`, as it reads the two unchanged reads.
+- **Caught by:** the exact-head review, findings 7 and 10.
+- **Effect:** records only. The total of 25 was right, and the guard's behavior is unchanged.
+- **Correction:** both sentences corrected in place in the record, marked.
+- **Prevention:** a verification's counts come from a command's output (`git diff --name-status … | cut -c1 | sort | uniq -c`), quoted as counted; a claim about build output either comes from reading that output or is attributed to the session that made it.
+
+### AM8-22 — Implementation Control's standing bullets left at 26 October (follow-through)
+
+- **What happened:** from 26 October to the handover on 2 November, each Notion sync prepended a new entry to the opening paragraph of Implementation Control's "Current status" and left the section's standing bullets as they were. At `76dbe4a` they still said that App Manager 8 was the manager with PR37 open, that `main` was `35a5827` with PR38 open, the branch list of 26 October 18:50 UTC, M06 as the next item, a Phase line ending at M04, and a mistakes list ending at AM8-18. Recorded by App Manager 9.
+- **Caught by:** App Manager 9, reading the whole section before its first sync.
+- **Effect:** a reader of the bullets alone got a state a week old. The opening paragraph, the handoff and the Work Register row were current, and no decision rested on the bullets.
+- **Correction:** the six bullets are brought up to date in App Manager 9's first sync (at `c6108e4`'s records), and read back. The same gap was on *Dev Manager — reviews and approvals*, whose consultations stopped at DM-32 (last edited 26 October); DM-33 to DM-37, with DM-38, were added at `903c41f`'s sync and read back.
+- **Prevention:** it repeats AM8-11 and AM8-13, whose prevention is already in the manager workflow's claims checklist ("read back the whole status section, not only what changed"). The checklist item is unchanged; what was missing was running it: each sync's readback now lists the section's standing bullets by name with the state each states, against the handoff.
+
+## App Manager 9
+
+### AM9-01 — A Notion match claimed from its first paragraph (accuracy)
+
+- **What happened:** App Manager 9's first report told Nathan that "Implementation Control's status section and the P06.2-F Work Register row both match `76dbe4a`". The page is over 180,000 characters, and the manager had read only the status section's opening paragraph; the section's standing bullets did not match (AM8-22). The report said it had read only the status section, which was itself more than it had read.
+- **Caught by:** App Manager 9, reading the whole section before its first sync.
+- **Effect:** one line of one report to Nathan; nothing was decided on it.
+- **Correction:** this entry, the bullets' correction (AM8-22), and the next report to Nathan, which says so.
+- **Prevention:** the claims checklist's "say *every*, *no* or *never* only after tracing each path" covers a match claim: a match is stated only for the parts read, by name, or after reading the whole section.
+
+### AM9-03 — A session's completeness claim repeated after testing only its own forms (accuracy)
+
+- **What happened:** C1's record said its type check "finds Glow's data by type … through any binding" and that "every way that type can be dropped or widened in the file is either a refusal above or a type error". App Manager 9's verification re-ran PA, PB, PC and finding 2's reversal and confirmed the one evasion the record named, then wrote "through any binding" in its own words in the delta re-review prompt, the Work Register row, Implementation Control and its reply on Codex's thread (`display-rule.test.ts:133`). It tried no form of its own.
+- **Caught by:** C1's delta re-review, findings 1 to 5: more than 20 edits confined to `screen.tsx` or `rows.ts` pass the test, `tsc` and ESLint. The manager re-ran three; each passed.
+- **Effect:** the claim reached the prompt (which asked the reviewer to test it, so the review was not misled), Notion and a PR comment. No merge rested on it.
+- **Correction:** the record's "Delta re-review of correction C1" states the finding; Notion's texts are corrected at this batch's sync; the PR thread gets a reply when C2's fix is on the PR.
+- **Prevention** (as DM-38 4.1 and 4.2 strengthen it): it repeats the mechanism of AM7-08 and AM8-21's second half, a session's claim repeated unchecked.
+  - A verification that meets a completeness claim ("any", "every", "all") tries forms the session did not list, at least two, recording each with its result, **and** still attributes the claim to the session, with its own forms and their results beside it. No test over source proves "through any binding", so the manager never makes such a claim in its own words (DM-38 4.1).
+  - Part of the cause was the brief: C1's Outcome 1 asked for a check that "fails … through any binding", which no source check can show, and the session then claimed exactly that. A brief asks for named forms and a stated guarantee with its limits, never "any" or "every" over arbitrary code (DM-38 4.2). Brief revision 2 applies it to C1's Outcome 1 and to C2.
+  - This applies the claims checklist's first item (say *every*, *no* or *never* only after tracing each path) to a session's words as well as the manager's own.
+
+### AM9-04 — Times written from memory (accuracy)
+
+- **What happened:** the current handoff's waiting checkpoint and branch-list headings carry a time. App Manager 9 wrote them without reading the clock: "13:20 UTC" at 16:32 (`903c41f`, corrected at `3cf2ee1`), "18:30" at 18:24 (`007377e`, corrected in the batch after it), and "20:30" at 21:51, caught before its push.
+- **Caught by:** App Manager 9, reading `date -u` after writing each.
+- **Effect:** two pushed records said a wait or a listing began at a time it did not; no decision rested on either, and the waits' causes were right.
+- **Correction:** each time corrected from `date -u`.
+- **Prevention:** a time that goes into a record comes from a command run in the same step (`date -u +%H:%M`, or a tool result's timestamp), never from memory; the records script takes it as an argument.
+
+### AM9-05 — A recommendation in Notion that the consultation did not make (accuracy)
+
+- **What happened:** syncing `6a9a6b5`, the manager wrote in Implementation Control's status lead and P06.2-F's Work Register row that DM-39 recommended restating the guarantee "and view models as their own item". The consultation's item 3 asked whether (c) should become its own item, and made no recommendation; the review log's row says the same. The commit message of `6a9a6b5` carries the same phrase.
+- **Caught by:** Dev Manager 3, DM-39 section 9.
+- **Effect:** Notion overstated the manager's position on one question for the time between the sync and this batch; the Dev Manager answered the question as asked, and nothing was decided on the Notion text.
+- **Correction:** both Notion texts corrected at this batch's sync to say the timing was asked, with DM-39's answer; the commit message stays as history.
+- **Prevention:** a Notion summary of a consultation is written from the consultation's own text, item by item ("recommended" only where it says so), and the readback compares each "recommended" in the summary with the consultation.
+
+### AM9-06 — A prompt asked for evidence the manager had not checked exists (accuracy)
+
+- **What happened:** C3's prompt and the brief's "Correction C3" Outcome 1 asked each item of "What it refuses, in its own terms" to name, by ID, the planted forms that pin it. The text came from DM-39 section 4.2's terms. The manager did not first check that each item had a planted form. Several did not: a rest read; an `in` check, a `for…in` or a destructuring assignment; some widenings; an inferred predicate; a type error; and two source-check items.
+- **Caught by:** correction C3, its point 1. The session marked each such item "no planted form", confirmed each refusal by a probe and added none, as DM-39 1.1 requires.
+- **Effect:** none on the code. The prompt asked for something that could not be met as written; the session reported it, and the open question went to the delta re-review (its focus 9).
+- **Correction:** recorded in "Manager verification of correction C3"; the delta re-review's prompt states the gap and asks for a view on it.
+- **Prevention:** when a prompt asks a session to cite evidence for each item of a list (an ID, a test, a run), the manager checks first that the evidence exists for each item, or the prompt says what to do where it does not.
+
+### AM9-07 — A range on Implementation Control left behind the register (accuracy)
+
+- **What happened:** Implementation Control's "Standing directions" section says which directions Notion's copy of the register holds. It still said OD-01 to OD-54 after OD-55 (1 November) and OD-56 (2 November) were added to the copy. App Manager 9's readbacks of the page covered the status section and its standing bullets, not the sections after the operating procedure.
+- **Caught by:** App Manager 9, recording OD-57.
+- **Effect:** a reader of Implementation Control alone would have missed two directions; the copy itself was current.
+- **Correction:** the line now names OD-01 to OD-57, at this batch's sync.
+- **Prevention:** a page's readback covers every section that names a range, a count or a commit, not only the section the batch wrote; adding a direction updates the register copy and that line together.

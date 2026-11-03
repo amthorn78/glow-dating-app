@@ -75,3 +75,98 @@ That is your decision (DM-31), and this message takes no side. The decisions abo
 **The rest of A05 comes later,** in two messages: before SV2's brief, the preference taxonomy, resurfacing and rematch, and the history policy; before P07's brief, retention and moderation operators.
 
 **DECISION NEEDED:** your answer to D1 (the country of establishment, and (a) or (b)), D2 ((a) to (d), and the language) and D3 ((a) to (c)). A reply like "D1: <country>, b; D2: a, English; D3: a" is enough.
+
+---
+
+## Follow-up (1 November 2026)
+
+**Nathan's answer:** "1) I will establish a legal entity in the US. Does this mean we can't publish in the EU or UK? 2) Same questions 3) This will depend on where I can launch"
+
+**The manager's reply, as sent:**
+
+No. A US company can publish in the UK and the EU; it carries more duties there, not a bar. Nothing in the matrix stops a US entity from launching in either.
+
+| | What a US entity adds |
+|---|---|
+| **UK** | A UK representative for UK GDPR (UK-27). Its exemption covers only occasional processing without large-scale special-category data, and Glow's preference fields reveal orientation (UK-29), so expect to need one. The Online Safety Act still applies to a provider outside the UK with UK links (UK-02). As a non-UK provider, Glow reports to the NCA only UK-linked content (UK-15). Whether a controller outside the UK pays the ICO fee is unconfirmed (UK-44) |
+| **EU** | A DSA legal representative, in a Member State where Glow offers services, notified to its regulator, named publicly and liable for Glow's DSA duties (EU-06). A GDPR representative, on the same exemption test (EU-34). A breach is notified to every EU authority where affected users live (EU-45). Each Member State's own law is not in the matrix |
+
+Representative services are not priced yet; M07 would price them before you approve any line.
+
+- **D1** is answered: a US legal entity, option (b).
+- **D2's options are unchanged, and my recommendation stands, with D1 making it stronger: (a), the US first, all states, in English.** As a US entity, the US option needs no representative; the UK and the EU each add one or two, plus their own assessments and notices. A UK or EU launch can follow later: the matrix's rows stay ready for it.
+- **D3 follows from D2,** as you say: the US alone, or the EU alone while Glow is micro, takes (a), a self-entered birth date plus the stores' age signals behind SV1's seam; any option with the UK takes (c), verified or estimated age for UK members.
+
+**DECISION NEEDED:** D2 only. A reply like "D2: a, English" is enough; D3 then follows as above, and I record D1 to D3 as one owner direction.
+
+(Nathan's next message interrupted the reply above during its last sentence.)
+
+**Nathan:** "I will not be able to establish legal resident status in the UK or EU right away. I need to work within that limitation"
+
+**The manager's reply, as sent:**
+
+That limitation fits the recommendation, and it does not close the UK or the EU later.
+
+- **Neither needs you to be resident.** The UK and EU representatives are a person or firm already established there that the US company appoints in writing (UK-27, EU-06, EU-34), usually a paid service (not priced yet; M07). So a later UK or EU launch stays open without residency.
+- **What it settles:** Glow is a US company with no UK or EU establishment. A launch there would need those representatives, and Glow would report to the NCA only UK-linked content (UK-15).
+- **So D2 stays (a), the US first, all states, in English,** and D3 is then (a): a self-entered birth date plus the stores' age signals, behind SV1's seam.
+
+**DECISION NEEDED:** shall I record D2 as (a), the US first, all states, in English? A "yes" records D1 to D3 as one owner direction; otherwise name the option.
+
+**Nathan:** "tell me what I need for EU access at least"
+
+**The manager's reply, as sent:**
+
+**For an EU launch, a US company with no EU presence needs two appointed representatives, about a dozen documents and processes, and one legal reading on the chat.** While Glow stays a micro-enterprise, most of the heavier EU platform rules do not apply. From the matrix (EU rows); not legal advice, and it does not show compliance.
+
+| Area | What you need | Rows |
+|---|---|---|
+| **People you appoint** | A Digital Services Act legal representative in an EU country where Glow is offered: a written mandate, notified to that country's regulator, named publicly, and liable for Glow's DSA duties. A GDPR representative in a country where your users are, named in the privacy notice | EU-06, EU-34 |
+| **Published contacts** | One electronic contact point for EU authorities, with its languages; one for users that reaches a person | EU-04, EU-05 |
+| **In the stores** | The trader declarations, in both stores | AP-56, GP-59 |
+| **Documents** | Terms and community rules that describe moderation and any automated tools; a privacy notice; records of processing; a DPIA (a data protection impact assessment) before processing starts, since orientation data, matching and age checks are high-risk; contracts with every processor (chat, storage, hosting, email); a transfer basis for each US vendor (the EU-US Data Privacy Framework, or standard contractual clauses) | EU-07, EU-38, EU-43, EU-46, EU-42, EU-48 |
+| **Safety processes** | A report form open to anyone, members or not, with an acknowledgment and a reasoned decision; a statement of reasons for every removal, hidden profile or suspension; acting on authority orders; telling the police promptly about threats to life or safety | EU-09, EU-10, EU-03, EU-11 |
+| **Privacy features** | Explicit, withdrawable consent for the fields that reveal orientation (gender plus "who I want to see"); a lawful basis for each purpose; access, export, correction and deletion within one month; consent before non-essential SDKs or device access; private-by-default settings | EU-36, EU-35, EU-37, EU-39, EU-53, EU-50, EU-41 |
+| **Incidents** | A breach runbook: 72 hours, to every EU regulator where affected users live | EU-45 |
+| **Numbers** | The ability to give EU monthly users on request; evidence that Glow is a micro-enterprise | EU-18, EU-13 |
+| **Access** | No blocking or different terms between EU countries | EU-65 |
+
+- **One open reading:** whether Glow's chat counts as an electronic communications service under EU law. If it does, confidentiality, security-incident and notice rules for messaging also apply (EU-30, EU-52, EU-63, EU-64; gap G-12). No source settles it, so it is a question for a lawyer, if you take advice.
+- **Not needed while Glow is a micro-enterprise:** transparency reports, an internal complaints system, trusted flaggers, the minors' rules and their age-verification guidelines, recommender transparency, and the DSA's dark-pattern rule (EU-08, EU-14 to EU-24); the Accessibility Act (EU-60). Consumer-law duties apply only with paid features (EU-54 to EU-59).
+- **Not in the matrix:** each EU country's own laws.
+- **Cost:** the two representatives and the DPIA work are not priced yet (M07).
+- **Where the work sits:** the safety processes in P07, the privacy work and representatives in P08, already routed (gaps G-09, G-11, G-15).
+
+**D2, with this:** (a) the US only first, the EU later; or (d) the US and the EU together. **I recommend (a), with the EU as the second launch** once P07 and P08 have built the items above and M07 has priced the representatives. The EU items are mostly documents and processes Glow needs anyway, and they become a launch decision you can take later, under PF01's new release gate. D3 is (a) either way: while Glow is micro, the EU's age-verification guidelines do not apply, though any age check needs a DPIA (EU-24, EU-25).
+
+**DECISION NEEDED:** D2, (a) or (d). A reply of "a" or "d" is enough, and I record D1 to D3 as one owner direction.
+
+**Nathan:** "so I need two people"
+
+**The manager's reply, as sent:**
+
+**Two appointments, not two hires.** Each is a person or firm already established in the EU that Glow's US company appoints in writing, usually a paid representative service (EU-06, EU-34):
+
+- **the DSA legal representative,** in an EU country where Glow is offered, named publicly and liable for Glow's DSA duties;
+- **the GDPR representative,** in an EU country where your users are, named in the privacy notice.
+
+Whether one firm may hold both roles is not in the matrix. M07 checks it when it prices them, since a single provider would be one contract. Everything else on the list is yours to run: you can be both published contact points (EU-04, EU-05), as you hold every other role (OD-23).
+
+**DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
+
+**Nathan:** "so I cannot take on both roles myself?"
+
+**The manager's reply, as sent:**
+
+**No, not while you are outside the EU.** Both laws place the representative in the EU:
+
+- **GDPR:** *"the controller or the processor shall designate in writing a representative in the Union"* (EU-34);
+- **DSA:** a provider with no EU establishment designates *"a legal or natural person to act as their legal representative"* in an EU country where it offers its services (EU-06).
+
+So someone established in the EU has to hold both roles. It can be an individual rather than a firm: the DSA says "legal or natural person". But the DSA representative can be held liable for Glow's DSA duties (EU-06), so whoever takes it on carries that risk. A later UK launch works the same way: *"a representative in the United Kingdom"* (UK-27).
+
+**DECISION NEEDED:** D2, "a" (the US first, the EU later) or "d" (the US and the EU together).
+
+**Nathan:** "ok, then we are stuck with the US for now, then"
+
+**Recorded** as OD-55: D1 (b), a US legal entity; D2 (a), the US, all states, in English, for now; D3 (a), by his rule that it follows the geography.

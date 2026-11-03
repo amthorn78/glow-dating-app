@@ -884,7 +884,7 @@ C2-C4 ran from its prompt's revision 1 (code `d3d7300`, records `b60409b`; run o
 
 These were the handoff's "recorded follow-ups" for P06.2. They move here, their owning home, because the handoff only routes and stays under 5 KB (M05 finding 38). Each keeps its source.
 
-- **At the first change to `apps/mobile` after PR33 merged** (DM-23 3.1; DM-26 item 2), with the mobile hardening item M05 proposes (its E11):
+- **At the first change to `apps/mobile` after PR33 merged** (DM-23 3.1; DM-26 item 2), with the mobile hardening item M05 proposes (its E11). **Done in P06.2-F** (code head `3db50d8`; its record, items 4 to 6), except the optional finding 9 below, which stays open: the line it would gate also sends the revalidation read an unmatch, block or pause queues for a hidden conversation:
   - the README's last sentence, which names only "Stage C2" and "Stage C2-C1" as record sections, and M05's P-13 lines for `apps/mobile/README.md` (`:18` and `:440`);
   - the C2 review's finding 1's broader test (optionally, a bare `WebSocket` or `EventSource` identifier check; its README sentence was corrected in C2-C1), finding 4 (restore the draft on a final send refusal) and finding 5 (the restricted-match tests assert `match-conversation` absent);
   - **the window-replacement follow-up** (one entry; DM-29 1.1 with DM-30 2.1 and 2.2, on DM-28 1.5's scope). A window replacement leaves the older-page state `idle` whatever it was, `error` included, at `store.ts:245`, which makes the class comment's sentence at `:65` true. Each test comes with the reversal that must fail it:
@@ -901,6 +901,7 @@ These were the handoff's "recorded follow-ups" for P06.2. They move here, their 
 - **The guard for an older page answered `stale_version`** (DM-30 1.1 and 1.2): a standing entry, not struck when the follow-up lands. Its text is in the [P11 plan](../testing/p11-deferred-acceptance.md), "Standing guard", which is now its home. The simplest rule is to drop the older cursor and reload the newest page, as a `stale` head read does, with a test that covers a head read in flight at that moment (`store.ts:280` keeps a page's newer cursor) and its reversal, today's `:303`.
 - **`proofs/postgres-ordering/glow_ordering_proof/read_phase.py`, at its next change:** C1-C2's re-review notes N2 (`read.autocommit_off`'s note when a wait was observed) and N3 (the module docstring's reader).
 - **The fixture adapter's `already` for an earlier cut-off** (DM-17 item 5), so its contract row returns to the shared suite, at the fixture's next change and before P11. The P11 plan also holds it.
+- **At the next change to `apps/mobile/src/chat/store.ts`** (P06.2-F's exact-head review, finding 3; [its record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md), "Exact-head review of P06.2-F"): a test that listens to every snapshot, so that removing `!ends(failure.code)` from the draft restore after a final send refusal fails it. Today `revoke()` clears the draft afterwards, so the final state is right, but one snapshot in between holds the refused text.
 
 ## Sessions
 

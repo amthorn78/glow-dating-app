@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { MessageIntent } from '../contracts/generated/gapp-api-v1.ts';
 import { CONVERSATION_LIST_POLL_MS, CONVERSATION_PAGE_LIMIT, CONVERSATION_POLL_MS } from './store.ts';
 import type { ChatTransport } from './transport.ts';
-import { chatSetup, settle } from './testing.ts';
+import { chatSetup, secondMatch, settle } from './testing.ts';
 
 type Setup = Awaited<ReturnType<typeof chatSetup>>;
 const count = (fixture: Setup, operation: string) => fixture.fixture.requests().filter(request => request.operation === operation).length;
@@ -383,6 +383,56 @@ test('delayed: one pending send at a time; it completes after release', async ()
   assert.deepEqual(texts(fixture), ['Delayed.']);
 });
 
+/** Answers the next send with Glow's error envelope, as the server refuses a message. */
+function refuseSend(code: string, retryable = false) {
+  let armed = true;
+  return (transport: ChatTransport): ChatTransport => ({ ...transport, conversations: () => transport.conversations(),
+    messages: request => transport.messages(request), readCursor: intent => transport.readCursor(intent),
+    send: async intent => {
+      if (!armed) return transport.send(intent);
+      armed = false; return { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fd', code, retryable };
+    } });
+}
+for (const [code, retryable, failure] of [['stale_version', false, 'stale'], ['idempotency_conflict', false, 'conflict'], ['state_conflict', false, 'temporary']] as const) {
+  test(`a final send refusal (${code}) restores the draft; the conversation stays open (the C2 review's finding 4)`, async () => {
+    const fixture = await chatSetup(refuseSend(code, retryable));
+    await open(fixture);
+    fixture.store.setDraft('Keep these words.'); await fixture.store.send();
+    const snapshot = fixture.store.getSnapshot();
+    assert.deepEqual([snapshot.send.status, snapshot.send.error, snapshot.send.canRetry], ['error', failure, false]);
+    assert.equal(snapshot.draft, 'Keep these words.', 'the refused message is back in the composer');
+    assert.equal(snapshot.conversation.status, 'ready');
+    assert.equal(fixture.fixture.inspect().submissions.length, 0, 'nothing was sent');
+    // Sending again is a new message with a new key.
+    await fixture.store.send(); await settle();
+    assert.deepEqual([fixture.store.getSnapshot().send.status, fixture.store.getSnapshot().draft], ['sent', '']);
+    assert.deepEqual(texts(fixture), ['Keep these words.']);
+  });
+}
+
+test('a final send refusal keeps a draft started while the message was pending (the C2 review\'s finding 4)', async () => {
+  const gated = { release: () => {} };
+  const fixture = await chatSetup(transport => ({ ...transport, conversations: () => transport.conversations(),
+    messages: request => transport.messages(request), readCursor: intent => transport.readCursor(intent),
+    send: () => new Promise(resolve => { gated.release = () => resolve({ contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fd', code: 'stale_version', retryable: false }); }) }));
+  await open(fixture);
+  fixture.store.setDraft('First.'); const sending = fixture.store.send(); await settle();
+  fixture.store.setDraft('Second, typed meanwhile.');
+  gated.release(); await sending; await settle();
+  assert.deepEqual([fixture.store.getSnapshot().send.error, fixture.store.getSnapshot().draft], ['stale', 'Second, typed meanwhile.']);
+});
+
+test('a retryable failure keeps the draft empty and offers the same message again; a refusal that ends access drops it', async () => {
+  const retry = await chatSetup(refuseSend('state_conflict', true));
+  await open(retry);
+  retry.store.setDraft('Retry me.'); await retry.store.send();
+  assert.deepEqual([retry.store.getSnapshot().send.canRetry, retry.store.getSnapshot().draft], [true, '']);
+  const ended = await chatSetup(refuseSend('not_found'));
+  await open(ended);
+  ended.store.setDraft('Gone.'); await ended.store.send();
+  assert.deepEqual([ended.store.getSnapshot().conversation.status, ended.store.getSnapshot().draft], ['revoked', '']);
+});
+
 test('a revocation in the foreground drops the history, draft and polling at once; another account retains nothing', async () => {
   const fixture = await chatSetup();
   julesSends(fixture, 'Private history.');
@@ -413,6 +463,19 @@ test('another account replaces the session: nothing private survives and late re
   const snapshot = fixture.store.getSnapshot();
   assert.deepEqual([snapshot.selectedMatchId, snapshot.conversation.messages.length, snapshot.send.status, snapshot.draft], [null, 0, 'idle', '']);
   assert.equal(JSON.stringify(snapshot).includes('Before the switch.'), false);
+});
+
+for (const change of ['signing out', 'another account'] as const) test(`${change} clears the conversation list at once, before any read (M05 finding 18; store.ts's list clear)`, async () => {
+  const fixture = await chatSetup();
+  julesSends(fixture, 'Listed.');
+  fixture.store.showList(); await settle();
+  assert.equal(unread(fixture), 1, 'the list holds the conversation');
+  if (change === 'signing out') fixture.owner.logout(); else fixture.owner.scenario('eligible');
+  // Read at once, before any request the change starts can complete: the clear is the account change's own.
+  const { list } = fixture.store.getSnapshot();
+  assert.deepEqual([list.conversations, list.error], [[], null], 'nothing of the earlier account\'s list is kept');
+  assert.notEqual(list.status, 'ready');
+  assert.equal(JSON.stringify(fixture.store.getSnapshot()).includes(fixture.matchId), false);
 });
 
 type Operation = keyof ChatTransport;
@@ -612,9 +675,10 @@ test('two messages with the same time are two messages; keys are submission_id, 
 
 const stale = { contract_version: 'gapp-api-v1', request_id: '00000090-0000-4000-8000-0000000000fe', code: 'stale_version', retryable: false };
 /**
- * F1's transport (DM-27 1.2): answers the next head read made with a newer cursor with Glow's
- * `stale_version`, as C1 answers a cursor whose boundary it cannot place. The store then reloads
- * the newest page alone, which replaces the loaded window.
+ * F1's transport (DM-27 1.2): once armed, answers the next `messages` request made with any
+ * cursor (non-null; in these tests the poll's newer cursor) with Glow's `stale_version`, as C1
+ * answers a cursor whose boundary it cannot place, without passing it to the fixture. The store
+ * then reloads the newest page alone, which replaces the loaded window.
  */
 function staleOnce() {
   let armed = false, answered = 0;
@@ -640,9 +704,12 @@ async function staleReload(fixture: Setup, log: ReturnType<typeof cursorLog>, st
   assert.deepEqual(log.targets, idsOf(fixture, A), 'the command to A succeeded');
   if (sendB) julesSends(fixture, B);
   await ownSends(fixture, own);
+  const asked = fixture.fixture.requests().filter(request => request.operation === 'messages').length;
   stalled.arm(); await fixture.timers.advance(CONVERSATION_POLL_MS); await settle();
   assert.equal(stalled.answered(), 1, 'one head read answered `stale`');
-  assert.equal(fixture.fixture.requests().filter(request => request.operation === 'messages').at(-1)!.cursor, null, 'then the newest page alone');
+  // Counted, not only the last one read: exactly one request followed, for the newest page (the re-review's finding 6).
+  assert.deepEqual(fixture.fixture.requests().filter(request => request.operation === 'messages').slice(asked).map(request => request.cursor), [null],
+    'then the newest page alone, once');
   assert.equal(texts(fixture).includes(B), false, 'B lies before the reloaded window');
 }
 
@@ -722,9 +789,11 @@ const later = (fixture: Setup) => { for (let number = 26; number <= 50; number++
 /** The next head read is answered `stale`; with `holdReload`, the cursorless reload that follows is held. */
 async function staleAnswer(fixture: Setup, stalled: ReturnType<typeof staleOnce>, paged: ReturnType<typeof pages>, holdReload = false) {
   if (holdReload) paged.hold();
+  const asked = messageRequests(fixture).length;
   stalled.arm(); await fixture.timers.advance(CONVERSATION_POLL_MS); await settle();
   assert.equal(stalled.answered(), 1, 'one head read answered `stale`');
-  assert.equal(messageRequests(fixture).at(-1)!.cursor, null, 'then the newest page alone');
+  // Counted, not only the last one read (the re-review's finding 6).
+  assert.deepEqual(messageRequests(fixture).slice(asked).map(request => request.cursor), [null], 'then the newest page alone, once');
 }
 /** The window is the reload's page alone, with the reload's older cursor, and the older-page state is `idle`. */
 function assertReloaded(fixture: Setup, paged: ReturnType<typeof pages>) {
@@ -832,6 +901,10 @@ for (const outcome of ['succeed', 'fail', 'refuse'] as const) test(`CX12 (e): an
   assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published');
   await fixture.store.loadOlder(); await settle();
   assert.equal(requested(fixture), asked, 'still at most one: the invalidated one\'s completion does not free the current window\'s');
+  // A poll's newer page does not replace the window, so it leaves the current window's `loading` as it is (DM-30 2.2; the re-review's finding 4).
+  await fixture.timers.advance(CONVERSATION_POLL_MS);
+  assert.equal(requested(fixture), asked + 1, 'the poll was read');
+  assert.equal(fixture.store.getSnapshot().conversation.older, 'loading', 'its page is still held');
   await paged.release(0, outcome);
   if (outcome === 'refuse') { assertRevoked(fixture); return; }
   const conversation = fixture.store.getSnapshot().conversation;
@@ -861,4 +934,83 @@ test('CX12 (f): an older page asked from the replaced window starts no cursor co
   assert.equal(requested(fixture), before, 'no cursor command and no read: DM-25 3.2\'s older-page trigger does not fire');
   await fixture.timers.advance(CONVERSATION_POLL_MS); await settle(); await settle();
   assert.equal(count(fixture, 'read_cursor'), commands + 1, 'the waiting move follows the next read, as before');
+});
+
+test('DM-29 1.1: an older-page error from the window a `stale` reload replaces is not shown, and "Show earlier messages" asks with the reload\'s cursor', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  // The older page fails offline while its window is current: its error is shown.
+  await heldOlder(fixture, paged);
+  await paged.release(0, 'fail');
+  assert.equal(fixture.store.getSnapshot().conversation.older, 'error', 'the failure is published while its window is current');
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged);
+  assertReloaded(fixture, paged); // `older` is `idle` and no error is shown
+  await reachTheGap(fixture, paged);
+});
+
+test('DM-29 1.1 in the gap: an older page asked from the window about to be replaced, failing before the reload is merged, leaves no error after it (the re-review\'s finding 2)', async () => {
+  const { stalled, paged, setup } = cx12(), fixture = await setup();
+  await windowThenLater(fixture);
+  later(fixture);
+  await staleAnswer(fixture, stalled, paged, true);
+  assert.equal(paged.held(), 1, 'the reload is held');
+  await heldOlder(fixture, paged); // asked from the window still loaded, which the reload will replace
+  await paged.release(1, 'fail'); // the older page fails first, while its window is still current
+  assert.equal(fixture.store.getSnapshot().conversation.older, 'error');
+  await paged.release(0); // then the reload is merged
+  assertReloaded(fixture, paged);
+  await reachTheGap(fixture, paged);
+});
+
+for (const outcome of ['fail', 'refuse'] as const) test(`CX9: an older page held across a revocation that is then ${outcome === 'fail' ? 'released to fail' : 'refused'} publishes nothing and starts nothing (the re-review's finding 3)`, async () => {
+  const { paged, setup } = cx12(), fixture = await setup();
+  assert.equal(fixture.fixture.developmentSeed('profile-jules', fixture.matchId, 25), true);
+  await open(fixture);
+  await heldOlder(fixture, paged);
+  fixture.adapter.block('profile-jules', true, 'block:held-older'); await settle(); // Glow refuses the next head read: revoked
+  assertRevoked(fixture);
+  const before = requested(fixture), snapshot = fixture.store.getSnapshot();
+  await paged.release(0, outcome);
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'nothing published: no older-page error and no second revocation');
+  assert.equal(requested(fixture), before, 'no request starts');
+});
+
+test('the older-page slot is the window\'s: a page held in another conversation does not hold back this one\'s (the re-review\'s finding 5)', async () => {
+  const { paged, setup } = cx12(), fixture = await setup();
+  const second = await secondMatch(fixture);
+  for (const matchId of [fixture.matchId, second]) assert.equal(fixture.fixture.developmentSeed(matchId === second ? 'profile-iris' : 'profile-jules', matchId, 25), true);
+  await open(fixture);
+  await heldOlder(fixture, paged);
+  fixture.store.select(second); fixture.store.openConversation(); await settle();
+  assert.equal(fixture.store.getSnapshot().conversation.hasOlder, true);
+  const asked = requested(fixture);
+  await fixture.store.loadOlder(); await settle();
+  assert.equal(requested(fixture), asked + 1, 'the second conversation\'s older page is asked');
+  assert.equal(texts(fixture).length, 25, 'and merged');
+  const snapshot = fixture.store.getSnapshot();
+  await paged.release(0); // the first conversation's page
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'it changes nothing here');
+});
+
+test('the older-page slot is the window\'s: a page held from before a revocation does not hold back a window read after it (the re-review\'s finding 5)', async () => {
+  const { paged, setup } = cx12(), fixture = await setup();
+  assert.equal(fixture.fixture.developmentSeed('profile-jules', fixture.matchId, 25), true);
+  await open(fixture);
+  await heldOlder(fixture, paged);
+  // One head read is refused as access ending; the conversation is revoked.
+  paged.hold(); await fixture.timers.advance(CONVERSATION_POLL_MS);
+  assert.equal(paged.held(), 2);
+  await paged.release(1, 'refuse');
+  assertRevoked(fixture);
+  // Glow decides a read made afterwards: here it serves the match again, with a new window.
+  fixture.activity.set('background'); fixture.activity.set('active'); await settle();
+  assert.deepEqual([fixture.store.getSnapshot().conversation.status, fixture.store.getSnapshot().conversation.hasOlder], ['ready', true]);
+  const asked = requested(fixture);
+  await fixture.store.loadOlder(); await settle();
+  assert.equal(requested(fixture), asked + 1, 'the new window\'s older page is asked');
+  assert.equal(texts(fixture).length, 25);
+  const snapshot = fixture.store.getSnapshot();
+  await paged.release(0); // the page held from before the revocation
+  assert.equal(fixture.store.getSnapshot(), snapshot, 'it changes nothing');
 });

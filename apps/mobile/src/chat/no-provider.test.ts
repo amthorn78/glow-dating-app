@@ -19,6 +19,8 @@ const CONSTRUCTIONS = [
   new RegExp(`\\bnew\\s+[\\w$.]*\\[\\s*['"\`](?:${TRANSPORTS})['"\`]\\s*\\]`),
   new RegExp(`\\bReflect\\s*\\.\\s*construct\\s*\\(\\s*(?:[\\w$]+\\s*\\.\\s*)*(?:${TRANSPORTS})\\b`),
 ];
+/** The C2 review's finding 1: any bare use of either name, so an aliased constructor (`const S = globalThis.X; new S(u)`) fails too. */
+const IDENTIFIER = new RegExp(`(?<![\\w$])(?:${TRANSPORTS})(?![\\w$])`);
 const SPECIFIERS = [/\bfrom\s*['"`]([^'"`]+)['"`]/g, /\bimport\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g, /\bimport\s*['"`]([^'"`]+)['"`]/g, /\brequire\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g];
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/;
 
@@ -58,11 +60,12 @@ function providerFindings(): string[] {
       if (PROVIDER_PACKAGE.test(match[1]!)) findings.push(`${where} imports ${match[1]}`);
     }
     for (const pattern of CONSTRUCTIONS) if (pattern.test(text)) findings.push(`${where} constructs a socket or event stream`);
+    if (IDENTIFIER.test(text)) findings.push(`${where} names a socket or event stream`);
   }
   return findings;
 }
 
-test('the app\'s manifest, lock and source name no provider package and construct no socket or event stream (DM-22 7.1)', () => {
+test('the app\'s manifest, lock and source name no provider package and construct or name no socket or event stream (DM-22 7.1; the C2 review\'s finding 1)', () => {
   assert.ok(appSource().some(file => file.endsWith(join('src', 'chat', 'fixture-adapter.ts'))), 'the scan reads the app\'s source');
   assert.deepEqual(providerFindings(), []);
 });
@@ -73,6 +76,8 @@ test('the patterns find what DM-22 7.1 names', () => {
   const sockets = [`new ${'Web'}Socket('x')`, `new window.${'Web'}Socket(u)`, `new globalThis?.${'Event'}Source(u)`, `new self['${'Web'}Socket'](u)`, `Reflect.construct(${'Event'}Source, [u])`];
   for (const source of sockets) assert.ok(CONSTRUCTIONS.some(pattern => pattern.test(source)), source);
   assert.equal(CONSTRUCTIONS.some(pattern => pattern.test('fetch(url)')), false);
+  for (const source of [`const S = globalThis.${'Web'}Socket; new S(u);`, `const { ${'Event'}Source: E } = window;`, `typeof ${'Web'}Socket`]) assert.ok(IDENTIFIER.test(source), source);
+  for (const source of ['fetch(url)', `My${'Web'}SocketLike`, `${'Event'}Sourced`]) assert.equal(IDENTIFIER.test(source), false, source);
   const imports = [`import x from '${PACKAGE_NAMES[0]}';`, `const y = require("${PACKAGE_NAMES[1]}");`, `await import('${PACKAGE_NAMES[2]}chat');`, `import '${PACKAGE_NAMES[0]}/dist';`];
   for (const source of imports) assert.ok(SPECIFIERS.some(pattern => [...source.matchAll(pattern)].some(match => PROVIDER_PACKAGE.test(match[1]!))), source);
 });

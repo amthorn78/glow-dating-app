@@ -46,7 +46,7 @@ export default function MediaScreen() {
     <Feedback error={state.error} message={state.message} busy={state.busy} />
     <Text style={styles.body}>Photos stay private while uploading and awaiting review. Only approved photos can support a visible profile.</Text>
     <Text style={styles.small}>Development policy: PNG only, up to 1 MiB, 2048 pixels per side and {FIXTURE_MEDIA_POLICY.maxPhotos} current photos. These are provisional preview limits.</Text>
-    <Text style={styles.small}>Private originals use a safe placeholder. This preview checks PNG structure, not decoded pixels or metadata removal. Provider processing and native file access remain unverified.</Text>
+    <Text style={styles.small}>Private originals use a safe placeholder. This preview checks PNG structure, not decoded pixels or metadata removal. Real photo processing and native file access remain unverified.</Text>
     <View style={styles.group} testID="media-owner-controls">
       <Button label="Choose a test photo" testID="media-picker" disabled={state.busy || pickerPending} onPress={() => void choose()} />
       <Text style={styles.small}>Use synthetic test files only. Browser PNG files can be read with a size bound. Native selection cannot upload until its bounded reader is verified.</Text>
@@ -87,8 +87,8 @@ export default function MediaScreen() {
             <Button label={`Move photo ${index + 1} later`} testID={`media-later-${item.asset_id}`} secondary disabled={state.busy || approvedIndex >= approved.length - 1} onPress={() => void media.move(item.asset_id, 1, outcome)} />
           </View>}
           {!['removal_pending', 'removed'].includes(item.state) && <Button label={`Remove photo ${index + 1}`} testID={`media-remove-${item.asset_id}`} secondary onPress={() => void media.remove(item.asset_id, outcome)} />}
-          {item.state === 'removal_pending' && <Text style={styles.small}>Unavailable for delivery. Provider deletion is still pending. A failed or timed-out purge does not mean the bytes are deleted.</Text>}
-          {item.state === 'removed' && <Text style={styles.small}>Synthetic provider purge confirmed. This fixture is not evidence of real storage deletion.</Text>}
+          {item.state === 'removal_pending' && <Text style={styles.small}>Unavailable for delivery. Deletion of the stored photo is still pending. A failed or timed-out purge does not mean the bytes are deleted.</Text>}
+          {item.state === 'removed' && <Text style={styles.small}>Synthetic purge confirmed. This fixture is not evidence of real storage deletion.</Text>}
         </View>;
       })}
     </View>
@@ -97,7 +97,7 @@ export default function MediaScreen() {
     <Text style={styles.small}>Work remains only in this session. Navigating away can retain pending work; signing out clears private presentation. A full app reload clears this fixture.</Text>
     <View style={styles.notice} testID="media-developer-controls">
       <Text style={styles.eyebrow}>SYNTHETIC DEVELOPER CONTROLS</Text>
-      <Text style={styles.small}>These controls simulate picker permissions and separate provider, system and moderator actors. They are not owner approval or deletion permissions.</Text>
+      <Text style={styles.small}>These controls simulate picker permissions and separate storage, system and moderator actors. They are not owner approval or deletion permissions.</Text>
       <Button label={expanded ? 'Hide media fixture controls' : 'Show media fixture controls'} testID="media-fixtures" secondary onPress={() => setExpanded(!expanded)} />
       {expanded && <View style={styles.group}>
         {selectionFixtures.map(([kind, label]) => <Button key={kind} label={`Select fixture: ${label}`} testID={`media-select-${kind}`} secondary disabled={state.busy}
@@ -116,7 +116,7 @@ export default function MediaScreen() {
             <Button label={`Moderator: reject Photo ${index + 1}`} testID={`media-reject-${item.asset_id}`} secondary disabled={state.busy} onPress={() => void media.developerEvent(item.asset_id, 'reject', outcome)} />
           </>}
           {item.state === 'approved' && <Button label={`Moderator: restrict Photo ${index + 1}`} testID={`media-restrict-${item.asset_id}`} secondary onPress={() => void media.developerEvent(item.asset_id, 'restrict_media', outcome)} />}
-          {item.state === 'removal_pending' && <Button label={`Provider: retry or confirm Photo ${index + 1} purge`} testID={`media-purge-${item.asset_id}`} secondary disabled={state.busy} onPress={() => void media.developerEvent(item.asset_id, 'purged', outcome)} />}
+          {item.state === 'removal_pending' && <Button label={`Storage: retry or confirm Photo ${index + 1} purge`} testID={`media-purge-${item.asset_id}`} secondary disabled={state.busy} onPress={() => void media.developerEvent(item.asset_id, 'purged', outcome)} />}
         </View>)}
       </View>}
     </View>

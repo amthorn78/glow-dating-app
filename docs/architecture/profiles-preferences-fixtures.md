@@ -210,7 +210,7 @@ No profile or preferences are passed as route parameters or logged as routine
 diagnostics. No browser storage, SQLite, shadow backend or process-restart recovery
 is introduced.
 
-At the P04/P05.1 checkpoint, `use-recommendations.ts` bound retained anonymous
+At the P04/P05.1 checkpoint (the hook was removed in P06.2-F, with no importer since P05.2), `use-recommendations.ts` bound retained anonymous
 layout results to owner/generation, profile discovery revision and the fictional
 viewer-to-owner pair. Its Alex/Jordan/Riley samples were not independently
 authorized candidates. P05.2's [bounded discovery composition](discovery-fixtures.md)

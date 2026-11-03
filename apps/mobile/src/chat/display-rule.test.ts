@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { ChatClient, ChatFailure } from './client.ts';
+import * as copy from './copy.ts';
 import { LIST_COPY, READ_COPY, SEND_COPY, UNAVAILABLE_MESSAGE } from './copy.ts';
 import { PROVIDER_FIELD_CASES, PROVIDER_SENTINEL, plantProviderField } from './fixture-adapter.ts';
 import type { ChatTransport } from './transport.ts';
@@ -12,6 +16,8 @@ import { chatSetup, settle } from './testing.ts';
  * nothing of it reaches the store, which is all the screens render.
  */
 const MESSAGE_KEYS = ['at', 'author', 'content', 'delivery', 'submission_id', 'text'];
+/** A provider's name, its objects or its wording (ADR 0003, decision 3). */
+const PROVIDER_TERMS = /\b(providers?|stream|getstream|cloudflare|allauth|channels?|members?|custom|ai)\b/i;
 const state = (fixture: Awaited<ReturnType<typeof chatSetup>>) => JSON.stringify(fixture.store.getSnapshot());
 
 for (const field of PROVIDER_FIELD_CASES) test(`a response carrying ${field.replaceAll('_', ' ')} is refused and shows Glow's error state`, async () => {
@@ -36,7 +42,7 @@ for (const field of PROVIDER_FIELD_CASES) test(`a response carrying ${field.repl
   assert.equal(state(fixture).includes(PROVIDER_SENTINEL), false);
   assert.equal(state(fixture).includes('Arrived with the planted field.'), false);
   // Glow's wording for that state names no provider and gives no reason.
-  for (const copy of [READ_COPY.invalid_response, LIST_COPY.invalid_response, SEND_COPY.invalid_response]) assert.doesNotMatch(copy, /\b(provider|stream|channel|member|custom|ai)\b/i);
+  for (const text of [READ_COPY.invalid_response, LIST_COPY.invalid_response, SEND_COPY.invalid_response]) assert.doesNotMatch(text, PROVIDER_TERMS);
   // Back to Glow's own data: the messages it shows carry only the contract's fields.
   fixture.fixture.setProviderField(null); await fixture.timers.advance(3_000);
   snapshot = fixture.store.getSnapshot();
@@ -86,4 +92,610 @@ test('"unavailable" is Glow\'s own wording with no reason (DM-22 7.2, 6.2)', asy
   assert.deepEqual([message!.content, message!.text], ['unavailable', null]);
   assert.equal(UNAVAILABLE_MESSAGE, 'This message is unavailable.');
   assert.equal(state(fixture).includes('Changed later'), false);
+});
+
+test('every copy table and label in copy.ts names no provider (M05 finding 18; ADR 0003, decision 3)', () => {
+  const texts: string[] = [];
+  for (const [name, value] of Object.entries(copy)) {
+    if (typeof value === 'string') texts.push(value);
+    else if (name === 'timeLabel') texts.push(copy.timeLabel('2026-09-23T12:00:05Z'));
+    else if (name === 'unreadLabel') texts.push(...[0, 1, 2].map(count => copy.unreadLabel(count)));
+    else for (const entry of Object.values(value as Record<string, string>)) texts.push(entry);
+  }
+  // Every export is read: the six tables and constants and the two labels.
+  assert.deepEqual(Object.keys(copy).sort(), ['DELIVERY_COPY', 'LIST_COPY', 'READ_COPY', 'REVOKED_DETAIL', 'SEND_COPY', 'UNAVAILABLE_MESSAGE', 'timeLabel', 'unreadLabel']);
+  assert.equal(texts.length, 3 * 8 + 3 + 2 + 1 + 3);
+  for (const text of texts) {
+    assert.equal(typeof text, 'string');
+    assert.doesNotMatch(text, PROVIDER_TERMS, text);
+  }
+});
+
+/**
+ * The render rule (M05 finding 18; ADR 0003): the screens are to show only contract fields, so
+ * that a provider-shaped field (a message's `name`, a member, custom data) that a validator let
+ * through is not rendered. Nothing renders `screen.tsx` in Node, so its source, with the list
+ * rows' model (`rows.ts`), is checked twice, as stated below.
+ *
+ * The source check is a text match over the two files with comments removed. It reads the
+ * property paths its pattern matches after the six names the screens use (a message, a
+ * conversation, the list, the store's state, a match and a row) against a named list, and
+ * refuses a cast, `any`, a spread, a computed read written as one of those names then `[`, a
+ * reflective read, and an `in` check after a quoted string. As a text match it passes
+ * `message?.['name']`, `message ?.name`, a path split across lines and `('name') in message`;
+ * C3's probes found these, and the type check refuses each of them.
+ *
+ * The type check (corrections C1 and C2) builds the two files with the TypeScript compiler the
+ * app declares, under the app's `tsconfig.json`, and finds Glow's data by type: a value whose
+ * type declares a property in one of the files listed in `GLOW_DATA` (the generated contracts,
+ * the chat store, the row model, the interactions' state).
+ *
+ * What the check does (DM-39). It refuses the forms listed below, and its planted forms are that
+ * list's specification: a form that evades a listed refusal is a defect, and any other form that
+ * passes is a limit, recorded when found. It treats a value as Glow's data while the value's type
+ * declares a field in a `GLOW_DATA` file, and it does not check the value once its type declares
+ * none, for example after a narrower type declared outside those files; a narrower type built
+ * from the contract's own, such as `Pick<>` or `Omit<>`, keeps it Glow's data. The forms it is
+ * known to pass are named below; probes found them, and more may exist. It refuses some harmless
+ * code, which fails closed. It is a test over two files' source, not a proof. The client
+ * validator is the first guard, and view models built by explicit field copy (DM-38 2.5) are the
+ * structural fix.
+ *
+ * What it refuses, in its own terms. In brackets, the planted forms that pin each item, by their
+ * IDs in the record (1 to 9, PA, PB, PC and 13 to 22 from C1; C2-1a to C2-4b from C2). The test
+ * asserts only that forms 1 to 9 fail the source check, so a form pins a source-check item there
+ * when that item is the form's only source-check violation. Where an item has no planted form,
+ * the bracket says so; a C3 probe confirmed that each such item is refused (the record,
+ * "Correction C3"), and C3 added no planted form (DM-39 1.1).
+ * - The source check: a path outside its list [1, 6, 8]; a cast [2]; `any` [no planted form
+ *   pins it: 7 reports it beside a cast]; a spread [4]; a computed read [3]; a reflective read
+ *   [5, 9]; an `in` check on a string [no planted form].
+ * - a read from Glow's data of a property its type does not declare [1, 6, 8, PA, PC, 22], and a
+ *   computed [3] or rest read [no planted form];
+ * - an `in` check, a `for…in` enumeration, a destructuring assignment or a spread of Glow's data
+ *   [4, the spread; no planted form names the other three, though PA reports its `in` check];
+ * - a widening: Glow's data where the expected type (a parameter, through `call`, `apply` or
+ *   `bind` too; a prop; an annotation; a return; an assignment) declares a property the data's
+ *   type does not, or is `any`, `unknown`, `object`, `{}` or an index signature [2, 5, 7, 9, PB,
+ *   13, 16 to 19, 21, C2-4a, C2-4b; no planted form for `bind`, a return, an assignment, `object`
+ *   or `{}`];
+ * - a callback, inline or passed by reference (a declared function, a `useCallback` result, an
+ *   object's method), whose parameter widens what the expected signature gives it, or whose
+ *   return of Glow's data is widened by what the expected signature returns (C2) [15, inline;
+ *   C2-1a to C2-1d, by reference; C2-1e, the return];
+ * - a type predicate or assertion signature declared in the two files, written or inferred; a
+ *   call whose resolved signature has one; and a function with one given by reference rather
+ *   than called; each unless the default library's (C2) [C2-2d, declared and written; C2-2a,
+ *   C2-2b and C2-2c, called; C2-2e, by reference; no planted form for an inferred one];
+ * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier, by an
+ *   expression's type and by a destructuring's type, whatever its key (C2) [C2-3a and C2-3b, by
+ *   identifier, reporting the expression's type beside it; C2-3c and C2-3d, by a destructuring];
+ * - a local generic [14] or overload [20], whose types the check does not follow; a type error
+ *   the compiler reports in the two files [no planted form names it, though PC and 22 report one].
+ * Its named exceptions: the value an Array predicate (`filter`, `some`, `every`, `find`…) returns,
+ * which the predicate reads for truthiness alone; an element of a dependency list given to a
+ * React hook declared in `@types/react`, which React compares by identity (C2: only there; C2-4a
+ * pins the narrowing); the initializer of an object destructuring when no enclosing pattern is
+ * annotated, whose reads the pattern's own check covers (C2: only then; C2-4b pins it); and a
+ * type parameter of a function outside the two files, which is inferred from the value.
+ *
+ * What it is known to pass. These came from the exact-head review of P06.2-F (its finding 1
+ * began C1) and C1's own probes, from C1's delta re-review, and from C2's 256 probe forms; Codex
+ * found N1 and N8 again. `Loose` is `{ name?: string; text: string | null }`.
+ * - Finding 1's class (C1's delta re-review): data held inside another value (a group or
+ *   section, a list's render-item wrapper, a view-model object, a closure or a container), given
+ *   to a loosely typed helper that renders a provider-shaped field.
+ * - N1, narrow then widen: X2, an ordinary refactor: `<Narrow entry={message} />`, where
+ *   `Narrow`'s prop is `{ text: string | null }` and it hands `entry` to `Wide`, whose `Loose`
+ *   prop renders `entry.name`.
+ * - N2, a suppressed type error: `// @ts-expect-error` above `<Caption entry={message} />`, where
+ *   `Caption`'s prop is `() => void` and it renders `entry.name`.
+ * - N3, Glow's data as `this` through `.call` to a function that declares no `this`:
+ *   `({}).hasOwnProperty.call(message, 'name')`.
+ * - N4, a container the check does not follow: `const pair = ['label', message] as const`, given
+ *   to `readonly (string | Loose)[]`; arrays nested four deep.
+ * - N5, a thrown value: `async function fail(entry: ConversationMessage) { throw entry; }`, then
+ *   `fail(message).catch((entry: Loose) => entry.name)`.
+ * - N6, a `for…of` into an existing target: `let loose: Loose | undefined;` then
+ *   `for (loose of conversation.messages) break;`.
+ * - N7, `arguments`: `function shout() { return String(arguments[0]?.name ?? ''); }`, used as
+ *   `[message].map(shout)`. ESLint's `prefer-rest-params` refuses it; this test does not.
+ * - N8, an inline parameter typed only by its default: `[message].map((entry = BLANK) =>
+ *   entry.name ?? '')`, with `BLANK: Loose`.
+ * - N9, `instanceof` narrowing: `message instanceof NamedEntry && <Eyebrow entry={message} />`,
+ *   where the local class `NamedEntry { name = '' }` has a `Symbol.hasInstance` returning true.
+ * - Another module: `<Eyebrow entry={message} />`, where `Eyebrow`, in a module other than the
+ *   two files, takes the exact `ConversationMessage` and casts it to render `name`.
+ * - A template literal's coercion: `{`${message}`}` (it renders `[object Object]`).
+ *
+ * What harmless code it refuses. Each fails closed:
+ * - F0's family: a harmless `<FlatList data={conversation.messages} … />` fails with `a widening
+ *   to Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages` (DM-38 F0;
+ *   `FALSE_POSITIVE` below), and so do a `VirtualizedList`, `Array.from` and `new Set` over the
+ *   messages, since the check reads an `ArrayLike` parameter's index signature, and an
+ *   `Iterable` parameter's symbol-keyed iterator, which it does not find by name on the array,
+ *   as widenings;
+ * - inferred predicates, such as `.filter(text => text !== null)` over strings, since TypeScript
+ *   infers `text is string`;
+ * - Node's `assert`, whose `asserts value` is not the default library's;
+ * - the source check's path list, which refuses `conversation.messages.at(-1)`, `.toReversed()`
+ *   and `.filter(…)`.
+ * The record names more. The next author who meets one changes the design (DM-38 2.5), not the
+ * check.
+ */
+const RENDERED_PATHS = new Set([
+  // ConversationMessage: the contract's six fields.
+  'message.submission_id', 'message.author', 'message.delivery', 'message.content', 'message.text', 'message.at',
+  // ConversationSummary, as a list row (rows.ts), and the row the screen renders.
+  'conversation.match_id', 'conversation.state', 'conversation.unread_count', 'conversation.latest', 'conversation.latest.at',
+  'row.matchId', 'row.name', 'row.openable', 'row.status', 'row.latest',
+  // The store's conversation state.
+  'conversation.status', 'conversation.error', 'conversation.hasOlder', 'conversation.older', 'conversation.messages',
+  'conversation.messages.length', 'conversation.messages.map',
+  'list.status', 'list.error', 'list.conversations', 'list.conversations.length', 'list.conversations.map', 'list.conversations.match_id',
+  'state.draft', 'state.send', 'state.send.status', 'state.send.error', 'state.send.canRetry', 'state.matches', 'state.matches.filter',
+  // Glow's own match projection, for names (ADR 0003, decision 1).
+  'match.match_id', 'match.state', 'match.profile', 'match.profile.display_name',
+]);
+const ROOTS = /\b(message|conversation|list|state|match|row)((?:!?\??\.[A-Za-z_$][\w$]*|\[\d+\]\??)*)/g;
+const SCREEN = fileURLToPath(new URL('./screen.tsx', import.meta.url));
+const ROWS = fileURLToPath(new URL('./rows.ts', import.meta.url));
+function withoutComments(source: string) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*.*?\*\/\}/g, '');
+}
+function renderedPaths(source: string) {
+  const paths = new Set<string>();
+  for (const [, root, chain] of source.matchAll(ROOTS)) {
+    const segments = chain!.replace(/\[\d+\]/g, '').replace(/[!?]/g, '').split('.').filter(Boolean);
+    for (let index = 1; index <= segments.length; index++) paths.add([root, ...segments.slice(0, index)].join('.'));
+  }
+  return paths;
+}
+/** The source check, over the two files' text with comments removed. */
+function sourceViolations(source: string) {
+  const violations = [...renderedPaths(source)].filter(path => !RENDERED_PATHS.has(path));
+  if (/[\w)\]!]\s+as\s+(?!const\b)/.test(source)) violations.push('a type cast');
+  if (/\bany\b/.test(source.replace(/'[^'\n]*'|`[^`\n]*`/g, ''))) violations.push('an any type');
+  if (/\b(Object\s*\.\s*(?!freeze\b)\w+|Reflect\s*\.|JSON\s*\.)/.test(source)) violations.push('a reflective read');
+  if (/\.\.\.\s*(message|conversation|list|state|match|row)\b/.test(source)) violations.push('a spread');
+  if (/\b(message|conversation|list|state|match|row)\s*\[\s*(?!\d+\s*\])/.test(source)) violations.push('a computed read');
+  if (/(['"`])[^'"`\n]*\1\s+in\b/.test(source)) violations.push('an in check');
+  return violations;
+}
+
+/** Where Glow's data types are declared: the generated contracts, the chat store and row model, the interactions' state. */
+const GLOW_DATA = new Set(['../contracts/generated/gapp-api-v1.ts', '../contracts/generated/gapp-dev-v1.ts', './store.ts', './rows.ts',
+  '../interactions/store.ts', '../interactions/fixture-adapter.ts'].map(path => fileURLToPath(new URL(path, import.meta.url))));
+const PREDICATES = new Set(['filter', 'some', 'every', 'find', 'findIndex', 'findLast', 'findLastIndex']);
+
+/**
+ * The type check. `files` maps each checked path to its text; a planted path sits beside
+ * `screen.tsx`, so its imports resolve as the screen's do. All are built in one program.
+ * `served` holds modules the checked files may import but that are not checked themselves
+ * (a planted form's other module). It returns each checked file's violations, and the
+ * `GLOW_DATA` files that a type found as Glow's data was declared in.
+ */
+function typedViolations(files: ReadonlyMap<string, string>, served: ReadonlyMap<string, string> = new Map()) {
+  const texts = new Map([...served, ...files]);
+  const config = ts.getParsedCommandLineOfConfigFile(fileURLToPath(new URL('../../tsconfig.json', import.meta.url)), {},
+    { ...ts.sys, onUnRecoverableConfigFileDiagnostic: diagnostic => { throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')); } });
+  assert.ok(config && config.errors.length === 0, 'the app\'s tsconfig.json is read');
+  const host = ts.createCompilerHost(config.options, true);
+  const getSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (name, language, onError, create) => texts.has(name)
+    ? ts.createSourceFile(name, texts.get(name)!, language, true) : getSourceFile(name, language, onError, create);
+  host.fileExists = name => texts.has(name) || ts.sys.fileExists(name);
+  host.readFile = name => texts.get(name) ?? ts.sys.readFile(name);
+  const program = ts.createProgram([...files.keys()], config.options, host);
+  const checker = program.getTypeChecker();
+
+  /** The `GLOW_DATA` files the check matched a declaration to (nit 6). */
+  const glowFiles = new Set<string>();
+  const inGlowData = (symbol: ts.Symbol | undefined) => {
+    const found = symbol?.declarations?.map(declaration => declaration.getSourceFile().fileName).filter(name => GLOW_DATA.has(name)) ?? [];
+    for (const name of found) glowFiles.add(name);
+    return found.length > 0;
+  };
+  const parts = (type: ts.Type): readonly ts.Type[] => type.isUnion() ? type.types.flatMap(parts) : [type];
+  const nonNull = (type: ts.Type) => parts(type).filter(part => !(part.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)));
+  const elements = (type: ts.Type) => checker.isArrayType(type) || checker.isTupleType(type) ? checker.getTypeArguments(type as ts.TypeReference) : null;
+  /** A type that is Glow's data itself: one of its parts declares a property in a Glow data file. */
+  const isGlowData = (type: ts.Type): boolean => nonNull(type).some(part => part.isIntersection() ? part.types.some(isGlowData)
+    : elements(part) === null && (part.flags & ts.TypeFlags.Object) !== 0 && checker.getPropertiesOfType(part).some(inGlowData));
+  /** A type that carries Glow's data: itself, or an array or tuple of it. */
+  const carries = (type: ts.Type, depth = 0): boolean => depth < 4 && (isGlowData(type) || nonNull(type).some(part => elements(part)?.some(element => carries(element, depth + 1)) ?? false));
+  /** Whether a value of `source` keeps its type at a place that expects `target`. */
+  const keeps = (source: ts.Type, target: ts.Type, depth = 0): boolean => {
+    if (depth > 4) return true;
+    if (target.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.NonPrimitive)) return false;
+    if (target.flags & ts.TypeFlags.TypeParameter) {
+      // A type parameter declared outside the checked files is inferred from the value, which keeps its type.
+      if (!target.getSymbol()?.declarations?.some(declaration => files.has(declaration.getSourceFile().fileName))) return true;
+      const constraint = checker.getBaseConstraintOfType(target);
+      return constraint === undefined || (constraint.flags & ts.TypeFlags.Unknown) !== 0 || keeps(source, constraint, depth + 1);
+    }
+    const sources = nonNull(source).filter(part => carries(part));
+    return nonNull(target).every(part => {
+      if (part.isIntersection()) return part.types.every(type => keeps(source, type, depth + 1));
+      const targetElements = elements(part);
+      if (targetElements !== null) return sources.every(type => {
+        const sourceElements = elements(type);
+        return sourceElements !== null && targetElements.every((element, index) => keeps(sourceElements[Math.min(index, sourceElements.length - 1)]!, element, depth + 1));
+      });
+      if (part.flags & ts.TypeFlags.TypeParameter) return keeps(source, part, depth + 1);
+      if (!(part.flags & ts.TypeFlags.Object)) return true;
+      if (checker.getIndexInfosOfType(part).length > 0) return false;
+      const properties = checker.getPropertiesOfType(part);
+      if (properties.length === 0 && part.getCallSignatures().length === 0) return false;
+      return sources.every(type => properties.every(property => {
+        const own = checker.getPropertyOfType(type, property.name);
+        if (!own) return false;
+        const ownType = checker.getTypeOfSymbol(own);
+        return !carries(ownType) || keeps(ownType, checker.getTypeOfSymbol(property), depth + 1);
+      }));
+    });
+  };
+  /** The value an Array predicate returns, which it reads for truthiness alone. */
+  const predicateValue = (node: ts.Node) => {
+    let current = node;
+    while (ts.isParenthesizedExpression(current.parent) || ts.isConditionalExpression(current.parent) && current !== current.parent.condition
+      || ts.isBinaryExpression(current.parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(current.parent.operatorToken.kind)) current = current.parent;
+    const arrow = current.parent;
+    if (!ts.isArrowFunction(arrow) || arrow.body !== current || !ts.isCallExpression(arrow.parent) || !ts.isPropertyAccessExpression(arrow.parent.expression)) return false;
+    if (!PREDICATES.has(arrow.parent.expression.name.text)) return false;
+    const declaration = checker.getResolvedSignature(arrow.parent)?.declaration;
+    return declaration !== undefined && program.isSourceFileDefaultLibrary(declaration.getSourceFile());
+  };
+
+  /** A signature's parameter type at `index`, through a rest parameter; -1 is its `this`. */
+  const parameterAt = (signature: ts.Signature, index: number): ts.Type | undefined => {
+    if (index < 0) return signature.thisParameter && checker.getTypeOfSymbol(signature.thisParameter);
+    const parameters = signature.getParameters();
+    const last = parameters[parameters.length - 1];
+    const declaration = last?.valueDeclaration;
+    if (last && declaration && ts.isParameter(declaration) && declaration.dotDotDotToken && index >= parameters.length - 1) {
+      const rest = checker.getTypeOfSymbol(last);
+      const items = elements(rest);
+      return items === null ? rest : items[Math.min(index - parameters.length + 1, items.length - 1)];
+    }
+    return parameters[index] && checker.getTypeOfSymbol(parameters[index]);
+  };
+  /**
+   * The type an argument is passed as: the resolved signature's parameter, instantiated. Through
+   * `call`, `apply` or `bind`, it is the called function's own `this` or parameter, since the
+   * method's type parameters are inferred from the arguments themselves.
+   */
+  const argumentType = (node: ts.Expression): ts.Type | undefined => {
+    const parent = node.parent;
+    const applied = ts.isArrayLiteralExpression(parent) && ts.isCallExpression(parent.parent) && parent.parent.arguments[1] === parent
+      && ts.isPropertyAccessExpression(parent.parent.expression) && parent.parent.expression.name.text === 'apply';
+    const call = applied ? parent.parent : parent;
+    if (!(ts.isCallExpression(call) || ts.isNewExpression(call))) return undefined;
+    const index = applied ? parent.elements.indexOf(node) + 1 : call.arguments?.indexOf(node) ?? -1;
+    if (index < 0) return undefined;
+    const callee = call.expression;
+    if (ts.isCallExpression(call) && ts.isPropertyAccessExpression(callee) && ['call', 'apply', 'bind'].includes(callee.name.text)) {
+      const [own] = checker.getTypeAtLocation(callee.expression).getCallSignatures();
+      if (own) return callee.name.text === 'apply' && !applied && index === 1 ? undefined : parameterAt(own, index - 1);
+    }
+    if (applied) return undefined;
+    const signature = checker.getResolvedSignature(call);
+    return signature && parameterAt(signature, index);
+  };
+  const fromReact = (declaration: ts.Node | undefined) => declaration?.getSourceFile().fileName.includes('/node_modules/@types/react/') ?? false;
+  /** A call of one of React's own hooks (`useCallback`, `useEffect`…), declared in `@types/react` (finding 4a). */
+  const hookCall = (call: ts.CallExpression) => {
+    const declaration = checker.getResolvedSignature(call)?.declaration;
+    return declaration !== undefined && fromReact(declaration) && ts.isFunctionDeclaration(declaration) && /^use[A-Z]/.test(declaration.name?.text ?? '');
+  };
+  /**
+   * An element of a React hook's dependency list, which React compares by identity alone: an
+   * array literal given as an argument of a React hook call where it expects `DependencyList`.
+   */
+  const dependencyList = (node: ts.Node) => {
+    if (!ts.isArrayLiteralExpression(node) || !ts.isCallExpression(node.parent) || !node.parent.arguments.includes(node) || !hookCall(node.parent)) return false;
+    const expected = checker.getContextualType(node);
+    const alias = expected && checker.getNonNullableType(expected).aliasSymbol;
+    return alias?.name === 'DependencyList' && (alias.declarations?.some(fromReact) ?? false);
+  };
+  const dependency = (node: ts.Node) => dependencyList(node) || dependencyList(node.parent);
+  /**
+   * A destructuring's initializer, whose reads the binding pattern's own check covers: only when
+   * no enclosing pattern is annotated (finding 4b), since an annotation types the initializer.
+   */
+  const destructured = (node: ts.Node) => {
+    const holder = node.parent;
+    if (!(ts.isVariableDeclaration(holder) || ts.isParameter(holder) || ts.isBindingElement(holder)) || holder.initializer !== node || !ts.isObjectBindingPattern(holder.name)) return false;
+    let current: ts.Node = holder;
+    while (ts.isBindingElement(current) || ts.isObjectBindingPattern(current) || ts.isArrayBindingPattern(current)) current = current.parent;
+    return (ts.isVariableDeclaration(current) || ts.isParameter(current)) && !current.type;
+  };
+  /** The default library's `Reflect` or `ObjectConstructor` (finding 3b, 3c). */
+  const reflective = (symbol: ts.Symbol | undefined, names: readonly string[]) => symbol !== undefined && names.includes(symbol.name)
+    && (symbol.declarations?.some(declaration => program.isSourceFileDefaultLibrary(declaration.getSourceFile())) ?? false);
+  /** `Object.freeze`'s receiver, the one `Object` member the screens may use. */
+  const freezing = (node: ts.Node) => ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node && node.parent.name.text === 'freeze';
+  const inline = (node: ts.Node) => ts.isArrowFunction(node) || ts.isFunctionExpression(node);
+  const libraryCall = (signature: ts.Signature) => signature.declaration !== undefined && program.isSourceFileDefaultLibrary(signature.declaration.getSourceFile());
+
+  const result = new Map<string, string[]>();
+  for (const name of files.keys()) {
+    const file = program.getSourceFile(name)!;
+    const violations: string[] = [];
+    const say = (kind: string, node: ts.Node) => violations.push(`${kind}: ${node.getText(file).replace(/\s+/g, ' ').slice(0, 80)}`);
+    const fieldRead = (receiver: ts.Type, property: ts.Symbol | undefined, node: ts.Node) => {
+      if (isGlowData(receiver) && !inGlowData(property)) say('a field outside Glow\'s types', node);
+    };
+    for (const diagnostic of [...program.getSyntacticDiagnostics(file), ...program.getSemanticDiagnostics(file)]) {
+      violations.push(`a type error: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ').slice(0, 100)}`);
+    }
+    const visit = (node: ts.Node) => {
+      if (ts.isPropertyAccessExpression(node)) fieldRead(checker.getTypeAtLocation(node.expression), checker.getSymbolAtLocation(node.name), node);
+      if (ts.isElementAccessExpression(node) && (isGlowData(checker.getTypeAtLocation(node.expression)) || checker.getTypeAtLocation(node.expression).flags & (ts.TypeFlags.TypeParameter | ts.TypeFlags.Any | ts.TypeFlags.Unknown))) say('a computed read', node);
+      if (ts.isObjectBindingPattern(node)) {
+        const receiver = checker.getTypeAtLocation(node);
+        if (isGlowData(receiver)) for (const element of node.elements) {
+          const key = element.propertyName ?? element.name;
+          if (element.dotDotDotToken) say('a rest read', element);
+          else if (ts.isIdentifier(key) || ts.isStringLiteral(key)) fieldRead(receiver, checker.getPropertyOfType(checker.getNonNullableType(receiver), key.text), element);
+          else say('a computed read', element);
+        }
+      }
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.InKeyword) say('an in check', node);
+      if (ts.isTypeParameterDeclaration(node)) say('a local generic', node.parent);
+      if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && !node.body) say('a local overload', node);
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && (ts.isObjectLiteralExpression(node.left) || ts.isArrayLiteralExpression(node.left))
+        && carries(checker.getTypeAtLocation(node.right))) say('a destructuring assignment', node);
+      if (ts.isForInStatement(node) && carries(checker.getTypeAtLocation(node.expression))) say('an enumeration', node);
+      if ((ts.isSpreadElement(node) || ts.isSpreadAssignment(node) || ts.isJsxSpreadAttribute(node)) && carries(checker.getTypeAtLocation(node.expression))) say('a spread', node);
+      if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))) {
+        const expected = checker.getContextualType(node);
+        for (const signature of expected ? nonNull(expected).flatMap(part => part.getCallSignatures()) : []) {
+          node.parameters.forEach((parameter, index) => {
+            const given = signature.parameters[index];
+            if (!parameter.type || !given) return;
+            const value = checker.getTypeOfSymbol(given);
+            if (carries(value) && !keeps(value, checker.getTypeFromTypeNode(parameter.type))) say('a widening callback parameter', parameter);
+          });
+        }
+      }
+      if (ts.isExpression(node) && !(ts.isJsxAttribute(node.parent) && node.parent.name === node)) {
+        const value = checker.getTypeAtLocation(node);
+        const expected = carries(value) ? argumentType(node) ?? checker.getContextualType(node) : undefined;
+        if (expected && !keeps(value, expected) && !destructured(node) && !dependency(node) && !((expected.flags & ts.TypeFlags.Unknown) && predicateValue(node))) say(`a widening to ${checker.typeToString(expected).slice(0, 120)}`, node);
+        // A function passed, returned or assigned by reference (finding 2): each parameter is
+        // compared against what the expected signature gives it, and its return against what the
+        // expected signature returns, as an inline callback's are.
+        const own = inline(node) ? [] : nonNull(value).flatMap(part => part.getCallSignatures());
+        const wanted = own.length === 0 ? undefined : argumentType(node) ?? checker.getContextualType(node);
+        for (const given of wanted ? nonNull(wanted).flatMap(part => part.getCallSignatures()) : []) {
+          for (const signature of own) {
+            for (let index = -1; index < Math.max(given.parameters.length, signature.parameters.length); index++) {
+              const passed = parameterAt(given, index);
+              const parameter = parameterAt(signature, index);
+              if (passed && parameter && carries(passed) && !keeps(passed, parameter)) say(`a widening by reference to ${checker.typeToString(parameter).slice(0, 120)}`, node);
+            }
+            const returned = checker.getReturnTypeOfSignature(signature);
+            const expected = checker.getReturnTypeOfSignature(given);
+            if (carries(returned) && !keeps(returned, expected)) say(`a widening by reference of its return to ${checker.typeToString(expected).slice(0, 120)}`, node);
+          }
+        }
+        // `Reflect`, and `Object` other than `Object.freeze`, as values however reached (finding 3b, 3c).
+        if (reflective(value.getSymbol(), ['Reflect', 'ObjectConstructor']) && !freezing(node)) say('a reference to Reflect or an Object member', node);
+      }
+      // The same, by name, wherever the identifier refers to the default library's global.
+      if (ts.isIdentifier(node) && reflective(checker.getSymbolAtLocation(node), ['Reflect', 'Object']) && !freezing(node)) say('a reference to Reflect or an Object member', node);
+      // And by type in a destructuring, whatever its key (`{ 'Reflect': { get } } = globalThis`).
+      if ((ts.isBindingElement(node) || ts.isObjectBindingPattern(node)) && reflective(checker.getTypeAtLocation(node).getSymbol(), ['Reflect', 'ObjectConstructor'])) say('a reference to Reflect or an Object member', node);
+      // Type predicates and assertion signatures (finding 3a): declared in the checked files,
+      // written or inferred, and called, by the resolved signature, unless the default library's.
+      if (ts.isTypePredicateNode(node)) say('a type predicate or assertion signature', node);
+      if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || inline(node)) {
+        const signature = checker.getSignatureFromDeclaration(node as ts.SignatureDeclaration);
+        if (signature && checker.getTypePredicateOfSignature(signature)) say('a type predicate or assertion signature', node);
+      }
+      if (ts.isCallExpression(node)) {
+        const signature = checker.getResolvedSignature(node);
+        if (signature && checker.getTypePredicateOfSignature(signature) && !libraryCall(signature)) say('a call to a type predicate or assertion', node);
+      }
+      // And one given by reference, not called (to the default library's `filter`, say).
+      if (ts.isExpression(node) && !inline(node) && !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+        && nonNull(checker.getTypeAtLocation(node)).some(part => part.getCallSignatures().some(signature => checker.getTypePredicateOfSignature(signature) && !libraryCall(signature)))) {
+        say('a type predicate or assertion by reference', node);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(file);
+    result.set(name, violations);
+  }
+  return { violations: result, glowFiles };
+}
+
+/**
+ * One planted form: an edit of `screen.tsx` that renders, or could render, a provider-shaped
+ * field, and a violation the type check must report for it. `source` marks the nine forms the
+ * source check was first tested against, which must still fail it too.
+ */
+type Planted = Readonly<{ form: string; edit: (screen: string) => string; typed: string; source?: true }>;
+function once(text: string, anchor: string) {
+  const at = text.indexOf(anchor);
+  assert.ok(at >= 0 && text.indexOf(anchor, at + 1) < 0, `the anchor occurs once: ${anchor}`);
+  return at;
+}
+const swap = (anchor: string, replacement: string) => (text: string) => {
+  const at = once(text, anchor);
+  return `${text.slice(0, at)}${replacement}${text.slice(at + anchor.length)}`;
+};
+const after = (anchor: string, addition: string) => swap(anchor, `${anchor}\n${addition}`);
+const before = (anchor: string, addition: string) => swap(anchor, `${addition}\n${anchor}`);
+const both = (...edits: ((text: string) => string)[]) => (text: string) => edits.reduce((edited, edit) => edit(edited), text);
+/** `MessageRow` with its message bound as `item` (`item.` for `message.` in its body), then `more` applied to it. */
+const asItem = (more: (row: string) => string) => (screen: string) => {
+  const start = once(screen, 'function MessageRow(');
+  const end = screen.indexOf('\n}\n', start) + 3;
+  const row = swap('{ message, name, rowRef }', '{ message: item, name, rowRef }')(screen.slice(start, end)).replaceAll('message.', 'item.');
+  return `${screen.slice(0, start)}${more(row)}${screen.slice(end)}`;
+};
+const ROW_TIME = '<Text style={styles.small}>{timeLabel(message.at)}{delivery}</Text>';
+const ITEM_TIME = ROW_TIME.replace('message.', 'item.');
+const ROW_START = '  const own =';
+const LIST_STATUS = '<Text style={styles.body} testID={`conversation-unread-${row.matchId}`}>{row.status}</Text>';
+const REVOKED = '<Text style={styles.body}>{REVOKED_DETAIL}</Text>';
+const SCREEN_START = '  const revoked =';
+const HELPERS = 'type Viewing = ReturnType<typeof useViewedMessages>;';
+const LOOSE = '{ name?: string; text: string | null }';
+const LOOSE_TYPE = '{ name?: string | undefined; text: string | null; }';
+/** A helper whose loosely typed prop renders `entry.name` (PB's), for forms that narrow Glow's data before giving it. */
+const EYEBROW = `function Eyebrow({ entry }: { entry: ${LOOSE} }) { return <Text style={styles.eyebrow}>{entry.name ?? ''}</Text>; }`;
+const IMPORTS = 'import { visibleMessages, type Box, type VisibleArea } from \'./visibility\';';
+const RN_IMPORT = 'import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View,';
+const REACT_IMPORT = 'import { useCallback, useLayoutEffect, useRef, type PropsWithChildren } from \'react\';';
+const PLANTED: readonly Planted[] = [
+  // The nine forms the source check was first tested against (P06.2-F), now placed in the screen.
+  { form: '{message.name}', edit: after(ROW_TIME, '{message.name}'), typed: 'a field outside Glow\'s types: message.name', source: true },
+  { form: '{(message as { name?: string }).name}', edit: after(ROW_TIME, '{(message as { name?: string }).name}'),
+    typed: 'a widening to { name?: string | undefined; }: message', source: true },
+  { form: '{String(message[\'name\'])}', edit: after(ROW_TIME, '{String(message[\'name\'])}'), typed: 'a computed read: message[\'name\']', source: true },
+  { form: '<Text {...message} />', edit: after(ROW_TIME, '<Text {...message} />'), typed: 'a spread: {...message}', source: true },
+  { form: '{Object.values(message).join()}', edit: after(ROW_TIME, '{Object.values(message).join()}'),
+    typed: 'a widening to { [s: string]: string | null; } | ArrayLike<string | null>: message', source: true },
+  { form: '{conversation.member?.name}', edit: after(REVOKED, '{conversation.member?.name}'), typed: 'a field outside Glow\'s types: conversation.member', source: true },
+  { form: '{(message as any).user}', edit: after(ROW_TIME, '{(message as any).user}'), typed: 'a widening to any: message', source: true },
+  { form: '{row.custom}', edit: after(LIST_STATUS, '{row.custom}'), typed: 'a field outside Glow\'s types: row.custom', source: true },
+  { form: '{Object.entries(conversation)}', edit: after(REVOKED, '{Object.entries(conversation)}'), typed: 'a widening to ReactNode: Object.entries(conversation)', source: true },
+  // Correction C1: the exact-head review's PA and PB, and the brief's PC.
+  { form: 'PA: MessageRow\'s message bound as item, rendering {\'name\' in item ? String(item.name) : null}',
+    edit: asItem(after(ITEM_TIME, '{\'name\' in item ? String(item.name) : null}')), typed: 'a field outside Glow\'s types: item.name' },
+  { form: `PB: <Eyebrow entry={message} />, whose prop ${LOOSE} renders entry.name`,
+    edit: both(before(HELPERS, `function Eyebrow({ entry }: { entry: ${LOOSE} }) { return <Text style={styles.eyebrow}>{entry.name ?? ''}</Text>; }\n`),
+      after(ROW_TIME, '<Eyebrow entry={message} />')), typed: `a widening to ${LOOSE_TYPE}: message` },
+  { form: 'PC: const { name: label } = item, rendering {label}',
+    edit: asItem(both(before(ROW_START, '  const { name: label } = item;'), after(ITEM_TIME, '{label}'))), typed: 'a field outside Glow\'s types: name: label' },
+  // Correction C1: further forms the session tried, each passing tsc except the last.
+  { form: `a loose annotation: const loose: ${LOOSE} = item, rendering {loose.name}`,
+    edit: asItem(both(before(ROW_START, `  const loose: ${LOOSE} = item;`), after(ITEM_TIME, '{loose.name}'))), typed: `a widening to ${LOOSE_TYPE}: item` },
+  { form: `a generic helper: <Label entry={item} />, where Label<T extends ${LOOSE}> renders entry.name`,
+    edit: both(before(HELPERS, `function Label<T extends ${LOOSE}>({ entry }: { entry: T }) { return <Text>{entry.name ?? ''}</Text>; }\n`),
+      asItem(after(ITEM_TIME, '<Label entry={item} />'))), typed: `a local generic: function Label<T extends ${LOOSE}>({ entry }: { en` },
+  { form: `a loosely typed callback parameter: conversation.messages.map((entry: ${LOOSE}) => entry.name)`,
+    edit: after(REVOKED, `<Text>{conversation.messages.map((entry: ${LOOSE}) => entry.name).join()}</Text>`), typed: `a widening callback parameter: entry: ${LOOSE}` },
+  { form: `a call through Function.prototype.call: ((entry: ${LOOSE}) => entry.name).call(null, message)`,
+    edit: after(ROW_TIME, `{((entry: ${LOOSE}) => entry.name).call(null, message)}`), typed: `a widening to ${LOOSE_TYPE}: message` },
+  { form: `a loosely typed this: (function (this: ${LOOSE}) { return this.name; }).call(message)`,
+    edit: after(ROW_TIME, `{(function (this: ${LOOSE}) { return this.name; }).call(message)}`), typed: `a widening to ${LOOSE_TYPE}: message` },
+  { form: `a call through Function.prototype.apply: ((entry: ${LOOSE}) => entry.name).apply(null, [message])`,
+    edit: after(ROW_TIME, `{((entry: ${LOOSE}) => entry.name).apply(null, [message])}`), typed: `a widening to ${LOOSE_TYPE}: message` },
+  { form: `an annotated destructuring: const { name: label }: ${LOOSE} = item, rendering {label}`,
+    edit: asItem(both(before(ROW_START, `  const { name: label }: ${LOOSE} = item;`), after(ITEM_TIME, '{label}'))), typed: `a widening to ${LOOSE_TYPE}: item` },
+  { form: `a local overload: loud(entry: ConversationMessage), implemented as loud(entry: ${LOOSE}) returning entry.name`,
+    edit: both(before(HELPERS, `function loud(entry: ConversationMessage): string;\nfunction loud(entry: ${LOOSE}) { return entry.name ?? ''; }\n`),
+      after(ROW_TIME, '<Text>{loud(message)}</Text>')), typed: 'a local overload: function loud(entry: ConversationMessage): string;' },
+  { form: `a loosely typed list: const loose: readonly ${LOOSE}[] = conversation.messages, rendering {loose[0]?.name}`,
+    edit: both(before(SCREEN_START, `  const loose: readonly ${LOOSE}[] = conversation.messages;`), after(REVOKED, '<Text>{loose[0]?.name}</Text>')),
+    typed: `a widening to readonly ${LOOSE_TYPE}[]: conversation.messages` },
+  { form: 'a for…of destructuring: for (const { name: label } of conversation.messages)',
+    edit: before(SCREEN_START, '  for (const { name: label } of conversation.messages) void label;'), typed: 'a field outside Glow\'s types: name: label' },
+  // Correction C2, Outcome 1 (finding 2; DM-38 2.1): a function passed by reference.
+  { form: `C2-1a, the review's shout: [message].map(shout), where shout(entry: ${LOOSE}) returns entry.name`,
+    edit: both(before(HELPERS, `function shout(entry: ${LOOSE}) { return entry.name ?? ''; }\n`), after(ROW_TIME, '<Text>{[message].map(shout).join()}</Text>')),
+    typed: `a widening by reference to ${LOOSE_TYPE}: shout` },
+  { form: `C2-1b, a render function: conversation.messages.map(renderEntry), where renderEntry(entry: ${LOOSE}) renders entry.name`,
+    edit: both(before(HELPERS, `function renderEntry(entry: ${LOOSE}) { return <Text key={entry.text}>{entry.name}</Text>; }\n`),
+      after(REVOKED, '{conversation.messages.map(renderEntry)}')), typed: `a widening by reference to ${LOOSE_TYPE}: renderEntry` },
+  { form: `C2-1c, a useCallback function: const renderRow = useCallback((entry: ${LOOSE}) => entry.name ?? '', []), used as .map(renderRow)`,
+    edit: both(before(SCREEN_START, `  const renderRow = useCallback((entry: ${LOOSE}) => entry.name ?? '', []);`),
+      after(REVOKED, '<Text>{conversation.messages.map(renderRow).join()}</Text>')), typed: `a widening by reference to ${LOOSE_TYPE}: renderRow` },
+  { form: `C2-1d, an object's method: conversation.messages.map(view.line), where view.line(entry: ${LOOSE}) returns entry.name`,
+    edit: both(before(SCREEN_START, `  const view = { line(entry: ${LOOSE}) { return entry.name ?? ''; } };`),
+      after(REVOKED, '<Text>{conversation.messages.map(view.line).join()}</Text>')), typed: `a widening by reference to ${LOOSE_TYPE}: view.line` },
+  { form: 'C2-1e, a function returning Glow\'s data by reference into a wider type: conversation.messages.map<Loose>(identity), each read as entry.name',
+    edit: both(before(HELPERS, 'function identity(entry: ConversationMessage) { return entry; }\n'),
+      after(REVOKED, `<Text>{conversation.messages.map<${LOOSE}>(identity).map(entry => entry.name).join()}</Text>`)),
+    typed: `a widening by reference of its return to ${LOOSE_TYPE}: identity` },
+  // Outcome 2 (finding 3a; 2.2): a type predicate or an assertion signature narrows Glow's data.
+  { form: `C2-2a, a local type guard: named(message) && <Eyebrow entry={message} />, where named narrows to ConversationMessage & { name: string }`,
+    edit: both(before(HELPERS, `${EYEBROW}\nfunction named(entry: ConversationMessage): entry is ConversationMessage & { name: string } { return entry.text !== null; }\n`),
+      after(ROW_TIME, '{named(message) && <Eyebrow entry={message} />}')), typed: 'a call to a type predicate or assertion: named(message)' },
+  { form: 'C2-2b, a local assertion function: assertNamed(message), then <Eyebrow entry={message} />',
+    edit: both(before(HELPERS, `${EYEBROW}\nfunction assertNamed(entry: ConversationMessage): asserts entry is ConversationMessage & { name: string } { void entry; }\n`),
+      before(ROW_START, '  assertNamed(message);'), after(ROW_TIME, '<Eyebrow entry={message} />')), typed: 'a call to a type predicate or assertion: assertNamed(message)' },
+  { form: 'C2-2c, a type guard imported from another module: named(message) && <Eyebrow entry={message} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), after(IMPORTS, 'import { named } from \'./planted-guard\';'), after(ROW_TIME, '{named(message) && <Eyebrow entry={message} />}')),
+    typed: 'a call to a type predicate or assertion: named(message)' },
+  { form: 'C2-2d, a local type guard given to the default library\'s filter: conversation.messages.filter(named), each given to <Eyebrow entry={entry} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`),
+      before(SCREEN_START, '  const named = (entry: ConversationMessage): entry is ConversationMessage & { name: string } => entry.text !== null;'),
+      after(REVOKED, '{conversation.messages.filter(named).map(entry => <Eyebrow key={entry.submission_id} entry={entry} />)}')),
+    typed: 'a type predicate or assertion signature: entry is ConversationMessage & { name: string }' },
+  { form: 'C2-2e, an imported type guard given by reference to the default library\'s filter: all.filter(named), each given to <Eyebrow entry={entry} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), after(IMPORTS, 'import { named } from \'./planted-guard\';'),
+      before(SCREEN_START, '  const all = conversation.messages;'), after(REVOKED, '{all.filter(named).map(entry => <Eyebrow key={entry.submission_id} entry={entry} />)}')),
+    typed: 'a type predicate or assertion by reference: named' },
+  // Outcome 3 (findings 3b, 3c; 2.6): Reflect, and Object other than freeze, however aliased.
+  { form: 'C2-3a, an aliased Reflect: const { get: pick } = Reflect, rendering {String(pick(message, \'name\'))}',
+    edit: both(before(ROW_START, '  const { get: pick } = Reflect;'), after(ROW_TIME, '<Text>{String(pick(message, \'name\'))}</Text>')),
+    typed: 'a reference to Reflect or an Object member: Reflect' },
+  { form: 'C2-3b, an aliased Object.assign: const { assign: merge } = Object, then <Eyebrow entry={merge({ name: \'\' }, message)} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), before(ROW_START, '  const { assign: merge } = Object;'), after(ROW_TIME, '<Eyebrow entry={merge({ name: \'\' }, message)} />')),
+    typed: 'a reference to Reflect or an Object member: Object' },
+  { form: 'C2-3c, Reflect reached by a string key: const { \'Reflect\': { get: pick } } = globalThis, rendering {String(pick(message, \'name\'))}',
+    edit: both(before(ROW_START, '  const { \'Reflect\': { get: pick } } = globalThis;'), after(ROW_TIME, '<Text>{String(pick(message, \'name\'))}</Text>')),
+    typed: 'a reference to Reflect or an Object member: \'Reflect\': { get: pick }' },
+  { form: 'C2-3d, Object reached by a computed key: const { [\'Object\']: { assign: merge } } = globalThis, then <Eyebrow entry={merge({ name: \'\' }, message)} />',
+    edit: both(before(HELPERS, `${EYEBROW}\n`), before(ROW_START, '  const { [\'Object\']: { assign: merge } } = globalThis;'), after(ROW_TIME, '<Eyebrow entry={merge({ name: \'\' }, message)} />')),
+    typed: 'a reference to Reflect or an Object member: [\'Object\']: { assign: merge }' },
+  // Outcome 4 (finding 4; 2.6): the two exceptions, narrowed to their words.
+  { form: 'C2-4a, a dependency list outside a hook: keep([message]), where keep(list: DependencyList) renders JSON.stringify(list[0])',
+    edit: both(swap(REACT_IMPORT, REACT_IMPORT.replace('type PropsWithChildren', 'type DependencyList, type PropsWithChildren')),
+      before(HELPERS, 'function keep(list: DependencyList) { return JSON.stringify(list[0]); }\n'), after(ROW_TIME, '<Text>{keep([message])}</Text>')),
+    typed: 'a widening to unknown: message' },
+  { form: `C2-4b, a default under an annotated outer pattern: const { inner: { name: label } = message }: { inner?: ${LOOSE} } = {}, rendering {label}`,
+    edit: both(before(ROW_START, `  const { inner: { name: label } = message }: { inner?: ${LOOSE} } = {};`), after(ROW_TIME, '{label}')),
+    typed: `a widening to ${LOOSE_TYPE} | undefined: message` },
+];
+/**
+ * A known false positive (DM-38's F0; 2.4): a harmless `FlatList` over Glow's data fails, since
+ * its `data` prop is `ArrayLike`, which has an index signature. It fails closed. The next change
+ * to how the screens hold or render chat data changes the design (DM-38 2.5); it does not
+ * loosen the check to pass this.
+ */
+const FALSE_POSITIVE: Planted = { form: 'F0, a harmless FlatList over conversation.messages, rendering item.text',
+  edit: both(swap(RN_IMPORT, RN_IMPORT.replace('ScrollView,', 'FlatList, ScrollView,')), after(REVOKED,
+    '<FlatList data={conversation.messages} keyExtractor={entry => entry.submission_id} renderItem={({ item }) => <Text>{item.text ?? \'\'}</Text>} />')),
+  typed: 'a widening to Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages' };
+/** The module planted form C2-2c imports, served beside the screen but not checked itself. */
+const PLANTED_GUARD = ['import type { ConversationMessage } from \'../contracts/generated/gapp-api-v1\';',
+  'export function named(entry: ConversationMessage): entry is ConversationMessage & { name: string } { return entry.text !== null; }', ''].join('\n');
+
+test('the chat screens render only the contract\'s fields: no provider-shaped field is read, whatever the validators let through (M05 finding 18)', () => {
+  const screen = readFileSync(SCREEN, 'utf8');
+  const rows = readFileSync(ROWS, 'utf8');
+  const source = `${withoutComments(screen)}\n${withoutComments(rows)}`;
+  assert.deepEqual(sourceViolations(source), []);
+  // Each message field the screen reads is one of the contract's.
+  const read = [...renderedPaths(source)].filter(path => path.startsWith('message.')).map(path => path.slice('message.'.length));
+  assert.deepEqual(read.filter(key => !MESSAGE_KEYS.includes(key)), []);
+  // The type check (corrections C1 and C2), as the comment above states it (DM-39).
+  const { violations, glowFiles } = typedViolations(new Map([[SCREEN, screen], [ROWS, rows]]));
+  assert.deepEqual(Object.fromEntries(violations), { [SCREEN]: [], [ROWS]: [] });
+  // Each `GLOW_DATA` path exists, and the check found Glow's data declared in it (nit 6).
+  for (const path of GLOW_DATA) assert.ok(existsSync(path), `a GLOW_DATA path exists: ${path}`);
+  assert.deepEqual([...GLOW_DATA].filter(path => !glowFiles.has(path)), [], 'each GLOW_DATA path is one the type check found Glow\'s data in');
+});
+
+test('the render rule\'s checks refuse each planted form of a provider-shaped field (M05 finding 18; corrections C1 and C2)', () => {
+  const screen = readFileSync(SCREEN, 'utf8');
+  const rows = withoutComments(readFileSync(ROWS, 'utf8'));
+  const planted = [...PLANTED, FALSE_POSITIVE].map((entry, index) => ({ ...entry, path: SCREEN.replace(/\.tsx$/, `.planted-${index}.tsx`), text: entry.edit(screen) }));
+  assert.equal(planted.length, 38 + 1);
+  const typed = typedViolations(new Map(planted.map(entry => [entry.path, entry.text])),
+    new Map([[SCREEN.replace(/screen\.tsx$/, 'planted-guard.ts'), PLANTED_GUARD]])).violations;
+  for (const entry of planted) {
+    // The nine forms the source check was tested against still fail it.
+    if (entry.source) assert.notDeepEqual(sourceViolations(`${withoutComments(entry.text)}\n${rows}`), [], `the source check: ${entry.form}`);
+    // Every form fails the type check, for the reason named, not only as a type error.
+    assert.ok(typed.get(entry.path)!.includes(entry.typed), `the type check: ${entry.form}: ${JSON.stringify(typed.get(entry.path))}`);
+  }
+  // The known false positive fails closed, and for that reason alone.
+  assert.deepEqual(typed.get(planted.at(-1)!.path), [FALSE_POSITIVE.typed], 'the FlatList false positive (DM-38 F0)');
 });
