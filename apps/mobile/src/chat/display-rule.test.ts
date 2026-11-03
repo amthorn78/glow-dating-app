@@ -112,62 +112,116 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
 });
 
 /**
- * The render rule (M05 finding 18): the screens show only contract fields, whatever a response
- * carried, so a provider-shaped field (a message's `name`, a member, custom data) is never read
- * even if a validator let it through. Nothing renders `screen.tsx` in Node, so its source, with
- * the list rows' model (`rows.ts`), is checked twice.
+ * The render rule (M05 finding 18; ADR 0003): the screens are to show only contract fields, so
+ * that a provider-shaped field (a message's `name`, a member, custom data) that a validator let
+ * through is not rendered. Nothing renders `screen.tsx` in Node, so its source, with the list
+ * rows' model (`rows.ts`), is checked twice, as stated below.
  *
- * The source check reads every property path through the six names the screens use (a message,
- * a conversation, the list, the store's state, a match and a row) against a named list, and
- * refuses a cast, `any`, a spread, a computed or reflective read and an `in` check on a string.
+ * The source check is a text match over the two files with comments removed. It reads the
+ * property paths its pattern matches after the six names the screens use (a message, a
+ * conversation, the list, the store's state, a match and a row) against a named list, and
+ * refuses a cast, `any`, a spread, a computed read written as one of those names then `[`, a
+ * reflective read, and an `in` check after a quoted string. As a text match it passes
+ * `message?.['name']`, `message ?.name`, a path split across lines and `('name') in message`;
+ * C3's probes found these, and the type check refuses each of them.
  *
  * The type check (corrections C1 and C2) builds the two files with the TypeScript compiler the
  * app declares, under the app's `tsconfig.json`, and finds Glow's data by type: a value whose
  * type declares a property in one of the files listed in `GLOW_DATA` (the generated contracts,
- * the chat store, the row model, the interactions' state). Its guarantee (DM-38 section 4):
+ * the chat store, the row model, the interactions' state).
  *
- * The check follows Glow's data by its own type: at a property read, a destructuring, a spread,
- * an enumeration and an `in` check, and wherever the data is passed, returned, assigned,
- * annotated, given as a prop, or given to a callback, inline or by reference. It refuses type
- * predicates and assertion signatures, references to `Reflect` and to `Object` members other
- * than `freeze` however aliased, and any type error. It does not follow data held inside another
- * value (a group or section, a list's render-item wrapper, a view-model object, a closure or a
- * container), another module, or a template literal's coercion. It refuses some harmless code,
- * such as a list component over Glow's data. It is a test over two files' source, not a proof
- * over all programs.
+ * What the check does (DM-39). It refuses the forms listed below, and its planted forms are that
+ * list's specification: a form that evades a listed refusal is a defect, and any other form that
+ * passes is a limit, recorded when found. It treats a value as Glow's data while the value's type
+ * declares a field in a `GLOW_DATA` file, and it does not check the value once its type declares
+ * none, for example after a narrower type declared outside those files; a narrower type built
+ * from the contract's own, such as `Pick<>` or `Omit<>`, keeps it Glow's data. The forms it is
+ * known to pass are named below; probes found them, and more may exist. It refuses some harmless
+ * code, which fails closed. It is a test over two files' source, not a proof. The client
+ * validator is the first guard, and view models built by explicit field copy (DM-38 2.5) are the
+ * structural fix.
  *
- * What it refuses, in its own terms:
- * - a read from Glow's data of a property its type does not declare, and a computed or rest read;
- * - an `in` check, a `for…in` enumeration, a destructuring assignment or a spread of Glow's data;
+ * What it refuses, in its own terms. In brackets, the planted forms that pin each item, by their
+ * IDs in the record (1 to 9, PA, PB, PC and 13 to 22 from C1; C2-1a to C2-4b from C2). The test
+ * asserts only that forms 1 to 9 fail the source check, so a form pins a source-check item there
+ * when that item is the form's only source-check violation. Where an item has no planted form,
+ * the bracket says so; a C3 probe confirmed that each such item is refused (the record,
+ * "Correction C3"), and C3 added no planted form (DM-39 1.1).
+ * - The source check: a path outside its list [1, 6, 8]; a cast [2]; `any` [no planted form
+ *   pins it: 7 reports it beside a cast]; a spread [4]; a computed read [3]; a reflective read
+ *   [5, 9]; an `in` check on a string [no planted form].
+ * - a read from Glow's data of a property its type does not declare [1, 6, 8, PA, PC, 22], and a
+ *   computed [3] or rest read [no planted form];
+ * - an `in` check, a `for…in` enumeration, a destructuring assignment or a spread of Glow's data
+ *   [4, the spread; no planted form names the other three, though PA reports its `in` check];
  * - a widening: Glow's data where the expected type (a parameter, through `call`, `apply` or
  *   `bind` too; a prop; an annotation; a return; an assignment) declares a property the data's
- *   type does not, or is `any`, `unknown`, `object`, `{}` or an index signature;
+ *   type does not, or is `any`, `unknown`, `object`, `{}` or an index signature [2, 5, 7, 9, PB,
+ *   13, 16 to 19, 21, C2-4a, C2-4b; no planted form for `bind`, a return, an assignment, `object`
+ *   or `{}`];
  * - a callback, inline or passed by reference (a declared function, a `useCallback` result, an
  *   object's method), whose parameter widens what the expected signature gives it, or whose
- *   return of Glow's data is widened by what the expected signature returns (C2);
+ *   return of Glow's data is widened by what the expected signature returns (C2) [15, inline;
+ *   C2-1a to C2-1d, by reference; C2-1e, the return];
  * - a type predicate or assertion signature declared in the two files, written or inferred; a
  *   call whose resolved signature has one; and a function with one given by reference rather
- *   than called; each unless the default library's (C2);
+ *   than called; each unless the default library's (C2) [C2-2d, declared and written; C2-2a,
+ *   C2-2b and C2-2c, called; C2-2e, by reference; no planted form for an inferred one];
  * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier, by an
- *   expression's type and by a destructuring's type, whatever its key (C2);
- * - a local generic or overload, whose types the check does not follow; any type error.
+ *   expression's type and by a destructuring's type, whatever its key (C2) [C2-3a and C2-3b, by
+ *   identifier, reporting the expression's type beside it; C2-3c and C2-3d, by a destructuring];
+ * - a local generic [14] or overload [20], whose types the check does not follow; a type error
+ *   the compiler reports in the two files [no planted form names it, though PC and 22 report one].
  * Its named exceptions: the value an Array predicate (`filter`, `some`, `every`, `find`…) returns,
  * which the predicate reads for truthiness alone; an element of a dependency list given to a
- * React hook declared in `@types/react`, which React compares by identity (C2: only there); the
- * initializer of an object destructuring when no enclosing pattern is annotated, whose reads the
- * pattern's own check covers (C2: only then); and a type parameter of a function outside the two
- * files, which is inferred from the value.
+ * React hook declared in `@types/react`, which React compares by identity (C2: only there; C2-4a
+ * pins the narrowing); the initializer of an object destructuring when no enclosing pattern is
+ * annotated, whose reads the pattern's own check covers (C2: only then; C2-4b pins it); and a
+ * type parameter of a function outside the two files, which is inferred from the value.
  *
- * Its limits, beyond the guarantee's words: data held inside another value is the limit an
- * ordinary refactor reaches (DM-38 2.3), not only a deliberate evasion. Grouped sections, a
- * render-item wrapper or a view model can carry a message to a loosely typed helper, which then
- * renders a provider-shaped field, and this check passes it. The next change to how `screen.tsx`
- * or `rows.ts` hold or render chat data moves them to view models built by explicit field copy,
- * with its own check (DM-38 2.5). The false positive: a harmless
- * `<FlatList data={conversation.messages} … />` fails, with `a widening to
- * Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages`, since `ArrayLike`
- * has an index signature (DM-38 F0; `FALSE_POSITIVE` below). It fails closed; that change
- * changes the design rather than loosening the check.
+ * What it is known to pass. These came from the exact-head review of P06.2-F (its finding 1
+ * began C1) and C1's own probes, from C1's delta re-review, and from C2's 256 probe forms; Codex
+ * found N1 and N8 again. `Loose` is `{ name?: string; text: string | null }`.
+ * - Finding 1's class (C1's delta re-review): data held inside another value (a group or
+ *   section, a list's render-item wrapper, a view-model object, a closure or a container), given
+ *   to a loosely typed helper that renders a provider-shaped field.
+ * - N1, narrow then widen: X2, an ordinary refactor: `<Narrow entry={message} />`, where
+ *   `Narrow`'s prop is `{ text: string | null }` and it hands `entry` to `Wide`, whose `Loose`
+ *   prop renders `entry.name`.
+ * - N2, a suppressed type error: `// @ts-expect-error` above `<Caption entry={message} />`, where
+ *   `Caption`'s prop is `() => void` and it renders `entry.name`.
+ * - N3, Glow's data as `this` through `.call` to a function that declares no `this`:
+ *   `({}).hasOwnProperty.call(message, 'name')`.
+ * - N4, a container the check does not follow: `const pair = ['label', message] as const`, given
+ *   to `readonly (string | Loose)[]`; arrays nested four deep.
+ * - N5, a thrown value: `async function fail(entry: ConversationMessage) { throw entry; }`, then
+ *   `fail(message).catch((entry: Loose) => entry.name)`.
+ * - N6, a `for…of` into an existing target: `let loose: Loose | undefined;` then
+ *   `for (loose of conversation.messages) break;`.
+ * - N7, `arguments`: `function shout() { return String(arguments[0]?.name ?? ''); }`, used as
+ *   `[message].map(shout)`. ESLint's `prefer-rest-params` refuses it; this test does not.
+ * - N8, an inline parameter typed only by its default: `[message].map((entry = BLANK) =>
+ *   entry.name ?? '')`, with `BLANK: Loose`.
+ * - N9, `instanceof` narrowing: `message instanceof NamedEntry && <Eyebrow entry={message} />`,
+ *   where the local class `NamedEntry { name = '' }` has a `Symbol.hasInstance` returning true.
+ * - Another module: `<Eyebrow entry={message} />`, where `Eyebrow`, in a module other than the
+ *   two files, takes the exact `ConversationMessage` and casts it to render `name`.
+ * - A template literal's coercion: `{`${message}`}` (it renders `[object Object]`).
+ *
+ * What harmless code it refuses. Each fails closed:
+ * - F0's family: a harmless `<FlatList data={conversation.messages} … />` fails with `a widening
+ *   to Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages` (DM-38 F0;
+ *   `FALSE_POSITIVE` below), and so do a `VirtualizedList`, `Array.from` and `new Set` over the
+ *   messages, since the check reads an `ArrayLike` parameter's index signature, and an
+ *   `Iterable` parameter's symbol-keyed iterator, which it does not find by name on the array,
+ *   as widenings;
+ * - inferred predicates, such as `.filter(text => text !== null)` over strings, since TypeScript
+ *   infers `text is string`;
+ * - Node's `assert`, whose `asserts value` is not the default library's;
+ * - the source check's path list, which refuses `conversation.messages.at(-1)`, `.toReversed()`
+ *   and `.filter(…)`.
+ * The record names more. The next author who meets one changes the design (DM-38 2.5), not the
+ * check.
  */
 const RENDERED_PATHS = new Set([
   // ConversationMessage: the contract's six fields.
@@ -621,7 +675,7 @@ test('the chat screens render only the contract\'s fields: no provider-shaped fi
   // Each message field the screen reads is one of the contract's.
   const read = [...renderedPaths(source)].filter(path => path.startsWith('message.')).map(path => path.slice('message.'.length));
   assert.deepEqual(read.filter(key => !MESSAGE_KEYS.includes(key)), []);
-  // The type check (corrections C1 and C2), within the guarantee above.
+  // The type check (corrections C1 and C2), as the comment above states it (DM-39).
   const { violations, glowFiles } = typedViolations(new Map([[SCREEN, screen], [ROWS, rows]]));
   assert.deepEqual(Object.fromEntries(violations), { [SCREEN]: [], [ROWS]: [] });
   // Each `GLOW_DATA` path exists, and the check found Glow's data declared in it (nit 6).
