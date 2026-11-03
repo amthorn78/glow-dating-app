@@ -130,6 +130,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-03 | 2 Nov 2026 | accuracy | The verification of C1 repeated the session's "finds Glow's data by type through any binding" in the delta prompt, Notion and the reply on Codex's thread, after re-running only the session's planted forms and its one named evasion; the delta re-review found more than 20 edits in the two files that pass | C1's delta re-review (findings 1 to 5) |
 | AM9-04 | 2 Nov 2026 | accuracy | Wrote the handoff's checkpoint and branch-list times from memory three times: 13:20 UTC for 16:32 (pushed at `903c41f`), 18:30 for 18:24 (pushed at `007377e`), and 20:30 for 21:51 (caught before its push) | App Manager 9, reading `date -u` after each |
 | AM9-05 | 2 Nov 2026 | accuracy | Notion's status lead and P06.2-F's Work Register row said the manager recommended "view models as their own item"; DM-39's consultation and the review log asked (c)'s timing without recommending one. The commit message of `6a9a6b5` said the same | Dev Manager 3, DM-39 section 9 |
+| AM9-06 | 3 Nov 2026 | accuracy | C3's prompt and the brief's Outcome 1 asked each item of the check's refusal list to name, by ID, the planted forms that pin it, without the manager first checking that each item had one; several had none | Correction C3, its point 1 |
 
 ## App Manager 2
 
@@ -1020,3 +1021,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** Notion overstated the manager's position on one question for the time between the sync and this batch; the Dev Manager answered the question as asked, and nothing was decided on the Notion text.
 - **Correction:** both Notion texts corrected at this batch's sync to say the timing was asked, with DM-39's answer; the commit message stays as history.
 - **Prevention:** a Notion summary of a consultation is written from the consultation's own text, item by item ("recommended" only where it says so), and the readback compares each "recommended" in the summary with the consultation.
+
+### AM9-06 — A prompt asked for evidence the manager had not checked exists (accuracy)
+
+- **What happened:** C3's prompt and the brief's "Correction C3" Outcome 1 asked each item of "What it refuses, in its own terms" to name, by ID, the planted forms that pin it. The text came from DM-39 section 4.2's terms. The manager did not first check that each item had a planted form. Several did not: a rest read; an `in` check, a `for…in` or a destructuring assignment; some widenings; an inferred predicate; a type error; and two source-check items.
+- **Caught by:** correction C3, its point 1. The session marked each such item "no planted form", confirmed each refusal by a probe and added none, as DM-39 1.1 requires.
+- **Effect:** none on the code. The prompt asked for something that could not be met as written; the session reported it, and the open question went to the delta re-review (its focus 9).
+- **Correction:** recorded in "Manager verification of correction C3"; the delta re-review's prompt states the gap and asks for a view on it.
+- **Prevention:** when a prompt asks a session to cite evidence for each item of a list (an ID, a test, a run), the manager checks first that the evidence exists for each item, or the prompt says what to do where it does not.
