@@ -25,8 +25,8 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Next actions (App Manager 9)
 
-1. **P06.2-F:** answer and resolve Codex's threads at `:280` (N1) and `:415` (N8), which C3's list names; give Nathan the delta re-review's prompt once Codex is clear; verify its report and dispose of its findings (focus 9: the Dev Manager if it departs from DM-39 1.1); then the pre-merge checklist, the merge and its receipt.
-2. **Then** P06.3 and the slices, each named to Nathan before it starts (OD-49); the second A05 message (the preference taxonomy, resurfacing and rematch, the history policy) before SV2's brief.
+1. **P06.2-F:** give Nathan the delta re-review's prompt once Codex is clear; verify its report and dispose of its findings (focus 9: the Dev Manager if it departs from DM-39 1.1); the Dev Manager's pre-merge read of OD-57's governing texts (step 3; `apps/mobile/AGENTS.md`), and DM-39 4.2's confirmation; then the pre-merge checklist, the merge and its receipt.
+2. **Then** P06.3 and the slices, each named to Nathan before it starts (OD-49); the second A05 message before SV2's brief (the carried-items file).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions". The prompts' pruning is M05 finding 44, a manager batch with OD-45's D8 link pinned first.
 

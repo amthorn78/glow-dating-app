@@ -94,7 +94,7 @@ From `apps/mobile/` when the assignment needs rendering/export proof:
 ```bash
 EXPO_OFFLINE=1 npm run check:expo
 EXPO_OFFLINE=1 npm run export:development
-npx playwright install --with-deps chromium   # workstation only; never in a Claude cloud container
+npx playwright install --with-deps chromium   # a workstation or a CLI environment (OD-57); never in a Claude cloud container
 npm run test:rendered
 ```
 
@@ -140,6 +140,6 @@ If a tool is missing or has the wrong version, the Setup script did not produce 
 
 - Network installs in such a clean environment also need the session's proxy and CA variables, passed through by reference and never printed: add `HTTPS_PROXY="$HTTPS_PROXY" NODE_EXTRA_CA_CERTS="$NODE_EXTRA_CA_CERTS"` for `npm ci`. Without them, npm failed with `SELF_SIGNED_CERT_IN_CHAIN` in the `Glow app` environment on 24 September 2026. curl and pip use the system trust store and worked. These are infrastructure settings, not application or provider credentials.
 
-**Rendered tests.** The container's preinstalled Chromium (`/opt/pw-browsers`) was revision 1243 on 26 October 2026 [Corrected by M05, finding 35: this said revision 1194; the M05 session found `chromium-1243` only], while `@playwright/test` 1.62.1 expects revision 1234, and the Playwright download host is not on the allowlist. Never run `playwright install` in the cloud container. Rendered acceptance comes from hosted CI (Foundation, Mobile checks). A local run against the preinstalled browser, through an uncommitted configuration, is informational only.
+**Rendered tests.** The container's preinstalled Chromium (`/opt/pw-browsers`) was revision 1243 on 26 October 2026 [Corrected by M05, finding 35: this said revision 1194; the M05 session found `chromium-1243` only], while `@playwright/test` 1.62.1 expects revision 1234, and the Playwright download host is not on the allowlist. Never run `playwright install` in the cloud container. Rendered acceptance comes from hosted CI (Foundation, Mobile checks). A local run against the preinstalled browser, through an uncommitted configuration, is informational only. **Playwright and similar tool support can be implemented via CLI environments** (OD-57): in Nathan's CLI agent's open environment (OD-43), a prompt may authorize installing the pinned Chromium and running `npm run test:rendered` at the pinned revision; CI's run stays the run of record.
 
-**Other limits.** The container has no Docker daemon, so the API artifact checks also rely on hosted CI.
+**Other limits.** The container has no Docker daemon, so the API artifact checks also rely on hosted CI; a CLI environment can provide one (OD-57).

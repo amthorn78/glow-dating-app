@@ -131,6 +131,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-04 | 2 Nov 2026 | accuracy | Wrote the handoff's checkpoint and branch-list times from memory three times: 13:20 UTC for 16:32 (pushed at `903c41f`), 18:30 for 18:24 (pushed at `007377e`), and 20:30 for 21:51 (caught before its push) | App Manager 9, reading `date -u` after each |
 | AM9-05 | 2 Nov 2026 | accuracy | Notion's status lead and P06.2-F's Work Register row said the manager recommended "view models as their own item"; DM-39's consultation and the review log asked (c)'s timing without recommending one. The commit message of `6a9a6b5` said the same | Dev Manager 3, DM-39 section 9 |
 | AM9-06 | 3 Nov 2026 | accuracy | C3's prompt and the brief's Outcome 1 asked each item of the check's refusal list to name, by ID, the planted forms that pin it, without the manager first checking that each item had one; several had none | Correction C3, its point 1 |
+| AM9-07 | 3 Nov 2026 | accuracy | Implementation Control's "Standing directions" line said the Notion register copy holds OD-01 to OD-54 after OD-55 and OD-56 were added to it; App Manager 9's readbacks covered the status section and missed it | App Manager 9, recording OD-57 |
 
 ## App Manager 2
 
@@ -1029,3 +1030,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on the code. The prompt asked for something that could not be met as written; the session reported it, and the open question went to the delta re-review (its focus 9).
 - **Correction:** recorded in "Manager verification of correction C3"; the delta re-review's prompt states the gap and asks for a view on it.
 - **Prevention:** when a prompt asks a session to cite evidence for each item of a list (an ID, a test, a run), the manager checks first that the evidence exists for each item, or the prompt says what to do where it does not.
+
+### AM9-07 — A range on Implementation Control left behind the register (accuracy)
+
+- **What happened:** Implementation Control's "Standing directions" section says which directions Notion's copy of the register holds. It still said OD-01 to OD-54 after OD-55 (1 November) and OD-56 (2 November) were added to the copy. App Manager 9's readbacks of the page covered the status section and its standing bullets, not the sections after the operating procedure.
+- **Caught by:** App Manager 9, recording OD-57.
+- **Effect:** a reader of Implementation Control alone would have missed two directions; the copy itself was current.
+- **Correction:** the line now names OD-01 to OD-57, at this batch's sync.
+- **Prevention:** a page's readback covers every section that names a range, a count or a commit, not only the section the batch wrote; adding a direction updates the register copy and that line together.
