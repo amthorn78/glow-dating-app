@@ -1271,3 +1271,21 @@ Foundation push run **42481684565** (run 846, attempt 1), on `7f1df9615b10e844dc
 - **The native analogue** (Android hardware back, an iOS back gesture during the clean-up) is beyond the web harness; it is the P11 plan's N01 row (1.7).
 - `main` was not re-run; DM-41's P8 is cited.
 - Not run: `check:expo`, `export:development` (CI runs both), and any command in `proofs/`. No GitHub write other than the push of this branch; nothing in Notion.
+
+## Review of C4 and repair pass C5 (8 November 2026)
+
+- **The review:** prompt revision 1 at `0a49e62` ([prompt](../../ephemeral/2026-11-08-p06-2-f-c5-review-prompt.md)), of code head `7f1df96`, on S2's terms (DM-41 5.1 to 5.3; DM-40 3.1 to 3.4), in `Glow App - No Stream`. Start gate passed; classification `"full": true`; environment check clean (names only).
+- **Verdict: changes required.** Two forms inside C4's narrowed inline-callback words pass the render test, `tsc` and ESLint (findings 1 and 2); everything else in scope holds.
+- **Findings:**
+
+| # | Severity | Finding | Class |
+|---|---|---|---|
+| 1 | Blocking (DM-39 1.2) | A function expression with a `this` parameter evades the inline-callback comparison: the check pairs `node.parameters[index]` with `signature.parameters[index]` (`display-rule.test.ts:479-480`), and a declared `this` parameter is in the first list and not the second, so the annotated parameter is never compared. Form: `<Text>{[message].map(function (this: ConversationMessage, entry: Loose) { return entry.name ?? ''; }).join()}</Text>` | A form evades a listed refusal; to the Dev Manager first (DM-40 3.4) |
+| 2 | Blocking (DM-39 1.2) | A contextual signature with a rest parameter leaves `signature.parameters[1]` undefined, so the second parameter is skipped (the check's own `parameterAt` handles rest; this rule does not use it). Form: `const join: (...entries: ConversationMessage[]) => string = (first, second: Loose) => second.name ?? String(first.text);`, rendering `{join(message, message)}` | The same |
+| 3 | Low | "Correction C4 (written by repair pass C5)" says "'follows', 'wherever' and 'every' do not occur in the comments"; `every` occurs at `:185` (the Array method), "wherever" at `:511` (a code comment) and "Every" at `:105` and `:721`. None claims coverage, so DM-38 4.2 is met | A record claims more than the file shows; a records fix |
+| 4 | Nit | The `VirtualizedList` reason: `data` is declared `any`, but the check reports a widening to `unknown` in every form tried, and to `any` only when `getItem` returns Glow's data; the comment says it fails as both | A comment line, by a strict reading of the last class |
+
+- **What holds:** about 30 of the review's literal-property forms and 17 destructuring forms are refused; the four new known-passing examples pass; `f87e8b1` and `691dfba` differ outside comments only in the test name's string (6,501 nodes each); the diagnosis reproduces (unfixed 7 of 15, fixed 15 of 15, Chromium 1243, informational); the spec adds one wait and nothing else; the scan is complete; the workflow retries only `setup-python`, at the same pin, with `continue-on-error` on the four first attempts only, and the gate is unchanged. An informational note: when a first attempt fails and the retry passes, the job reads `success`, so the gate cannot tell it from a clean pass; the first failure shows in the job's log and its warning annotation, which meets DM-41 2.2.
+- **Runs read:** run of record 42481684565 on `7f1df96` and PR run 42483045373 on `0a49e62`: eight of eight jobs passed, retry steps skipped, `Application checks passed`, rendered 97 passed.
+- **The manager's verification** (App Manager 10): findings 1 and 2 re-run as real edits to `MessageRow` in a scratch copy of `7f1df96`, with `type Loose = { name?: string; text: string | null }`: each passed `display-rule.test.ts` 21 of 21 and `tsc --noEmit`; the control, the same widening as an annotated arrow, failed 2 of 21, as it should; `screen.tsx`'s SHA-256 prefix `3aef02c392c546db` was restored after each.
+- **Dispositions:** findings 1 and 2 fall in the correction classes, and under DM-40 3.4 they go to the Dev Manager before any further correction: DM-42 ([consultation](../../ephemeral/2026-11-08-dm-42-p06-2-f-c5-review-findings.md)). Findings 3 and 4 and the gate note go with it.
