@@ -973,3 +973,301 @@ The Mobile job's log was read in full from the job's log download; the counts ab
 - **DM-41's answer** (Dev Manager 4, [report](../../continuity/dev-manager/reviews/2026-11-08-dm-41-p06-2-f-c4-run-failure.md), `49ef4a4`): a repair pass, C5, in `Glow App - No Stream`, fixes the rendered race in the spec (its probes: the test's immediate back races the app's post-logout `replaceState('/')` and `history.go(-2)`, and `main` fails the same way), retries the toolchain install once, verifies C4's code by its own run and appends "Correction C4" in Outcome 5's form; the manager's reading above is refined, not confirmed. Dispositions: the review log, "DM-41".
 - **A third `504`** (App Manager 10, read after C5's prompt was given): PR run 42470101373 on `10cb35f` (records only; C3's code) failed Stream proof checks at `actions/setup-python`, with three `504` responses (10:08:21 to 10:09:08 UTC) before any step; the other five application jobs passed, the rendered suite included, so 2 of 32 rendered runs since M06's fix have failed `profile-preferences.spec.ts:321`. It supports DM-41 item 2 and changes nothing in C5's prompt; the manager read this run late, after writing "2 of 31" into C5's prompt; that figure is the count to `106f849`, and the rate is 2 of 32 with this run. PR run 42473262141 on `33c4cc2` (C3's code) then passed every job, the gate included, with the rendered suite passing: 2 of 33. A green run on the old code settles nothing (OD-21); C5's run is the run of record.
 - **Next:** repair pass C5 (the brief, "Repair pass C5").
+
+## Correction C4 (written by repair pass C5)
+
+- **Provenance** (DM-41 4.2). Repair pass C5 wrote this section, not C4's session. C4's own draft was kept only in that session's files, and was not recovered after Nathan archived the session. The section is written from C4's code head `691dfbad0ab38d60ba2eb0d9715512c85b5aaccf` (read by C5 with `git diff f87e8b1 691dfba`) and from the manager's section above, "Correction C4: the stop, and the manager's verification".
+  - **What it cannot supply:** C4's own start gate, its environment check, and its command results (the script check of each quoted item, its parse-tree comparison, its scratch-copy runs of the four new examples, and its `npm run check`). Their outcomes are known only as the manager's verification above states them.
+  - **What was verified, and by whom:** the manager verified, from the parse trees without comments, that only the first render test's name changed outside comments, and by script that the comment carries DM-40 section 4.2's words with the differences named below. DM-41 section 9 confirmed the same for the code. C5's own run of record on a head that holds `691dfba`'s code is in "Repair pass C5", below.
+  - **C5's own check of the words** (informational, for this section): a script joined `691dfba`'s comment blocks, normalized whitespace and searched for each DM-40 4.2 quotation. The source check's sentence, the `Reflect` and `Object` item and F0's family are exact; the callback item matches with "Another expression" for "Any other expression"; the destructuring exception matches with "(below);" for "(below)."; the four known-passing entries and "written with `=`" are present. "follows", "wherever" and "every" do not occur in the comments; "all" occurs once, in an unchanged comment outside the render-rule list ("which is all the screens render").
+- **Work:** the brief's "Correction C4" (revision 4), Outcome 1 to 5, on DM-40's terms ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-40-p06-2-f-c3-review-and-od-57.md), sections 4.2 and 6; conditions 1.1 to 1.4).
+- **Prompt:** [`docs/ephemeral/2026-11-08-p06-2-f-c4-correction-prompt.md`](../../ephemeral/2026-11-08-p06-2-f-c4-correction-prompt.md), revision 1, from `0a63219` of the manager branch. Branch `claude/upbeat-mccarthy-499h9k`.
+- **Code head:** `691dfbad0ab38d60ba2eb0d9715512c85b5aaccf`, one commit, `apps/mobile/src/chat/display-rule.test.ts` only (+42 −17).
+- **C4's own run:** push run 42464917902 on `691dfba` failed in Database proof checks (the `504`) and Mobile checks (`profile-preferences.spec.ts:321`), neither touching C4's change (the manager's section above). C4's code is verified by repair pass C5's run of record instead (DM-41 item 3).
+- **What this section supersedes** (DM-40 4.2). C3's three items that its delta re-review's findings 1 to 3 concern (the callback item, the destructuring assignment and the destructuring exception, as "Correction C3" states them), with the other wording the items below replace (the source check's last sentence, the `Reflect` and `Object` item's "whatever its key", and F0's family's `VirtualizedList` reason), are superseded by the words below. This section does not edit them.
+
+### The comment's words, as `691dfba` carries them
+
+Line numbers are in `apps/mobile/src/chat/display-rule.test.ts` at `691dfba`. Each item replaces the text the brief names (at `f87e8b1`).
+
+- **The source check's last sentence** (`:124-128`), exactly as DM-40 4.2 gives it:
+
+  > As a text match, spacing, line breaks, parentheses, comments, string contents and bracket forms evade it, for example `message ?.name`, `(message)as{…}`, `'name'in message`, `'/*'` in a string and `Reflect['get']`; C3's verifiers and its delta re-review found these, and the type check refuses each one tried.
+
+- **The destructuring assignment** (`:157-159`): "a destructuring assignment written with `=`".
+- **The callback item** (`:165-173`), with **one narrowing**: "Another expression" where DM-40 4.2 reads "Any other expression". It drops a coverage word that DM-38 4.2 bars; the manager and DM-41 section 9 read it as narrower.
+
+  > a callback whose parameter widens what it is given, or whose return of Glow's data is widened. An inline arrow function or function expression is compared at each parameter that has a type annotation, against its contextual signature [15]; what it returns is checked as a widening (above). Another expression whose type has a call signature (a function's name, a `useCallback` result, a property read such as `view.line`) is compared at each parameter and at its return, against the call's resolved parameter or its contextual type [C2-1a to C2-1e]. An object literal property written `key: value` or `{ key }`, in a literal that has a contextual type, is compared by these two rules [no planted form]. A function reached only through an object or a class instance is not compared (below).
+
+- **`Reflect` and `Object` by a destructuring** (`:179-182`), exactly as DM-40 4.2 gives it:
+
+  > by a destructuring whose type is `Reflect` or `ObjectConstructor`, as a string or computed key that names one gives [C2-3c, C2-3d]; a key of a union type gives a union, which is not refused (O5)
+
+  The item keeps its earlier bracket, so it cites C2-3c and C2-3d twice (DM-41 section 9, a nit, not wrong).
+- **The destructuring exception** (`:188-192`), with **one punctuation change**: its last sentence ends in ";" where DM-40 4.2 ends it with ".", because the item continues into the list's next exception ("(below); and a type parameter of a function outside the two files, …"):
+
+  > the initializer of an object destructuring when no enclosing pattern is annotated (C2: only then; C2-4b pins it). The pattern's own check reads the initializer's fields only when the pattern is typed as Glow's data, as when the initializer types it. When the pattern's type comes from context, as for an unannotated parameter of a contextually typed function, the initializer is exempt and not checked (below);
+
+- **F0's family** (`:238-242`), exactly as DM-40 4.2 gives it, keeping the sentence's start ("…") as it was:
+
+  > …and so do `Array.from` and `new Set` over the messages, since the check reads an `ArrayLike` parameter's index signature, and an `Iterable` parameter's symbol-keyed iterator, which it does not find by name on the array, as widenings. A `VirtualizedList`, whose `data` prop is typed `any`, fails as a widening to `unknown` and to `any`.
+
+- **"What it is known to pass" gains four entries** (`:223-233`), as DM-40 4.2 gives them:
+  - **A function reached only through an object or class instance** (C3's delta re-review, finding 1): `const view: { line(entry: ConversationMessage): string } = { line(entry: Loose) { return entry.name ?? ''; } }`, then `view.line(message)`. The same holds for an accessor, for a class's method or field under an interface type, and for an object literal with no contextual type that is given later.
+  - **A contextually typed parameter's destructuring default** (finding 2): `const caption: (entry?: Loose) => string = ({ name } = message) => name ?? ''`.
+  - **A destructuring target in a `for…of` head** (finding 3): `for ({ ...rest } of conversation.messages) break;`.
+  - **A reflective global reached through a key of a union type** (O5): `globalThis[key]`, with `key: 'Reflect' | 'JSON'`. No read through it was found.
+
+### The new test name
+
+`:695`: `today's chat screens and list rows pass both render-rule checks (M05 finding 18)`, as DM-40 section 6 gives it, in place of `the chat screens render only the contract's fields: no provider-shaped field is read, whatever the validators let through (M05 finding 18)`. Outside comments, it is the only change (the manager's verification above: one of 559 lines differs).
+
+### Nits 6 and 7: C2's forms by class and ID
+
+From "Correction C2" (its N1 to N9 table, its mechanism table and its verifiers' paragraph), as C3's "Kept for option (c)'s brief" lists them:
+
+- **N1** (20): r1, r3, r4, r7, d1, d5, d6, d8, s1, s3, s7, X1, X2, X3, X5, X6, X7, X8b, P10, P10b; the verifiers added X5r and X6b.
+- **N2** (7): E6, T2, T3, T4, T5, T10, T11. Its table cell also says "one in `rows.ts`" without an ID.
+- **N3** (8): E5, I4, I6, T8, R3, R14, R11, R20.
+- **N4** (5): P3, R6, A8 (tuples); P9, K6r (arrays four deep).
+- **N5** (1): P5b; the verifiers added P5d.
+- **N6** (3): A2, A2b, A5.
+- **N7** (3): R1, R2, R21.
+- **N8** (1): R7.
+- **N9:** P10b, counted under N1.
+
+**Nit 6, the duplicate IDs.** C2's probe IDs are not unique:
+- **`R3`** is "now caught" in the mechanism table's "returned" row ("R3 and R8 now caught"), and is listed under N3, which passes.
+- **`R6`** is listed under N4, which passes, and is among the caught by-reference forms in N8's row ("The by-reference forms are caught (R6, R15)").
+- C2's mechanism-reversal table also uses `R2b`, `R3` and `R6` as names of its reversals, a third use of the same letters.
+
+So a form named only `R3` or `R6` is ambiguous. Option (c)'s brief takes each by its class and its written form, not its ID alone.
+
+**Nit 7, the 49th form.** The class lists name 48 forms; the mechanism table's last column sums to 49. The mechanism table's "passed" row reads "6 → 4 (**N4**, **N5**; P4 and P4b now caught)", so four forms of that row pass, in N4 and N5. The lists name three of them: P3 and P9 (N4) and P5b (N5). **So the 49th is the "passed" row's fourth form, in N4 or N5.** Its ID is not settled by C2's record. The two candidates the records name are both N5's mechanism (a rejection reason that is `any`): P5, which its verifier placed in the closure limit, and P5d, which the verifiers added "with no closure". On that evidence it is placed in **N5**, with its ID unsettled between P5 and P5d. This is a reading of the records, not a re-run.
+
+### DM-40 1.3's forms, for option (c)'s inputs
+
+Each passes the render test, `tsc` and ESLint at `f87e8b1` (C3's delta re-review; DM-40 section 3). `T` is `{ line(entry: ConversationMessage): string }`; `Loose` is `{ name?: string; text: string | null }`; each is an edit to `MessageRow` in `screen.tsx` unless named.
+
+| From | Form |
+|---|---|
+| Finding 1 (C3's delta re-review) | An object literal's method shorthand: `const view: T = { line(entry: Loose) { return entry.name ?? ''; } }`, rendering `view.line(message)`. Also as a JSX prop (C4), through an interface with overloads (C5), as a class instance under that interface type (C3), and in `rows.ts` (C15) |
+| Finding 2 | A contextually typed destructuring default: `const caption: (entry?: Loose) => string = ({ name } = message) => name ?? ''` (X1), and the same as a JSX prop (X2) |
+| Finding 3 | A destructuring target in a `for…of` head: `for ({ ...rest } of conversation.messages) break;` (D5); the manager's form `let rest: Loose = { text: null }; for ({ ...rest } of [message]) break;` |
+| Finding 4 | Source-check text-match misses, each refused by the type check: `(message)as{…}`, `message as/* */{…}`, `<{…}>conversation` in `rows.ts`, `'/*'` and `'*/'` in strings, `any` between two apostrophes, `'name'in message`, `...(message)`, `Reflect['get']`, `Object['values']`, `const { stringify } = JSON` |
+| O5 | `globalThis[key]`, with `key: 'Reflect' \| 'JSON'` |
+| DM-40 F1c | An accessor: `const view: T = { get line() { return shout; } }` |
+| DM-40 F1d | A class instance: `const view: T = new Liner()`, whose method is `line(entry: Loose)` |
+| DM-40 G2 | An untyped literal given later: `const plain = { line: (entry: Loose) => … }`, then `const view: T = plain` |
+| DM-40 G3 | A class field: `line = (entry: Loose) => …` in `Liner` |
+
+DM-40 1.4's three code fixes are noted for (c), not made: exempt only a pattern typed as Glow's data; refuse a `for…of` head whose target is a literal; compare an object literal's method against its contextual property type.
+
+### What C4 did not record, and limits
+
+- C4's start gate, environment check and command results are not recovered (provenance, above).
+- C4's code is verified by repair pass C5's run of record, not by C4's own run.
+- DM-40 4.2's record part ("the record says the same") is met by this section; the Dev Manager's next consultation confirms it (DM-41 section 9).
+
+## Repair pass C5 (8 November 2026)
+
+- **Work:** the brief's "Repair pass C5" (revision 5), on DM-41's terms ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-41-p06-2-f-c4-run-failure.md); conditions 1.1 to 1.6, 2.1 to 2.3, 2.5, 2.6, 3.1 to 3.3 and 4.1 to 4.3). 1.7 was already in the P11 plan's N01 row; 2.4's CI policy paragraph is the manager's.
+- **Prompt:** [`docs/ephemeral/2026-11-08-p06-2-f-c5-repair-prompt.md`](../../ephemeral/2026-11-08-p06-2-f-c5-repair-prompt.md), revision 1, from `33c4cc2a0dfa7e702c306984676788756c3f0a24` of the manager branch `claude/magical-wozniak-yfmmx2`. Started by Nathan, in `Glow App - No Stream`.
+- **Branch:** `claude/inspiring-ride-chqpjx` (the push filter's `claude/**`), started at C4's code head `691dfba` with the prompt's commit merged in (`fba7489`).
+- **Code head:** `7f1df9615b10e844dc252b9111b3c4c5b67b0b37`: two commits on `fba7489`, `bb80f05` (the spec) and `7f1df96` (the workflow). `git diff --name-only 691dfba HEAD -- . ':(exclude)*.md'` lists only `.github/workflows/foundation.yml` and `apps/mobile/rendered/profile-preferences.spec.ts`.
+- **Records head:** the next commit on the branch, Markdown only (the two sections at this file's end); no code after the code head.
+- **Run of record:** push run **42481684565** on `7f1df96`: eight of eight jobs `success`, `Application checks passed`, `@glow/mobile` 650 unit tests, rendered `97 passed (5.0m)` with `profile-preferences.spec.ts:321` passing, Mobile 7 min 22 s of 25. **No toolchain retry fired:** each first `actions/setup-python` attempt succeeded, and the two added steps were skipped in all four jobs.
+- **Nothing met a stop rule** (1.1, 1.6, 2.6, 3.3). No runtime change was found or made (DM-41 5.3).
+
+### Environment check (names only)
+
+- `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`: none present.
+- `STREAM_*`: no name present.
+- `GH_TOKEN` and `GITHUB_TOKEN` are present; never read. App commands ran without them.
+- **Toolchain:** `node --version` → `v24.19.0`; `npm --version` → `11.9.0`, from `$HOME/.local/bin`, put first on PATH. Every npm, Node and Playwright command ran in `env -i PATH="$HOME/.local/bin:…" HOME="$HOME" LANG=C.UTF-8`. Under `env -i` alone, `npm ci` could not reach the registry (`npm error Exit handler never called!`), so `npm ci` also passed `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS` and `NPM_CONFIG_USERCONFIG` by reference, never printed (as C2's record did for two of them). No other command was given them.
+
+### Start gate
+
+| Check | Result |
+|---|---|
+| `git fetch origin claude/magical-wozniak-yfmmx2 claude/upbeat-mccarthy-499h9k main` | fetched; the manager branch at `1cd515e`, C4's branch at `691dfba`, `main` moved `35a5827..bac3c19` |
+| `git switch -C claude/inspiring-ride-chqpjx 691dfba…` | switched; the remote branch did not exist (`git ls-remote` empty) |
+| `git merge --no-edit 33c4cc2…` | `Merge made by the 'ort' strategy`, 16 Markdown files, no conflict (`fba7489`) |
+| `git merge-base --is-ancestor 691dfba… HEAD` | `C4's code head is in the branch` |
+| `git merge-base --is-ancestor 33c4cc2… origin/claude/magical-wozniak-yfmmx2` | `this prompt's commit is on the live branch` |
+| `git diff --quiet 691dfba… HEAD -- . ':(exclude)*.md'` | `the code is C4's` |
+| `git diff --quiet 33c4cc2… origin/claude/magical-wozniak-yfmmx2 -- . ':(exclude)*.md'` | `no code on the live branch after this prompt` |
+| `git show origin/claude/magical-wozniak-yfmmx2:<this record> \| grep -c -E '^## (Correction C4 \(written by repair pass C5\)\|Repair pass C5)$'` | `0` |
+
+**Read before the work:** root `AGENTS.md` and `CLAUDE.md`; `apps/mobile/AGENTS.md` and `CLAUDE.md`; the CI policy; the brief's "Correction C4" and "Repair pass C5"; this record's "Correction C4: the stop, and the manager's verification", "Correction C2" (its class and mechanism tables) and "Delta re-review of correction C3"; the M06 record's "The test changes"; DM-40's report, sections 3 to 6; DM-41's report, whole; C4's prompt; `apps/mobile/rendered/profile-preferences.spec.ts`, whole; `.github/workflows/foundation.yml`, whole.
+
+### The browser and the configuration (informational; DM-41 1.1)
+
+- **Browser:** this container's Chromium 1243 headless shell, `/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`, `Google Chrome for Testing 153.0.8010.12`. Playwright 1.62.1 pins chromium 1234 (Chrome for Testing 151.0.7922.34, CI's browser), so every rendered result below is **informational only** (`apps/mobile/AGENTS.md`). No `playwright install` was run.
+- **Configuration:** an uncommitted copy of `apps/mobile/playwright.config.ts` in the session's scratch directory, outside the checkout, identical except for `launchOptions.executablePath` (the browser above), the web server's `cwd` (`apps/mobile`), its output directory, and a `testDir` that probe specs could override. Workers 1, retries 0, expect timeout 10 s, as the repository's.
+- **Probe specs** (uncommitted, in the scratch directory): the test's own steps to `:340`, then a recorded back. Two traces: a navigation-only trace from the Chrome DevTools Protocol (`Page.navigatedWithinDocument` with its navigation type, top-frame `Page.frameNavigated`, and `Page.getNavigationHistory` at the end), and, in one run, in-page hooks on `history.pushState`, `replaceState`, `go` and `back` and on `popstate`, each logging through `console.debug`.
+
+### The diagnosis (DM-41 1.2)
+
+**The failure reproduces at the test's own sequence** (the repository's spec at `691dfba`, unchanged, `--grep "logout and account switching" --repeat-each 30`): **5 of 30 failed**, each at `:342` (`getByTestId('screen-account').filter({ visible: true })`, element not found in 10 s) with `Visible screen identities after failure: []`, CI's signature.
+
+**The probes, unfixed:**
+
+| Run | Trace | Repeats | Failed | Notes |
+|---|---|---|---|---|
+| B | navigation only | 20 | 8 | every failure: `goBack()` resolved at `/`, then `about:blank` |
+| C | navigation and in-page hooks | 30 | 8 | the hooks did not stop the failure here (DM-41's P4 saw none in 8) |
+| E | navigation only, with `Page.getNavigationHistory` | 20 | 4 | every failure: history `[about:blank, /remaining, /account, /]`, current index 0 |
+
+With run A, **25 of 100** unfixed repeats failed in this container. `main` is cited from DM-41's P8 (4 of 12), not repeated.
+
+**One failing repeat's order of history operations** (run C, repeat 0; milliseconds from the test's start):
+
+| ms | Event |
+|---|---|
+| 4251 | the test sends the second `logout` click, at `/profile-edit`, history length 4 |
+| 4284 | the click resolves; the test sends `page.goBack()` at once |
+| 4301 | **the app: `history.replaceState(…, '/')`**, from `/profile-edit` |
+| 4302 | **`goBack()` resolves; `page.url()` is `http://localhost:8081/`**, the `replaceState`'s URL, so the guard at `:341` (`page.url() === 'about:blank'`) does nothing |
+| 4304 | the same-document navigation to `/` (`historyApi`) |
+| 4306 | **the app: `history.go(-2)`**, from `/`, length 4 |
+| 4321 | **the top frame navigates to `about:blank`**: the test's back and the app's `go(-2)` together go back three entries from index 3, to index 0 |
+
+After the 10 s expectation the page was still `about:blank`: body empty, no input, no visible screen, history length 4. The run-E failures show it is **the tab's initial entry**: `Page.getNavigationHistory` reads `[about:blank, /remaining, /account, /]` with the current index 0. So 1.6's second condition does not hold: the page left is not an app route showing no screen.
+
+**In the passing repeats** the clean-up landed before `goBack()` was sent: `replaceState('/')`, `go(-2)`, a `popstate` at `/remaining`, then `replaceState('/')` and `replaceState('/account')`, all before the click resolved. Back from index 1 then reached `about:blank`, `goBack()` resolved there, and the guard reloaded `/profile-edit`, which showed account entry. In 4 of run C's 22 passes, back landed first, on `/profile`, before the app's clean-up (DM-41's order (i)).
+
+**Where the calls come from.** A run with a stack captured in each hook shows `replaceState` called from a function `replace` and `go` from a function `go` returning a `Promise`, both in Expo Router's web bundle. In `node_modules/expo-router` 58.0.29, `build/global-state/browserHistoryAdapter.js` is the module that calls `window.history.replaceState` and `window.history.go(n)` (lines 29 to 76). So the clean-up is Router's.
+
+**The mechanism, as these repeats show it** (DM-41 3.1, confirmed): logout calls `store.logout(); router.replace('/')`. After the click's task, Router's post-logout history clean-up runs: `replaceState('/')`, then `history.go(-2)`, then the redirect to account entry. A back sent at once can land between the `replaceState` and the `go(-2)`. `goBack()` then resolves on the `replaceState`, a same-document navigation, the guard reads `/`, and the two traversals carry the tab to its initial `about:blank`, outside the app.
+
+### The fix (DM-41 1.3)
+
+`apps/mobile/rendered/profile-preferences.spec.ts`, commit `bb80f05`, +4 lines, nothing removed, loosened or moved:
+
+```ts
+  await active(page, 'logout').click();
+  // Router's post-logout history clean-up (replaceState('/'), then history.go(-2), then the
+  // redirect to account entry) runs after the click's task. A back sent before it lands can
+  // resolve on that replaceState and then leave the app (DM-41). Wait for account entry first.
+  await expect(active(page, 'screen-account')).toBeVisible();
+  await page.goBack();
+```
+
+The wait is the one 1.3 names, after the second `logout` click and before `page.goBack()`; the comment states 1.2's mechanism, not M06's shared-control reason. M06's comment at `:327-328` is unchanged.
+
+### The measurement (DM-41 1.4)
+
+| Sequence | Where | Repeats | Failed |
+|---|---|---|---|
+| Unfixed, the repository's spec (run A) | `691dfba`'s spec | 30 | 5 |
+| Unfixed, the probes (runs B, C, E) | the probe spec | 70 | 20 |
+| **Fixed, the probe** (run D) | the probe spec, with the wait | **40** | **0** |
+| **Fixed, the repository's spec** (run F) | `bb80f05`'s spec, `--grep "logout and account switching" --repeat-each 40` | **40** | **0** (`40 passed (3.1m)`) |
+| The whole rendered suite, once, with the fix | `bb80f05`'s spec | 97 tests | 0 (`97 passed (5.0m)`) |
+
+**Where back lands with the fix** (run D, 40 of 40, the same in every repeat): the clean-up completes before the wait passes (`replaceState('/')`, the traversal to `/remaining`, `replaceState('/')`, `replaceState('/account')`); `goBack()` then **leaves the app**, resolving at `about:blank`; the guard at `:341` loads `/profile-edit`, which shows account entry at `/account`, with history `[about:blank, /account]`. So the test's last two assertions (`:346-347` after the fix) run after a fresh load, as in its siblings, and its in-app retained-state checks are the ones at `:331-332` and `:336-338`, as DM-41 1.4 says.
+
+**The optional assertion that back leaves the app was not added.** Every fixed repeat here left the app, but on Chromium 1243, not CI's pinned 1234; an assertion that held here and failed there would turn the run of record red on a browser difference. The guard's fresh-load path covers both outcomes, and the wait already removes the race.
+
+### The scan (DM-41 1.5)
+
+The 13 `page.goBack()` calls in `apps/mobile/rendered/` at `691dfba`, with what precedes each (line numbers at `691dfba`; after the fix, `profile-preferences.spec.ts`'s calls from `:340` on are four lines later):
+
+| # | Call | What precedes it | Changed? |
+|---|---|---|---|
+| 1 | `discovery.spec.ts:86` | `discovery-next` click, then `expect.poll(() => identities(page)).toEqual(…)` | No: a wait |
+| 2 | `discovery.spec.ts:219` | `logout` click, then `screen-account` visible and two count checks | No: a wait |
+| 3 | `onboarding.spec.ts:26` | in `backAfterLogout`, `screen-account` visible (its callers at `:152` and `:272` click `logout` first) | No: a wait |
+| 4 | `profile-preferences.spec.ts:139` | `dev-profile-change` click, with no wait | No: see below |
+| 5 | `profile-preferences.spec.ts:191` | `dev-media-change` click, with no wait (after `development-link`) | No: see below |
+| 6 | `profile-preferences.spec.ts:217` | `profile-preview` click, then `candidate-unavailable` visible | No: a wait |
+| 7 | `profile-preferences.spec.ts:250` | `profile-preview` click, then three visibility checks | No: a wait |
+| 8 | `profile-preferences.spec.ts:340` | the second `logout` click, with no wait | **Yes: the fix** (now `:344`) |
+| 9 | `profile-preferences.spec.ts:387` | `dev-pair-${direction}` click, then `candidate-preview` count 0 | No: a wait |
+| 10 | `profile-preferences.spec.ts:409` | `dev-pair-restore_viewer_preferences` click, then `candidate-preview` count 1 | No: a wait |
+| 11 | `profile-preferences.spec.ts:425` | `dev-pair-viewer_pause` click, then `candidate-preview` count 0 | No: a wait |
+| 12 | `state-corrections.spec.ts:99` | `eligibility-submit` click, then `screen-eligibility` visible, the date's value and the age-check text | No: a wait |
+| 13 | `state-corrections.spec.ts:210` | `session-expire` click, then `screen-account` visible | No: a wait |
+
+**`:139` and `:191`, the two that follow a click with no wait.** Their handlers (`development.tsx:26`) call `profiles.developmentChange(change)` and no `router` method. A `Stack.Protected` guard could still flip through the stage: `/recommended`'s guard is `state.stage === 'eligible'` (`routes.ts:24`), and the stage reads `profiles.getSnapshot().canDiscover` (`onboarding/store.ts:109`). So each was checked:
+- **`:139`, `dev-profile-change`:** the profile change bumps the name and summary and calls `retract()`, which demotes only a profile that is no longer eligible; this one stays eligible. A probe of the test's steps to the click, with the history hooks, then 1.5 s without a back: **no history operation in 10 of 10**, and discovery stays (`Make room for` 1 → 1).
+- **`:191`, `dev-media-change`:** the profile is paused at that point, so `canDiscover` is already false; the media change cannot flip the guard. The same probe: **no history operation from the click in 10 of 10**, discovery 0 → 0. In 9 of 10 the hooks recorded one `pushState('/development')` 21 to 31 ms in: the preceding `development-link` click's own navigation, which must land before `dev-media-change` can be clicked, since that button is only on the development screen.
+
+So neither meets 1.5's rule, and no call other than `:340` was changed.
+
+### The toolchain retry (DM-41 2.1 to 2.3)
+
+`.github/workflows/foundation.yml`, commit `7f1df96`. In each of the four jobs that install Python (API checks, API mobile smoke, Stream proof checks, Database proof checks), the one `actions/setup-python` step became three:
+
+```yaml
+      - id: python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        continue-on-error: true
+        with:
+          python-version: '3.12.14'
+      - name: Wait 60 s before the one retry of the Python install (DM-41)
+        if: steps.python.outcome == 'failure'
+        run: echo "::warning::actions/setup-python failed on its first attempt; retrying once after 60 s" && sleep 60
+      - name: Retry the Python install once (DM-41)
+        if: steps.python.outcome == 'failure'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.14'
+```
+
+- **What is retried:** only the Python install, at its existing pin and version. `actions/setup-node` is **not** wrapped (2.1 makes it optional): the `504` was seen only in the Python download, and the change stays smallest. So 2.4's paragraph takes the form without the parenthesis. No checkout, dependency install, check, test or proof step is retried or made `continue-on-error`.
+- **The pause:** a fixed **60 s**, then one retry.
+- **How it reads in the log** (GitHub's documented semantics): with `continue-on-error: true`, a failed first attempt has `steps.python.outcome` `failure` and `conclusion` `success`, so the job goes on. Its step shows its own error lines, the wait step prints the `::warning::` annotation, and the step named "Retry the Python install once (DM-41)" runs. When the first attempt succeeds, both added steps show as skipped. A step `if:` without a status function is `success() && …`, which holds after a `continue-on-error` failure.
+- **A failed retry fails the job:** the retry step has no `continue-on-error`, so its failure fails the job, and the steps after it are skipped; the gate then fails on that job's result.
+- **Nothing new** (checked by parsing both versions): the same four action pins; triggers, `permissions`, `concurrency`, each job's `timeout-minutes`, `needs`, `if`, `defaults` and `name` unchanged; the eight job names unchanged; the gate's step unchanged. Only the four `api`, `smoke`, `proof` and `database` jobs gained two steps each, and their other steps are as before. No cache, no new source: the install is setup-python's own, as before.
+- **The size** (DM-41 5.1): `git diff --numstat 691dfba 7f1df96 -- .github/workflows/foundation.yml` → `44 4`: **48 changed non-test lines**, all in the workflow. The spec's 4 added lines are test lines.
+
+### Commands and results
+
+All in `apps/mobile` unless named, in the clean process environment above.
+
+| Command | Result |
+|---|---|
+| `npm ci --ignore-scripts` (with the proxy names) | succeeded; then `npm audit`: `17 moderate severity vulnerabilities` |
+| `./node_modules/.bin/playwright --version` | `Version 1.62.1` |
+| run A: `playwright test -c <scratch config> profile-preferences.spec.ts --grep "logout and account switching" --repeat-each 30` at `691dfba` | `5 failed`, `25 passed (3.3m)`, each failure at `:342` |
+| runs B, C, E (probe, unfixed): `--repeat-each 20`, `30`, `20` | `8 failed, 12 passed (2.8m)`; `8 failed, 22 passed (3.6m)`; `4 failed, 16 passed (2.2m)` |
+| run D (probe, fixed): `--repeat-each 40` | `40 passed (3.1m)` |
+| run F: the repository's spec with the fix, as run A with `--repeat-each 40` | `40 passed (3.1m)` |
+| the whole rendered suite with the fix: `playwright test -c <scratch config>` | `97 passed (5.0m)` |
+| the stack probe (fixed, hooks with stacks): `--repeat-each 1` | `1 passed`; `replace` and `go` in `expo-router/entry.bundle` |
+| the scan probe (`:139` and `:191`): `--repeat-each 10` | `20 passed (1.2m)`; results above |
+| `npm run check` | `tsc --noEmit` and `eslint .` clean; `ℹ tests 650`, `ℹ pass 650`; exit 0 |
+| `node --test src/chat/display-rule.test.ts` | `ℹ tests 21`, `ℹ pass 21`, `ℹ fail 0` |
+| the workflow parsed before and after with PyYAML | the structure checks above all true; `pins same: True` |
+| `git push -u origin claude/inspiring-ride-chqpjx` (code commits only) | `* [new branch]`, at `7f1df96` |
+
+### The run of record (DM-41 3.2)
+
+Foundation push run **42481684565** (run 846, attempt 1), on `7f1df9615b10e844dc252b9111b3c4c5b67b0b37`, the branch's first push (12:44:57 UTC). Read with the GitHub tools (the run, its jobs and steps, and each job's log). Runner image `ubuntu-24.04` version `20261101.360.1` in every job. **Conclusion: success.**
+
+| Job | Conclusion | What its steps and log show | Duration |
+|---|---|---|---|
+| Change scope | success | `COMPARE_BASE` `0000…`, a new branch: `{"full": true, "reason": "missing-or-invalid-comparison", "paths": []}`, so full checks ("New-branch zero-base pushes conservatively run full checks") | 9 s |
+| API checks | success | setup-python: `Version 3.12.14 was not found in the local cache`, then `Successfully set up CPython (3.12.14)` on the first attempt; **the wait and retry steps skipped**; the candidate policy tests (`Ran 14 tests … OK`, `Ran 18 tests … OK`), `manage.py test` (`Ran 366 tests … OK`), Ruff and mypy, and the contracts' tests (`Ran 39 tests … OK`) | 48 s |
+| Mobile checks | success | `@glow/contracts` `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`; `@glow/mobile` **`ℹ tests 650`, `ℹ pass 650`, `ℹ fail 0`**; `Dependencies are up to date`; `export:development` (`Android Bundled … (1344 modules)`, `iOS Bundled … (1361 modules)`, `Exported: .work/native-export`); Chrome for Testing 151.0.7922.34 (`playwright chromium v1234`) installed; the rendered suite **`97 passed (5.0m)`**, with no failed, flaky or skipped line, and `✓ 82 rendered/profile-preferences.spec.ts:321:5 › logout and account switching … (3.8s)`; the layout artifact uploaded (2 files, `p04-empty-form-layout`, artifact 13617778533) | **7 min 22 s of 25** (12:45:11 to 12:52:33) |
+| API mobile smoke | success | setup-python as above, first attempt (`Successfully set up CPython (3.12.14)`); **the wait and retry steps skipped**; setup-node, the hash-locked install, `npm ci`, and the smoke script and its tests | 1 min 24 s |
+| API artifact checks | success | the pinned image built; the inspection, refusals, loopback smoke and termination | 19 s |
+| Stream proof checks | success | setup-python as above, first attempt; **the wait and retry steps skipped**; the hash-locked installs, the offline tests, Ruff and mypy (`Success: no issues found in 57 source files`), `node --check` and the run plan | 1 min 31 s |
+| Database proof checks | success | setup-python as above, first attempt; **the wait and retry steps skipped**; the offline tests (`Ran 160 tests`), the disposable PostgreSQL 17.11, the wrong marker's and `dbshell`'s refusals, the migrations, the suite on both subjects, the second run's refusal, the results artifact and the clean-up | 5 min 7 s |
+| Foundation gate | success; its line: **`Application checks passed`** | | 4 s |
+
+- **The rendered count:** 97 of 97, the test this pass fixed included. It is one pinned-browser run; it shows the fix on CI's browser once, not a rate.
+- **Whether a toolchain retry fired: no.** In API checks, API mobile smoke, Stream proof checks and Database proof checks, step 3 (`Run actions/setup-python@5fda3b9…`) is `success`, and steps 4 ("Wait 60 s before the one retry of the Python install (DM-41)") and 5 ("Retry the Python install once (DM-41)") are `skipped`. Each job downloaded Python 3.12.14 (it was not in the runner's cache) and set it up in 6 to 7 s; no `504` and no warning annotation appear in the four logs.
+- **C4's code is verified** by this run (DM-41 item 3): `7f1df96`'s tree holds `691dfba`'s code, with only the spec's wait and the workflow's retry added (`git diff --name-only 691dfba 7f1df96 -- . ':(exclude)*.md'`).
+- Nothing else was pushed until this run had completed (AM8-20).
+
+### Limits, and what could not run (DM-41 2.5)
+
+- **The retry path is not exercised by the run of record** unless a download failed during it (above, it did not: no download failed, and both added steps were skipped in all four jobs). No deliberately failing run was pushed to test it (2.5). The review reads the YAML against GitHub's documented semantics of `continue-on-error` and `steps.<id>.outcome`.
+- **Every local rendered result is informational:** Chromium 1243 headless shell (Chrome for Testing 153.0.8010.12), not the pinned 1234. CI's run is the pinned-browser run of record.
+- **The in-page hooks shift timing**, as DM-41's P4 found; here they did not stop the failure (8 of 30). The navigation-only runs (B, E) show the same order without them.
+- **The native analogue** (Android hardware back, an iOS back gesture during the clean-up) is beyond the web harness; it is the P11 plan's N01 row (1.7).
+- `main` was not re-run; DM-41's P8 is cited.
+- Not run: `check:expo`, `export:development` (CI runs both), and any command in `proofs/`. No GitHub write other than the push of this branch; nothing in Notion.

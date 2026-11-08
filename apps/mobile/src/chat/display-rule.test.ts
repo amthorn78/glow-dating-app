@@ -121,9 +121,11 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  * property paths its pattern matches after the six names the screens use (a message, a
  * conversation, the list, the store's state, a match and a row) against a named list, and
  * refuses a cast, `any`, a spread, a computed read written as one of those names then `[`, a
- * reflective read, and an `in` check after a quoted string. As a text match it passes
- * `message?.['name']`, `message ?.name`, a path split across lines and `('name') in message`;
- * C3's probes found these, and the type check refuses each of them.
+ * reflective read, and an `in` check after a quoted string. As a text match, spacing, line
+ * breaks, parentheses, comments, string contents and bracket forms evade it, for example
+ * `message ?.name`, `(message)as{…}`, `'name'in message`, `'/*'` in a string and
+ * `Reflect['get']`; C3's verifiers and its delta re-review found these, and the type check
+ * refuses each one tried.
  *
  * The type check (corrections C1 and C2) builds the two files with the TypeScript compiler the
  * app declares, under the app's `tsconfig.json`, and finds Glow's data by type: a value whose
@@ -152,31 +154,42 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   [5, 9]; an `in` check on a string [no planted form].
  * - a read from Glow's data of a property its type does not declare [1, 6, 8, PA, PC, 22], and a
  *   computed [3] or rest read [no planted form];
- * - an `in` check, a `for…in` enumeration, a destructuring assignment or a spread of Glow's data
- *   [4, the spread; no planted form names the other three, though PA reports its `in` check];
+ * - an `in` check, a `for…in` enumeration, a destructuring assignment written with `=` or a
+ *   spread of Glow's data [4, the spread; no planted form names the other three, though PA
+ *   reports its `in` check];
  * - a widening: Glow's data where the expected type (a parameter, through `call`, `apply` or
  *   `bind` too; a prop; an annotation; a return; an assignment) declares a property the data's
  *   type does not, or is `any`, `unknown`, `object`, `{}` or an index signature [2, 5, 7, 9, PB,
  *   13, 16 to 19, 21, C2-4a, C2-4b; no planted form for `bind`, a return, an assignment, `object`
  *   or `{}`];
- * - a callback, inline or passed by reference (a declared function, a `useCallback` result, an
- *   object's method), whose parameter widens what the expected signature gives it, or whose
- *   return of Glow's data is widened by what the expected signature returns (C2) [15, inline;
- *   C2-1a to C2-1d, by reference; C2-1e, the return];
+ * - a callback whose parameter widens what it is given, or whose return of Glow's data is
+ *   widened. An inline arrow function or function expression is compared at each parameter that
+ *   has a type annotation, against its contextual signature [15]; what it returns is checked as a
+ *   widening (above). Another expression whose type has a call signature (a function's name, a
+ *   `useCallback` result, a property read such as `view.line`) is compared at each parameter and
+ *   at its return, against the call's resolved parameter or its contextual type [C2-1a to
+ *   C2-1e]. An object literal property written `key: value` or `{ key }`, in a literal that has
+ *   a contextual type, is compared by these two rules [no planted form]. A function reached only
+ *   through an object or a class instance is not compared (below).
  * - a type predicate or assertion signature declared in the two files, written or inferred; a
  *   call whose resolved signature has one; and a function with one given by reference rather
  *   than called; each unless the default library's (C2) [C2-2d, declared and written; C2-2a,
  *   C2-2b and C2-2c, called; C2-2e, by reference; no planted form for an inferred one];
  * - `Reflect`, and `Object` other than as `Object.freeze`'s receiver, by identifier, by an
- *   expression's type and by a destructuring's type, whatever its key (C2) [C2-3a and C2-3b, by
- *   identifier, reporting the expression's type beside it; C2-3c and C2-3d, by a destructuring];
+ *   expression's type and by a destructuring whose type is `Reflect` or `ObjectConstructor`, as a
+ *   string or computed key that names one gives [C2-3c, C2-3d]; a key of a union type gives a
+ *   union, which is not refused (O5) (C2) [C2-3a and C2-3b, by identifier, reporting the
+ *   expression's type beside it; C2-3c and C2-3d, by a destructuring];
  * - a local generic [14] or overload [20], whose types the check does not follow; a type error
  *   the compiler reports in the two files [no planted form names it, though PC and 22 report one].
  * Its named exceptions: the value an Array predicate (`filter`, `some`, `every`, `find`…) returns,
  * which the predicate reads for truthiness alone; an element of a dependency list given to a
  * React hook declared in `@types/react`, which React compares by identity (C2: only there; C2-4a
  * pins the narrowing); the initializer of an object destructuring when no enclosing pattern is
- * annotated, whose reads the pattern's own check covers (C2: only then; C2-4b pins it); and a
+ * annotated (C2: only then; C2-4b pins it). The pattern's own check reads the initializer's
+ * fields only when the pattern is typed as Glow's data, as when the initializer types it. When
+ * the pattern's type comes from context, as for an unannotated parameter of a contextually typed
+ * function, the initializer is exempt and not checked (below); and a
  * type parameter of a function outside the two files, which is inferred from the value.
  *
  * What it is known to pass. These came from the exact-head review of P06.2-F (its finding 1
@@ -207,14 +220,26 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  * - Another module: `<Eyebrow entry={message} />`, where `Eyebrow`, in a module other than the
  *   two files, takes the exact `ConversationMessage` and casts it to render `name`.
  * - A template literal's coercion: `{`${message}`}` (it renders `[object Object]`).
+ * - A function reached only through an object or class instance (C3's delta re-review, finding
+ *   1): `const view: { line(entry: ConversationMessage): string } = { line(entry: Loose) {
+ *   return entry.name ?? ''; } }`, then `view.line(message)`. The same holds for an accessor,
+ *   for a class's method or field under an interface type, and for an object literal with no
+ *   contextual type that is given later.
+ * - A contextually typed parameter's destructuring default (finding 2): `const caption: (entry?:
+ *   Loose) => string = ({ name } = message) => name ?? ''`.
+ * - A destructuring target in a `for…of` head (finding 3): `for ({ ...rest } of
+ *   conversation.messages) break;`.
+ * - A reflective global reached through a key of a union type (O5): `globalThis[key]`, with
+ *   `key: 'Reflect' | 'JSON'`. No read through it was found.
  *
  * What harmless code it refuses. Each fails closed:
  * - F0's family: a harmless `<FlatList data={conversation.messages} … />` fails with `a widening
  *   to Readonly<ArrayLike<ConversationMessage>> | undefined: conversation.messages` (DM-38 F0;
- *   `FALSE_POSITIVE` below), and so do a `VirtualizedList`, `Array.from` and `new Set` over the
- *   messages, since the check reads an `ArrayLike` parameter's index signature, and an
- *   `Iterable` parameter's symbol-keyed iterator, which it does not find by name on the array,
- *   as widenings;
+ *   `FALSE_POSITIVE` below), and so do `Array.from` and `new Set` over the messages, since the
+ *   check reads an `ArrayLike` parameter's index signature, and an `Iterable` parameter's
+ *   symbol-keyed iterator, which it does not find by name on the array, as widenings. A
+ *   `VirtualizedList`, whose `data` prop is typed `any`, fails as a widening to `unknown` and to
+ *   `any`.
  * - inferred predicates, such as `.filter(text => text !== null)` over strings, since TypeScript
  *   infers `text is string`;
  * - Node's `assert`, whose `asserts value` is not the default library's;
@@ -667,7 +692,7 @@ const FALSE_POSITIVE: Planted = { form: 'F0, a harmless FlatList over conversati
 const PLANTED_GUARD = ['import type { ConversationMessage } from \'../contracts/generated/gapp-api-v1\';',
   'export function named(entry: ConversationMessage): entry is ConversationMessage & { name: string } { return entry.text !== null; }', ''].join('\n');
 
-test('the chat screens render only the contract\'s fields: no provider-shaped field is read, whatever the validators let through (M05 finding 18)', () => {
+test('today\'s chat screens and list rows pass both render-rule checks (M05 finding 18)', () => {
   const screen = readFileSync(SCREEN, 'utf8');
   const rows = readFileSync(ROWS, 'utf8');
   const source = `${withoutComments(screen)}\n${withoutComments(rows)}`;
