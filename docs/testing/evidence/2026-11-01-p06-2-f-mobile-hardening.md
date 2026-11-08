@@ -943,3 +943,24 @@ The Mobile job's log was read in full from the job's log download; the counts ab
 | The three code fixes | **Noted for (c), not made** (DM-40 1.4): exempt only a Glow-typed pattern; refuse a `for…of` head with a literal target; compare an object literal's method against its contextual property type |
 
 - **Next:** correction C4 (the brief, "Correction C4"), then its delta re-review, bounded to the changed items (DM-40 3.1 to 3.4).
+
+## Correction C4: the stop, and the manager's verification (8 November 2026, App Manager 9)
+
+- **The session** stopped under its stop rule. It ran from prompt revision 1 at `0a63219`, on branch `claude/upbeat-mccarthy-499h9k`. Its code head is `691dfba` (one commit, `apps/mobile/src/chat/display-rule.test.ts` only, +42 −17). Its push run's gate did not print `Application checks passed`. So it did not push its "Correction C4" section, which was drafted only in its own session files. Nathan has since archived that session (by 09:07 UTC, by the session list), so the draft may not be recoverable; DM-41 item 4 asks how C4's record is finished.
+- **The code head, verified by the manager:**
+  - **Only one non-comment line changed.** Both versions (`f87e8b1`, `691dfba`) were printed from their parse trees without comments, with the TypeScript compiler on the machine (6.0.2). Of 559 lines, one differs: the first render test's name, now `today's chat screens and list rows pass both render-rule checks (M05 finding 18)`, as DM-40 section 6 gives it.
+  - **The comment carries DM-40 section 4.2's words,** checked by script. Two items match exactly: the source check's sentence and the `Reflect` and `Object` item. Three match with the differences the session reported: "Another expression" for "Any other expression", a narrowing that drops a coverage word; the destructuring exception ending in ";" to continue its sentence; and F0's family keeping its sentence's start. The four known-passing entries and "written with `=`" are present.
+  - **Coverage words:** "follows", "all" and "wherever" do not occur. "any" occurs only as the type `any` and in the core paragraph's "any other form".
+- **The run, push run 42464917902 on `691dfba`, read by the manager from its jobs and logs:**
+  - **Passed:** Change scope, API checks, API artifact checks, API mobile smoke and Stream proof checks.
+  - **Failed:** Database proof checks, Mobile checks and the Foundation gate.
+  - **Database proof checks:** `actions/setup-python` failed after about a minute. The session reported three `504` responses from github.com while it downloaded Python 3.12.14. None of the job's own steps ran.
+  - **Mobile checks:** `@glow/contracts` 586 of 586 and `@glow/mobile` 650 of 650 passed, as did `check:expo` and `export:development`. The rendered suite gave `1 failed`, `96 passed (5.2m)`. The failing test was `profile-preferences.spec.ts:321` ("logout and account switching remove unsaved profile values …"). `getByTestId('screen-account').filter({ visible: true })` was not found within 10 s at line 342, and the harness printed `Visible screen identities after failure: []`. The rendered config has no retries.
+- **The manager's reading of the rendered failure:**
+  - **The sequence:** at lines 339 to 342 the test clicks `logout`, then calls `page.goBack()` at once, without waiting for the logout to land.
+  - **Router 58's hazard:** M06 found that Router 58 applies a navigation after the click's task, and fixed this same test's first `logout` by waiting for the destination first (`:329`; the M06 record, "The test changes", change 2). The second `logout` has no such wait.
+  - **Not P06.2-F's code:** P06.2-F does not touch this spec, the onboarding routes or logout. Its one routing edit, in `_layout.tsx`, moves the release guard's predicate into a function without changing what it allows.
+  - **Open:** the reading is unproven. Whether an empty screen after back-navigation could also reach a member is not established.
+  - **History:** each earlier PR40 run on a code head passed the rendered suite (97 of 97), so the failure is intermittent.
+- **What the manager did wrong next (AM9-10):** it asked Nathan to re-run the failed jobs, posted that request on PR40, and drafted a relay for C4's session that depended on it. Nathan rejected it: the manager never asks him to perform a GitHub operation (OD-58). The PR comment is marked withdrawn, and how to handle the failure goes to the Dev Manager as DM-41.
+- **Next:** DM-41's answer, from Dev Manager 4 (OD-59), which App Manager 10 receives (OD-58).

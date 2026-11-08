@@ -134,6 +134,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-07 | 3 Nov 2026 | accuracy | Implementation Control's "Standing directions" line said the Notion register copy holds OD-01 to OD-54 after OD-55 and OD-56 were added to it; App Manager 9's readbacks covered the status section and missed it | App Manager 9, recording OD-57 |
 | AM9-08 | 8 Nov 2026 | accuracy | DM-40's option (a) proposed narrowed words for finding 1 ("an object property holding a function, given by reference") without trying forms just inside them; an accessor, a class field and an untyped literal given later pass inside those words | Dev Manager 3, DM-40 section 3 |
 | AM9-09 | 8 Nov 2026 | accuracy | The two uses-table rows for C3's delta re-review were created without the PR field, which App Manager 9's earlier rows carry; the skill's printed row has no PR key | Dev Manager 3, DM-40 section 8 |
+| AM9-10 | 8 Nov 2026 | process | After C4's run of record failed, asked Nathan to use "Re-run failed jobs" on the run page, posted the same request on PR40, and bundled a relay that depended on it; the CI question should have gone to the Dev Manager first (OD-32), and Nathan does not perform GitHub operations | Nathan (OD-58) |
 
 ## App Manager 2
 
@@ -1056,3 +1057,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** the two rows did not name their PR for five days.
 - **Correction:** both rows name PR40, at this batch's sync.
 - **Prevention:** before creating a uses row, add the PR field (the PR, its scope and the code head) to the skill's printed properties.
+
+### AM9-10 — Asked Nathan to perform a GitHub Actions re-run (process)
+
+- **What happened:** C4 stopped because its push run, 42464917902, failed in two jobs that C4 does not touch: a 504 while `setup-python` downloaded Python, and a rendered test that calls `page.goBack()` straight after a logout click. The manager verified C4's code, diagnosed both failures, and then asked Nathan to use "Re-run failed jobs" on the run page. It posted the same request on PR40, and gave him a relay for C4's session that depended on that re-run. It followed the manager workflow's "Actions re-runs" line, which says to do exactly that.
+- **Caught by:** Nathan, the same day: *"no, rejected, asking me to do github actions is incorrect. You are failing at process."* (OD-58).
+- **Effect:** none on the code or the runs; nothing was re-run. The PR comment carried the request until it was marked withdrawn.
+- **Correction:** the PR comment is marked withdrawn; how to handle the failure goes to the Dev Manager as DM-41; the workflow line is replaced (OD-58), for the Dev Manager's read before PR40 merges; App Manager 10 receives DM-41's report.
+- **Prevention:** the manager never asks Nathan to perform a GitHub operation (a re-run, a comment, a merge, a setting). A CI failure, or any question about how to verify a head, goes to the Dev Manager first (OD-32), with options that need no action from Nathan. A written procedure that puts a GitHub operation on Nathan is reported to the Dev Manager as a conflict, not followed.
