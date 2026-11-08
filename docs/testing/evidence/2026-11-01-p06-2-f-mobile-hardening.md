@@ -1529,3 +1529,29 @@ Foundation push run [42503721311](https://github.com/amthorn78/glow-dating-app/a
 - **Integrated** into the manager branch by a merge commit, `ed95d83`; every non-Markdown path at it is byte-identical to `d27324b`. The trusted classifier on `main` (`bac3c19`) reads the PR full scope (`behavior-or-empty`), with one merge base, `05f4c3a`.
 - **Codex's thread for F-1** (`display-rule.test.ts:496` at `ef45762`): the comment now names the compared type at a rest place and lists R1 as a known passing class, under DM-43's option (a), so the manager answers and resolves it once this batch is on PR40.
 - **Next:** C7's delta review on DM-43 3.1 to 3.3 ([prompt](../../ephemeral/2026-11-08-p06-2-f-c7-review-prompt.md), revision 1), after Codex on PR40's head, which holds it and C7's code.
+
+## Delta review of correction C7 (8 November 2026)
+
+- **The review:** a delta review on DM-43 3.1 to 3.3 (DM-42 5.1 to 5.3's terms, held to DM-39 1.2 for the changed text), which Nathan ran from the prompt, revision 1 at `604946b`, of code head `d27324b`. The start gate passed: one merge base, `05f4c3a`; the live branch was still at `604946b`; its non-Markdown paths equal `d27324b`'s. The trusted classifier read full scope (`behavior-or-empty`). The review changed nothing; `git status` was clean. Nathan relayed its report.
+- **Verdict: approve.** No blocking or should-fix finding, and none in a correction class. No form fitted inside the changed words and evaded them, so nothing goes to the Dev Manager under DM-43 3.3.
+- **What it checked:**
+  - **Each clause of the new sentence against `:500-507`,** using DM-43 section 3.3's table: each clause matches its line, none says more or less (the review's table, with forms X8, TU1, R4, X5, X9, R1, H1 and X4 showing the clauses that are not visible in one line).
+  - **The forms:** R1, R3, R4 and TU1 pass; R2, R5, H1 and G1 are refused for the words' reasons; of its own, X1, X3, X6, X7, X8 and X12 are refused as the words give, X10 and X11 by other listed items, and X2, X4, X5, X9, X13 and X14 pass as the words give. Each was a real edit in a scratch copy, clean under `tsc` and ESLint, `screen.tsx` restored after each.
+  - **The two entries:** R1's example passes 21 of 21; H1's fails with exactly `a widening callback parameter: first: ConversationMessage`; both are word for word, once, and where DM-43 1.2 places them.
+  - **Only comments changed:** `15 4` in the test file, every changed line a comment line; TypeScript's leaf-token streams without trivia identical (7,785 tokens each, `38c10810616d4cd9`), with a control showing the method sees a renamed identifier and ignores a comment edit; no barred word in the added lines.
+  - **The CI policy's count:** DM-43 4.1's words, once, and true: each of runs 42464917902, 42469365545 and 42470101373 logs three `504` responses in `setup-python`'s download, then an error.
+  - **The record sections:** "Correction C7" and "Manager verification of correction C7" hold where checked.
+
+| # | Severity | Line | Disposition |
+|---|---|---|---|
+| RL-1 | Records line (DM-42 5.2) | X9: `const viaVoidRest: (...entries: ConversationMessage[]) => string = function (this: void, first: Loose) { return first.name ?? ''; }`, rendering `viaVoidRest(message)`, passes as the words predict: `this` takes place 0 and `void` declares nothing; `first` has no parameter in place 1. It is T1's form with `name` read | Carried to option (c)'s inputs (the carried-items file), beside T1 |
+| RL-2 | Records line | X5: a tuple rest `(...entries: [ConversationMessage])` with R1's annotation passes; the data's type is the tuple, which TypeScript treats as an array type, so "the rest parameter's own array type" holds | Carried to option (c)'s inputs |
+| RL-3 | Records nit | The ID G1 names two forms: `Promise.resolve(message).then((entry: Loose) => …)` in "Delta review of correction C6", and `[message].reduce(…)` in DM-43's table. Both are refused with `entry: Loose` | Recorded here: "G1" in "Delta review of correction C6" is the `Promise.then` form; in DM-43 it is the `reduce` form. Neither section is edited |
+| RL-4 | Informational | "Manager verification of correction C7" says push run 42501580566 on `86e65dc` passed; it did, in 13 seconds, as a Markdown-only change from the previous push; PR run 42501584989 is the full run on that head | Recorded here: the manager's line stands; the full run on `86e65dc` is the PR run |
+
+- **Other passing forms** (X2, a union of two rest members; X4, a `readonly` rest; X13, `toString`, an array member's name; X14, R4 as a function expression) pass as the words give; X2, X4, X13 and X14 also join option (c)'s inputs.
+- **Codex on `604946b`:** its PR summary records the code review completed at 17:33:40 UTC with no findings and none unresolved; PR40 has no open review thread.
+- **Runs:**
+  - push run 42503721311 on `d27324b`, C7's run of record: all eight jobs passed (the record, "Correction C7");
+  - push run 42505428246 and PR run 42505434027 on `604946b`: each passed; the PR run's eight jobs passed, its gate printed `Application checks passed`, 650 of 650, `97 passed (4.5m)`, no retry fired.
+- **Next:** the pre-merge checklist in PR40's description, the PR run and Codex on the final head, the merge and its receipt. No Dev Manager read is needed first: DM-43 section 6 says PR40's governing Markdown needs no further read apart from a later change that does not apply a Dev Manager finding's own text, and the one governing change since (the CI policy's count) is DM-43 4.1's own text. DM-43's deferred confirmations (C7's prompt, C7's words, 4.1's text) go to the Dev Manager's next consultation.
