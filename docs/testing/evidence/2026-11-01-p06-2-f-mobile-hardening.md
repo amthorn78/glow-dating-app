@@ -1382,3 +1382,22 @@ Foundation push run [42494621474](https://github.com/amthorn78/glow-dating-app/a
 - **Rendered tests** were not run here (`playwright install` is not run in this environment, and C6 changes no rendered path); CI's run above is the evidence. `check:expo` and `export:development` were not run; C6 changes no dependency or bundled code.
 - The probes are evidence that the words match the rule for the forms tried, not proof that no other form fits inside them (DM-42 3.1).
 - DM-42 1.3's carried-items line (F1, F2 and F3 in (c)'s inputs) is the manager's, and C6 did not edit that file.
+
+## Manager verification of correction C6 (8 November 2026, App Manager 10)
+
+- **The branch:** `claude/charming-albattani-o8i1cb`, started at `0e890dc`. It has one code commit, `6913cc0`, which changes comment lines only in `apps/mobile/src/chat/display-rule.test.ts` (+18 −5), then the record commit `e0910c7`. `git diff --name-only 0e890dc e0910c7` lists the two owned paths. The record's change is a pure insertion of 91 lines at its end, after "Review of C4 and repair pass C5", so no earlier section changed.
+- **Only comments changed,** checked the manager's own way:
+  - every changed line in the diff from `7f1df96` to `6913cc0` is a ` * ` comment line;
+  - both versions were parsed with the app's TypeScript (from a scratch copy of `7f1df96` outside the checkout) and compared by node kind with leaf text: 6,496 nodes each by this traversal, identical (`f29655eabaa8fcb1` for each);
+  - printed with comments removed, they are identical, SHA-256 prefix `4a40da2eeb804860` for each, the prefix the session recorded.
+- **The words:** a script took DM-42's 1.1 and 3.1 quotations, and 1.2's two entries with their bold markers removed, from the report file itself, and searched the comment block with ` * ` prefixes stripped and whitespace normalized. All four are present word for word (`True`), and the two replaced sentences are gone. DM-42 2.1's correction line is word for word in the record's new section (`True`).
+- **The forms, re-run by the manager** as real edits to `MessageRow` in the scratch copy, with C6's test file in place, `type Loose = { name?: string; text: string | null }`, and each expression rendered in a `<Text>`. Each was run through `node --test src/chat/display-rule.test.ts` and `npx tsc --noEmit`; `screen.tsx` was restored after the set and its SHA-256 prefix `3aef02c392c546db` confirmed:
+  - **pass, 21 of 21, `tsc` clean:** F1, F2, F3 and the session's T1;
+  - **refused, 19 of 21, `tsc` clean:** C0 (`entry: Loose`), F4 (`all: Loose[]`), F5 (`this: Loose`), F7 (`head: Loose`) and F8 (`first: Loose`).
+
+  Each is as DM-42's table and the new sentence's places give it. With the unmodified `screen.tsx`, C6's test passes 21 of 21. ESLint was not re-run by the manager; the session ran it on each form.
+- **T1** (the session's records line under DM-42 5.2): a declared `this` against a signature whose only parameter is a rest parameter passes, as the words predict. The manager adds it to option (c)'s inputs with F1, F2 and F3 (the carried-items file).
+- **The run of record, read from its jobs and logs:** push run 42494621474 on `6913cc0`, attempt 1. All eight jobs concluded `success`, and the gate's log prints `Application checks passed`. The Mobile job's log ends its rendered suite with `97 passed (4.6m)`; Mobile ran from 15:24:15 to 15:30:49 UTC. In each of the four jobs that carry it, the first `setup-python` step is `success` and both retry steps are `skipped`, so no retry fired. The unit-test counts (650 of 650; 586 of 586) are the session's reading of the same log.
+- **Integrated** into the manager branch by a merge commit, `80383d8`; every non-Markdown path at it is byte-identical to `6913cc0`. The trusted classifier on `main` (`bac3c19`) reads the PR full scope (`behavior-or-empty`), with one merge base, `05f4c3a`.
+- **Codex's threads for findings 1 and 2** (`display-rule.test.ts:480` and `:482`): the comment now names both forms as known passing classes, under DM-42's option (a), so the manager answers and resolves them once this batch is on PR40.
+- **Next:** C6's delta review on DM-42 5.1 to 5.3 ([prompt](../../ephemeral/2026-11-08-p06-2-f-c6-review-prompt.md), revision 1), after Codex on PR40's head, which holds it and C6's code.
