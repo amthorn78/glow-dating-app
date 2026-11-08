@@ -54,3 +54,5 @@
 - **One reading of each page,** at the time above. Store policies change (the matrix, section 10, "Rows most likely to change"), so the next recheck point is the one section 10 names: before release artifacts in P09.2 and P12.
 - **Only these three rows were rechecked.** The other P06-adjacent rows (AP-46, AP-47, GP-46 and GP-52, on purpose strings, refusals and rationale) are not owned by P06.3. They are not rechecked here.
 - **The tag stripping is a script, not a browser render.** Each quoted sentence was found as one continuous string in the stripped text. The script's source is not kept; the files' hashes are recorded above.
+- The hashes identify the files fetched then, which were not kept. The Android page differs on every fetch (a script nonce), and the guidelines page fetched by the Dev Manager at 21:43 UTC had the same length and a different hash, so a hash does not re-identify a page; the quoted sentences do (DM-44).
+- **The Dev Manager's independent check** (DM-44 item 10): its own fetch found all eleven quoted sentences, each as one continuous string, with the same page dates. The DocC JSON matched this record byte for byte.
