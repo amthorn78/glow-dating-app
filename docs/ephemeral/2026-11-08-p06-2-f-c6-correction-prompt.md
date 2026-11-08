@@ -1,7 +1,7 @@
 # P06.2-F correction C6 prompt — the inline rule's pairing, stated as written (DM-42)
 
 - **Owner:** App Manager 10. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 8 November 2026.**
+- **Revision 1, 8 November 2026.** Corrected before it was given (the same revision): items 2 and 3 and the review's section now carry DM-42's text whole, without its section heading.
 - **Durable brief:** [P06.2-F — Mobile hardening and P06.2's carried follow-ups](../planning/p06-2-f-mobile-hardening.md), revision 6, its section "Correction C6". The design is [DM-42](../continuity/dev-manager/reviews/2026-11-08-dm-42-p06-2-f-c5-review-findings.md), sections 1, 3 and 4.
 - **Where the result goes:** the session's change to the render-rule comment in `apps/mobile/src/chat/display-rule.test.ts`, and the record's new "Correction C6" section, on its own branch; the run of record, the Foundation push run on its code commit. The manager verifies it and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
@@ -46,6 +46,11 @@ You are **correction C6 of P06.2-F**, the mobile hardening, for the Glow dating 
 
 **Items 2 and 3 (DM-42 section 4):**
 
+- **2.1 Finding 3 is valid.** At `7f1df96`:
+  - `every` occurs at `:185` (the method's name, among the named exceptions);
+  - "Every" begins two code comments (`:105`, `:721`);
+  - "wherever" is in a code comment (`:511`).
+
   None claims coverage of code paths. The next correction appends this line to its own record section:
 
   > **A correction to "Correction C4 (written by repair pass C5)"** (the review of C4 and C5, finding 3). Its sentence ""follows", "wherever" and "every" do not occur in the comments" is not so. At `7f1df96`, `every` occurs at `:185` (the method's name, among the named exceptions), "Every" begins two code comments (`:105`, `:721`), and "wherever" is in a code comment (`:511`). None claims coverage of code paths, so DM-38 4.2 holds.
@@ -59,8 +64,6 @@ You are **correction C6 of P06.2-F**, the mobile hardening, for the Glow dating 
 
 **The review that follows** (DM-42 section 5, for your information):
 
-## 5. Item 5 — the next review
-
 **Agreed:** a delta review on S2's terms of the next correction's code head, after Codex has completed on that head and on the commit that holds its prompt (step 6), held to DM-39 1.2 for the text that changes.
 
 - **5.1 What it checks:**
@@ -73,7 +76,6 @@ You are **correction C6 of P06.2-F**, the mobile hardening, for the Glow dating 
   - the CI line, if it has been applied.
 - **5.2 What it does not do:** it does not re-probe unchanged items. Any other passing form is a records line, carried to (c)'s inputs, not a finding (DM-40 3.3).
 - **5.3 What still comes to me first:** a form that fits inside the new callback sentence and evades it, before any further correction (DM-40 3.4).
-
 
 **How you work:**
 - Nathan started you and will relay your report to the manager, App Manager 10. You are neither the manager nor a reviewer.

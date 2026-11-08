@@ -137,6 +137,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-10 | 8 Nov 2026 | process | After C4's run of record failed, asked Nathan to use "Re-run failed jobs" on the run page, posted the same request on PR40, and bundled a relay that depended on it; the CI question should have gone to the Dev Manager first (OD-32), and Nathan does not perform GitHub operations | Nathan (OD-58) |
 | AM9-11 | 8 Nov 2026 | accuracy | The review log's DM-40 row (`7983b31`) and DM-41 row (`9e0334a`) linked their consultations as `../ephemeral/`, which resolves under `docs/continuity/`; the log's other rows use `../../ephemeral/` | App Manager 9, syncing Notion |
 | AM9-12 | 8 Nov 2026 | follow-through | The OD-58 batch's supersession sweep (step 5) missed two governing texts that still put a GitHub operation on Nathan or kept CI re-runs from the Dev Manager: the charter's "Not for" ("CI reruns") and step 7's branch-cleanup sentence ("the names to delete go to Nathan"). Recorded by App Manager 10 (OD-11; DM-41 7.2) | Dev Manager 4 (DM-41 6.3, 6.4) |
+| AM10-01 | 8 Nov 2026 | prompt | C6's prompt, pushed at `678dabd`, quoted DM-42's conditions by line range, and the ranges cut 2.1's opening and carried the report's own section heading into the prompt; found on re-reading the filled text before giving it, and corrected in the same revision before it was given | App Manager 10 |
 
 ## App Manager 2
 
@@ -1083,3 +1084,13 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none acted on; both texts stood from 8 November, 09:37 UTC, until App Manager 10 replaced them.
 - **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
+
+## App Manager 10
+
+### AM10-01 — Conditions quoted by line range lost a sentence (prompt)
+
+- **What happened:** C6's prompt quoted DM-42's conditions by extracting line ranges of the report. One range began two lines late, so item 2's condition lost its opening ("2.1 Finding 3 is valid" and its locations), and another carried the report's heading "## 5. Item 5" into the prompt, beside the prompt's own numbered sections.
+- **Caught by:** App Manager 10, reading the filled prompt whole before giving it to Nathan.
+- **Effect:** none; the prompt had not been given. One extra records push and one more Codex pass.
+- **Correction:** items 2 and 3 and the review's conditions re-extracted whole, without the heading, in the same revision.
+- **Prevention:** after quoting conditions into a prompt, check each quoted block's first and last lines against the source's condition numbers, and read the filled prompt whole before pushing it.
