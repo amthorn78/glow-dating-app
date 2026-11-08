@@ -1401,3 +1401,37 @@ Foundation push run [42494621474](https://github.com/amthorn78/glow-dating-app/a
 - **Integrated** into the manager branch by a merge commit, `80383d8`; every non-Markdown path at it is byte-identical to `6913cc0`. The trusted classifier on `main` (`bac3c19`) reads the PR full scope (`behavior-or-empty`), with one merge base, `05f4c3a`.
 - **Codex's threads for findings 1 and 2** (`display-rule.test.ts:480` and `:482`): the comment now names both forms as known passing classes, under DM-42's option (a), so the manager answers and resolves them once this batch is on PR40.
 - **Next:** C6's delta review on DM-42 5.1 to 5.3 ([prompt](../../ephemeral/2026-11-08-p06-2-f-c6-review-prompt.md), revision 1), after Codex on PR40's head, which holds it and C6's code.
+
+## Delta review of correction C6 (8 November 2026)
+
+- **The review:** a delta review on S2's terms, held to DM-42 5.1 to 5.3 and DM-39 1.2, which Nathan ran from the prompt, revision 1 at `0d1ccde`, of code head `6913cc0`. The start gate passed: one merge base, `05f4c3a`; the live branch was still at `0d1ccde`; its non-Markdown paths equal `6913cc0`'s. The trusted classifier read full scope (`behavior-or-empty`). The review changed nothing; `git status` was clean. Nathan relayed its report.
+- **Verdict: changes required,** for one blocking finding, which goes to the Dev Manager before any further correction (DM-42 5.3).
+- **What holds:**
+  - Each clause of the new callback sentence matches `:489-499`, except what the rest-parameter clause leaves out (F-1).
+  - F1, F2 and F3 pass as written; C0, F4, F5, F7 and F8 are refused for DM-42's reasons.
+  - Finding 4's line is true (V1 to V3). Finding 3's correction line is true at `7f1df96` and word for word.
+  - Only comments changed: `18 5` in one file, every changed line a comment line; comment-free trees identical by node kind with leaf text (11,941 nodes each, `6f07f9e1bb103b17`) and printed sources identical (`4a40da2eeb804860`). The two new entries add no coverage word.
+  - DM-42 4.1's CI line is word for word, once, in the retry paragraph, and true of the workflow's retry steps and the gate.
+  - The record sections are true, apart from F-2.
+
+| # | Severity | Finding | Correction class | Disposition |
+|---|---|---|---|---|
+| F-1 | Blocking (DM-39 1.2) | At a rest parameter's place, the inline rule (`:493-496`) compares the annotated parameter with the rest parameter's own type, the array `ConversationMessage[]`, not its element, which is what a call passes. A parameter type that declares only names the array also has (`at`, `length`, `keys`, …) is "kept" and passes: R1 `const lengthOf: (...entries: ConversationMessage[]) => string = (first: { at: string; length?: number }) => String(first.length ?? '');`, rendering `lengthOf(message)`; R3 (`keys?: string`); R4 (a rest after a `head: number` parameter). The control R2, the same parameter against a non-rest `(entry: ConversationMessage) => string`, is refused; H1, a harmless `(first: ConversationMessage) => first.text ?? ''` at a rest place, is refused, which shows the array is what is compared. The sentence says "a rest parameter of the signature takes one place" and names no type for the comparison | Yes: a form evades a refusal the comment lists ("a callback whose parameter widens what it is given") | To the Dev Manager as DM-43 (DM-42 5.3), with the manager's recommendation |
+| F-2 | Nit | "Correction C6"'s start-gate bullet says `a443995` "adds only a mistakes-log line"; it edits one existing row, AM10-01 (`git diff --numstat 0e890dc a443995`: `2 2 docs/continuity/manager-mistakes.md`) | No | Corrected here: `a443995` changes AM10-01's row in place, two lines removed and two added, and nothing else. "Correction C6" is not edited |
+
+- **The manager's verification of F-1,** in the scratch copy of `7f1df96` with C6's test file in place, each form a real edit to `MessageRow`, run through `node --test src/chat/display-rule.test.ts` and `npx tsc --noEmit`, with `screen.tsx` restored after the set (SHA-256 prefix `3aef02c392c546db`):
+  - R1, R3, R4: **pass, 21 of 21**, `tsc` clean;
+  - R2: refused, 19 of 21 (`a widening callback parameter: first: { at: string; length?: number }`);
+  - H1: refused, 19 of 21 (`a widening callback parameter: first: ConversationMessage`).
+
+  **Reach:** none of the 15 `PROVIDER_FIELD_CASES` (`fixture-adapter.ts:18-20`) is an array member's name, so no planted provider field reaches the screen this way; the client validator still refuses each one. F8's refusal (DM-42 section 1) comes from the same mechanism: the array has no `name` or `text`, not a comparison with the element.
+- **Records lines (DM-42 5.2), each as the words predict:**
+  - TU1, a tuple rest with `(first, second: Loose)`: passes, F2's class; added to option (c)'s inputs.
+  - O1 (an overloaded contextual type), G1 (`Promise.resolve(message).then((entry: Loose) => …)`), PA1 (a parenthesized callback), CO1 (a conditional callback): each refused, `entry: Loose`.
+  - P1, a contextual type of `Function`: the callback is not compared, since `Function` has no call signatures; the call is refused (`a widening to any: message`), and ESLint refuses the `Function` type.
+  - **The session's `PATH`:** `$HOME/.local/bin` came second, after `/nix/var/nix/profiles/default/bin`, which holds no `node` or `npm`; every repository command ran under `env -i` with `$HOME/.local/bin` first.
+- **Codex on `0d1ccde`** (the review could not see it): Codex's PR summary comment records its code review of `0d1ccde` as `completed`, at 16:09:58 UTC, with `has_any_findings: false`. The manager read it on PR40 before giving the prompt, so DM-42 5's precondition held.
+- **Runs:**
+  - push run 42494621474 on `6913cc0`, C6's run of record: all eight jobs passed (the record, "Correction C6");
+  - push run 42498245719 and PR run 42498252005 on `0d1ccde`: all eight jobs passed in each; the PR run's gate printed `Application checks passed`, `97 passed (5.0m)`, and its retry steps were skipped in all four Python jobs.
+- **Next:** DM-43 ([consultation](../../ephemeral/2026-11-08-dm-43-p06-2-f-c6-review-finding.md)), with F-1, the next correction's form and review, and DM-42's deferred confirmations. No correction prompt is written before its answer.
