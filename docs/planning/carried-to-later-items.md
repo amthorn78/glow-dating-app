@@ -89,7 +89,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P06.3 (notifications)
 
-- **From P09.3a's matrix** (DM-37 3.1): the brief rechecks AP-50, AP-51 and GP-51, all planned.
+- **From P09.3a's matrix** (DM-37 3.1): the brief rechecks AP-50, AP-51 and GP-51, all planned. **Done** on 8 November 2026: all three confirmed in the sources' own words ([recheck record](../testing/evidence/2026-11-08-p06-3-matrix-recheck.md)); the brief is [`p06-3-notifications.md`](p06-3-notifications.md).
 
 ## Carried to P09 (security, native quality and release preparation)
 
