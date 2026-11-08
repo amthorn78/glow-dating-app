@@ -337,6 +337,10 @@ test('logout and account switching remove unsaved profile values from visible an
   await expect(active(page, 'profile-summary')).toHaveValue('');
   await noInputContains(page, 'Previous owner');
   await active(page, 'logout').click();
+  // Router's post-logout history clean-up (replaceState('/'), then history.go(-2), then the
+  // redirect to account entry) runs after the click's task. A back sent before it lands can
+  // resolve on that replaceState and then leave the app (DM-41). Wait for account entry first.
+  await expect(active(page, 'screen-account')).toBeVisible();
   await page.goBack();
   if (page.url() === 'about:blank') await page.goto('/profile-edit');
   await expect(active(page, 'screen-account')).toBeVisible();
