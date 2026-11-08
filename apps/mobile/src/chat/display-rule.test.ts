@@ -163,9 +163,13 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   13, 16 to 19, 21, C2-4a, C2-4b; no planted form for `bind`, a return, an assignment, `object`
  *   or `{}`];
  * - a callback whose parameter widens what it is given, or whose return of Glow's data is
- *   widened. An inline arrow function or function expression is compared at each parameter that
- *   has a type annotation, against its contextual signature [15]; what it returns is checked as a
- *   widening (above). Another expression whose type has a call signature (a function's name, a
+ *   widened. An inline arrow function or function expression that has a contextual type is
+ *   compared at each parameter that has a type annotation, against the parameter in the same
+ *   place in each call signature of that type (of each member, for a union). Places are counted
+ *   as written: a declared `this` takes the first place in the function's list and none in the
+ *   signature's, and a rest parameter of the signature takes one place; a parameter with no
+ *   parameter in its place is not compared [15]. What it returns is checked as a widening
+ *   (above). Another expression whose type has a call signature (a function's name, a
  *   `useCallback` result, a property read such as `view.line`) is compared at each parameter and
  *   at its return, against the call's resolved parameter or its contextual type [C2-1a to
  *   C2-1e]. An object literal property written `key: value` or `{ key }`, in a literal that has
@@ -231,6 +235,15 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   conversation.messages) break;`.
  * - A reflective global reached through a key of a union type (O5): `globalThis[key]`, with
  *   `key: 'Reflect' | 'JSON'`. No read through it was found.
+ * - A function expression with a declared `this` parameter (the review of C4 and C5, finding 1):
+ *   `[message].map(function (this: ConversationMessage, entry: Loose) { return entry.name ??
+ *   ''; })`, where `entry` is compared against the signature's second place, `index`. The same
+ *   holds for a declared `this` when the contextual signature has no parameter in the first
+ *   place: `const viaThis: (this: ConversationMessage) => string = function (this: Loose) {
+ *   return this.name ?? ''; }`, then `viaThis.call(message)` (DM-42).
+ * - A parameter after a rest parameter of the contextual signature (finding 2): `const join:
+ *   (...entries: ConversationMessage[]) => string = (first, second: Loose) => second.name ??
+ *   String(first.text)`, then `join(message, message)`.
  *
  * What harmless code it refuses. Each fails closed:
  * - F0's family: a harmless `<FlatList data={conversation.messages} … />` fails with `a widening
@@ -238,8 +251,8 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   `FALSE_POSITIVE` below), and so do `Array.from` and `new Set` over the messages, since the
  *   check reads an `ArrayLike` parameter's index signature, and an `Iterable` parameter's
  *   symbol-keyed iterator, which it does not find by name on the array, as widenings. A
- *   `VirtualizedList`, whose `data` prop is typed `any`, fails as a widening to `unknown` and to
- *   `any`.
+ *   `VirtualizedList` over the messages fails as a widening to `unknown` at its `data` prop, and
+ *   as a widening to `any` where its `getItem` returns Glow's data.
  * - inferred predicates, such as `.filter(text => text !== null)` over strings, since TypeScript
  *   infers `text is string`;
  * - Node's `assert`, whose `asserts value` is not the default library's;

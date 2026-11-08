@@ -1291,3 +1291,94 @@ Foundation push run **42481684565** (run 846, attempt 1), on `7f1df9615b10e844dc
 - **Dispositions:** findings 1 and 2 fall in the correction classes, and under DM-40 3.4 they go to the Dev Manager before any further correction: DM-42 ([consultation](../../ephemeral/2026-11-08-dm-42-p06-2-f-c5-review-findings.md)). Findings 3 and 4 and the gate note go with it.
 - **Codex** found findings 1 and 2 again on `a436211` (P2, `display-rule.test.ts:480` and `:482`); the manager answered both threads, which stay open until C6 is on PR40. Codex had found nothing on `0a49e62`; PR run 42483045373 on `0a49e62` passed every job.
 - **DM-42's dispositions** ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-42-p06-2-f-c5-review-findings.md), `b338ea2`): findings 1 and 2, option (a), comment-only words that state the inline rule's pairing as written, with F3 (a declared `this` against a signature with no first parameter) named beside them (correction C6); finding 3, C6's record section carries DM-42 2.1's correction line; finding 4, one comment line in DM-42 3.1's words (C6); the gate note, DM-42 4.1's line in the CI policy (applied by the manager).
+
+## Correction C6 (8 November 2026)
+
+- **Work:** the brief's "Correction C6" (revision 6), on DM-42's terms ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-42-p06-2-f-c5-review-findings.md), conditions 1.1 to 1.3, 2.1 and 3.1).
+- **Prompt:** [`docs/ephemeral/2026-11-08-p06-2-f-c6-correction-prompt.md`](../../ephemeral/2026-11-08-p06-2-f-c6-correction-prompt.md), revision 1, from `0e890dcad629896558a28ec2066d29aebd8a3de8` of the manager branch. Branch `claude/charming-albattani-o8i1cb`, environment `Glow App - No Stream`.
+- **Environment check (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set; no `STREAM_*` name is set; `GITHUB_TOKEN` and `GH_TOKEN` are present and were not read. Node v24.19.0 and npm 11.9.0 from `$HOME/.local/bin`. Each npm and node command ran under `env -i` with `PATH`, `HOME` and `LANG`, and, for `npm ci --ignore-scripts` only, the proxy and certificate variables passed by reference.
+- **Start gate:** passed. `HEAD` was `0e890dc`; it is an ancestor of the live manager head (`a443995`, which adds only a mistakes-log line); its non-Markdown files equal `7f1df96`'s, as do the live head's; the record carried no "Correction C6" heading.
+- **Code head:** `6913cc06822b6f26c185ea525ce3b3f28a3a5eca`, one commit, `apps/mobile/src/chat/display-rule.test.ts` only (+18 −5), comments only.
+
+### The comment's words, as `6913cc0` carries them
+
+Line numbers are in `apps/mobile/src/chat/display-rule.test.ts` at `6913cc0`. Each is word for word as DM-42 gives it; **no narrowing** was needed.
+
+- **The callback item's inline sentence** (`:166-172`), in place of "An inline arrow function or function expression is compared at each parameter that has a type annotation, against its contextual signature [15]; what it returns is checked as a widening (above)." (DM-42 1.1). The rest of the item is unchanged:
+
+  > An inline arrow function or function expression that has a contextual type is compared at each parameter that has a type annotation, against the parameter in the same place in each call signature of that type (of each member, for a union). Places are counted as written: a declared `this` takes the first place in the function's list and none in the signature's, and a rest parameter of the signature takes one place; a parameter with no parameter in its place is not compared [15]. What it returns is checked as a widening (above).
+
+- **"What it is known to pass" gains two entries** (`:238-246`), after the O5 entry, in the list's style (DM-42 1.2):
+  - A function expression with a declared `this` parameter (the review of C4 and C5, finding 1): `[message].map(function (this: ConversationMessage, entry: Loose) { return entry.name ?? ''; })`, where `entry` is compared against the signature's second place, `index`. The same holds for a declared `this` when the contextual signature has no parameter in the first place: `const viaThis: (this: ConversationMessage) => string = function (this: Loose) { return this.name ?? ''; }`, then `viaThis.call(message)` (DM-42).
+  - A parameter after a rest parameter of the contextual signature (finding 2): `const join: (...entries: ConversationMessage[]) => string = (first, second: Loose) => second.name ?? String(first.text)`, then `join(message, message)`.
+- **F0's family, the `VirtualizedList` sentence** (`:253-255`), in place of "A `VirtualizedList`, whose `data` prop is typed `any`, fails as a widening to `unknown` and to `any`." (DM-42 3.1):
+
+  > A `VirtualizedList` over the messages fails as a widening to `unknown` at its `data` prop, and as a widening to `any` where its `getItem` returns Glow's data.
+
+**What this section supersedes.** These words replace the callback item's inline sentence and the `VirtualizedList` sentence as "Correction C4 (written by repair pass C5)" states them. That section is not edited.
+
+**The probes behind the words** are DM-42's table ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-42-p06-2-f-c5-review-findings.md), section 1: C0, F1 to F5, F7, F8 and V1 to V3); they are not repeated here. C6's own re-run of C0, F1 to F5, F7 and F8 is below.
+
+### A correction to an earlier section
+
+**A correction to "Correction C4 (written by repair pass C5)"** (the review of C4 and C5, finding 3). Its sentence ""follows", "wherever" and "every" do not occur in the comments" is not so. At `7f1df96`, `every` occurs at `:185` (the method's name, among the named exceptions), "Every" begins two code comments (`:105`, `:721`), and "wherever" is in a code comment (`:511`). None claims coverage of code paths, so DM-38 4.2 holds.
+
+### Checks
+
+- **The quoted texts, by script.** A Python script (run with `python3 -I`) joined the render-rule comment block, stripped the ` * ` prefixes, normalized whitespace, and searched it for each text taken from DM-42's report file itself (1.1's and 3.1's quotations; 1.2's two entries with their bold markers removed):
+
+  ```
+  1.1 callback sentence: present word for word (532 chars)
+  1.2 entry 1 (finding 1, F3): present word for word (514 chars)
+  1.2 entry 2 (finding 2): present word for word (229 chars)
+  3.1 VirtualizedList sentence: present word for word (158 chars)
+  old callback sentence: absent
+  old VirtualizedList sentence: absent
+  barred words "follows"/"wherever" in the render-rule comment: none
+  RESULT pass
+  ```
+
+  The added lines add no "follows", "every", "all" or "wherever"; their one `any` is the type's name, as before.
+- **Only comments changed** (DM-42 1.3). `git diff --name-only 7f1df96 HEAD -- . ':(exclude)*.md'` lists only `apps/mobile/src/chat/display-rule.test.ts`, and each changed line of it is a ` * ` comment line. A Node script outside the checkout parsed `7f1df96`'s file and `6913cc0`'s with the app's TypeScript (`ts.createSourceFile`), dumped each tree by node kind with leaf text (comments are trivia, not nodes), and printed each with `ts.createPrinter({ removeComments: true })`:
+
+  ```
+  nodes (old, new): 11941 11941
+  comment-free trees identical: true
+  comment-free printed sources identical: true
+  sha256 of printed old/new: 4a40da2eeb804860 4a40da2eeb804860
+  ```
+
+  (The review of C4 and C5 counted 6,501 nodes by another traversal; this one counts tokens as nodes.)
+- **The new entries' examples, as real edits.** A scratch copy of `6913cc0` outside the checkout (`git archive`, with the checkout's `node_modules` from `npm ci --ignore-scripts`). Each form was an edit to `MessageRow` in `screen.tsx`, with `type Loose = { name?: string; text: string | null }` above it, any declaration after `const delivery`, and the expression rendered in a `<Text>`. Each ran `node --test src/chat/display-rule.test.ts`, `npx tsc --noEmit` and `npx eslint src/chat/screen.tsx`; `screen.tsx` was restored after each and its SHA-256 (prefix `3aef02c392c546db`) confirmed.
+
+  | ID (DM-42) | Render test | `tsc`, ESLint | Reason reported |
+  |---|---|---|---|
+  | C0 | Refused, 19 of 21 | clean | `a widening callback parameter: entry: Loose` |
+  | F1 | **Passes, 21 of 21** | clean | — |
+  | F2 | **Passes, 21 of 21** | clean | — |
+  | F3 | **Passes, 21 of 21** | clean | — |
+  | F4 | Refused, 19 of 21 | clean | `… all: Loose[]` |
+  | F5 | Refused, 19 of 21 | clean | `… this: Loose` |
+  | F7 | Refused, 19 of 21 | clean | `… head: Loose` |
+  | F8 | Refused, 19 of 21 | clean | `… first: Loose` |
+
+  Each result is as DM-42's table gives it, and as the new sentence's places predict.
+- **Two further forms, informational** (records lines under DM-42 5.2, not findings):
+  - **U1, a union contextual type:** `const pick: ((entry: ConversationMessage) => string) | ((entry: ConversationMessage, index?: number) => string) = (entry: Loose) => entry.name ?? '';`, rendering `pick(message)`: refused (`… entry: Loose`), as "of each member, for a union" says.
+  - **T1, a declared `this` against a signature whose only parameter is a rest parameter:** `const both: (...entries: ConversationMessage[]) => string = function (this: void, first: Loose) { return first.name ?? ''; };`, rendering `both(message)`: **passes** (21 of 21, `tsc` and ESLint clean). The words predict it: `this` takes the rest parameter's one place, so `first` has no parameter in its place and is not compared. It joins F1 and F2's classes and does not evade the sentence; it is a line for (c)'s inputs, with F1 to F3.
+- **The local checks,** in `apps/mobile`: `npm ci --ignore-scripts` completed; `npm run check` exit 0 (typecheck and lint clean; `tests 650`, `pass 650`, `fail 0`); `node --test src/chat/display-rule.test.ts`: `tests 21`, `pass 21`, `fail 0`.
+
+### Run of record
+
+Foundation push run [42494621474](https://github.com/amthorn78/glow-dating-app/actions/runs/42494621474) on `6913cc0`, attempt 1, completed `success`. Nothing else was pushed until it completed (AM8-20).
+
+- **Jobs, eight of eight `success`:** Change scope, API checks, API artifact checks, API mobile smoke, Stream proof checks, Database proof checks, Mobile checks, Foundation gate.
+- **The gate's line:** `Application checks passed`.
+- **Counts:** Mobile checks' `npm run check` in `apps/mobile`, `tests 650`, `pass 650`, `fail 0` (the job's earlier `npm run check` in `packages/contracts`: 586 of 586); rendered fixture checks `97 passed (4.6m)`; the render-rule test's first case, "today's chat screens and list rows pass both render-rule checks (M05 finding 18)", passed. The log has no `##[warning]` or `##[error]` line.
+- **The toolchain retry:** it did not fire. "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" are `skipped` in each of the four jobs that carry them (API checks, API mobile smoke, Stream proof checks, Database proof checks), and each first `setup-python` step is `success`.
+
+### What C6 did not run, and limits
+
+- **Rendered tests** were not run here (`playwright install` is not run in this environment, and C6 changes no rendered path); CI's run above is the evidence. `check:expo` and `export:development` were not run; C6 changes no dependency or bundled code.
+- The probes are evidence that the words match the rule for the forms tried, not proof that no other form fits inside them (DM-42 3.1).
+- DM-42 1.3's carried-items line (F1, F2 and F3 in (c)'s inputs) is the manager's, and C6 did not edit that file.
