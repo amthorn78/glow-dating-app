@@ -73,7 +73,7 @@ export function MatchScreen() {
         {active ? <>
           <Text style={styles.small}>Messages with this match stay in this fictional preview session.</Text>
           <Button label="Open conversation" testID="match-conversation" onPress={() => { chatFor(onboarding).store.select(match.match_id); router.push('/conversation'); }} />
-        </> : <Text style={styles.small}>Messaging is unavailable. This preview has no provider channel, messages or history access.</Text>}
+        </> : <Text style={styles.small}>Messaging is unavailable. This connection shows no messages or history in this preview.</Text>}
         {match.state !== 'unmatched' && <>
           <Text style={styles.body}>Unmatching ends this connection. You can unmatch while your profile is paused or your account is restricted. This preview does not offer undo or rematching.</Text>
           <ActionButton label="Unmatch" testID="match-unmatch" disabled={state.status === 'pending'}

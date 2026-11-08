@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Page, colors, styles } from '../components/ui';
 import { OnboardingProvider, useOnboarding } from '../onboarding/context';
 import { canAccessRoute, sanitizeDestination } from '../onboarding/routes';
+import { developmentPreviewAvailable } from '../config/release-guard';
 
 function Navigation() {
   const { state } = useOnboarding();
@@ -55,7 +56,7 @@ function Navigation() {
 
 export default function RootLayout() {
   // Synthetic routes and controls never render in a production bundle.
-  if (!__DEV__ || process.env.EXPO_PUBLIC_GLOW_MODE !== 'fixture') {
+  if (!developmentPreviewAvailable(__DEV__, process.env.EXPO_PUBLIC_GLOW_MODE)) {
     return <SafeAreaProvider><Page><Text style={styles.title}>Development preview unavailable</Text>
       <Text style={styles.body}>This foundation has no production mode.</Text></Page></SafeAreaProvider>;
   }

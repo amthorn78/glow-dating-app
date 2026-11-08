@@ -13,6 +13,8 @@ export default defineConfig([
   {
     files: ['src/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': hooks },
-    rules: { 'react-hooks/rules-of-hooks': 'error', 'react-hooks/exhaustive-deps': 'error' },
+    // no-console (ESLint core): app code never logs, so no message text, response or provider
+    // text reaches a console (M05 finding 18; ADR 0003, decision 3).
+    rules: { 'react-hooks/rules-of-hooks': 'error', 'react-hooks/exhaustive-deps': 'error', 'no-console': 'error' },
   },
 ]);

@@ -68,7 +68,8 @@ let keySerial = 0;
  *   history, draft, cursors and any pending send at once. Every request outstanding then is
  *   invalidated: its response, success or failure, changes nothing and starts nothing
  *   (CX9, DM-24 1.1 to 1.3). Requests made afterwards are decided by Glow as before.
- * - **Sends** reuse the same intent, so the same idempotency key and payload, on retry.
+ * - **Sends** reuse the same intent, so the same idempotency key and payload, on retry. A final
+ *   refusal that does not end access restores the draft, if no new one has been started.
  */
 export class ChatStore {
   private state: ChatState = Object.freeze({ list: emptyList, selectedMatchId: null, conversation: emptyConversation, draft: '', send: idleSend });
@@ -241,8 +242,9 @@ export class ChatStore {
       const page = await this.client.messages(matchId, cursor, CONVERSATION_PAGE_LIMIT);
       if (epoch !== this.conversationEpoch) return;
       this.mergeHead(page, cursor === null);
-      // An older page asked from the replaced window no longer holds the older-page state (DM-28 1.2).
-      const older = cursor === null && this.state.conversation.older === 'loading' ? 'idle' : this.state.conversation.older;
+      // A replacement leaves the older-page state `idle` whatever it was, `error` included: any state
+      // from before it concerns the window it discarded (DM-28 1.2; DM-29 1.1). A newer page keeps it.
+      const older = cursor === null ? 'idle' : this.state.conversation.older;
       this.publishConversation({ status: 'ready', error: null, older });
       this.schedule();
       // A page never moves the cursor itself (DM-23 2.1); it only retries a failed move to `seen`.
@@ -393,7 +395,11 @@ export class ChatStore {
       const failure = error instanceof ChatFailure ? error : new ChatFailure('invalid_response', true);
       // The outcome is unknown or temporary: the same intent may be retried. A refusal is final.
       this.retryable = failure.retryable && !ends(failure.code) ? submission : null;
-      this.publish({ send: Object.freeze({ status: 'error', error: failure.code, canRetry: this.retryable !== null }) });
+      // A final refusal that leaves the conversation open gives the member's words back, unless they
+      // have started another message (the C2 review's finding 4). A refusal that ends access drops them.
+      const restore = this.retryable === null && !ends(failure.code) && this.state.draft === '';
+      this.publish({ send: Object.freeze({ status: 'error', error: failure.code, canRetry: this.retryable !== null }),
+        ...(restore ? { draft: submission.intent.text } : {}) });
       if (ends(failure.code)) this.revoke(failure.code);
     } finally { if (this.sending === submission) this.sending = null; }
   }

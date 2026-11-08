@@ -18,6 +18,8 @@ export interface MediaSnapshot {
 }
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+/** The simulated actors as the member-visible feedback names them, in Glow's own words (ADR 0003, decision 3). */
+const ACTOR_LABELS = Object.freeze({ system: 'system', provider: 'storage', moderator: 'moderator' });
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
   return value;
@@ -170,7 +172,7 @@ export class MediaStore {
     if (!asset || asset.state === 'removed' || asset.state === 'removal_pending') return;
     this.operation += 1; this.adapter.cancelPending(); this.ownerRemovalRevocations.add(assetId); this.publish({ busy: false });
     const intent = this.intent('remove', asset.version, assetId, []);
-    await this.run(context => this.adapter.remove(context, intent, outcome), 'Photo removed from delivery. Provider purge is pending.');
+    await this.run(context => this.adapter.remove(context, intent, outcome), 'Photo removed from delivery. Its purge is pending.');
   }
   async move(assetId: string, direction: -1 | 1, outcome: MediaOutcome = 'success'): Promise<void> {
     const order = this.snapshot.collection.items.filter(item => item.state === 'approved').map(item => item.asset_id);
@@ -187,7 +189,7 @@ export class MediaStore {
     const actor = event === 'review' ? 'system' : event === 'purged' ? 'provider' : 'moderator';
     const policyVersion = this.snapshot.policyVersion ?? 'unknown';
     await this.run(context => this.adapter.event(context, { event, actor, assetId, expectedVersion: asset.version,
-      eventId: `media-event-${++this.sequence}`, policyVersion }, outcome), `Synthetic ${actor} event: ${event}.`, false,
+      eventId: `media-event-${++this.sequence}`, policyVersion }, outcome), `Synthetic ${ACTOR_LABELS[actor]} event: ${event}.`, false,
     () => { if (event === 'approve') this.moderationRevocations.delete(assetId); });
   }
   async reload(outcome: MediaOutcome = 'success'): Promise<void> { await this.run(context => this.adapter.read(context, outcome), 'Current photo status loaded.', true); }

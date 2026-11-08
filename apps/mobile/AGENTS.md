@@ -27,7 +27,7 @@ npm run test:rendered                      # fixture journeys rendered in Chromi
 
 - `start`, `android`, `ios`, `check:expo` and `export:development` run `scripts/development.mjs`. It supplies `GLOW_APP_ENV=development` and `EXPO_PUBLIC_GLOW_MODE=fixture` and refuses any other value. `app.config.ts` rejects Expo CLI runs without them, so use the npm scripts rather than calling Expo directly.
 - Run `npm run check` before declaring a mobile change done. Add `check:expo`, `export:development` and `test:rendered` when the assignment needs rendering or export proof.
-- `test:rendered` needs the Chromium revision pinned by `@playwright/test`. In Claude Code cloud sessions, the preinstalled Chromium is a different revision, and `playwright install` must not be run there. The pinned-browser evidence therefore comes from hosted CI (Foundation, Mobile checks). A local run against another browser is informational only. See `docs/operations/local-development.md`.
+- `test:rendered` needs the Chromium revision pinned by `@playwright/test`. In Claude Code cloud sessions, the preinstalled Chromium is a different revision, and `playwright install` must not be run there. The pinned-browser evidence therefore comes from hosted CI (Foundation, Mobile checks). A local run against another browser is informational only. **A CLI environment can provide the pinned browser** (Nathan's CLI agent in an open environment; OD-43, OD-57): when a prompt names one and authorizes it, `npx playwright install --with-deps chromium` and `npm run test:rendered` run there at the pinned revision, and CI's run stays the run of record. See `docs/operations/local-development.md`.
 
 ## Dependency changes
 

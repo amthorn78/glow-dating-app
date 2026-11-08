@@ -4,7 +4,8 @@ import type { ExpoConfig } from 'expo/config';
 // public configuration names are permitted; do not echo rejected names/values.
 const publicNames = new Set(['EXPO_PUBLIC_GLOW_MODE', 'EXPO_PUBLIC_GLOW_API_BASE_URL']);
 const renderedTests = process.env.GLOW_RENDERED_TESTS === '1';
-// SDK 57 injects this exact project directory before web manifest evaluation.
+// SDK 58's CLI (@expo/cli 58.1.18) still injects this exact project directory
+// before web manifest evaluation, for the web LogBox (withMetroMultiPlatform.js).
 // Accept it only for the explicit local test harness, never an arbitrary path.
 const isRenderedSdkRoot = (name: string) => renderedTests && name === 'EXPO_PUBLIC_PROJECT_ROOT' && process.env[name] === __dirname;
 if (Object.keys(process.env).some((name) => name.startsWith('EXPO_PUBLIC_') && !publicNames.has(name) && !isRenderedSdkRoot(name))) {
