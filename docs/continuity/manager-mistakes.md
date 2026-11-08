@@ -132,6 +132,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-05 | 2 Nov 2026 | accuracy | Notion's status lead and P06.2-F's Work Register row said the manager recommended "view models as their own item"; DM-39's consultation and the review log asked (c)'s timing without recommending one. The commit message of `6a9a6b5` said the same | Dev Manager 3, DM-39 section 9 |
 | AM9-06 | 3 Nov 2026 | accuracy | C3's prompt and the brief's Outcome 1 asked each item of the check's refusal list to name, by ID, the planted forms that pin it, without the manager first checking that each item had one; several had none | Correction C3, its point 1 |
 | AM9-07 | 3 Nov 2026 | accuracy | Implementation Control's "Standing directions" line said the Notion register copy holds OD-01 to OD-54 after OD-55 and OD-56 were added to it; App Manager 9's readbacks covered the status section and missed it | App Manager 9, recording OD-57 |
+| AM9-08 | 8 Nov 2026 | accuracy | DM-40's option (a) proposed narrowed words for finding 1 ("an object property holding a function, given by reference") without trying forms just inside them; an accessor, a class field and an untyped literal given later pass inside those words | Dev Manager 3, DM-40 section 3 |
+| AM9-09 | 8 Nov 2026 | accuracy | The two uses-table rows for C3's delta re-review were created without the PR field, which App Manager 9's earlier rows carry; the skill's printed row has no PR key | Dev Manager 3, DM-40 section 8 |
 
 ## App Manager 2
 
@@ -1038,3 +1040,19 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** a reader of Implementation Control alone would have missed two directions; the copy itself was current.
 - **Correction:** the line now names OD-01 to OD-57, at this batch's sync.
 - **Prevention:** a page's readback covers every section that names a range, a count or a commit, not only the section the batch wrote; adding a direction updates the register copy and that line together.
+
+### AM9-08 — Narrowed words proposed without forms just inside them (accuracy)
+
+- **What happened:** DM-40's option (a) proposed the words for finding 1's narrowed callback item: "a declared function, a `useCallback` result or an object property holding a function, given by reference". The manager had re-run the review's forms, but did not try forms just inside its own proposed words.
+- **Caught by:** Dev Manager 3, DM-40 section 3. An accessor (F1c), a class field (G3) and an untyped literal given later (G2) pass the check and sit inside those words.
+- **Effect:** none on the code; the Dev Manager gave section 4.2's syntax-exact words instead, and C4 uses them.
+- **Correction:** recorded in the review log's "DM-40" and the record's dispositions.
+- **Prevention:** AM9-03's prevention extends to proposals. Wording the manager proposes for what a check refuses is tried with forms just inside its words before it is proposed, or the proposal says it is untried. Words name syntax, not categories.
+
+### AM9-09 — Uses rows without the PR field (accuracy)
+
+- **What happened:** the uses-table rows "P06.2-F C3 delta re-review" and its revision 2 were created from the skill's printed row, which has no PR key, without adding the PR field that the manager's earlier rows carry.
+- **Caught by:** Dev Manager 3, DM-40 section 8.
+- **Effect:** the two rows did not name their PR for five days.
+- **Correction:** both rows name PR40, at this batch's sync.
+- **Prevention:** before creating a uses row, add the PR field (the PR, its scope and the code head) to the skill's printed properties.

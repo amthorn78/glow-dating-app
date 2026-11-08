@@ -926,3 +926,20 @@ The Mobile job's log was read in full from the job's log download; the counts ab
 - **Focus 9, the planted-form specification:** the core paragraph's "planted forms are that list's specification" holds for the items that have planted forms, and the brackets state the gaps, so it is not an overclaim. The review's view is to keep them as marked, plant nothing before the merge (that would depart from DM-39 1.1 for a check that option (c) replaces), and carry the unpinned items, with its forms, to (c)'s brief. It is not a correction class.
 - **Codex on `7983b31`** (3 November, 01:56 UTC) raised three P2 threads. They are this review's findings 1 to 3, with the same forms: method shorthand (`display-rule.test.ts:452`), the contextually typed destructuring default (`:411`) and the `for…of` destructuring head (`:448`). The manager answered each; they stay open until DM-40's disposition is applied.
 - **Next:** the disposition. Step 6's rule (a) puts findings 1 to 5 before the merge. Each can be closed in the comment and the records, by narrowing the listed items to what the check refuses and naming the forms, which is inside DM-39 1.1; or in the check, which departs from it. Either is a design choice for a member-privacy boundary, so it goes to the Dev Manager first, as DM-40, with OD-57's governing texts for its pre-merge read.
+
+**The dispositions** (DM-40, [report](../../continuity/dev-manager/reviews/2026-11-08-dm-40-p06-2-f-c3-review-and-od-57.md), answered at `497ba97`, a read of `6e9149e`, accepted as written):
+
+| # | Disposition |
+|---|---|
+| 1 | **Closed in C4 by narrowing, not by a code change** (DM-40 1.1, 1.2). The callback item names the syntax the check compares: an inline arrow or function expression at its annotated parameters, and an expression whose type has a call signature at each parameter and its return; an object literal property written `key: value` or `{ key }` in a literal with a contextual type. A function reached only through an object or a class instance becomes a known passing class, with this form as its example. DM-40's probes found three more forms inside the manager's proposed wording (an accessor, a class field, an untyped literal given later), so the words name syntax, not categories (AM9-08) |
+| 2 | **Closed in C4 by narrowing:** the destructuring exception says that the pattern's own check reads the initializer's fields only when the pattern is typed as Glow's data; a contextually typed parameter's default becomes a known passing class |
+| 3 | **Closed in C4 by narrowing:** "a destructuring assignment written with `=`"; a destructuring target in a `for…of` head becomes a known passing class |
+| 4 | **Closed in C4:** the source check's sentence names spacing, line breaks, parentheses, comments, string contents and bracket forms, with examples, and the type check refusing each one tried |
+| 5 | **Closed in C4:** `VirtualizedList` fails as a widening to `unknown` and to `any`, since its `data` prop is `any`; F0's reasons stay for `Array.from` and `new Set` |
+| 6, 7 | **In C4's record section** (nits): C2's forms listed by class and ID, the duplicates named, and the 49th placed in N4 or N5; the same go to option (c)'s inputs |
+| 8, 9 | **In C4,** through DM-40 section 4.2's words |
+| Records lines | O5 becomes a known passing class; the test name at `:670` is corrected in C4 to "today's chat screens and list rows pass both render-rule checks (M05 finding 18)" (DM-40 section 6) |
+| Focus 9 | **Agreed:** the refusals no planted form pins stay marked, and go with the review's forms and DM-40 section 3's to option (c)'s inputs (the carried-items file) |
+| The three code fixes | **Noted for (c), not made** (DM-40 1.4): exempt only a Glow-typed pattern; refuse a `for…of` head with a literal target; compare an object literal's method against its contextual property type |
+
+- **Next:** correction C4 (the brief, "Correction C4"), then its delta re-review, bounded to the changed items (DM-40 3.1 to 3.4).

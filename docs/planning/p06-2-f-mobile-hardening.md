@@ -1,9 +1,9 @@
 # P06.2-F — Mobile hardening and P06.2's carried follow-ups
 
 - **Work ID:** P06.2-F (P06; M05's E11, with findings 17 to 20).
-- **Status:** correction C3 is done and verified (code head `f87e8b1`, merged at `cfab39b`); its delta re-review asks for changes (three forms evade listed refusals; two false statements), so **DM-40 is next**, with OD-57's governing texts. Brief revision 3. **Prompts:** the implementation, [`docs/ephemeral/2026-11-01-p06-2-f-implementation-prompt.md`](../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), correction C1, [`docs/ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md), C1's delta re-review, [`docs/ephemeral/2026-11-02-p06-2-f-c1-delta-review-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c1-delta-review-prompt.md), correction C2, [`docs/ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md), correction C3, [`docs/ephemeral/2026-11-02-p06-2-f-c3-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c3-correction-prompt.md), each revision 1, and C3's delta re-review, [`docs/ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md`](../ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md), revision 2, all for `Glow App - No Stream`.
+- **Status:** C3's delta re-review asked for changes; DM-40 approved narrowing the listed items in the comment and the records (option (a)), approved OD-57's governing texts and confirmed DM-39 4.2; **correction C4 is next** ("Correction C4" below). Brief revision 4. **Prompts:** the implementation, [`docs/ephemeral/2026-11-01-p06-2-f-implementation-prompt.md`](../ephemeral/2026-11-01-p06-2-f-implementation-prompt.md), correction C1, [`docs/ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c1-correction-prompt.md), C1's delta re-review, [`docs/ephemeral/2026-11-02-p06-2-f-c1-delta-review-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c1-delta-review-prompt.md), correction C2, [`docs/ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c2-correction-prompt.md), correction C3, [`docs/ephemeral/2026-11-02-p06-2-f-c3-correction-prompt.md`](../ephemeral/2026-11-02-p06-2-f-c3-correction-prompt.md), each revision 1, and C3's delta re-review, [`docs/ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md`](../ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md), revision 2, and correction C4, [`docs/ephemeral/2026-11-08-p06-2-f-c4-correction-prompt.md`](../ephemeral/2026-11-08-p06-2-f-c4-correction-prompt.md), revision 1, all for `Glow App - No Stream`.
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): P06.2-F after P09.3a, before P06.3's UI. **Manager:** App Manager 8; App Manager 9 from 2 November (OD-56). **Session:** one implementation session, started by Nathan.
-- **Revision 1, 1 November 2026. Revision 2, 2 November 2026:** after DM-38, "Correction C1"'s Outcome 1 states the render-rule check's guarantee and limits in DM-38 section 4's words, and "Correction C2" is added. **Revision 3, 2 November 2026:** after DM-39, which withdraws DM-38 section 4's wording (DM-39 1.4), C1's Outcome 1 and C2's Outcome 6 point to "Correction C3", which states DM-39 section 4.2's wording.
+- **Revision 1, 1 November 2026. Revision 2, 2 November 2026:** after DM-38, "Correction C1"'s Outcome 1 states the render-rule check's guarantee and limits in DM-38 section 4's words, and "Correction C2" is added. **Revision 3, 2 November 2026:** after DM-39, which withdraws DM-38 section 4's wording (DM-39 1.4), C1's Outcome 1 and C2's Outcome 6 point to "Correction C3", which states DM-39 section 4.2's wording. **Revision 4, 8 November 2026:** after DM-40, "Correction C4" narrows C3's callback item, destructuring assignment, `Reflect` and `Object` item, destructuring exception, source-check sentence and F0's reason to DM-40 section 4.2's words, and adds four known passing classes; C3's section points to it.
 - **Starting point:** `main` at `bac3c19` (PR39), with the manager branch's Markdown records after it. The prompt names the exact commit. The app is on Expo SDK 58.0.22 (M06).
 - **Evidence home:** `docs/testing/evidence/<date>-p06-2-f-mobile-hardening.md`, written by the session.
 
@@ -116,6 +116,8 @@ The item is done when each of these holds, **each with a test and the reversal t
 
 ## Correction C3 (DM-39: what the check does, as a positive list)
 
+*Revision 4: the items DM-40 section 4.2 names are superseded by "Correction C4" below; the core paragraph stands.*
+
 - **Why:** C2 met its Outcomes, but its own probes found 49 forms in nine classes (N1 to N9) that pass the check outside every limit DM-38 section 4's guarantee named; Codex found two of them again (`display-rule.test.ts:280`, N1; `:415`, N8). DM-39 approved option (b): the claim is restated as a positive list, and the checks do not change. DM-38 section 4's wording is withdrawn (DM-39 1.4).
 - **What the check does, in DM-39 section 4.2's words** (word for word, in the test comment and the record):
 
@@ -135,6 +137,55 @@ The item is done when each of these holds, **each with a test and the reversal t
 - **Dev Manager:** no read before C3's prompt runs (DM-39 section 4.2); its next consultation confirms it.
 - **Carried:** option (c), with DM-39's backstop (before P11 serves the chat reads) and 1.3's inputs (the carried-items file; the P11 plan).
 
+## Correction C4 (DM-40: the listed items narrowed to the syntax the check refuses)
+
+- **Why:** C3's delta re-review found three forms that evade refusals the comment lists, and two false statements (the record, "Delta re-review of correction C3"); Codex found the three forms again. DM-40 approved option (a): the listed items are narrowed to the syntax the check refuses, the forms become known passing classes, and no check changes. The manager's proposed words for finding 1 were still too wide, so C4 uses DM-40 section 4.2's words (AM9-08).
+- **The words, from DM-40 section 4.2,** each replacing the text named (line numbers at `f87e8b1`). C4 may narrow them further but must not widen them (DM-40 1.2):
+  - **The source check's last sentence** (`:124-126`):
+
+    > As a text match, spacing, line breaks, parentheses, comments, string contents and bracket forms evade it, for example `message ?.name`, `(message)as{…}`, `'name'in message`, `'/*'` in a string and `Reflect['get']`; C3's verifiers and its delta re-review found these, and the type check refuses each one tried.
+
+  - **The destructuring assignment** (`:155`): "a destructuring assignment" becomes "a destructuring assignment written with `=`".
+  - **The callback item** (`:162-165`):
+
+    > a callback whose parameter widens what it is given, or whose return of Glow's data is widened. An inline arrow function or function expression is compared at each parameter that has a type annotation, against its contextual signature [15]; what it returns is checked as a widening (above). Any other expression whose type has a call signature (a function's name, a `useCallback` result, a property read such as `view.line`) is compared at each parameter and at its return, against the call's resolved parameter or its contextual type [C2-1a to C2-1e]. An object literal property written `key: value` or `{ key }`, in a literal that has a contextual type, is compared by these two rules [no planted form]. A function reached only through an object or a class instance is not compared (below).
+
+  - **`Reflect` and `Object` by a destructuring** (`:170-172`): "by a destructuring's type, whatever its key" becomes:
+
+    > by a destructuring whose type is `Reflect` or `ObjectConstructor`, as a string or computed key that names one gives [C2-3c, C2-3d]; a key of a union type gives a union, which is not refused (O5)
+
+  - **The destructuring exception** (`:178-179`):
+
+    > the initializer of an object destructuring when no enclosing pattern is annotated (C2: only then; C2-4b pins it). The pattern's own check reads the initializer's fields only when the pattern is typed as Glow's data, as when the initializer types it. When the pattern's type comes from context, as for an unannotated parameter of a contextually typed function, the initializer is exempt and not checked (below).
+
+  - **F0's family** (`:212-217`):
+
+    > …and so do `Array.from` and `new Set` over the messages, since the check reads an `ArrayLike` parameter's index signature, and an `Iterable` parameter's symbol-keyed iterator, which it does not find by name on the array, as widenings. A `VirtualizedList`, whose `data` prop is typed `any`, fails as a widening to `unknown` and to `any`.
+
+  - **"What it is known to pass" gains four entries:**
+    - **A function reached only through an object or class instance** (C3's delta re-review, finding 1): `const view: { line(entry: ConversationMessage): string } = { line(entry: Loose) { return entry.name ?? ''; } }`, then `view.line(message)`. The same holds for an accessor, for a class's method or field under an interface type, and for an object literal with no contextual type that is given later.
+    - **A contextually typed parameter's destructuring default** (finding 2): `const caption: (entry?: Loose) => string = ({ name } = message) => name ?? ''`.
+    - **A destructuring target in a `for…of` head** (finding 3): `for ({ ...rest } of conversation.messages) break;`.
+    - **A reflective global reached through a key of a union type** (O5): `globalThis[key]`, with `key: 'Reflect' | 'JSON'`. No read through it was found.
+- **The first render test's name** (`:670`, DM-40 section 6) becomes "today's chat screens and list rows pass both render-rule checks (M05 finding 18)". It is a string; nothing refers to it.
+- **Outcome:**
+  1. **The test comment** carries each item above word for word, or narrower, in place of the text named; DM-39's core paragraph and every other item stay as they are.
+  2. **The test name** is changed as above.
+  3. **Nothing else changes** (DM-40 1.1): no refusal, exception or planted form. The two versions' parse trees, without comments, are identical except for the test name's string.
+  4. **No words that claim coverage of code paths** (DM-38 4.2).
+  5. **The record:** a new section, "Correction C4", after "Delta re-review of correction C3", states the same words and the new name, and says that it supersedes C3's items without editing them. It also carries:
+     - nits 6 and 7: C2's forms by class and ID, with the duplicate IDs named (`R3`, `R6`) and the 49th placed in N4 or N5;
+     - DM-40 1.3's forms for option (c)'s inputs: the review's findings 1 to 4 and O5, and DM-40 section 3's F1c, F1d, G2 and G3.
+- **The stop rule:** if a word cannot be stated truly within section 4.2's words or narrower ones, or anything seems to need a change outside the comment, the test name and the new section, the session stops and reports.
+- **Owned paths:** `apps/mobile/src/chat/display-rule.test.ts` (its render-rule comment and the first render test's name only), and the record's new "Correction C4" section.
+- **Review:** a delta re-review held to DM-39 1.2, bounded to the changed items (DM-40 3.1 to 3.4), after Codex on C4's head and on the commit that holds its prompt:
+  - **3.1:** it probes each narrowed item at its exact words, with forms just inside them: an arrow, a function expression, a reference and `{ key }`, each as a property of a literal that has a contextual type; `.map(view.line)`; an `=` destructuring assignment; a destructuring default whose pattern the initializer types. A form inside the words that evades is a finding.
+  - **3.2:** it confirms each new class's example passes as written, the `VirtualizedList` reason, and that only comments changed apart from the test name's string.
+  - **3.3:** it does not re-probe the unchanged items; any other passing form is a records line.
+  - **3.4:** a form inside the narrowed words comes to the Dev Manager before any C5 is written.
+- **Dev Manager:** no read before C4's prompt runs (DM-40 section 4.2); its next consultation confirms the words.
+- **Carried:** DM-40 1.3's forms, 1.4's three code fixes and the unpinned refusals, to option (c)'s inputs (the carried-items file).
+
 ## Sessions
 
 - **The implementation** (1 November 2026; prompt revision 1 at `67b0201`; branch `claude/practical-wozniak-fg1e2i`, code head `3db50d8`, records `02f1972`; Nathan's pick: not recorded): items 1 to 7, each with a test and its reversal; nothing met the stop rule. Optional entries done: item 5's finding 1, and item 6's finding 5; item 6's finding 9 not done, with its reason. Beyond the brief's list: `src/data/fixtures.ts` removed with the dead hook, a test against unimported modules, and more provider wording on the same screens. Run of record: push run 41359462167 on `3db50d8`, all eight jobs passed, rendered 97 passed, Mobile 5 min 58 s of 25. The first run was cancelled by the session's own records push (AM8-20); Nathan approved the re-push. The manager verified it (the record, "Manager verification": six reversals re-run, each failing) and fast-forwarded the manager branch. Next: the PR, Codex, and the exact-head code review.
@@ -152,4 +203,6 @@ The item is done when each of these holds, **each with a test and the reversal t
   - **The session's three points:** some refusals have no planted form; the source check, as a text match, misses four forms that the type check refuses; C2's class lists name 48 forms, not 49.
   - **Manager's verification:** the manager verified it, the parse trees compared without comments, and merged it at `cfab39b` (the record, "Manager verification of correction C3"). AM9-06 logged: the prompt asked for planted-form IDs the manager had not checked exist.
 - **C3's delta re-review** ([prompt](../ephemeral/2026-11-03-p06-2-f-c3-delta-review-prompt.md), revision 2; revision 1's start gate would have counted OD-57's Markdown under `apps/` as code, and it was not given): of code head `f87e8b1`, held to DM-39 1.2, with focus 9 on the refusals no planted form pins; for `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at high. Codex found nothing on `4d576d3` or `b2904a4`. **Done** (3 November; prompt revision 2 at `b2904a4`; Nathan's pick: not recorded): **changes required.** Only comments changed, the core paragraph is word for word, and every bracket is true. But three of the review's forms evade listed refusals: an object literal's method shorthand, a contextually typed destructuring default, and a `for…of` destructuring head. The source check's text-match misses are more than the four named, and `VirtualizedList`'s reason is false; there are four nits. The manager re-ran findings 1 to 3 and 5 (the record, "Delta re-review of correction C3").
-- **DM-40** ([consultation](../ephemeral/2026-11-03-dm-40-p06-2-f-c3-delta-review-and-od-57.md), revision 1): findings 1 to 5 ((a) narrow the listed items in the comment and the records, recommended; (b) change the check; (c) view models now, declined in DM-39); the wording; C4's review standard; focus 9; the nits; the pre-merge read of OD-57's governing texts and DM-39 4.2's confirmation; Notion. Next: its answer; no prompt before it.
+- **DM-40** ([consultation](../ephemeral/2026-11-03-dm-40-p06-2-f-c3-delta-review-and-od-57.md), revision 1): findings 1 to 5 ((a) narrow the listed items in the comment and the records, recommended; (b) change the check; (c) view models now, declined in DM-39); the wording; C4's review standard; focus 9; the nits; the pre-merge read of OD-57's governing texts and DM-39 4.2's confirmation; Notion. Codex found findings 1 to 3 again on `7983b31`; the manager answered its three threads.
+- **DM-40** (8 November; [report](../continuity/dev-manager/reviews/2026-11-08-dm-40-p06-2-f-c3-review-and-od-57.md), answered at `497ba97`, a read of `6e9149e`): option (a) approved with 1.1 to 1.4 and section 4.2's words (the manager's proposed words for finding 1 too wide; AM9-08); C4's review bounded (3.1 to 3.4); focus 9 agreed; the test name corrected in C4; OD-57's texts approved, with a note for prompts on `--with-deps`; DM-39 4.2 confirmed. Accepted as written (the review log, "DM-40").
+- **Correction C4** ([prompt](../ephemeral/2026-11-08-p06-2-f-c4-correction-prompt.md), revision 1): the section above, for `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at medium. Next: Codex on the commit that holds it, then Nathan.
