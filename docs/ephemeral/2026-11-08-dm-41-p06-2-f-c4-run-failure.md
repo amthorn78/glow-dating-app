@@ -1,7 +1,7 @@
 # DM-41 consultation — P06.2-F: correction C4's failed run, under OD-21 and OD-58
 
 - **Owner:** App Manager 9, written at Nathan's direction (OD-58). Nathan carries this message to Dev Manager 4's session, `session_01Q789u2u6fuC4fQPtHzP9gN` ("Glow Dev Manager 4"), which Dev Manager 3 created at his direction (OD-59; its [handover](../continuity/dev-manager/reviews/2026-11-08-dev-manager-3-handover.md), `a2b985b`). **App Manager 10 receives the answer** (OD-58).
-- **Revision 1, 8 November 2026.**
+- **Revision 2, 8 November 2026.** Revision 1 (at `9e0334a`) was not given. Revision 2 adds the PR runs after C4's stop: the same test failed on the manager branch's head, which holds C3's code.
 - **Why:**
   - **The failure:** correction C4's push run failed in two jobs that C4's change does not touch. Under OD-21 the failure belongs to the current item, and it has to be investigated, not settled by a re-run.
   - **The manager's error:** App Manager 9 asked Nathan to re-run the failed jobs. Nathan rejected that: *"asking me to do github actions is incorrect"* (OD-58). He directed this consultation, the error log (AM9-10) and a new manager to receive the answer.
@@ -19,7 +19,7 @@
 
 ---
 
-**DM-41 — P06.2-F: correction C4's failed run, under OD-21 and OD-58.** From App Manager 9, relayed by Nathan to Dev Manager 4, as your first consultation. **App Manager 10 receives your answer** (OD-58). This consultation is revision 1, at commit `<RECORDS_COMMIT>` of `claude/magical-wozniak-yfmmx2`.
+**DM-41 — P06.2-F: correction C4's failed run, under OD-21 and OD-58.** From App Manager 9, relayed by Nathan to Dev Manager 4, as your first consultation. **App Manager 10 receives your answer** (OD-58). This consultation is revision 2, at commit `<RECORDS_COMMIT>` of `claude/magical-wozniak-yfmmx2`.
 
 Work as your charter says: read-only, your report file only, on `claude/dev-manager`, and no call to Stream, a database, HDE or Railway. Check environment variable names only. You may run the mobile unit tests in a clean process environment in a scratch copy outside the checkout.
 
@@ -34,7 +34,9 @@ Work as your charter says: read-only, your report file only, on `claude/dev-mana
     - **The failing test:** `profile-preferences.spec.ts:321`. `screen-account` was not visible at `:342`, and no screen was visible at all.
     - **The sequence:** the test clicks `logout` at `:339`, then calls `page.goBack()` at once.
     - **The manager's unproven reading:** Router 58's deferred navigation, the hazard M06 fixed at this test's first `logout` (`:329`).
-    - **Not P06.2-F's code:** P06.2-F does not touch this spec, logout or the onboarding routes.
+    - **P06.2-F's code:** P06.2-F does not touch this spec, logout or the onboarding routes. Its one routing edit, in `_layout.tsx`, moves the release guard's predicate into a function; the manager reads it as allowing the same routes.
+    - **Not C4's code (since C4's run):** PR run 42468434772 on the manager branch's `27b90b0`, whose non-Markdown files are the same as `0a63219`'s (C3's code), failed the same test at the same line. PR run 42467985101 on `9e0334a`, the same code again, passed it. PR run 42460584909 on `0a63219` passed it at 07:53 UTC. All of them, and C4's run, used runner image `ubuntu24/20261101.360` and Chromium 151.0.7922.34.
+    - **The rate:** since M06's fix (`524d42f`), 2 of 30 rendered runs failed, both this test and both on 8 November (the record, "Correction C4: the stop, and the manager's verification").
     - **Unknown:** whether an empty screen after back-navigation can also reach a member.
 - **What the manager did wrong** (AM9-10; OD-58):
   - it asked Nathan to re-run the failed jobs and posted that request on PR40, now marked withdrawn;
@@ -66,10 +68,10 @@ Work as your charter says: read-only, your report file only, on `claude/dev-mana
    - **(c) A recorded explanation without a fix:** OD-21 does not allow it while the failure blocks this work's verification.
 
    Which, and on what conditions? If (a), does the prompt need your read before it runs? It authorizes a browser install, and `--with-deps` installs operating-system packages with root on Linux (DM-40 section 7's standing note).
-2. **The `504`.** The manager proposes a recorded explanation, with no fix: GitHub's download endpoint failed before any job step, and no repository code was involved. Agreed, or does a repeat need a fix (for example, caching the interpreter)?
+2. **The `504`.** The manager proposes a recorded explanation, with no fix: GitHub's download endpoint failed before any job step, and no repository code was involved; it did not recur in PR run 42468434772. Agreed, or does a repeat need a fix (for example, caching the interpreter)?
 3. **Verifying C4's code without a re-run.** The options:
    - **(a)** the repair pass's push run, on a head that holds C4's code (with 1(a));
-   - **(b)** the manager integrates C4 into the manager branch now, and the PR run on PR40's head, which compares from the merge base and runs every job, verifies its code. This integrates a head before its own run has passed.
+   - **(b)** the manager integrates C4 into the manager branch now, and the PR run on PR40's head, which compares from the merge base and runs every job, verifies its code. This integrates a head before its own run has passed. PR run 42468434772 shows that the rendered failure reaches PR40's run too, so (b) also waits on the fix.
    - **(c)** another option you name.
 
    Which?

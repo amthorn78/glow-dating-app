@@ -8,18 +8,19 @@ This file only routes: the current item, what happens next and who waits on whom
 
 - **Manager: App Manager 10**, created by App Manager 9 at Nathan's direction (OD-58), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; PR40 stays; on the cleanup's keep-list). It subscribes to PR40. App Manager 9 pushes nothing after its handover commit.
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure goes to the Dev Manager first (OD-32), with options that need no action from him.
-- **Now: P06.2-F**, the mobile hardening ([brief](../planning/p06-2-f-mobile-hardening.md); [record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md)), in PR40. C1 to C3 are verified. **Correction C4** (`691dfba`, branch `claude/upbeat-mccarthy-499h9k`) carries DM-40's words; its run 42464917902 failed in two jobs it does not touch (the record, "Correction C4: the stop, and the manager's verification"). Its session is archived; its own record section was never pushed.
-- **In flight: [DM-41](../ephemeral/2026-11-08-dm-41-p06-2-f-c4-run-failure.md)**, with Nathan to carry to **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59), which Dev Manager 3 created at his direction. App Manager 10 receives the answer.
+- **Now: P06.2-F**, the mobile hardening ([brief](../planning/p06-2-f-mobile-hardening.md); [record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md)), in PR40. C1 to C3 are verified. **Correction C4** (`691dfba`, branch `claude/upbeat-mccarthy-499h9k`) carries DM-40's words; its run 42464917902 failed in two jobs it does not touch (the record, "Correction C4: the stop, and the manager's verification"). The same rendered test, `profile-preferences.spec.ts:321`, then failed on this branch's `27b90b0` (C3's code): 2 of 30 rendered runs since M06's fix. **PR40's gate can go red on any head until DM-41's fix lands;** a red run is not settled by a re-run (OD-21). Its session is archived; its own record section was never pushed.
+- **In flight: [DM-41](../ephemeral/2026-11-08-dm-41-p06-2-f-c4-run-failure.md)** (revision 2), with Nathan to carry to **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59), which Dev Manager 3 created at his direction. App Manager 10 receives the answer.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2 and P09.3a ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-41, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (8 November 2026, 09:36 UTC, App Manager 9)
+## Waiting checkpoint (8 November 2026, 09:58 UTC, App Manager 9)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
 | App Manager 10 | Nathan, carrying DM-41 to Dev Manager 4 once its start note is pushed | DM-41's report, relayed (OD-25) | Nothing to chase; then ask Nathan whether Dev Manager 4's session is still available |
+| App Manager 10 | GitHub (an external party): PR40's run on the handover commit | Read it; its rendered result adds to the record's count for DM-41's diagnosis | Nothing to chase |
 
 ## Next actions (App Manager 10)
 
