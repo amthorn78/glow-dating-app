@@ -71,7 +71,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 **Also:** a periodic process and build review whenever Nathan asks for one, based on a fresh [State of the App](../continuity/state-of-the-app.md).
 
-**Not for:** routine verification, routine records, small documentation fixes, CI reruns, exact-head code review, or a review finding's fix-or-carry that the workflow's rule decides (step 6), unless its fix meets one of that rule's limits.
+**Not for:** routine verification, routine records, small documentation fixes, exact-head code review, or a review finding's fix-or-carry that the workflow's rule decides (step 6), unless its fix meets one of that rule's limits. **A CI failure that seems to call for a re-run does come to it first** (OD-58; the manager workflow, "Actions re-runs"), with options that need no action from Nathan.
 
 **Timing:** a consequential decision waits for the Dev Manager's answer unless Nathan directs otherwise. Routine work continues meanwhile.
 

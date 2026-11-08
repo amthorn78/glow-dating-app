@@ -136,6 +136,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-09 | 8 Nov 2026 | accuracy | The two uses-table rows for C3's delta re-review were created without the PR field, which App Manager 9's earlier rows carry; the skill's printed row has no PR key | Dev Manager 3, DM-40 section 8 |
 | AM9-10 | 8 Nov 2026 | process | After C4's run of record failed, asked Nathan to use "Re-run failed jobs" on the run page, posted the same request on PR40, and bundled a relay that depended on it; the CI question should have gone to the Dev Manager first (OD-32), and Nathan does not perform GitHub operations | Nathan (OD-58) |
 | AM9-11 | 8 Nov 2026 | accuracy | The review log's DM-40 row (`7983b31`) and DM-41 row (`9e0334a`) linked their consultations as `../ephemeral/`, which resolves under `docs/continuity/`; the log's other rows use `../../ephemeral/` | App Manager 9, syncing Notion |
+| AM9-12 | 8 Nov 2026 | follow-through | The OD-58 batch's supersession sweep (step 5) missed two governing texts that still put a GitHub operation on Nathan or kept CI re-runs from the Dev Manager: the charter's "Not for" ("CI reruns") and step 7's branch-cleanup sentence ("the names to delete go to Nathan"). Recorded by App Manager 10 (OD-11; DM-41 7.2) | Dev Manager 4 (DM-41 6.3, 6.4) |
 
 ## App Manager 2
 
@@ -1064,8 +1065,8 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **What happened:** C4 stopped because its push run, 42464917902, failed in two jobs that C4 does not touch: a 504 while `setup-python` downloaded Python, and a rendered test that calls `page.goBack()` straight after a logout click. The manager verified C4's code, diagnosed both failures, and then asked Nathan to use "Re-run failed jobs" on the run page. It posted the same request on PR40, and gave him a relay for C4's session that depended on that re-run. It followed the manager workflow's "Actions re-runs" line, which says to do exactly that.
 - **Caught by:** Nathan, the same day: *"no, rejected, asking me to do github actions is incorrect. You are failing at process."* (OD-58).
 - **Effect:** none on the code or the runs; nothing was re-run. The PR comment carried the request until it was marked withdrawn.
-- **Correction:** the PR comment is marked withdrawn; how to handle the failure goes to the Dev Manager as DM-41; the workflow line is replaced (OD-58), for the Dev Manager's read before PR40 merges; App Manager 10 receives DM-41's report.
-- **Prevention:** the manager never asks Nathan to perform a GitHub operation (a re-run, a comment, a merge, a setting). A CI failure, or any question about how to verify a head, goes to the Dev Manager first (OD-32), with options that need no action from Nathan. A written procedure that puts a GitHub operation on Nathan is reported to the Dev Manager as a conflict, not followed.
+- **Correction:** the PR comment is marked withdrawn; how to handle the failure goes to the Dev Manager as DM-41; the workflow line is replaced (OD-58), for the Dev Manager's read before PR40 merges; App Manager 10 receives DM-41's report. DM-41 found two more texts that put the old rule in force, missed by the sweep (AM9-12): the charter's "Not for" ("CI reruns") and step 7's branch-cleanup sentence ("the names to delete go to Nathan"); App Manager 10 replaced both in DM-41's words (6.3, 6.4).
+- **Prevention:** the manager never asks Nathan to perform a GitHub operation (a re-run, a comment, a merge, a setting). A CI failure that seems to call for a re-run, or any question about how to verify a head, goes to the Dev Manager first (OD-32), with options that need no action from Nathan (DM-41 6.2, 7.1). A written procedure that puts a GitHub operation on Nathan is reported to the Dev Manager as a conflict, not followed.
 
 ### AM9-11 — Two review-log links resolved to a missing folder (accuracy)
 
@@ -1074,3 +1075,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** two broken links in the log, from 3 to 8 November; nothing else.
 - **Correction:** both links corrected in the handover batch.
 - **Prevention:** before each records commit, resolve every relative link added in it and confirm that the target exists.
+
+### AM9-12 — The OD-58 sweep missed two governing texts (follow-through)
+
+- **What happened:** App Manager 9's OD-58 batch replaced the manager workflow's "Actions re-runs" line and the start prompt's rule, but its supersession sweep did not find two other governing texts that conflicted with OD-58: the charter's "Not for", which excluded "CI reruns" from the Dev Manager, and step 7's branch-cleanup sentence, which said that when a cleanup run fails "the names to delete go to Nathan".
+- **Caught by:** Dev Manager 4, in DM-41 (6.3, 6.4, 7.2). Recorded by App Manager 10 (OD-11).
+- **Effect:** none acted on; both texts stood from 8 November, 09:37 UTC, until App Manager 10 replaced them.
+- **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
+- **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
