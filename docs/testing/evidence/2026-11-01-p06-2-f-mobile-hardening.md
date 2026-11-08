@@ -1437,3 +1437,83 @@ Foundation push run [42494621474](https://github.com/amthorn78/glow-dating-app/a
 - **Next:** DM-43 ([consultation](../../ephemeral/2026-11-08-dm-43-p06-2-f-c6-review-finding.md)), with F-1, the next correction's form and review, and DM-42's deferred confirmations. No correction prompt is written before its answer.
 - **After the record's push** (`ef45762`): Codex found F-1 again, with R1's `lengthOf` form (the thread at `display-rule.test.ts:496`, answered and left open until C7 is on PR40); push run 42500238795 and PR run 42500243445 on `ef45762` passed every job.
 - **DM-43's answer** ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-43-p06-2-f-c6-review-finding.md), `3a1c6a0`, a read of `ef45762`; integrated at `62470db`): F-1 is a DM-42 5.3 form. Option (a) is approved with 1.1 to 1.4: the callback sentence names the compared type at each place (the rest parameter's own array type at a rest place), mapped clause by clause to the rule, with an R1 entry and an H1 entry, comments only, in correction C7; (b) declined. DM-42 3.1 is withdrawn in part. F-2's correction above stands as made. The CI policy's `504` count becomes three runs (4.1), applied. Next: correction C7 ([prompt](../../ephemeral/2026-11-08-p06-2-f-c7-correction-prompt.md), revision 1).
+
+## Correction C7 (8 November 2026)
+
+- **Work:** the brief's "Correction C7", on DM-43's terms ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-43-p06-2-f-c6-review-finding.md), conditions 1.1 to 1.3).
+- **Prompt:** [`docs/ephemeral/2026-11-08-p06-2-f-c7-correction-prompt.md`](../../ephemeral/2026-11-08-p06-2-f-c7-correction-prompt.md), revision 1, from `86e65dc6c5e707a61525b4b9a92fed7c5421a492` of the manager branch. Branch `claude/practical-cannon-1sag8n`.
+- **Environment check (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set; no `STREAM_*` name is set; `GITHUB_TOKEN` and `GH_TOKEN` are present and were not read. Node v24.19.0 and npm 11.9.0 from `$HOME/.local/bin`, put first on `PATH`. Each npm and node command ran under `env -i` with `PATH`, `HOME` and `LANG`, and, for `npm ci --ignore-scripts` only, the proxy and certificate variables passed by reference.
+- **Start gate:** passed. `HEAD` was `86e65dc`, the live manager head; its non-Markdown files equal `6913cc0`'s, as do the live head's; the record carried no "Correction C7" heading.
+- **Code head:** `d27324b831e29f482015d4b6d694bc14bf38bc27`, one commit, `apps/mobile/src/chat/display-rule.test.ts` only (+15 −4), comments only.
+
+### The comment's words, as `d27324b` carries them
+
+Line numbers are in `apps/mobile/src/chat/display-rule.test.ts` at `d27324b`. Each text is word for word as DM-43 gives it; **no narrowing** was needed.
+
+- **The callback item's inline sentence** (`:166-174`), in place of C6's sentence (`6913cc0`, `:166-172`, as "Correction C6" quotes it). The rest of the item is unchanged, and its lines after the sentence are not rewrapped:
+
+  > An inline arrow function or function expression that has a contextual type is compared at each parameter that has a type annotation, as a widening (above), with the annotation as the expected type and the type of the parameter in the same place in each call signature of that type (of each member, for a union) as the data's type. Places are counted as written: a declared `this` takes the first place in the function's list and none in the signature's, and a rest parameter of the signature takes one place, where the data's type is the rest parameter's own array type, not its element type; a parameter with no parameter in its place is not compared [15]. What it returns is checked as a widening (above).
+
+- **"What it is known to pass" gains one entry** (`:249-253`), after the entry for a parameter after a rest parameter (DM-43 1.2):
+  - A parameter at a rest parameter's place whose annotation declares only names the array type also has (C6's delta review, F-1): `const lengthOf: (...entries: ConversationMessage[]) => string = (first: { at: string; length?: number }) => String(first.length ?? '')`, then `lengthOf(message)`. The same holds for other array members' names, such as `keys`, and at a rest parameter's place after other parameters.
+- **"What harmless code it refuses" gains one entry** (`:266-269`), before the source check's path list (DM-43 1.2):
+  - an annotation of the element type at a rest parameter's place: `const textOf: (...entries: ConversationMessage[]) => string = (first: ConversationMessage) => first.text ?? ''`, then `textOf(message)`, fails as `a widening callback parameter: first: ConversationMessage`, since the data's type there is the array type (C6's delta review, H1);
+
+**What this section supersedes.** These words replace the callback item's inline sentence as "Correction C6" states it. That section is not edited.
+
+**The probes behind the words** are DM-43's table and its clause-by-clause map ([report](../../continuity/dev-manager/reviews/2026-11-08-dm-43-p06-2-f-c6-review-finding.md), sections 1 and 3.3), with DM-42's table; they are not repeated here. At `d27324b` the inline rule's lines that section 3.3 maps are `:500-507` (they were `:489-496` at `6913cc0`; only comment lines above them were added).
+
+### Checks
+
+- **The quoted texts, by script.** A Python script (run with `python3 -I`) joined the render-rule comment block, stripped the ` * ` prefixes, normalized whitespace, and searched it for each text taken from DM-43's report file itself (1.1's quotation; 1.2's two entries, the first with its bold markers removed):
+
+  ```
+  1.1 callback sentence: present word for word, once (707 chars)
+  1.2 known-pass entry (R1): present word for word, once (409 chars)
+  1.2 harmless entry (H1): present word for word, once (341 chars)
+  C6 sentence: absent
+  C6 sentence was present at 6913cc0: True
+  R1 entry after the rest-parameter (finding 2) entry: True
+  H1 entry just before the source check's path list: True
+  barred words in the added texts: none
+  RESULT pass
+  ```
+
+  "Barred words" searched the three added texts for the five words DM-38 4.2 bars.
+- **Only comments changed** (DM-43 1.3). `git diff --name-only 6913cc0 HEAD -- . ':(exclude)*.md'` lists only `apps/mobile/src/chat/display-rule.test.ts`, and no changed line of it is other than a ` * ` comment line (count of other changed lines: `0`). A Node script outside the checkout parsed `6913cc0`'s file and `d27324b`'s with the app's TypeScript (`ts.createSourceFile`), dumped each tree by node kind with leaf text (comments are trivia, not nodes), and printed each with `ts.createPrinter({ removeComments: true })`:
+
+  ```
+  nodes (old, new): 11941 11941
+  comment-free trees identical: true c759b217771fe055 c759b217771fe055
+  comment-free printed sources identical: true 4a40da2eeb804860 4a40da2eeb804860
+  ```
+
+  The printed prefix is the one "Correction C6" recorded. (The tree hash differs from the C6 review's `6f07f9e1bb103b17` because the dump's format differs; both sides here use the same dump.)
+- **The new entries' examples, as real edits.** A scratch copy of `86e65dc` outside the checkout (`git archive`), with C7's test file in place and the checkout's `node_modules` (from `npm ci --ignore-scripts`) linked. Each form was an edit to `MessageRow` in `screen.tsx`, its declaration after `const delivery` and its expression rendered in a `<Text>`; none of the four uses `Loose`, so it was not declared. Each ran `node --test src/chat/display-rule.test.ts`, `npx tsc --noEmit` and `npx eslint src/chat/screen.tsx`; `screen.tsx` was restored after each and its SHA-256 (prefix `3aef02c392c546db`) confirmed. The unmodified copy passed 21 of 21.
+
+  | ID (DM-43) | Form | Render test | `tsc`, ESLint | Reason reported |
+  |---|---|---|---|---|
+  | R1 | `lengthOf`, as the entry gives it, rendering `lengthOf(message)` | **Passes, 21 of 21** | clean | — |
+  | R3 | `(first: { at: string; keys?: string }) => first.keys ?? ''` against `(...entries: ConversationMessage[]) => string`, rendering `keysOf(message)` | **Passes, 21 of 21** | clean | — |
+  | R4 | `const viaMap: (head: number, ...rest: ConversationMessage[]) => string = (head, item: { at: string; length?: number }) => String(item.length ?? head)`, rendering `viaMap(0, message)` | **Passes, 21 of 21** | clean | — |
+  | H1 | `textOf`, as the entry gives it, rendering `textOf(message)` | Refused, 19 of 21 | clean | `a widening callback parameter: first: ConversationMessage` |
+
+  Each result is as DM-43's table gives it and as the new words predict: at a rest place the data's type is the array, which declares `at`, `length` and `keys` but not `text`.
+- **The local checks,** in `apps/mobile`: `npm ci --ignore-scripts` completed; `npm run check` exit 0 (typecheck and lint clean; `tests 650`, `pass 650`, `fail 0`); `node --test src/chat/display-rule.test.ts`: `tests 21`, `pass 21`, `fail 0`.
+
+### Run of record
+
+Foundation push run [42503721311](https://github.com/amthorn78/glow-dating-app/actions/runs/42503721311) on `d27324b`, attempt 1, completed `success`. Nothing else was pushed until it completed (AM8-20).
+
+- **Jobs, eight of eight `success`:** Change scope, API checks, API artifact checks, API mobile smoke, Stream proof checks, Database proof checks, Mobile checks, Foundation gate.
+- **The gate's line:** `Application checks passed`.
+- **Counts:** Mobile checks' `npm run check` in `apps/mobile`, `tests 650`, `pass 650`, `fail 0` (the job's earlier `npm run check` in `packages/contracts`: 586 of 586); rendered fixture checks `97 passed (5.0m)`; the render-rule test's first case, "today's chat screens and list rows pass both render-rule checks (M05 finding 18)", passed. The Mobile log (2,333 lines, read whole by script) has no `##[warning]` or `##[error]` line.
+- **The toolchain retry:** it did not fire. "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" are `skipped` in each of the four jobs that carry them (API checks, API mobile smoke, Stream proof checks, Database proof checks), and each first `setup-python` step is `success`.
+
+### What C7 did not run, and limits
+
+- **Rendered tests** were not run here (`playwright install` is not run in this environment, and C7 changes no rendered path); CI's run above is the evidence. `check:expo` and `export:development` were not run here; C7 changes no dependency or bundled code.
+- R2, R5, TU1 and G1 were not re-run; they are DM-43's and the review's (DM-43 3.2).
+- The probes are evidence that the words match the rule for the forms tried, not proof that no other form fits inside them (DM-43 section 5).
+- DM-43 1.3's carried-items line (R1, R3, R4 and H1 in (c)'s inputs) is the manager's, and C7 did not edit that file.
+- The jobs list of the run was read once with `gh api` (read-only); the rest through the GitHub tools.
