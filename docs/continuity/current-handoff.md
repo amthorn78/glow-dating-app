@@ -1,4 +1,4 @@
-# Current handoff — App Manager 10 (8 November 2026; P06.2-F, the merge)
+# Current handoff — App Manager 10 (8 November 2026; P06.2-F merged; P06.3 next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -6,31 +6,29 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager: App Manager 10**, created by App Manager 9 at Nathan's direction (OD-58), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; PR40 stays), subscribed to PR40.
+- **Manager: App Manager 10**, created by App Manager 9 at Nathan's direction (OD-58), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; PR40 merged and unsubscribed; the next PR is opened from this branch when the next records or code batch needs one).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
-- **Now: P06.2-F**, the mobile hardening ([brief](../planning/p06-2-f-mobile-hardening.md), revision 7; [record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md)), in PR40. C1 to C5 are verified and integrated (C4's code through C5's run; [DM-41](../continuity/dev-manager/reviews/2026-11-08-dm-41-p06-2-f-c4-run-failure.md)).
-- **Correction C6 is done and integrated** (code head `6913cc0`, merged at `80383d8`; runs 42494621474 and 42498252005 green): [DM-42](../continuity/dev-manager/reviews/2026-11-08-dm-42-p06-2-f-c5-review-findings.md)'s comment-only words. Its delta review asked for changes: a form at a rest parameter's place passes (F-1; the record, "Delta review of correction C6"). [DM-43](../continuity/dev-manager/reviews/2026-11-08-dm-43-p06-2-f-c6-review-finding.md) (`3a1c6a0`, merged at `62470db`) approved comment-only words that name the compared type at each place. **Correction C7 is done and integrated** (code head `d27324b`, merged at `ed95d83`; run 42503721311 green; the record, "Manager verification of correction C7"). Its delta review **approved** it (the record, "Delta review of correction C7"). **Now: PR40's merge,** after the PR run and Codex on the final head and the pre-merge checklist (manager workflow, step 7); no Dev Manager read is needed first (DM-43 section 6).
+- **P06.2-F is done:** merged with PR40 at `8031361` (8 November 2026; [brief](../planning/p06-2-f-mobile-hardening.md), revision 7; [record](../testing/evidence/2026-11-01-p06-2-f-mobile-hardening.md), with the merge receipt). Its prompts are pruned; links are pinned at `8031361`. View models (option (c)) are carried to before P11 serves the chat reads ([carried items](../planning/carried-to-later-items.md)).
+- **Next: P06.3** (OD-49), named to Nathan before it starts; its brief goes to the Dev Manager where the charter requires. DM-43's deferred confirmations (C7's prompt, its words, 4.1's text) ride the next consultation.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
-- **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2 and P09.3a ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
+- **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a and P06.2-F ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-43, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (8 November 2026, 18:34 UTC, App Manager 10)
+## Waiting checkpoint (8 November 2026, 18:49 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | GitHub Actions and Codex (external parties) | The PR run and Codex's review on PR40's final head | Codex: `@codex review` once after 60 minutes (OD-53); a red run goes to the Dev Manager first (OD-32), never a re-run by Nathan (OD-58) |
+| Nobody | — | P06.2-F is merged; App Manager 10 names P06.3 to Nathan and writes its brief | — |
 
 ## Next actions (App Manager 10)
 
-1. **Merge PR40** with the expected-head guard once the checklist is filled; record the merge receipt (the cleanup run, `git ls-remote`, `main`'s push run) and prune P06.2-F's prompts.
-2. **Then** the Dev Manager's next consultation carries DM-43's deferred confirmations (C7's prompt, its words, 4.1's text).
-3. **Then** P06.3 and the slices, each named to Nathan before it starts (OD-49); the second A05 message before SV2's brief (the carried-items file).
+1. **P06.3:** name it to Nathan (OD-49), read its plan entry and the carried items it owns, write its brief, and take it to the Dev Manager where the charter requires, with DM-43's deferred confirmations in the same consultation.
+2. **Then** the server slices SV1 to SV4 (OD-49); the second A05 message before SV2's brief (the carried-items file).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (`git ls-remote`, 8 November 2026, 18:34 UTC)
+## Branches and PRs (`git ls-remote`, 8 November 2026, 18:49 UTC)
 
-- **Open: PR40** (P06.2-F), from the manager branch. `main` is at `bac3c19`.
-- **Kept, by the cleanup's keep-list:** `main`, the manager branch, and `claude/dev-manager` (`3a1c6a0`, merged into the manager branch).
-- **In PR40's item, all merged into the manager branch:** `claude/practical-wozniak-fg1e2i` (`02f1972`), `claude/trusting-cori-gxlila` (`0e98f25`), `claude/inspiring-ramanujan-tjpril` (`3c0acfe`), `ccr-7506019b-5rfdfn` (`14e37a6`), `claude/upbeat-mccarthy-499h9k` (`691dfba`, C4) `claude/inspiring-ride-chqpjx` (`e4f9728`, C5) `claude/charming-albattani-o8i1cb` (`e0910c7`, C6) and `claude/practical-cannon-1sag8n` (`927ebbd`, C7); the cleanup deletes each once PR40 merges into `main`.
+- **Open PRs:** none. `main` is at `8031361` (PR40's merge).
+- **Remote branches:** `main`, the manager branch `claude/magical-wozniak-yfmmx2` (`7feba0d`, PR40's head, merged) and `claude/dev-manager` (`3a1c6a0`, merged), each kept by the cleanup's keep-list. Cleanup run 42511605823 deleted the eight P06.2-F session branches, each merged into `main`.
