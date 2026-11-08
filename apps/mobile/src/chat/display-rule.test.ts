@@ -164,10 +164,12 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  *   or `{}`];
  * - a callback whose parameter widens what it is given, or whose return of Glow's data is
  *   widened. An inline arrow function or function expression that has a contextual type is
- *   compared at each parameter that has a type annotation, against the parameter in the same
- *   place in each call signature of that type (of each member, for a union). Places are counted
- *   as written: a declared `this` takes the first place in the function's list and none in the
- *   signature's, and a rest parameter of the signature takes one place; a parameter with no
+ *   compared at each parameter that has a type annotation, as a widening (above), with the
+ *   annotation as the expected type and the type of the parameter in the same place in each
+ *   call signature of that type (of each member, for a union) as the data's type. Places are
+ *   counted as written: a declared `this` takes the first place in the function's list and none
+ *   in the signature's, and a rest parameter of the signature takes one place, where the data's
+ *   type is the rest parameter's own array type, not its element type; a parameter with no
  *   parameter in its place is not compared [15]. What it returns is checked as a widening
  *   (above). Another expression whose type has a call signature (a function's name, a
  *   `useCallback` result, a property read such as `view.line`) is compared at each parameter and
@@ -244,6 +246,11 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  * - A parameter after a rest parameter of the contextual signature (finding 2): `const join:
  *   (...entries: ConversationMessage[]) => string = (first, second: Loose) => second.name ??
  *   String(first.text)`, then `join(message, message)`.
+ * - A parameter at a rest parameter's place whose annotation declares only names the array type
+ *   also has (C6's delta review, F-1): `const lengthOf: (...entries: ConversationMessage[]) =>
+ *   string = (first: { at: string; length?: number }) => String(first.length ?? '')`, then
+ *   `lengthOf(message)`. The same holds for other array members' names, such as `keys`, and at
+ *   a rest parameter's place after other parameters.
  *
  * What harmless code it refuses. Each fails closed:
  * - F0's family: a harmless `<FlatList data={conversation.messages} … />` fails with `a widening
@@ -256,6 +263,10 @@ test('every copy table and label in copy.ts names no provider (M05 finding 18; A
  * - inferred predicates, such as `.filter(text => text !== null)` over strings, since TypeScript
  *   infers `text is string`;
  * - Node's `assert`, whose `asserts value` is not the default library's;
+ * - an annotation of the element type at a rest parameter's place: `const textOf: (...entries:
+ *   ConversationMessage[]) => string = (first: ConversationMessage) => first.text ?? ''`, then
+ *   `textOf(message)`, fails as `a widening callback parameter: first: ConversationMessage`,
+ *   since the data's type there is the array type (C6's delta review, H1);
  * - the source check's path list, which refuses `conversation.messages.at(-1)`, `.toReversed()`
  *   and `.filter(…)`.
  * The record names more. The next author who meets one changes the design (DM-38 2.5), not the
