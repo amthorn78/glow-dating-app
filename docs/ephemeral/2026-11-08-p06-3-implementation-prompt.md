@@ -73,7 +73,7 @@ There is no real push transport, push credential, network client or native modul
 git fetch origin claude/magical-wozniak-yfmmx2 main
 git switch -C <your session branch> <START_SHA>   # your branch starts at this prompt's commit
 git rev-parse HEAD                                  # must print <START_SHA>
-git merge-base --is-ancestor 803136196ed68161aca55d46bd6fb8305954bdef HEAD && echo "PR40 present"   # main's merge of P06.2-F; must print "PR40 present"
+git merge-base --is-ancestor 7feba0dbc3813ab71629b3f5e0f390a64d31289f HEAD && echo "PR40 present"   # PR40's head; main's merge 8031361 has the same tree. Must print "PR40 present"
 git diff --name-only 803136196ed68161aca55d46bd6fb8305954bdef HEAD | grep -v -E '\.md$'             # against main: must print nothing
 git diff --name-only <START_SHA> origin/claude/magical-wozniak-yfmmx2 -- apps/mobile services/api 'docs/testing/evidence/*p06-3-notifications*'   # must print nothing
 grep -E '"(expo|expo-router|react-native)":' apps/mobile/package.json                              # expected: expo 58.0.22, expo-router 58.0.29, react-native 0.88.1
