@@ -135,6 +135,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM9-08 | 8 Nov 2026 | accuracy | DM-40's option (a) proposed narrowed words for finding 1 ("an object property holding a function, given by reference") without trying forms just inside them; an accessor, a class field and an untyped literal given later pass inside those words | Dev Manager 3, DM-40 section 3 |
 | AM9-09 | 8 Nov 2026 | accuracy | The two uses-table rows for C3's delta re-review were created without the PR field, which App Manager 9's earlier rows carry; the skill's printed row has no PR key | Dev Manager 3, DM-40 section 8 |
 | AM9-10 | 8 Nov 2026 | process | After C4's run of record failed, asked Nathan to use "Re-run failed jobs" on the run page, posted the same request on PR40, and bundled a relay that depended on it; the CI question should have gone to the Dev Manager first (OD-32), and Nathan does not perform GitHub operations | Nathan (OD-58) |
+| AM9-11 | 8 Nov 2026 | accuracy | The review log's DM-40 row (`7983b31`) and DM-41 row (`9e0334a`) linked their consultations as `../ephemeral/`, which resolves under `docs/continuity/`; the log's other rows use `../../ephemeral/` | App Manager 9, syncing Notion |
 
 ## App Manager 2
 
@@ -1065,3 +1066,11 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none on the code or the runs; nothing was re-run. The PR comment carried the request until it was marked withdrawn.
 - **Correction:** the PR comment is marked withdrawn; how to handle the failure goes to the Dev Manager as DM-41; the workflow line is replaced (OD-58), for the Dev Manager's read before PR40 merges; App Manager 10 receives DM-41's report.
 - **Prevention:** the manager never asks Nathan to perform a GitHub operation (a re-run, a comment, a merge, a setting). A CI failure, or any question about how to verify a head, goes to the Dev Manager first (OD-32), with options that need no action from Nathan. A written procedure that puts a GitHub operation on Nathan is reported to the Dev Manager as a conflict, not followed.
+
+### AM9-11 — Two review-log links resolved to a missing folder (accuracy)
+
+- **What happened:** the review log's DM-40 row, written at `7983b31`, and DM-41 row, written at `9e0334a`, linked their consultations as `../ephemeral/…`. From `docs/continuity/dev-manager/` that resolves to `docs/continuity/ephemeral/`, which does not exist. The log's other 30 consultation links use `../../ephemeral/`.
+- **Caught by:** App Manager 9, checking every relative link in its handover batch before creating its successor.
+- **Effect:** two broken links in the log, from 3 to 8 November; nothing else.
+- **Correction:** both links corrected in the handover batch.
+- **Prevention:** before each records commit, resolve every relative link added in it and confirm that the target exists.
