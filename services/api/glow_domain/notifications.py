@@ -38,7 +38,9 @@ revokes that account's registration, in the same unit of work. A command carries
 account, its current session and its installation (``Caller``), never as intent fields, and a
 session that is no longer current is refused. Each registration records the session that last
 registered or rotated it; a registration whose session is no longer current is not active for
-the composer. ``logout`` revokes the registrations the ending session made, and no other.
+the composer. ``logout`` revokes the registrations the ending session made, and no other; it is
+the system's F12 logout for any session that ends, which SV4 wires to ``session_revoked`` and
+``session_expired`` (the brief, D9).
 
 **Versions, at fixture scope.** The contract's ``NotificationSettings`` has one ``version`` and
 one ``device_state``, so one number must let the app address both the installation's
