@@ -1,7 +1,7 @@
 # P06.3 — Privacy-safe notifications at fixture scope: evidence record
 
 - **Work:** P06.3, privacy-safe notifications at fixture scope ([brief](../../planning/p06-3-notifications.md), revision 2; Outcome items 1 to 5, D1 to D12; [DM-44](../../continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md)).
-- **Prompt:** [`docs/ephemeral/2026-11-08-p06-3-implementation-prompt.md`](../../ephemeral/2026-11-08-p06-3-implementation-prompt.md), revision 1, from `f9253bd9b0356c95a491df553b17b595105935fd` of the manager branch `claude/magical-wozniak-yfmmx2`.
+- **Prompt:** [`docs/ephemeral/2026-11-08-p06-3-implementation-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/da92f1fb71da6c93fae8a747f62c718800a12ae9/docs/ephemeral/2026-11-08-p06-3-implementation-prompt.md), revision 1, from `f9253bd9b0356c95a491df553b17b595105935fd` of the manager branch `claude/magical-wozniak-yfmmx2`.
 - **Session:** one implementation session, started by Nathan, 8 and 9 November 2026 (UTC). Branch `claude/gallant-lovelace-vwgu69`, started at `f9253bd`.
 - **Code commits:** `e7cb4e9` (Outcome items 1 and 2, `services/api`), then `9c4fef54c71829dea2820a3f9fb66f32ddad57d2` (Outcome items 3 and 4, `apps/mobile`, and one docstring sentence in `notifications.py`). **Code head:** `9c4fef54c71829dea2820a3f9fb66f32ddad57d2`. **Records head:** the last commit on the branch, Markdown only (this record); no code after the code head.
 - **Run of record:** push run **42540179430** on `9c4fef5`: all eight jobs `success`, `Application checks passed`, API `Ran 421 tests`, mobile unit `ℹ tests 680`, rendered **`104 passed (4.7m)`**, Mobile 6 min 43 s of 25, no toolchain retry.
@@ -300,7 +300,7 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
 
 ## Correction C1
 
-- **Prompt:** [`docs/ephemeral/2026-11-09-p06-3-c1-correction-prompt.md`](../../ephemeral/2026-11-09-p06-3-c1-correction-prompt.md), revision 1, from `3a2b930057f5a952023dc26a55c3338ce6dd5b46` of the manager branch `claude/magical-wozniak-yfmmx2`. Its specification is the brief's revision 3, "Correction C1", items 1 to 4.
+- **Prompt:** [`docs/ephemeral/2026-11-09-p06-3-c1-correction-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/da92f1fb71da6c93fae8a747f62c718800a12ae9/docs/ephemeral/2026-11-09-p06-3-c1-correction-prompt.md), revision 1, from `3a2b930057f5a952023dc26a55c3338ce6dd5b46` of the manager branch `claude/magical-wozniak-yfmmx2`. Its specification is the brief's revision 3, "Correction C1", items 1 to 4.
 - **Session:** one correction session, started by Nathan, 9 November 2026 (UTC), in `Glow App - No Stream`. Branch `claude/peaceful-feynman-ozlu2l`, started at `3a2b930`.
 - **Code commits:** `85ae241` (item 1), `109d2ee` (item 2), then `e807ce8719ca0081942081eb7b64db9c28af0bc9` (item 3). **Code head:** `e807ce8`. **Records head:** the commit that adds this section, Markdown only; no code after the code head.
 - **Run of record:** push run **42549675849** on `e807ce8`. All eight jobs `success`, `Application checks passed`, API `Ran 422 tests`, mobile unit `ℹ tests 691`, rendered **`104 passed (5.3m)`**, no toolchain retry.
@@ -452,3 +452,29 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
 
 - **One more record correction,** made here and not in the session's section: "Correction C1", item 2, places the claim "imports only the standard library, `.chat` and `.provider_fixtures`" in Outcome 2. It is in Outcome 1's table (the transport row).
 - **The result:** C1's delta review approves the final code head `e807ce8`. Step 7 follows: the pre-merge checklist, the PR run and Codex on the final head, then the merge.
+
+## The merge receipt (9 November 2026, App Manager 10)
+
+- **PR41 merged** at 03:03:14 UTC as the merge commit `da92f1fb71da6c93fae8a747f62c718800a12ae9`.
+  - Its parents are `8031361` (`main`) and `8d2de72` (PR41's head).
+  - It merged by the expected-head guard (`expectedHeadSha` `8d2de724091f2a7127d207fbc557ea1ced57f690`), after the pre-merge checklist in PR41's description was filled.
+  - `main`'s tree equals `8d2de72`'s. The final head's non-Markdown paths are byte-identical to C1's code head `e807ce8`.
+- **Its checks:**
+  - the trusted policy at `8031361` read full scope (`behavior-or-empty`), with one merge base, `7feba0d`;
+  - PR run 42553342404 on `8d2de72` passed all eight jobs. The gate printed `Application checks passed`, rendered `104 passed (5.3m)`, and every DM-41 wait and retry step was skipped;
+  - push run 42553336023 on the same head passed;
+  - Codex's code review of `8d2de72` completed at 02:55:22 UTC with no findings. PR41's one Codex thread, F-C1, was answered and resolved;
+  - the exact-head review, correction C1 and C1's delta review are recorded above;
+  - PR41 carries no governing Markdown.
+- **The cleanup run** 42554232876 passed and deleted the two P06.3 session branches, each "merged into main": `claude/gallant-lovelace-vwgu69` (`7775bba`, the implementation) and `claude/peaceful-feynman-ozlu2l` (`9686efe`, C1). It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The two review sessions pushed no branch.
+- **`git ls-remote`** after it (03:03 UTC): `main` at `da92f1f`, the manager branch at `8d2de72`, `claude/dev-manager` at `65618c1`, and nothing else. PR41's activity subscription is ended.
+- **`main`'s push run** 42554232777 on `da92f1f`: in progress when this receipt was committed, with five of its jobs passed (Change scope, API checks, API artifact checks, Stream proof checks, API mobile smoke) and the database proof and Mobile checks running. Its result follows in the next records commit.
+- **Pruned:** P06.3's five prompts and consultations in `docs/ephemeral/`: DM-44's consultation, the implementation prompt, the exact-head review prompt, C1's prompt and C1's delta review prompt.
+  - Their unique content lives in the brief, this record and DM-44's report.
+  - The eight links to them, in the brief, this record and the review log, are pinned at `da92f1f`, where each file exists.
+  - Text that names a prompt's path, as this record's checklist lines do, stays true as history.
+- **P06.3 is done.** Carried forward, in the carried-items file:
+  - to SV4: DM-44 7.2's entry, the optional revoke-when-all-off, and F-4;
+  - to P09: F-5 and N-1.
+
+  To the Dev Manager's next consultation: DM-44 1.3's confirmation, and the reasoning for writing C1 without a consultation.
