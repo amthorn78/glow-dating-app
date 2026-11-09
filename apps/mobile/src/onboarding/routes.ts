@@ -4,7 +4,7 @@ import { FIXTURE_POLICY } from './policy.ts';
 export const SAFE_ROUTES = ['/account', '/verify', '/eligibility', '/birth', '/remaining', '/restricted',
   '/recommended', '/explore', '/recovery', '/reset-password', '/development',
   '/profile', '/profile-edit', '/preferences', '/profile-preview', '/media', '/matches', '/match',
-  '/conversations', '/conversation'] as const;
+  '/conversations', '/conversation', '/notifications'] as const;
 export type SafeRoute = typeof SAFE_ROUTES[number];
 
 /** Only fixed public screen identifiers enter routing. Never propagate query parameters or private values. */
@@ -30,7 +30,7 @@ export function canAccessRoute(route: SafeRoute, state: OnboardingSnapshot): boo
     ['active', 'suspended', 'deletion_pending'].includes(state.account.state);
   // Messaging needs a current active account; a restricted participant can only end a connection.
   if (route === '/conversations' || route === '/conversation') return active;
-  if (route === '/eligibility' || ['/profile', '/profile-edit', '/preferences', '/profile-preview', '/media'].includes(route)) return active;
+  if (route === '/eligibility' || ['/profile', '/profile-edit', '/preferences', '/profile-preview', '/media', '/notifications'].includes(route)) return active;
   const eligibleForBirth = active && state.adult === 'pass' && state.consent.state === 'accepted' && state.consent.policy_version === FIXTURE_POLICY.version;
   if (route === '/birth') return eligibleForBirth;
   return route === '/remaining' && eligibleForBirth && state.birth !== null;
