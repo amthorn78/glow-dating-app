@@ -468,7 +468,7 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   - PR41 carries no governing Markdown.
 - **The cleanup run** 42554232876 passed and deleted the two P06.3 session branches, each "merged into main": `claude/gallant-lovelace-vwgu69` (`7775bba`, the implementation) and `claude/peaceful-feynman-ozlu2l` (`9686efe`, C1). It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The two review sessions pushed no branch.
 - **`git ls-remote`** after it (03:03 UTC): `main` at `da92f1f`, the manager branch at `8d2de72`, `claude/dev-manager` at `65618c1`, and nothing else. PR41's activity subscription is ended.
-- **`main`'s push run** 42554232777 on `da92f1f`: in progress when this receipt was committed, with five of its jobs passed (Change scope, API checks, API artifact checks, Stream proof checks, API mobile smoke) and the database proof and Mobile checks running. Its result follows in the next records commit.
+- **`main`'s push run** 42554232777 on `da92f1f`: all eight jobs passed, and the gate's log prints `Application checks passed` (completed at 03:11:12 UTC; the retry steps were skipped in the four Python jobs). It was still running when this receipt was first committed at `a33875f`.
 - **Pruned:** P06.3's five prompts and consultations in `docs/ephemeral/`: DM-44's consultation, the implementation prompt, the exact-head review prompt, C1's prompt and C1's delta review prompt.
   - Their unique content lives in the brief, this record and DM-44's report.
   - The eight links to them, in the brief, this record and the review log, are pinned at `da92f1f`, where each file exists.
