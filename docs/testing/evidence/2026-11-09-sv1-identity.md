@@ -428,7 +428,7 @@ Every command ran in the clean environment above. Each is **iteration, not evide
 | In `proofs/postgres-ordering`: `.venv/bin/python -m unittest discover -s tests -t . -v` | `Ran 175 tests in 13.024s` … `OK` (160 before; 15 new) |
 | In `proofs/postgres-ordering`: `.venv/bin/ruff check .`; `ruff format --check .`; `mypy` | `All checks passed!`; `51 files already formatted`; `Success: no issues found in 51 source files` |
 | The three `uv pip compile` commands (above) | exit 0 each; each lock checked by package, version and hash against its earlier copy |
-| Migration 0004: `GLOW_ENV=test .venv/bin/python -c "…"`, calling `makemigrations glow_persistence --name account_age_state` inside `glow_persistence.static_check`'s `no_database_access()` after `setup_static_registry()`; then the generated header removed and Ruff's import order and format applied | `0004_account_age_state.py`, SHA-256 `8af86a28d73fb9420b3ec6d59e6c1dcb47dc23c4f21e3c34a2830b171fc1866b` (pinned by `test_migration_0004_adds_the_age_state_only`) |
+| Migration 0004: `GLOW_ENV=test .venv/bin/python -c "…"`, calling `makemigrations glow_persistence --name account_age_state` inside `glow_persistence.static_check`'s `no_database_access()` after `setup_static_registry()`; then the generated header removed and Ruff's import order and format applied | `0004_account_age_state.py`, SHA-256 `8af86a28d73fb9420b3ec6d59e6c1dcb47dc23c4f21e3c34a2830b171fc1866b` (pinned since correction C2 in `test_migration_0003_is_additive_and_0001_0002_are_unchanged`'s `pinned` dictionary; corrected by the manager, "Manager verification of correction C2") |
 | The trusted classifier: `git show dc3e551:scripts/change_scope.py` to the scratch directory (SHA-256 `b564c62f4a076f51…`), then `python3 -I … --base dc3e551… --head <head> --merge-base`, for `46fbd37` and again for `269ac3b` | `{"full": true, "reason": "behavior-or-empty", …}`, 41 paths, both times |
 | The configured specification (above) | two identical generations, with the hashes above |
 | **Local database runs** (P06.DB's D4): see below | the final baseline on `46fbd37`: `identity suite exit 0 in 33 s`, `[identity] cases: 47/47 passed in 32.3 s`, `identity secret scan: clean (684 secrets held; 0 found in 217 log records and 98 writes)`, `IDENTITY VERDICT: PASS`; then the 33 reversals above |
@@ -1230,3 +1230,59 @@ The secret check passed, so the step took its passing branch; the counts-only br
 - **The 429 expectation names the status it got** (a number), so a reversal shows what the sixth was answered.
 - **`strategy.py`'s docstring:** one line break moved by one word, as C2.8 allows.
 - **The F-3 pin's test name:** see item 3.
+
+## Manager verification of correction C2 (App Manager 10, 9 November 2026)
+
+- **The session:** started by Nathan from correction C2's prompt, revision 1, at `2f577f89b53c48b493702eebafad9181d9e7a0d4`. Its branch is `claude/trusting-goldberg-e4ogat`, with code head `6da8061` and records head `080c9a9`. Its report was relayed to App Manager 10.
+- **The diff** (`git diff 2f577f8 080c9a9`): 11 paths, every one an owned path of "Correction C2".
+  - **The non-test lines** (`services/api/glow_identity` and `.github`): 3 files, 19 insertions and 8 deletions, so a delta review on S2's terms applies:
+    - `conf.py`: the setting and its comment;
+    - `strategy.py`: two docstring lines, with no code change;
+    - `foundation.yml`: two hunks, both inside the step "SV1: run the identity suite" of the Database proof checks job. They change its comment and its failed branch, which now prints counts only. The upload's gate is unchanged.
+  - **`authentication.py`, the models, the migrations, the locks and the contracts** are unchanged.
+  - **The tests and the proof:** the setting's merge test, the counts-only test, the guard's allow-list test and the no-link check's cases. The proof records each code where Glow's adapter generates it, and adds the case `ratelimit.password_change`. `clock_ahead` now keeps `monotonic` and `sleep`.
+- **The classification** (`main`'s `scripts/change_scope.py`, extracted outside the tree, `python3 -I`, `--merge-base`):
+  - the whole PR at `080c9a9`: `"full": true`, `behavior-or-empty`, 74 paths, one merge base `8d2de72`;
+  - C2 alone, from `2f577f8`: `"full": true`, 11 paths.
+- **The workflow rule** (`AGENTS.md`): the workflow diff was read whole, and so were the job's actual steps in the run of record (below). Full checks run on the head before the merge.
+- **Re-run by the manager** in a scratch export of `080c9a9`, with the session's pinned environments, in clean process environments:
+  - the API: `manage.py check`, no issues; `Ran 453 tests`, `OK`; Ruff clean, `99 files already formatted`; mypy `no issues found in 57 source files`;
+  - the proof: `Ran 193 tests`, `OK`; Ruff clean, `52 files already formatted`; mypy `no issues found in 52 source files`.
+- **Four reversals of the manager's own,** each restored and checked by SHA-256 against `080c9a9`:
+
+  | # | The temporary edit | The result |
+  |---|---|---|
+  | M1 | the `ACCOUNT_RATE_LIMITS` line removed from `conf.py` | `test_the_briefed_values` errors (`setting='ACCOUNT_RATE_LIMITS'`) and `test_the_password_change_limit_merges_into_allauths_defaults` fails; `FAILED (failures=1, errors=1)` |
+  | M2 | the old `grep` of the suite's result lines put back in the failed branch | `test_after_a_failed_check_the_step_prints_counts_only` fails in 8 subtests, one for each line the old `grep` printed |
+  | M3 | a pattern removal (`[A-Z]{4}-[A-Z]{4}`) in place of the exact codes | `test_a_real_link_fails` fails on "a code-shaped word that was not issued" |
+  | M4 | an alias, `incoming = request`, in `authenticate`: no forbidden name | `test_the_request_reaches_only_allauths_authentication` fails (`use='incoming = request'`) |
+
+- **allauth 65.21.1, re-read:**
+  - F-7's two settings are read only as counts: `EMAIL_VERIFICATION_MAX_CHANGE_COUNT` and `…_MAX_RESEND_COUNT` read `EMAIL_VERIFICATION_SUPPORTS_CHANGE` and `…_SUPPORTS_RESEND`, and a `False` gives 0 (`account/app_settings.py:122-140`). So the session's deviation, pinning both the settings and the counts, is right.
+  - The two code generators the recorder wraps are the adapter's `generate_password_reset_code` and `generate_email_verification_code` (`account/adapter.py:960-970`). allauth's flows call them through `get_adapter()` (`email_verification_by_code.py:97`, `password_reset_by_code.py:74`).
+  - Migration 0004's file at `6da8061` hashes to `8af86a28…1866b`, the pinned value.
+- **The run of record,** push run 42669825647 on `6da8061`, read by the manager:
+  - **Jobs:** all eight passed, with no toolchain retry. The Database proof checks job took 7 min 40 s.
+  - **The identity step:**
+    - 0 of the job's secrets in the output and 0 in the results JSON, and the suite's own scan was clean;
+    - `[identity] PASS ratelimit.password_change (11, D3) 1.6 s`: five wrong current passwords refused, then the sixth, right, 120 to 121 s after the first, answered 429;
+    - `mail.no_link_no_stranger`: 66 messages;
+    - `cases: 49/49 passed in 36.9 s`, `identity secret scan: clean (754 secrets held …)`, `identity phase: 38 s`.
+  - **After it:** the second identity run was refused with the rows unchanged, and `sv1-identity-results` uploaded 3,957 bytes after the scan.
+- **The records push run,** 42671723917 on the session branch's `080c9a9`, concluded `failure` with no job at all. Its log archive is empty (22 bytes), and it lasted 154 s.
+  - No test ran in it, and `080c9a9` changes only three Markdown files after the run of record.
+  - It is not re-run (OD-58). The manager branch's own push run and PR run on this batch's head run every job on the same code. They are read before the delta review's prompt goes to Nathan.
+- **The deviations,** all accepted:
+  - **F-7's names:** right, as above.
+  - **The recorder runs per case,** so `identity_suite.py` is unchanged.
+  - **Issued codes join the secret ledger,** which strengthens the scan.
+  - **The new case checks more:** that no notice is sent and that the session stays valid.
+  - **The 429 message** names the status it got.
+  - **The no-link check removes every code the run issued** from each message, not only that message's own. Codes are never link text, and the forbidden list is unchanged, so what the check looks for is not weakened. The delta review's focus covers it.
+  - **F-3's test name:** the record's commands row named `test_migration_0004_adds_the_age_state_only`, which was outside the session's paths. The manager corrected that row in this batch.
+- **The limits:**
+  - item 4's failed branch ran only offline (CI's scan passed);
+  - item 2's suite-level reversal was not run, since a code spelling `HTTP` is random; the three cases are offline;
+  - the local runs were iteration only, since Docker Hub limited the image pull.
+- **Integrated** by fast-forward of the manager branch to `080c9a9`. Codex's F-1 and F-2 threads on PR42 are answered and resolved once this batch is pushed.
+- **Next:** a delta review of C2 on S2's terms, with the exact-head review's security focus. Its prompt is `docs/ephemeral/2026-11-09-sv1-c2-delta-review-prompt.md`.
