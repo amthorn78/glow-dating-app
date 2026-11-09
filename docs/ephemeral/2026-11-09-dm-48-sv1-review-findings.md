@@ -33,7 +33,7 @@ You may read PyPI's `django-allauth` 65.21.1 wheel, as DM-45 and DM-47 did.
 - **SV1's exact-head review of `bda299e`** reported **changes required**. The record's new section "Exact-head review of SV1" lists each finding with its disposition.
   - No finding is blocking. Two should-fix findings fall in the correction classes (F-1, F-2), with one records correction (F-3) and six nits.
   - The review states that every Dev Manager condition is met in code, every allauth fact in the record holds in 65.21.1, and the workflow's hunks lie inside the Database job.
-  - Its threat model is in the report Nathan relayed. The record summarizes the findings only.
+  - The record holds its threat model, condensed from its report, and its findings.
 - **The PR run on `1c26f1d`** (42642095061) passed all eight jobs.
 
 **Give a verdict on each item:** approved, approved with conditions, changes requested, declined, or refer to Nathan. Where a condition changes text, please give the words (AM9-08).
@@ -44,6 +44,7 @@ You may read PyPI's `django-allauth` 65.21.1 wheel, as DM-45 and DM-47 did.
    - **The budget, per 300 seconds:**
      - today, a holder of a live session key (good for the session's 30 days) or access token gets 25 guesses there, plus the 5 that `auth/reauthenticate` and the sign-in form share through `login_failed`. That is six times the sign-in form's 5, and a guessed password takes the account: set a new one, sign in, reauthenticate, move the address;
      - the brief's D3 now says, in C1.1's words, that a token holder "gets no larger guessing budget than the sign-in form gives". That holds at `auth/reauthenticate` but not here.
+   - **Codex raised it too,** on `30fdf1a` (P2, `services/api/glow_identity/conf.py:71`). It asks for a five-minute budget on this limiter, and a case proving that wrong current passwords exhaust it.
    - **The options:**
      - **(a) Recommended:** `ACCOUNT_RATE_LIMITS = {"change_password": "5/300s/user"}`. It is one setting, on allauth's own limiter. The holder then gets 5 guesses per 300 seconds there, plus the 5 shared through `login_failed`: 10 in all, twice the sign-in form's, down from six times. The residual is recorded in the threat model. A correct guess there still sends the password-changed notice and ends every session (`ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE`).
      - **(b) Parity:** a wrong current password consumes `login_failed`. 65.21.1 offers no hook for it in this input. Glow would have to mount its own route ahead of allauth's, or wrap the view: more Glow code on a security boundary.

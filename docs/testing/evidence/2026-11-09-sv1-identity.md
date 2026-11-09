@@ -927,10 +927,44 @@ Each run had:
   - the dependency set is exactly the brief's;
   - the records hold, apart from F-3, F-6 and F-8.
 
+**The review's threat model**, as its report gives it, condensed:
+- **Assets:**
+  - accounts and addresses, passwords, session keys, access and refresh tokens, and verification and reset codes;
+  - the JWT signing key and the identity `SECRET_KEY`;
+  - `UserSession`'s IP address and user agent.
+- **Actors:**
+  - an anonymous prober;
+  - a holder of a stolen access token, refresh token or session key;
+  - a member acting on another member's account;
+  - a reader of this public repository's CI logs and artifacts.
+- **Entry points:** allauth's 17 `app` routes and `GET /api/v1/account/access`, the actor class, and the identity job's steps.
+
+| Threat | What stops it | What proves it |
+|---|---|---|
+| 1. An endpoint answers more than it should; the phone and code-confirm routes mounted regardless | allauth's refusals; Glow's `get_phone` refusal (`adapter.py:118-124`); the Glow route's `handle_exception` (`views.py:36-44`) | `endpoints.refusals` (29 unauthenticated, 4 signed-in refusals); `config.routes`; the API's 18-route test |
+| 2a. A forged or expired token | `decode_token`: the configured algorithm only, then `exp`, `token_use`, string `jti`, `sub` and `sid` (`jwt/internal.py:182-205`); RS256 with a 2048-bit key per run | `refresh.bad_tokens_refused_without_ending`, `expiry.access_token`, `expiry.refresh_token` |
+| 2b. A token outliving its session or its user's password | stateful validation (`internal.py:35-46`, `:98-107`) through Django's `get_user` | `logout.ends_at_once`, `devices.password_change_ends_both`, `revoke.*`; D2-a |
+| 2c. A replayed rotated refresh token keeping a session | rotation; `replayed_session_key`'s checks, then `end_replayed_session` (`strategy.py:25-49`, `revocation.py:225-234`); nothing done for an ended session | `refresh.replay_ends_session`, `refresh.ended_session_refused_nothing_else`; D2-b, D2-c; R3 |
+| 2d. Expiry at one layer only | `set_expiry` with `expires_at` (`revocation.py:162-165`); Django keeps a date-time expiry across saves | `expiry.account_session`, `signin.records_account_session`; D2-d; the review's probe P2 |
+| 3a. A derived or secret session reference | `UserSession`'s `BigAutoField` key (`revocation.py:149-158`) | `signin.records_account_session`, `signin.reference_not_derived` |
+| 3b. The session key as a bearer credential at allauth's endpoints | allauth's design (N3); Glow never stores, hashes or logs it (`authentication.py:74`) | `logout.ends_at_once`, `verify.used_code_refused`; probe P3: the key alone lists sessions at allauth and is refused at Glow's route |
+| 3c. The `sid` read without `SECRET_KEY` | AES-CTR under `sha256(SECRET_KEY)`, a fresh IV per token; a generated 64-hex-character key, the placeholder refused | `signin.reference_not_derived`; `IdentityKeyFileTests` |
+| 4. One layer outliving the other | Glow's `glow_chat` step first, outside any transaction, then allauth's; both idempotent (`revocation.py:182-273`) | `logout.*`, `revoke.*`, `actor.refuses_revoked_session_between_layers`, `devices.*`, `signin.fails_closed`; D6-c to D6-h; probe P4 |
+| 5. The actor steered by a header, body or query | the `sid` from the validated payload only, bound to the token's user, the key deleted (`authentication.py:63-106`) | `actor.uses_token_sid_not_header`; D7-a; the static guard; R2 (F-5 widens the guard) |
+| 6. Enumeration and guessing | `ACCOUNT_PREVENT_ENUMERATION`; no unknown-account mail; `login_failed`; the `confirm_email` window consumed before the taken-or-new branch | `enum.*`, `ratelimit.failed_sign_ins`, the reauthentication case; D3-a, D3-b, X-ratelimit. **F-2** is the one budget not analysed |
+| 7. A message revealing a link, a stranger, an address, an IP address or a device | `messages.py` words every message; the fixture backend has no network code | `mail.no_link_no_stranger`, `notice.email_change`; X-link, D8-a. **F-1** is the check's own false failures |
+| 8. An address moved without the password | `ACCOUNT_REAUTHENTICATION_REQUIRED`; allauth's guards; the per-session 300-second window; a wrong password consumes `login_failed` | acceptance check 13's case; C1-R1, C1-R2 |
+| 9. The `verified` transition racing or skipping its lock | `mark_verified`'s lock, refusal and retry; `require_no_transaction` at every entry point | `verified.*`, `verify.transition_retried_at_sign_in`, `revoke.inside_transaction_refused`; D6-a, D6-b, X-retry |
+| 10. The served runtime importing the slice | `glow_api/` unchanged | `test_identity_sealed_runtime.py`; D11-a |
+| 11. A restored refresh token; a review sign-in path | the next refresh is the replay that ends the session; no review path, synthetic accounts only | `refresh.replay_ends_session` |
+| 12. A secret in a public log or artifact | key files of mode 0600 by `O_EXCL`; masked values; `identity_scan.py` before anything is shown or uploaded; the suite's ledger; cleanup `if: always()` | the job's check lines in runs 907, 916 and 919; `IdentityScanTests`, `IdentityUploadGateTests`; LOG-a, X-keyfile, C1-R3 to C1-R6 |
+
+**The review's findings and the manager's dispositions:**
+
 | # | Severity | Finding | Disposition |
 |---|---|---|---|
 | F-1 | should fix (class: a test fails where the code is right) | F-M1, confirmed and wider. The no-link check forbids `http` and `www.`. A code group `HTTP` spells `http` (1 in 80,000 per code), and a code ending `WWW` before the sentence's full stop spells `www.` (1 in 8,000 per code). Together that is about 1 in 7,273 per code, or about 0.8 percent of runs. Codex raised the same defect on `1c26f1d` (P2, `identity_cases.py:1641`) | **Fix before the merge, in correction C2** (test-only): strip the message's own code before the check, with cases for `HTTP`, a trailing `WWW` and a real link |
-| F-2 | should fix (class: a token holder gets a larger password-guessing budget than the sign-in form gives; D3's standard) | At `POST account/password/change`, a wrong current password is checked by `check_password` alone (`headless/account/inputs.py:180-184`). It consumes only `change_password`, 5 per minute per user (`headless/account/views.py:400`; `account/app_settings.py:287`), and no `login_failed`. A holder of a live session key or access token gets 7,200 guesses a day, against 1,440 at the sign-in form | **Fix before the merge, in correction C2, after the Dev Manager's read** (DM-48): it changes D3's "allauth's rate limits keep their defaults" (DM-45 item 7) on a security boundary |
+| F-2 | should fix (class: a token holder gets a larger password-guessing budget than the sign-in form gives; D3's standard) | At `POST account/password/change`, a wrong current password is checked by `check_password` alone (`headless/account/inputs.py:180-184`). It consumes only `change_password`, 5 per minute per user (`headless/account/views.py:400`; `account/app_settings.py:287`), and no `login_failed`. A holder of a live session key or access token gets 7,200 guesses a day, against 1,440 at the sign-in form. Codex raised the same finding on `30fdf1a` (P2, `conf.py:71`) | **Fix before the merge, in correction C2, after the Dev Manager's read** (DM-48): it changes D3's "allauth's rate limits keep their defaults" (DM-45 item 7) on a security boundary |
 | F-3 | should fix (class: a record claims more than the tests show) | The record says migration 0004's SHA-256 is pinned by `test_migration_0004_adds_the_age_state_only`. No test pins it: the `pinned` dictionary holds 0003's hash only | **Fix in C2:** pin 0004's hash in the `pinned` dictionary, so the record's sentence holds |
 | F-4 | nit | After a failed secret check, the step prints the suite's own `[identity]` result lines from the log the check failed. Today those lines hold only fixed strings | **In C2:** print counts only after a failed check |
 | F-5 | nit | The static no-header guard does not forbid `request.query_params`, `request.GET`, `request.COOKIES`, `request.POST` or a lowercase `session_token` | **In C2:** widen the guard, and assert that `actor_for` is called with exactly `user, payload` |
