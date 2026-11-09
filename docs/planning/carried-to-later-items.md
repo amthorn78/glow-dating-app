@@ -43,7 +43,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV1 (the identity slice; OD-49)
 
-- **The brief is written:** [`sv1-identity.md`](sv1-identity.md), revision 3 (9 November 2026), folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8). It applies DM-45's and DM-46's conditions as written. The implementation is on `claude/hopeful-cerf-kc91xx` (code head `269ac3b`), verified by the manager (the [SV1 record](../testing/evidence/2026-11-09-sv1-identity.md), "Manager verification"); DM-47 approved correction C1 for an email-change gap and the results upload (the brief, revision 4, "Correction C1"), before the exact-head review.
+- **Done** on 9 November 2026: SV1 merged as PR42 at `c864edd` (the [SV1 record](../testing/evidence/2026-11-09-sv1-identity.md), "The merge receipt"). Its brief, [`sv1-identity.md`](sv1-identity.md), revision 5, folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8) and applies the conditions of DM-45 to DM-48 as written. The exact-head review's written threat model is in the record.
 - **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
 - **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
 - **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
