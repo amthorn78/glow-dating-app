@@ -44,7 +44,7 @@ responsibilities. Models must never be serialized wholesale.
 
 ## Maintained authentication mapping
 
-**As built by SV1** (the [SV1 brief](../planning/sv1-identity.md), revision 3; the
+**As built by SV1** (the [SV1 brief](../planning/sv1-identity.md), revision 5; the
 [SV1 evidence record](../testing/evidence/2026-11-09-sv1-identity.md)), on
 **django-allauth 65.21.1** (`django-allauth[headless]`, pinned with its hashes in
 `services/api`'s development scope and in the disposable-database proof's lock), and

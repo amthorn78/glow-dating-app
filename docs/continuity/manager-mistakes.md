@@ -145,6 +145,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-06 | 9 Nov 2026 | follow-through | DM-45 section 9 approved SV1's email change as needing "`ACCOUNT_CHANGE_EMAIL = True` … and reauthentication"; the brief's D3 (revisions 2 and 3) named neither setting, and the prompt left the settings to the session, which kept allauth's default, reauthentication off | the SV1 implementation session's findings, read in the manager's verification |
 | AM10-07 | 9 Nov 2026 | accuracy | DM-48 (`38142b3`) proposed words for acceptance check 11 ("the sixth request at `account/password/change` within 300 seconds … is refused") that describe a case allauth's default `5/m/user` also passes, since a sixth request sent at once is refused at 5 a minute too; and its D3 replacement left "They use Django's cache" pointing at the threat model | Dev Manager 4, DM-48 section 3 |
 | AM10-08 | 9 Nov 2026 | follow-through | Implementation Control's Branches bullet kept the manager branch's "at this sync" hash one commit behind the status line at two syncs in a row (`30fdf1a` against `38142b3`; `38d48e2` against `cae9cea`); the status edit did not move the bullet | Dev Manager 4, DM-48 section 9 and DM-49 section 5 |
+| AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
 
 ## App Manager 2
 
@@ -1093,6 +1094,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-09 — A replaced state left in P11's plan (follow-through)
+
+- **What happened:** C1 turned `ACCOUNT_REAUTHENTICATION_REQUIRED` on. Integrating C1, App Manager 10 added C1.5's session-list bullet to the P11 plan's SV1 entry. The same entry kept, under "Limits", "No reauthentication: an email change needs none (`ACCOUNT_REAUTHENTICATION_REQUIRED` keeps its default, off)". Its list of what SV1 proves also named neither C1's reauthentication case nor C2's password-change limit.
+- **Caught by:** Dev Manager 4, DM-50 section 4, in a sweep of the living documents for the states C1 and C2 replaced.
+- **Effect:** none on the code. P11 could have wired the app without allauth's `reauthenticate` flow; the server would still refuse the change, so the cost would have been a broken screen, not a weaker boundary.
+- **Correction:** DM-50 2.1's words, applied as written.
+- **Prevention:** a correction that changes a setting or a behavior gets a supersession sweep that `git grep`s the living documents (the P11 plan, the carried-items file, the architecture texts, the CI policy) for the replaced state, by the setting's name and by its plain words, before its integration's records commit.
 
 ### AM10-08 — The Branches bullet one commit behind the status (follow-through)
 

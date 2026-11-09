@@ -58,6 +58,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
   - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
   - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), after Nathan's A05 answer on the preference taxonomy.
+- **From SV1's C2 delta review** (DM-50; N-1, N-2), for the first of SV2 to SV4 whose work changes `proofs/postgres-ordering/glow_ordering_proof/identity_support.py` (if SV2's does not, this entry moves to the next item's section): reword `mail_forbidden_found`'s docstring to say that the check removes every code the run's cases issued, and add a test that pins the removal as exact, case-sensitive and of every occurrence. Until then, the SV1 record's reading of C2.5 (DM-50) governs the docstring's words.
 
 ## Carried to SV3 (eligibility, discovery and interactions; OD-49)
 
