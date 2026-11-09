@@ -108,8 +108,8 @@ password change ends every session (`ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE`); no oth
 **Tokens.** allauth's JWT strategy, through Glow's subclass: RS256, access tokens of 300 seconds,
 refresh tokens of 30 days, stateful validation (each token checked against its session, its user
 and that user's password hash) and refresh rotation; the refresh tokens' identifiers live in the
-Django session, so they die with it. A refused refresh token that passes allauth's own checks, in
-allauth's order, but carries an identifier its session no longer holds is a replay: its session
+Django session, so they die with it. A refused refresh token that passes allauth's own checks, its
+signature first, but carries an identifier its session no longer holds is a replay: its session
 ends at both layers. The signing key and `SECRET_KEY` are secret references the deployment
 supplies (the proof generates both for each run); none is committed or in an environment template.
 

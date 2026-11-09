@@ -119,7 +119,7 @@ Paths are relative to the virtual environment's `site-packages`; `allauth/` is 6
 | D3 | The default account-already-exists mail builds the sign-up and reset links; the unknown-account mail builds the sign-up link. `ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS` defaults to on | `allauth/account/adapter.py:722-733`; `allauth/account/internal/flows/signup.py:75-86`; its use, `allauth/account/internal/flows/email_verification.py:263`; `allauth/account/app_settings.py:537-538` |
 | D3 | Code limits: verification 3 attempts and 900 s; reset 3 attempts and 180 s, and confirming a reset code restarts its timer | `app_settings.py:114-119`, `:516-521`; `allauth/account/internal/flows/password_reset_by_code.py:49-53` |
 | D3 | `ACCOUNT_PREVENT_ENUMERATION` defaults to `True`; with it, a taken-address sign-up is a login stage with no user, so it answers as a new one does | `app_settings.py:44-45`; `flows/signup.py:68-72` |
-| D3 | Rate limits (defaults kept): `login_failed` `10/m/ip,5/300s/key`; with verification by code, `confirm_email` `1/10s/key`, a 429 when exceeded; also `change_password` 5/m/user, `manage_email` 10/m/user, `reset_password` 20/m/ip,5/m/key, `signup` 20/m/ip, `login` 30/m/ip | `app_settings.py:268-307`; `email_verification.py:150-187` (the 429 at `:186`), `:335-356` (a sign-in of an unverified address inside the window is refused) |
+| D3 | Rate limits (defaults kept, except `change_password`, which SV1 sets to `5/300s/user` in place of allauth's 5/m/user; correction C2, DM-48; the override merges into the defaults, `app_settings.py:311`): `login_failed` `10/m/ip,5/300s/key`; with verification by code, `confirm_email` `1/10s/key`, a 429 when exceeded; also `manage_email` 10/m/user, `reset_password` 20/m/ip,5/m/key, `signup` 20/m/ip, `login` 30/m/ip | `app_settings.py:268-311`; `email_verification.py:150-187` (the 429 at `:186`), `:335-356` (a sign-in of an unverified address inside the window is refused) |
 | D3 | Email change: `ACCOUNT_CHANGE_EMAIL` defaults off; SV1 turns it on (one address; the new one verified before it replaces the old). A verify request for an address another account holds verified is refused `email_taken` | `app_settings.py:147-148`; `allauth/headless/account/inputs.py:119` |
 | D3 | Off by default and kept off: login by code (its request routes mount only when enabled); reauthentication for an email change (`ACCOUNT_REAUTHENTICATION_REQUIRED`) | `app_settings.py:553-554`, `:549-550`; `allauth/headless/account/urls.py:103` |
 | D3 | The phone routes and `auth/code/confirm` mount whatever the configuration; the default adapter's `get_phone` raises `NotImplementedError` | `headless/account/urls.py:24-25`, `:43-44`, `:91-97`; `account/adapter.py:1063-1069` |
@@ -314,7 +314,7 @@ Unauthenticated: each request with no credential, from the case `endpoints.refus
 | `GET`, `DELETE auth/session` | 401 | the session's state; `DELETE` is logout at both layers (`logout.*`) |
 | `POST auth/reauthenticate` | 401 | **required before an address is added, removed or marked primary** (correction C1, `ACCOUNT_REAUTHENTICATION_REQUIRED`): the password within the last 300 seconds, in the same session; a sign-in does not count. Without it, `account/email` answers 401 with the `reauthenticate` flow. A wrong password is refused (400 `incorrect_password`) and consumes the sign-in form's `login_failed` limit: the sixth within 300 seconds is refused `too_many_login_attempts`, and the sign-in form is held too. It records the reauthentication in the Django session only: no key change, no `UserSession` or `AccountSession` write, no token pair, no `session_token`, no sign-in hook (`reauth.email_change_needs_recent_reauthentication`) |
 | `POST auth/code/confirm` (mounted whatever the configuration) | 409 (no pending flow) | 409 (login by code is off) |
-| `POST account/password/change` | 401 | ends every session at both layers (`devices.password_change_ends_both`) |
+| `POST account/password/change` | 401 | ends every session at both layers (`devices.password_change_ends_both`). **Its limit is `change_password` at `5/300s/user`** (correction C2, DM-48; allauth's default is 5/m/user): every signed-in request there counts, whatever its outcome; a wrong current password is refused (400 `enter_current_password`) and consumes no `login_failed`; after five, a sixth within 300 seconds, even with the right password, is refused 429 with no error code, and the password is unchanged (`ratelimit.password_change`) |
 | `GET`, `PUT`, `PATCH`, `DELETE account/email` | 401 | the member's own address; a change is verified by code first (`notice.email_change`) |
 | `POST account/email` | 409 | a taken and a free address answer alike (`enum.email_change_taken_and_free_alike`) |
 | `GET account/phone` | 401 | **403**: Glow's `get_phone` refusal (`adapter.py:118-124`) where allauth's default raises (`X-phone`) |
@@ -384,7 +384,7 @@ There are 18 routes: allauth's 17 for the `app` client, and Glow's one (`config.
   - the suite's ledger holds every code, password, session key, token and token part it handled (684), and checks them against every log record at `DEBUG` and every write.
 - **The session key in `UserSession` and `django_session`:** a credential, stored only by allauth and Django; Glow never stores, hashes or logs it (`actor_for` deletes its local copy at once, `authentication.py:74`). P08's export must exclude it.
 - **The `sid`'s encryption under `SECRET_KEY`:** unauthenticated AES-CTR inside a signed token. Anyone holding `SECRET_KEY` can read the session key from any token, and rotating `SECRET_KEY` makes every outstanding token's `sid` unreadable (P11's key handling).
-- **A replayed rotated refresh token:** refused but not ended in 65.21.1. Glow's subclass ends the session at both layers after allauth's own checks, in allauth's order, and adds no cryptography (`D2-b`, `D2-c`).
+- **A replayed rotated refresh token:** refused but not ended in 65.21.1. Glow's subclass ends the session at both layers after allauth's own checks, its signature first, and adds no cryptography (`D2-b`, `D2-c`).
 - **allauth's own endpoints, which only allauth's layer guards:** the aligned expiry (`D2-d`) and the second step of every revocation path; each path's repeat completes it.
 - **The `verified` transition's locks and no outer transaction:** `verified.waits_on_account_lock` (it waited on `transactionid`/`ShareLock`, blocked by the holder's pid); `verified.refuses_unless_unverified`; `revoke.inside_transaction_refused` (an atomic block and autocommit off); the static test that each revocation entry point starts with `require_no_transaction()`; no `ATOMIC_REQUESTS`.
 - **The two link-building mails:** `D3-a` and `D3-b`.
@@ -981,3 +981,252 @@ Each run had:
 - Notion.
 
 It did not check the record's claim that run 907's 47 case lines match the earlier run's word for word.
+
+## Correction C2
+
+- **Session:** correction C2 of SV1 (DM-48), started by Nathan from the C2 prompt, revision 1, at `2f577f89b53c48b493702eebafad9181d9e7a0d4` of the manager branch. Branch `claude/trusting-goldberg-e4ogat`.
+- **Code head:** `6da8061169c4760b8419fc649c6d5aad57f29b50`. **Records:** the commit after it (the two architecture sentences, this record's three rows and focus bullet, and this section).
+- **Specification:** the brief's "Correction C2", revision 5 (DM-48 C2.1 to C2.8).
+- **Local runs are iteration, not evidence.** The run of record is CI's push run below.
+
+### Start gate and environment
+
+**The environment check (names only):**
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set.
+- No `STREAM_*` or `PG*` name is set.
+- `GH_TOKEN` and `GITHUB_TOKEN` are present, and were never read.
+- Toolchain: `python3.12 --version` printed `Python 3.12.14`, and `docker --version` printed `Docker version 29.9.2, build a82e528`.
+- Docker's daemon was not running. The session started `dockerd` itself, for the throwaway databases only.
+- Every repository command ran in `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus only its own variables (`GLOW_ENV=test` for the API). The installs also got the proxy and CA variables, passed by reference.
+
+**The start gate:** every check passed.
+
+| Check | Result |
+|---|---|
+| `git rev-parse HEAD` after `git switch -C claude/trusting-goldberg-e4ogat 2f577f8…` | `2f577f89b53c48b493702eebafad9181d9e7a0d4` |
+| `2f577f8` on the live manager branch | `origin/claude/magical-wozniak-yfmmx2` was at `2f577f8` itself |
+| non-Markdown changes under `.github scripts services apps packages proofs` from `bda299e` to `HEAD` | none |
+| the owned paths changed on the manager branch after `2f577f8` | none |
+| `grep -c -E '^#+ Correction C2'` in this record | `0` |
+| `grep -c 'change_password'` in `conf.py` | `0` |
+
+### What allauth 65.21.1 showed at `account/password/change`
+
+Read in the installed wheel (`services/api/.venv`, from the hash-locked development lock; `django_allauth` metadata `Version: 65.21.1`), and confirmed by the new case. **Nothing met the stop rule.**
+
+**When the limiter counts:**
+- `headless/account/views.py:400-401`: `ChangePasswordView` carries `rate_limit(action="change_password")` on `handle`; `allauth/decorators.py:4-5` binds it to `app="allauth.account"`.
+- `headless/base/views.py:57-63`: `AuthenticatedAPIView.dispatch` answers an unauthenticated request before `handle` runs, so only signed-in requests are counted.
+- `headless/internal/restkit/views.py:18-31`: `dispatch` calls `handle`, and `handle` parses and validates the input. The decorator wraps `handle`, so it consumes **before** the input is checked (`core/internal/ratelimit.py:345-356`, `consume_or_429` at `:339-342`).
+- `core/internal/ratelimit.py:242-276`: `consume` skips only a `GET` (`:255-256`) and consumes on every other request, whatever its outcome: a wrong current password, a right one, and a new password the validators refuse.
+- `core/internal/ratelimit.py:157-181`: with `per == "user"` the key is the account's primary key (`:163-170`).
+- `core/internal/ratelimit.py:199-231` and `:184-196`: the history is read under `cache_lock`, `now = time.time()` (`:219`), every timestamp at or before `now - duration` is dropped, and the hit is allowed only while fewer than `amount` remain.
+- `core/internal/ratelimit.py:46-65`: `cache_lock` calls `time.monotonic()` (`:49`, `:52`) and `time.sleep()` (`:56`).
+- `headless/account/inputs.py:180-184`: `clean_current_password` calls `self.user.check_password` only: no `authenticate`, no `login_failed`, no signal.
+
+**The sixth request's answer:** with `5/300s/user`, the five timestamps are still within 300 seconds when the sixth arrives 120 seconds after the first by the limiter's clock, so `apply_rate` refuses it, and `respond_429` (`:322-329`) returns headless's `RateLimitResponse` (`headless/base/response.py:198-200`): **HTTP 429, body `{"status": 429}`, with no `errors` and so no error code** (`headless/internal/restkit/response.py:13-31` adds `errors` only when given). The view never runs, so the password is unchanged. Under allauth's default `5/m/user` the five timestamps are older than 60 seconds and are dropped, so the sixth is allowed and the change goes ahead (C2-R1 and C2-R1c below).
+
+**The override merges:** `account/app_settings.py:267-311`: `RATE_LIMITS` builds allauth's defaults (`change_password` is `"5/m/user"` at `:287`) and then `ret.update(rls)` (`:311`) with the setting, so `{"change_password": "5/300s/user"}` replaces that one key and leaves every other default. `5/300s/user` parses as amount 5, duration 300, per `user` (`core/internal/ratelimit.py:95-121`). Shown by `test_the_password_change_limit_merges_into_allauths_defaults` and by `config.settings_as_briefed`, which compare the resolved limits with allauth's own, read with the override taken away (`override_settings(ACCOUNT_RATE_LIMITS={})`): one key differs, `change_password`.
+
+**The two verification settings (F-7):** `account/app_settings.py:121-140`: 65.21.1 reads `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_CHANGE` and `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND` (default `False`) through the properties `EMAIL_VERIFICATION_MAX_CHANGE_COUNT` and `EMAIL_VERIFICATION_MAX_RESEND_COUNT`, which give `0` for `False` and `2` for `True`. There is no property named after the settings.
+
+### Item 1: the password-change limit (F-2; D3; acceptance check 11)
+
+**Files:**
+- `services/api/glow_identity/conf.py`: `"ACCOUNT_RATE_LIMITS": {"change_password": "5/300s/user"}`, before `CACHES`. The fragment's rate-limit comment now says what D3 says: the defaults kept except `change_password`, why (`check_password` alone, no `login_failed`), every signed-in request counted, 10 in all, and the override merging; the cache sentence follows it.
+- `services/api/tests/test_identity_offline.py`:
+  - `test_the_briefed_values` gains the setting;
+  - the new `test_the_password_change_limit_merges_into_allauths_defaults` checks, under the identity settings, allauth's default `5/m/user`, the resolved `5/300s/user` (amount 5, 300 seconds, per user), the same keys as allauth's defaults, and that only `change_password` differs.
+- `proofs/postgres-ordering/glow_ordering_proof/identity_cases.py`:
+  - `config.settings_as_briefed` checks the same three things;
+  - the new case `ratelimit.password_change` (checks 11 and D3), after `ratelimit.failed_sign_ins`, which stays as the check's first sentence.
+- `identity_support.py`: `clock_ahead`'s object now keeps `monotonic` and `sleep`, unmoved, beside the moved `time` (DM-48 section 3). The two existing users (`verify.expired_code_refused`, `reauth.email_change_needs_recent_reauthentication`) call only `time()`, and both still pass.
+- `proofs/postgres-ordering/tests/test_identity_offline.py`: `ClockAheadTests` (2), and the plan test requires both rate-limit cases.
+
+**The new case, clause by clause:**
+
+| Clause of acceptance check 11's second sentence | What the case does and checks |
+|---|---|
+| five requests at `account/password/change` with a wrong current password, each refused | A new member's own device, with its access token: five requests with a wrong current password and a valid new password. Each 400 `enter_current_password`, with no credential |
+| a sixth with the right current password and a valid new password | The same device, the member's own password, the same new password |
+| sent more than 60 and less than 300 seconds after the first of the five, by the limiter's clock | Within `clock_ahead(ratelimit, 120)` (allauth's `core/internal/ratelimit` module). The case measures the gap's bounds from real times taken before the first and after the fifth and sixth: at least `before_sixth + 120 - after_fifth`, at most `after_sixth + 120 - before_first`, and requires more than 60 and less than 300. The run printed `120 to 121 s` |
+| is refused as too many | 429, with no error code and no credential |
+| the password is unchanged: the old password still signs in | No password-changed notice; the device's session still answers 200 at Glow's route; a new sign-in with the old password succeeds and its token works |
+
+**Reversals** (the method below):
+
+| ID | The edit | Run | Result |
+|---|---|---|---|
+| C2-R1 (API) | `conf.py`: the `ACCOUNT_RATE_LIMITS` line removed (allauth's default `5/m/user`) | `manage.py test tests.test_identity_offline tests.test_model_definitions` | `ERROR: test_the_briefed_values … (setting='ACCOUNT_RATE_LIMITS')` (a `KeyError`); `FAIL: test_the_password_change_limit_merges_into_allauths_defaults` with `AssertionError: 5/m/user`; `Ran 38 tests`, `FAILED (failures=1, errors=1)` |
+| C2-R1 (suite) | the same edit | the job's SV1 steps, on a new throwaway database | `[identity] FAIL config.settings_as_briefed … FAILED: the password change's limit`; `[identity] FAIL ratelimit.password_change (11, D3) 1.7 s: FAILED: the sixth, with the right password, is refused as too many (answered 401)`; `[identity] cases: 47/49 passed`; `IDENTITY VERDICT: FAIL` |
+| C2-R1c (probe) | the same edit, and the case's 429 expectation made true, so the case goes on to its password checks | the same | `[identity] FAIL ratelimit.password_change … FAILED: no password-changed notice (answered 401)`: allauth's default accepted the sixth, the password changed and the notice went out (401 is the answer a completed change gives with `ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE`, as `devices.password_change_ends_both` expects) |
+| C2-R1b | `identity_support.py`: `clock_ahead`'s object back to `time` only | the proof's `tests.test_identity_offline` | `ERROR: test_allauths_limiter_runs_on_the_moved_clock`; `ERROR: test_only_time_moves`; `Ran 32 tests`, `FAILED (errors=2)` |
+| C2-R1b (suite) | the same edit | the job's SV1 steps | `[identity] FAIL ratelimit.password_change … FAILED: the sixth, with the right password, is refused as too many (answered 500)`: `cache_lock` found no `monotonic`; `48/49`; `FAIL` |
+
+**The record:** the D3 row of "Facts read from the installed source" and the endpoint row for `POST account/password/change` now name the new limit.
+
+### Item 2: the no-link check (F-1; test-only; C2.5)
+
+**Files:**
+- `identity_support.py`:
+  - `mail_forbidden_found(text, issued_codes)`: for each issued code, `text.replace(code, "")`, a literal replacement of every occurrence; then the text is lowercased and the same eight forbidden strings as before (`MAIL_FORBIDDEN`) are looked for. No pattern, nothing else removed.
+  - **Where the codes come from:** `recording_issued_codes(ctx)` wraps Glow's account adapter's `generate_email_verification_code` and `generate_password_reset_code` (allauth's call sites: `account/internal/flows/email_verification_by_code.py:97`, `password_reset_by_code.py:74`). Each code is recorded where it is issued, in `Context.issued_codes`, and added to the ledger; allauth gets it unchanged.
+- `identity_cases.py`: `run_case` runs each case inside `recording_issued_codes`; `mail.no_link_no_stranger` requires recorded codes and calls `mail_forbidden_found` with them. It still checks Glow's name, one recipient, no unknown address and no stranger.
+- `proofs/postgres-ordering/tests/test_identity_offline.py`: `MailNoLinkCheckTests` (4), on Glow's own messages, rendered by `glow_identity.messages.render` with allauth's two timeouts (900 and 180 seconds) and no Django settings:
+  - `test_a_code_spelling_http_passes`: each of the three code messages with the code `HTTP-BCDF`;
+  - `test_a_code_ending_www_before_its_full_stop_passes`: each with `BCDF-GWWW`, which ends its sentence (`BCDF-GWWW.`);
+  - `test_a_real_link_fails`: with `HTTP-BCDF` issued, an `https://` link, a `www.` address, a link that holds the issued code, and an unissued code-shaped `HTTP-BCDG` each fail, with the forbidden strings named;
+  - `test_the_forbidden_list_is_unchanged`.
+
+**Reversals:**
+
+| ID | The edit | Run | Result |
+|---|---|---|---|
+| C2-R2a | `mail_forbidden_found`: the replacement removed (`pass`) | the proof's `tests.test_identity_offline` | `FAIL: test_a_code_spelling_http_passes` (3 subtests, one per message); `FAIL: test_a_code_ending_www_before_its_full_stop_passes` (3); `FAIL: test_a_real_link_fails (case='a www. address')` (the unremoved code adds `http`); `Ran 32 tests`, `FAILED (failures=7)` |
+| C2-R2b | the replacement made a pattern: `re.sub(r"\S*(?:http\|www\.)\S*", "", text, flags=re.IGNORECASE)` | the same | `FAIL: test_a_real_link_fails` for all four cases; `Ran 32 tests`, `FAILED (failures=4)` |
+
+### Item 3: migration 0004's hash (F-3)
+
+- `services/api/tests/test_model_definitions.py`, the `pinned` dictionary only: `"0004_account_age_state.py": "8af86a28d73fb9420b3ec6d59e6c1dcb47dc23c4f21e3c34a2830b171fc1866b"`, the hash the record gives; `sha256sum` of the file at `2f577f8` printed the same.
+- **Where the pin lives:** the `pinned` dictionary is in `test_migration_0003_is_additive_and_0001_0002_are_unchanged`. The record's "Commands and results" row says "pinned by `test_migration_0004_adds_the_age_state_only`"; that row is not an owned path, so it keeps its words. The hash is now pinned, by the other test (a note for the manager).
+- **C2-R3:** a one-byte change to the migration: the trailing comma after `("glow_persistence", "0003_chat_identity_read_cursor")` replaced by a space (the same list). `FAIL: test_migration_0003_is_additive_and_0001_0002_are_unchanged … (migration='0004_account_age_state.py')`, `AssertionError: 'e9879866…' != '8af86a28…'`; `Ran 38 tests`, `FAILED (failures=1)`.
+
+### Item 4: counts only after a failed secret check (F-4; D10; C2.6)
+
+- `.github/workflows/foundation.yml`, the step "SV1: run the identity suite" only:
+  - the comment: "otherwise the log shows counts only, never a line of the suite's output (correction C2, DM-48 C2.6), and the check removes the JSON";
+  - the failed branch prints `the full output is withheld; counts only, never a line of the suite's output:`, then `lines in the suite's output: N` (`wc -l`) and `case lines: P passed, F failed` (`grep -c` of `[identity] PASS ` and `[identity] FAIL ` lines). The old `grep -E` of result lines is gone.
+- `IdentityUploadGateTests.test_after_a_failed_check_the_step_prints_counts_only`: it takes the failed branch from the step's text, runs it with `bash` on a synthetic log of eight lines (pass, fail, count, scan, verdict, refusal and an unexpected line), and checks that no line of the log, and none of `[identity]`, the case ids, `VERDICT` or `refusing`, is printed, and that the message and both counts (`8`; `2 passed, 1 failed`) are.
+- **C2-R4:** the old message and `grep` restored. `FAIL: test_after_a_failed_check_the_step_prints_counts_only` for each of the seven result lines and for `[identity]`: the branch printed the log's lines; `Ran 32 tests`, `FAILED (failures=8)`.
+- The passing branch is unchanged; the run of record shows it.
+
+### Item 5: the static guard (F-5; C2.7)
+
+`services/api/tests/test_identity_offline.py`, `StaticGuardTests`:
+- `test_the_actor_takes_the_session_from_the_tokens_own_sid` also forbids `request.query_params`, `request.GET`, `request.POST`, `request.COOKIES` and `session_token`, each a subtest.
+- New `test_the_actor_is_built_from_the_user_and_the_validated_payload_only`: one call to `actor_for` in the module, with exactly the arguments `user, payload` and no keywords.
+- New `test_the_request_reaches_only_allauths_authentication` (C2.7): on the module's syntax tree, every parameter named `request` belongs to `authenticate` or `authenticate_header`; every use of the name `request` is the sole argument of a call `JWTTokenAuthentication().<name>(request)` whose method name is the enclosing function's; no attribute is named `request`; and there are exactly two of each.
+- `authentication.py` is unchanged: it already meets the guard.
+
+| ID | The temporary edit to `authentication.py` | Result (`manage.py test tests.test_identity_offline tests.test_model_definitions`) |
+|---|---|---|
+| C2-R5a | `_ = request.GET` in `authenticate` | `FAIL: test_the_actor_takes_the_session_from_the_tokens_own_sid (forbidden='request.GET')`; `FAIL: test_the_request_reaches_only_allauths_authentication (use='request.GET', line=115)` and its count; `FAILED (failures=3)` |
+| C2-R5b | `_ = getattr(request, "GET", None)` | `FAIL: test_the_request_reaches_only_allauths_authentication (use="getattr(request, 'GET', None)", line=115)` and its count; `FAILED (failures=2)`. The list of forbidden names does not catch it; the allow-list does |
+| C2-R5c | `actor_for(user, payload, credentials)` | `FAIL: test_the_actor_is_built_from_the_user_and_the_validated_payload_only`; `FAILED (failures=1)` |
+
+### Item 6: the verification settings (F-7)
+
+- `config.settings_as_briefed` checks that `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_CHANGE` and `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND` are off (absent or `False` in the settings), and that 65.21.1 resolves both counts to `0` (`EMAIL_VERIFICATION_MAX_CHANGE_COUNT`, `EMAIL_VERIFICATION_MAX_RESEND_COUNT`).
+- **C2-R6:** `conf.py`: `"ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND": True` added. `[identity] FAIL config.settings_as_briefed … FAILED: ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND is off`; `48/49`; `IDENTITY VERDICT: FAIL`.
+
+### Item 7: N2's words (F-6; C2.8, replacements 2 to 6)
+
+Each applied word for word; the code's order of checks is unchanged.
+- `glow_identity/strategy.py`, the module docstring only: "in this order:" (the line break before "its expiry" moved up one word).
+- `docs/architecture/data-model.md`, the replay sentence, and `docs/architecture/production-contracts.md`, "The app mapping as built": "passes allauth's own checks, its signature first, but carries".
+- `services/api/tests/test_identity_offline.py`, the comment in `test_the_replay_check_reads_no_session_before_allauths_own_checks` only: "only after allauth's own checks, its signature first."
+- **This record, corrected in place:** in "The review plan's security focus", the bullet on a replayed rotated refresh token read "after allauth's own checks, in allauth's order, and adds no cryptography"; it now reads "after allauth's own checks, its signature first, and adds no cryptography".
+- **The check:** `git grep -n "allauth's order" -- services proofs docs/architecture` printed nothing (exit 1). In this record the phrase appears only in this section: in its quotation of the old words, and in that search command.
+
+### The threat model
+
+These add to the review's threat model; its section keeps its words.
+- **Threat 6, the password-guessing budget** (C2.4): The password-guessing budget (D3): a holder of a live session key or access token can test a password at the sign-in form and at `auth/reauthenticate`, which share `login_failed` (5 per 300 seconds for the address), and at `account/password/change` (`change_password`, 5 per 300 seconds for the account, every signed-in request counted). That is 10 per 300 seconds, twice the sign-in form's 5, the remainder SV1 accepts. A right guess at the password change ends every session and sends the password-changed notice.
+  - Proved by `ratelimit.failed_sign_ins`, the reauthentication case and `ratelimit.password_change`, with C2-R1. A wrong current password sends no notice (DM-48 section 3).
+- **Threat 7, a message revealing a link:** F-1 is fixed. The check removes only the exact codes issued, recorded where the adapter generates them, so a code spelling `HTTP` or ending `WWW` no longer fails a correct message, and any link elsewhere still fails it (`MailNoLinkCheckTests`, C2-R2a, C2-R2b).
+- **The two verification settings (F-7):** `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_CHANGE` and `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND` are off, so a pending verification can neither change its address nor resend its code, and it answers alike whoever holds the address. Pinned by `config.settings_as_briefed` (C2-R6).
+- **Threat 5, the actor steered by a header, body or query (F-5):** the guard now forbids the query, form, cookie and `session_token` reads, holds `actor_for` to `user, payload`, and allows `request` only into allauth's own `JWTTokenAuthentication` methods, so `request.session`, `request.body`, `request._request` or `getattr(request, …)` fail it as well (C2-R5a to C2-R5c).
+
+### The method, and the commands
+
+**The reversal method, as before:**
+- Each reversal was a temporary exact-once string edit by a scratch helper outside the checkout. It ran on the committed code head (`6da8061`, committed before the push) and restored the file afterwards, checking its SHA-256 and dropping cached bytecode.
+- After the reversals, `git status --short` listed only the uncommitted Markdown of the records commit.
+
+**The local database runs** follow P06.DB's D4. A scratch harness outside the checkout ran the job's own step scripts, read from `foundation.yml` with PyYAML:
+- the credentials, PostgreSQL's start, the role and databases, then the three SV1 steps;
+- then it evaluated the upload step's `if` and simulated the upload by checking the file at its path;
+- then the removal step, always.
+
+Each run had:
+- a new container from `postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`, published on `127.0.0.1:5433` only;
+- passwords, markers and keys generated by the job's own step into a scratch `RUNNER_TEMP`;
+- a fresh environment for each step (PATH with the proof's venv first, HOME, LANG, `RUNNER_TEMP`, `GITHUB_OUTPUT`, `GITHUB_RUN_ID=local-…`, `GITHUB_RUN_ATTEMPT=1`, and the step's own env), none of the forbidden names, and every `::add-mask::` line dropped from what was shown;
+- the container and directory removed by the job's removal step: `no proof container remains` each time.
+
+**One change to the job's steps, local only:** Docker Hub answered `429 Too Many Requests` to the start step's `docker pull "$IMAGE"`. The image was pulled once by its digest, after one retry, and the harness then replaced that one line with `docker image inspect "$IMAGE"` for the local runs. CI ran the step as written.
+
+| Command | Result |
+|---|---|
+| `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock` (in `services/api`, and in `proofs/postgres-ordering`) | exit 0 each |
+| `GLOW_ENV=test .venv/bin/python manage.py check` | `System check identified no issues (0 silenced).` |
+| `GLOW_ENV=test .venv/bin/python manage.py test tests --verbosity 2` | `Ran 453 tests in 16.416s` … `OK` (450 before; 3 new) |
+| `.venv/bin/ruff check .`; `ruff format --check .`; `mypy` (API) | `All checks passed!`; `99 files already formatted`; `Success: no issues found in 57 source files` |
+| In `proofs/postgres-ordering`: `.venv/bin/python -m unittest discover -s tests -t . -v` | `Ran 193 tests in 12.256s` … `OK` (186 before; 7 new) |
+| In `proofs/postgres-ordering`: `ruff check .`; `ruff format --check .`; `mypy` | `All checks passed!`; `52 files already formatted`; `Success: no issues found in 52 source files` (one mypy error in the new test helper, `no-any-return`, was fixed before the commit) |
+| `docker pull` of the job's image | first `429 Too Many Requests`; after 5 s, `docker.io/library/postgres@sha256:d74eeac9…` |
+| The job's SV1 steps, local baseline on the code | `No changes detected`; `the job's secrets found in the identity suite's output: 0`; `… in the identity results JSON: 0`; `the suite's own scan reported clean: True`; `[identity] PASS ratelimit.password_change (11, D3) 1.6 s: five wrong current passwords refused (400 enter_current_password); the sixth, right, 120 to 121 s after the first: 429 with no error code; the old password still signs in`; `[identity] PASS mail.no_link_no_stranger (3, D8) 0.0 s: 66 messages: …`; `[identity] cases: 49/49 passed in 36.4 s`; `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`; `IDENTITY VERDICT: PASS`; `identity phase: 36 s`; the second run refused with `53 53 63 32 50` before and after; upload condition → runs |
+| An earlier local run, before a fix | `[identity] FAIL config.settings_as_briefed … ERROR: AttributeError`: the case first read `account.EMAIL_VERIFICATION_SUPPORTS_CHANGE`, which 65.21.1 does not define (above). Fixed to the settings and the two count properties; never committed |
+| `git grep -n "allauth's order" -- services proofs docs/architecture` | no output, exit 1 |
+| C2-R1 to C2-R6 | as in the tables above |
+
+### The run of record
+
+**Push run [42669825647](https://github.com/amthorn78/glow-dating-app/actions/runs/42669825647)** (Foundation, run 927, attempt 1) on `6da8061169c4760b8419fc649c6d5aad57f29b50`, the code head, read with the GitHub tools (the jobs, their steps and the job logs; the counts also from the run's log archive).
+
+**Every job `success`:**
+- Change scope;
+- API checks: `Ran 453 tests in 21.390s` … `OK`; Ruff `All checks passed!`, `99 files already formatted`, mypy `Success: no issues found in 57 source files`; the contracts' `Ran 39 tests` … `OK`;
+- API artifact checks;
+- API mobile smoke;
+- Mobile checks;
+- Stream proof checks;
+- Database proof checks;
+- Foundation gate, which printed **`Application checks passed`**.
+
+**No toolchain retry fired.** Every DM-41 "Wait 60 s …" and "Retry the Python install once" step was `skipped`.
+
+**The Database proof checks job** ran 7 min 40 s of its 30 minutes, from 17:59:03 to 18:06:43 UTC:
+- the proof's offline tests: `Ran 193 tests in 11.714s` … `OK`; Ruff `All checks passed!`, `52 files already formatted`, mypy `Success: no issues found in 52 source files`;
+- the ordering suite: `== VERDICT: PASS (reference) ==`, `== VERDICT: PASS (adapter) ==`, `== VERDICT: PASS ==`;
+- "SV1: show the identity database refuses the other marker, then apply the reviewed migrations from zero": success.
+
+**"SV1: run the identity suite …"** (18:05:58 to 18:06:36):
+- the job's check printed `the job's secrets found in the identity suite's output: 0`, `the job's secrets found in the identity results JSON: 0` and `the suite's own scan reported clean: True`;
+- then the suite's output: 49 `[identity] PASS` lines, among them `config.settings_as_briefed (D2, D3, D5, D8) 0.1 s`, `ratelimit.password_change (11, D3) 1.6 s: five wrong current passwords refused (400 enter_current_password); the sixth, right, 120 to 121 s after the first: 429 with no error code; the old password still signs in` and `mail.no_link_no_stranger (3, D8) 0.0 s: 66 messages: no link, Glow's name only, each to its owner`;
+- then `[identity] cases: 49/49 passed in 36.9 s`, `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`, `IDENTITY VERDICT: PASS` and `results written: .work/identity-results.json`;
+- **`identity phase: 38 s (the job's timeout is 30 minutes)`**.
+
+The secret check passed, so the step took its passing branch; the counts-only branch did not run in CI.
+
+**"SV1: show that a second identity run …":** `before: 53 53 63 32 50; after: 53 53 63 32 50`, exit status 1, refused as a used database.
+
+**"SV1: save the identity suite's results JSON, once the secret check has passed":** ran. Artifact `sv1-identity-results`, 3,957 bytes, ID 13699216326.
+
+**The removal step:** `container removed: glow-proof-db-42669825647-1`, `credential and marker files removed`, `no proof container remains`.
+
+### What could not be run, and limits
+
+- **A failed secret check in CI.** The counts-only branch was run offline by its test, on a synthetic log; CI shows only the passing branch. No failing run was pushed, by the push rule and because a reversal does not belong on the branch.
+- **The suite-level reversals of item 2** were not run: a real code spelling `HTTP` or ending `WWW` is random, so the offline tests on Glow's own messages carry the three cases.
+- **The gap's bounds** are measured from real times around the requests, not read from allauth's stored timestamps; the case requires the measured bounds to lie between 60 and 300 seconds.
+- **`actions/upload-artifact` was not run locally;** the upload was simulated.
+- **The trusted classifier was not run** in this session. Classification is the manager's.
+
+### Deviations and the stop rule
+
+**The stop rule:** nothing met it.
+- 65.21.1's limiter refuses the sixth request at `account/password/change` sent 120 seconds after the first under `5/300s/user` (429), and the override merges into allauth's defaults (above).
+- `git diff --name-only 2f577f8 HEAD` lists only the owned paths. `strategy.py` changed in its docstring only; `authentication.py` is unchanged.
+- In the workflow, the one hunk pair is in the step "SV1: run the identity suite": its comment and its failed branch.
+- No package was added and no lock changed.
+- The job stayed within its timeout (7 min 40 s of 30 minutes; the identity phase 38 s).
+
+**Deviations:**
+- **The F-7 pin's names.** 65.21.1 has no `EMAIL_VERIFICATION_SUPPORTS_*` properties; the case pins the two settings by name and the two counts allauth resolves from them.
+- **The recorder runs per case** (`run_case`), not once around the loop, so `identity_suite.py` is unchanged.
+- **Issued codes join the ledger** when they are generated, not only when a case reads one from a message, so the run's own scan also covers codes no case reads (754 secrets held, against 712 at C1's head with one fewer case).
+- **The new case also checks** no password-changed notice and the device's session still valid, beyond "the old password still signs in".
+- **The 429 expectation names the status it got** (a number), so a reversal shows what the sixth was answered.
+- **`strategy.py`'s docstring:** one line break moved by one word, as C2.8 allows.
+- **The F-3 pin's test name:** see item 3.
