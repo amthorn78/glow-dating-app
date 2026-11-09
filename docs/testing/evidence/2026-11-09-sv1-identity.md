@@ -121,7 +121,7 @@ Paths are relative to the virtual environment's `site-packages`; `allauth/` is 6
 | D3 | `ACCOUNT_PREVENT_ENUMERATION` defaults to `True`; with it, a taken-address sign-up is a login stage with no user, so it answers as a new one does | `app_settings.py:44-45`; `flows/signup.py:68-72` |
 | D3 | Rate limits (defaults kept, except `change_password`, which SV1 sets to `5/300s/user` in place of allauth's 5/m/user; correction C2, DM-48; the override merges into the defaults, `app_settings.py:311`): `login_failed` `10/m/ip,5/300s/key`; with verification by code, `confirm_email` `1/10s/key`, a 429 when exceeded; also `manage_email` 10/m/user, `reset_password` 20/m/ip,5/m/key, `signup` 20/m/ip, `login` 30/m/ip | `app_settings.py:268-311`; `email_verification.py:150-187` (the 429 at `:186`), `:335-356` (a sign-in of an unverified address inside the window is refused) |
 | D3 | Email change: `ACCOUNT_CHANGE_EMAIL` defaults off; SV1 turns it on (one address; the new one verified before it replaces the old). A verify request for an address another account holds verified is refused `email_taken` | `app_settings.py:147-148`; `allauth/headless/account/inputs.py:119` |
-| D3 | Off by default and kept off: login by code (its request routes mount only when enabled); reauthentication for an email change (`ACCOUNT_REAUTHENTICATION_REQUIRED`) | `app_settings.py:553-554`, `:549-550`; `allauth/headless/account/urls.py:103` |
+| D3 | Off by default and kept off: login by code (its request routes mount only when enabled). Reauthentication for an email change (`ACCOUNT_REAUTHENTICATION_REQUIRED`) is off by default; correction C1 turns it on in `conf.py` (corrected by the manager after C2's delta review, N-6) | `app_settings.py:553-554`, `:549-550`; `allauth/headless/account/urls.py:103` |
 | D3 | The phone routes and `auth/code/confirm` mount whatever the configuration; the default adapter's `get_phone` raises `NotImplementedError` | `headless/account/urls.py:24-25`, `:43-44`, `:91-97`; `account/adapter.py:1063-1069` |
 | D4 | Headless sign-up opens no transaction (no `atomic` in the view or the flow) | `allauth/headless/account/views.py`; `flows/signup.py` |
 | D4 | The default `populate_username` reads the email to fill the username | `account/adapter.py:320-330` |
@@ -1253,7 +1253,7 @@ The secret check passed, so the step took its passing branch; the counts-only br
   | # | The temporary edit | The result |
   |---|---|---|
   | M1 | the `ACCOUNT_RATE_LIMITS` line removed from `conf.py` | `test_the_briefed_values` errors (`setting='ACCOUNT_RATE_LIMITS'`) and `test_the_password_change_limit_merges_into_allauths_defaults` fails; `FAILED (failures=1, errors=1)` |
-  | M2 | the old `grep` of the suite's result lines put back in the failed branch | `test_after_a_failed_check_the_step_prints_counts_only` fails in 8 subtests, one for each line the old `grep` printed |
+  | M2 | the old `grep` of the suite's result lines put back in the failed branch | `test_after_a_failed_check_the_step_prints_counts_only` fails 8 ways (`FAILED (failures=8)`): 7 subtests, one for each line the old `grep` printed, and its plain `[identity]` assertion (corrected after C2's delta review, N-4) |
   | M3 | a pattern removal (`[A-Z]{4}-[A-Z]{4}`) in place of the exact codes | `test_a_real_link_fails` fails on "a code-shaped word that was not issued" |
   | M4 | an alias, `incoming = request`, in `authenticate`: no forbidden name | `test_the_request_reaches_only_allauths_authentication` fails (`use='incoming = request'`) |
 
@@ -1291,3 +1291,51 @@ The secret check passed, so the step took its passing branch; the counts-only br
   - **PR run 42673999110:** four jobs listed and passed (API checks, API mobile smoke, Stream proof checks, API artifact checks). It concluded `failure` with no failed job.
 
   GitHub's status page reported an unresolved "Incident with Actions and Checks API", investigating from 18:12:37 UTC, with Actions in major outage from 18:14:58. **The explanation, reviewed** (DM-49; OD-21): GitHub lost these jobs; nothing in the repository failed. No step failed in any of the three runs, and the jobs missing differ from run to run. The gate's input gave the missing jobs as `abandoned`, a result GitHub does not document and the workflow cannot set, and the gate failed closed, as designed. The application jobs that ran do not show that the classifier ran: they also run when it does not succeed. The workflow file and every other non-Markdown path are byte-identical from `6da8061` to `cae9cea`. With them, push run 42669825647 on `6da8061` and PR run 42676003277 on `cae9cea` each ran all eight jobs, with `Application checks passed` and the identity suite 49 of 49. GitHub's records were unreliable from about 18:06 UTC: the run of record's gate job is still listed `in_progress`, though its step succeeded and its log reads `Application checks passed`. Nothing was re-run, no empty commit was pushed, and no repair item is needed: the merge rests on a complete PR run on the final head (step 7).
+
+## Delta review of correction C2 (code head `6da8061`)
+
+- **The session:** started by Nathan from C2's delta review prompt, revision 1, at `38d48e226be46275d6d5de4662bb844d374f6ee9`, after DM-49. It reported on 9 November 2026; its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed;
+  - the start gate passed, with one merge base, `8d2de72`, and no non-Markdown path differing from `6da8061`;
+  - the trusted classification is `"full": true` (`behavior-or-empty`, 75 paths, run from the repository's root).
+- **What it ran:**
+  - the API's checks (453 tests) and the proof's (193), with Ruff, format and mypy clean;
+  - the F-1, F-2 and F-4 reversals, each failing as the record says, and nine guard probes;
+  - informational, on a throwaway PostgreSQL under D4:
+    - the suite, 49/49;
+    - the F-2 reversal, 47/49, with `ratelimit.password_change` answered 401;
+    - a forced failed secret check. It ran the counts-only branch end to end, which CI has not: two count lines, no line of the suite's output, exit 1, and `scan` not set.
+- **What it read:**
+  - DM-48 whole;
+  - the C2 sections and the rows in scope;
+  - the touched files, with C2's hunks of `identity_cases.py`;
+  - allauth 65.21.1's limiter, headless views and inputs, adapter, code flows, settings and routes;
+  - runs 42669825647, 42671723917 and the PR run on `cf03cde` (42683868100, all eight jobs passed).
+- **The verdict: changes required, narrowly.** It has one should-fix finding, N-1, on C2.5's wording, with no security effect. It found no blocking finding. If the Dev Manager rules that the run-wide removal meets C2.5, N-1 is a records item and the verdict is approve with nits.
+- **Its answers to the focus:**
+  - **The limit:** `change_password` resolves to `5/300s/user`, and only it differs from allauth's defaults. The case tells `5/300s` from `5/m`. The moved clock reaches only the limiter's module, during the sixth request.
+  - **D3's budget claim holds.** In 65.21.1's `app` client, a signed-in caller can test a password only at three endpoints:
+    - `auth/login`, which consumes `login_failed` and `login`;
+    - `auth/reauthenticate`, which consumes `login_failed` and `reauthenticate`;
+    - `account/password/change`, which consumes `change_password`.
+  - **The other focus points:**
+    - the codes are recorded only at the two generators;
+    - the workflow hunk stays inside its step, and the step still fails;
+    - the guard fails every plausible form;
+    - C2.8's code changes are a docstring and a comment;
+    - both pins hold;
+    - nothing else changed.
+
+**The delta review's findings and the manager's dispositions:**
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| N-1 | should fix (class: a Dev Manager condition's words; a docstring claiming more than the code) | C2.5 says the check removes "the exact code the case issued… It removes nothing else", and the review's F-1 row says "the message's own code". The code removes every code the run issued from every message (`identity_support.py:469-482`, `identity_cases.py:1728-1732`), and the docstring repeats C2.5's words. The review finds that what the check detects is not weakened: removal is exact, case-sensitive and patternless; removing a code that does not occur in a message changes nothing; and `http`, `://` and `www.` outside a code still fail | **To the Dev Manager as DM-50**, since C2.5's words are its own. The recommendation: C2.5 is met under a reading the Dev Manager states, with no code change |
+| N-2 | nit | "Every occurrence" is pinned by no test: a first-occurrence removal, or a case-insensitive one, still passes, since each Glow message holds its code once | **Recorded here.** It rides a correction if DM-50 calls for one |
+| N-3 | nit (claim limit) | The guard's allow-list misses string-keyed access to the request (`locals()['request']`, `sys._getframe().f_locals['request']`). Every plausible form fails it | **Recorded here** as a claim limit: the guard catches plausible forms, not deliberately evasive code |
+| N-4 | nit (record) | The manager's reversal M2 said "8 subtests, one for each line the old `grep` printed"; there are 7 subtests and one plain assertion | **Corrected** in place, in "Manager verification of correction C2" |
+| N-5 | nit | The counts-only test runs the branch under `set -e`; the job runs it under `-e -o pipefail`. They are equivalent here, since the branch has no pipe, and the review ran it under the job's shell | **Recorded here** |
+| N-6 | pre-existing (C1) | The facts table's D3 row said reauthentication for an email change is "off by default and kept off"; since C1, `conf.py` sets it on | **Corrected** in place, with a note |
+
+The review's observation is recorded too. The F-7 pin lives only in the database job's suite; the API's offline fragment test checks the listed keys, not their absence.
