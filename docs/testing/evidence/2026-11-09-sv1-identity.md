@@ -602,3 +602,255 @@ The records push run 42580044628 on `157c1f6` classified ordinary documentation.
 | uv 0.11.32 | Accepted. Each lock was checked by package, version and hash. Both READMEs' version sentences are corrected in this batch; uv 0.12.17 in the toolchain is already the hardening item's (`claude-setup-optimization.md`; DM-17) |
 | The configured specification's hashes | The P11 plan's carry is closed in this batch |
 | The twelve `X-` reversals | Accepted, as additions |
+
+## Correction C1
+
+- **Session:** correction C1 of SV1 (DM-47), started by Nathan from the C1 prompt, revision 1, at `c289424e27518187cb27d763e9945e298d6bf101` of the manager branch. Branch `claude/stoic-franklin-ief71e`.
+- **Code head:** `bda299e3034121b2cc20318024f35f5938f83b4c`. **Records:** the commit after it (the data model's sentence and this record).
+- **Specification:** the brief's "Correction C1", revision 4 (DM-47 C1.1 to C1.4).
+- **Local runs are iteration, not evidence.** The run of record is CI's push run below.
+
+### Start gate and environment
+
+**The environment check (names only):**
+- None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` is set.
+- No `STREAM_*` or `PG*` name is set.
+- `GH_TOKEN` and `GITHUB_TOKEN` are present, and were never read.
+- Toolchain: `python3.12 --version` printed `Python 3.12.14`, and `docker --version` printed `Docker version 29.9.2, build a82e528`.
+- Docker's daemon was not running. The session started `dockerd` itself, for the throwaway databases only.
+- Every repository command ran in `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus only its own variables (`GLOW_ENV=test` for the API). The installs also got the proxy and CA variables, passed by reference.
+
+**The start gate:** every check passed.
+
+| Check | Result |
+|---|---|
+| `git rev-parse HEAD` after `git switch -C claude/stoic-franklin-ief71e c289424…` | `c289424e27518187cb27d763e9945e298d6bf101` |
+| `c289424` on the live manager branch | an ancestor of `origin/claude/magical-wozniak-yfmmx2`, which was at `c289424` itself |
+| non-Markdown changes under `.github scripts services apps packages proofs` from `269ac3b` to `HEAD` | none |
+| the owned paths changed on the manager branch after `c289424` | none |
+| `grep -c -E '^#+ Correction C1'` in this record | `0` |
+| `grep -c 'ACCOUNT_REAUTHENTICATION_REQUIRED'` in `conf.py` | `0` |
+
+### What allauth 65.21.1 showed at `auth/reauthenticate`
+
+This was read in the installed wheel (`services/api/.venv`, from the hash-locked development lock) and confirmed by the new case. **Nothing met the stop rule.**
+
+**The route:**
+- `headless/account/urls.py:19-23` mounts `ReauthenticateView`.
+- `headless/account/views.py:577-586`: the view is rate-limited `reauthenticate` (`10/m/user`, `account/app_settings.py:295`). It is an `AuthenticatedAPIView` (`headless/base/views.py:57-63`), and its `post` calls `flows.reauthentication.reauthenticate_by_password` and returns `AuthenticationResponse`.
+
+**The password check:**
+- `account/forms.py:708-712`: `ReauthenticateForm.clean_password` calls the adapter's `reauthenticate`.
+- That is `account/adapter.py:830-846`, which calls `self.authenticate` (`:805-825`).
+- `authenticate` calls `pre_authenticate` (`:794-803`), which consumes `login_failed`. The key is the member's address (`:768-773`), and the consumption is rolled back only on success.
+- Glow's adapter overrides none of these three (`test_an_address_change_needs_a_recent_reauthentication`).
+- So a wrong password consumes the sign-in form's limit, as DM-47 read.
+
+**What it writes:**
+- `account/internal/flows/reauthentication.py:31-34`: `reauthenticate_by_password` calls only `record_authentication(..., method="password", reauthenticated=True)`.
+- `account/internal/flows/login.py:39-83`: that writes two keys into `request.session` and sends `authentication_step_completed`. Nothing in allauth's installed apps or in `glow_identity` connects a receiver to that signal.
+
+**The session key:** not cycled.
+- There is no `cycle_key` in the path.
+- `headless/internal/authkit.py:51-81`: the request's session is the one the token's `sid` names. It is saved under the same key when modified.
+- The case shows the token's key unchanged, the Django session still there, no Django session made or ended, and the same `UserSession` row.
+
+**The token pair:** none.
+- `authkit.py:83-95`: `expose_access_token` returns nothing when the user before the request (`_pre_user`, `:70`) is the user after it.
+- The case shows no `access_token` or `refresh_token` in the reply, and the reply's `meta` holds only `is_authenticated`.
+
+**Glow's sign-in hooks:** not run.
+- Neither `login` nor `post_login` is called.
+- `user_logged_in` is sent only from allauth's `post_login` (`account/adapter.py:576`), so `usersessions`' receiver (`usersessions/apps.py:22`, `signals.py:16-19`) does not run.
+- Glow's `post_login` (`glow_identity/adapter.py:93-104`), and through it `revocation.open_sign_in_session` (`revocation.py:126`), does not run either.
+- The case shows that neither the `UserSession` row nor the `AccountSession` is written: their `xmin` is unchanged.
+
+**`session_token`:** none.
+- `headless/internal/sessionkit.py:24-35`: `expose_session_token` returns the key only if it differs from the request's.
+- For a bearer request, the request's key is the token's `sid` (`tokens/strategies/jwt/strategy.py:20-27`).
+- So **no deviation**: N3 stands as DM-47 read it.
+
+**The guard:**
+- `account/internal/flows/manage_email.py:22-23`, `:58-59` and `:82-83`: `delete_email`, `add_email` and `mark_as_primary` each open with `raise_if_reauthentication_required`.
+- `reauthentication.py:75-80` and `:91-107`: the check reads the setting through the adapter (`account/adapter.py:1086-1096`). It counts only records with `reauthenticated`, so a sign-in's own record does not count, and it compares `time.time()` with `REAUTHENTICATION_TIMEOUT`, 300.
+- `headless/base/views.py:34-35` answers `ReauthenticationRequired` with `ReauthenticationResponse`, a 401 (`headless/base/response.py:134-136`).
+- Verifying the new address by code (`email_verification.py:65-84`) is not guarded. So the change completes at `auth/email/verify` once it has been asked for.
+
+**What the 401 carries, as the run showed:**
+- `flows` lists `reauthenticate`, and also `password_reset_by_code` with `is_pending: false` (`headless/base/response.py:79-94`). Nothing is pending.
+- The case checks that `reauthenticate` is listed and that nothing is pending, not that it is the only flow.
+
+### Item 1: reauthentication before an address change (D3; acceptance check 13)
+
+**Files:**
+- `services/api/glow_identity/conf.py`: `"ACCOUNT_REAUTHENTICATION_REQUIRED": True`, after `ACCOUNT_CHANGE_EMAIL`, with allauth's default timeout.
+- `services/api/tests/test_identity_offline.py`:
+  - the fragment test's expected values gain the setting;
+  - the fragment sets no `ACCOUNT_REAUTHENTICATION_TIMEOUT`;
+  - the new `test_an_address_change_needs_a_recent_reauthentication` checks, under the identity settings, the setting `True`, the timeout 300, the adapter's `is_reauthentication_required` `True`, and that Glow's adapter overrides none of `reauthenticate`, `authenticate`, `pre_authenticate` or `is_reauthentication_required`.
+- `proofs/postgres-ordering/glow_ordering_proof/identity_cases.py`:
+  - `config.settings_as_briefed` checks the setting, the 300 seconds and the `reauthenticate` limit;
+  - `enum.email_change_taken_and_free_alike` and `notice.email_change` each reauthenticate first, on each device that changes the address;
+  - the new case `reauth.email_change_needs_recent_reauthentication` (checks 13, 10, D3 and D5) runs before `mail.no_link_no_stranger`, which stays last.
+- `identity_support.py`: `Context.reauthenticate`, `Reply.flow_ids` and `Reply.error_codes`.
+- `proofs/postgres-ordering/tests/test_identity_offline.py`: the plan test requires acceptance check 13 too.
+
+**The new case, clause by clause:**
+
+| Clause of acceptance check 13 | What the case does and checks |
+|---|---|
+| right after sign-in, no reauthentication | A password sign-in on a new device, then `POST account/email`. It answers 401, lists the `reauthenticate` flow, has nothing pending, carries no credential, sends no mail, and changes and adds no address |
+| more than 300 seconds after the reauthentication | Within `clock_ahead(reauthentication, 301)`, so allauth's own `time.time()` in that module is 301 seconds ahead (the suite's way of moving a code limit's clock): the same refusal |
+| in another session than the one that reauthenticated | The member's second signed-in device, after the first reauthenticated: the same refusal |
+| a wrong password is refused | Five wrong passwords on that device: each 400 `incorrect_password`, with no credential |
+| the sixth within 300 seconds, as too many attempts | The sixth: 400 `too_many_login_attempts`. The right password is then held too, and so is the sign-in form (`auth/login`, 400 `too_many_login_attempts`): the same `login_failed` limit. The change is still refused |
+| the reauthentication leaves the key, its `UserSession` and its `AccountSession` unchanged, and returns no token pair and no `session_token` | Before and after the right password: the token names the same key; the Django session exists and their count is the same; the `UserSession` row is the same, and its `xmin` and the `AccountSession`'s `xmin` are unchanged; the `AccountSession` is `valid` with the same reference; the reply carries no `session_token`, `access_token` or `refresh_token`, and its `meta` is `{is_authenticated}`; the device's tokens are unchanged; one reauthentication record; the token still works at both layers |
+| with the right password, the change goes ahead as acceptance check 10's notice shows | After `clear_rate_limits()` (as if the windows had passed), the member reauthenticates and asks: 200. The code goes to the new address, verification is 200, the one address is the new one, verified and primary, and one email-changed notice goes to the old address |
+
+**Reversals** (the method below):
+
+| ID | The edit | Run | Result |
+|---|---|---|---|
+| C1-R1 | `conf.py`: `"ACCOUNT_REAUTHENTICATION_REQUIRED": False` | the job's SV1 steps, on a new throwaway database | `[identity] FAIL config.settings_as_briefed … FAILED: an address change needs reauthentication`; `[identity] FAIL reauth.email_change_needs_recent_reauthentication … FAILED: right after sign-in: the change answers 401`; `[identity] cases: 46/48 passed`; `IDENTITY VERDICT: FAIL` |
+| C1-R1 (API) | the same edit | `manage.py test tests.test_identity_offline` | `FAIL: test_an_address_change_needs_a_recent_reauthentication`; `FAIL: test_the_briefed_values … (setting='ACCOUNT_REAUTHENTICATION_REQUIRED') … AssertionError: False != True`; `Ran 21 tests`, `FAILED (failures=2)` |
+| C1-R2 | `identity_cases.py`: the reauthentication removed from `notice.email_change` and from `enum.email_change_taken_and_free_alike` (setting on) | the job's SV1 steps | `[identity] FAIL enum.email_change_taken_and_free_alike (3) … FAILED: a taken and a free address answer alike`; `[identity] FAIL notice.email_change (10, 3) … FAILED: the change is asked for`; `46/48`; `FAIL` |
+
+With the setting off (C1-R1), the two existing cases still pass: a reauthentication succeeds whether or not it is required.
+
+### Item 2: the data model
+
+`docs/architecture/data-model.md`, "Email change and recovery": its first sentence is now the brief's words. It is one source line, where the old text wrapped over two; nothing else in that paragraph or file changed.
+
+### Item 3: the results upload checked first (D10)
+
+**Files:**
+- `proofs/postgres-ordering/glow_ordering_proof/identity_scan.py` (new): the job's secret check, moved out of the workflow so it can be tested offline. It uses the standard library only.
+  - It reads the same values from the job's directory as the old inline check: the identity `SECRET_KEY`, the identity marker, the ordering marker, the superuser password, each passfile password and each line of the signing key.
+  - It looks for each in the suite's log, and in `identity-results.json`, both as written and in the JSON's decoded strings.
+  - It requires the suite's `identity secret scan: clean`.
+  - It passes (exit 0) only when nothing is found and the suite reported clean.
+  - Otherwise, or if a secret file cannot be read, it removes the JSON and exits 3.
+  - It prints counts only.
+- `.github/workflows/foundation.yml`, the Database proof checks job's SV1 steps only:
+  - The suite step gains `id: identity`. Its inline Python is replaced by `env -i … python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log" .work/identity-results.json`.
+  - Only on that check's pass does the step write `scan=passed` to `$GITHUB_OUTPUT` and show the whole log. Otherwise it shows only the suite's own result lines, as before.
+  - The upload step is renamed "SV1: save the identity suite's results JSON, once the secret check has passed", and runs `if: ${{ always() && steps.identity.outputs.scan == 'passed' }}`. Before, it ran `if: always()`.
+  - So after a failed check nothing is uploaded, for two reasons: the step is skipped, and the file is gone.
+- **An addition: the suite's own scan covers the JSON too** (`identity_suite.py`). The job's values cannot include the run's passwords, codes and tokens. So the suite also counts its ledger's secrets in the JSON it would write. If it finds one, the run fails, the JSON is not written, and the scan line reads `FOUND`. The scan line now ends "…writes and the results JSON)".
+- **Tests** in `proofs/postgres-ordering/tests/test_identity_offline.py`:
+  - `IdentityScanTests` (9):
+    - the values are the job's files;
+    - a clean run passes and keeps the JSON;
+    - each job value planted in the JSON alone is refused, the JSON is removed, and no value is printed;
+    - a value hidden by JSON's `\u` escapes is found;
+    - a value in the log is refused;
+    - a log without the suite's clean line is refused;
+    - an absent JSON is nothing to upload;
+    - an unreadable secret file is refused;
+    - the module imports only the standard library.
+  - `IdentityUploadGateTests` (2): the suite step calls the check and writes `scan=passed` only in its pass branch; the upload's `if` waits for it, and no `if: always()` remains on it.
+
+**Reversals:**
+
+| ID | The edit | Run | Result |
+|---|---|---|---|
+| C1-R3 (the prompt's) | `identity_suite.py`: `report.server["planted"] = os.environ["PROOF_DB_MARKER"]`, the identity database's marker, a job value the suite's ledger does not hold, so it is in the JSON only; and `foundation.yml`: the upload's `if` set to `always()`, so the upload is unconditional | the job's SV1 steps, on a new throwaway database, with the upload step's condition evaluated and the upload simulated | `the job's secrets found in the identity suite's output: 0`; `the job's secrets found in the identity results JSON: 1`; `the suite's own scan reported clean: True`; `the results JSON was removed; nothing to upload`; `the full output is withheld; the suite's own result lines:` … `[identity] cases: 48/48 passed in 39.1 s` … `IDENTITY VERDICT: PASS`; `FAIL: the secret check did not pass`; step exit status 1; the upload condition `always()` → runs; `simulated upload: no file at proofs/postgres-ordering/.work/identity-results.json (ignored)` |
+| C1-R3c (the defect, before C1) | the same plant, with `c289424`'s `foundation.yml` (the old inline check of the log only, and `if: always()`) | the same | `the job's secrets found in the identity suite's output: 0`; `the suite's own scan reported clean: True`; step exit status 0; `simulated upload: identity-results.json uploaded; job values in it: 1`. The old step passes and would upload the planted value |
+| C1-R4 | `identity_suite.py`: `report.server["planted"] = settings.SECRET_KEY`, a value the suite's ledger holds | the job's SV1 steps | `identity secret scan: FOUND (712 secrets held; 1 found in 232 log records, 100 writes and the results JSON)`; `IDENTITY VERDICT: FAIL`; the JSON not written; `the identity results JSON is absent: nothing to scan or upload`; `the suite's own scan reported clean: False`; `FAIL: the secret check did not pass`; the upload condition → skipped; `no upload; file present at the path: False` |
+| C1-R5 | `identity_scan.py`: `found_results = 0` | the proof's `tests.test_identity_offline` | `FAIL: test_a_value_escaped_by_json_is_found`; `FAIL: test_a_value_in_the_json_only_is_refused_and_the_json_removed` (six subtests); `Ran 25 tests`, `FAILED (failures=7)` |
+| C1-R6 | `foundation.yml`: the upload's `if` set to `always()` | the same | `FAIL: test_the_upload_waits_for_the_check`; `Ran 25 tests`, `FAILED (failures=1)` |
+
+**The first C1-R3 run** also failed `mail.no_link_no_stranger` ("no link and no name but Glow's"), a case the edits do not touch; the second run above passed it. See "What could not be run, and limits".
+
+### The threat model
+
+The endpoint table's `POST auth/reauthenticate` row, above, now records the endpoint as used: required before an address is added, removed or marked primary; the limit it shares with sign-in; and what it does not do. Nothing else in the threat model changed.
+
+### The method, and the commands
+
+**The reversal method, as before:**
+- Each reversal was a temporary exact-once string edit by a scratch helper outside the checkout. It ran on the committed code head and restored the file afterwards, dropping the module's cached bytecode.
+- After each one, `git status --porcelain -- services proofs packages apps scripts .github` was empty.
+
+**The local database runs** follow P06.DB's D4. A scratch harness outside the checkout ran the job's own step scripts, read from `foundation.yml` with PyYAML:
+- the credentials, PostgreSQL's start, the role and databases, then the three SV1 steps;
+- then it evaluated the upload step's `if` and simulated the upload by copying the file it names, counting the job's values in the copy;
+- then the removal step.
+
+Each run had:
+- a new container from `postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`, published on `127.0.0.1:5433` only;
+- passwords, markers and keys generated by the job's own step into a scratch `RUNNER_TEMP`;
+- a fresh environment for each step (PATH with the proof's venv first, HOME, LANG, `RUNNER_TEMP`, `GITHUB_OUTPUT`, `GITHUB_RUN_ID=local`, `GITHUB_RUN_ATTEMPT=1`, and the step's own env), and none of the forbidden names;
+- the container and directory removed by the job's removal step: `docker ps -a` is empty afterwards.
+
+| Command | Result |
+|---|---|
+| `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock` (in `services/api`, and in `proofs/postgres-ordering`) | exit 0 each |
+| `.venv/bin/python -m pip check` (both) | `No broken requirements found.` |
+| `GLOW_ENV=test .venv/bin/python manage.py check` | `System check identified no issues (0 silenced).` |
+| `GLOW_ENV=test .venv/bin/python manage.py test tests --verbosity 2` | `Ran 450 tests` … `OK` (449 before; 1 new) |
+| `.venv/bin/ruff check .`; `ruff format --check .`; `mypy` (API) | `All checks passed!`; `99 files already formatted`; `Success: no issues found in 57 source files` |
+| In `proofs/postgres-ordering`: `.venv/bin/python -m unittest discover -s tests -t . -v` | `Ran 186 tests in 13.245s` … `OK` (175 before; 11 new) |
+| In `proofs/postgres-ordering`: `ruff check .`; `ruff format --check .`; `mypy` | `All checks passed!`; `52 files already formatted`; `Success: no issues found in 52 source files` (`ruff format .` was applied once, to three files, before the commit) |
+| `docker pull` of the job's image | `Status: Downloaded newer image for postgres@sha256:d74eeac9…` |
+| The job's SV1 steps, local baseline on the code | `No changes detected`; `the job's secrets found in the identity suite's output: 0`; `… in the identity results JSON: 0`; `[identity] cases: 48/48 passed in 38.0 s`; `identity secret scan: clean (712 secrets held; 0 found in 232 log records, 100 writes and the results JSON)`; `IDENTITY VERDICT: PASS`; `identity phase: 39 s`; the second run refused with `52 52 61 32 48` before and after; upload condition → runs; `job values in it: 0` |
+| Probes (scratch, outside the checkout): the three address-changing cases with their replies' status, flow ids, `meta` keys and error codes printed (no values); then the whole suite twice, naming any forbidden token in any message by token and subject only | all three cases passed; the 401 carries `reauthenticate` and `password_reset_by_code` (`is_pending: false`). Then `65 messages; 0 forbidden hits`, twice |
+| C1-R1 to C1-R6 | as in the tables above |
+
+### The run of record
+
+**Push run [42634020622](https://github.com/amthorn78/glow-dating-app/actions/runs/42634020622)** (Foundation, run 916, attempt 1) on `bda299e3034121b2cc20318024f35f5938f83b4c`, the code head, read with the GitHub tools.
+
+**Every job `success`:**
+- Change scope;
+- API checks: `Ran 450 tests in 19.126s` … `OK`; Ruff `All checks passed!`, `99 files already formatted`, mypy `Success: no issues found in 57 source files`; the contracts' `Ran 39 tests` … `OK`;
+- API artifact checks;
+- API mobile smoke;
+- Mobile checks;
+- Stream proof checks;
+- Database proof checks;
+- Foundation gate, which printed **`Application checks passed`**.
+
+**No toolchain retry fired.** Every DM-41 "Wait 60 s …" and "Retry the Python install once" step was `skipped`.
+
+**The Database proof checks job** ran 7 min 56 s of its 30 minutes, from 14:22:32 to 14:30:28 UTC:
+- the proof's offline tests: `Ran 186 tests in 13.085s` … `OK`; Ruff `All checks passed!`, `52 files already formatted`, mypy `Success: no issues found in 52 source files`;
+- the ordering suite: `== VERDICT: PASS (reference) ==`, `== VERDICT: PASS (adapter) ==`, `== VERDICT: PASS ==`;
+- "SV1: show the identity database refuses the other marker, then apply the reviewed migrations from zero": success.
+
+**"SV1: run the identity suite …"** (14:29:36 to 14:30:21):
+- the job's check printed `the job's secrets found in the identity suite's output: 0`, `the job's secrets found in the identity results JSON: 0` and `the suite's own scan reported clean: True`;
+- then the suite's output: 48 `[identity] PASS` lines, among them `reauth.email_change_needs_recent_reauthentication (13, 10, D3, D5) 3.3 s`, `notice.email_change` and `enum.email_change_taken_and_free_alike`;
+- then `[identity] cases: 48/48 passed in 43.7 s`, `identity secret scan: clean (712 secrets held; 0 found in 232 log records, 100 writes and the results JSON)`, `IDENTITY VERDICT: PASS` and `results written: .work/identity-results.json`;
+- **`identity phase: 44 s (the job's timeout is 30 minutes)`**.
+
+**"SV1: show that a second identity run …":** `before: 52 52 61 32 48; after: 52 52 61 32 48`, exit status 1, refused as a used database.
+
+**"SV1: save the identity suite's results JSON, once the secret check has passed":** ran, after the step's `scan=passed`. Artifact `sv1-identity-results`, 3,846 bytes, ID 13681219810.
+
+**The removal step:** `container removed: glow-proof-db-42634020622-1`, `credential and marker files removed`, `no proof container remains`.
+
+### What could not be run, and limits
+
+- **A failed check in CI.** The upload's skip after a failed check was shown locally only (C1-R3 and C1-R4), by the job's own step scripts and the harness's reading of the step's `if`. GitHub's evaluation of that `if` was seen only in the passing run of record, where the upload ran. No failing CI run was pushed, by the push rule and because a reversal does not belong on the branch.
+- **`actions/upload-artifact` was not run locally.** Its upload was simulated by copying the file at its path.
+- **One unexplained local failure.** In the first C1-R3 run, `mail.no_link_no_stranger` failed ("no link and no name but Glow's"). That case is untouched by C1. Two probes of the whole suite and every later full run (C1-R3 again, C1-R3c, C1-R4, and the run of record) passed it.
+  - The cause could not be read afterwards, since the outbox lives in that process only.
+  - The likely cause is unconfirmed: allauth's codes use only consonants (`BCDFGHJKLMNPQRSTVWXZ`, `core/internal/cryptokit.py:16`), so a code can spell "HTTP", which the case forbids in every message.
+  - The case was not changed: changing it would loosen an existing check, and it is outside this correction's items. It is for the manager to triage.
+- **The trusted classifier was not run** in this session. Classification is the manager's.
+
+### Deviations and the stop rule
+
+**The stop rule:** nothing met it.
+- 65.21.1 cycles no key, issues no token pair and runs no sign-in hook at `auth/reauthenticate` (above).
+- `git diff --name-only c289424 HEAD` lists only the owned paths.
+- In the workflow, every hunk is in the Database proof checks job's SV1 steps: the suite step and the upload step.
+- No package was added and no lock changed.
+- The job stayed within its timeout (7 min 56 s).
+
+**Deviations:** there is no `session_token` deviation. The others:
+- **The suite's own scan of the results JSON** (`identity_suite.py`) is an addition beyond item 3's words. The prompt asks for the job's check to scan the JSON. This also covers the run's passwords, codes and tokens, which only the suite knows. The scan line's wording changed after its "clean" or "FOUND" prefix.
+- **The new case's flow check** is "lists `reauthenticate`, and nothing is pending", not "only `reauthenticate`". The 401 also lists `password_reset_by_code` (not pending), as above.
+- **The data model's sentence** is one source line, where the old text wrapped over two.
+- **The new case also shows the sign-in form held** by the same limit after the sixth wrong password. Acceptance check 13 does not ask for this; it shows D3's statement about the guessing budget.
