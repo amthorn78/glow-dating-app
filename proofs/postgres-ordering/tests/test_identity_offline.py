@@ -17,12 +17,16 @@ import logging
 import os
 import secrets
 import stat
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+from unittest import mock
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -34,9 +38,16 @@ from glow_ordering_proof import (
     identity_scan,
     schema_check,
 )
-from glow_ordering_proof.identity_support import OutputCapture, SecretLedger
+from glow_ordering_proof.identity_support import (
+    MAIL_FORBIDDEN,
+    OutputCapture,
+    SecretLedger,
+    clock_ahead,
+    mail_forbidden_found,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+API_ROOT = REPO_ROOT / "services" / "api"
 
 
 def pem(key: Any) -> str:
@@ -332,6 +343,9 @@ class IdentityPlanTests(unittest.TestCase):
                 self.assertIn(check, covered)
         # Acceptance check 12 is the run's own scan, after every case (identity_suite).
         self.assertEqual(plan[-1], "mail.no_link_no_stranger")
+        # Acceptance check 11's two sentences (correction C2, DM-48 C2.3).
+        self.assertIn("ratelimit.failed_sign_ins", plan)
+        self.assertIn("ratelimit.password_change", plan)
         self.assertEqual(len(identity_cases.EXPECTED_ROUTES), 18)
 
     def test_the_unauthenticated_table_has_each_route(self) -> None:
@@ -364,6 +378,93 @@ class LedgerAndCaptureTests(unittest.TestCase):
         self.assertIn("a printed line", capture.text())
         self.assertNotIn(capture._handler, logging.getLogger().handlers)
         self.assertEqual(stat.S_IMODE(0o600), 0o600)
+
+
+def glow_message(template_prefix: str, code: str) -> str:
+    """One of Glow's own code messages (``glow_identity.messages``), subject and body, rendered
+    with the code given and allauth's timeouts, with no Django settings."""
+    if str(API_ROOT) not in sys.path:
+        sys.path.insert(0, str(API_ROOT))
+    from glow_identity import messages
+
+    timeouts = SimpleNamespace(
+        EMAIL_VERIFICATION_BY_CODE_TIMEOUT=900, PASSWORD_RESET_BY_CODE_TIMEOUT=180
+    )
+    with mock.patch.object(messages, "account_settings", timeouts):
+        message = messages.render(template_prefix, {"code": code})
+    return str(message.subject) + "\n" + str(message.body)
+
+
+CODE_MESSAGES = (
+    "account/email/email_confirmation_signup",
+    "account/email/email_confirmation",
+    "account/email/password_reset_code",
+)
+
+
+class MailNoLinkCheckTests(unittest.TestCase):
+    """Correction C2 (F-1; DM-48 C2.5): the no-link check removes the exact code issued, every
+    occurrence, before it looks for ``http`` and ``www.``; nothing else, and no pattern."""
+
+    def test_a_code_spelling_http_passes(self) -> None:
+        for prefix in CODE_MESSAGES:
+            with self.subTest(message=prefix):
+                text = glow_message(prefix, "HTTP-BCDF")
+                self.assertIn("HTTP-BCDF", text)
+                self.assertEqual(mail_forbidden_found(text, ["HTTP-BCDF"]), [])
+
+    def test_a_code_ending_www_before_its_full_stop_passes(self) -> None:
+        for prefix in CODE_MESSAGES:
+            with self.subTest(message=prefix):
+                text = glow_message(prefix, "BCDF-GWWW")
+                self.assertIn("BCDF-GWWW.", text)
+                self.assertEqual(mail_forbidden_found(text, ["BCDF-GWWW"]), [])
+
+    def test_a_real_link_fails(self) -> None:
+        issued = ["HTTP-BCDF"]
+        message = glow_message("account/email/email_confirmation_signup", "HTTP-BCDF")
+        cases = {
+            "an https link": (message + "\nhttps://glow.invalid/verify", ["http", "://"]),
+            "a www. address": (message + "\nVisit www.glow.invalid today.", ["www."]),
+            "a link holding the code": (
+                message + "\nhttps://glow.invalid/HTTP-BCDF",
+                ["http", "://"],
+            ),
+            "a code-shaped word that was not issued": (message + " HTTP-BCDG", ["http"]),
+        }
+        for name, (text, expected) in cases.items():
+            with self.subTest(case=name):
+                self.assertEqual(mail_forbidden_found(text, issued), expected)
+
+    def test_the_forbidden_list_is_unchanged(self) -> None:
+        self.assertEqual(
+            MAIL_FORBIDDEN,
+            ("http", "://", "www.", "href", "<a", "allauth", "django", "example.com"),
+        )
+
+
+class ClockAheadTests(unittest.TestCase):
+    """Correction C2 (DM-48 section 3): the moved clock keeps ``monotonic`` and ``sleep``, which
+    allauth's ``cache_lock`` calls, unmoved."""
+
+    def test_only_time_moves(self) -> None:
+        module = SimpleNamespace(time=time)
+        with clock_ahead(module, 120):
+            moved = module.time.time() - time.time()
+            self.assertGreater(moved, 119)
+            self.assertLess(moved, 121)
+            self.assertIs(module.time.monotonic, time.monotonic)
+            self.assertIs(module.time.sleep, time.sleep)
+        self.assertIs(module.time, time)
+
+    def test_allauths_limiter_runs_on_the_moved_clock(self) -> None:
+        from allauth.core.internal import ratelimit
+
+        with clock_ahead(ratelimit, 120):
+            self.assertGreater(ratelimit.time.time() - time.time(), 119)
+            self.assertIs(ratelimit.time.monotonic, time.monotonic)
+            self.assertIs(ratelimit.time.sleep, time.sleep)
+        self.assertIs(ratelimit.time, time)
 
 
 class JobDirectory:
@@ -537,6 +638,46 @@ class IdentityUploadGateTests(unittest.TestCase):
         output = step.index('echo "scan=passed" >> "$GITHUB_OUTPUT"')
         self.assertTrue(passed < output < withheld)
         self.assertEqual(step.count("scan=passed"), 1)
+
+    def test_after_a_failed_check_the_step_prints_counts_only(self) -> None:
+        # Correction C2 (F-4; D10, DM-48 C2.6): the failed branch shows counts only, never a
+        # line of the suite's output. The branch is run as the step has it, on a synthetic log.
+        step = workflow_step("SV1: run the identity suite")
+        lines = step.splitlines()
+        start = lines.index('          if [ "$scan" -eq 0 ]; then')
+        withheld = lines.index("          else", start)
+        end = lines.index("          fi", withheld)
+        branch = "\n".join(line[10:] for line in lines[withheld + 1 : end])
+        log = [
+            "[identity] PASS config.case (D2) 0.1 s: every briefed value holds",
+            "[identity] PASS other.case (4) 0.2 s: a detail line",
+            "[identity] FAIL failed.case (11) 0.3 s: FAILED: a reason",
+            "[identity] cases: 2/3 passed in 0.6 s",
+            "identity secret scan: FOUND (9 secrets held; 1 found in 3 log records)",
+            "IDENTITY VERDICT: FAIL",
+            "refusing: a refusal line",
+            "an unexpected line of output",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "identity.log").write_text("\n".join(log) + "\n", encoding="utf-8")
+            result = subprocess.run(
+                ["bash", "-c", "set -e\n" + branch],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "DIR": directory},
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        printed = result.stdout + result.stderr
+        for line in log:
+            with self.subTest(line=line):
+                self.assertNotIn(line, printed)
+        for fragment in ("[identity]", "config.case", "failed.case", "VERDICT", "refusing"):
+            self.assertNotIn(fragment, printed)
+        self.assertIn("counts only, never a line of the suite's output", printed)
+        self.assertIn("lines in the suite's output: 8", printed)
+        self.assertIn("case lines: 2 passed, 1 failed", printed)
 
     def test_the_upload_waits_for_the_check(self) -> None:
         step = workflow_step("SV1: save the identity suite's results JSON")

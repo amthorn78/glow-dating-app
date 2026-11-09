@@ -67,8 +67,17 @@ SETTINGS: dict[str, Any] = {
     "SECURE_CONTENT_TYPE_NOSNIFF": True,
     # D2: the database session store, whose expiry D2 aligns with AccountSession.expires_at.
     "SESSION_ENGINE": "django.contrib.sessions.backends.db",
-    # D3: allauth's rate limits keep their defaults and use Django's cache. One process here;
-    # P11 needs a shared cache for more than one worker.
+    # D3 (correction C2, DM-48): allauth's rate limits keep their defaults, except
+    # change_password, 5 per 300 seconds per account. At account/password/change a wrong current
+    # password is checked by check_password alone and consumes no login_failed, so allauth's
+    # default 5/m/user would give a holder of a live session key or access token five times the
+    # sign-in form's budget there. Every signed-in request there counts, whatever its outcome, a
+    # member's own included: 5 guesses per 300 seconds there, besides the 5 the sign-in form and
+    # auth/reauthenticate share through login_failed, 10 in all. The override merges into
+    # allauth's defaults.
+    "ACCOUNT_RATE_LIMITS": {"change_password": "5/300s/user"},
+    # The limits use Django's cache: a local-memory cache in the proof; P11 needs a shared cache
+    # for more than one worker.
     "CACHES": {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",

@@ -535,8 +535,9 @@ jobs:
           # (the passwords, the markers, the identity SECRET_KEY, each line of the signing key) may
           # be in the suite's output or in its results JSON, and the suite's own scan of every
           # secret it handled must report clean. Only then is the output shown and the JSON
-          # uploaded (the next steps read this step's `scan` output); otherwise only the suite's
-          # own result lines are shown, and the check removes the JSON.
+          # uploaded (the next steps read this step's `scan` output); otherwise the log shows
+          # counts only, never a line of the suite's output (correction C2, DM-48 C2.6), and the
+          # check removes the JSON.
           env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
             python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log" .work/identity-results.json
           scan=$?
@@ -545,8 +546,9 @@ jobs:
             echo "scan=passed" >> "$GITHUB_OUTPUT"
             cat "$DIR/identity.log"
           else
-            echo "the full output is withheld; the suite's own result lines:"
-            grep -E '^\[identity\] |^IDENTITY VERDICT|^identity secret scan|^refusing' "$DIR/identity.log" || true
+            echo "the full output is withheld; counts only, never a line of the suite's output:"
+            echo "lines in the suite's output: $(wc -l < "$DIR/identity.log")"
+            echo "case lines: $(grep -c '^\[identity\] PASS ' "$DIR/identity.log" || true) passed, $(grep -c '^\[identity\] FAIL ' "$DIR/identity.log" || true) failed"
           fi
           rm -f "$DIR/identity.log"
           echo "identity phase: $((finished - started)) s (the job's timeout is 30 minutes)"

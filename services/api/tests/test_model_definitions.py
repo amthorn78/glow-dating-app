@@ -172,6 +172,10 @@ assert set(completed['outcome_code__in']) == codes
             "0003_chat_identity_read_cursor.py": (
                 "6dc68582c174ca98affb725cf7681ed32c887299f22983847dfd9cf3793bf5ac"
             ),
+            # SV1's age state, as generated and recorded (correction C2, F-3).
+            "0004_account_age_state.py": (
+                "8af86a28d73fb9420b3ec6d59e6c1dcb47dc23c4f21e3c34a2830b171fc1866b"
+            ),
         }
         for name, digest in pinned.items():
             with self.subTest(migration=name):

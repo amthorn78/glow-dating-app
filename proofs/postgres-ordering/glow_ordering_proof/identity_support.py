@@ -8,6 +8,8 @@
   with its own IP address. It keeps the tokens it is given, as the app would.
 - ``Context``: synthetic members (``@example.invalid`` addresses, generated passwords) made
   through the HTTP endpoints, the fixture mail outbox and read-only database checks.
+- ``recording_issued_codes``: each verification and reset code Glow's account adapter generates,
+  recorded where it is issued, for the no-link check (``mail_forbidden_found``; correction C2).
 
 A case fails with ``CaseFailed``, whose message names what failed and never a value.
 """
@@ -21,8 +23,8 @@ import re
 import secrets
 import sys
 import threading
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Iterable, Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from typing import Any, TextIO
 from uuid import UUID
@@ -30,6 +32,10 @@ from uuid import UUID
 APP = "/_allauth/app/v1/"
 ACCOUNT_ACCESS = "/api/v1/account/access"
 CODE_PATTERN = re.compile(r"code is ([A-Z0-9]+(?:-[A-Z0-9]+)*)\.")
+# What no message may hold (acceptance check 3; D8): a link, or a name but Glow's.
+MAIL_FORBIDDEN = ("http", "://", "www.", "href", "<a", "allauth", "django", "example.com")
+# The adapter methods that generate the codes a message carries (65.21.1).
+CODE_GENERATORS = ("generate_email_verification_code", "generate_password_reset_code")
 
 
 class CaseFailed(AssertionError):
@@ -264,6 +270,9 @@ class Context:
     account_addresses: set[str] = field(default_factory=set)
     asked_addresses: set[str] = field(default_factory=set)
     unknown_addresses: set[str] = field(default_factory=set)
+    # Every code the run issued, as allauth's adapter generated it (correction C2). Secrets:
+    # each is in the ledger too, and none is ever output.
+    issued_codes: list[str] = field(default_factory=list)
 
     # -- synthetic people ------------------------------------------------------------------
 
@@ -281,6 +290,11 @@ class Context:
         n = next(self._ips)
         nets = ("203.0.113", "198.51.100", "192.0.2")
         return Device(self.ledger, f"{nets[(n // 254) % 3]}.{1 + n % 254}")
+
+    def record_issued_code(self, code: object) -> None:
+        if isinstance(code, str) and code:
+            self.ledger.add(code)
+            self.issued_codes.append(code)
 
     @staticmethod
     def clear_rate_limits() -> None:
@@ -452,14 +466,58 @@ def _unverified_claims(token: str) -> dict[str, Any]:
     return claims
 
 
+def mail_forbidden_found(text: str, issued_codes: Iterable[str]) -> list[str]:
+    """Which of ``MAIL_FORBIDDEN`` a message's text holds (acceptance check 3; D8), by name.
+
+    Correction C2 (DM-48 C2.5): the check removes the exact code the case issued, every
+    occurrence, before it looks for ``http`` and ``www.``. It removes nothing else and uses no
+    pattern, so a link anywhere else in the message still fails it. A code is eight letters
+    from allauth's alphabet, which has ``H``, ``T``, ``P`` and ``W``, so a code can spell
+    ``HTTP``, or end in ``WWW`` before a sentence's full stop."""
+    for code in issued_codes:
+        if code:
+            text = text.replace(code, "")
+    lowered = text.lower()
+    return [forbidden for forbidden in MAIL_FORBIDDEN if forbidden in lowered]
+
+
+@contextmanager
+def recording_issued_codes(ctx: Context) -> Iterator[None]:
+    """Within the block, each code Glow's account adapter generates is recorded where it is
+    issued (``Context.record_issued_code``), and returned to allauth unchanged."""
+    from unittest import mock
+
+    from glow_identity.adapter import GlowAccountAdapter
+
+    def recorder(name: str) -> Any:
+        generate = getattr(GlowAccountAdapter, name)
+
+        def recorded(adapter: Any) -> Any:
+            code = generate(adapter)
+            ctx.record_issued_code(code)
+            return code
+
+        return recorded
+
+    with ExitStack() as stack:
+        for name in CODE_GENERATORS:
+            stack.enter_context(mock.patch.object(GlowAccountAdapter, name, recorder(name)))
+        yield
+
+
 @contextmanager
 def clock_ahead(module: Any, seconds: float) -> Iterator[None]:
-    """allauth's code processes read ``time.time()``; within the block, ``module``'s clock runs
-    ``seconds`` ahead (the code limits' boundary), and nothing else's."""
+    """allauth's code processes and its rate limiter read ``time.time()``; within the block,
+    ``module``'s clock runs ``seconds`` ahead (the code limits' boundary, the limiter's window),
+    and nothing else's. The limiter's ``cache_lock`` also calls ``time.monotonic()`` and
+    ``time.sleep()`` (65.21.1, ``core/internal/ratelimit.py:47-56``), so the moved clock keeps
+    both, unmoved (correction C2, DM-48 section 3)."""
     import time
     from types import SimpleNamespace
     from unittest import mock
 
-    fake = SimpleNamespace(time=lambda: time.time() + seconds)
+    fake = SimpleNamespace(
+        time=lambda: time.time() + seconds, monotonic=time.monotonic, sleep=time.sleep
+    )
     with mock.patch.object(module, "time", fake):
         yield

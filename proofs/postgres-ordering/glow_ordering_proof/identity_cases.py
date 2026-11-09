@@ -24,6 +24,8 @@ from glow_ordering_proof.identity_support import (
     Device,
     clock_ahead,
     expect,
+    mail_forbidden_found,
+    recording_issued_codes,
 )
 
 
@@ -106,6 +108,7 @@ def config_settings(ctx: Context) -> str:
     from cryptography.hazmat.primitives.asymmetric import rsa
     from django.apps import apps
     from django.conf import settings
+    from django.test import override_settings
     from glow_identity.sessions import GlowUserSessionsAdapter
     from glow_identity.strategy import GlowJWTTokenStrategy
 
@@ -154,6 +157,28 @@ def config_settings(ctx: Context) -> str:
     expect(
         account.RATE_LIMITS["login_failed"] == "10/m/ip,5/300s/key", "allauth's failed-login limit"
     )
+    # D3 (correction C2, DM-48): change_password at 5 per 300 seconds per account, merged into
+    # allauth's defaults, which every other limit keeps.
+    resolved = dict(account.RATE_LIMITS)
+    with override_settings(ACCOUNT_RATE_LIMITS={}):
+        defaults = dict(account.RATE_LIMITS)
+    expect(resolved["change_password"] == "5/300s/user", "the password change's limit")
+    expect(defaults["change_password"] == "5/m/user", "in place of allauth's default 5/m/user")
+    expect(
+        set(resolved) == set(defaults)
+        and [name for name in defaults if resolved[name] != defaults[name]] == ["change_password"],
+        "every other rate limit keeps allauth's default",
+    )
+    # F-7 (correction C2): a pending verification can neither change its address nor resend its
+    # code, so it answers alike whoever holds the address.
+    # 65.21.1 resolves the two settings as counts (account/app_settings.py:121-140).
+    for name in ("SUPPORTS_CHANGE", "SUPPORTS_RESEND"):
+        expect(
+            getattr(settings, f"ACCOUNT_EMAIL_VERIFICATION_{name}", False) is False,
+            f"ACCOUNT_EMAIL_VERIFICATION_{name} is off",
+        )
+    expect(account.EMAIL_VERIFICATION_MAX_CHANGE_COUNT == 0, "no address change while pending")
+    expect(account.EMAIL_VERIFICATION_MAX_RESEND_COUNT == 0, "no code resend while pending")
     expect(not apps.is_installed("allauth.mfa"), "no multi-factor authentication")
     expect(not apps.is_installed("allauth.socialaccount"), "no social login")
     expect(
@@ -1456,7 +1481,7 @@ def notice_email_change(ctx: Context) -> str:
 
 
 # =============================================================================================
-# Acceptance check 11: the rate limit on failed sign-ins (D3)
+# Acceptance check 11: the rate limits, on failed sign-ins and at the password change (D3)
 # =============================================================================================
 
 
@@ -1477,6 +1502,71 @@ def ratelimit_failed(ctx: Context) -> str:
     codes = [e.get("code") for e in (limited.body or {}).get("errors", [])]
     expect("too_many_login_attempts" in codes, "by the failed-login limit")
     return "five failures, then refused even with the right password"
+
+
+@case("ratelimit.password_change", "11", "D3")
+def ratelimit_password_change(ctx: Context) -> str:
+    """Acceptance check 11's second sentence (correction C2, DM-48 C2.3): five wrong current
+    passwords at ``account/password/change``, then the right one, sent more than 60 and less than
+    300 seconds after the first of the five by the limiter's clock, is refused as too many, and
+    the password is unchanged. allauth's default, 5/m/user, would accept it."""
+    from allauth.core.internal import ratelimit
+
+    member = ctx.member()
+    device = member.device
+    wrong = ctx.password()
+    new_password = ctx.password()
+    mark = ctx.mail_mark()
+
+    def change(current: str) -> Any:
+        return device.app(
+            "POST",
+            "account/password/change",
+            {"current_password": current, "new_password": new_password},
+            bearer=device.access,
+        )
+
+    started = time.time()  # the limiter's clock: allauth's module reads time.time()
+    for attempt in range(1, 6):
+        refused = change(wrong)
+        expect(
+            refused.status == 400 and "enter_current_password" in refused.error_codes(),
+            f"wrong current password {attempt} is refused",
+        )
+        expect(not refused.tokens(), "and carries no credential")
+    fifth_done = time.time()
+    # The sixth, with the limiter's clock 120 seconds ahead: at least 120 seconds after the
+    # first of the five, and the elapsed time is checked to keep it under 300.
+    ahead = 120
+    before_sixth = time.time()
+    with clock_ahead(ratelimit, ahead):
+        limited = change(member.password)
+    after_sixth = time.time()
+    earliest_gap = before_sixth + ahead - fifth_done
+    latest_gap = after_sixth + ahead - started
+    expect(earliest_gap > 60 and latest_gap < 300, "the sixth is 60 to 300 seconds after the first")
+    expect(
+        limited.status == 429,
+        f"the sixth, with the right password, is refused as too many (answered {limited.status})",
+    )
+    expect(not limited.error_codes() and not limited.tokens(), "with no error code or credential")
+    # The password is unchanged: no notice, the session still valid, the old password signs in.
+    expect(
+        not [
+            m
+            for m in ctx.mail_since(mark, member.email)
+            if m.subject == "Your Glow password was changed"
+        ],
+        "no password-changed notice",
+    )
+    expect(_actor(device, device.access) == 200, "the device's session is not ended")
+    again = ctx.sign_in(member)
+    expect(_actor(again, again.access) == 200, "the old password still signs in")
+    return (
+        f"five wrong current passwords refused (400 enter_current_password); the sixth, right,"
+        f" {earliest_gap:.0f} to {latest_gap:.0f} s after the first: 429 with no error code;"
+        " the old password still signs in"
+    )
 
 
 # =============================================================================================
@@ -1635,11 +1725,13 @@ def mail_check(ctx: Context) -> str:
     messages = mail.outbox()
     expect(messages, "the run sent mail")
     owners = set(EmailAddress.objects.values_list("email", flat=True)) | ctx.account_addresses
+    expect(ctx.issued_codes, "the run recorded the codes it issued")
     for message in messages:
-        text = (message.subject + "\n" + message.body).lower()
-        for forbidden in ("http", "://", "www.", "href", "<a", "allauth", "django", "example.com"):
-            expect(forbidden not in text, "no link and no name but Glow's")
-        expect("glow" in text, "Glow's name")
+        text = message.subject + "\n" + message.body
+        # Correction C2 (DM-48 C2.5): the exact codes issued are removed first, and only they.
+        found = mail_forbidden_found(text, ctx.issued_codes)
+        expect(not found, "no link and no name but Glow's")
+        expect("glow" in text.lower(), "Glow's name")
         expect(len(message.to) == 1, "one recipient")
         recipient = message.to[0]
         expect(recipient not in ctx.unknown_addresses, "no mail to an address with no account")
@@ -1653,7 +1745,10 @@ def run_case(ctx: Context, entry: Case) -> tuple[bool, str]:
     cache.clear()
     ctx.case_id = entry.case_id
     try:
-        return True, entry.run(ctx)
+        # Correction C2: each code is recorded where allauth's adapter issues it, for the
+        # no-link check, and joins the ledger.
+        with recording_issued_codes(ctx):
+            return True, entry.run(ctx)
     except CaseFailed as failed:
         return False, f"FAILED: {failed}"
     except BaseException as exc:  # noqa: BLE001 - recorded by type only; never a value

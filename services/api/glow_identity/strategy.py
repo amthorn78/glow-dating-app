@@ -5,8 +5,8 @@ allauth's JWT strategy, with one addition: **a replayed refresh token ends its s
 current refresh token used first keeps a session the member's next refresh cannot end.
 
 A refresh is allauth's own first. When allauth refuses it, the token is a replay only if it
-passes allauth's own checks, run with allauth's own functions in allauth's order: its signature,
-its expiry and its type (``decode_token``), then the session it names exists
+passes allauth's own checks, run with allauth's own functions in this order: its signature, its
+expiry and its type (``decode_token``), then the session it names exists
 (``get_token_session``), then that session's user is the token's (``validate_token_user``), but
 it carries a ``jti`` the session no longer holds. Only then does the session end, at both layers
 (``revocation.end_replayed_session``). This adds no cryptography. A forged, expired or

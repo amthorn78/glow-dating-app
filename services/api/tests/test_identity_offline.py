@@ -168,6 +168,8 @@ class SettingsFragmentTests(unittest.TestCase):
             "ACCOUNT_EMAIL_NOTIFICATIONS": True,
             "ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE": True,
             "ACCOUNT_LOGIN_BY_CODE_ENABLED": False,
+            # D3 (correction C2, DM-48): the one rate limit SV1 changes.
+            "ACCOUNT_RATE_LIMITS": {"change_password": "5/300s/user"},
             "HEADLESS_ONLY": True,
             "HEADLESS_CLIENTS": ("app",),
             "HEADLESS_SERVE_SPECIFICATION": False,
@@ -203,6 +205,27 @@ class SettingsFragmentTests(unittest.TestCase):
         self.assertNotIn("PASSWORD_HASHERS", settings)  # Django's own list (D3)
         # D3 (correction C1): allauth's default window, 300 seconds, is not overridden.
         self.assertNotIn("ACCOUNT_REAUTHENTICATION_TIMEOUT", settings)
+
+    def test_the_password_change_limit_merges_into_allauths_defaults(self) -> None:
+        # D3 (correction C2, DM-48): allauth resolves change_password as 5 per 300 seconds per
+        # account, and every other limit keeps allauth's own default, read from the installed
+        # release with the override taken away.
+        result = under_identity_settings(
+            "from django.test import override_settings\n"
+            "from allauth.account import app_settings as account\n"
+            "from allauth.core.internal.ratelimit import parse_rates\n"
+            "resolved = dict(account.RATE_LIMITS)\n"
+            "with override_settings(ACCOUNT_RATE_LIMITS={}):\n"
+            "    defaults = dict(account.RATE_LIMITS)\n"
+            "assert defaults['change_password'] == '5/m/user', defaults['change_password']\n"
+            "assert resolved['change_password'] == '5/300s/user', resolved['change_password']\n"
+            "rate, = parse_rates(resolved['change_password'])\n"
+            "assert (rate.amount, rate.duration, rate.per) == (5, 300, 'user'), rate\n"
+            "assert set(resolved) == set(defaults), sorted(set(resolved) ^ set(defaults))\n"
+            "changed = sorted(k for k in defaults if resolved[k] != defaults[k])\n"
+            "assert changed == ['change_password'], changed\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_the_fragment_holds_no_key_password_connection_or_provider(self) -> None:
         from glow_identity import conf
@@ -391,8 +414,8 @@ class IdentityUnderItsSettingsTests(unittest.TestCase):
         )
 
     def test_the_replay_check_reads_no_session_before_allauths_own_checks(self) -> None:
-        # D2 with DM-46's N2: a refresh token is a replay only after allauth's own checks, in
-        # allauth's order. A forged, unsigned, expired or wrong-type token is refused before
+        # D2 with DM-46's N2: a refresh token is a replay only after allauth's own checks, its
+        # signature first. A forged, unsigned, expired or wrong-type token is refused before
         # any session is looked up (here, any database access fails the run); a validly signed
         # refresh token goes on to the session lookup.
         self.run_checks(
@@ -496,8 +519,75 @@ class StaticGuardTests(unittest.TestCase):
             "request.data",
             "request.headers",
             "request.META",
+            # Correction C2 (F-5): the query, the form body, the cookies and the session key.
+            "request.query_params",
+            "request.GET",
+            "request.POST",
+            "request.COOKIES",
+            "session_token",
         ):
-            self.assertNotIn(forbidden, code)
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, code)
+
+    def test_the_actor_is_built_from_the_user_and_the_validated_payload_only(self) -> None:
+        # Correction C2 (F-5): actor_for is called once, with exactly ``user, payload``.
+        calls = [
+            node
+            for node in ast.walk(self.module("authentication"))
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "actor_for"
+        ]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([ast.unparse(argument) for argument in calls[0].args], ["user", "payload"])
+        self.assertEqual(calls[0].keywords, [])
+
+    def test_the_request_reaches_only_allauths_authentication(self) -> None:
+        # Correction C2 (DM-48 C2.7): on the module's syntax tree, authentication.py's code uses
+        # ``request`` only as the parameter of ``authenticate`` and ``authenticate_header``, and
+        # as the argument it passes to allauth's JWTTokenAuthentication methods of the same
+        # names. Any other use (an attribute, getattr, another call, an alias) fails.
+        tree = self.module("authentication")
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+
+        def enclosing_function(node: ast.AST) -> str | None:
+            while node in parents:
+                node = parents[node]
+                if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                    return node.name
+            return None
+
+        def passed_to_allauth(name: ast.Name) -> bool:
+            call = parents.get(name)
+            if not (isinstance(call, ast.Call) and call.args == [name] and not call.keywords):
+                return False
+            method = call.func
+            return (
+                isinstance(method, ast.Attribute)
+                and method.attr == enclosing_function(name)
+                and isinstance(method.value, ast.Call)
+                and ast.unparse(method.value) == "JWTTokenAuthentication()"
+            )
+
+        allowed = {"authenticate", "authenticate_header"}
+        parameters: list[str] = []
+        arguments: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.arg) and node.arg == "request":
+                function = enclosing_function(node)
+                with self.subTest(parameter_in=function, line=node.lineno):
+                    self.assertIn(function, allowed)
+                parameters.append(str(function))
+            elif isinstance(node, ast.Name) and node.id == "request":
+                with self.subTest(use=ast.unparse(parents.get(node, node)), line=node.lineno):
+                    self.assertIsInstance(node.ctx, ast.Load)
+                    self.assertTrue(passed_to_allauth(node))
+                arguments.append(str(enclosing_function(node)))
+            elif isinstance(node, ast.Attribute) and node.attr == "request":
+                with self.subTest(attribute=ast.unparse(node), line=node.lineno):
+                    self.fail("no attribute named request")
+        self.assertEqual(sorted(parameters), sorted(allowed))
+        self.assertEqual(sorted(arguments), sorted(allowed))
 
     def test_every_revocation_entry_refuses_an_open_transaction(self) -> None:
         guarded = {
