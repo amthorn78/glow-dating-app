@@ -41,6 +41,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV1 (the identity slice; OD-49)
 
+- **The brief is written:** [`sv1-identity.md`](sv1-identity.md), revision 1 (9 November 2026), folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8). It is with the Dev Manager as DM-45.
 - **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
 - **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
 - **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
