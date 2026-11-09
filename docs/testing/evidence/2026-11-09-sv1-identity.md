@@ -905,3 +905,45 @@ Each run had:
 - **The upload skipped after a failed check,** shown only locally by the job's own scripts: accepted. CI shows the passing path, and the reversals show the refusal.
 
 **Codex's P1 thread** on `conf.py` is answered and resolved now that C1 is on PR42.
+
+## Exact-head review of SV1 (code head `bda299e`)
+
+- **The session:** started by Nathan from the exact-head review prompt, revision 1, at `1c26f1d71ec597b3420b617e81b1556f92e18809` (`docs/ephemeral/2026-11-09-sv1-review-prompt.md`). It reported on 9 November 2026; its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed;
+  - the start gate passed, with one merge base, `8d2de72`, and no non-Markdown path differing from `bda299e`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`.
+- **What it ran:**
+  - the API's checks (450 tests) and the proof's (186);
+  - five offline reversals (C1-R1, C1-R5, C1-R6, R2, R3), each failing its case;
+  - the specification regenerated to the record's hashes;
+  - informational, on a throwaway PostgreSQL under D4: the suite 48/48 twice, reversals D6-h and D2-c, and four probes.
+- **What it read:** the three runs' job lists, gates and the last 400 lines of each Database job's log.
+- **The verdict: changes required.** Two should-fix findings fall in the correction classes, with one records correction and six nits. No finding is blocking.
+- **Its statements:**
+  - every Dev Manager condition is met in code;
+  - every fact the record reads from allauth 65.21.1 holds in the installed source;
+  - the workflow's five hunks all lie inside the Database proof checks job;
+  - the dependency set is exactly the brief's;
+  - the records hold, apart from F-3, F-6 and F-8.
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| F-1 | should fix (class: a test fails where the code is right) | F-M1, confirmed and wider. The no-link check forbids `http` and `www.`. A code group `HTTP` spells `http` (1 in 80,000 per code), and a code ending `WWW` before the sentence's full stop spells `www.` (1 in 8,000 per code). Together that is about 1 in 7,273 per code, or about 0.8 percent of runs. Codex raised the same defect on `1c26f1d` (P2, `identity_cases.py:1641`) | **Fix before the merge, in correction C2** (test-only): strip the message's own code before the check, with cases for `HTTP`, a trailing `WWW` and a real link |
+| F-2 | should fix (class: a token holder gets a larger password-guessing budget than the sign-in form gives; D3's standard) | At `POST account/password/change`, a wrong current password is checked by `check_password` alone (`headless/account/inputs.py:180-184`). It consumes only `change_password`, 5 per minute per user (`headless/account/views.py:400`; `account/app_settings.py:287`), and no `login_failed`. A holder of a live session key or access token gets 7,200 guesses a day, against 1,440 at the sign-in form | **Fix before the merge, in correction C2, after the Dev Manager's read** (DM-48): it changes D3's "allauth's rate limits keep their defaults" (DM-45 item 7) on a security boundary |
+| F-3 | should fix (class: a record claims more than the tests show) | The record says migration 0004's SHA-256 is pinned by `test_migration_0004_adds_the_age_state_only`. No test pins it: the `pinned` dictionary holds 0003's hash only | **Fix in C2:** pin 0004's hash in the `pinned` dictionary, so the record's sentence holds |
+| F-4 | nit | After a failed secret check, the step prints the suite's own `[identity]` result lines from the log the check failed. Today those lines hold only fixed strings | **In C2:** print counts only after a failed check |
+| F-5 | nit | The static no-header guard does not forbid `request.query_params`, `request.GET`, `request.COOKIES`, `request.POST` or a lowercase `session_token` | **In C2:** widen the guard, and assert that `actor_for` is called with exactly `user, payload` |
+| F-6 | nit | The brief's N2 wording lists the user check before the `jti` check, but allauth's `validate_refresh_token` checks the `jti` state first (`internal.py:116-125`). Every check still runs before any action | **To the Dev Manager** (DM-48), since N2's words are its own |
+| F-7 | nit | The threat model does not name `ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_CHANGE` and `…_SUPPORTS_RESEND`, which are off and keep a pending verification answering alike | **In C2:** pin both in `config.settings_as_briefed`; the threat model names them |
+| F-8 | nit | "Repeatable: yes" for the session list and the replay rests on the code's idempotence, not on a failing-second-step case | **Recorded here** as a claim limit |
+| F-9 | nit | A `UserSession` purged after the aligned expiry leaves `auth_session_ref` pointing at a deleted row. The actor refuses `no_user_session` before its expiry check, so the row is never marked | **Carried to SV4** with the expiry sweep (the carried-items file) |
+
+**What the review could not run or read:**
+- the Database jobs' logs before their last 400 lines;
+- the earlier run 42575311159;
+- the artifacts' contents;
+- allauth's documentation site;
+- Notion.
+
+It did not check the record's claim that run 907's 47 case lines match the earlier run's word for word.
