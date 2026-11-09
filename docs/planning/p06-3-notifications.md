@@ -1,7 +1,7 @@
 # P06.3 — Privacy-safe notifications at fixture scope
 
 - **Work ID:** P06.3 (P06; PF01 P06.3 acceptance; the F12 flow).
-- **Status: brief, revision 2, 8 November 2026; implemented (code head `9c4fef5`); the exact-head review is next.** Revision 1 went to the Dev Manager as DM-44. [DM-44](../continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md) (answered at `65618c1`, a read of `8bf9d8d`) approved it with conditions. Revision 2 applies them as written: 1.1 and 1.2 in Outcome 2; 2.1, 2.2 and 3.3 in Outcome 1; 3.1 and 3.2 in Outcome 2; 4.1 to 4.3 in Outcome 3; 5.1 in D6; 6.1 in D7; 6.2 in "Owned paths" and "Exclusions"; 6.3 in Outcome 4; 7.1 in D9; and 9.1 in the review plan. So it needs no read before the prompt, and the Dev Manager's next consultation confirms the words as applied (DM-44 1.3).
+- **Status: brief, revision 3, 9 November 2026; implemented (code head `9c4fef5`); the exact-head review asked for changes; correction C1 is next.** Revision 3 adds "Correction C1" and changes nothing else. Revision 1 went to the Dev Manager as DM-44. [DM-44](../continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md) (answered at `65618c1`, a read of `8bf9d8d`) approved it with conditions. Revision 2 applies them as written: 1.1 and 1.2 in Outcome 2; 2.1, 2.2 and 3.3 in Outcome 1; 3.1 and 3.2 in Outcome 2; 4.1 to 4.3 in Outcome 3; 5.1 in D6; 6.1 in D7; 6.2 in "Owned paths" and "Exclusions"; 6.3 in Outcome 4; 7.1 in D9; and 9.1 in the review plan. So it needs no read before the prompt, and the Dev Manager's next consultation confirms the words as applied (DM-44 1.3).
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): P06.3 after P06.2-F, before the server slices SV1 to SV4. **Manager:** App Manager 10. **Session:** one implementation session, started by Nathan, in `Glow App - No Stream` (no Stream call).
 - **Starting point:** `main` at `8031361` (PR40, P06.2-F), with the manager branch's Markdown records after it. The prompt names the exact commit. The app is on Expo SDK 58 (`expo` 58.0.22).
 - **Evidence home:** `docs/testing/evidence/<date>-p06-3-notifications.md`, written by the session.
@@ -181,6 +181,34 @@ The item is done when each of these holds, **each with a test and the reversal t
 
   DM-44 also named F12's HTTP owner: SV4 (D9; the carried-items file, "Carried to SV4").
 
+## Correction C1 (the exact-head review's F-1, which is Codex's F-C1, with F-2 and F-3)
+
+The exact-head review of `9c4fef5` asked for changes (the record, "Exact-head review of P06.3"): two should-fix findings in correction classes, and one nit in the same guard class. The correction is done when each of these holds, **each with a test and the reversal that fails it**, recorded in the record's new section "Correction C1".
+
+1. **F-1: the fixture adapter re-checks the session after its await.**
+   - **The change:** in `apps/mobile/src/notifications/fixture-adapter.ts`, `settings`, `device` and `notifications` resolve the request's session after `await this.gate()`, or inside each command, as the Python domain does. A request whose session ended while it awaited is refused `unauthenticated` and changes nothing: no registration, no settings change, no token held.
+   - **The adapter's test:** start a register, a settings save and a read; call `ended(session)`; then await each. Each is `unauthenticated`, there is no registration, and `heldTokens` is 0.
+   - **The store's test:** `setKind('match', true)` and then `owner.logout()` in the same task, and the same with an account change (`owner.scenario('eligible')`), each with the permission preset granted and undetermined-and-allowed. In each case no registration is active for the ended session and `heldTokens` is 0; the later-task case keeps passing.
+   - **The reversal:** the session taken before the await and used after it, as at `9c4fef5`. Both the adapter's test and the store's test fail.
+2. **F-2: the server's import test records relative imports exactly.**
+   - **The change:** `FixtureScopeTests` in `services/api/tests/test_notifications.py` records each `ImportFrom`'s level, module and imported names, so that `notifications.py`'s relative imports are exactly `.chat` and `.provider_fixtures`, and the record's claim ("imports only the standard library, `.chat` and `.provider_fixtures`") is true of the test.
+   - **The reversal:** `from . import chat_provider_stream` added to `notifications.py` fails it.
+3. **F-3: the mobile import scan covers bare side-effect imports.**
+   - **The change:** `apps/mobile/src/notifications/fixture-scope.test.ts` also matches `import '…'`.
+   - **The reversal:** `import 'expo-device';` added to `permission.ts` fails it.
+4. **The record's section "Correction C1":** each item's test, reversal and failing output; the local checks; the run of record.
+
+**Owned paths:**
+- `apps/mobile/src/notifications/fixture-adapter.ts`, `fixture-adapter.test.ts`, `store.test.ts` and `fixture-scope.test.ts`;
+- `services/api/tests/test_notifications.py`;
+- the record, for its new section only.
+
+**Exclusions:** everything else. That includes `store.ts`, `client.ts`, `notifications.py`, `notification_fixtures.py`, every guard, the layout, and every dependency, lock, contract and model. If the fix seems to need any of them, the session stops and reports.
+
+**Review:** a correction of 60 or fewer non-test lines gets a delta review (step 6; M05 S2), after Codex on its head and on the commit that holds that review's prompt. A larger correction, or one that changes a design, gets a full exact-head review.
+
+**The Dev Manager:** no read before the prompt. F-1's fix makes the adapter do what DM-44 1.2 already says ("a command from a session that is no longer current is refused"). It changes no design, interface, contract or dependency, and the adapter enforces nothing in production. The next consultation sees this disposition (the record, "Exact-head review of P06.3").
+
 ## Sessions
 
 - **Brief, revision 1** (8 November 2026): written after the matrix recheck; sent to the Dev Manager as DM-44 ([consultation](../ephemeral/2026-11-08-dm-44-p06-3-brief.md)).
@@ -201,4 +229,8 @@ The item is done when each of these holds, **each with a test and the reversal t
 - **PR41** (9 November 2026): P06.3's full-scope PR from the manager branch.
   - **Codex on `1dc1b0b`:** one finding, **F-C1** (P2). In the mobile fixture adapter, a request that starts before its session ends still acts for the ended session. The manager reproduced it: an active registration remains on the ended session, with its token held (the record, "Codex's review of `1dc1b0b`").
   - **F-C1 is in a correction class,** so it joins the exact-head review's pass (step 6).
-- **The exact-head review prompt** ([prompt](../ephemeral/2026-11-09-p06-3-review-prompt.md), revision 2; revision 1 was not given): of code head `9c4fef5`, with DM-44 9.1's threat model and F-C1 as focus item 8, for `Glow App - No Stream`; TypeSafe v8.2: Fable 5.1 at extra high. Codex completed on `481562f`, the commit that holds it, with no new finding. PR41's runs on `1dc1b0b` and `481562f` passed. Given to Nathan on 9 November.
+- **The exact-head review prompt** ([prompt](../ephemeral/2026-11-09-p06-3-review-prompt.md), revision 2; revision 1 was not given): of code head `9c4fef5`, with DM-44 9.1's threat model and F-C1 as focus item 8, for `Glow App - No Stream`; TypeSafe v8.2: Fable 5.1 at extra high. Codex completed on `481562f`, the commit that holds it, with no new finding. PR41's runs on `1dc1b0b` and `481562f` passed. Given to Nathan on 9 November. **Done** (9 November; prompt revision 2 at `481562f`; Nathan's pick: not recorded): **changes required.** No blocking finding.
+  - **The two should-fix findings:** F-1 (Codex's F-C1, confirmed, and reachable through the store's own flows in the same task) and F-2 (the server's import test is defeated by `from . import X`).
+  - **The nits:** F-3 joins C1; F-4 is carried to SV4, and F-5 to P09.
+  - **What holds:** DM-44's conditions are met in code, D7's guard change is exact, and the custody and layout reversals fail as recorded.
+  - **The threat model** is in the review's report; the dispositions are in the record, "Exact-head review of P06.3". Next: correction C1.

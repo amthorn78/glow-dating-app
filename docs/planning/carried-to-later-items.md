@@ -68,6 +68,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **G-12** is carried, conditional, to an EU launch, since the EU is not a launch country for now (OD-55). At an EU launch it is the recorded classification of whether the chat is a number-independent interpersonal communications service. It decides whether ePrivacy's confidentiality rule covers what SV4 stores (EU-30), including the conversations OD-12 keeps for safety reports, and whether chat scanning needs Regulation 2026/1881's conditions (EU-26). P07.1 and P08.1 read it then.
   - **Without an answer on the history policy,** the brief keeps the recorded default and says so: reads refuse whatever refuses a send (the P11 plan) (4.5).
 - **From P06.3** (DM-44 item 7): F12's HTTP surface, its ORM adapters and the notification triggers' wiring, with the decisions P06.3's brief lists in D9: the contract and model fields' mapping (`push_enabled`, a platform, a `none` device state, a `rotate` action, the registration's session, which registration a read describes); the triggers' events (a message's acceptance writes none today; `match_activated` is settled when the chat worker creates the channel); and the system `logout` event's source (`session_revoked`, `session_expired`).
+- **From P06.3's exact-head review, F-4** (the P06.3 record, "Exact-head review of P06.3"): the in-memory composer's `_fixed` set and ledger grow without bound (`notifications.py`); the serving slice gives the ledger its real storage, a bound and a retention.
 - **From DM-44's optional item (4.1), not taken in P06.3:** whether turning every kind off also revokes the installation's registration and discards its token, so that Glow holds no token it does not use. F12 allows it (`revoke`). It is decided where real tokens first exist, here or in P09.2.
 
 ## Carried to the second A05 message (before SV2's brief; DM-37 4.5)
@@ -100,6 +101,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **G-14:** the reviewer account for both stores, which no fixture adapter or test-account privilege can turn into access to real users (PF01 P12).
   - **G-16:** EU monthly active recipients on request, UK monthly users against the thresholds, and evidence of micro or small status, in the observability scope.
   - **G-11's incident escalation** stays with P09.
+- **From P06.3's exact-head review, F-5** (the P06.3 record, "Exact-head review of P06.3"): `NotificationStore.setKind` awaits `permission.request()` with no catch (`apps/mobile/src/notifications/store.ts`). P09.2's real permission seam handles a rejection, so that `busy` is reset and the member can try again; the fixture seam never rejects.
 
 ## Carried to P09.3a (the store, legal and safety requirements matrix)
 

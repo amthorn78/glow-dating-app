@@ -262,3 +262,38 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   Both heads hold `9c4fef5`'s code. The manager pushed `481562f` only after both runs on `1dc1b0b` had finished, so neither was cancelled.
 - **Codex's code review of `481562f`** (the commit that holds the review prompt's revision 2) completed at 00:57:55 UTC with no new finding. Its summary's "unresolved" state is F-C1's thread, open by design until the fix is on PR41.
 - **The exact-head review prompt,** revision 2 at `481562f`, went to Nathan once Codex had completed on the code head and on the prompt's commit (step 6).
+
+## Exact-head review of P06.3 (9 November 2026)
+
+- **The review:** prompt revision 2 at `481562f`, of code head `9c4fef5`, run in `Glow App - No Stream`; Nathan's pick: not recorded.
+  - The environment check, the start gate and the classification (`"full": true`) passed.
+  - **Verdict: changes required.** No blocking finding; two should-fix findings in correction classes; three nits.
+  - It wrote the threat model DM-44 9.1 asks for: assets, actors, entry points, and each threat with its stopping code and test. Every threat has both, apart from F-1 (the session binding) and F-2 and F-3 (the fixture-only guards).
+- **The findings and their dispositions** (step 6, "Fix or carry, by rule"):
+
+| # | Severity, class | What | Disposition |
+|---|---|---|---|
+| F-1 | Should fix; in a correction class (a stale session acts; a registration stays active after its session's logout) | Codex's F-C1, confirmed. `fixture-adapter.ts:101-118`: `settings`, `device` and `notifications` read the session before `await this.gate()` and act after; `ended()` sweeps synchronously. **The store's own flows reach it:** `setKind('match', true)` then `owner.logout()`, or an account change, in the same task, with the permission granted or undetermined-and-allowed. Each ends with `register` after `session_ended`, the registration active on the ended session, and `heldTokens` 1. A logout in a later task, as a tap is, does not reach it. No other place has the pattern: the store checks its epoch after every await, and the client holds no session state | **Fix before the merge** (rule (a)): correction C1, item 1 |
+| F-2 | Should fix; in a correction class (a record claim more than the test shows) | `test_notifications.py:1105-1134` records a relative import as its dots plus module name, so `from . import X` is `"."` for any X. The probe `from . import chat_provider_stream` (a sibling that imports `httpx`, `jwt` and `getstream`) passes all four `FixtureScopeTests`. The served runtime is unaffected (the sealed-runtime test holds) | **Fix before the merge** (rule (a)): correction C1, item 2, makes the test true to the record's claim |
+| F-3 | Nit | `fixture-scope.test.ts:22` misses the bare side-effect form `import '…'`, which `no-provider.test.ts` covers. The probe `import 'expo-device';` passes both tests | **In C1** as item 3: one pattern in the same guard class as F-2, with its reversal |
+| F-4 | Nit | `notifications.py:611-613`, `:1002`, `:1032`: `_fixed` and `_ledger` grow without bound in the in-memory fixture; `MAX_RECEIPTS` bounds receipts only | **Carried to SV4** (the carried-items file): the ledger's real storage, its bound and its retention |
+| F-5 | Nit | `store.ts:136`: `await this.permission.request()` has no catch; a seam that rejects would leave `busy` set. The fixture seam never rejects | **Carried to P09** (the carried-items file): P09.2's real permission seam handles a rejection |
+
+- **Record corrections** (focus 7), recorded here and not made in the session's sections:
+  - **an unrecorded reversal:** the composer's own session check has a test but no recorded reversal. The review made `_active_for_composer`'s session clause `True`, and `NoDuplicatePushTests` failed (failures=4);
+  - **"the first delivery fixes its devices"** means the first delivery that passes the checks, as the docstring says.
+- **The review's re-runs,** in a scratch copy of `9c4fef5`, each failing its test:
+  - o2-custody-log-token, o2-stale-session (7), the composer's session check (4) and o1-facts-from-trigger (6);
+  - m3-session-ends-before-revoke and m3-revoke-removed;
+  - m4-layout-line-removed: 3 failed and 4 passed. This one ran on the preinstalled Chromium 1243 and is informational.
+
+  Its own checks: API `Ran 421 tests … OK`, ruff and mypy clean, `smoke.py`, `static_check`, and mobile `npm run check` with 680 passing.
+- **The runs it read:**
+  - run 42540179430, as recorded;
+  - PR41's `pull_request` runs: 42541971693 on `1dc1b0b`, 42542778816 on `481562f`, and 42543652678 on `00e5f26`, each with all eight jobs `success` (Mobile `104 passed (5.2m)` on `00e5f26`).
+
+  Push run 42543647486 on `00e5f26` also passed.
+- **The design fit of C1's fix** (the manager's reading of step 6's consultation rule):
+  - F-1's fix makes the mobile fixture adapter do what DM-44 1.2 already says: "a command from a session that is no longer current is refused". The authoritative Python domain does this inside each command;
+  - the fix changes no design, interface, contract or dependency, and the adapter enforces nothing in production;
+  - so the manager writes C1 without a consultation, and the Dev Manager's next consultation sees this disposition.
