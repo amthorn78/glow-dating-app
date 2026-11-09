@@ -1286,3 +1286,8 @@ The secret check passed, so the step took its passing branch; the counts-only br
   - the local runs were iteration only, since Docker Hub limited the image pull.
 - **Integrated** by fast-forward of the manager branch to `080c9a9`. Codex's F-1 and F-2 threads on PR42 are answered and resolved once this batch is pushed.
 - **Next:** a delta review of C2 on S2's terms, with the exact-head review's security focus. Its prompt is `docs/ephemeral/2026-11-09-sv1-c2-delta-review-prompt.md`.
+- **The manager branch's runs on `38d48e2`** (read at 18:36 UTC) lost jobs too, with no step failing:
+  - **push run 42673988451:** API checks, API mobile smoke, API artifact checks and Database proof checks passed, the identity suite among them. Change scope, Mobile checks and Stream proof checks are `abandoned` and absent from its job list, so the gate failed with `Change classification failed`;
+  - **PR run 42673999110:** four jobs listed and passed (API checks, API mobile smoke, Stream proof checks, API artifact checks). It concluded `failure` with no failed job.
+
+  GitHub's status page reported an unresolved "Incident with Actions and Checks API", investigating from 18:12:37 UTC, with Actions in major outage from 18:14:58. The three lost runs go to the Dev Manager as DM-49 (OD-58; OD-21), and C2's delta review prompt waits for its answer. Nothing is re-run.
