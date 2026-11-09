@@ -164,6 +164,7 @@ class SettingsFragmentTests(unittest.TestCase):
             "ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS": False,
             "ACCOUNT_PREVENT_ENUMERATION": True,
             "ACCOUNT_CHANGE_EMAIL": True,
+            "ACCOUNT_REAUTHENTICATION_REQUIRED": True,
             "ACCOUNT_EMAIL_NOTIFICATIONS": True,
             "ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE": True,
             "ACCOUNT_LOGIN_BY_CODE_ENABLED": False,
@@ -200,6 +201,8 @@ class SettingsFragmentTests(unittest.TestCase):
         minimum = settings["AUTH_PASSWORD_VALIDATORS"][1]
         self.assertEqual(minimum["OPTIONS"], {"min_length": 10})
         self.assertNotIn("PASSWORD_HASHERS", settings)  # Django's own list (D3)
+        # D3 (correction C1): allauth's default window, 300 seconds, is not overridden.
+        self.assertNotIn("ACCOUNT_REAUTHENTICATION_TIMEOUT", settings)
 
     def test_the_fragment_holds_no_key_password_connection_or_provider(self) -> None:
         from glow_identity import conf
@@ -439,6 +442,23 @@ class IdentityUnderItsSettingsTests(unittest.TestCase):
             "assert isinstance(get_account_adapter(), GlowAccountAdapter)\n"
             "assert issubclass(GlowAccountAdapter, DefaultAccountAdapter)\n"
             "assert not get_account_adapter()._has_phone_impl\n"
+        )
+
+    def test_an_address_change_needs_a_recent_reauthentication(self) -> None:
+        # D3 (correction C1, DM-47): the setting is on, the window is allauth's 300 seconds, and
+        # Glow's adapter leaves allauth's reauthentication and its password check alone, so a
+        # wrong password at auth/reauthenticate consumes the sign-in form's login_failed limit.
+        self.run_checks(
+            "from allauth.account import app_settings as account\n"
+            "from allauth.account.adapter import get_adapter\n"
+            "from glow_identity.adapter import GlowAccountAdapter\n"
+            "assert account.REAUTHENTICATION_REQUIRED is True\n"
+            "assert account.REAUTHENTICATION_TIMEOUT == 300\n"
+            "assert get_adapter().is_reauthentication_required(app='allauth.account') is True\n"
+            "kept = ('reauthenticate', 'authenticate', 'pre_authenticate',\n"
+            "        'is_reauthentication_required')\n"
+            "overridden = [name for name in kept if name in vars(GlowAccountAdapter)]\n"
+            "assert not overridden, overridden\n"
         )
 
 

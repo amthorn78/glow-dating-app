@@ -3,8 +3,11 @@
 On the second disposable database, after ``migrate`` and ``makemigrations --check --dry-run``:
 it refuses a database an earlier run used, records the server and the migration ledger, runs
 every case in ``identity_cases`` in order, then checks that no secret the run handled appears in
-any log record (captured at DEBUG) or in anything the process wrote (acceptance check 12). It
-prints one line per case and ``IDENTITY VERDICT: PASS`` or ``FAIL``, and exits 0 only on a pass.
+any log record (captured at DEBUG), in anything the process wrote, or in the results JSON it
+would write (acceptance check 12; correction C1). A results JSON that holds one is not written.
+It prints one line per case and ``IDENTITY VERDICT: PASS`` or ``FAIL``, and exits 0 only on a
+pass. The job's own check (``identity_scan``) then scans the log and the JSON with the job's
+values before the JSON is uploaded.
 """
 
 from __future__ import annotations
@@ -119,6 +122,11 @@ def run(results_path: Path | None) -> int:
         capture.uninstall()
         report.secrets_held = ledger.count()
         report.secrets_found = ledger.found_in(capture.text())
+    # Correction C1 (DM-47 C1.4): the results JSON is output too. A secret in it fails the run,
+    # and the file is not written.
+    body = report.to_json()
+    found_in_results = ledger.found_in(body)
+    report.secrets_found += found_in_results
     passed_cases = sum(c.passed for c in report.cases)
     print(
         f"[identity] cases: {passed_cases}/{len(report.cases)} passed in {report.seconds:.1f} s",
@@ -127,13 +135,16 @@ def run(results_path: Path | None) -> int:
     print(
         f"{SCAN_CLEAN if report.secrets_found == 0 else SCAN_FOUND}"
         f" ({report.secrets_held} secrets held; {report.secrets_found} found in"
-        f" {len(capture.records)} log records and {len(capture.written)} writes)",
+        f" {len(capture.records)} log records, {len(capture.written)} writes and the results"
+        f" JSON)",
         flush=True,
     )
     print(f"IDENTITY VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
-    if results_path is not None:
+    if results_path is not None and found_in_results:
+        print(f"results withheld: the results JSON held {found_in_results} secrets")
+    elif results_path is not None:
         results_path.parent.mkdir(parents=True, exist_ok=True)
-        results_path.write_text(report.to_json(), encoding="utf-8")
+        results_path.write_text(body, encoding="utf-8")
         print(f"results written: {results_path}")
     return 0 if report.passed() else 1
 

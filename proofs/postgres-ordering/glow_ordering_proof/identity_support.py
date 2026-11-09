@@ -146,6 +146,17 @@ class Reply:
             name for name in ("session_token", "access_token", "refresh_token") if name in carried
         }
 
+    def flow_ids(self) -> set[str]:
+        """The flows the reply offers, pending or not (a reauthentication answer's flows)."""
+        data = self.data()
+        flows = data.get("flows", []) if isinstance(data, dict) else []
+        return {str(flow.get("id")) for flow in flows if isinstance(flow, dict)}
+
+    def error_codes(self) -> list[str]:
+        return [
+            str(e.get("code")) for e in (self.body or {}).get("errors", []) if isinstance(e, dict)
+        ]
+
     def pending(self) -> set[str]:
         data = self.data()
         flows = data.get("flows", []) if isinstance(data, dict) else []
@@ -329,6 +340,14 @@ class Context:
         expect(device.access and device.refresh, "verification returns the token pair")
         user_id, account_id = self.ids(email)
         return Member(email, password, user_id, account_id, device)
+
+    @staticmethod
+    def reauthenticate(device: Device, password: str) -> Reply:
+        """``POST auth/reauthenticate`` with the device's access token (D3, correction C1):
+        what an address change needs first, within 300 seconds, in the same session."""
+        return device.app(
+            "POST", "auth/reauthenticate", {"password": password}, bearer=device.access
+        )
 
     def sign_in(self, member: Member) -> Device:
         device = self.device()

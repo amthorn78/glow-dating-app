@@ -1,4 +1,4 @@
-"""The identity cases (SV1; its brief's acceptance checks 1 to 12, with D2 to D9), each run
+"""The identity cases (SV1; its brief's acceptance checks 1 to 13, with D2 to D9), each run
 through the HTTP endpoints with Django's test client on the disposable identity database.
 
 Every case makes its own synthetic members, so no case depends on another. Each declares the
@@ -145,6 +145,9 @@ def config_settings(ctx: Context) -> str:
     expect(account.EMAIL_UNKNOWN_ACCOUNTS is False, "no mail to an unknown address")
     expect(account.PREVENT_ENUMERATION is True, "enumeration prevention (not strict)")
     expect(account.CHANGE_EMAIL, "one address, replaced after verification")
+    expect(account.REAUTHENTICATION_REQUIRED is True, "an address change needs reauthentication")
+    expect(account.REAUTHENTICATION_TIMEOUT == 300, "within the last 300 seconds")
+    expect(account.RATE_LIMITS["reauthenticate"] == "10/m/user", "allauth's reauthenticate limit")
     expect(account.EMAIL_NOTIFICATIONS, "the account-change notices")
     expect(account.LOGOUT_ON_PASSWORD_CHANGE, "a password change ends every session")
     expect(not account.LOGIN_BY_CODE_ENABLED, "no login by code")
@@ -622,9 +625,12 @@ def enum_email_change(ctx: Context) -> str:
     ctx.clear_rate_limits()
     free = ctx.email()
     ctx.asked_addresses.update({b.email, free})
+    # Correction C1: an address change needs a reauthentication in the same session first.
+    expect(ctx.reauthenticate(a.device, a.password).status == 200, "A reauthenticates")
     mark = ctx.mail_mark()
     to_taken = a.device.app("POST", "account/email", {"email": b.email}, bearer=a.device.access)
     a2 = ctx.sign_in(a)
+    expect(ctx.reauthenticate(a2, a.password).status == 200, "A reauthenticates on its device")
     to_free = a2.app("POST", "account/email", {"email": free}, bearer=a2.access)
     expect(to_taken.status < 500 and to_free.status < 500, "neither raises")
     expect(to_taken.shape() == to_free.shape(), "a taken and a free address answer alike")
@@ -1422,6 +1428,8 @@ def notice_email_change(ctx: Context) -> str:
     device = member.device
     new_email = ctx.email()
     ctx.asked_addresses.add(new_email)
+    # Correction C1: an address change needs a reauthentication in the same session first.
+    expect(ctx.reauthenticate(device, member.password).status == 200, "the member reauthenticates")
     mark = ctx.mail_mark()
     asked = device.app("POST", "account/email", {"email": new_email}, bearer=device.access)
     expect(asked.status == 200, "the change is asked for")
@@ -1469,6 +1477,149 @@ def ratelimit_failed(ctx: Context) -> str:
     codes = [e.get("code") for e in (limited.body or {}).get("errors", [])]
     expect("too_many_login_attempts" in codes, "by the failed-login limit")
     return "five failures, then refused even with the right password"
+
+
+# =============================================================================================
+# Acceptance check 13: reauthentication before an address change (D3; correction C1, DM-47)
+# =============================================================================================
+
+
+@case("reauth.email_change_needs_recent_reauthentication", "13", "10", "D3", "D5")
+def reauth_email_change(ctx: Context) -> str:
+    from allauth.account.internal.flows import reauthentication
+    from allauth.account.models import EmailAddress
+    from allauth.usersessions.models import UserSession
+    from django.contrib.sessions.models import Session
+
+    member = ctx.member()
+    device = ctx.sign_in(member)  # a password sign-in: its own record must not count
+    other = ctx.sign_in(member)  # another session of the same account
+    new_email = ctx.email()
+    ctx.asked_addresses.add(new_email)
+
+    def addresses() -> list[tuple[str, bool, bool]]:
+        return sorted(
+            EmailAddress.objects.filter(user_id=member.user_id).values_list(
+                "email", "verified", "primary"
+            )
+        )
+
+    start = addresses()
+    expect(start == [(member.email, True, True)], "one verified address to start")
+
+    def refused(on: Device, when: str) -> None:
+        mark = ctx.mail_mark()
+        reply = on.app("POST", "account/email", {"email": new_email}, bearer=on.access)
+        expect(reply.status == 401, f"{when}: the change answers 401")
+        # allauth's 401 lists the reauthenticate flow, and password_reset_by_code not pending.
+        expect("reauthenticate" in reply.flow_ids(), f"{when}: with the reauthenticate flow")
+        expect(not reply.pending(), f"{when}: and no pending flow")
+        expect(not reply.tokens(), f"{when}: and no credential")
+        expect(not ctx.mail_since(mark), f"{when}: no mail is sent")
+        expect(addresses() == start, f"{when}: no address changes")
+        expect(not EmailAddress.objects.filter(email=new_email).exists(), f"{when}: none is added")
+
+    # Right after sign-in, with no reauthentication.
+    refused(device, "right after sign-in")
+
+    # The reauthentication: recorded in the Django session only (D3, D5).
+    key = ctx.session_key_of(device.access or "")
+    user_session = UserSession.objects.get(session_key=key)
+    row = ctx.account_session_of(device.access or "")
+    written = (
+        _xmin("usersessions_usersession", "id", user_session.pk),
+        _xmin("glow_persistence_accountsession", "id", row.pk),
+    )
+    django_sessions = Session.objects.count()
+    pair = (device.access, device.refresh, device.session_token)
+    reply = ctx.reauthenticate(device, member.password)
+    expect(reply.status == 200, "the right password reauthenticates")
+    expect(not reply.tokens(), "no token pair and no session_token")
+    expect(set(reply.meta()) == {"is_authenticated"}, "the reply's meta holds no credential")
+    expect(
+        (device.access, device.refresh, device.session_token) == pair, "the device's tokens stay"
+    )
+    records = [m for m in (reply.data() or {}).get("methods", []) if m.get("reauthenticated")]
+    expect(len(records) == 1, "one reauthentication recorded in the session")
+    expect(ctx.session_key_of(device.access or "") == key, "the token names the same key")
+    expect(ctx.django_session_exists(key), "the session key is unchanged")
+    expect(Session.objects.count() == django_sessions, "no Django session is made or ended")
+    expect(ctx.user_session_ref(key) == str(user_session.pk), "the same UserSession row")
+    expect(
+        (
+            _xmin("usersessions_usersession", "id", user_session.pk),
+            _xmin("glow_persistence_accountsession", "id", row.pk),
+        )
+        == written,
+        "neither the UserSession row nor the AccountSession is written",
+    )
+    row.refresh_from_db()
+    expect(
+        row.state == "valid" and row.auth_session_ref == str(user_session.pk),
+        "the AccountSession is unchanged",
+    )
+    expect(
+        _actor(device, device.access) == 200 and ctx.allauth_accepts(device.access or ""),
+        "the token still works at both layers",
+    )
+
+    # More than 300 seconds after the reauthentication (allauth's clock, moved for its module).
+    with clock_ahead(reauthentication, 301):
+        refused(device, "301 seconds after the reauthentication")
+
+    # In another session of the same account than the one that reauthenticated.
+    refused(other, "in another session")
+
+    # Wrong passwords: refused; the sixth within 300 seconds as too many attempts. The limit is
+    # the sign-in form's (login_failed, keyed by the address), so sign-in is held too.
+    wrong = ctx.password()
+    for attempt in range(1, 6):
+        failed = ctx.reauthenticate(other, wrong)
+        expect(
+            failed.status == 400 and "incorrect_password" in failed.error_codes(),
+            f"wrong password {attempt} is refused",
+        )
+        expect(not failed.tokens(), "and carries no credential")
+    sixth = ctx.reauthenticate(other, wrong)
+    expect(
+        sixth.status == 400 and "too_many_login_attempts" in sixth.error_codes(),
+        "the sixth wrong password is refused as too many attempts",
+    )
+    held = ctx.reauthenticate(other, member.password)
+    expect(
+        held.status == 400 and "too_many_login_attempts" in held.error_codes(),
+        "then the right password is held too",
+    )
+    signing_in = ctx.device().app(
+        "POST", "auth/login", {"email": member.email, "password": member.password}
+    )
+    expect(
+        signing_in.status == 400 and "too_many_login_attempts" in signing_in.error_codes(),
+        "and so is the sign-in form: the same login_failed limit",
+    )
+    refused(other, "after the refused reauthentications")
+
+    # With the right password, the change goes ahead, as acceptance check 10's notice shows.
+    ctx.clear_rate_limits()  # as if the limits' window had passed
+    expect(ctx.reauthenticate(device, member.password).status == 200, "reauthenticated again")
+    mark = ctx.mail_mark()
+    asked = device.app("POST", "account/email", {"email": new_email}, bearer=device.access)
+    expect(asked.status == 200, "the change goes ahead")
+    code = ctx.code_since(mark, new_email)
+    verified = device.app("POST", "auth/email/verify", {"key": code}, bearer=device.access)
+    expect(verified.status == 200, "the new address is verified by code")
+    expect(addresses() == [(new_email, True, True)], "one address: the new one")
+    notices = [
+        m
+        for m in ctx.mail_since(mark, member.email)
+        if m.subject == "Your Glow email address was changed"
+    ]
+    expect(len(notices) == 1, "one email-changed notice, to the old address")
+    return (
+        "refused with the reauthenticate flow after sign-in, after 301 s and in another session;"
+        " wrong passwords refused, the sixth as too many; the key, UserSession and AccountSession"
+        " unchanged, no credential returned; then the change went ahead"
+    )
 
 
 # =============================================================================================

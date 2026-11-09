@@ -92,6 +92,10 @@ SETTINGS: dict[str, Any] = {
     "ACCOUNT_PREVENT_ENUMERATION": True,
     # D3: one address per account; the new one is verified by code before it replaces the old.
     "ACCOUNT_CHANGE_EMAIL": True,
+    # D3 (correction C1, DM-47): changing, removing or marking an address primary needs a
+    # reauthentication by password within the last 300 seconds (allauth's default
+    # ACCOUNT_REAUTHENTICATION_TIMEOUT), in the same session; a sign-in does not count.
+    "ACCOUNT_REAUTHENTICATION_REQUIRED": True,
     # D8: the account-change notices, for every member (G-04, UST-16).
     "ACCOUNT_EMAIL_NOTIFICATIONS": True,
     # D5 and D6: a password change ends every session, the current one included.

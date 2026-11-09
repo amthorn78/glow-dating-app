@@ -8,8 +8,11 @@ themselves run in the Database proof checks job, on the second disposable databa
 from __future__ import annotations
 
 import ast
+import contextlib
 import copy
 import importlib
+import io
+import json
 import logging
 import os
 import secrets
@@ -24,7 +27,13 @@ from typing import Any
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from glow_ordering_proof import environment, identity_cases, identity_environment, schema_check
+from glow_ordering_proof import (
+    environment,
+    identity_cases,
+    identity_environment,
+    identity_scan,
+    schema_check,
+)
 from glow_ordering_proof.identity_support import OutputCapture, SecretLedger
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -317,7 +326,8 @@ class IdentityPlanTests(unittest.TestCase):
         plan = identity_cases.plan()
         self.assertEqual(len(plan), len(set(plan)))
         covered = {check for case in identity_cases.CASES for check in case.checks}
-        for check in [str(n) for n in range(1, 12)]:
+        # Acceptance checks 1 to 11, and 13 (correction C1).
+        for check in [*(str(n) for n in range(1, 12)), "13"]:
             with self.subTest(check=check):
                 self.assertIn(check, covered)
         # Acceptance check 12 is the run's own scan, after every case (identity_suite).
@@ -354,6 +364,187 @@ class LedgerAndCaptureTests(unittest.TestCase):
         self.assertIn("a printed line", capture.text())
         self.assertNotIn(capture._handler, logging.getLogger().handlers)
         self.assertEqual(stat.S_IMODE(0o600), 0o600)
+
+
+class JobDirectory:
+    """A job directory as the credentials step writes it, with synthetic values only."""
+
+    def __init__(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name)
+        self.values: dict[str, str] = {}
+        for name in identity_scan.VALUE_FILES:
+            self.values[name] = secrets.token_hex(24)
+            self.write(name, self.values[name] + "\n")
+        self.role_password = secrets.token_hex(24)
+        self.write(
+            identity_scan.PASSFILE,
+            f"127.0.0.1:5433:glow_proof:glow_proof:{self.role_password}\n"
+            f"127.0.0.1:5433:glow_identity_proof:glow_proof:{self.role_password}\n",
+        )
+        self.pem = pem(rsa.generate_private_key(public_exponent=65537, key_size=2048))
+        self.write(identity_scan.JWT_KEY_FILE, self.pem)
+        self.pem_line = [line for line in self.pem.splitlines() if not line.startswith("---")][3]
+        self.log = self.write("identity.log", "[identity] PASS a.case\n")
+        self.results = self.root / "identity-results.json"
+        self.results.write_text(json.dumps({"cases": [{"detail": "ok"}]}), encoding="utf-8")
+
+    def write(self, name: str, text: str) -> Path:
+        path = self.root / name
+        path.write_text(text, encoding="ascii")
+        path.chmod(0o600)
+        return path
+
+    def clean_log(self, extra: str = "") -> None:
+        self.write(
+            "identity.log",
+            "[identity] PASS a.case\n" + extra + "identity secret scan: clean (1 secrets held)\n",
+        )
+
+    def every_value(self) -> list[str]:
+        return [*self.values.values(), self.role_password, self.pem_line]
+
+    def run(self) -> tuple[int, str]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            status = identity_scan.main([str(self.root), str(self.log), str(self.results)])
+        return status, out.getvalue()
+
+    def close(self) -> None:
+        self.directory.cleanup()
+
+
+class IdentityScanTests(unittest.TestCase):
+    """Correction C1 (DM-47 C1.4): the job's check scans the log and the results JSON with the
+    same values, and leaves nothing to upload after a refusal."""
+
+    def setUp(self) -> None:
+        self.job = JobDirectory()
+
+    def tearDown(self) -> None:
+        self.job.close()
+
+    def assert_no_value_printed(self, printed: str) -> None:
+        for value in self.job.every_value():
+            self.assertNotIn(value, printed)
+
+    def test_the_values_are_the_job_files(self) -> None:
+        values = identity_scan.job_values(self.job.root)
+        for value in self.job.every_value():
+            self.assertIn(value, values)
+        self.assertNotIn("", values)
+        self.assertFalse(any(value.startswith("-----") for value in values))
+
+    def test_clean_output_passes_and_keeps_the_json(self) -> None:
+        self.job.clean_log()
+        status, printed = self.job.run()
+        self.assertEqual(status, identity_scan.PASSED, printed)
+        self.assertTrue(self.job.results.exists())
+        self.assertIn("found in the identity results JSON: 0", printed)
+
+    def test_a_value_in_the_json_only_is_refused_and_the_json_removed(self) -> None:
+        self.job.clean_log()
+        for value in self.job.every_value():
+            with self.subTest(value=len(value)):
+                self.job.results.write_text(
+                    json.dumps({"server": {"planted": value}}), encoding="utf-8"
+                )
+                status, printed = self.job.run()
+                self.assertEqual(status, identity_scan.REFUSED)
+                self.assertFalse(self.job.results.exists())
+                # The role's password is in the passfile twice, so it counts twice.
+                self.assertRegex(printed, r"found in the identity results JSON: [12]\n")
+                self.assertIn("removed; nothing to upload", printed)
+                self.assert_no_value_printed(printed)
+
+    def test_a_value_escaped_by_json_is_found(self) -> None:
+        self.job.clean_log()
+        value = self.job.values["marker"]
+        escaped = "".join(f"\\u{ord(c):04x}" for c in value)
+        self.job.results.write_text('{"detail": "' + escaped + '"}', encoding="utf-8")
+        self.assertNotIn(value, self.job.results.read_text(encoding="utf-8"))
+        status, printed = self.job.run()
+        self.assertEqual(status, identity_scan.REFUSED)
+        self.assertFalse(self.job.results.exists())
+
+    def test_a_value_in_the_log_is_refused_and_the_json_removed(self) -> None:
+        self.job.clean_log(extra=self.job.values["identity-secret-key"] + "\n")
+        status, printed = self.job.run()
+        self.assertEqual(status, identity_scan.REFUSED)
+        self.assertFalse(self.job.results.exists())
+        self.assertIn("found in the identity suite's output: 1", printed)
+        self.assert_no_value_printed(printed)
+
+    def test_no_clean_line_from_the_suite_is_refused(self) -> None:
+        status, printed = self.job.run()  # the log has no "identity secret scan: clean"
+        self.assertEqual(status, identity_scan.REFUSED)
+        self.assertFalse(self.job.results.exists())
+        self.assertIn("reported clean: False", printed)
+
+    def test_an_absent_json_is_nothing_to_upload(self) -> None:
+        self.job.clean_log()
+        self.job.results.unlink()
+        status, printed = self.job.run()
+        self.assertEqual(status, identity_scan.PASSED)
+        self.assertIn("absent: nothing to scan or upload", printed)
+
+    def test_an_unreadable_secret_file_is_refused(self) -> None:
+        self.job.clean_log()
+        (self.job.root / identity_scan.PASSFILE).unlink()
+        status, printed = self.job.run()
+        self.assertEqual(status, identity_scan.REFUSED)
+        self.assertFalse(self.job.results.exists())
+        self.assertIn("could not run", printed)
+
+    def test_the_module_imports_only_the_standard_library(self) -> None:
+        tree = ast.parse(Path(identity_scan.__file__).read_text(encoding="utf-8"))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported.add(node.module.split(".")[0])
+        self.assertLessEqual(
+            imported,
+            {"__future__", "collections", "dataclasses", "json", "pathlib", "sys", "typing"},
+        )
+
+
+def workflow_step(name_prefix: str) -> str:
+    """The text of the Database proof checks job's step whose name starts with the prefix."""
+    lines = (REPO_ROOT / ".github" / "workflows" / "foundation.yml").read_text().splitlines()
+    starts = [i for i, line in enumerate(lines) if line.startswith("      - ")]
+    for index, start in enumerate(starts):
+        if f'name: "{name_prefix}' in lines[start]:
+            end = starts[index + 1] if index + 1 < len(starts) else len(lines)
+            return "\n".join(lines[start:end])
+    raise AssertionError(f"no step named {name_prefix!r}")
+
+
+class IdentityUploadGateTests(unittest.TestCase):
+    """Correction C1: the results JSON is uploaded only after the job's check has passed."""
+
+    def test_the_suite_step_runs_the_check_and_sets_the_output_only_on_a_pass(self) -> None:
+        step = workflow_step("SV1: run the identity suite")
+        self.assertIn("        id: identity\n", step)
+        self.assertIn(
+            'python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log"'
+            " .work/identity-results.json",
+            step,
+        )
+        passed = step.index('if [ "$scan" -eq 0 ]; then')
+        withheld = step.index("else", passed)
+        output = step.index('echo "scan=passed" >> "$GITHUB_OUTPUT"')
+        self.assertTrue(passed < output < withheld)
+        self.assertEqual(step.count("scan=passed"), 1)
+
+    def test_the_upload_waits_for_the_check(self) -> None:
+        step = workflow_step("SV1: save the identity suite's results JSON")
+        self.assertIn(
+            "        if: ${{ always() && steps.identity.outputs.scan == 'passed' }}\n", step
+        )
+        self.assertNotIn("if: always()\n", step)
+        self.assertIn("path: proofs/postgres-ordering/.work/identity-results.json", step)
 
 
 if __name__ == "__main__":

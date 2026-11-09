@@ -512,6 +512,7 @@ jobs:
           identity identity-marker python -m django migrate --verbosity 1
           identity identity-marker python -m django makemigrations --check --dry-run
       - name: "SV1: run the identity suite (its phase timed), and show its output holds no secret"
+        id: identity
         shell: bash
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
@@ -530,32 +531,18 @@ jobs:
           identity python -m glow_ordering_proof identity --results .work/identity-results.json > "$DIR/identity.log" 2>&1
           status=$?
           finished=$(date +%s)
-          # Acceptance check 12: none of the job's own secrets (the passwords, the markers, the
-          # identity SECRET_KEY, each line of the signing key) may be in the suite's output, and the
-          # suite's own scan of every secret it handled must report clean. Only then is the output
-          # shown; otherwise only the suite's own result lines are.
-          python - "$DIR" <<'PYTHON'
-          import sys
-          from pathlib import Path
-
-          directory = Path(sys.argv[1])
-          log = (directory / "identity.log").read_text(encoding="utf-8", errors="replace")
-          values = [
-              (directory / name).read_text(encoding="ascii").strip()
-              for name in ("identity-secret-key", "identity-marker", "marker", "superuser-password")
-          ]
-          values += [line.rsplit(":", 1)[1] for line in (directory / "passfile").read_text(encoding="ascii").splitlines()]
-          pem = (directory / "identity-jwt-key.pem").read_text(encoding="ascii")
-          values += [line for line in pem.splitlines() if line and not line.startswith("-----")]
-          found = sum(1 for value in values if value and value in log)
-          clean = "identity secret scan: clean" in log
-          print(f"the job's secrets found in the identity suite's output: {found}")
-          print(f"the suite's own scan reported clean: {clean}")
-          sys.exit(0 if found == 0 and clean else 3)
-          PYTHON
+          # Acceptance check 12 (and correction C1, DM-47 C1.4): none of the job's own secrets
+          # (the passwords, the markers, the identity SECRET_KEY, each line of the signing key) may
+          # be in the suite's output or in its results JSON, and the suite's own scan of every
+          # secret it handled must report clean. Only then is the output shown and the JSON
+          # uploaded (the next steps read this step's `scan` output); otherwise only the suite's
+          # own result lines are shown, and the check removes the JSON.
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log" .work/identity-results.json
           scan=$?
           set -e
           if [ "$scan" -eq 0 ]; then
+            echo "scan=passed" >> "$GITHUB_OUTPUT"
             cat "$DIR/identity.log"
           else
             echo "the full output is withheld; the suite's own result lines:"
@@ -595,8 +582,9 @@ jobs:
           if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
           if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
           echo "refusal: $refusal"
-      - name: "SV1: save the identity suite's results JSON"
-        if: always()
+      # Correction C1 (DM-47 C1.4): uploaded only after the job's secret check has passed.
+      - name: "SV1: save the identity suite's results JSON, once the secret check has passed"
+        if: ${{ always() && steps.identity.outputs.scan == 'passed' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sv1-identity-results
