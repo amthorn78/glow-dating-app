@@ -1,4 +1,5 @@
-"""The proof pins the same Django as services/api (D1's pin test)."""
+"""The proof pins the same Django as services/api (D1's pin test), and since SV1 the same
+allauth and the packages glow_identity runs on."""
 
 from __future__ import annotations
 
@@ -43,11 +44,31 @@ class DjangoPinTests(unittest.TestCase):
         self.assertEqual(proof_pin.group(1), api_pin.group(1))
         self.assertEqual(proof_pin.group(1), "5.2.17")
 
-    def test_psycopg_3_and_no_allauth(self) -> None:
+    def test_psycopg_3(self) -> None:
         version, _ = pinned(PROOF / "requirements.lock", "psycopg")
         self.assertTrue(version.startswith("3."), version)
-        for lock in ("requirements.lock", "requirements-dev.lock"):
-            self.assertNotIn("allauth", (PROOF / lock).read_text(encoding="utf-8"))
+
+    def test_the_identity_suites_pins_are_the_apis(self) -> None:
+        # SV1 (its brief's D10 and D12): allauth and the packages glow_identity runs on take
+        # services/api's pins, version and hashes. Until SV1 the proof held no allauth (P06.DB's
+        # D2 left its adoption to the item that serves authentication).
+        sources = {
+            "django-allauth": "requirements-dev.lock",
+            "pyjwt": "requirements-dev.lock",
+            "cryptography": "requirements-dev.lock",
+            "cffi": "requirements-dev.lock",
+            "pycparser": "requirements-dev.lock",
+            "djangorestframework": "requirements.lock",
+        }
+        for package, api_lock in sources.items():
+            api_version, api_hashes = pinned(API / api_lock, package)
+            for lock in ("requirements.lock", "requirements-dev.lock"):
+                with self.subTest(package=package, lock=lock):
+                    version, hashes = pinned(PROOF / lock, package)
+                    self.assertEqual(version, api_version)
+                    self.assertEqual(hashes, api_hashes)
+        proof_input = (PROOF / "requirements.in").read_text(encoding="utf-8")
+        self.assertRegex(proof_input, r"(?m)^django-allauth\[headless\]==65\.21\.1$")
 
     def test_ruff_and_mypy_match_the_api_dev_lock(self) -> None:
         for package in ("ruff", "mypy"):

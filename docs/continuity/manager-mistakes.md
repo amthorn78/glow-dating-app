@@ -140,6 +140,12 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-01 | 8 Nov 2026 | prompt | C6's prompt, pushed at `678dabd`, quoted DM-42's conditions by line range, and the ranges cut 2.1's opening and carried the report's own section heading into the prompt; found on re-reading the filled text before giving it, and corrected in the same revision before it was given; the correcting push cancelled PR run 42490599464 on the superseded `678dabd` | App Manager 10 |
 | AM10-02 | 8 Nov 2026 | accuracy | P06.3's brief, revision 1 (`8bf9d8d`), named the route guard's predicate (`SAFE_ROUTES`, `canAccessRoute`) as the screen's guard and excluded `src/app/_layout.tsx`, whose `Stack.Protected` line is what guards a screen; as written, the new screen would open signed out or the session would stop | Dev Manager 4, DM-44 item 6 |
 | AM10-03 | 9 Nov 2026 | accuracy | The verification of correction C1 (the P06.3 record, pushed at `1a2a2c7`) said the adapter's change was the moved `capture` "plus two comment lines"; there are three | C1's delta review, N-3 |
+| AM10-04 | 9 Nov 2026 | process | Correction C1's prompt (`3a2b930`) went to Nathan without a Dev Manager consultation, though step 6 consults the Dev Manager when a fix touches a security boundary, revocation included; C1 changed when an ended session's command is refused | Dev Manager 4, DM-45 section 16 |
+| AM10-05 | 9 Nov 2026 | follow-through | Notion's operating-procedure summary kept its stamp at `1ce2fcb` (26 October) through App Manager 10's governing-text changes of 8 November (`33c4cc2`, `0a49e62`, `678dabd`, `86e65dc`); the match check moves the stamp when a governing text changes | App Manager 10, checking the summary after adding step 6's sentence |
+| AM10-06 | 9 Nov 2026 | follow-through | DM-45 section 9 approved SV1's email change as needing "`ACCOUNT_CHANGE_EMAIL = True` … and reauthentication"; the brief's D3 (revisions 2 and 3) named neither setting, and the prompt left the settings to the session, which kept allauth's default, reauthentication off | the SV1 implementation session's findings, read in the manager's verification |
+| AM10-07 | 9 Nov 2026 | accuracy | DM-48 (`38142b3`) proposed words for acceptance check 11 ("the sixth request at `account/password/change` within 300 seconds … is refused") that describe a case allauth's default `5/m/user` also passes, since a sixth request sent at once is refused at 5 a minute too; and its D3 replacement left "They use Django's cache" pointing at the threat model | Dev Manager 4, DM-48 section 3 |
+| AM10-08 | 9 Nov 2026 | follow-through | Implementation Control's Branches bullet kept the manager branch's "at this sync" hash one commit behind the status line at two syncs in a row (`30fdf1a` against `38142b3`; `38d48e2` against `cae9cea`); the status edit did not move the bullet | Dev Manager 4, DM-48 section 9 and DM-49 section 5 |
+| AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
 
 ## App Manager 2
 
@@ -1088,6 +1094,54 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-09 — A replaced state left in P11's plan (follow-through)
+
+- **What happened:** C1 turned `ACCOUNT_REAUTHENTICATION_REQUIRED` on. Integrating C1, App Manager 10 added C1.5's session-list bullet to the P11 plan's SV1 entry. The same entry kept, under "Limits", "No reauthentication: an email change needs none (`ACCOUNT_REAUTHENTICATION_REQUIRED` keeps its default, off)". Its list of what SV1 proves also named neither C1's reauthentication case nor C2's password-change limit.
+- **Caught by:** Dev Manager 4, DM-50 section 4, in a sweep of the living documents for the states C1 and C2 replaced.
+- **Effect:** none on the code. P11 could have wired the app without allauth's `reauthenticate` flow; the server would still refuse the change, so the cost would have been a broken screen, not a weaker boundary.
+- **Correction:** DM-50 2.1's words, applied as written.
+- **Prevention:** a correction that changes a setting or a behavior gets a supersession sweep that `git grep`s the living documents (the P11 plan, the carried-items file, the architecture texts, the CI policy) for the replaced state, by the setting's name and by its plain words, before its integration's records commit.
+
+### AM10-08 — The Branches bullet one commit behind the status (follow-through)
+
+- **What happened:** at the syncs for `38142b3` and `cae9cea`, App Manager 10 moved Implementation Control's status line to the new commit. Each time, it left the Branches bullet's "at this sync" hash at the commit before (`30fdf1a` and `38d48e2`).
+- **Caught by:** Dev Manager 4, DM-48 section 9 and DM-49 section 5, each as a nit.
+- **Effect:** none on the work. The page read one commit behind in one place until the next sync. The repository wins (OD-27).
+- **Correction:** the bullet was fixed at the `2f577f8` sync and again at DM-49's disposition sync.
+- **Prevention:** every Implementation Control status edit carries the Branches bullet's edit in the same call. The bullet's "at this sync" hash and its listing time are checked against the status line's commit when the page is read back.
+
+### AM10-07 — A proposed check that the old setting also passes (accuracy)
+
+- **What happened:** DM-48 proposed `change_password` at `5/300s/user`, with words for acceptance check 11: "the sixth request at `account/password/change` within 300 seconds, a wrong current password among them", is refused. A sixth request sent at once is refused under allauth's default, `5/m/user`, too, so a case written to those words passes whether or not the setting is in place. The proposed D3 replacement also changed only the bullet's first sentence, so its next sentence, "They use Django's cache", would have pointed at the threat model.
+- **Caught by:** Dev Manager 4, DM-48 section 3 (C2.1, C2.3).
+- **Effect:** none: no prompt had been written. As proposed, the case and its reversal could not have shown the new limit.
+- **Correction:** C2.3's words: a sixth request with the right password, sent more than 60 and less than 300 seconds after the first of five, is refused and the password unchanged, with a reversal that restores the default. C2.1 replaces the whole bullet.
+- **Prevention:** a check for a changed value names the observation only the new value produces, and says what the old value would do there. A replacement of one sentence is read with the sentences after it.
+
+### AM10-06 — An approval's named setting was not carried into the brief (follow-through)
+
+- **What happened:** DM-45 section 9 approved "email change verified by code. That needs `ACCOUNT_CHANGE_EMAIL = True`, which defaults to `False`, and reauthentication, which does not cycle the key." It was approval text, not a blockquoted condition, so App Manager 10's revision 2 did not carry it. D3 kept "The evidence names the installed release's settings for this", and the prompt left the settings to the session. The session turned on `ACCOUNT_CHANGE_EMAIL` and kept `ACCOUNT_REAUTHENTICATION_REQUIRED` at its default, off.
+- **Caught by:** the SV1 implementation session, which reported that an email change needs no reauthentication; App Manager 10 matched it to DM-45's words in the verification.
+- **Effect:** at code head `269ac3b`, a holder of a live access token, refresh token or session key can move the account's address and then reset the password from it. Nothing is served: the runtime is sealed and the proof uses synthetic accounts.
+- **Correction:** DM-47 puts the gap and a proposed correction (`ACCOUNT_REAUTHENTICATION_REQUIRED = True`, with its cases and a reversal) to the Dev Manager before the exact-head review.
+- **Prevention:** when disposing of a Dev Manager report, read its approval text as well as its conditions, and carry into the brief every setting, rule or requirement the approval names; one the manager does not carry is put back to the Dev Manager in the disposition.
+
+### AM10-05 — The procedure summary's stamp was not moved (follow-through)
+
+- **What happened:** the manager workflow's match check says that when a governing text changes, Notion's procedure summary "is checked and its stamp moved". App Manager 10 changed governing texts four times on 8 November (OD-58's texts and the CI policy's paragraphs, at `33c4cc2`, `0a49e62`, `678dabd` and `86e65dc`) and did not move the stamp, which still named `1ce2fcb` (26 October). Earlier managers' governing changes after 26 October had left it there too.
+- **Caught by:** App Manager 10, reading the summary after adding step 6's sentence on 9 November.
+- **Effect:** the summary's links pointed at an older commit. Its statements were still true at the new commit; it did not mention OD-58's rule that Nathan is never asked to perform a GitHub operation.
+- **Correction:** the stamp and every link moved to this batch's commit, with OD-58's rule added, and read back.
+- **Prevention:** a records batch whose diff touches a governing path (`AGENTS.md`, `CLAUDE.md`, `docs/pf-canon/`, the manager workflow, the Dev Manager charter, the CI policy, the owner-direction register) moves the summary's stamp in the same Notion sync; the batch's `git diff --name-only` is checked against that list before the sync.
+
+### AM10-04 — A correction on a revocation path went without a consultation (process)
+
+- **What happened:** step 6 says the Dev Manager is consulted when a fix "touches a security boundary (authorization, revocation, privacy or data ownership)". Correction C1 changed when the mobile fixture adapter refuses an ended session's command, a revocation path. App Manager 10 judged that the fix only applied DM-44 1.2's words, recorded that reading, and wrote C1's prompt without a consultation.
+- **Caught by:** Dev Manager 4, DM-45 section 16.
+- **Effect:** none in substance. The Dev Manager read `85ae241` and confirmed C1 against DM-44 1.2.
+- **Correction:** step 6 gains the Dev Manager's sentence: a fix that only makes code do what a Dev Manager condition already says, in that condition's words, and changes no design, interface, contract or dependency, needs no consultation first, even on a security boundary; the correction's brief names the condition, and the next consultation confirms the fix.
+- **Prevention:** before a correction prompt, read step 6's consultation triggers against the fix one by one, and name in the brief the condition whose words the fix applies, if any; a trigger that applies with no such condition means a consultation first.
 
 ### AM10-03 — A line count from memory in the verification of C1 (accuracy)
 

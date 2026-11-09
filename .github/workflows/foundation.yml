@@ -264,6 +264,12 @@ jobs:
       # is set to it, and every proof command refuses a database without it. Each step that
       # needs it reads it from the job's protected temporary directory into PROOF_DB_MARKER
       # for its own commands; it never goes through $GITHUB_ENV or a step output.
+      # SV1 (the identity slice; its brief's D2 and D10): a second database in the same
+      # PostgreSQL, glow_identity_proof, with its own marker and the same non-superuser role, for
+      # the identity suite after the ordering suite. Its two keys, the JWT signing key and the
+      # identity settings' SECRET_KEY, are generated here into files in the same directory and
+      # read from their paths; the signing key is multi-line, so it is never put in a variable
+      # or printed (::add-mask:: takes one line).
       - name: Generate the disposable database's credentials (masked before anything prints)
         id: credentials
         shell: bash
@@ -276,17 +282,44 @@ jobs:
           # Neither is a credential; both are masked like the passwords (DM-10 2.4).
           marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
           wrong_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
+          # SV1: the identity database's marker, and the identity settings' SECRET_KEY.
+          identity_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
+          identity_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')
           echo "::add-mask::$superuser_password"
           echo "::add-mask::$role_password"
           echo "::add-mask::$marker"
           echo "::add-mask::$wrong_marker"
+          echo "::add-mask::$identity_marker"
+          echo "::add-mask::$identity_secret_key"
           test "$marker" != "$wrong_marker" || { echo "the two markers are equal; refusing"; exit 1; }
+          test "$identity_marker" != "$marker" && test "$identity_marker" != "$wrong_marker" \
+            || { echo "the markers are not distinct; refusing"; exit 1; }
           dir=$(mktemp -d "$RUNNER_TEMP/glow-proof-db.XXXXXX")
           printf '%s\n' "$superuser_password" > "$dir/superuser-password"
-          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" > "$dir/create-role.sql"
-          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n' "$role_password" > "$dir/passfile"
+          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_identity_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" "$identity_marker" > "$dir/create-role.sql"
+          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n127.0.0.1:5433:glow_identity_proof:glow_proof:%s\n' "$role_password" "$role_password" > "$dir/passfile"
           printf '%s\n' "$marker" > "$dir/marker"
           printf '%s\n' "$wrong_marker" > "$dir/wrong-marker"
+          printf '%s\n' "$identity_marker" > "$dir/identity-marker"
+          printf '%s\n' "$identity_secret_key" > "$dir/identity-secret-key"
+          # SV1's JWT signing key: RSA, 2048 bits (RS256), written by Python straight to its file.
+          python - "$dir/identity-jwt-key.pem" <<'PYTHON'
+          import os
+          import sys
+
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric import rsa
+
+          key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+          data = key.private_bytes(
+              serialization.Encoding.PEM,
+              serialization.PrivateFormat.PKCS8,
+              serialization.NoEncryption(),
+          )
+          descriptor = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+          with os.fdopen(descriptor, "wb") as handle:
+              handle.write(data)
+          PYTHON
           chmod 600 "$dir"/*
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
           echo "container=glow-proof-db-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
@@ -310,7 +343,7 @@ jobs:
           done
           test "$ready" = 1 || { echo "PostgreSQL did not become ready within 60 s"; exit 1; }
           docker exec "$CONTAINER" pg_isready -h 127.0.0.1 -p 5432 -U postgres
-      - name: Create the non-superuser proof role and its database, with the run's marker as its comment
+      - name: Create the non-superuser proof role and its two databases, each with its own marker as its comment
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
           CONTAINER: ${{ steps.credentials.outputs.container }}
@@ -322,6 +355,7 @@ jobs:
             || { echo "role creation failed (diagnostics withheld)"; exit 1; }
           rm -f "$DIR/create-role.sql"
           echo "role glow_proof (NOSUPERUSER) and database glow_proof created, with the run's marker as its comment"
+          echo "database glow_identity_proof (SV1) created for the same role, with its own marker as its comment"
       - name: Show that a wrong marker is refused and leaves the proof's database unchanged
         shell: bash
         env:
@@ -448,6 +482,118 @@ jobs:
           if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
           if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
           echo "refusal: $refusal"
+      # SV1 (the identity slice; its brief's D10): the identity suite on the second disposable
+      # database, after the ordering suite. Each step defines `identity`, which runs a command
+      # with the identity settings, the identity database's marker and the paths of its two keys.
+      - name: "SV1: show the identity database refuses the other marker, then apply the reviewed migrations from zero"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          identity() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_identity_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/identity-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/identity-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings "${@:2}"
+          }
+          # The ordering database's marker on the identity database: refused before any statement.
+          set +e
+          identity marker python -m django migrate --verbosity 1 > "$DIR/identity-wrong-marker.log" 2>&1
+          status=$?
+          set -e
+          refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database' "$DIR/identity-wrong-marker.log" || true)
+          rm -f "$DIR/identity-wrong-marker.log"
+          echo "identity migrate with the ordering database's marker: exit status $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database's marker exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the refusal message is missing (diagnostics withheld)"; exit 1; fi
+          echo "refusal: $refusal"
+          identity identity-marker python -m django migrate --verbosity 1
+          identity identity-marker python -m django makemigrations --check --dry-run
+      - name: "SV1: run the identity suite (its phase timed), and show its output holds no secret"
+        id: identity
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          identity() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_identity_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/identity-marker")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/identity-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/identity-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings "$@"
+          }
+          mkdir -p .work
+          started=$(date +%s)
+          set +e
+          identity python -m glow_ordering_proof identity --results .work/identity-results.json > "$DIR/identity.log" 2>&1
+          status=$?
+          finished=$(date +%s)
+          # Acceptance check 12 (and correction C1, DM-47 C1.4): none of the job's own secrets
+          # (the passwords, the markers, the identity SECRET_KEY, each line of the signing key) may
+          # be in the suite's output or in its results JSON, and the suite's own scan of every
+          # secret it handled must report clean. Only then is the output shown and the JSON
+          # uploaded (the next steps read this step's `scan` output); otherwise the log shows
+          # counts only, never a line of the suite's output (correction C2, DM-48 C2.6), and the
+          # check removes the JSON.
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log" .work/identity-results.json
+          scan=$?
+          set -e
+          if [ "$scan" -eq 0 ]; then
+            echo "scan=passed" >> "$GITHUB_OUTPUT"
+            cat "$DIR/identity.log"
+          else
+            echo "the full output is withheld; counts only, never a line of the suite's output:"
+            echo "lines in the suite's output: $(wc -l < "$DIR/identity.log")"
+            echo "case lines: $(grep -c '^\[identity\] PASS ' "$DIR/identity.log" || true) passed, $(grep -c '^\[identity\] FAIL ' "$DIR/identity.log" || true) failed"
+          fi
+          rm -f "$DIR/identity.log"
+          echo "identity phase: $((finished - started)) s (the job's timeout is 30 minutes)"
+          if [ "$scan" -ne 0 ]; then echo "FAIL: the secret check did not pass"; exit 1; fi
+          test "$status" -eq 0
+      - name: "SV1: show that a second identity run on the used database is refused before it writes"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          counts() {
+            docker exec "$CONTAINER" psql -X -q -At -v ON_ERROR_STOP=1 -U postgres -d glow_identity_proof -c \
+              "SELECT (SELECT count(*) FROM auth_user) || ' ' || (SELECT count(*) FROM glow_persistence_appaccount) || ' ' || (SELECT count(*) FROM glow_persistence_accountsession) || ' ' || (SELECT count(*) FROM glow_persistence_outboxevent) || ' ' || (SELECT count(*) FROM usersessions_usersession)"
+          }
+          before=$(counts)
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_identity_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/identity-marker")" \
+            PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/identity-secret-key" \
+            PROOF_IDENTITY_JWT_KEY_FILE="$DIR/identity-jwt-key.pem" \
+            DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings \
+            python -m glow_ordering_proof identity > "$DIR/identity-rerun.log" 2>&1
+          status=$?
+          set -e
+          after=$(counts)
+          refusal=$(grep -m 1 -F 'refusing a used database' "$DIR/identity-rerun.log" || true)
+          rm -f "$DIR/identity-rerun.log"
+          echo "rows (auth users, app accounts, account sessions, outbox events, user sessions) before: $before; after: $after"
+          echo "second identity run exit status: $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: a second identity run on the used database exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
+          if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
+          echo "refusal: $refusal"
+      # Correction C1 (DM-47 C1.4): uploaded only after the job's secret check has passed.
+      - name: "SV1: save the identity suite's results JSON, once the secret check has passed"
+        if: ${{ always() && steps.identity.outputs.scan == 'passed' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sv1-identity-results
+          path: proofs/postgres-ordering/.work/identity-results.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Save the results table's JSON
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

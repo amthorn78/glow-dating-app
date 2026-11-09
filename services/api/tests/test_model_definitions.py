@@ -43,7 +43,8 @@ from glow_persistence.static_check import inspect_definitions
 loader, state = inspect_definitions()
 assert loader.connection is None
 assert not loader.applied_migrations
-assert len([key for key in state.models if key[0] == 'glow_persistence']) == 34
+# P02's 32, P06.2's two, SV1's age state (migration 0004).
+assert len([key for key in state.models if key[0] == 'glow_persistence']) == 35
 assert connections['default'].connection is None
 """)
 
@@ -167,6 +168,14 @@ assert set(completed['outcome_code__in']) == codes
             "0002_app_domain.py": (
                 "862bac8b81aa76f74fd88743a36ab5a4b2e9261651251b94398c274350a31335"
             ),
+            # SV1: 0003 as P06.2 Stage B1 left it; 0004 follows it unchanged.
+            "0003_chat_identity_read_cursor.py": (
+                "6dc68582c174ca98affb725cf7681ed32c887299f22983847dfd9cf3793bf5ac"
+            ),
+            # SV1's age state, as generated and recorded (correction C2, F-3).
+            "0004_account_age_state.py": (
+                "8af86a28d73fb9420b3ec6d59e6c1dcb47dc23c4f21e3c34a2830b171fc1866b"
+            ),
         }
         for name, digest in pinned.items():
             with self.subTest(migration=name):
@@ -193,8 +202,9 @@ identity_op = added.operations[2]
 assert dict(identity_op.fields)['state'].default == 'pending'
 assert sorted(dict(identity_op.fields)) == sorted(['id', 'created_at', 'updated_at', 'version',
     'provider', 'user_ref', 'state', 'tokens_revoked_before', 'reconcile_code', 'account'])
-leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0003_chat_identity_read_cursor')], leaves
+# SV1: 0004 now follows 0003 (test_migration_0004_adds_the_age_state_only).
+assert ('glow_persistence', '0003_chat_identity_read_cursor') in (
+    loader.disk_migrations[('glow_persistence', '0004_account_age_state')].dependencies)
 source = (Path.cwd() / 'glow_persistence' / 'migrations' /
     '0003_chat_identity_read_cursor.py').read_text()
 assert 'RunSQL' not in source and 'RunPython' not in source
@@ -216,6 +226,37 @@ assert mark.null and mark.blank and mark.max_length == 32
 cursor = m.ChatReadCursor._meta
 assert 'chat_read_cursor_member' in {c.name for c in cursor.constraints}
 assert cursor.get_field('last_read').remote_field.model is m.MessageSubmission
+""")
+
+    def test_migration_0004_adds_the_age_state_only(self):
+        # SV1 (its brief's D9): one new model, one row per account, written only through the
+        # age state's port; no birth date; nothing else in the schema changes.
+        self.check_script("""
+from django.db.migrations.operations.models import CreateModel
+loader = MigrationLoader(None)
+added = loader.disk_migrations[('glow_persistence', '0004_account_age_state')]
+assert added.dependencies == [('glow_persistence', '0003_chat_identity_read_cursor')]
+assert [(type(op).__name__, getattr(op, 'name', None)) for op in added.operations] == [
+    ('CreateModel', 'AccountAgeState')], [type(op).__name__ for op in added.operations]
+fields = dict(added.operations[0].fields)
+assert sorted(fields) == sorted(['id', 'created_at', 'updated_at', 'version', 'state', 'method',
+    'recorded_at', 'policy_version', 'account']), sorted(fields)
+leaves = loader.graph.leaf_nodes('glow_persistence')
+assert leaves == [('glow_persistence', '0004_account_age_state')], leaves
+source = (Path.cwd() / 'glow_persistence' / 'migrations' / '0004_account_age_state.py').read_text()
+assert 'RunSQL' not in source and 'RunPython' not in source
+meta = m.AccountAgeState._meta
+account = meta.get_field('account')
+assert account.one_to_one and account.remote_field.model is m.AppAccount
+assert account.remote_field.on_delete is models.CASCADE
+assert [v for v, _ in meta.get_field('state').choices] == ['unknown', 'self_declared_adult']
+assert [v for v, _ in meta.get_field('method').choices] == ['none', 'self_declaration']
+assert meta.get_field('policy_version').null
+assert not meta.get_field('recorded_at').null
+names = {c.name for c in meta.constraints}
+assert {'age_state_method', 'age_state_provenance',
+    'glow_persistence_accountagestate_state'} <= names, names
+assert not {f.name for f in meta.get_fields()} & {'birth_date', 'date_of_birth', 'birthdate', 'age'}
 """)
 
     def test_the_outbox_order_column_is_a_database_assigned_identity_beside_the_key(self):

@@ -11,6 +11,11 @@ lock is regenerated with the harness's lock as a constraint, and this test holds
 package to it, each as a subtest; ``tzdata`` left the development lock in that regeneration,
 since only ``python-dateutil`` 3.0.0 required it and 2.9.0.post0 does not. The files are only
 read.
+
+SV1 (the identity slice; its brief's D12, DM-45 item 8) adds ``django-allauth[headless]`` to the
+development scope only. Its new packages are exactly ``django-allauth``, ``cryptography`` and
+what ``cryptography`` requires on CPython 3.12 (``cffi``, which requires ``pycparser``); PyJWT
+stays at 2.15.0. P11 moves the pins to the runtime scope when it wires sign-in.
 """
 
 import re
@@ -26,6 +31,20 @@ HARNESS_LOCK = ROOT / "proofs" / "stream-chat" / "requirements.lock"
 # other shared package is held the same way since B2-C1.
 SHARED = ("getstream", "httpx", "pyjwt")
 PINS = {"getstream": "6.1.0", "pyjwt": "2.15.0"}
+# SV1's pins, at the versions read on PyPI on 9 November 2026, and why each is in the lock.
+SV1_PINS = {
+    "django-allauth": "65.21.1",
+    "cryptography": "50.0.2",
+    "cffi": "2.1.1",
+    "pycparser": "3.12",
+    "pyjwt": "2.15.0",
+}
+SV1_VIA = {
+    "django-allauth": {"-r requirements-dev.in"},
+    "cryptography": {"pyjwt"},
+    "cffi": {"cryptography"},
+    "pycparser": {"cffi"},
+}
 
 Resolved = dict[str, tuple[str, frozenset[str]]]
 
@@ -51,6 +70,29 @@ def resolved(lock: Path) -> Resolved:
     if name is not None:
         packages[name] = (str(version), frozenset(hashes))
     return packages
+
+
+def required_by(lock: Path) -> dict[str, set[str]]:
+    """Each package of a uv lock: the requirements its ``# via`` lines name."""
+    via: dict[str, set[str]] = {}
+    name = None
+    reading = False
+    for raw in lock.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        pinned = re.fullmatch(r"([A-Za-z0-9_.-]+)==(\S+?)(?: \\)?", line)
+        if pinned:
+            name, reading = pinned.group(1).lower().replace("_", "-"), False
+            via[name] = set()
+        elif name and line.startswith("# via"):
+            reading = True
+            rest = line.removeprefix("# via").strip()
+            if rest:
+                via[name].add(rest)
+        elif name and reading and line.startswith("#   "):
+            via[name].add(line.removeprefix("#").strip())
+        elif not line.startswith("#"):
+            reading = False
+    return via
 
 
 def shared_packages() -> list[str]:
@@ -81,6 +123,24 @@ class DependencyPinTests(unittest.TestCase):
         for name in SHARED:
             self.assertNotIn(name, runtime, f"{name} must stay out of the runtime lock (P11)")
         self.assertEqual(resolved(API_DEV_LOCK)["getstream"][0], PINS["getstream"])
+
+    def test_sv1_pins_allauth_headless_in_the_development_scope_only(self) -> None:
+        text = API_DEV_IN.read_text(encoding="utf-8")
+        self.assertRegex(text, r"(?m)^django-allauth\[headless\]==65\.21\.1$")
+        dev, runtime = resolved(API_DEV_LOCK), resolved(API_RUNTIME_LOCK)
+        for name, version in SV1_PINS.items():
+            with self.subTest(package=name):
+                self.assertEqual(dev[name][0], version)
+                self.assertTrue(dev[name][1], "no hashes")
+                self.assertNotIn(name, runtime, f"{name} stays out of the runtime lock (P11)")
+
+    def test_sv1_adds_only_allauths_chain(self) -> None:
+        # D12: each new package is in the lock only through allauth's headless extra.
+        via = required_by(API_DEV_LOCK)
+        for name, expected in SV1_VIA.items():
+            with self.subTest(package=name):
+                self.assertEqual(via[name], expected)
+        self.assertIn("django-allauth", via["pyjwt"])
 
 
 if __name__ == "__main__":

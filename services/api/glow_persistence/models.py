@@ -177,6 +177,41 @@ class AccountSession(Record):
         ]
 
 
+class AccountAgeState(Record):
+    """The account's recorded age state and the method that set it (SV1, migration 0004;
+    G-01; OD-55's D3 (a); the SV1 brief's D9).
+
+    One row per account, written only through ``glow_domain.identity.AgeAssurancePort``
+    (its adapter is ``glow_identity.age``). Sign-up records ``unknown``. No birth date is
+    stored here: P04's onboarding holds the self-entered date, and a later slice writes the
+    state from it; P09.2 adds the stores' age signals as further states and methods.
+    """
+
+    account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
+    state = models.CharField(max_length=32, choices=choices("unknown", "self_declared_adult"))
+    method = models.CharField(max_length=32, choices=choices("none", "self_declaration"))
+    recorded_at = models.DateTimeField()
+    policy_version = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            state_check("unknown", "self_declared_adult"),
+            models.CheckConstraint(
+                condition=Q(method__in=["none", "self_declaration"]), name="age_state_method"
+            ),
+            # Each state names the methods that may set it; unknown has no policy version.
+            models.CheckConstraint(
+                condition=Q(state="unknown", method="none", policy_version__isnull=True)
+                | Q(
+                    state="self_declared_adult",
+                    method="self_declaration",
+                    policy_version__isnull=False,
+                ),
+                name="age_state_provenance",
+            ),
+        ]
+
+
 class ConsentDecision(Record):
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
     purpose = models.CharField(max_length=100)

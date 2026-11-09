@@ -12,6 +12,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P07 (safety, WordPress operations and support)
 
+- **From DM-45 9.1** (the SV1 brief's D7): the interactions design keeps unmatch "reachable … for valid-session suspended or deletion-pending actors" (`interactions-fixtures.md`), and the mobile guard lets them open `/matches`, but neither `glow_chat`'s `open_session` nor SV1 gives such an actor a session. SV1 keeps that fail-closed default. P07's brief decides whether a suspended or deletion-pending member gets a restricted cleanup session, and puts it to Nathan if it changes what members can do. P07's moderation route also holds F01's `suspend` rule (from `active` only, role `moderator`, policy A05): `glow_chat`'s `suspend` checks only that the account is not being deleted.
 - **WordPress for staff** (DM-02 B5; recorded as A4 under OD-19, "the Dev Manager's safeguards go to the P07 brief"): if WordPress stays for staff, the brief names its hosting, update policy, staff multi-factor authentication and plugin allowlist.
 - **Stream's terms, section 6.2** (the customer's access and moderation duty; DM-07 item 5): Glow meets it with its own terms and moderation. Before the brief relies on that, it reads the clause in Stream's exact words.
 - **The history read's policy question** (DM-22 3.1; the [P11 plan](../testing/p11-deferred-acceptance.md)): if P07 comes before P11 serves the reads, P07's brief takes the A05 question to Nathan in OD-32's form.
@@ -31,6 +32,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
+- **From SV1** (the SV1 brief's D5): allauth's `UserSession` rows record each sign-in's IP address and user agent, which are personal data: P08 sets their retention and their place in export and deletion. The rows also hold the session key, a credential: it is never exported, and deletion removes it with its session.
 - **The standing guard** (DM-30 1.1 and 1.2): deletion that removes an accepted message from a readable conversation triggers it. Its text is in the P11 plan, "Standing guard".
 - **ADR 0003's condition (b)** (open for P07 and P08): as in P07's section; P08's deletion orchestration takes it if P07 has not.
 - **The message spool's retention** (M05 finding 23): `MessageSubmission.text` is kept on every accepted submission. The retention decision, and deletion and export while it is kept, are in the P11 plan, "The message spool", and the privacy rules' spool row.
@@ -41,12 +43,13 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV1 (the identity slice; OD-49)
 
+- **The brief is written:** [`sv1-identity.md`](sv1-identity.md), revision 3 (9 November 2026), folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8). It applies DM-45's and DM-46's conditions as written. The implementation is on `claude/hopeful-cerf-kc91xx` (code head `269ac3b`), verified by the manager (the [SV1 record](../testing/evidence/2026-11-09-sv1-identity.md), "Manager verification"); DM-47 approved correction C1 for an email-change gap and the results upload (the brief, revision 4, "Correction C1"), before the exact-head review.
 - **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
 - **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
 - **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1, 2.2 and 3.2). SV1 keeps room for these and builds none of the owning briefs' work:
   - **G-01's age state:** the account's recorded age state. Nathan answered (OD-55): a self-entered birth date plus the stores' age signals where the law requires them; SV1 holds the age state behind a seam, so a stronger check can be added without rework (DM-37 3.2). G-01's umbrella row in the Work Register tracks the parts.
-  - **G-13:** Google's Restore Credentials for apps with sign-in, from April 2027 (GP-36), as SV1's scope.
+  - **G-13:** Google's Restore Credentials for apps with sign-in, from April 2027 (GP-36), as SV1's scope. **Not SV1's** (DM-45 13.1; the SV1 brief's D13): G-13 has a server part, a WebAuthn relying party that gives the new device a new session, and a native part. Both are carried to P09.2 below.
   - **G-14:** any review sign-in path for the stores' reviewers goes inside SV1's threat model; P09 owns the reviewer account.
   - **G-04:** Vermont's account-change notice.
 
@@ -55,6 +58,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
   - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
   - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), after Nathan's A05 answer on the preference taxonomy.
+- **From SV1's C2 delta review** (DM-50; N-1, N-2), for the first of SV2 to SV4 whose work changes `proofs/postgres-ordering/glow_ordering_proof/identity_support.py` (if SV2's does not, this entry moves to the next item's section): reword `mail_forbidden_found`'s docstring to say that the check removes every code the run's cases issued, and add a test that pins the removal as exact, case-sensitive and of every occurrence. Until then, the SV1 record's reading of C2.5 (DM-50) governs the docstring's words.
 
 ## Carried to SV3 (eligibility, discovery and interactions; OD-49)
 
@@ -68,6 +72,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **G-12** is carried, conditional, to an EU launch, since the EU is not a launch country for now (OD-55). At an EU launch it is the recorded classification of whether the chat is a number-independent interpersonal communications service. It decides whether ePrivacy's confidentiality rule covers what SV4 stores (EU-30), including the conversations OD-12 keeps for safety reports, and whether chat scanning needs Regulation 2026/1881's conditions (EU-26). P07.1 and P08.1 read it then.
   - **Without an answer on the history policy,** the brief keeps the recorded default and says so: reads refuse whatever refuses a send (the P11 plan) (4.5).
 - **From P06.3** (DM-44 item 7): F12's HTTP surface, its ORM adapters and the notification triggers' wiring, with the decisions P06.3's brief lists in D9: the contract and model fields' mapping (`push_enabled`, a platform, a `none` device state, a `rotate` action, the registration's session, which registration a read describes); the triggers' events (a message's acceptance writes none today; `match_activated` is settled when the chat worker creates the channel); and the system `logout` event's source (`session_revoked`, `session_expired`).
+- **From SV1** (the [SV1 record](../testing/evidence/2026-11-09-sv1-identity.md), "What could not run, and limits"): **natural expiry writes no `session_expired`.** allauth's layer refuses an expired session first, at the aligned expiry, so Glow's actor never finds the row: it stays `valid` past `expires_at`, and `expire_session` does not run. Readers check `expires_at`, so nothing is served past it, but the system `logout` that follows `session_expired` (P06.3, above) needs a sweep, or another trigger, before it relies on that event. The notification composer's check of whether a registration's session is current compares `expires_at` as well as the state, since a row past `expires_at` still reads `valid`. From SV1's exact-head review (F-9): once allauth purges an expired `UserSession`, the `AccountSession`'s `auth_session_ref` points at a deleted row, and the actor refuses with `no_user_session` before its own expiry check, so the row is never marked. The sweep therefore finds such rows by `expires_at`, not through the actor.
 - **From P06.3's exact-head review, F-4** (the P06.3 record, "Exact-head review of P06.3"): the in-memory composer's `_fixed` set and ledger grow without bound (`notifications.py`); the serving slice gives the ledger its real storage, a bound and a retention.
 - **From DM-44's optional item (4.1), not taken in P06.3:** whether turning every kind off also revokes the installation's registration and discards its token, so that Glow holds no token it does not use. F12 allows it (`revoke`). It is decided where real tokens first exist, here or in P09.2.
 
@@ -96,6 +101,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P09 (security, native quality and release preparation)
 
+- **G-13, Restore Credentials, both parts, before April 2027** (DM-45 13.1; GP-36): Android's guide asks for a WebAuthn relying party server: the app registers a restore key after sign-in, and on a new device the server verifies its assertion and issues a new session. Raw authentication tokens stay out of the app's backup, and the restore key is deleted when the member signs out or the server ends the session. P09.2's brief names the server part's owner (through a maintained library; PF01 §4: no custom token cryptography) and builds the native part.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.2):
   - **G-01's store parts:** the native age signals in P09.2 (Apple's Declared Age Range, Google's Play Age Signals); Restrict Minor Access in Play Console (GP-11).
   - **G-14:** the reviewer account for both stores, which no fixture adapter or test-account privilege can turn into access to real users (PF01 P12).

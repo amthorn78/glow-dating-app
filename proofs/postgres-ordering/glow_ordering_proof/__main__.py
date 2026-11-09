@@ -2,6 +2,7 @@
 
     python -m glow_ordering_proof facts       # SELECT version(), settings, the applied ledger
     python -m glow_ordering_proof run --seed 20260929 --results results.json
+    python -m glow_ordering_proof identity --results identity.json   # SV1, identity settings
 
 ``run`` executes the suite on two subjects (P06.2, D3): the reference design, then the
 app's adapter (``services/api``'s ``glow_chat``), each with the forced and named cases,
@@ -13,6 +14,10 @@ carried item 1). It exits
 0 only on a PASS. Django's own ``migrate`` and ``makemigrations --check --dry-run`` run
 separately (``python -m django ...``); Django's ``dbshell`` is refused under these
 settings (the proof's own command, P06.DB's carried item 6).
+
+``identity`` (SV1) runs the identity suite on the second disposable database, under
+``glow_ordering_proof.identity_settings`` only (``identity_suite``); the ordering commands refuse
+those settings.
 """
 
 from __future__ import annotations
@@ -231,7 +236,21 @@ def main(argv: list[str] | None = None) -> int:
     run_parser = commands.add_parser("run")
     run_parser.add_argument("--seed", type=int, default=budget.DEFAULT_SEED)
     run_parser.add_argument("--results", type=Path, default=None)
+    # SV1: the identity suite, under glow_ordering_proof.identity_settings only.
+    identity_parser = commands.add_parser("identity")
+    identity_parser.add_argument("--results", type=Path, default=None)
     args = parser.parse_args(argv)
+    if args.command == "identity":
+        if os.environ.get("DJANGO_SETTINGS_MODULE") != "glow_ordering_proof.identity_settings":
+            print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings")
+            return 1
+        _setup()
+        from glow_ordering_proof import identity_suite
+
+        return identity_suite.run(args.results)
+    if os.environ.get("DJANGO_SETTINGS_MODULE") == "glow_ordering_proof.identity_settings":
+        print("refusing: the ordering commands do not run under the identity settings")
+        return 1
     _setup()
     if args.command == "facts":
         return facts()

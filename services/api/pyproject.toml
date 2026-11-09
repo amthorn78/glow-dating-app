@@ -9,7 +9,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["glow_api", "glow_domain", "glow_chat"]
+files = ["glow_api", "glow_domain", "glow_chat", "glow_identity"]
 
 [[tool.mypy.overrides]]
 module = ["django.*", "rest_framework.*"]
@@ -19,6 +19,12 @@ ignore_missing_imports = true
 # as the harness does (P06.2 Stage B2).
 [[tool.mypy.overrides]]
 module = ["getstream", "getstream.*"]
+ignore_missing_imports = true
+
+# SV1: django-allauth ships no type information (no py.typed in 65.21.1); glow_identity
+# holds its classes as Any, as the API does Django's and DRF's (the SV1 brief's D12).
+[[tool.mypy.overrides]]
+module = ["allauth", "allauth.*"]
 ignore_missing_imports = true
 
 # The P02 model definitions are untyped Django declarations; glow_chat uses them as Any.
