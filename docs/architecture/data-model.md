@@ -6,13 +6,15 @@ P02.2 defines 32 app-owned Django models and two migration files in
 amends that unapplied migration (the [migration plan](../operations/migration-plan.md),
 "Amending an unapplied migration") so that it also adds `OutboxEvent.sequence`, the
 database-assigned order column, and the reconciliation mark `reconcile_code` on
-`ChatBinding` and `ChatIdentity`; `0001` and `0002` are byte-identical to P02's. These
+`ChatBinding` and `ChatIdentity`; `0001` and `0002` are byte-identical to P02's. SV1
+adds one model, `AccountAgeState`, in a fourth migration, `0004_account_age_state`. These
 are **unapplied design artifacts**: the fixture API does not install this app, and no
 migration is applied anywhere but a disposable proof database. P06.2 Stage A adds the first ORM
 code over them, the chat contact adapter and its outbox delivery (`services/api/glow_chat`,
-below), which run only under the disposable-PostgreSQL proof's settings; the API's
-runtime imports none of it and keeps its dummy backend. No real authentication or
-deployed queue exists. The P11 [migration plan](../operations/migration-plan.md) owns
+below). SV1 adds maintained sign-in over the same rows (`services/api/glow_identity`;
+"Maintained authentication mapping", below). Both run only under the disposable-PostgreSQL
+proof's settings; the API's runtime imports none of it and keeps its dummy backend. No
+real authentication is served, and no deployed queue exists. The P11 [migration plan](../operations/migration-plan.md) owns
 activation order.
 
 ## Identity, time and field semantics

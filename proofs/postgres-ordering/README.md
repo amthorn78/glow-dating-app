@@ -104,7 +104,7 @@ python3.12 -m venv .venv
 
 In a Claude Code cloud session pip needs the proxy and CA variables, passed by reference and never printed (`HTTPS_PROXY="$HTTPS_PROXY" PIP_CERT="$PIP_CERT" ...`).
 
-The locks were generated with uv 0.8.17:
+The locks were generated with uv 0.8.17, and SV1 regenerated them with uv 0.11.32:
 
 ```bash
 uv pip compile requirements.in --python-version 3.12 --generate-hashes --output-file requirements.lock --no-header

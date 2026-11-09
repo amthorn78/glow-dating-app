@@ -539,3 +539,66 @@ The 47 case lines are word for word those of the earlier run below, apart from t
 - **The `password_set` and `email_deleted` notices** are worded but unreachable in SV1.
 - **A confirmed password-reset code also verifies the address**, outside the adapter (`verify_email_indirectly`). For an `unverified` account, the `verified` transition then happens at the next sign-in, by the retry `verify.transition_retried_at_sign_in` exercises.
 - **Two records sections outside SV1's owned text** still read as before SV1: the data model's opening paragraph and the contract's opening "Not implemented" line. They were left unchanged.
+
+## Manager verification (App Manager 10, 9 November 2026)
+
+**The diff.** `git diff dc3e551 157c1f6` was read whole: 45 paths, each owned by the brief (41 to the code head, then the records commit, Markdown only).
+- `glow_chat`, `glow_api` and the runtime `requirements.in` and `requirements.lock` are unchanged.
+- Every workflow hunk is in the Database proof checks job.
+- The development lock adds exactly `django-allauth` 65.21.1, `cryptography` 50.0.2, `cffi` 2.1.1 and `pycparser` 3.12, and removes nothing.
+- Read against the brief:
+  - the replay check runs allauth's `decode_token`, `get_token_session` and `validate_token_user` before its `jti` check (N2's order);
+  - the actor takes the session from the token's own `sid`;
+  - every revocation entry point begins with `require_no_transaction()`;
+  - `save_user` writes the user, its account and its age state in one transaction.
+
+**Classification.** The trusted classifier from `main` (`da92f1f`), run with `python3 -I` and `--base da92f1f… --head 157c1f6… --merge-base`, returned:
+- full scope, `behavior-or-empty`;
+- 64 paths: the PR's whole diff, the records since PR41 included;
+- one merge base, `8d2de72`.
+
+**Re-runs.** These ran in a scratch copy of the code head's whole tree (`git archive 269ac3b`), in the clean environment, with hash-locked installs:
+- API: `Ran 449 tests` … `OK`; Ruff clean; mypy `no issues found in 57 source files`;
+- the proof's offline tests: `Ran 175 tests` … `OK`; `pip check` clean.
+
+The manager runs no database test locally.
+
+**Three reversals, re-run offline.** Each failed as it should:
+- **R1:** `glow_api/urls.py` imports `glow_identity`. The two sealed-runtime tests fail.
+- **R2:** the actor reads the `X-Session-Token` header. The static guard in `test_identity_offline` fails.
+- **R3:** the replay check decodes without verifying the signature. The order test fails.
+
+Each file was restored, its hash checked, and the affected tests pass again.
+
+**The run of record**, read with the GitHub tools: push run 42578800951 on `269ac3b`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Both DM-41 retry steps were `skipped`.
+- The second identity run was refused, with the counts `51 51 58 32 45` unchanged.
+- The artifact `sv1-identity-results` is 3,717 bytes, and the cleanup removed the container.
+
+The records push run 42580044628 on `157c1f6` classified ordinary documentation.
+
+**For the review's focus (the manager's own read).**
+- The results upload runs `if: always()`, so it also uploads after a failed secret check.
+- Its JSON holds:
+  - the server facts and the applied migrations;
+  - each case's id, checks, verdict, time and detail line;
+  - the counts.
+
+  That is the text the job prints, but only after its own check passes.
+- The values are synthetic and live for one run, on a database the job destroys.
+
+**Triage** (step 6's rule; DM-23; DM-31 3.4):
+
+| Item | Disposition |
+|---|---|
+| **An email change needs no reauthentication** | **Goes to the Dev Manager before the exact-head review (DM-47).** The brief's D3 names no reauthentication, so the prompt did not ask for it, although DM-45 section 9 approved email change as needing "`ACCOUNT_CHANGE_EMAIL = True` … and reauthentication" (AM10-06). It is on a security boundary (authorization): a holder of a live access token, refresh token or session key can move the address, then reset the password from it. The proposed correction is `ACCOUNT_REAUTHENTICATION_REQUIRED = True`, with its cases and a reversal |
+| No `session_expired` on natural expiry | The brief's rule is met: "`expire_session` marks an expired row when it is found". **Carried to SV4**, whose system `logout` follows `session_expired` (the carried-items file) |
+| The 10-second window (allauth's `confirm_email` limit) | Recorded in the threat model; for the review's focus |
+| A confirmed reset code verifies the address outside the adapter | The next sign-in's retry takes `verified` (`verify.transition_retried_at_sign_in`); for the review's focus |
+| The headless payload; `password_set` and `email_deleted` | Recorded: the member's own data; worded, but unreachable in SV1 |
+| Two opening texts left as before SV1 | Updated by the manager in this batch: the data model's opening paragraph and the contract's "Not implemented" line |
+| The phone refusal (403) | Accepted. It replaces a server error with a refusal, has a test and a reversal (`X-phone`), and changes no design. For the review's focus |
+| The comment commit `269ac3b` | Accepted; the run of record is on it |
+| uv 0.11.32 | Accepted. Each lock was checked by package, version and hash. Both READMEs' version sentences are corrected in this batch; uv 0.12.17 in the toolchain is already the hardening item's (`claude-setup-optimization.md`; DM-17) |
+| The configured specification's hashes | The P11 plan's carry is closed in this batch |
+| The twelve `X-` reversals | Accepted, as additions |

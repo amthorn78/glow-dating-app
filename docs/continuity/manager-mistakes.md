@@ -142,6 +142,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-03 | 9 Nov 2026 | accuracy | The verification of correction C1 (the P06.3 record, pushed at `1a2a2c7`) said the adapter's change was the moved `capture` "plus two comment lines"; there are three | C1's delta review, N-3 |
 | AM10-04 | 9 Nov 2026 | process | Correction C1's prompt (`3a2b930`) went to Nathan without a Dev Manager consultation, though step 6 consults the Dev Manager when a fix touches a security boundary, revocation included; C1 changed when an ended session's command is refused | Dev Manager 4, DM-45 section 16 |
 | AM10-05 | 9 Nov 2026 | follow-through | Notion's operating-procedure summary kept its stamp at `1ce2fcb` (26 October) through App Manager 10's governing-text changes of 8 November (`33c4cc2`, `0a49e62`, `678dabd`, `86e65dc`); the match check moves the stamp when a governing text changes | App Manager 10, checking the summary after adding step 6's sentence |
+| AM10-06 | 9 Nov 2026 | follow-through | DM-45 section 9 approved SV1's email change as needing "`ACCOUNT_CHANGE_EMAIL = True` … and reauthentication"; the brief's D3 (revisions 2 and 3) named neither setting, and the prompt left the settings to the session, which kept allauth's default, reauthentication off | the SV1 implementation session's findings, read in the manager's verification |
 
 ## App Manager 2
 
@@ -1090,6 +1091,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-06 — An approval's named setting was not carried into the brief (follow-through)
+
+- **What happened:** DM-45 section 9 approved "email change verified by code. That needs `ACCOUNT_CHANGE_EMAIL = True`, which defaults to `False`, and reauthentication, which does not cycle the key." It was approval text, not a blockquoted condition, so App Manager 10's revision 2 did not carry it. D3 kept "The evidence names the installed release's settings for this", and the prompt left the settings to the session. The session turned on `ACCOUNT_CHANGE_EMAIL` and kept `ACCOUNT_REAUTHENTICATION_REQUIRED` at its default, off.
+- **Caught by:** the SV1 implementation session, which reported that an email change needs no reauthentication; App Manager 10 matched it to DM-45's words in the verification.
+- **Effect:** at code head `269ac3b`, a holder of a live access token, refresh token or session key can move the account's address and then reset the password from it. Nothing is served: the runtime is sealed and the proof uses synthetic accounts.
+- **Correction:** DM-47 puts the gap and a proposed correction (`ACCOUNT_REAUTHENTICATION_REQUIRED = True`, with its cases and a reversal) to the Dev Manager before the exact-head review.
+- **Prevention:** when disposing of a Dev Manager report, read its approval text as well as its conditions, and carry into the brief every setting, rule or requirement the approval names; one the manager does not carry is put back to the Dev Manager in the disposition.
 
 ### AM10-05 — The procedure summary's stamp was not moved (follow-through)
 

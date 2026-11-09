@@ -108,7 +108,9 @@ GLOW_ENV=test .venv/bin/python -m glow_persistence.static_check
 
 The hash-locked files contain all resolved runtime/development dependencies.
 `requirements.in` and `requirements-dev.in` hold exact direct pins. Lock files
-were generated with uv 0.12.17 for Python 3.12 on Linux; regenerate deliberately:
+were generated with uv 0.12.17 for Python 3.12 on Linux, and SV1 regenerated the
+development lock with uv 0.11.32, checking each package, version and hash against the
+earlier lock and PyPI; regenerate deliberately:
 
 ```bash
 uv pip compile requirements.in --python-version 3.12 --generate-hashes --output-file requirements.lock --no-header
