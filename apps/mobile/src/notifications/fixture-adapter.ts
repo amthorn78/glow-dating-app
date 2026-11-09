@@ -97,26 +97,27 @@ export class FixtureNotificationAdapter implements NotificationTransport, Sessio
 
   // -- the transport: what Glow's API answers ------------------------------------------------
 
+  // Each request resolves its session after its await, in the same step as its command, as the domain does
+  // inside each command: a request whose session ended while it waited is refused and changes nothing.
   async settings(session: SessionHandle, deviceId: string): Promise<unknown> {
-    const accountId = this.capture(session);
     await this.gate();
+    const accountId = this.capture(session);
     if (!accountId) return this.respond(this.refuse('settings_read', { refused: 'unauthenticated' }));
     const view = this.view(accountId, deviceId);
     return this.respond(view ? this.success(view) : this.refuse('settings_read', { refused: 'not_found' }));
   }
   async device(session: SessionHandle, deviceId: string, intent: DeviceIntent): Promise<unknown> {
-    const accountId = this.capture(session);
     const captured = this.copy(intent);
     await this.gate();
-    return this.respond(this.deviceCommand(accountId, session.sessionId, deviceId, captured));
+    return this.respond(this.deviceCommand(this.capture(session), session.sessionId, deviceId, captured));
   }
   async notifications(session: SessionHandle, deviceId: string, intent: NotificationIntent): Promise<unknown> {
-    const accountId = this.capture(session);
     const captured = this.copy(intent);
     await this.gate();
-    return this.respond(this.settingsCommand(accountId, deviceId, captured));
+    return this.respond(this.settingsCommand(this.capture(session), deviceId, captured));
   }
 
+  /** The session's account if Glow's API holds the session as current now; `null` otherwise. */
   private capture(session: SessionHandle): string | null {
     const known = this.sessions.get(session?.sessionId);
     return known?.current && known.accountId === session.accountId ? known.accountId : null;

@@ -154,6 +154,37 @@ test('an account change revokes the earlier session\'s registration first, and t
   assert.deepEqual([store.getSnapshot().match, store.getSnapshot().message, store.getSnapshot().deviceActive], [false, false, false]);
 });
 
+// Correction C1, item 1 (F-1): a register in flight when the session ends. In the same task the adapter refuses it
+// (it re-checks the session after its await); in a later task it has committed, and the owner's revoke ends it.
+for (const preset of ['granted', 'undetermined_allow'] as const) {
+  for (const change of ['logout', 'account change'] as const) {
+    for (const timing of ['same task', 'later task'] as const) {
+      test(`a register in flight at ${change === 'logout' ? 'a logout' : 'an account change'} in the ${timing} (${preset}) leaves nothing active on the ended session and no token held`, async () => {
+        const { store, adapter, permission, owner } = setup();
+        permission.set(preset);
+        await store.load();
+        const ended = currentSession(owner.getSnapshot())!;
+        const turning = store.setKind('match', true);
+        if (timing === 'later task') await new Promise(resolve => setImmediate(resolve));
+        if (change === 'logout') owner.logout(); else owner.scenario('eligible');
+        await turning;
+        await settle();
+        assert.equal(adapter.isCurrent(ended.sessionId), false);
+        assert.deepEqual(adapter.registrationsView().filter(row => row.sessionId === ended.sessionId && row.state === 'active'), [], kinds(adapter).join(','));
+        assert.equal(adapter.heldTokens, 0);
+        assert.equal(store.getSnapshot().status, 'idle');
+        if (timing === 'same task') {
+          assert.deepEqual(adapter.registrationsView(), [], kinds(adapter).join(','));
+          assert.deepEqual(adapter.events().filter(event => event.kind === 'refused' && event.operation === 'device'),
+            [{ kind: 'refused', operation: 'device', code: 'unauthenticated' }], 'the in-flight register reached the adapter and was refused');
+        } else {
+          assert.equal(registration(adapter)?.endedBy, 'revoke', 'the committed register is ended by the owner\'s revoke');
+        }
+      });
+    }
+  }
+}
+
 test('the server\'s logout event covers a revoke that did not reach it', async () => {
   const { adapter, owner } = await enabled('match');
   adapter.setScenario('offline');

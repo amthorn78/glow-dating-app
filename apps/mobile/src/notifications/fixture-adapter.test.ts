@@ -83,3 +83,33 @@ test('a session\'s end is the system\'s logout of the registrations it made, and
   assert.equal(body(await fixture.settings(A, FIXTURE_INSTALLATION_ID)).code, 'unauthenticated');
   assert.equal(body(await fixture.settings({ ...later, accountId: B.accountId }, OTHER_DEVICE)).code, 'unauthenticated');
 });
+
+// Correction C1, item 1 (F-1): the session is resolved after the request's await, as the domain resolves it inside each command.
+test('a register, a settings save and a read whose session ended while they awaited are refused and change nothing', async () => {
+  const fixture = adapter();
+  const register = fixture.device(A, FIXTURE_INSTALLATION_ID, device('register', 0, 'e1'));
+  const save = fixture.notifications(A, FIXTURE_INSTALLATION_ID, settings(true, true, 0, 'e2'));
+  const read = fixture.settings(A, FIXTURE_INSTALLATION_ID);
+  fixture.ended(A);
+  assert.deepEqual([body(await register).code, body(await save).code, body(await read).code], ['unauthenticated', 'unauthenticated', 'unauthenticated']);
+  assert.deepEqual(fixture.registrationsView(), []);
+  assert.equal(fixture.heldTokens, 0);
+  assert.deepEqual(fixture.settingsOf(A.accountId), { match: false, message: false });
+  assert.deepEqual(fixture.events().filter(event => ['register', 'rotate', 'settings'].includes(event.kind)), []);
+});
+
+test('each request from a session that ended while it awaited is refused, even where another current session holds the registration', async () => {
+  const fixture = adapter();
+  const later = Object.freeze({ ...A, sessionId: 'fixture-session-a2' });
+  fixture.started(later);
+  await fixture.device(later, FIXTURE_INSTALLATION_ID, device('register', 0, 'l1'));
+  const rotate = fixture.device(A, FIXTURE_INSTALLATION_ID, device('register', 1, 'l2'));
+  const save = fixture.notifications(A, FIXTURE_INSTALLATION_ID, settings(true, true, 1, 'l3'));
+  const read = fixture.settings(A, FIXTURE_INSTALLATION_ID);
+  fixture.ended(A);
+  assert.deepEqual([body(await rotate).code, body(await save).code, body(await read).code], ['unauthenticated', 'unauthenticated', 'unauthenticated']);
+  assert.deepEqual(fixture.registrationsView().map(row => [row.deviceId, row.state, row.sessionId, row.version]),
+    [[FIXTURE_INSTALLATION_ID, 'active', later.sessionId, 1]], 'the later session\'s registration is unchanged');
+  assert.equal(fixture.heldTokens, 1, 'only the later session\'s token');
+  assert.deepEqual(fixture.settingsOf(A.accountId), { match: false, message: false });
+});
