@@ -401,3 +401,19 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
 - **The adapter is still a presentation substitute** for F12; the Python domain stays authoritative. The fix proves the adapter refuses an ended session's request; it proves nothing about the server's HTTP route (SV4).
 - **Deviations from the brief:** none in scope. Beyond the brief's tests: a second adapter test (a registration held by another current session, so that each stale method would otherwise succeed); the later-task store cases written out explicitly in the loop; and a self-test for each of the two import scans.
 - **Nothing met the stop rule.** No path outside the owned paths changed; no dependency, lock, contract or model changed; the adapter's only change in behaviour is refusing an ended session's request.
+
+## Manager verification of correction C1 (9 November 2026, App Manager 10)
+
+- **The branch:** `claude/peaceful-feynman-ozlu2l`, with the code head `e807ce8` and the records head `9686efe`, starts at the prompt's commit `3a2b930`.
+  - `git diff --name-only 3a2b930 9686efe` lists six paths, all owned: `fixture-adapter.ts`, its test, `store.test.ts`, `fixture-scope.test.ts`, `test_notifications.py`, and the record, which is the records commit's only path.
+  - The one non-test change is `fixture-adapter.ts`, `+6 −5`: in `settings`, `device` and `notifications`, `capture(session)` moved to after `await this.gate()`, plus two comment lines. Nothing else in the adapter changed, and no other runtime file did. That is within 60 non-test lines, so a delta review follows (step 6).
+- **The run of record,** push run 42549675849 on `e807ce8`, read with the GitHub tools:
+  - all eight jobs `success`;
+  - the gate's log ends `Application checks passed`;
+  - every DM-41 wait and retry step `skipped`.
+- **Three reversals re-run** in a scratch copy of `e807ce8` (`git archive`, outside the checkout), with clean process environments, each file restored and checked:
+  - **F-1:** `9c4fef5`'s `fixture-adapter.ts` put back. `fixture-adapter.test.ts` and `store.test.ts` go from `ℹ tests 29 / pass 29` to `ℹ pass 23 / fail 6`. The six are both new adapter tests and the four same-task store cases (logout and account change, with `granted` and `undetermined_allow`).
+  - **F-2:** `from . import chat_provider_stream` added to `notifications.py`. `FixtureScopeTests` goes from `Ran 5 tests … OK` to `FAIL: test_the_domain_module_imports_only_the_standard_library_and_its_two_neighbours`, `AssertionError: Items in the first set but not the second`.
+  - **F-3:** `import 'expo-device';` added to `permission.ts`. `fixture-scope.test.ts` goes from `pass 3 / fail 0` to `pass 2 / fail 1`, `… permission.ts imports expo-device`.
+- **PR41 before C1:** on `3a2b930` (the commit that holds C1's prompt), Codex's code review completed at 01:52:29 UTC with no new finding. Its PR run 42547603140 passed every job. Its push run 42547597493 read the commit as records only and passed its gate.
+- **Integrated:** the manager branch fast-forwarded to `9686efe`. Codex's F-C1 thread is answered and resolved now that its fix is on PR41.
