@@ -297,3 +297,107 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   - F-1's fix makes the mobile fixture adapter do what DM-44 1.2 already says: "a command from a session that is no longer current is refused". The authoritative Python domain does this inside each command;
   - the fix changes no design, interface, contract or dependency, and the adapter enforces nothing in production;
   - so the manager writes C1 without a consultation, and the Dev Manager's next consultation sees this disposition.
+
+## Correction C1
+
+- **Prompt:** [`docs/ephemeral/2026-11-09-p06-3-c1-correction-prompt.md`](../../ephemeral/2026-11-09-p06-3-c1-correction-prompt.md), revision 1, from `3a2b930057f5a952023dc26a55c3338ce6dd5b46` of the manager branch `claude/magical-wozniak-yfmmx2`. Its specification is the brief's revision 3, "Correction C1", items 1 to 4.
+- **Session:** one correction session, started by Nathan, 9 November 2026 (UTC), in `Glow App - No Stream`. Branch `claude/peaceful-feynman-ozlu2l`, started at `3a2b930`.
+- **Code commits:** `85ae241` (item 1), `109d2ee` (item 2), then `e807ce8719ca0081942081eb7b64db9c28af0bc9` (item 3). **Code head:** `e807ce8`. **Records head:** the commit that adds this section, Markdown only; no code after the code head.
+- **Run of record:** push run **42549675849** on `e807ce8`. All eight jobs `success`, `Application checks passed`, API `Ran 422 tests`, mobile unit `ℹ tests 691`, rendered **`104 passed (5.3m)`**, no toolchain retry.
+
+### Environment check (names only)
+
+- `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`: none present (the prompt's loop printed nothing).
+- `STREAM_*`: no name present (`compgen -e | grep -E '^STREAM_'` printed nothing).
+- GitHub token names `GH_TOKEN` and `GITHUB_TOKEN` are present; never read. `git push` ran with both unset (`env -u`).
+- **Toolchain:** `node --version` → `v24.19.0`; `npm --version` → `11.9.0`; `python3.12 --version` → `Python 3.12.14`, from `$HOME/.local/bin`, put first on `PATH`. Every repository command ran in `env -i PATH="$HOME/.local/bin:$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API commands. `npm ci` and `pip install` also passed the proxy and CA variables by reference, never printed.
+
+### Start gate
+
+| Check | Result |
+|---|---|
+| `git fetch origin claude/magical-wozniak-yfmmx2 main` | fetched; `origin/claude/magical-wozniak-yfmmx2` = `3a2b930057f5a952023dc26a55c3338ce6dd5b46` (the prompt's commit is the live manager head); `origin/main` = `8031361` |
+| `git switch -C claude/peaceful-feynman-ozlu2l 3a2b930…`; `git rev-parse HEAD` | `3a2b930057f5a952023dc26a55c3338ce6dd5b46` |
+| `git diff --quiet 9c4fef5… HEAD -- .github scripts services apps packages proofs` | `the code is 9c4fef5's` |
+| `git diff --name-only 3a2b930… origin/claude/magical-wozniak-yfmmx2 -- apps/mobile services/api` | nothing |
+| `git show origin/claude/magical-wozniak-yfmmx2:<this record> \| grep -c -E '^#+ Correction C1'` | `0` |
+
+**Read before the work, completely:** root `AGENTS.md` and `CLAUDE.md`; `apps/mobile/AGENTS.md`; the brief's "Correction C1" (with its header, Outcome and "Sessions"); this record's "Exact-head review of P06.3" and the "Outcome 2" and "Outcome 3" tables; `fixture-adapter.ts`, `store.ts`, `transport.ts`, `fixture-adapter.test.ts`, `store.test.ts` and `fixture-scope.test.ts`; `notifications.py`'s `_session_refusal`; `test_notifications.py`'s `FixtureScopeTests`. Also read, without change: `client.ts`, `permission.ts`, and `no-provider.test.ts`'s specifier patterns.
+
+### Item 1 — F-1: the fixture adapter re-checks the session after its await
+
+- **Files:** `apps/mobile/src/notifications/fixture-adapter.ts` (the change); `fixture-adapter.test.ts` and `store.test.ts` (the tests).
+- **The change:** `settings`, `device` and `notifications` now call `capture(session)` after `await this.gate()`, in the same synchronous step as the read or the command, as `notifications.py` checks the session inside each command. The intent is still copied before the await (the request's body as sent). A request whose session ended while it awaited gets `unauthenticated` and changes nothing. Nothing else in the adapter changed: the offline scenario still throws at the gate, and a lost response still commits and then withholds the answer.
+- **The semantics:** the only difference from `9c4fef5`'s adapter is that an ended session's request is refused. The Python domain is unchanged.
+- **The adapter's tests** (`fixture-adapter.test.ts`, 2 new):
+  - "a register, a settings save and a read whose session ended while they awaited are refused and change nothing": the three requests start, `ended(A)` runs, then each is awaited. Each is `unauthenticated`; there is no registration; `heldTokens` is 0; the account's settings are both off; no `register`, `rotate` or `settings` event;
+  - "each request from a session that ended while it awaited is refused, even where another current session holds the registration": the account's later session registers the installation first, so a stale rotate, save or read would otherwise succeed. Each is `unauthenticated`; the later session's registration is unchanged (active, its session, version 1); `heldTokens` is 1, the later session's token.
+- **The store's tests** (`store.test.ts`, 8 new, one loop): `setKind('match', true)`, then `owner.logout()` or an account change (`owner.scenario('eligible')`), with the permission preset `granted` or `undetermined_allow`, in the same task or in a later task (after a `setImmediate`). Each case asserts that the ended session is not current, that no registration is active on it, that `heldTokens` is 0 and that the store is idle.
+  - **Same task** (4 cases): no registration at all, and exactly one device refusal, `unauthenticated`: the in-flight register reached the adapter and was refused.
+  - **Later task** (4 cases): the register committed, and the owner's revoke ended it (`endedBy: 'revoke'`). These pass at `9c4fef5` too, as the review found.
+- **Before the change:** the new tests, run against `9c4fef5`'s adapter, fail 6 of 29 in the two files: both adapter tests and the four same-task store cases. The four later-task cases pass.
+- **The reversal:** `fixture-adapter.ts` replaced by `9c4fef5`'s (`git show 9c4fef5…:apps/mobile/src/notifications/fixture-adapter.ts`), with the session taken before the await and used after it. `node --test src/notifications/fixture-adapter.test.ts src/notifications/store.test.ts`: exit 1, `ℹ tests 29`, `ℹ pass 23`, `ℹ fail 6`:
+  - both adapter tests: `AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal: … actual: [ undefined, 'stale_version', undefined ], expected: [ 'unauthenticated', 'unauthenticated', 'unauthenticated' ]` (the register or rotate and the read succeeded);
+  - the four same-task store cases: logout, `granted` and `undetermined_allow`: `AssertionError [ERR_ASSERTION]: session_started,refused,session_ended,register … actual: [ { accountId: '11111111-…', deviceId: '6f12d000-…-000000000001', state: 'active', version: 1, sessionId: 'fixture-session-1', endedBy: null } ], expected: []`; account change, both presets: the same, with the events `session_started,refused,session_ended,session_started,register`. (The first `refused` is the initial read's `not_found`.)
+
+  The fixed file was restored, and its SHA-256 matched the saved copy (`68f151050a0d582b…`).
+
+### Item 2 — F-2: the server's import test records relative imports exactly
+
+- **File:** `services/api/tests/test_notifications.py` (`FixtureScopeTests`).
+- **The change:** a helper, `_imported_modules`, reads each `ImportFrom` by its level, module and imported names. `from . import x` is the sibling `.x`; `from .m import y` is `.m`. The domain-module test now asserts that the relative imports are exactly `{".chat", ".provider_fixtures"}`, and that the whole set is the standard-library names plus those two (`"."` in the expected set became `".chat"`). A new test, "the import reading names each relative module", pins the helper on probe sources: `from . import chat_provider_stream`, two names in one statement, `from .. import x`, a module import and absolute imports. `FixtureScopeTests` has 5 tests now.
+- **The record's claim** (Outcome 2: `notifications.py` "imports only the standard library, `.chat` and `.provider_fixtures`") is now what the test checks.
+- **The reversal:** `from . import chat_provider_stream` added to `notifications.py` after `from . import chat`. `manage.py test tests.test_notifications.FixtureScopeTests --verbosity 2` (with `PYTHONDONTWRITEBYTECODE=1`): exit 1, `test_the_domain_module_imports_only_the_standard_library_and_its_two_neighbours … FAIL`, `AssertionError: Items in the first set but not the second: '.chat_provider_stream'`, `FAILED (failures=1)`. The other four passed.
+- **For comparison (informational):** `9c4fef5`'s test file, copied in temporarily, ran with the same probe in place: `Ran 4 tests` … `OK`, as the review found. The copy was removed, `notifications.py` restored (`git diff --quiet glow_domain` clean), and the ignored `__pycache__` directories cleared.
+
+### Item 3 — F-3: the mobile import scan covers bare side-effect imports
+
+- **File:** `apps/mobile/src/notifications/fixture-scope.test.ts`.
+- **The change:** the scan's pattern, now a named `SPECIFIER`, adds the bare form `import '…'` to `from '…'`, `import('…')` and `require('…')`. A new test, "the import scan reads every import form, the bare side-effect form among them", pins it on a probe source (`import 'expo-device';`, a default import, `import type`, `require`, a dynamic import and `import"e"`).
+- **The reversal:** `import 'expo-device';` added as `permission.ts`'s first line. `node --test src/notifications/fixture-scope.test.ts`: exit 1, `ℹ tests 3`, `ℹ pass 2`, `ℹ fail 1`: `✖ the module imports only React, React Native, Expo Router and the app's own code` with `AssertionError [ERR_ASSERTION]: …/apps/mobile/src/notifications/permission.ts imports expo-device`.
+- **For comparison (informational):** `9c4fef5`'s scan, copied in temporarily as another test file, ran with the same probe in place: `ℹ tests 2`, `ℹ pass 2`, `ℹ fail 0`. The copy was removed and `permission.ts` restored.
+
+### The non-test line count
+
+`git diff --numstat 3a2b930… e807ce8 -- . ':(exclude)*.test.ts' ':(exclude)services/api/tests/*'` lists one file: `fixture-adapter.ts`, 6 added and 5 deleted, so **11 non-test lines**. That is 60 or fewer, so a delta review applies (the brief's "Review"). The tests: `fixture-adapter.test.ts` +30, `store.test.ts` +31, `fixture-scope.test.ts` +9 −4, `test_notifications.py` +36 −7.
+
+### Commands and results
+
+| Command (clean environment) | Result |
+|---|---|
+| `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock` (services/api) | exit 0 (pip's own upgrade notice only) |
+| `GLOW_ENV=test .venv/bin/python manage.py check` | `System check identified no issues (0 silenced).` |
+| `GLOW_ENV=test .venv/bin/python manage.py test tests --verbosity 2` | `Ran 422 tests` … `OK` (421 before; 1 new) |
+| `.venv/bin/ruff check .` | `All checks passed!` |
+| `.venv/bin/ruff format --check .` | `81 files already formatted` |
+| `.venv/bin/mypy` | `Success: no issues found in 43 source files` |
+| `npm ci --ignore-scripts` (apps/mobile) | exit 0 |
+| `npm run check` | `tsc --noEmit` and `eslint .` clean; `ℹ tests 691`, `ℹ pass 691`, `ℹ fail 0` (680 before; 11 new) |
+| Baselines at `3a2b930`, before any change: the three owned mobile test files; `FixtureScopeTests` | `ℹ tests 21`, `ℹ pass 21`; `Ran 4 tests` … `OK` |
+| The three reversals | each failed its test as recorded above; every file restored |
+| `git push -u origin claude/peaceful-feynman-ozlu2l` (code) | new branch at `e807ce8`; nothing more pushed until run 42549675849 finished |
+
+### The run of record
+
+**Push run 42549675849** (Foundation, run 891, attempt 1) on `e807ce8719ca0081942081eb7b64db9c28af0bc9`, the code head; `completed`, conclusion `success`, 02:12:58 to 02:20:50 UTC on 9 November 2026. Read with the GitHub tools: the run, the job list with each job's steps, and the gate's, API's and Mobile's logs (the Mobile log downloaded in full to the session's scratch directory, outside the checkout, and searched there).
+
+| Job | Result | Detail |
+|---|---|---|
+| Change scope | success | the step "Classify the complete change using trusted base policy" passed |
+| API checks | success | `System check identified no issues (0 silenced).` and **`Ran 422 tests in 10.544s` … `OK`**; `All checks passed!`, `81 files already formatted`, `Success: no issues found in 43 source files`; the contracts suite `Ran 39 tests … OK` |
+| Mobile checks | success | `@glow/contracts` `ℹ tests 586`, `ℹ pass 586`, `ℹ fail 0`; `@glow/mobile` typecheck and lint, then **`ℹ tests 691`, `ℹ pass 691`, `ℹ fail 0`**, the 11 new tests among them by name; `Dependencies are up to date`; `export:development` (`Android Bundled … (1339 modules)`, `iOS Bundled … (1372 modules)`, `Exported: .work/native-export`); Chrome for Testing 151.0.7922.34 (`playwright chromium v1234`) installed; the rendered suite **`104 passed (5.3m)`**, 104 `✓` lines and no failed, flaky or skipped count; the layout artifact uploaded (2 files, `p04-empty-form-layout`, artifact 13644938615). Duration: 02:13:09 to 02:20:44 UTC, 7 min 35 s |
+| API mobile smoke | success | `node scripts/smoke.mjs && node --test scripts/smoke.test.mjs` passed |
+| API artifact checks | success | the pinned image built, inspected and smoked |
+| Stream proof checks | success | its unit tests, `ruff`/`mypy`, the client syntax check and `checks/run_plan.py` |
+| Database proof checks | success | the disposable PostgreSQL proof, both subjects and the delivery phase |
+| Foundation gate | success | **`Application checks passed`** |
+
+**Toolchain retry:** none fired. In the API, smoke, Stream proof and Database jobs, the first `actions/setup-python` attempt succeeded, and both "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" were `skipped`. The run was not re-run.
+
+### What could not run, and limits
+
+- **The rendered suite** was not run locally: this correction changes no screen, and `playwright install` is forbidden here. CI's Mobile job runs it on the pinned browser.
+- **`check:expo`, `export:development` and `smoke.py`** were not run locally: the prompt's local checks do not list them, and the change touches no dependency, configuration or served code. CI runs the export and the smoke.
+- **The adapter is still a presentation substitute** for F12; the Python domain stays authoritative. The fix proves the adapter refuses an ended session's request; it proves nothing about the server's HTTP route (SV4).
+- **Deviations from the brief:** none in scope. Beyond the brief's tests: a second adapter test (a registration held by another current session, so that each stale method would otherwise succeed); the later-task store cases written out explicitly in the loop; and a self-test for each of the two import scans.
+- **Nothing met the stop rule.** No path outside the owned paths changed; no dependency, lock, contract or model changed; the adapter's only change in behaviour is refusing an ended session's request.
