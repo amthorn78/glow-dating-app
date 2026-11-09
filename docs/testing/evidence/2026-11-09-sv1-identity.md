@@ -312,7 +312,7 @@ Unauthenticated: each request with no credential, from the case `endpoints.refus
 |---|---|---|
 | `GET config` | 200 (public configuration) | — |
 | `GET`, `DELETE auth/session` | 401 | the session's state; `DELETE` is logout at both layers (`logout.*`) |
-| `POST auth/reauthenticate` | 401 | not used by SV1's flows |
+| `POST auth/reauthenticate` | 401 | **required before an address is added, removed or marked primary** (correction C1, `ACCOUNT_REAUTHENTICATION_REQUIRED`): the password within the last 300 seconds, in the same session; a sign-in does not count. Without it, `account/email` answers 401 with the `reauthenticate` flow. A wrong password is refused (400 `incorrect_password`) and consumes the sign-in form's `login_failed` limit: the sixth within 300 seconds is refused `too_many_login_attempts`, and the sign-in form is held too. It records the reauthentication in the Django session only: no key change, no `UserSession` or `AccountSession` write, no token pair, no `session_token`, no sign-in hook (`reauth.email_change_needs_recent_reauthentication`) |
 | `POST auth/code/confirm` (mounted whatever the configuration) | 409 (no pending flow) | 409 (login by code is off) |
 | `POST account/password/change` | 401 | ends every session at both layers (`devices.password_change_ends_both`) |
 | `GET`, `PUT`, `PATCH`, `DELETE account/email` | 401 | the member's own address; a change is verified by code first (`notice.email_change`) |

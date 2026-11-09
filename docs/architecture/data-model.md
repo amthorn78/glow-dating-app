@@ -79,8 +79,7 @@ password-reset code also verifies the address, outside the account adapter (alla
 `verify_email_indirectly`), and the next sign-in then takes the transition. A verified email alone
 establishes nothing else: not adulthood, consent, profile or eligibility.
 
-**Email change and recovery.** One address per account (`ACCOUNT_CHANGE_EMAIL`): the new address
-is verified by code before it replaces the old, and the old address gets the email-changed notice.
+**Email change and recovery.** One address per account (`ACCOUNT_CHANGE_EMAIL`), changed only after a reauthentication by password within the last 300 seconds (`ACCOUNT_REAUTHENTICATION_REQUIRED`; a sign-in does not count): the new address is verified by code before it replaces the old, and the old address gets the email-changed notice.
 The code goes to the address asked for whether or not another account holds it, so the two answer
 alike; an address another account holds verified cannot be linked, even with that inbox's code
 (refused `email_taken`). Password reset is by code (three attempts, three minutes, restarted once
