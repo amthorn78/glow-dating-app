@@ -32,7 +32,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
-- **From SV1** (the SV1 brief's D5): allauth's `UserSession` rows record each sign-in's IP address and user agent, and hold the session key. They are personal data; P08 sets their retention and their place in export and deletion.
+- **From SV1** (the SV1 brief's D5): allauth's `UserSession` rows record each sign-in's IP address and user agent, which are personal data: P08 sets their retention and their place in export and deletion. The rows also hold the session key, a credential: it is never exported, and deletion removes it with its session.
 - **The standing guard** (DM-30 1.1 and 1.2): deletion that removes an accepted message from a readable conversation triggers it. Its text is in the P11 plan, "Standing guard".
 - **ADR 0003's condition (b)** (open for P07 and P08): as in P07's section; P08's deletion orchestration takes it if P07 has not.
 - **The message spool's retention** (M05 finding 23): `MessageSubmission.text` is kept on every accepted submission. The retention decision, and deletion and export while it is kept, are in the P11 plan, "The message spool", and the privacy rules' spool row.
@@ -43,7 +43,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV1 (the identity slice; OD-49)
 
-- **The brief is written:** [`sv1-identity.md`](sv1-identity.md), revision 2 (9 November 2026), folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8). DM-45 approved revision 1 with conditions; revision 2 applies them and is back with the Dev Manager as DM-46 (DM-45 1.1).
+- **The brief is written:** [`sv1-identity.md`](sv1-identity.md), revision 3 (9 November 2026), folds in each entry below (the threat model in its review plan; G-01 in D9; G-13 and G-14 in D13; G-04 in D8). It applies DM-45's and DM-46's conditions as written; the implementation prompt is with Nathan.
 - **A written threat model** in SV1's exact-head review (DM-31 item 3), since Codex's security reviews are no longer available (OD-41).
 - **Its brief goes to the Dev Manager:** django-allauth headless is a significant new dependency and sign-in is a security boundary (DM-31 item 3; the charter). The same holds for each slice's brief.
 - **PF01's rules for every slice** (§8, "Server slices"): a disposable PostgreSQL in CI under P06.DB's rules, CI-generated credentials, the runtime guards kept, and the runtime sealed until P11.
