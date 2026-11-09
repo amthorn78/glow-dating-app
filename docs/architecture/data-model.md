@@ -42,36 +42,102 @@ responsibilities. Models must never be serialized wholesale.
 
 ## Maintained authentication mapping
 
-`AppAccount.auth_user` is a unique protected FK to `settings.AUTH_USER_MODEL`.
-The static registry uses maintained `django.contrib.auth.User` to express this
-dependency. App UUIDs differ from that library identity. Passwords, challenges,
-normalized email identities, credential linking and bearer/refresh tokens are
-owned by the configured Django/allauth components, not new Glow credential code.
+**As built by SV1** (the [SV1 brief](../planning/sv1-identity.md), revision 3; the
+[SV1 evidence record](../testing/evidence/2026-11-09-sv1-identity.md)), on
+**django-allauth 65.21.1** (`django-allauth[headless]`, pinned with its hashes in
+`services/api`'s development scope and in the disposable-database proof's lock), and
+**sealed**: `services/api/glow_identity` runs only under `proofs/postgres-ordering`'s identity
+settings, on a disposable PostgreSQL; the served runtime imports none of it. P11 wires the routes,
+the settings, the keys and the mail provider, and moves the pins to the runtime scope.
 
-The default Django `User.email` field is **not unique**. P02 does not claim it
-implements normalized email uniqueness or verified login. P04/P11 must pin and
-configure django-allauth headless, its supported native token strategy and email
-normalization/verification/linking behavior. Required configuration intent is
-unique email identities (`ACCOUNT_UNIQUE_EMAIL`), verified email onboarding and
-email login through allauth; exact fields/migrations depend on the pinned release.
-Do not repurpose a client-provided email or app UUID as a verified auth subject.
-If the selected integration requires a different user model, resolve its initial
-migration dependency before P11 creates any schema; do not switch live auth tables
-casually. No allauth package/migration is fabricated or marked installed here.
+**The identities.** `AppAccount.auth_user` is a unique protected FK to
+`settings.AUTH_USER_MODEL`, which stays `django.contrib.auth.User` (DM-45 item 5). App UUIDs
+differ from that library identity. Passwords (Django's own hashers and its four validators,
+minimum length 10), codes, normalized email identities, sessions and tokens are owned by Django
+and allauth, never by Glow credential code. allauth's `EmailAddress` holds the normalized,
+unique, verified email (`ACCOUNT_UNIQUE_EMAIL`; the default `User.email` field is still not
+unique, and is not relied on). `auth.User.username` holds a random opaque value (`g` and 32
+hexadecimal characters) that Glow's account adapter sets, so nothing of the email is copied into
+a column email sign-in never uses. Only email login exists (`ACCOUNT_LOGIN_METHODS`); social
+login, multi-factor authentication, login by code, phone numbers and the browser client are not
+configured.
 
-`AccountSession.auth_session_ref` is an adapter-provided **non-secret** library
-session identifier, not a session cookie/token/hash invented by Glow. The future
-adapter must demonstrate how it obtains that identifier and revokes the actual
-maintained session. If the provider has no such supported identifier, amend this
-mapping before integration. `epoch` binds a session to `AppAccount.session_epoch`;
-revocation must also affect maintained auth persistence. Session metadata alone
-does not revoke a credential.
+**Sign-up and verification.** Sign-up takes an email and a password through allauth's headless
+API for the `app` client. Glow's account adapter (`save_user`) creates the auth user, its
+`AppAccount` (`unverified`) and its `AccountAgeState` (`unknown`) in one transaction. allauth opens
+no transaction around headless sign-up, so its later steps (the `EmailAddress` row, the code) are
+outside it; a failure there leaves an `unverified` account that cannot sign in. Verification is
+mandatory and by code (three attempts, 15 minutes), never by link: no frontend URL is set, so no
+message carries a link. After allauth marks the address verified, F01's `verified` transition
+runs (`glow_identity.revocation.mark_verified`): its own transaction, the account row locked
+`FOR UPDATE` before anything else, refused unless the state is `unverified` (an `active` account
+is no change), `version` and `eligibility_version` bumped; if it did not commit, the next sign-in
+takes it, so a verified address never leaves its account `unverified`. A confirmed
+password-reset code also verifies the address, outside the account adapter (allauth's
+`verify_email_indirectly`), and the next sign-in then takes the transition. A verified email alone
+establishes nothing else: not adulthood, consent, profile or eligibility.
 
-Official references inspected for this design on 23 September 2026:
-[Django migrations](https://docs.djangoproject.com/en/5.2/topics/migrations/),
-[allauth headless](https://docs.allauth.org/en/latest/headless/index.html), and
-[allauth account configuration](https://docs.allauth.org/en/latest/account/configuration.html).
-P11 rechecks the actual selected release and configuration.
+**Email change and recovery.** One address per account (`ACCOUNT_CHANGE_EMAIL`): the new address
+is verified by code before it replaces the old, and the old address gets the email-changed notice.
+The code goes to the address asked for whether or not another account holds it, so the two answer
+alike; an address another account holds verified cannot be linked, even with that inbox's code
+(refused `email_taken`). Password reset is by code (three attempts, three minutes, restarted once
+the code is confirmed) and signs no one in; a reset for an address that has no account sends
+nothing (`ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS` off).
+
+**The session reference.** `AccountSession.auth_session_ref` is an adapter-provided **non-secret**
+library session identifier, as this mapping required: the primary key of allauth's
+`UserSession` row (`allauth.usersessions`, a `BigAutoField` not derived from the session key).
+allauth creates that row for every sign-in in its `user_logged_in` receiver; Glow's account
+adapter (`post_login`) then opens the `AccountSession` through `glow_chat`'s `open_session`, which
+locks the account, refuses one that is not `active`, and records the session at the account's
+current `session_epoch` with a lifetime of 30 days from sign-in (absolute: no operation extends
+it; Nathan decides the members' limit before P11 serves sign-in), and sets the Django session's
+expiry to the same instant, so allauth's own endpoints stop with Glow's session. If `open_session`
+does not apply, allauth's session ends in the same request and no token from that sign-in names a
+session that exists. **The session key is a credential, not a reference:** headless returns it to
+the `app` client as `meta.session_token`, and allauth's own endpoints accept it as
+`X-Session-Token` for the session's whole life; it lives in `django_session` and in
+`UserSession.session_key`, and Glow never stores, hashes or logs it. A token's `sid` is that key
+encrypted under a key derived from `SECRET_KEY` with a fresh initialization vector per token, so
+it is not a reference either. A password change would give a kept session a new key, so a
+password change ends every session (`ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE`); no other allauth flow at
+65.21.1 changes a signed-in session's key.
+
+**Tokens.** allauth's JWT strategy, through Glow's subclass: RS256, access tokens of 300 seconds,
+refresh tokens of 30 days, stateful validation (each token checked against its session, its user
+and that user's password hash) and refresh rotation; the refresh tokens' identifiers live in the
+Django session, so they die with it. A refused refresh token that passes allauth's own checks, in
+allauth's order, but carries an identifier its session no longer holds is a replay: its session
+ends at both layers. The signing key and `SECRET_KEY` are secret references the deployment
+supplies (the proof generates both for each run); none is committed or in an environment template.
+
+**Revocation, at two layers.** Logout, ending a session from allauth's session list (Glow's
+`USERSESSIONS_ADAPTER`), a password change (every session), a password reset (every session), a
+replayed refresh token, suspension and `deletion_pending` (`glow_chat`'s `suspend` and `delete`,
+then every allauth session of the user ends and the auth user is made inactive). Glow's step, a
+reviewed `glow_chat` operation in its own transaction and never inside an open transaction,
+commits first; allauth's sessions end after it; both steps are repeatable, so a request whose
+second step fails answers with an error and a repeat completes it. `epoch` binds a session to
+`AppAccount.session_epoch`. The one actor class (`glow_identity.authentication`) refuses unless
+the account is `active` and the session `valid`, unexpired by the database's clock and at the
+current epoch, and marks an expired row it finds (`expire_session`). Session metadata alone still
+revokes nothing: the allauth session ends too.
+
+**Personal data in allauth's rows.** `UserSession` records each sign-in's IP address and user
+agent (`USERSESSIONS_TRACK_ACTIVITY` off: no last-seen updates); P08 sets their retention and
+their place in export and deletion. The same rows hold the session key, a credential: export must
+never include it, and deletion removes it with its session.
+
+**Still for P11:** the routes, settings, keys and mail provider in the runtime; allauth's client-IP
+settings behind P11's proxy; a shared cache for allauth's rate limits once more than one worker
+runs; and validation with the real target's persistence. A schema change to the user model is no
+longer cheap: allauth's tables now reference `auth.User`.
+
+References: django-allauth 65.21.1, read from its installed source on 9 November 2026 (the
+evidence record names each file and line); its configured headless specification, generated from
+the pinned release and SV1's settings (the evidence record has its SHA-256 and paths);
+[Django migrations](https://docs.djangoproject.com/en/5.2/topics/migrations/).
 
 ## Data groups and ownership
 
@@ -90,7 +156,8 @@ migration is activated by this fixture work.
 | Models | Relationships, constraints and indexes | Privacy and lifecycle |
 |---|---|---|
 | `OutboxEvent`, `WebhookInbox` | Migration 0001 precedes app state. Unique event `dedup_key`; unique provider/event identity. Versioned aggregate reference; queue/lease/delivery timestamps. Verified/applied inbox and leased/delivered outbox states require corresponding timestamps. Indexes on state plus scheduling time. `sequence` (P06.2 B1, migration 0003): a database-assigned identity column, never written by the app, that orders delivery within one `available_at`. | Operational-minimized. Reference payload only; no birth/chat/token body. Payload digest binds replayed provider identity to original content. Worker retention/retry policy must be explicit. |
-| `AppAccount`, `AccountSession` | One app UUID per maintained auth user; account lifecycle checks, positive eligibility/preference/block/session revisions; unique non-secret session reference, expiry and revocation timestamp. Session owner/state index. | Account-private. Session and visibility revocation are immediate transaction requirements; secrets remain with auth. |
+| `AppAccount`, `AccountSession` | One app UUID per maintained auth user; account lifecycle checks, positive eligibility/preference/block/session revisions; unique non-secret session reference (SV1: allauth's `UserSession` primary key), expiry (SV1: 30 days from sign-in, the Django session's expiry set to the same instant) and revocation timestamp. Session owner/state index. | Account-private. Session and visibility revocation are immediate transaction requirements, ended at both layers (SV1, "Maintained authentication mapping"); secrets (passwords, session keys, tokens, codes) remain with auth. |
+| `AccountAgeState` (SV1, migration 0004) | One row per account (one-to-one, cascading with the account); the state (`unknown`, `self_declared_adult`), the method that set it (`none`, `self_declaration`), when it was recorded and the policy version; a check ties each state to its methods, and `unknown` has no policy version. Written only through `AgeAssurancePort` (`glow_identity.age`). | Account-private. Sign-up records `unknown`. No birth date: P04's onboarding holds the self-entered date and a later slice writes the state from it; P09.2 adds the stores' signals; SV3's eligibility reads it. |
 | `PolicyRevision`, `ConsentDecision` | Unique named policy pointer; no rows seeded. Append-only consent decisions unique by account/purpose/revision with policy version and event time. Account/purpose/time index. | Account-private consent. Missing policy/decision grants nothing. Policy pointer is transactionally locked alongside actions. |
 | `Profile`, `Preferences` | One each per account; explicit visibility; bounded display text. Policy-versioned JSON selections, validated against closed schema and selected policy before storage. Profile state/UUID cursor index. | Account-private source; candidate projection allowlist only. Missing preferences policy prevents eligibility. No automatic geography, range or resurfacing policy. |
 | `BirthInput`, `EngineIdentity` | Private input revisions unique by account/version; input time/provenance checks. One current mapping per account with protected birth-input FK. Resolved mapping requires engine ID plus engine/contract provenance; pending mapping has none. Engine IDs intentionally not unique across accounts. | Account-private input/mapping; engine-owned chart semantics. Shared references do not grant chart deletion rights. Cross-row input ownership is checked in UOW, not by a simple FK. |

@@ -53,7 +53,7 @@ This is proof tooling, not application code. The API's settings, configuration g
 | `glow_ordering_proof/budget.py` | The stress budget and floors, fixed in code |
 | `glow_ordering_proof/results.py` | The report, its JSON and the printed table |
 | `glow_ordering_proof/identity_settings.py` | SV1: the identity suite's settings: the proof's refusals and marker on the second database, SV1's fragment (`glow_identity.conf`), the two keys from files; `ATOMIC_REQUESTS` off |
-| `glow_ordering_proof/identity_environment.py` | SV1: the two key files' rules (`PROOF_IDENTITY_SECRET_KEY_FILE`, `PROOF_IDENTITY_JWT_KEY_FILE`): absolute paths, mode 0600, a generated `SECRET_KEY` of 50 or more characters (never the proof's placeholder), an RSA key of 2048 bits or more; refusals name variables, never values |
+| `glow_ordering_proof/identity_environment.py` | SV1: the two key files' rules (`PROOF_IDENTITY_SECRET_KEY_FILE`, `PROOF_IDENTITY_JWT_KEY_FILE`): absolute paths to regular files of 1 to 16,384 bytes that only their owner can read or write (no group or other permission bit), a generated `SECRET_KEY` of 50 or more characters (never the proof's placeholder), an RSA key of 2048 bits or more; refusals name variables, never values |
 | `glow_ordering_proof/identity_support.py` | SV1: the secret ledger, the output capture at DEBUG, the device (Django's test client against the `app` endpoints, its own documentation-range IP) and the synthetic members (`@example.invalid`) |
 | `glow_ordering_proof/identity_cases.py` | SV1: the identity cases, each with the acceptance checks it covers |
 | `glow_ordering_proof/identity_suite.py` | SV1: `python -m glow_ordering_proof identity`: refuses a used database, runs the cases, scans every output for every secret, prints `IDENTITY VERDICT` and writes the results JSON |
@@ -111,7 +111,7 @@ uv pip compile requirements.in --python-version 3.12 --generate-hashes --output-
 uv pip compile requirements-dev.in --python-version 3.12 --generate-hashes --output-file requirements-dev.lock --no-header
 ```
 
-Django is pinned to 5.2.17 as `services/api` pins it, with the same wheel hashes; `tests/test_django_pin.py` fails if they differ. The driver is `psycopg[binary]` 3 (D2). Since SV1 the lock also holds `django-allauth[headless]` 65.21.1 with `pyjwt` 2.15.0, `cryptography`, `cffi` and `pycparser`, and `djangorestframework` 3.18.1, each at `services/api`'s version and hashes (the same test); the locks were compiled with `services/api/requirements-dev.lock` as a constraint (`uv pip compile requirements.in ... --constraint ../../services/api/requirements-dev.lock`).
+Django is pinned to 5.2.17 as `services/api` pins it, with the same wheel hashes; `tests/test_django_pin.py` fails if they differ. The driver is `psycopg[binary]` 3 (D2). Since SV1 the lock also holds `django-allauth[headless]` 65.21.1 with `pyjwt` 2.15.0, `cryptography`, `cffi` and `pycparser`, and `djangorestframework` 3.18.1, each at `services/api`'s version and hashes (the same test); the runtime lock was compiled with `services/api/requirements-dev.lock` as a constraint (`uv pip compile requirements.in ... --constraint ../../services/api/requirements-dev.lock`), and the development lock with the runtime lock, through its input's `-c requirements.lock`.
 
 ## Checks (offline)
 
