@@ -406,7 +406,7 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
 
 - **The branch:** `claude/peaceful-feynman-ozlu2l`, with the code head `e807ce8` and the records head `9686efe`, starts at the prompt's commit `3a2b930`.
   - `git diff --name-only 3a2b930 9686efe` lists six paths, all owned: `fixture-adapter.ts`, its test, `store.test.ts`, `fixture-scope.test.ts`, `test_notifications.py`, and the record, which is the records commit's only path.
-  - The one non-test change is `fixture-adapter.ts`, `+6 −5`: in `settings`, `device` and `notifications`, `capture(session)` moved to after `await this.gate()`, plus two comment lines. Nothing else in the adapter changed, and no other runtime file did. That is within 60 non-test lines, so a delta review follows (step 6).
+  - The one non-test change is `fixture-adapter.ts`, `+6 −5`: in `settings`, `device` and `notifications`, `capture(session)` moved to after `await this.gate()`, plus three comment lines (corrected after C1's delta review, N-3; this line first said two). Nothing else in the adapter changed, and no other runtime file did. That is within 60 non-test lines, so a delta review follows (step 6).
 - **The run of record,** push run 42549675849 on `e807ce8`, read with the GitHub tools:
   - all eight jobs `success`;
   - the gate's log ends `Application checks passed`;
@@ -417,3 +417,38 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   - **F-3:** `import 'expo-device';` added to `permission.ts`. `fixture-scope.test.ts` goes from `pass 3 / fail 0` to `pass 2 / fail 1`, `… permission.ts imports expo-device`.
 - **PR41 before C1:** on `3a2b930` (the commit that holds C1's prompt), Codex's code review completed at 01:52:29 UTC with no new finding. Its PR run 42547603140 passed every job. Its push run 42547597493 read the commit as records only and passed its gate.
 - **Integrated:** the manager branch fast-forwarded to `9686efe`. Codex's F-C1 thread is answered and resolved now that its fix is on PR41.
+
+## Delta review of correction C1 (9 November 2026)
+
+- **The review:** prompt revision 1 at `1a2a2c7`, of code head `e807ce8`, run in `Glow App - No Stream`; Nathan's pick: not recorded.
+  - The environment check, the start gate (one merge base, `7feba0d`) and the classification with `main`'s trusted policy (`"full": true`, `behavior-or-empty`) passed.
+  - **Verdict: approve with nits.** F-1, F-2 and F-3 are fixed, and each test fails under its reversal. None of the three nits is in a correction class.
+- **Its six focus points hold:**
+  - F-1's fix changes nothing else, and the adapter's other differences from the domain predate C1. Those differences: every session refusal maps to `unauthenticated`, and expiry and epoch are not checked;
+  - the F-1 tests are not vacuous;
+  - F-2's test is true to the record's claim;
+  - F-3's scan catches the bare form;
+  - no other path or assertion changed;
+  - the records hold, except N-3.
+- **One window it reasoned through and did not run:** in `setKind`, the store does not re-check its epoch between `register` returning and `save` being sent. A logout in that window sends the owner's revoke first, and the adapter refuses the stale save. The manager read `store.ts:143-166` and agrees with the reasoning; it did not run it either.
+- **Its re-runs,** in scratch copies of `e807ce8`, each as recorded:
+  - **F-1:** `ℹ tests 29, pass 23, fail 6`;
+  - **F-2:** `failures=1`. With `9c4fef5`'s test file in its place, the result is `Ran 4 tests … OK`;
+  - **F-3:** `pass 2, fail 1`.
+
+  Its own checks:
+  - API `Found 422 test(s)`, `OK`;
+  - ruff and mypy clean;
+  - mobile `npm run check` with `tests 691, pass 691`.
+- **The runs it read:** run 42549675849, as recorded, and PR41's run 42551087590 on `1a2a2c7`, all eight jobs `success`. For run 42551087590 it read job and step conclusions only, not logs.
+- **Not run:** the rendered suite, `check:expo`, the export and `smoke.py`. `playwright install` is forbidden in the cloud session, and C1 touches no screen.
+- **The nits and their dispositions** (step 6, rule (b)). The manager checked each against the code at `e807ce8`:
+
+| # | What | Disposition |
+|---|---|---|
+| N-1 | `fixture-scope.test.ts:17`'s `SPECIFIER` accepts `'` and `"` but not backticks, which `src/chat/no-provider.test.ts:24` accepts. So ``import(`expo-device`)`` and ``require(`expo-device`)`` pass the scan, and the self-test titled "reads every import form" reads less than that. It predates C1 and is in F-3's guard class | **Carried to P09** (the carried-items file): P09.2 rewrites this guard when it adds `expo-notifications` behind the seam |
+| N-2 | `FixtureScopeTests` reads import statements only (`ast.Import`, `ast.ImportFrom`), so a call `__import__("glow_domain.chat_provider_stream")` in `notifications.py` passes all five tests. `import importlib` is caught by the exact set | **A claim limit, recorded here:** the test shows that `notifications.py`'s import statements are only the standard library, `.chat` and `.provider_fixtures`; it does not see a call to `__import__` |
+| N-3 | The manager's "Manager verification of correction C1" said the adapter's change was the moved `capture` "plus two comment lines"; there are three, the two `//` lines at `fixture-adapter.ts:100-101` and the `/** … */` line at `:120`. The `+6 −5` count was right | **Corrected** in that section, with a note; logged as AM10-03 in the manager mistakes log |
+
+- **One more record correction,** made here and not in the session's section: "Correction C1", item 2, places the claim "imports only the standard library, `.chat` and `.provider_fixtures`" in Outcome 2. It is in Outcome 1's table (the transport row).
+- **The result:** C1's delta review approves the final code head `e807ce8`. Step 7 follows: the pre-merge checklist, the PR run and Codex on the final head, then the merge.

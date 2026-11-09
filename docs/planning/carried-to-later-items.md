@@ -102,6 +102,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **G-16:** EU monthly active recipients on request, UK monthly users against the thresholds, and evidence of micro or small status, in the observability scope.
   - **G-11's incident escalation** stays with P09.
 - **From P06.3's exact-head review, F-5** (the P06.3 record, "Exact-head review of P06.3"): `NotificationStore.setKind` awaits `permission.request()` with no catch (`apps/mobile/src/notifications/store.ts`). P09.2's real permission seam handles a rejection, so that `busy` is reset and the member can try again; the fixture seam never rejects.
+- **From C1's delta review of P06.3, N-1** (the P06.3 record, "Delta review of correction C1"): the notifications import scan's `SPECIFIER` (`apps/mobile/src/notifications/fixture-scope.test.ts`) accepts `'` and `"` but not backticks, as `src/chat/no-provider.test.ts` does, so ``import(`x`)`` and ``require(`x`)`` pass it, and its self-test's title says it reads every import form. When P09.2 adds `expo-notifications` behind the seam and rewrites this guard, the scan also takes backtick specifiers, and its self-test names the forms it reads.
 
 ## Carried to P09.3a (the store, legal and safety requirements matrix)
 
