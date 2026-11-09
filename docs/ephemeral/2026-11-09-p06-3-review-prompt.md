@@ -1,11 +1,11 @@
 # P06.3 exact-head review prompt — privacy-safe notifications at fixture scope
 
 - **Owner:** App Manager 10. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 9 November 2026.**
+- **Revision 1, 9 November 2026. Revision 2, 9 November 2026:** adds Codex's finding on `1dc1b0b` (F-C1), which the manager reproduced, to "What came before" and the focus (item 8). Revision 1 was not given.
 - **Durable brief:** [P06.3 — Privacy-safe notifications at fixture scope](../planning/p06-3-notifications.md), revision 2, "Review plan" (DM-44 9.1).
 - **Where the result goes:** the report Nathan relays. The manager records it in the P06.3 record, "Exact-head review of P06.3", with a disposition for each finding (fix before the merge, or carry), and in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Fable 5.1 at extra high.** Effort score 3.33 (confidence 0.77); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.65, max 0.34, ultracode 0.00. Model probabilities Fable 5.1 0.86, Opus 5.5 0.14, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.81). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.009, Fable 5.1 at extra high 0.559, Fable 5.1 at max 0.292, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.000, Opus 5.5 at high 0.001, Opus 5.5 at extra high 0.091, Opus 5.5 at max 0.048, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-09T00:44:13Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Fable 5.1 at extra high.** Effort score 3.33 (confidence 0.77); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.65, max 0.34, ultracode 0.00. Model probabilities Fable 5.1 0.86, Opus 5.5 0.14, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.81). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.009, Fable 5.1 at extra high 0.559, Fable 5.1 at max 0.292, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.000, Opus 5.5 at high 0.001, Opus 5.5 at extra high 0.091, Opus 5.5 at max 0.048, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-09T00:44:13Z. Nathan picks the cell. This is revision 1's reading. Revision 2 adds one focus item and changes none of the facts the action text states (the uses table's row).
 - **The Dev Manager's read:** none before it runs. The review authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29), after Codex's review of P06.3's PR head and of this prompt's commit (manager workflow, step 6).
@@ -15,7 +15,7 @@
 
 ---
 
-You are the **exact-head code review of P06.3**, privacy-safe notifications at fixture scope, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one exact code head, with a written threat model. This prompt is revision 1, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are the **exact-head code review of P06.3**, privacy-safe notifications at fixture scope, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one exact code head, with a written threat model. This prompt is revision 2, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **The brief,** `docs/planning/p06-3-notifications.md`, revision 2. Its Outcome items 1 to 5 and D1 to D12 apply the Dev Manager's conditions word for word (DM-44, `docs/continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md`):
@@ -38,6 +38,11 @@ You are the **exact-head code review of P06.3**, privacy-safe notifications at f
   - six reversals re-run, each failing.
 
   The manager then integrated it, so the manager branch fast-forwarded to `7775bba`.
+- **Codex's review of `1dc1b0b`** (PR41's head, whose code is `9c4fef5`'s) found one thing, **F-C1** (P2, `apps/mobile/src/notifications/fixture-adapter.ts:111`):
+  - **The claim:** `device`, `settings` and `notifications` each take the session's account (`capture`) before `await this.gate()`, and act on it after. So a request that starts while its session is current, and whose session's `ended()` runs before the gate resolves, still acts for the ended session.
+  - **The manager's reproduction** (a scratch probe at `1dc1b0b`, Node's test runner): start `device(session, …, register)`, call `ended(session)`, then await the request. The answer is a success with `device_state: 'active'`; the registration is `active`, bound to the ended session; `heldTokens` is 1.
+  - **Not affected:** the Python domain, which is authoritative, checks the session inside each command, synchronously.
+  - The manager replied on its thread. **Under step 6 it joins this review's pass:** its fix goes in the correction pass after this review, with any findings of yours.
 
 **The code head under review is `9c4fef5`.** You work at `<PROMPT_SHA>`, whose non-Markdown paths are byte-identical to `9c4fef5` (the start gate checks this).
 
@@ -90,6 +95,11 @@ You are the **exact-head code review of P06.3**, privacy-safe notifications at f
 5. **The session's fixture-scope decisions** (the version as the installation's view revision; the adapter's own session record; the one-microtask wait): each is correct at fixture scope, harmless, and recorded for SV4. Does any hide a race, such as a revoke lost or sent after the session ends?
 6. **The display rule and the copy** (ADR 0003, decision 3): no provider, platform or push-service name in member-visible copy. The push wording is D4's exactly.
 7. **The records:** every claim in the record, and in its "Manager verification", holds against the code and the runs.
+8. **Codex's F-C1:**
+   - confirm or refute it, and give its severity and correction class;
+   - say whether the store's own flows can reach it (for example, a register in flight when the member logs out or the account changes, given the one-microtask wait);
+   - name every other place with the same pattern of checking before an `await` and acting after, in the adapter, the store or the client;
+   - say what a fix and its test should cover. The correction pass makes the fix, not you.
 
 **Re-run, at least** (DM-44 9.1), in a scratch copy of `9c4fef5`:
 - **the custody test's reversal:** the register path's log line given the token. `CustodyCaptureTests` must fail;
@@ -188,10 +198,10 @@ Expected: `"full": true`. Anything else: stop and report.
 ## 4. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
+- the prompt revision (revision 2, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
 - **the verdict:** approve, approve with nits, or changes required;
 - the threat model;
 - the findings, in a table: number, severity, correction class or not, file and line, what is wrong, and the evidence;
-- the answer to each focus point (1 to 7), one or two lines each;
+- the answer to each focus point (1 to 8), one or two lines each;
 - the reversals you re-ran, with their results, the local rendered ones named informational;
 - what you ran, and what you could not run or read.

@@ -238,3 +238,17 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   - **m4-canaccess-widened:** `/notifications` given `session_state === 'valid'` alone. `AssertionError: deleted … actual: true, expected: false`.
 - **Not re-run by the manager:** the rendered layout-line reversal. Only CI has the pinned Chromium; the session's local run is informational, and the exact-head review re-runs it (DM-44 9.1).
 - **Integrated:** the manager branch fast-forwarded to `7775bba`.
+
+## Codex's review of `1dc1b0b` (9 November 2026, App Manager 10)
+
+- **Codex's code review completed on `1dc1b0b`** (PR41's head at 00:49:27 UTC; its code is `9c4fef5`'s), with one finding.
+- **F-C1** (P2, `apps/mobile/src/notifications/fixture-adapter.ts:111`): `device`, `settings` and `notifications` take the session's account (`capture`, `:120`) before `await this.gate()` (`:127`), and act on it afterwards. So if a request starts while its session is current and `ended()` runs before the gate resolves, the request still acts for the ended session.
+- **The manager reproduced it:**
+  - **setup:** a scratch copy of `apps/mobile` at `1dc1b0b` (`npm ci --ignore-scripts`), and a probe test run with `node --test`;
+  - **steps:** `started(session)`; then `device(session, device, register)`, not awaited; then `ended(session)`; then the request awaited;
+  - **result:** the answer is a success with `device_state: 'active'`. `registrationsView()` shows the registration `active`, bound to the ended session's ID, with `endedBy: null`, and `heldTokens` is `1`. The probe passed as a probe; it asserts nothing.
+- **Reach:**
+  - only the mobile fixture adapter, a presentation substitute for F12;
+  - the Python domain, which is authoritative, checks the session inside each command, synchronously;
+  - whether the store's own flows can reach it (a register in flight at logout or an account change) goes to the exact-head review.
+- **Disposition:** it falls in a correction class the review names ("let a stale session act, or leave a registration active after its session's logout"), so rule (a) fixes it before the merge. Under step 6 it joins the exact-head review's pass: the review prompt's revision 2 adds it as focus item 8, and its fix goes in the correction pass after the review. The manager replied on Codex's thread, which stays open until the fix is on PR41.
