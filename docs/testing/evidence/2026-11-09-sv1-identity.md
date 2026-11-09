@@ -854,3 +854,54 @@ Each run had:
 - **The new case's flow check** is "lists `reauthenticate`, and nothing is pending", not "only `reauthenticate`". The 401 also lists `password_reset_by_code` (not pending), as above.
 - **The data model's sentence** is one source line, where the old text wrapped over two.
 - **The new case also shows the sign-in form held** by the same limit after the sixth wrong password. Acceptance check 13 does not ask for this; it shows D3's statement about the guessing budget.
+
+## Manager verification of correction C1 (App Manager 10, 9 November 2026)
+
+**The diff.** `git diff c289424 96dc3e2` was read whole: ten paths, each owned by "Correction C1".
+- The code commit `bda299e` touches:
+  - `conf.py`: one setting;
+  - the API's identity offline test;
+  - in the proof: `identity_cases.py`, `identity_suite.py`, `identity_support.py`, the new `identity_scan.py` and the offline test;
+  - the Database proof checks job's SV1 steps.
+- The two records commits are Markdown only:
+  - the data model's diff is the one sentence, in C1.3's words;
+  - the record's diff is the endpoint table's `auth/reauthenticate` row and the new section.
+- Read against DM-47's words:
+  - the new case covers every clause of acceptance check 13;
+  - the scan reads the same job values as the old inline check, from the same files, and also scans the JSON's decoded strings;
+  - the upload's condition is `always() && steps.identity.outputs.scan == 'passed'`.
+
+**Classification.** The trusted classifier from `main` (`da92f1f`), with `--base da92f1f… --head 96dc3e2… --merge-base`: full scope, `behavior-or-empty`, 70 paths, one merge base (`8d2de72`).
+
+**Re-runs.** These ran in a scratch copy of `bda299e`'s whole tree, in the clean environment, with SV1's hash-locked virtual environments (C1 changes no lock):
+- API: `Ran 450 tests` … `OK`; Ruff clean; mypy `no issues found in 57 source files`;
+- the proof's offline tests: `Ran 186 tests` … `OK`; Ruff clean; `52 files already formatted`; mypy `no issues found in 52 source files`.
+
+**Three reversals, re-run offline.** Each failed as it should, and each file was restored with its hash checked:
+- **M1:** the setting turned off. `test_the_briefed_values` and `test_an_address_change_needs_a_recent_reauthentication` fail (2 of 21).
+- **M2:** the scan ignoring the JSON (`found_results = 0`). Seven `IdentityScanTests` fail.
+- **M3:** the upload back to `if: always()`. `test_the_upload_waits_for_the_check` fails.
+
+**The run of record**, read with the GitHub tools: push run 42634020622 on `bda299e`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Every DM-41 retry step was `skipped`.
+- The job's check printed `the job's secrets found in the identity suite's output: 0`, `… in the identity results JSON: 0` and `the suite's own scan reported clean: True`.
+- 48 `[identity] PASS` lines, `reauth.email_change_needs_recent_reauthentication` among them; `[identity] cases: 48/48 passed in 43.7 s`; `identity secret scan: clean (712 secrets held; 0 found in 232 log records, 100 writes and the results JSON)`; `identity phase: 44 s`.
+- The second identity run was refused, with the counts `52 52 61 32 48` unchanged.
+- The upload step "…, once the secret check has passed" uploaded `sv1-identity-results` (3,846 bytes).
+- The cleanup removed the container and the credential files.
+
+**F-M1, the no-link check's false failure** (the session's unexplained local failure, diagnosed):
+- **The defect.** `mail.no_link_no_stranger` lowercases each message and forbids `http`. allauth's codes are eight letters from `BCDFGHJKLMNPQRSTVWXZ`, in two dashed groups of four (`allauth/core/internal/cryptokit.py:16`, `:19-39`). So a group can be `HTTP`.
+- **The mechanism, shown offline:** Glow's own verification and reset messages, given the legal code `HTTP-BCDF`, fail the check on `http`.
+- **How often:** 3 of 400,000 random codes from allauth's generator contained `http`, about 1 in 80,000 per code by construction. A run sends some tens of codes, so a run of record can fail at random, rarely.
+- **The observed failure:** whether it caused the session's one local failure is consistent but not proven; no other cause was found.
+- **Disposition:** it is SV1's own test (`269ac3b`), and a unit test shows it, so it is fixed before the merge (step 6's rule (a); OD-21: reliable CI). The fix is test-only: remove the message's own code before the forbidden-string check, with a test that a code spelling `HTTP` passes and a link still fails. It joins the exact-head review's focus, and its fix goes in the correction pass after the review.
+
+**C1's deviations:**
+- **The suite's own scan of the JSON** (an addition): accepted. It narrows what can be uploaded and is tested.
+- **The flow check's wording** ("`reauthenticate` listed and nothing pending"): accepted. 65.21.1 also lists `password_reset_by_code`, not pending, in the 401.
+- **The data model's line wrapping:** accepted.
+- **The extra sign-in-form check:** accepted. It shows the limit is the sign-in form's.
+- **The upload skipped after a failed check,** shown only locally by the job's own scripts: accepted. CI shows the passing path, and the reversals show the refusal.
+
+**Codex's P1 thread** on `conf.py` is answered and resolved now that C1 is on PR42.
