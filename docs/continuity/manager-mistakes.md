@@ -140,6 +140,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-01 | 8 Nov 2026 | prompt | C6's prompt, pushed at `678dabd`, quoted DM-42's conditions by line range, and the ranges cut 2.1's opening and carried the report's own section heading into the prompt; found on re-reading the filled text before giving it, and corrected in the same revision before it was given; the correcting push cancelled PR run 42490599464 on the superseded `678dabd` | App Manager 10 |
 | AM10-02 | 8 Nov 2026 | accuracy | P06.3's brief, revision 1 (`8bf9d8d`), named the route guard's predicate (`SAFE_ROUTES`, `canAccessRoute`) as the screen's guard and excluded `src/app/_layout.tsx`, whose `Stack.Protected` line is what guards a screen; as written, the new screen would open signed out or the session would stop | Dev Manager 4, DM-44 item 6 |
 | AM10-03 | 9 Nov 2026 | accuracy | The verification of correction C1 (the P06.3 record, pushed at `1a2a2c7`) said the adapter's change was the moved `capture` "plus two comment lines"; there are three | C1's delta review, N-3 |
+| AM10-04 | 9 Nov 2026 | process | Correction C1's prompt (`3a2b930`) went to Nathan without a Dev Manager consultation, though step 6 consults the Dev Manager when a fix touches a security boundary, revocation included; C1 changed when an ended session's command is refused | Dev Manager 4, DM-45 section 16 |
+| AM10-05 | 9 Nov 2026 | follow-through | Notion's operating-procedure summary kept its stamp at `1ce2fcb` (26 October) through App Manager 10's governing-text changes of 8 November (`33c4cc2`, `0a49e62`, `678dabd`, `86e65dc`); the match check moves the stamp when a governing text changes | App Manager 10, checking the summary after adding step 6's sentence |
 
 ## App Manager 2
 
@@ -1088,6 +1090,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-05 — The procedure summary's stamp was not moved (follow-through)
+
+- **What happened:** the manager workflow's match check says that when a governing text changes, Notion's procedure summary "is checked and its stamp moved". App Manager 10 changed governing texts four times on 8 November (OD-58's texts and the CI policy's paragraphs, at `33c4cc2`, `0a49e62`, `678dabd` and `86e65dc`) and did not move the stamp, which still named `1ce2fcb` (26 October). Earlier managers' governing changes after 26 October had left it there too.
+- **Caught by:** App Manager 10, reading the summary after adding step 6's sentence on 9 November.
+- **Effect:** the summary's links pointed at an older commit. Its statements were still true at the new commit; it did not mention OD-58's rule that Nathan is never asked to perform a GitHub operation.
+- **Correction:** the stamp and every link moved to this batch's commit, with OD-58's rule added, and read back.
+- **Prevention:** a records batch whose diff touches a governing path (`AGENTS.md`, `CLAUDE.md`, `docs/pf-canon/`, the manager workflow, the Dev Manager charter, the CI policy, the owner-direction register) moves the summary's stamp in the same Notion sync; the batch's `git diff --name-only` is checked against that list before the sync.
+
+### AM10-04 — A correction on a revocation path went without a consultation (process)
+
+- **What happened:** step 6 says the Dev Manager is consulted when a fix "touches a security boundary (authorization, revocation, privacy or data ownership)". Correction C1 changed when the mobile fixture adapter refuses an ended session's command, a revocation path. App Manager 10 judged that the fix only applied DM-44 1.2's words, recorded that reading, and wrote C1's prompt without a consultation.
+- **Caught by:** Dev Manager 4, DM-45 section 16.
+- **Effect:** none in substance. The Dev Manager read `85ae241` and confirmed C1 against DM-44 1.2.
+- **Correction:** step 6 gains the Dev Manager's sentence: a fix that only makes code do what a Dev Manager condition already says, in that condition's words, and changes no design, interface, contract or dependency, needs no consultation first, even on a security boundary; the correction's brief names the condition, and the next consultation confirms the fix.
+- **Prevention:** before a correction prompt, read step 6's consultation triggers against the fix one by one, and name in the brief the condition whose words the fix applies, if any; a trigger that applies with no such condition means a consultation first.
 
 ### AM10-03 — A line count from memory in the verification of C1 (accuracy)
 
