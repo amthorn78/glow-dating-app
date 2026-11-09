@@ -5,7 +5,8 @@ psycopg[binary]==3.3.6
 # SV1 (the identity suite; the SV1 brief's D10 and D12): allauth headless with the JWT strategy,
 # and the two packages glow_identity runs on that services/api already pins (DRF in its runtime
 # lock; PyJWT in its development lock). The proof takes services/api's pins:
-# tests/test_identity_pins.py holds each package to the same version and hashes.
+# tests/test_django_pin.py (test_the_identity_suites_pins_are_the_apis) holds each package to
+# the same version and hashes.
 django-allauth[headless]==65.21.1
 djangorestframework==3.18.1
 pyjwt==2.15.0
