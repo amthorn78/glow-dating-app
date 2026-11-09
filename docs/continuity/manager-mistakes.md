@@ -143,6 +143,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-04 | 9 Nov 2026 | process | Correction C1's prompt (`3a2b930`) went to Nathan without a Dev Manager consultation, though step 6 consults the Dev Manager when a fix touches a security boundary, revocation included; C1 changed when an ended session's command is refused | Dev Manager 4, DM-45 section 16 |
 | AM10-05 | 9 Nov 2026 | follow-through | Notion's operating-procedure summary kept its stamp at `1ce2fcb` (26 October) through App Manager 10's governing-text changes of 8 November (`33c4cc2`, `0a49e62`, `678dabd`, `86e65dc`); the match check moves the stamp when a governing text changes | App Manager 10, checking the summary after adding step 6's sentence |
 | AM10-06 | 9 Nov 2026 | follow-through | DM-45 section 9 approved SV1's email change as needing "`ACCOUNT_CHANGE_EMAIL = True` … and reauthentication"; the brief's D3 (revisions 2 and 3) named neither setting, and the prompt left the settings to the session, which kept allauth's default, reauthentication off | the SV1 implementation session's findings, read in the manager's verification |
+| AM10-07 | 9 Nov 2026 | accuracy | DM-48 (`38142b3`) proposed words for acceptance check 11 ("the sixth request at `account/password/change` within 300 seconds … is refused") that describe a case allauth's default `5/m/user` also passes, since a sixth request sent at once is refused at 5 a minute too; and its D3 replacement left "They use Django's cache" pointing at the threat model | Dev Manager 4, DM-48 section 3 |
 
 ## App Manager 2
 
@@ -1091,6 +1092,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-07 — A proposed check that the old setting also passes (accuracy)
+
+- **What happened:** DM-48 proposed `change_password` at `5/300s/user`, with words for acceptance check 11: "the sixth request at `account/password/change` within 300 seconds, a wrong current password among them", is refused. A sixth request sent at once is refused under allauth's default, `5/m/user`, too, so a case written to those words passes whether or not the setting is in place. The proposed D3 replacement also changed only the bullet's first sentence, so its next sentence, "They use Django's cache", would have pointed at the threat model.
+- **Caught by:** Dev Manager 4, DM-48 section 3 (C2.1, C2.3).
+- **Effect:** none: no prompt had been written. As proposed, the case and its reversal could not have shown the new limit.
+- **Correction:** C2.3's words: a sixth request with the right password, sent more than 60 and less than 300 seconds after the first of five, is refused and the password unchanged, with a reversal that restores the default. C2.1 replaces the whole bullet.
+- **Prevention:** a check for a changed value names the observation only the new value produces, and says what the old value would do there. A replacement of one sentence is read with the sentences after it.
 
 ### AM10-06 — An approval's named setting was not carried into the brief (follow-through)
 
