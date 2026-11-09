@@ -1,7 +1,7 @@
 # P06.3 — Privacy-safe notifications at fixture scope
 
 - **Work ID:** P06.3 (P06; PF01 P06.3 acceptance; the F12 flow).
-- **Status: brief, revision 2, 8 November 2026; the implementation prompt is with Nathan.** Revision 1 went to the Dev Manager as DM-44. [DM-44](../continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md) (answered at `65618c1`, a read of `8bf9d8d`) approved it with conditions. Revision 2 applies them as written: 1.1 and 1.2 in Outcome 2; 2.1, 2.2 and 3.3 in Outcome 1; 3.1 and 3.2 in Outcome 2; 4.1 to 4.3 in Outcome 3; 5.1 in D6; 6.1 in D7; 6.2 in "Owned paths" and "Exclusions"; 6.3 in Outcome 4; 7.1 in D9; and 9.1 in the review plan. So it needs no read before the prompt, and the Dev Manager's next consultation confirms the words as applied (DM-44 1.3).
+- **Status: brief, revision 2, 8 November 2026; implemented (code head `9c4fef5`); the exact-head review is next.** Revision 1 went to the Dev Manager as DM-44. [DM-44](../continuity/dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md) (answered at `65618c1`, a read of `8bf9d8d`) approved it with conditions. Revision 2 applies them as written: 1.1 and 1.2 in Outcome 2; 2.1, 2.2 and 3.3 in Outcome 1; 3.1 and 3.2 in Outcome 2; 4.1 to 4.3 in Outcome 3; 5.1 in D6; 6.1 in D7; 6.2 in "Owned paths" and "Exclusions"; 6.3 in Outcome 4; 7.1 in D9; and 9.1 in the review plan. So it needs no read before the prompt, and the Dev Manager's next consultation confirms the words as applied (DM-44 1.3).
 - **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49): P06.3 after P06.2-F, before the server slices SV1 to SV4. **Manager:** App Manager 10. **Session:** one implementation session, started by Nathan, in `Glow App - No Stream` (no Stream call).
 - **Starting point:** `main` at `8031361` (PR40, P06.2-F), with the manager branch's Markdown records after it. The prompt names the exact commit. The app is on Expo SDK 58 (`expo` 58.0.22).
 - **Evidence home:** `docs/testing/evidence/<date>-p06-3-notifications.md`, written by the session.
@@ -193,4 +193,9 @@ The item is done when each of these holds, **each with a test and the reversal t
   - DM-43's deferred confirmations confirmed.
 
   Accepted as written (the review log, "DM-44"). Revision 2 applies the conditions.
-- **The implementation prompt** ([prompt](../ephemeral/2026-11-08-p06-3-implementation-prompt.md), revision 1): for `Glow App - No Stream`. Next: Nathan runs it.
+- **The implementation prompt** ([prompt](../ephemeral/2026-11-08-p06-3-implementation-prompt.md), revision 1, from `f9253bd`): for `Glow App - No Stream`; TypeSafe v8.2: Opus 5.5 at extra high. Given to Nathan on 8 November. **Done** (9 November; branch `claude/gallant-lovelace-vwgu69`, code head `9c4fef5`, records `7775bba`; Nathan's pick: not recorded):
+  - **What it built:** Outcomes 1 to 5, with 26 reversals, each failing its test. Nothing met the stop rule.
+  - **Its fixture-scope decisions, recorded for SV4:** the settings version is the installation's view revision; the mobile adapter keeps its own session record; the store waits one microtask on an account change.
+  - **Run of record:** push run 42540179430 on `9c4fef5`. All eight jobs passed, with API 421 tests, mobile 680 and rendered 104 passed; no retry fired.
+  - **Manager verification:** the diff within the owned paths; the search for clients and providers; six reversals re-run, each failing (the record, "Manager verification"). The manager branch fast-forwarded to `7775bba`.
+- **The exact-head review prompt** ([prompt](../ephemeral/2026-11-09-p06-3-review-prompt.md), revision 1): of code head `9c4fef5`, with DM-44 9.1's threat model, for `Glow App - No Stream`; TypeSafe v8.2: Fable 5.1 at extra high. It waits for Codex on the PR head and on the prompt's commit (step 6).

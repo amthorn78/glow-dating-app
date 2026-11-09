@@ -209,3 +209,32 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
 - **No staff projection** was added (Outcome 2 allows one; none was needed).
 - **Deviations from the brief:** none in scope or guards. Two placements the brief left open: the `canAccessRoute('/notifications', …)` unit test is in `src/notifications/routes.test.ts` (no onboarding routes test file exists), and the fixture controls sit on the settings screen behind a labelled toggle, as chat's do, so `development.tsx` is unchanged. The extra reversals (each composer refusal on its own, the four discard paths, and the session ending before the revoke) go beyond the prompt's list.
 - **Nothing met the stop rule.** No guard's allowance changed beyond D7's entries and line; no dependency, lock, contract, model or migration changed; no path outside the owned paths; `chat_reads.py` was neither changed nor imported (the composer reads the same facts through its own port).
+
+## Manager verification (9 November 2026, App Manager 10)
+
+- **The branch:** `claude/gallant-lovelace-vwgu69`, with the code head `9c4fef5` and the records head `7775bba`, starts at the prompt's commit `f9253bd`. `git diff --name-only f9253bd 7775bba` lists 25 paths, all owned: 24 code paths, and the record, which is the records commit's only path.
+- **The guard edits are D7's, and nothing else:**
+  - `_layout.tsx`: one added `Stack.Protected` line for `/notifications`;
+  - `routes.ts`: `/notifications` added to `SAFE_ROUTES` and to `/profile`'s list;
+  - `profile.tsx`: one link.
+- **The classifier:** the trusted classifier, taken from `main` at `8031361`, reads the change as `"full": true` (`behavior-or-empty`), with one merge base.
+- **A search of the code diff (`f9253bd..9c4fef5`)** for network clients, native modules, provider SDKs, Expo push, Firebase, APNs and `google-services`:
+  - the only matches are tests that guard against them (`fixture-scope.test.ts`, `copy.test.ts`, the rendered spec);
+  - no provider name appears in non-test source;
+  - no file outside `glow_domain/notification*.py` and its test imports the new server modules, so the served runtime does not load them;
+  - the push wording is D4's: `TITLE = "Glow"`, *"You have a new match."*, *"You have a new message."*, and the routes `/matches` and `/conversations`.
+- **The run of record,** push run 42540179430 on `9c4fef5`, read with the GitHub tools:
+  - all eight jobs `success`;
+  - the gate's log ends `Application checks passed`;
+  - the Mobile job's log ends `104 passed (4.7m)`; the job ran from 00:26:30 to 00:33:13 UTC;
+  - every "Wait 60 s …" and "Retry the Python install once (DM-41)" step is `skipped`.
+- **Six reversals re-run** in a scratch copy of `9c4fef5` (`git archive`, outside the checkout), with clean process environments. Python ran with `PYTHONDONTWRITEBYTECODE=1` and its caches cleared, and each file was restored and its SHA-256 checked:
+  - **baselines:** `tests.test_notifications`, `Ran 55 tests … OK`; `store.test.ts` and `routes.test.ts`, exit 0;
+  - **o1-sender:** the `RECIPIENT_IS_SENDER` check deleted. `FAIL: test_a_message_notifies_the_other_member_never_its_sender … ('sent', '') != ('refused', 'recipient_is_sender')`;
+  - **o2-custody-log-token:** the register log line given `command.token.reveal()`. `FAIL: test_no_token_or_reference_escapes … 'SYNTHETIC-FIXTURE-PUSH-TOKEN-CUSTODY-CANARY-…' unexpectedly found in 'notification device command: register SYNTHETIC-…'`;
+  - **o2-settings-without-active:** the precondition narrowed to `if current is None:`. `FAIL: test_a_settings_intent_needs_the_installations_active_registration … ('applied', '') != ('refused', 'registration_not_active')`;
+  - **m3-denial-saves, in the manager's own form:** the denied branch made unreachable (`&& false`), so a denial registers and saves. The test "a denied permission saves nothing …" fails: `actual: { … match: true, … deviceActive: true, denied: false … }`;
+  - **m3-logout-clears-before-revoke:** `this.clear()` added before the revoke intent is made. `AssertionError: the owner's revoke, not the system's logout … actual: 'logout', expected: 'revoke'`;
+  - **m4-canaccess-widened:** `/notifications` given `session_state === 'valid'` alone. `AssertionError: deleted … actual: true, expected: false`.
+- **Not re-run by the manager:** the rendered layout-line reversal. Only CI has the pinned Chromium; the session's local run is informational, and the exact-head review re-runs it (DM-44 9.1).
+- **Integrated:** the manager branch fast-forwarded to `7775bba`.
