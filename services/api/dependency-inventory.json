@@ -1,6 +1,6 @@
 {
   "source": "Installed wheel metadata after hash-locked clean virtual environment install",
-  "observed_date": "2026-10-23",
+  "observed_date": "2026-11-09",
   "python": "3.12.14",
   "platform": "Linux x86_64",
   "packages": [
@@ -78,6 +78,17 @@
       ]
     },
     {
+      "name": "cffi",
+      "version": "2.1.1",
+      "scope": "development",
+      "license_expression": "MIT-0",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
       "name": "charset-normalizer",
       "version": "3.5.1",
       "scope": "development",
@@ -86,6 +97,19 @@
       "license_classifiers": [],
       "license_files": [
         "LICENSE"
+      ]
+    },
+    {
+      "name": "cryptography",
+      "version": "50.0.2",
+      "scope": "development",
+      "license_expression": "Apache-2.0 OR BSD-3-Clause",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "LICENSE.APACHE",
+        "LICENSE.BSD"
       ]
     },
     {
@@ -109,6 +133,20 @@
       "license_files": [
         "LICENSE",
         "LICENSE.python",
+        "AUTHORS"
+      ]
+    },
+    {
+      "name": "django-allauth",
+      "version": "65.21.1",
+      "scope": "development",
+      "license_expression": null,
+      "license_field": "MIT",
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE",
         "AUTHORS"
       ]
     },
@@ -307,6 +345,17 @@
       "license_field": "3-Clause BSD License",
       "license_classifiers": [],
       "license_files": []
+    },
+    {
+      "name": "pycparser",
+      "version": "3.12",
+      "scope": "development",
+      "license_expression": "BSD-3-Clause",
+      "license_field": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
     },
     {
       "name": "pydantic",
