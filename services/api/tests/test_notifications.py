@@ -1102,16 +1102,45 @@ class FixtureScopeTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     notification_fixture(environment)
 
-    def test_the_domain_module_imports_only_the_standard_library_and_its_two_neighbours(
-        self,
-    ) -> None:
-        tree = ast.parse((API_ROOT / "glow_domain" / "notifications.py").read_text("utf-8"))
+    @staticmethod
+    def _imported_modules(source: str) -> set[str]:
+        """Every module a source imports. An ``ImportFrom`` is read by its level, module and
+        imported names: ``from . import x`` imports the sibling ``.x``, and ``from .m import y``
+        imports ``.m`` (correction C1, item 2)."""
         imported: set[str] = set()
-        for node in ast.walk(tree):
+        for node in ast.walk(ast.parse(source)):
             if isinstance(node, ast.Import):
                 imported.update(alias.name for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
-                imported.add(("." * node.level) + (node.module or ""))
+                prefix = "." * node.level
+                if node.module:
+                    imported.add(prefix + node.module)
+                else:
+                    imported.update(prefix + alias.name for alias in node.names)
+        return imported
+
+    def test_the_import_reading_names_each_relative_module(self) -> None:
+        cases = {
+            "from . import chat_provider_stream\n": {".chat_provider_stream"},
+            "from . import chat, chat_provider_stream as s\n": {".chat", ".chat_provider_stream"},
+            "from .. import x\n": {"..x"},
+            "from .provider_fixtures import require_fixture_environment\n": {".provider_fixtures"},
+            "from collections.abc import Callable\nimport json\n": {"collections.abc", "json"},
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(self._imported_modules(source), expected)
+
+    def test_the_domain_module_imports_only_the_standard_library_and_its_two_neighbours(
+        self,
+    ) -> None:
+        imported = self._imported_modules(
+            (API_ROOT / "glow_domain" / "notifications.py").read_text("utf-8")
+        )
+        self.assertEqual(
+            {name for name in imported if name.startswith(".")},
+            {".chat", ".provider_fixtures"},
+        )
         self.assertEqual(
             imported,
             {
@@ -1128,7 +1157,7 @@ class FixtureScopeTests(unittest.TestCase):
                 "datetime",
                 "typing",
                 "uuid",
-                ".",
+                ".chat",
                 ".provider_fixtures",
             },
         )
