@@ -12,24 +12,23 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Now: P06.3** (OD-49), privacy-safe notifications at fixture scope.
   - **The brief:** [revision 2](../planning/p06-3-notifications.md) applies DM-44's conditions as written ([report](dev-manager/reviews/2026-11-08-dm-44-p06-3-brief.md), integrated at `c99aa5a`), so it needs no read before the prompt. The matrix recheck is in its [record](../testing/evidence/2026-11-08-p06-3-matrix-recheck.md).
   - **Implemented:** code head `9c4fef5`, records `7775bba` ([record](../testing/evidence/2026-11-09-p06-3-notifications.md)); run of record 42540179430, all eight jobs passed. The manager verified it and fast-forwarded the manager branch.
-  - **Next:** P06.3's PR from the manager branch; Codex on its head; the [exact-head review prompt](../ephemeral/2026-11-09-p06-3-review-prompt.md), revision 1, given to Nathan once Codex has completed (step 6).
+  - **PR41** is open. Codex's F-C1 (a mobile fixture-adapter race at sign-out) is reproduced and joins the review's pass. The [exact-head review prompt](../ephemeral/2026-11-09-p06-3-review-prompt.md), revision 2 at `481562f`, is with Nathan.
   - **DM-44 1.3's confirmation** of the words as applied rides the next consultation.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a and P06.2-F ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-44, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (9 November 2026, 00:45 UTC, App Manager 10)
+## Waiting checkpoint (9 November 2026, 01:05 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | Codex | Its review of P06.3's PR head, which holds the code and the review prompt | After 60 minutes running with no result, the manager posts `@codex review` once (step 6) and tells Nathan if that stalls too |
+| App Manager 10 | Nathan | The P06.3 exact-head review's report | App Manager 10 asks Nathan whether the review ran |
 
 ## Next actions (App Manager 10)
 
-1. **Codex:** handle each finding. Then give Nathan the exact-head review prompt, with its commit filled in.
-2. **The review's report:** record it with a disposition for each finding; then corrections, or the merge (step 7).
-3. **Then** the server slices SV1 to SV4 (OD-49); the second A05 message before SV2's brief (the carried-items file).
+1. **The review's report:** record it, with a disposition for each finding, F-C1 included. Then write one correction prompt for every finding fixed before the merge, and a delta or full review after it, as step 6 decides.
+2. **Then** the merge (step 7), and the server slices SV1 to SV4 (OD-49).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 

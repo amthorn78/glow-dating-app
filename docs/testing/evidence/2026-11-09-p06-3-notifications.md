@@ -252,3 +252,13 @@ The module follows chat's pattern: `copy.ts`, `permission.ts` (the seam and its 
   - the Python domain, which is authoritative, checks the session inside each command, synchronously;
   - whether the store's own flows can reach it (a register in flight at logout or an account change) goes to the exact-head review.
 - **Disposition:** it falls in a correction class the review names ("let a stale session act, or leave a registration active after its session's logout"), so rule (a) fixes it before the merge. Under step 6 it joins the exact-head review's pass: the review prompt's revision 2 adds it as focus item 8, and its fix goes in the correction pass after the review. The manager replied on Codex's thread, which stays open until the fix is on PR41.
+
+## PR41's runs and Codex on `481562f` (9 November 2026, App Manager 10)
+
+- **The runs on PR41's heads, all `success`:**
+  - on `1dc1b0b`: push run 42541927007 and PR run 42541971693;
+  - on `481562f`: push run 42542771838 and PR run 42542778816.
+
+  Both heads hold `9c4fef5`'s code. The manager pushed `481562f` only after both runs on `1dc1b0b` had finished, so neither was cancelled.
+- **Codex's code review of `481562f`** (the commit that holds the review prompt's revision 2) completed at 00:57:55 UTC with no new finding. Its summary's "unresolved" state is F-C1's thread, open by design until the fix is on PR41.
+- **The exact-head review prompt,** revision 2 at `481562f`, went to Nathan once Codex had completed on the code head and on the prompt's commit (step 6).
