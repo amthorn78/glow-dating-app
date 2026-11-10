@@ -270,6 +270,10 @@ jobs:
       # identity settings' SECRET_KEY, are generated here into files in the same directory and
       # read from their paths; the signing key is multi-line, so it is never put in a variable
       # or printed (::add-mask:: takes one line).
+      # SV2 Stage A (the profile slice; its brief's D12): a third database in the same
+      # PostgreSQL, glow_profile_proof, with its own marker and the same role, for the profile
+      # suite after the identity suite. Its own two keys, a JWT signing key and a SECRET_KEY
+      # (which also keys the stored idempotency digests, D17), are generated the same way.
       - name: Generate the disposable database's credentials (masked before anything prints)
         id: credentials
         shell: bash
@@ -285,40 +289,52 @@ jobs:
           # SV1: the identity database's marker, and the identity settings' SECRET_KEY.
           identity_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
           identity_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')
+          # SV2: the profile database's marker, and the profile settings' SECRET_KEY.
+          profile_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
+          profile_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')
           echo "::add-mask::$superuser_password"
           echo "::add-mask::$role_password"
           echo "::add-mask::$marker"
           echo "::add-mask::$wrong_marker"
           echo "::add-mask::$identity_marker"
           echo "::add-mask::$identity_secret_key"
+          echo "::add-mask::$profile_marker"
+          echo "::add-mask::$profile_secret_key"
           test "$marker" != "$wrong_marker" || { echo "the two markers are equal; refusing"; exit 1; }
           test "$identity_marker" != "$marker" && test "$identity_marker" != "$wrong_marker" \
             || { echo "the markers are not distinct; refusing"; exit 1; }
+          test "$profile_marker" != "$marker" && test "$profile_marker" != "$wrong_marker" \
+            && test "$profile_marker" != "$identity_marker" \
+            || { echo "the markers are not distinct; refusing"; exit 1; }
           dir=$(mktemp -d "$RUNNER_TEMP/glow-proof-db.XXXXXX")
           printf '%s\n' "$superuser_password" > "$dir/superuser-password"
-          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_identity_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" "$identity_marker" > "$dir/create-role.sql"
-          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n127.0.0.1:5433:glow_identity_proof:glow_proof:%s\n' "$role_password" "$role_password" > "$dir/passfile"
+          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_identity_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_profile_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" "$identity_marker" "$profile_marker" > "$dir/create-role.sql"
+          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n127.0.0.1:5433:glow_identity_proof:glow_proof:%s\n127.0.0.1:5433:glow_profile_proof:glow_proof:%s\n' "$role_password" "$role_password" "$role_password" > "$dir/passfile"
           printf '%s\n' "$marker" > "$dir/marker"
           printf '%s\n' "$wrong_marker" > "$dir/wrong-marker"
           printf '%s\n' "$identity_marker" > "$dir/identity-marker"
           printf '%s\n' "$identity_secret_key" > "$dir/identity-secret-key"
-          # SV1's JWT signing key: RSA, 2048 bits (RS256), written by Python straight to its file.
-          python - "$dir/identity-jwt-key.pem" <<'PYTHON'
+          printf '%s\n' "$profile_marker" > "$dir/profile-marker"
+          printf '%s\n' "$profile_secret_key" > "$dir/profile-secret-key"
+          # SV1's JWT signing key and SV2's: RSA, 2048 bits (RS256), each its own key, written by
+          # Python straight to its file.
+          python - "$dir/identity-jwt-key.pem" "$dir/profile-jwt-key.pem" <<'PYTHON'
           import os
           import sys
 
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric import rsa
 
-          key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-          data = key.private_bytes(
-              serialization.Encoding.PEM,
-              serialization.PrivateFormat.PKCS8,
-              serialization.NoEncryption(),
-          )
-          descriptor = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-          with os.fdopen(descriptor, "wb") as handle:
-              handle.write(data)
+          for path in sys.argv[1:]:
+              key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+              data = key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              )
+              descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+              with os.fdopen(descriptor, "wb") as handle:
+                  handle.write(data)
           PYTHON
           chmod 600 "$dir"/*
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
@@ -343,7 +359,7 @@ jobs:
           done
           test "$ready" = 1 || { echo "PostgreSQL did not become ready within 60 s"; exit 1; }
           docker exec "$CONTAINER" pg_isready -h 127.0.0.1 -p 5432 -U postgres
-      - name: Create the non-superuser proof role and its two databases, each with its own marker as its comment
+      - name: Create the non-superuser proof role and its three databases, each with its own marker as its comment
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
           CONTAINER: ${{ steps.credentials.outputs.container }}
@@ -356,6 +372,7 @@ jobs:
           rm -f "$DIR/create-role.sql"
           echo "role glow_proof (NOSUPERUSER) and database glow_proof created, with the run's marker as its comment"
           echo "database glow_identity_proof (SV1) created for the same role, with its own marker as its comment"
+          echo "database glow_profile_proof (SV2) created for the same role, with its own marker as its comment"
       - name: Show that a wrong marker is refused and leaves the proof's database unchanged
         shell: bash
         env:
@@ -591,6 +608,120 @@ jobs:
         with:
           name: sv1-identity-results
           path: proofs/postgres-ordering/.work/identity-results.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      # SV2 Stage A (the profile slice; its brief's D12): the profile suite on the third
+      # disposable database, after the identity suite. Each step defines `profile`, which runs a
+      # command with the profile settings, the profile database's marker (or the one named) and
+      # the paths of the profile suite's own two keys.
+      - name: "SV2: show the profile database refuses the other markers, then apply the reviewed migrations from zero"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          profile() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_profile_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/profile-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/profile-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings "${@:2}"
+          }
+          # The other databases' markers on the profile database: refused before any statement.
+          for other in marker identity-marker; do
+            set +e
+            profile "$other" python -m django migrate --verbosity 1 > "$DIR/profile-wrong-marker.log" 2>&1
+            status=$?
+            set -e
+            refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database' "$DIR/profile-wrong-marker.log" || true)
+            rm -f "$DIR/profile-wrong-marker.log"
+            echo "profile migrate with the $other file's marker: exit status $status"
+            if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database's marker exited 0"; exit 1; fi
+            if [ -z "$refusal" ]; then echo "FAIL: the refusal message is missing (diagnostics withheld)"; exit 1; fi
+            echo "refusal: $refusal"
+          done
+          profile profile-marker python -m django migrate --verbosity 1
+          profile profile-marker python -m django makemigrations --check --dry-run
+      - name: "SV2: run the profile suite (its phase timed), and show its output holds no secret or member value"
+        id: profile
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          profile() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_profile_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/profile-marker")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/profile-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/profile-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings "$@"
+          }
+          mkdir -p .work
+          started=$(date +%s)
+          set +e
+          profile python -m glow_ordering_proof profile --results .work/profile-results.json > "$DIR/profile.log" 2>&1
+          status=$?
+          finished=$(date +%s)
+          # Acceptance check 12, as SV1's step does it: none of the job's own secrets (the
+          # passwords, the three markers, both suites' SECRET_KEYs, each line of both signing keys)
+          # may be in the suite's output or in its results JSON, and the suite's own scans of every
+          # secret and member value it handled must report clean. Only then is the output shown
+          # and the JSON uploaded; otherwise the log shows counts only, never a line of the
+          # suite's output, and the check removes the JSON.
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            python -m glow_ordering_proof.profile_scan "$DIR" "$DIR/profile.log" .work/profile-results.json
+          scan=$?
+          set -e
+          if [ "$scan" -eq 0 ]; then
+            echo "scan=passed" >> "$GITHUB_OUTPUT"
+            cat "$DIR/profile.log"
+          else
+            echo "the full output is withheld; counts only, never a line of the suite's output:"
+            echo "lines in the suite's output: $(wc -l < "$DIR/profile.log")"
+            echo "case lines: $(grep -c '^\[profile\] PASS ' "$DIR/profile.log" || true) passed, $(grep -c '^\[profile\] FAIL ' "$DIR/profile.log" || true) failed"
+          fi
+          rm -f "$DIR/profile.log"
+          echo "profile phase: $((finished - started)) s (the job's timeout is 30 minutes)"
+          if [ "$scan" -ne 0 ]; then echo "FAIL: the secret check did not pass"; exit 1; fi
+          test "$status" -eq 0
+      - name: "SV2: show that a second profile run on the used database is refused before it writes"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          counts() {
+            docker exec "$CONTAINER" psql -X -q -At -v ON_ERROR_STOP=1 -U postgres -d glow_profile_proof -c \
+              "SELECT (SELECT count(*) FROM auth_user) || ' ' || (SELECT count(*) FROM glow_persistence_appaccount) || ' ' || (SELECT count(*) FROM glow_persistence_profile) || ' ' || (SELECT count(*) FROM glow_persistence_settingversion) || ' ' || (SELECT count(*) FROM glow_persistence_outboxevent) || ' ' || (SELECT count(*) FROM glow_persistence_idempotencyrecord)"
+          }
+          before=$(counts)
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_profile_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/profile-marker")" \
+            PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/profile-secret-key" \
+            PROOF_IDENTITY_JWT_KEY_FILE="$DIR/profile-jwt-key.pem" \
+            DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings \
+            python -m glow_ordering_proof profile > "$DIR/profile-rerun.log" 2>&1
+          status=$?
+          set -e
+          after=$(counts)
+          refusal=$(grep -m 1 -F 'refusing a used database' "$DIR/profile-rerun.log" || true)
+          rm -f "$DIR/profile-rerun.log"
+          echo "rows (auth users, app accounts, profiles, setting versions, outbox events, idempotency records) before: $before; after: $after"
+          echo "second profile run exit status: $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: a second profile run on the used database exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
+          if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
+          echo "refusal: $refusal"
+      # Uploaded only after the job's secret check has passed, as SV1's is.
+      - name: "SV2: save the profile suite's results JSON, once the secret check has passed"
+        if: ${{ always() && steps.profile.outputs.scan == 'passed' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sv2-profile-results
+          path: proofs/postgres-ordering/.work/profile-results.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
