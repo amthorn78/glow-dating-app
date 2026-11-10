@@ -340,3 +340,172 @@ Each file was restored and its hash checked against `b97bc15`, and the two test 
 The records push run 42761123580 on `f2635fa` passed.
 
 **What goes to the Dev Manager** (DM-54): the session's items 1 to 7, 10 and 13, and the stale sentence of item 8. Items 9, 11 and 12 are settled here: the import line is needed by the age section; the CI policy's paragraph is the manager's, updated in this batch; D16 did not apply, so DM-50 1.2 stays carried.
+
+## Correction C1
+
+Correction C1 of Stage A, to [DM-54](../../continuity/dev-manager/reviews/2026-11-10-dm-54-sv2-stage-a-decisions.md)'s words as the brief's revision 4 applies them ("Stage A, correction C1"; D7, D8, D9, D11's registry entries, checks 7 and 9). Local database runs here are iteration, not evidence; the evidence of record is the CI run on the code head, below.
+
+### The session
+
+- **The prompt:** [C1's correction prompt](../../ephemeral/2026-11-10-sv2-stage-a-c1-correction-prompt.md), revision 1, from `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3` of `claude/magical-wozniak-yfmmx2`.
+- **The branch:** `claude/funny-lamport-5f2s1u`, started at `033e8d4`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
+- **The code commit, the code head:** `86a2156` (`86a215675e0ad826425e16c14fb6b826664b9c34`).
+- **The records commit** (this section, and the data model's and the contract document's text) follows the run of record, as the push rule requires.
+
+### Start gate and environment
+
+- **The environment check, names only.** None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` was set, and no `STREAM_*` or `PG*` name (`compgen -e | grep -E '^(STREAM_|PG)'` printed nothing). The GitHub token names `GH_TOKEN` and `GITHUB_TOKEN` were present; they were never read. Every repository command ran in a clean process environment (`env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API), with the proxy and CA variables passed by reference for the installs, never printed.
+- **The toolchain:** `Python 3.12.14` (`python3.12`), Node `v24.19.0`, npm `11.9.0`, `Docker version 29.9.2, build a82e528`; `python3.12`, `node` and `npm` resolve to `$HOME/.local/bin`, second on `PATH` after `/nix/var/nix/profiles/default/bin`, as in Stage A.
+- **The start gate,** each line as the prompt has it:
+  - `git fetch origin claude/magical-wozniak-yfmmx2 main`: fetched;
+  - `git switch -C claude/funny-lamport-5f2s1u 033e8d4…` and `git rev-parse HEAD`: `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3`;
+  - no non-Markdown path under `.github`, `scripts`, `services`, `apps`, `packages` or `proofs` differs from `b97bc15`: printed nothing;
+  - no owned path differs from the live manager branch: printed nothing. Its head was then `0612754`, whose only change after `033e8d4` is `docs/planning/sv2-profiles-media.md` (Codex's review of `033e8d4` recorded: two P1 findings, both this correction's items 1 and 3), and `033e8d4` is on it;
+  - `grep -c -E '^#+ Correction C1'` on this record: `0`;
+  - `grep -c 'requirements_met'` on `flows-v1.json`: `0`.
+
+### Item 1 — D9's one recompute (Y3, Y5)
+
+- **The change.** `services/api/glow_profiles/recompute.py` (new) holds the one shared function, `recompute(tx, account_id, now, *, writer)`, and its pure rule, `next_state`: an `incomplete` profile with nothing missing becomes `visible`, a `visible` profile with anything missing becomes `incomplete`, and `paused`, `restricted` and `removed` stay as they are. It reads the onboarding consent policy's pointer `FOR SHARE` and the profile `FOR UPDATE`, then every requirement (`requirements.missing`) on the current rows, all after the writer's account row lock. A change bumps the profile's version and the account's `eligibility_version` (the profile edit's own write already bumps both, and its change rides on it) and emits its event. The profile edit's own completion and demotion logic is now this call, and `_demote_if_visible` is gone: **nothing but the recompute writes a profile's state in SV2** (`glow_chat`'s pause, resume and restriction aside, and a new profile created `incomplete`).
+- **Each writer that now ends with it, with the registry entry each change uses** (`flows-v1.json`, F04):
+
+  | Writer | File | A completion | A demotion |
+  |---|---|---|---|
+  | the profile edit (`save_profile`) | `operations.py` | `complete` (`owner`), `profile_completed` | `edit` from `visible` to `incomplete` (`owner`), carried by the edit's own `profile_edited` |
+  | the four fields (`set_field`) | `operations.py` | `complete` (`owner`), `profile_completed` | `requirement_removed` (`system`), `profile_demoted` |
+  | the area (`set_area`) | `operations.py` | `complete` (`owner`), `profile_completed` | `requirement_removed` (`system`), `profile_demoted` |
+  | the onboarding consent's accept and withdraw (`decide_onboarding_consent`) | `operations.py` | `requirements_met` (`system`), `profile_completed` | `requirement_removed`, `profile_demoted` |
+  | the adult check (`adult_check`: the applied path and the unchanged-date path) | `operations.py` | `requirements_met`, `profile_completed` | `requirement_removed`, `profile_demoted` |
+  | the birth input (`save_birth_input`, and its refused failing date, item 3) | `operations.py` | none in Stage A (a new revision is `pending`, so the chart is missing) | `requirement_removed`, `profile_demoted` |
+  | staff's approval without ID verification (`approve_without_id`) | `staff.py` | `requirements_met`, `profile_completed` | `requirement_removed`, `profile_demoted` |
+  | its revocation (`revoke_approval`) | `staff.py` | none (it removes a requirement) | `requirement_removed`, `profile_demoted` |
+
+  The recompute runs on every path of these writers that is not a replay or a refusal, `no_change` included, so a requirement that lapsed without a write is found there too. It does not run in the operations that write no requirement: the "show me" sets, the filters, the phone-location query, the sensitive-fields consent, pause and resume (resume rechecks completion first, as before), restriction, publication and the reads.
+- **A decision for the manager (C1-1): the demotion's entry in the fields and the area.** The brief names `complete` (`owner`) for a completion in an F04 owner command, and gives no entry for a demotion there. A field or area write can never itself remove a requirement (an emptying edit is refused, D9), so a demotion there is always a requirement found lapsed, such as a new consent version; it is recorded as `requirement_removed` (`system`) with `profile_demoted`. The profile edit's demotion keeps the owner's `edit`, as before C1, whether the summary was cleared or a requirement had lapsed.
+- **Tests.**
+  - API (`services/api/tests/test_profile_recompute.py`, new, no database): `RuleTests.test_the_rule_and_the_registry_entries` (the rule for every state with and without a missing requirement; the entry for each writer and change); `RuleTests.test_every_entry_the_recompute_names_is_in_the_registry` (`complete`, `requirements_met`, `edit` and `requirement_removed` each in F04 with its role, and `eligible` exactly on completion); `CallSiteTests.test_every_requirement_writer_ends_with_the_recompute` (each of the eight writers calls it, with its own kind of writer, directly or through its module helper; none of the other eight operations does); `CallSiteTests.test_only_the_recompute_writes_a_profiles_state`.
+  - The profile suite (on the disposable database, through the routes):
+    - `completion.every_requirement_writer_meeting_the_last_one_makes_it_visible`: the profile edit, a field (`looking_for`), a field that is no requirement (orientation, after the seeds met the last ones without a write), the area, the onboarding consent's accept, the adult check (after a failing rerun and the chart seeded again) and staff's approval each make an `incomplete` profile with only that requirement missing `visible`, each with one more `profile_completed`; the owner's completion read then lists nothing missing. The birth input is shown never completing (its new revision's chart is missing).
+    - `completion.a_write_that_finds_a_requirement_missing_demotes`: a new onboarding consent version is published, and it alone moves no one; then an area change, a gender write and the adult check with its unchanged date each demote a `visible` profile with `profile_demoted`, and the profile edit demotes with its owner `edit` and no `profile_demoted`; accepting the new version completes a profile (`requirements_met`); a paused profile's area change leaves it `paused`; a restricted profile (through `glow_chat`'s writer) and a removed one (a harness write, since SV2 has no writer to `removed`) stay so through a consent withdrawal and acceptance.
+    - **The existing lock case** `completion.takes_the_account_lock_first_and_sees_a_withdrawal` still shows a completion waiting on the withdrawal's account row lock and then seeing the withdrawal, and the other order.
+- **Reversals** (each on its own new database; failing output from the harness):
+
+  | Reversal | The temporary edit | Failing output |
+  |---|---|---|
+  | `C1.1-recompute-left-out-of-set_area` | `set_area`'s recompute call removed | proof: `FAIL completion.every_requirement_writer_meeting_the_last_one_makes_it_visible … FAILED: the area: the profile is visible`; `FAIL completion.a_write_that_finds_a_requirement_missing_demotes … FAILED: the area: the visible profile is demoted`; `cases: 45/47 passed`; `PROFILE VERDICT: FAIL`. API: `test_every_requirement_writer_ends_with_the_recompute (writer='set_area')`, `AssertionError: [] is not true : set_area does not recompute`, `FAILED (failures=1)` |
+  | `C1.1-recompute-left-out-of-adult_check` | the adult check's applied-path recompute call removed | `FAIL adult.a_corrected_date_reruns_and_demotes … FAILED: the visible profile demoted`; `FAIL completion.removals_demote_and_empty_values_are_refused … FAILED: adult_rerun: demoted`; `FAIL completion.every_requirement_writer_meeting_the_last_one_makes_it_visible … FAILED: the adult check: incomplete first`; `cases: 44/47 passed` |
+  | `C1.1-visible-with-the-chart-missing` | the recompute ignores a missing chart, so it makes a profile `visible` with one requirement missing | `FAIL completion.refuses_each_missing_requirement … FAILED: the chart: completion is refused`; `FAIL completion.needs_the_chart_and_identity_verification_seeded … FAILED: a new revision demotes`; `FAIL completion.removals_demote_and_empty_values_are_refused … FAILED: birth_input: demoted`; `FAIL completion.every_requirement_writer_meeting_the_last_one_makes_it_visible … FAILED: a birth input never completes`; `cases: 43/47 passed` |
+  | `C1.1-recompute-changes-a-paused-profile` | the rule moves a `paused` profile with anything missing to `incomplete` | proof: `FAIL consent.withdrawal_on_a_paused_profile_stays_paused`, `FAIL visibility.resume_rechecks_completion`, `FAIL completion.removals_demote_and_empty_values_are_refused`, `FAIL completion.a_write_that_finds_a_requirement_missing_demotes … FAILED: a paused member's area change: answers 200`, `FAIL birth.a_failing_date_is_refused_and_nothing_of_it_is_stored`; `cases: 42/47 passed`. API: `RuleTests.test_the_rule_and_the_registry_entries`, `AssertionError: … 'incomplete' … != … 'paused' …`, `FAILED (failures=1)`. (Under the reversal, those routes answered other than 200; why was not investigated, since the reversal is seen either way.) |
+
+### Item 2 — the registry entries (Y4)
+
+- **The change** (`packages/contracts/production/flows-v1.json`, F04, appended after `requirement_removed`; no existing line removed or changed): `requirements_met` from `incomplete` to `visible` (`system`; `eligible: true`; `A05`); `restrict` from `visible` to `restricted` and from `paused` to `restricted` (`moderator`; `A05`). Both roles are ones `transition_contract.authorized` authorizes. No DTO changes, so no generated output changes (`npm run check`: `Generated types and runtime validators match schemas.`).
+- **Tests** (`packages/contracts/tests/test_transition_contract.py`, `SV2StageATransitionTests`): `test_f04_requirements_met_is_the_systems_completion` (allowed for the system with eligibility and `A05`; forbidden for an owner, for a context with the owner role, and without eligibility; `policy_unresolved` without `A05`; `state_conflict` from `paused`; the owner's `complete` still allowed) and `test_f04_restrict_is_the_moderators` (allowed for a scoped moderator from `visible` and `paused`; forbidden for the owner and for another object; `policy_unresolved` without `A05`; `state_conflict` from `incomplete`, `restricted` and `removed`).
+- **Reversal** `C1.2-requirements_met-role-unauthorized`: `requirements_met`'s role changed to `staff`, which the oracle never authorizes. `test_f04_requirements_met_is_the_systems_completion`: `AssertionError: 'forbidden' != 'allowed'`, `FAILED (failures=1)`.
+
+### Item 3 — a birth input whose date fails the adult rule (Y6 to Y8)
+
+- **The change** (`operations.py`: `save_birth_input` and the new `_refuse_failing_birth_input`; `_invalidate_birth_input` gains `whatever_its_date`). After the existing gates (the adult pass, the current onboarding consent, the expected version, a known time, no future date), a date that fails the adult rule (`adult_outcome` is not `PASS`; a future date keeps its earlier `invalid_request` refusal) takes this path:
+  - **refused, with nothing of it stored:** no `BirthInput` revision is created, so its date, time and place are written nowhere; the mapping is not pointed at it; the age port is given `unknown` with no date; and no idempotency record is stored;
+  - **its transaction commits the failing rerun:** the age state becomes `unknown` with no date, through the age port's `transition`, which bumps `eligibility_version` (`age_state_changed`); a current birth input, whatever its date, becomes `missing` with its mapping back to `pending` (`birth_input_invalidated`); and D9's recompute makes a `visible` profile `incomplete` (`profile_demoted`), while a `paused` one stays paused;
+  - **the operation returns** `Result("refused", "forbidden", "birth_date_fails_adult_rule")` without raising, so `tx.run` commits; the route answers 403 with the contract's `Error`, naming the code only;
+  - **a retry,** of the same command or a new one, finds no idempotency record and is refused at the adult-check gate (`adult_check_required`, 403 `forbidden`, raised, so rolled back), changing nothing more.
+- **Tests.**
+  - The profile suite: `birth.a_failing_date_is_refused_and_nothing_of_it_is_stored`, for a `visible` member and a `paused` one. After the refusal: no new revision; no `BirthInput` row holds the failing date, time or place; no table in the database holds its place or date (every row of every table read as JSON text); the actor's idempotency records unchanged; the age state `unknown` with no date and one more `age_state_changed`; the held revision `missing` with one more `birth_input_invalidated`; the mapping `pending`, its engine reference cleared, still pointing at that revision; the profile `incomplete` with one more `profile_demoted` (or `paused`, with none); `eligibility_version` bumped; the owner's reads show the held revision with `resolution: missing` and no date. A retry of the same command, and a new command, each answer 403 `forbidden`, and a snapshot of every row the case watches (revisions, the age state, the account's versions, the profile, the mapping, the outbox's count and the actor's idempotency records) is unchanged after each. The suite's value scan holds the failing input's date, time and place (`ValueLedger`) and finds none of them in any log record, write or the results JSON.
+  - API: `CallSiteTests.test_the_failing_birth_input_returns_its_refusal` (the helper raises nothing, creates no revision, stores no record, recomputes, and returns the refusal).
+- **Reversals:**
+
+  | Reversal | The temporary edit | Failing output |
+  |---|---|---|
+  | `C1.3-revision-stored` | a revision is created before the refusal | `FAIL birth.a_failing_date_is_refused_and_nothing_of_it_is_stored … FAILED: no revision is written`; `cases: 46/47 passed`; `PROFILE VERDICT: FAIL` |
+  | `C1.3-refusal-raised` | the refusal raised, so the rerun's effects roll back | `FAIL birth.a_failing_date_is_refused_and_nothing_of_it_is_stored … FAILED: the age state is unknown`; `cases: 46/47 passed` |
+  | `C1.3-idempotency-record-stored` | an idempotency record stored with the refusal | `FAIL birth.a_failing_date_is_refused_and_nothing_of_it_is_stored … FAILED: no idempotency record is stored`; `cases: 46/47 passed` |
+
+### Item 4 — CI's mypy (Y9)
+
+- **The change:** `services/api/pyproject.toml`, `[tool.mypy]`'s `files` only: `["glow_api", "glow_domain", "glow_chat", "glow_identity", "glow_profiles"]`. The configured `mypy`: `Success: no issues found in 78 source files` (60 before; `glow_profiles` adds 18, `recompute.py` among them).
+- **Reversal** `C1.4-type-error-in-glow_profiles`: `_REVERSAL: int = "not an int"` added to `glow_profiles/recompute.py`; the configured `mypy` (no argument): `glow_profiles/recompute.py:62: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]`, `Found 1 error in 1 file (checked 78 source files)`, exit status 1.
+
+### Item 5 — the data model's sentence (Y11)
+
+`docs/architecture/data-model.md`, "Identity, time and field semantics": the sentence replaced with DM-54's words exactly ("An empty profile bio means incomplete or withheld text, not eligibility. `BirthInput.birth_date` and `local_time` preserve civil values; an unknown time is null, though SV2's server refuses a birth input without a time (OD-61)."); the paragraph's line breaks moved.
+
+### Item 6 — the records
+
+- `docs/architecture/data-model.md`, SV2's rows: `AccountAgeState` (a failing birth input refused, the rerun committed), `IdentityVerification` (both staff operations end with the recompute), `Profile` (the one recompute, its writers and its rule).
+- `docs/architecture/production-contracts.md`, F02 to F06's server mapping: F02 (the writers that end with the recompute, `requirements_met`), F03 (the failing birth input), F04 ("What moves a profile to `visible`": the recompute, each change's entry and event), F06 (restriction's `restrict` entries).
+- `packages/contracts/README.md`, SV2's section: the two entries. `proofs/postgres-ordering/README.md`, SV2's section: 47 cases, with C1's.
+- This section.
+
+### The threat model's inputs (C1)
+
+- **The recompute's call sites and locks** (READ COMMITTED; DM-13 4.1). Each writer takes the account row `FOR UPDATE` first, as before, then its own rows; the recompute is its last state change, before its idempotency record, and reads the onboarding consent's pointer `FOR SHARE` (already held by the writers that read it earlier) and the profile `FOR UPDATE`, then the requirements' rows:
+  - `save_profile`: the account; the catalog's and onboarding consent's pointers; the profile; the edit; then the recompute;
+  - `set_field`: the account; the catalog's pointers; the profile; the field's row; the idempotency record; the write; then the recompute;
+  - `set_area`: the account; the location pointer; the profile; the write; then the recompute;
+  - `decide_onboarding_consent`: the account; the onboarding pointer; the profile; `glow_chat`'s nested writer; then the recompute;
+  - `adult_check`: the account; the age state; the profile; the age port's transition; the current birth input and its mapping; then the recompute (on the unchanged-date path, the recompute alone);
+  - `save_birth_input`: the account; the onboarding pointer; the age state; the current birth input; the profile; the new revision, the mapping, the age port's transition; then the recompute; on a failing date, the age port's transition, the current birth input and its mapping, then the recompute;
+  - `approve_without_id`: the account; the staff approval setting's pointer `FOR SHARE`; the identity verification row; then the recompute (the onboarding pointer `FOR SHARE`, then the profile);
+  - `revoke_approval`: the account; the profile; the identity verification row; then the recompute.
+
+  Every SV2 writer of an account serializes on its account row, so the recompute's reads cannot interleave with another requirement writer of the same account. The pointers it reads are only `FOR SHARE`, which a publication's `FOR UPDATE` of one pointer waits on, and a publication takes no account row, so no cycle is added. Tests: `LockOrderTests` (each operation's first statement), `completion.takes_the_account_lock_first_and_sees_a_withdrawal` (both orders, each wait observed in `pg_locks`).
+- **No path makes a profile `visible` with a requirement missing:** the recompute is the only SV2 code that writes a profile's state (`test_only_the_recompute_writes_a_profiles_state`), and it does so only with nothing missing (`next_state`); resume is `glow_chat`'s, after SV2's own recheck, unchanged. **None leaves one `visible` after a write that finds one missing:** every requirement writer ends with it (`test_every_requirement_writer_ends_with_the_recompute`; the suite's cases and the reversals above). A requirement that lapses without a write (a new consent version) stays unseen until the member's next requirement write (DM-54; K1 to K3 carried).
+- **The failing birth input's path:** refused (403 `forbidden`, `birth_date_fails_adult_rule`); committed (the age state `unknown` with no date, the current revision `missing`, its mapping `pending`, a `visible` profile `incomplete`, and their three events, each carrying references only); stored: none of the input's values, no revision, no idempotency record, nothing in a log (the views log the reason code only). A retry is refused at the adult-check gate and changes nothing.
+
+### Commands and results
+
+**API** (`services/api`; `python3.12 -m venv .venv`, then `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock`; each with `GLOW_ENV=test` in the clean environment), on the code head's tree:
+- `python manage.py check`: `System check identified no issues (0 silenced).`
+- `python manage.py test tests --verbosity 2`: `Ran 521 tests`, `OK` (516 before; `test_profile_recompute`'s 5 added).
+- `ruff check .`: `All checks passed!`; `ruff format --check .`: `133 files already formatted`.
+- `mypy`: `Success: no issues found in 78 source files`.
+- `python smoke.py`: `PASS /health/live: HTTP 200`, `PASS /health/ready: HTTP 503`, `PASS /api/v1/development/recommendations: HTTP 200`.
+- `python -m glow_persistence.static_check`: `Static definitions agree: 40 app models; migrations=0001_event_infrastructure,…,0007_settings_launch_defaults` (no migration added).
+
+**The contracts:** from `services/api`, `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v`: `Ran 47 tests`, `OK` (45 before). In `packages/contracts`, after `npm ci --ignore-scripts` (`found 0 vulnerabilities`) and `npm ci --ignore-scripts` in `apps/mobile`: `npm run check`: `Generated types and runtime validators match schemas.`, `tests 709`, `pass 709`, `fail 0`. No generated file changed (`git status` lists no `apps/` path).
+
+**The mobile app** (`apps/mobile`): `npm run check`: `tsc --noEmit` and `eslint .` clean, `tests 691`, `pass 691`, `fail 0`; no change under `apps/`.
+
+**The proof** (`proofs/postgres-ordering`; the same venv and hash-locked install, `pip check`: `No broken requirements found.`): `env -i … .venv/bin/python -m unittest discover -s tests -t . -v`: `Ran 218 tests`, `OK`; `ruff check .`: `All checks passed!`; `ruff format --check .`: `59 files already formatted`; `mypy`: `Success: no issues found in 59 source files`.
+
+**Local database runs: iteration, not evidence** (P06.DB's D4). Docker's daemon was started in the sandbox; the CI job's image pinned by digest (`postgres@sha256:d74eeac9…`, PostgreSQL 17.11) was pulled once from Docker Hub and published on `127.0.0.1:5433` only; the passwords, markers and keys were generated into a directory only the session's user could read, and never printed; a non-superuser role owned each database, and each run had a new database with its own marker as its comment; none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or a `PG*` name was present; the container, its volume and the key files were removed afterwards.
+- the profile suite on the code head's tree: `cases: 47/47 passed in 80.3 s`; `profile secret scan: clean (1040 secrets held; 0 found in 650 log records, 112 writes and the results JSON)`; `profile value scan: clean (133 member values held …; 0 found in the same output)`; `PROFILE VERDICT: PASS`;
+- the seven database reversals, each on its own new database, above. A harness in the scratchpad applied each edit exactly once, ran the test, kept the failing lines, and restored the file byte for byte, its SHA-256 checked; `git status` showed only the correction's own changes afterwards.
+
+### The run of record
+
+**Foundation push run [42769301337](https://github.com/amthorn78/glow-dating-app/actions/runs/42769301337)** on `86a215675e0ad826425e16c14fb6b826664b9c34`, **the code head** (attempt 1, 06:33:26 to 06:43:24 UTC on 10 November 2026), read with the GitHub tools and the run's own log archive. Every job's conclusion was `success`, and the gate printed **`Application checks passed`**:
+
+- **Change scope:** success; `{"full": true, "reason": "missing-or-invalid-comparison", "paths": []}`. A branch's first push has no earlier commit to compare with, so the trusted policy takes full scope; the change is full scope in any case.
+- **API checks:** success. The scope and branch-cleanup policies' tests (`Ran 14 tests`, `Ran 18 tests`, `OK`); `System check identified no issues (0 silenced).`; `manage.py test tests --verbosity 2`: **`Ran 521 tests`**, `OK`; Ruff `All checks passed!`, `133 files already formatted`; **mypy: `Success: no issues found in 78 source files`**, `glow_profiles` now among them; the Python contract tests `Ran 47 tests`, `OK`, `test_f04_requirements_met_is_the_systems_completion` and `test_f04_restrict_is_the_moderators` among them.
+- **Mobile checks:** success. The contracts' check (`Generated types and runtime validators match schemas.`; `tests 709`, `pass 709`); `npm run check` (`tests 691`, `pass 691`, with `tsc --noEmit` and `eslint .`); `check:expo`; `export:development`; the rendered checks, **`104 passed (5.3m)`**.
+- **API mobile smoke, API artifact checks, Stream proof checks:** success.
+- **Database proof checks:** success, in 9 minutes 40 seconds (06:33:36 to 06:43:16) of its 30-minute timeout.
+  - The offline tests (`Ran 218 tests`, `OK`), Ruff, the format check and mypy (`Success: no issues found in 59 source files`).
+  - A wrong marker refused (`wrong-marker migrate exit status: 1`) and `dbshell` refused (`dbshell exit status: 1`).
+  - **The ordering suite:** `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed`, 0 oracle violations in either subject's rows, `== VERDICT: PASS ==`; a second run refused, every count unchanged.
+  - **The identity suite:** the ordering database's marker refused; `[identity] cases: 49/49 passed in 44.5 s`; `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`; `identity phase: 45 s`; a second identity run refused, every count unchanged (`53 53 63 32 50`).
+  - **The profile suite:** the profile database refused both other markers (`exit status 1` each, with the marker's refusal); the migrations from zero and `No changes detected`; **`[profile] cases: 47/47 passed in 65.2 s`**, C1's three new cases among them; **`profile secret scan: clean (1040 secrets held; 0 found in 650 log records, 112 writes and the results JSON)`**; **`profile value scan: clean (133 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`**; the job's own check: `the job's secrets found in the profile suite's output: 0`, `… in the profile results JSON: 0`, `the suite's own scans (secrets, member values) reported clean: True`; `PROFILE VERDICT: PASS`; **`profile phase: 65 s`**.
+  - **The second profile run** was refused (`second profile run exit status: 1`; `refusing a used database: auth users exist; app accounts exist; outbox events exist; a setting was published beyond its launch default. The profile suite runs once per new database.`), with the counts of auth users, app accounts, profiles, setting versions, outbox events and idempotency records **`92 92 78 33 800 675` before and after**.
+  - `sv2-profile-results` (4,676 bytes) uploaded only after the check passed; the container, its credential files and the marker files removed (`no proof container remains`).
+- **No toolchain retry fired:** every "Wait 60 s before the one retry of the Python install (DM-41)" step, and every retry, was `skipped`.
+- **No secret, coordinate or failing birth input value in the logs.** All eight jobs' logs (8,311 lines) were searched: none holds the coordinates the suite sends (`40.7123457`, `-74.0067891`), the failing input's place prefix (`Synthetic Failing Place`) or its time (`02:47:19`). The only masked values are the checkout action's own token lines.
+
+### What could not run, and the limits
+
+- **The mobile app's export and rendered checks** are CI's; `playwright install` was not run here.
+- **The Database proof checks job's shell steps** were not rerun locally as a whole: C1 changes neither the workflow nor the steps, and the run of record ran them.
+- **The server's clock cannot be set** (as in Stage A); the failing birth date is 17 years and about four months before the database's UTC date.
+- **The birth input cannot meet the last requirement in Stage A:** its new revision is `pending`, and only P11's chart adapter resolves one, so its recompute is shown demoting, never completing. P11's chart and verification adapters and Stage B's photo approval will end with the same recompute (DM-54, K4); none exists yet.
+- **A requirement that lapses without a write** (a new onboarding consent version) is seen only at the member's next requirement write, as DM-54 accepts for Stage A (K1 to K3 carried).
+- **Not claimed:** the real target and its persistence; the deployed wiring; P07's staff API; SV3's discovery and SV4's messaging reads of a lapsed version.
+
+### Decisions and deviations for the manager
+
+1. **C1-1, the demotion's entry in the fields and the area** (above): `requirement_removed` (`system`), with `profile_demoted`, since those writes cannot themselves remove a requirement. The profile edit's demotion keeps the owner's `edit`, without `profile_demoted`, as before.
+2. **C1-2, the recompute on `no_change` paths:** it also runs where a writer changes nothing (the adult check's unchanged date, an onboarding decision that repeats the last, an approval of an approved member), so a lapsed requirement is found at any requirement write, as Y3 says ("A requirement that lapses without a write … demotes at the member's next requirement write"). Replays and refusals do not run it.
+3. **C1-3, a future birth date** keeps its earlier refusal (400 `invalid_request`, raised, so nothing changes, and the age state stays `self_declared_adult`); only a date under 18 takes the refused-and-rerun path. Y6 to Y8 speak of a date that fails "the adult rule"; the adult check's own step treats a future date as failing too, and its rerun on a `self_declared_adult` state sets `unknown`. Whether a future birth input date should also rerun is left to the manager; Stage A's threat model lists it among the birth input's 400 refusals.
+4. **C1-4, the refusal's code:** the failing birth input answers 403 `forbidden` with the reason `birth_date_fails_adult_rule`, as the adult check's under-age refusal is `forbidden`. No contract code is added.
+5. **C1-5, the staff approval's result** carries the profile's state after the recompute in its `detail` (`"profile"`), for P07's console and the suite; no DTO is involved.
+6. **No stop rule was met:** no model, migration, DTO, generated output, `glow_chat`, `glow_identity`, `glow_api`, workflow, lock or dependency changed; no existing registry entry changed; both new roles are ones the oracle authorizes; and the Database proof checks job took 9 minutes 40 seconds.
