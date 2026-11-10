@@ -168,6 +168,35 @@ class NoValueInLogsTests(unittest.TestCase):
                     self.assertIn(ast.unparse(node.args[1]), {"result.reason", "INVALID_REQUEST"})
                     self.assertEqual(len(node.args), 2)
 
+    def test_nothing_but_the_views_reaches_logging_or_imports_by_name(self) -> None:
+        # A logger reached any other way (an import of logging, getLogger, an import by name)
+        # would escape the check above.
+        found = []
+        for name, tree in modules().items():
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    roots = {alias.name.split(".")[0] for alias in node.names}
+                elif isinstance(node, ast.ImportFrom):
+                    roots = {(node.module or "").split(".")[0]}
+                else:
+                    roots = set()
+                if "logging" in roots and name != "views.py":
+                    found.append(f"{name}:{getattr(node, 'lineno', 0)} imports logging")
+                if isinstance(node, ast.Call):
+                    func = node.func
+                    called = (
+                        func.id
+                        if isinstance(func, ast.Name)
+                        else func.attr
+                        if isinstance(func, ast.Attribute)
+                        else ""
+                    )
+                    if called in {"__import__", "import_module"}:
+                        found.append(f"{name}:{node.lineno} imports by name")
+                    if called == "getLogger" and name != "views.py":
+                        found.append(f"{name}:{node.lineno} gets a logger")
+        self.assertEqual(found, [])
+
     def test_every_refusal_reason_is_a_code(self) -> None:
         checked = 0
         for name, tree in modules().items():

@@ -699,6 +699,13 @@ def area_coordinates(ctx: ProfileContext) -> str:
         "invalid_request",
         "coordinates in headers only",
     )
+    # A JSON body without them, beside headers that carry them: the body alone is read.
+    ctx.refused(
+        ctx.call(member, "POST", NEAREST, {}, headers=headers),
+        400,
+        "invalid_request",
+        "coordinates in headers beside a JSON body without them",
+    )
     # Out of range, or of the wrong type: refused, and the error names no value.
     for bad in (
         {"latitude": 91.7123457, "longitude": COORDINATES[1]},
@@ -1048,8 +1055,20 @@ def adult_lock(ctx: ProfileContext) -> str:
         _account(member.account_id).eligibility_version == before + 1,
         "the transition bumps eligibility_version",
     )
-    holder, arriver = Worker("age-holder"), Worker("age-arriver")
+    holder, arriver, prober = Worker("age-holder"), Worker("age-arriver"), Worker("age-prober")
     chat = OrmContactPersistence(provider="fixture")
+
+    def age_row_free() -> bool:
+        from django.db import DatabaseError
+        from glow_persistence.models import AccountAgeState
+
+        try:
+            with transaction.atomic():
+                rows = AccountAgeState.objects.select_for_update(nowait=True)
+                list(rows.filter(account_id=member.account_id))
+        except DatabaseError:
+            return False
+        return True
 
     def transition() -> str:
         with transaction.atomic():
@@ -1072,6 +1091,7 @@ def adult_lock(ctx: ProfileContext) -> str:
         arriver_pid = arriver.run(_backend_pid)
         moving = arriver.submit(transition)
         wait = observe_lock_wait(arriver_pid, holder_pid=slot.wait(), finished=moving.done)
+        free = prober.run(age_row_free) if wait.observed and not moving.done() else None
         hold.release.set()
         withdrawn = withdrawing.result(timeout=30)
         moved = moving.result(timeout=30)
@@ -1079,7 +1099,9 @@ def adult_lock(ctx: ProfileContext) -> str:
         hold.release.set()
         holder.close()
         arriver.close()
+        prober.close()
     expect(wait.observed, "the transition waited on the account row lock")
+    expect(free is True, "while it waits, it holds no lock on the age state's row: account first")
     expect(
         withdrawn.outcome == "applied" and moved == "applied", "both applied, one after the other"
     )
@@ -1645,6 +1667,181 @@ def completion_removals(ctx: ProfileContext) -> str:
     ctx.refused(cleared, 400, "invalid_request", "a cleared area")
     expect(_profile_row(member.account_id).state == "visible", "a refused edit changes nothing")
     return f"{demoted} removals demoted or left paused; four emptying edits refused"
+
+
+# =============================================================================================
+# The schema's own refusals (the P11 plan's DB04, for SV2's tables)
+# =============================================================================================
+
+
+@case("constraints.malformed_direct_writes_are_refused", "D2", "D3", "D4", "D5", "D6", "D7", "D18")
+def constraints_refuse(ctx: ProfileContext) -> str:
+    """A direct write no SV2 writer makes, against each constraint migration 0005 declares, is
+    refused by PostgreSQL itself, naming that constraint, and leaves nothing behind. Harness
+    writes only; the error's text is read for the constraint's name and never kept."""
+    from django.db import IntegrityError, transaction
+    from django.utils import timezone
+    from glow_persistence.models import (
+        AccountAgeState,
+        Area,
+        ConsentDecision,
+        IdentityVerification,
+        Preferences,
+        PreferenceSetEntry,
+        Profile,
+        ProfileFieldChoice,
+        SettingVersion,
+    )
+
+    member, newcomer = ctx.ready_member(), ctx.member()
+    account, other = member.account_id, newcomer.account_id
+    now = timezone.now()
+
+    def snapshot() -> tuple[Any, ...]:
+        return (
+            SettingVersion.objects.count(),
+            ConsentDecision.objects.count(),
+            Area.objects.count(),
+            ProfileFieldChoice.objects.count(),
+            PreferenceSetEntry.objects.count(),
+            IdentityVerification.objects.count(),
+            tuple(
+                Preferences.objects.filter(account_id=account)
+                .values_list("minimum_age", "maximum_age")
+                .get()
+            ),
+            tuple(
+                AccountAgeState.objects.filter(account_id=other)
+                .values_list("state", "birth_date")
+                .get()
+            ),
+            tuple(
+                ProfileFieldChoice.objects.filter(account_id=account, field="looking_for")
+                .values_list("own_words", "shown")
+                .get()
+            ),
+            Profile.objects.filter(account_id=account).values_list("area_id", flat=True).get(),
+        )
+
+    writes: list[tuple[str, Callable[[], Any]]] = [
+        (
+            "setting_version_positive",
+            lambda: SettingVersion.objects.create(
+                name="profile.gender",
+                number=0,
+                content={},
+                published_at=now,
+                staff_subject=STAFF,
+                reason="SV2-proof",
+            ),
+        ),
+        (
+            "setting_version_number",
+            lambda: SettingVersion.objects.create(
+                name="profile.gender",
+                number=1,
+                content={},
+                published_at=now,
+                staff_subject=STAFF,
+                reason="SV2-proof",
+            ),
+        ),
+        (
+            "age_state_birth_date",
+            lambda: AccountAgeState.objects.filter(account_id=other).update(birth_date=now.date()),
+        ),
+        (
+            "consent_purpose",
+            lambda: ConsentDecision.objects.create(
+                account_id=account,
+                purpose="fixture-purpose",
+                policy_version="fixture.v1",
+                state="accepted",
+                decided_at=now,
+                version=99,
+            ),
+        ),
+        (
+            "area_internal_point",
+            lambda: Area.objects.create(
+                area_id="99999", name="Fixture Area", latitude="91.000000", longitude="0.000000"
+            ),
+        ),
+        (
+            "preferences_age_floor",
+            lambda: Preferences.objects.filter(account_id=account).update(minimum_age=17),
+        ),
+        (
+            "preferences_age_range",
+            lambda: Preferences.objects.filter(account_id=account).update(
+                minimum_age=30, maximum_age=29
+            ),
+        ),
+        (
+            "profile_field_choice",
+            lambda: ProfileFieldChoice.objects.create(
+                account_id=account, field="gender", value_ids=["woman"], setting_version=1
+            ),
+        ),
+        (
+            "profile_field_name",
+            lambda: ProfileFieldChoice.objects.create(
+                account_id=other, field="fixture-field", value_ids=["woman"], setting_version=1
+            ),
+        ),
+        (
+            "profile_field_own_words",
+            lambda: ProfileFieldChoice.objects.filter(
+                account_id=account, field="looking_for"
+            ).update(own_words="Fixture words"),
+        ),
+        (
+            "profile_field_shown",
+            lambda: ProfileFieldChoice.objects.filter(
+                account_id=account, field="looking_for"
+            ).update(shown=False),
+        ),
+        (
+            "preference_set_not_stated",
+            lambda: PreferenceSetEntry.objects.create(
+                account_id=account, field="orientation", value_id="not-stated"
+            ),
+        ),
+        (
+            "preference_set_value",
+            lambda: PreferenceSetEntry.objects.create(
+                account_id=account, field="gender", value_id="all"
+            ),
+        ),
+        (
+            "identity_verification_provenance",
+            lambda: IdentityVerification.objects.create(
+                account_id=account, state="verified", method="automated_check", decided_at=now
+            ),
+        ),
+        (
+            "identity_verification_provenance",
+            lambda: IdentityVerification.objects.create(
+                account_id=other, state="staff_approved", method="staff_approval", decided_at=now
+            ),
+        ),
+        (
+            # Django names a foreign key's constraint by a hash; the error names its kind.
+            "violates foreign key constraint",
+            lambda: Profile.objects.filter(account_id=account).update(area_id=uuid4()),
+        ),
+    ]
+    before = snapshot()
+    for constraint, write in writes:
+        named = False
+        try:
+            with transaction.atomic():
+                write()
+        except IntegrityError as error:
+            named = constraint in str(error)
+        expect(named, f"PostgreSQL refuses the write by {constraint}")
+    expect(snapshot() == before, "the refused writes leave nothing behind")
+    return f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint"
 
 
 # =============================================================================================
