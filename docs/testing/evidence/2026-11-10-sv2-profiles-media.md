@@ -1179,3 +1179,44 @@ Each file was restored and its hash checked; the 22 guard tests then passed.
 3. **Additions beyond the brief's list:** the age label, more patterns, and a model check on each allowlisted write. Each passes at `01a3acb`. **Accepted:** they are within items 1 and 4.
 4. **The allowlist pins line numbers,** as the brief asked, so an edit that moves one of those lines fails the guard until the allowlist moves with it. **Accepted, as a deliberate tripwire.** It is carried to Stage B, whose sessions update the allowlist with any edit that moves an allowlisted line (the carried-items file, "Carried to SV2").
 5. **Not run locally:** the mobile checks, the ordering and identity suites, and the job's shell steps as a whole. **Accepted:** C3 changes no file they read, and the run of record ran them.
+
+## Delta review of correction C3 (code head `fee4fdc`)
+
+- **The session:** started by Nathan from C3's delta review prompt, revision 1, at `c235b68e1081ef8c71efebd224b9d0bcbdc83272` (`docs/ephemeral/2026-11-10-sv2-stage-a-c3-delta-review-prompt.md`). It reported on 10 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed, and the GitHub token names were never read;
+  - the start gate passed, with one merge base, `df8a04c`, and no code differing from `fee4fdc`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`;
+  - `git diff --name-only 01a3acb fee4fdc -- . ':!*.md'` lists exactly four paths, all tests.
+- **What it ran,** in scratch copies of `fee4fdc` and `01a3acb`:
+  - the API's checks (529 tests `OK`, Ruff, mypy on 78 files) and the contract tests (49);
+  - the proof's offline tests (223), Ruff and mypy;
+  - five reversals of its own (D1 to D4 and a label), each passing `01a3acb`'s 524 tests and failing its new check at `fee4fdc`;
+  - a tripwire reversal (T1), a comment line above an allowlisted write, which fails the guard;
+  - six gap probes (G1 to G6) and a label-rebinding probe;
+  - informational, on a throwaway PostgreSQL 17.11 under D4: the suite 53/53 in 89.4 s, both scans clean, a second run refused, and a lock probe.
+- **What it read:** push run 42908603138 on `fee4fdc` and PR43's pull-request run 42912992237 on `c235b68`. Each has all eight jobs `success` and the gate's `Application checks passed`. The PR run's profile suite passed 53/53 in 69.9 s with both scans clean, and its rerun was refused with the counts `108 108 92 38 978 802` unchanged.
+- **The verdict: approve with nits.** C3 closes the full review's finding 1, (a) to (c), for every spelling the review and the brief named. Every new check fails for the edit it names, none was relaxed, and no code changed. No finding is should-fix, and none falls in a correction class.
+
+**Its answer on the lock order** (focus 6, C3's deviation 2): **the conclusion holds, and the recorded reason is incomplete.**
+- Member writers take the account row `FOR UPDATE` first, then pointers only `FOR SHARE`, in name order within each `read_shared` call.
+- Publications take one pointer `FOR UPDATE` and no account row. Only the `chat.history` publication also takes `consent.onboarding` `FOR SHARE`, and no member writer or read takes `chat.history`.
+- The one possible cycle is the one the session named. `set_field` holds `profile.*` and then wants `consent.onboarding` in its recompute; `save_profile` takes `consent.onboarding` and then `profile.*` in one call. A publication waits `FOR UPDATE` on each pointer.
+- It does not deadlock, because PostgreSQL grants `FOR SHARE` at once on a row that holds only share locks, without queueing behind a waiting `FOR UPDATE` (`heap_lock_tuple`; `README.tuplock`). That is implementation behaviour, not the documented conflict table. The review observed it on 17.11: the exact four-transaction cycle completed with no deadlock, and a control showed that a share request behind a *held* `FOR UPDATE` does wait.
+- **What the record may claim,** in the review's words: no deadlock, because publications take no account row, no member transaction reads `chat.history`, and PostgreSQL grants a share request on a share-only-locked row without queueing behind a waiting `FOR UPDATE`. That last point is implementation behaviour, observed on 17.11 by this review and not tested by a suite case. Either way the worst case is bounded: PostgreSQL's deadlock detection aborts one transaction, and `tx.run` answers it as a refused request, not a hang.
+
+**The findings and the manager's dispositions** (step 6, rule (b): a nit is a recorded follow-up):
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| N1 | nit (records) | "Correction C3"'s no-deadlock reason is incomplete: "shares do not conflict" does not rule out a cycle alone, and "a publication holds one pointer `FOR UPDATE`" leaves out `chat.history`'s `FOR SHARE` on `consent.onboarding` (`settings_store.py:126`). The conclusion is right | **Recorded:** the reason above, in the review's words, is the record's claim. "Correction C3" item 6 is the session's text and is not edited; where it differs, this reason governs. To the Dev Manager's pre-merge read, with C3's deviation 2 |
+| N2 | nit | The creates check reads `operations.py` only, and no check sees `bulk_create`: `Profile.objects.create(…, state=…)` in `staff.py` (G3) and a `bulk_create` upsert of `state` (G4) pass all 529 tests | **Carried to Stage B,** as a guard to widen when its sessions touch these tests (the carried-items file, "Carried to SV2") |
+| N3 | nit | `_binds` reads only plain `name = …` bindings, so a profile bound by walrus, `for`, `with` or tuple unpacking in an allowlisted function satisfies the entry (G5) | **Carried to Stage B**, with N2 |
+| N4 | nit | The standard-streams check does not see a file the module opens itself (`open(…).write(…)`, `Path.write_text`; G1, G2) | **Carried to Stage B**, with N2 |
+| N5 | nit | The label guard trusts a name in `LABEL_NAMES` wherever it is bound, so a rebinding to a member value passes. Every current binding is safe: the review read all 17 | **Carried to Stage B**, with N2 |
+
+**What it did not run or read:** the mobile checks, the ordering and identity suites locally, and the workflow's shell steps as a whole (both CI runs passed them). It read `profile_cases.py` and the application modules as far as the guards and the lock order need.
+
+Nothing in the repository, on GitHub or in Notion changed.
+
+**What follows:** the Dev Manager's pre-merge read (DM-56), then the pre-merge checklist in PR43's description, the PR run and Codex on the final head, and the merge.
