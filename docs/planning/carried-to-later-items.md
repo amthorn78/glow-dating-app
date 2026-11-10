@@ -35,6 +35,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - the staff operations SV2 builds take their staff subject from the caller, and P07's staff authentication supplies it;
   - a staff restriction of a photo is cleared only by the staff decision that closes the report, never by the automated check;
   - a hold on a photo (G-02's seam) is released only by the item that builds it.
+- **From SV2 Stage A (DM-54):** two launch values OD-60 does not give, each with a recommendation in OD-32's form. **The orientation list** ships empty, so orientation matches nothing until it has values, though Nathan said orientation "DOES need to be used for matching" (OD-60). **The distance choices** ship as `anywhere` only; a distance counts areas whose internal points are within it, and two members in one area are at distance zero (DM-52). Also the idempotency records' retention (24 hours, provisional).
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
@@ -47,6 +48,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **P08.3:** G-07 (consumer and subscription law), only if Nathan chooses a paid launch (A06); no PF01 line now.
 - **A DPIA at a UK or EU launch** (DM-38 section 8): whether one is needed is read from the matrix's DPIA tests ("likely high risk", "large scale": EU-25, EU-46, EU-47), not from App Manager 8's follow-up reply under OD-55, which said one is needed "since orientation data, matching and age checks are high-risk". No decision rested on that reply, since the launch is the US only (OD-55).
 - **From SV2's brief (DM-52):** the consent wording says that a gender with a "show me" set can reveal orientation (onboarding consent) and that a viewer who narrows a field learns it for everyone they are shown (the sensitive-fields consent), as well as H's readable rule (DM-51 M15). The account deletion's photo purge asks G-02's hold port first. The identity verification company's copy of a member's ID and selfie is deleted on the schedule Nathan's decision sets, and on account deletion.
+- **From SV2 Stage A (DM-54):** what a new onboarding consent version requires of existing members, re-acceptance before their next use or a grace period, and so whether its publication demotes at once. Until P08 decides, a `visible` member's next requirement write demotes them (D9's recompute).
 
 ## Carried to SV1 (the identity slice; OD-49)
 
@@ -62,7 +64,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV2 (profiles and media; OD-49)
 
-- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 3 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16) and applies DM-52's B1 to B55 and DM-53's W1 to W10 as written, with Nathan's answers in DM-52's session (OD-61: identity verification in D18; the chart and the birth time in D8 and D9; automated photo approval in D10). Stage A is built and integrated (its evidence record); its decisions are with the Dev Manager (DM-54).
+- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 3 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16) and applies DM-52's B1 to B55 and DM-53's W1 to W10 as written, with Nathan's answers in DM-52's session (OD-61: identity verification in D18; the chart and the birth time in D8 and D9; automated photo approval in D10). Stage A is built and integrated (its evidence record); DM-54 ruled on its decisions, and correction C1's prompt is with Nathan.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
   - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
   - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), now with Nathan's answer (OD-60): consent at the step where orientation and relationship status are entered, and consent wording that says what H's read-only rule leaves readable (DM-51 M15).
@@ -74,6 +76,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From P09.3a's matrix** (DM-37 2.2): eligibility reads G-01's account age state.
 - **From OD-60** (R and P2): resurfacing, an undo of the last pass, and rematch are settings, off at launch and switchable with a waiting period; rematch never after a block or a report, and as a reviewed transition on the one match record, never a second one (the data model, `Match`; DM-51 M10). Eligibility applies the two-way rule over the four list fields and the age range, and the distance filter over the member's chosen city or region or the phone's approximate location, never exposing exact coordinates or an exact distance. SV3 tests what repeated filter changes and tiny population groups reveal (the original research; DM-51 M9).
 - **From SV2's brief (DM-52):** a "show me" set that keeps all is a marker that includes values the console adds later and "not stated", and a narrowed set never includes "not stated"; a member with "not stated" in orientation or relationship status is seen only by viewers who keep all of that field. The age comes from the age state's date through a function that returns whole years, never from the birth input. A distance choice counts areas whose internal points are within it, and two members in one area are at distance zero. Every reader of consent filters by purpose.
+- **From SV2 Stage A (DM-54):** a profile can stay `visible` after a new onboarding consent version is published, until the member's next requirement write runs D9's recompute. Discovery reads the accepted version against the current one, and `policy_published` for `consent.onboarding` is its invalidation signal.
 
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
@@ -87,6 +90,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From P06.3's exact-head review, F-4** (the P06.3 record, "Exact-head review of P06.3"): the in-memory composer's `_fixed` set and ledger grow without bound (`notifications.py`); the serving slice gives the ledger its real storage, a bound and a retention.
 - **From DM-44's optional item (4.1), not taken in P06.3:** whether turning every kind off also revokes the installation's registration and discards its token, so that Glow holds no token it does not use. F12 allows it (`revoke`). It is decided where real tokens first exist, here or in P09.2.
 - **From SV2's brief (DM-52):** a visible profile that loses a completion requirement becomes `incomplete`, and the send check then refuses. That cause is not among OD-60's H causes; SV4's design says what each member reads then, and until it does, SV4's interim default applies.
+- **From SV2 Stage A (DM-54):** `glow_chat`'s send check reads the latest onboarding decision's state, not its version (`_contact_state_checks`), so a member whose accepted version is no longer current can still send until D9's recompute demotes them. Whether the send check reads the version follows P08's rule for a new version.
 
 ## Carried to P10 (pre-integration readiness evidence)
 
