@@ -116,7 +116,7 @@ Much of its text is the Dev Manager's words (DM-52 and DM-53), checked against t
 git fetch origin claude/magical-wozniak-yfmmx2 main
 git switch -C <your session branch> <START_SHA>   # your branch starts at this prompt's commit
 git rev-parse HEAD                                  # must print <START_SHA>
-git merge-base --is-ancestor c864edd11dd16b0b5479170ce35158383be2b358 HEAD && echo "SV1 present"   # main's PR42 merge; must print "SV1 present"
+git merge-base --is-ancestor df8a04c5118d41016c14001308f796fd47626916 HEAD && echo "PR42 present"   # PR42's head; main's merge c864edd has the same tree. Must print "PR42 present"
 git diff --name-only c864edd11dd16b0b5479170ce35158383be2b358 HEAD | grep -v -E '\.md$'           # against main: must print nothing
 git diff --name-only <START_SHA> origin/claude/magical-wozniak-yfmmx2 -- services/api proofs/postgres-ordering packages/contracts apps/mobile/src/contracts .github 'docs/testing/evidence/*sv2*' docs/architecture docs/testing/p11-deferred-acceptance.md   # must print nothing
 test -e services/api/glow_profiles && echo "glow_profiles exists"                                  # must print nothing
