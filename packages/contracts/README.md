@@ -146,8 +146,8 @@ OD-45".
 
 ## SV2 Stage A: the profile's contract
 
-SV2's Stage A ([brief](../../docs/planning/sv2-profiles-media.md), revision 3, D11; DM-52 and
-DM-53) adds closed DTOs to the unpublished design catalog, each in its flow's request or
+SV2's Stage A ([brief](../../docs/planning/sv2-profiles-media.md), revision 5, D11; DM-52 to
+DM-55) adds closed DTOs to the unpublished design catalog, each in its flow's request or
 response contracts and projected to the `owner` only. Every existing DTO is unchanged; the new
 intents join `AppIntent` and the new responses join `AppResponse`, as P04.3's `MediaCollection` and
 C1's responses did, so older validators reject the new discriminators, and a deployed transport
@@ -185,6 +185,14 @@ map stays empty, and the sealed server routes are `services/api/glow_profiles`'s
   demotion that follows one, while a completion in an F04 owner command keeps `complete`
   (`owner`); and `restrict` from `visible` and from `paused` to `restricted` (`moderator`; `A05`),
   SV2's staff operation through `glow_chat`'s writer. No existing entry changes, and no DTO.
+- **Correction C2** (DM-55, finding 14, under W5) adds two F02 entries, each `owner` with the
+  policy `consent_current`: `accept` from `accepted` to `accepted` and `accept_sensitive` from
+  `accepted` to `accepted`, the re-acceptance at a newer version that both consent writers make.
+  Each has an allowed example (the current version, newer than the one accepted) and a refused one
+  (an old version: no `consent_current`, `policy_unresolved`; another owner, `forbidden`).
+  `test_sv2_registry_prerequisites_are_pinned` pins every SV2 entry's prerequisites (four in all:
+  `consent_current`, `A05`, `staff_approval` and eligibility) and the oracle's trusted test
+  prerequisites to the contract document's list. No existing entry changes, and no DTO.
 - **The shared corpus** gains 123 cases: each new DTO's valid forms, a private extra field, its
   bounds and conditional rules, coordinates or a distance where none may appear, and each new
   discriminator in `AppIntent` and `AppResponse`, through Python and the generated validators.
