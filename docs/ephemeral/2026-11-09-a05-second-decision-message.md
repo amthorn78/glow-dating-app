@@ -157,3 +157,21 @@ The P1 orientation row becomes:
 - **The data is now collected directly and used for matching.** It is still the same sensitive category: consent at the step where it is entered, never sold (UST-45), and declared in both stores (AP-23, GP-25), as already planned.
 
 **DECISION NEEDED:** is the table, with this row, your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change.
+
+**Nathan (while the reply above was being recorded):** "also, what about relationship status and looking for?"
+
+**The manager's reply, as sent:**
+
+**Neither is decided yet.** The original research lists "dating intent" for onboarding and nothing more, and no relationship status has been recorded. Both fit the same pattern as gender and orientation, so two more rows join the table:
+
+| Item | What you can change in the console | Launch default | Fixed limit, and why |
+|---|---|---|---|
+| P1 looking for | The list; whether members can narrow by it | A proposed starting list: a long-term relationship; something short-term; something casual; new friends; still figuring it out. A member picks one or more, and "show me people looking for" starts at all, so narrowing is the member's choice. Shown on the profile | Matching uses list values, both ways |
+| P1 relationship status | The list; whether members can narrow by it | A proposed starting list: single; separated or divorcing; partnered, in an open or non-monogamous relationship. A member picks one, and "show me" starts at all. Shown only if the member chooses | Matching uses list values, both ways |
+
+**What this means:**
+- **Each field a member narrows shrinks who they see,** and in a small launch pool that can leave few people. That is why every "show me" starts at all.
+- **The starting lists are my proposal.** You can edit them in the console before launch or at any time.
+- **Relationship status may count as information about a person's "sex life",** which two of the state laws treat as sensitive (UST-42, UST-48). It gets the same handling as orientation: consent at entry, never sold, and declared in both stores. The matrix's recheck of the rows this taxonomy touches covers it (section 10).
+
+**DECISION NEEDED:** is the table, with the orientation row and these two rows, your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change.
