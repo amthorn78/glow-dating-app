@@ -146,6 +146,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-07 | 9 Nov 2026 | accuracy | DM-48 (`38142b3`) proposed words for acceptance check 11 ("the sixth request at `account/password/change` within 300 seconds … is refused") that describe a case allauth's default `5/m/user` also passes, since a sixth request sent at once is refused at 5 a minute too; and its D3 replacement left "They use Django's cache" pointing at the threat model | Dev Manager 4, DM-48 section 3 |
 | AM10-08 | 9 Nov 2026 | follow-through | Implementation Control's Branches bullet kept the manager branch's "at this sync" hash one commit behind the status line at two syncs in a row (`30fdf1a` against `38142b3`; `38d48e2` against `cae9cea`); the status edit did not move the bullet | Dev Manager 4, DM-48 section 9 and DM-49 section 5 |
 | AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
+| AM10-10 | 9 Nov 2026 | accuracy | The second A05 message, revision 1, took its facts from the matrix's section 9 summary and the manager's reading of the design, not from each cited row and text: Apple's row has no derived-data rule (AP-23), California's is a right to limit, not consent (UST-42), New York's fraud-ban notice binds only a paid service (UST-08), "a city or ZIP code" widened the research's "city/region", and rematch was said to change the data model, which says the opposite (`Match`) | Dev Manager 4, DM-51 section 5 |
 
 ## App Manager 2
 
@@ -1094,6 +1095,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-10 — Facts written from a summary, not from the rows (accuracy)
+
+- **What happened:** the second A05 message, revision 1, cited matrix rows and design texts but took their content from the matrix's section 9 summary and from the manager's own reading. Five statements were wrong against their sources: both stores ask for derived data (only Google's row says so, GP-25); California requires consent at its threshold (its row is a right to limit, UST-42); New York's fraud-ban notice binds now (only for a paid service, UST-08); the research's "city/region" became "a city or ZIP code", without its privacy testing; and rematch added later "changes the data model's one-pair rule" (the `Match` row says rematch is policy on one pair record). The matrix's own section 9 line carried the California error.
+- **Caught by:** Dev Manager 4, DM-51 section 5, which read every cited row.
+- **Effect:** none on Nathan: the message had not gone to him. Revision 2 applies M1 to M17, and X1 corrects the matrix.
+- **Correction:** DM-51's M1 to M17 and X1, applied as written.
+- **Prevention:** before a decision message goes to the Dev Manager, each statement that cites a row or a design text is checked against that row's own cells or that text's own words, not a summary of them; a paraphrase of a source is quoted or marked as a paraphrase.
 
 ### AM10-09 — A replaced state left in P11's plan (follow-through)
 
