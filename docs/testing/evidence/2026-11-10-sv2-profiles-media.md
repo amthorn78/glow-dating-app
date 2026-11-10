@@ -541,13 +541,17 @@ Each file was restored and its hash checked against `86a2156`.
 - The second profile run was refused, with the counts `92 92 78 33 800 675` unchanged.
 - The artifact `sv2-profile-results` is 4,676 bytes, and the cleanup removed the container.
 
-**Codex.** Its review of `033e8d4` raised two P1 findings against the code before C1: the recompute missing from every writer but the profile edit, and a failing birth input stored. They are C1's items 1 and 3, and `86a2156` addresses both. Their threads close after Codex reviews the integrated head.
+**Codex.** Its review of `033e8d4` raised two P1 findings against the code before C1: the recompute missing from every writer but the profile edit, and a failing birth input stored. They are C1's items 1 and 3, and `86a2156` addresses both.
+- **Codex on `40db2c2`** (the commit that holds the integration and the review prompt's revision 1): its code review completed at 13:11:55 UTC. It did not raise the two P1 findings again, and their threads are answered and resolved.
+- **One new P2 finding** (`operations.py:1019`, "Commit the protective reset for future birth dates too"): a future birth date takes the 400 refusal before the committed reset, so an adult's state, a resolved birth input and a visible profile stay as they were. That is C1-3's point (below).
+  - **Disposition:** under step 6 it joins the exact-head review's pass. The review prompt's revision 2 puts both readings in focus item 3; the manager does not decide between them.
+  - Whether it is fixed follows the review's answer. If the words do not decide, it goes to the Dev Manager with the correction's scope. Its thread stays open until then.
 
 **The session's decisions** (its "Decisions and deviations for the manager"):
 - **C1-1:** a demotion found by a field or area write is `requirement_removed` (`system`), with `profile_demoted`. **Accepted, the manager on DM-54's words.** Y4 makes `requirement_removed` "the demotion that follows another write". A field or area write cannot empty a required value, since D9 refuses that, so any demotion there comes from a lapse.
   - **A note for the review and the Dev Manager:** a demotion inside the profile edit is always recorded as the owner's `edit`, even when the cause is a lapsed requirement rather than a cleared summary. Y4's words keep `edit` for "the owner's own edit that clears the summary".
 - **C1-2:** the recompute also runs on writes that change nothing. **Accepted:** D9 says every writer ends with it.
-- **C1-3:** a future birth date keeps its 400 refusal, with no rerun and no state change; only a date under 18 takes the refused-and-rerun path. **Accepted for the review, the manager's reading of DM-54's words, put to the Dev Manager at the pre-merge read.**
+- **C1-3:** a future birth date keeps its 400 refusal, with no rerun and no state change; only a date under 18 takes the refused-and-rerun path. **Accepted for the review, the manager's reading of DM-54's words, put to the Dev Manager at the pre-merge read.** Codex's P2 on `40db2c2` contests it (above): `adult_outcome` fails a future date, and the brief's acceptance item 7 counts one among the dates that fail. Both readings go to the review.
   - A future date fails D7's validity ("valid, not in the future"), not its age test: it is not a declaration of age (P04's `birthInputValid` refuses it: "Future dates are unavailable").
   - It is refused and stores nothing, which keeps "a failing date is refused and not stored".
 - **C1-4:** 403 `forbidden`, with the reason `birth_date_fails_adult_rule`. **Accepted:** DM-54 section 8 gives `forbidden` as the public code.

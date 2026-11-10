@@ -150,6 +150,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-11 | 10 Nov 2026 | accuracy | SV2's brief, revision 1, proposed mechanisms without reading the code and contract they rely on: D7 had SV1's age port update an existing row (`record` refuses one, and `glow_identity` was excluded) and the birth input hold the date before the member gives a place; D11 gave the sensitive consent as `ConsentIntent` with a new purpose (it has no purpose field); D6 assumed `accept_consent` checks the version; D9 left out P04.2's chart and "looking for" requirements | Dev Manager 4, DM-52 sections 8, 9 and 11 |
 | AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
 | AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
+| AM10-14 | 10 Nov 2026 | accuracy | Verifying SV2 Stage A's correction C1 (`40db2c2`), App Manager 10 accepted C1-3 (a future birth date refused with no rerun) as a reading of DM-54's words and put only its supporting argument in the review prompt's revision 1. It did not set it against the brief's acceptance item 7, which counts "a future date" among the dates that fail, or `adult_outcome`, which fails one | Codex, its P2 finding on `40db2c2` |
 
 ## App Manager 2
 
@@ -1098,6 +1099,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-14 — A reading accepted with one side of the words (accuracy)
+
+- **What happened:** C1's session left C1-3 to the manager: a future birth date keeps its 400 refusal, and only a date under 18 takes DM-54's refused-and-rerun path. The manager accepted it as a reading for the review and the Dev Manager, citing D7's validity clause ("valid, not in the future"). The review prompt's revision 1 gave that side only. The brief's acceptance item 7 counts "a future date" among the dates that fail, and `adult_outcome` fails one; Y6 and Y7 speak of a date that fails "the rule" and "the adult rule".
+- **Caught by:** Codex, its P2 finding on `40db2c2` (`operations.py:1019`).
+- **Effect:** none: revision 1 was held before Nathan ran it.
+- **Correction:** the review prompt's revision 2 puts both readings in focus item 3, and the records say the reading is contested.
+- **Prevention:** before accepting a session's reading of a Dev Manager's words, the manager reads every place the brief and the code use the term at issue, and puts the counter-reading beside it.
 
 ### AM10-13 — A start gate checked a commit its branch does not hold (prompt)
 

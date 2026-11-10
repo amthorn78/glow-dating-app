@@ -1,11 +1,11 @@
 # SV2 Stage A exact-head review prompt — the server's profile, with a written threat model
 
 - **Owner:** App Manager 10. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 10 November 2026.**
+- **Revision 2, 10 November 2026.** It adds Codex's P2 finding on `40db2c2` (a future birth date) to focus item 3, with both readings of C1-3. Revision 1 was at `40db2c2`.
 - **Durable brief:** [SV2 — The profiles and media slice](../planning/sv2-profiles-media.md), revision 4, "Review plan" and "Stage A, correction C1".
 - **Where the result goes:** the report Nathan relays. The manager records it in the evidence record, "Exact-head review of Stage A", with a disposition for each finding (fix before the merge, or carry), and in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Fable 5.1 at extra high.** Effort score 3.25 (confidence 0.82); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.73, max 0.26, ultracode 0.00. Model probabilities Fable 5.1 0.71, Opus 5.5 0.29, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.61). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.007, Fable 5.1 at extra high 0.518, Fable 5.1 at max 0.185, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.000, Opus 5.5 at high 0.003, Opus 5.5 at extra high 0.212, Opus 5.5 at max 0.075, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-10T13:07:55Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Fable 5.1 at extra high.** Effort score 3.18 (confidence 0.87); rung probabilities low 0.00, medium 0.00, high 0.01, extra high 0.80, max 0.19, ultracode 0.00. Model probabilities Fable 5.1 0.67, Opus 5.5 0.33, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.56). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.007, Fable 5.1 at extra high 0.536, Fable 5.1 at max 0.127, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.000, Opus 5.5 at high 0.003, Opus 5.5 at extra high 0.264, Opus 5.5 at max 0.063, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-10T13:16:44Z. Nathan picks the cell.
 - **The Dev Manager's read:** none before it runs (the brief's "Review plan"). The review authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29), after Codex's review of PR43's head and of this prompt's commit (manager workflow, step 6).
@@ -15,7 +15,7 @@
 
 ---
 
-You are the **exact-head code and security review of SV2's Stage A**, the server's profile, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one exact code head, with a written threat model. This prompt is revision 1, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are the **exact-head code and security review of SV2's Stage A**, the server's profile, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one exact code head, with a written threat model. This prompt is revision 2, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **The brief,** `docs/planning/sv2-profiles-media.md`, revision 4. Its Stage A text applies the Dev Manager's conditions word for word: DM-52's B1 to B55, DM-53's W1 to W10 and DM-54's Y1 to Y12, in `docs/continuity/dev-manager/reviews/` (`2026-11-10-dm-52-sv2-brief.md`, `…-dm-53-sv2-stage-a-paths.md`, `…-dm-54-sv2-stage-a-decisions.md`), with Nathan's answers as OD-60 and OD-61 (`docs/continuity/owner-directions.md`). In short, Stage A builds:
@@ -29,7 +29,7 @@ You are the **exact-head code and security review of SV2's Stage A**, the server
   - 15 sealed member routes, additive DTOs, flow-registry entries and regenerated contract outputs (D11), keyed idempotency digests (D17);
   - a profile suite on a third disposable database in the Database proof checks job (D12); the served runtime sealed (D13).
 - **The implementation** (branch `claude/sv2-stage-a-impl-0qqzvj`, code head `b97bc15`): 44 profile cases and 59 reversals, each failing its case. Run of record: push run 42759801460, all eight jobs passed. The manager verified it (the evidence record, "Manager verification").
-- **The Dev Manager ruled on its 13 decisions** (DM-54). Two P1 findings from Codex on `033e8d4` (the recompute in one writer only; a failing birth input stored) are the same defects.
+- **The Dev Manager ruled on its 13 decisions** (DM-54). Two P1 findings from Codex on `033e8d4` (the recompute in one writer only; a failing birth input stored) are the same defects. Codex's review of `40db2c2` added one P2 finding, on C1-3's point (focus 3).
 - **Correction C1** (branch `claude/funny-lamport-5f2s1u`, code head `86a2156`; the evidence record, "Correction C1"):
   - D9's one recompute at the end of every Stage A requirement writer;
   - a birth input whose date fails the adult rule refused and not stored, while its rerun commits;
@@ -119,7 +119,10 @@ For each threat, give the code that stops it and the test that proves it. It cov
 2. **The Dev Manager's conditions met in code:** DM-52's B1 to B55 for Stage A, DM-53's W1 to W10 and DM-54's Y1 to Y12. Name any condition the code does not meet.
 3. **The manager's readings, to confirm or refute:**
    - **C1-1:** a demotion found by a field or area write is `requirement_removed` (`system`). Also: a demotion inside the profile edit is always the owner's `edit`, even when the cause is a lapsed requirement, not a cleared summary (`recompute.py`, `entry`). Is that within Y4's words, and does it change any event SV3's invalidation reads?
-   - **C1-3:** a future birth date is refused (400) with no rerun and no state change; only a date under 18 takes D7's refused-and-rerun path. Is that within D7's and Y6's words, and does it leave any state a self-declared minor could keep?
+   - **C1-3, which Codex's P2 finding on `40db2c2` contests** (`operations.py:1019`, "Commit the protective reset for future birth dates too"): a future birth date is refused (400) with no rerun and no state change; only a date under 18 takes D7's refused-and-rerun path.
+     - **For the reading** (C1's session): a future date fails D7's validity ("valid, not in the future"), not its age test, and declares no age; P04's `birthInputValid` refuses it too. Acceptance item 7's rerun clause names only a date under 18.
+     - **Against it** (Codex): `adult_outcome` fails a future date, and acceptance item 7 counts "a future date" among the dates that fail. Y6 and Y7 speak of a date that fails "the rule" and "the adult rule".
+     - **Asked:** which reading the words support; whether either leaves any state a self-declared minor could keep; and whether any other failing date bypasses the committed reset, such as an invalid one. If the words support Codex's reading, it falls in the class "leave a Dev Manager condition unmet". If they do not decide, the manager puts your answer to the Dev Manager with the correction's scope.
 4. **No test is weakened or vacuous:**
    - each reversal the record names fails its case;
    - no case could pass while the behaviour it guards is wrong. Above all: the coordinates' "never" tests, the sensitive consent's withdrawal, the lock-order cases, the recompute's call sites, the refused birth input and the digest test;
@@ -258,7 +261,7 @@ Expected: `"full": true`. Anything else: stop and report.
 ## 4. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
+- the prompt revision (revision 2, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
 - **the verdict:** approve, approve with nits, or changes required;
 - the threat model;
 - the findings, in a table: number, severity, correction class or not, file and line, what is wrong, and the evidence;
