@@ -857,3 +857,55 @@ Correction C2 of Stage A, to [DM-55](../../continuity/dev-manager/reviews/2026-1
 5. **C2-5, the nesting case's bodies:** within the 16 KiB request limit (10,000 opening brackets; 5,000 closed pairs), since a 20 KB body is refused by the limit before the parser (item 6's deviation).
 6. **C2-6, a stale code comment:** `profile_cases.py`'s section comment "the scans run after every case" is wrong (they run once, after the last case; claim 6). It was found after the code commit, and the push rule allows no code change after the run of record; it is left for the next code change.
 7. **No stop rule was met:** no model, migration, DTO, generated output, `glow_chat`, `glow_identity` (`age.py` included: unchanged at the head), `glow_api`, workflow, lock or dependency changed; no existing registry entry changed; the new entries' role is `owner`; the Database proof checks job took 9 minutes 37 seconds of its 30.
+
+### Manager verification of correction C2 (App Manager 10, 10 November 2026)
+
+**Integrated** at the merge `26419a9` (C2's code head `01a3acb`, records head `ca0ad16`). Nothing changed on the manager branch after `399c68d` before the merge.
+
+**The scope:** `git diff --name-only 399c68d ca0ad16` lists 22 paths, each within "Stage A, correction C2"'s owned paths.
+- The records commit `ca0ad16` holds Markdown only.
+- No model, migration, schema, generated output, lock, workflow, `glow_chat`, `glow_identity` or `glow_api` path changed, and `age.py` is unchanged.
+- `flows-v1.json` gains only the two F02 entries (`accept` and `accept_sensitive` from `accepted` to `accepted`, `owner`, `consent_current`), and no existing entry changed.
+- The P11 plan changed only in its "SV2 Stage A" entry.
+- The trusted classification, `main`'s policy run with `python3 -I` outside the tree: `"full": true`, `behavior-or-empty`, with one merge base, `df8a04c`.
+- The whole of Stage A's code diff is still 59 non-Markdown paths from `df8a04c`.
+
+**Re-runs,** in a scratch copy of `01a3acb` (`git archive`), in the clean environment, with the hash-locked installs:
+- **API:** `manage.py check`, no issues; `Found 524 test(s)` … `OK`; Ruff clean; `133 files already formatted`; mypy `no issues found in 78 source files`.
+- **Contract tests:** `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 221 tests` … `OK`; Ruff clean; `59 files already formatted`; mypy `no issues found in 59 source files`.
+- **The contract outputs:** `node scripts/generate.mjs --check`: `Generated types and runtime validators match schemas.`
+
+The manager runs no database test locally.
+
+**Four reversals, re-run offline.** Each failed as it should:
+- **C2-R1:** the U+0000 check removed from `text_ok`. `test_each_answers_400_with_the_contracts_error_and_no_value (case='u0000_in_a_stored_text')` fails.
+- **C2-R2:** `RecursionError` removed from `parse`'s refusals. The same test fails.
+- **C2-R3:** the new `accept_sensitive` entry's role set to `staff`. `test_f02_reacceptance_at_a_newer_version (event='accept_sensitive')` fails.
+- **C2-R4:** a profile `.update(state="visible")` added to `operations.py`. `test_only_the_recompute_writes_a_profiles_state` fails.
+
+Each file was restored and its hash checked against `01a3acb`.
+
+**The run of record**, read with the GitHub tools: push run 42864458572 on `01a3acb`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Every DM-41 retry step was `skipped`.
+- The profile suite: `[profile] cases: 53/53 passed in 75.7 s`.
+  - `profile secret scan: clean (1216 secrets held; 0 found in 810 log records, 130 writes and the results JSON)`;
+  - `profile value scan: clean (163 member values held …; 0 found in the same output)`;
+  - `PROFILE VERDICT: PASS`, and `profile phase: 76 s`.
+- The second profile run was refused, with the counts `108 108 92 38 978 802` unchanged.
+- `sv2-profile-results` is 5,212 bytes, and the cleanup removed the container.
+
+**Codex.** Its review of `496c39e` raised one P2, and its review of `399c68d` two P1s. Each is an item of C2:
+- **The history label moved first** (P2, `profile_settings.py:414`): finding 1, item 2.
+- **A date under 18 behind a later refusal** (P1, `operations.py:1011`): item 1.
+- **The sensitive consent's version at a save** (P1, `operations.py:130`): finding 9, item 3.
+
+The P2 on `40db2c2` (`operations.py:1019`) asked that a future date commit the reset. DM-55 ruled it invalid input that changes nothing, and C2 builds that. Its thread is answered with the ruling. The four threads are answered and resolved once this batch is pushed.
+
+**The session's decisions** (its "Decisions and deviations for the manager"):
+- **C2-1:** the eligibility step checks the date first for an `unknown` account too, still after the idempotency check. A retry of the refused command then answers `forbidden`, not `stale_version`. **Accepted, the manager on DM-55's words.** Z2 orders the date first for a self-declared adult, and says only what an `unknown` account's refusals are. The order changes no outcome but the refusal's code, and nothing is written either way. It goes to the exact-head review and to the Dev Manager's pre-merge read.
+- **C2-2:** item 2 reuses `MORE_READABLE_NEEDS_CONSENT`. **Accepted:** the prompt allowed it.
+- **C2-3:** item 7's refused example is the oracle's `policy_unresolved` for an old version, with another owner `forbidden`. **Accepted:** it is the oracle's own answer.
+- **C2-4:** one name added to the document's list (`staff_approval`), and four prerequisites across SV2's entries, all pinned. **Accepted:** the review's "four" counted the second.
+- **C2-5:** the nesting case's bodies stay within the 16 KiB request limit. **Accepted:** the first body never reached the parser, and the session found it by its reversal.
+- **C2-6:** `profile_cases.py`'s comment "the scans run after every case" is stale (corrected claim 6). **A recorded follow-up:** it is fixed with the next code change to the profile suite, a correction after the review if one is needed, or Stage B.
