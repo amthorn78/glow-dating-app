@@ -149,6 +149,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-10 | 9 Nov 2026 | accuracy | The second A05 message, revision 1, took its facts from the matrix's section 9 summary and the manager's reading of the design, not from each cited row and text: Apple's row has no derived-data rule (AP-23), California's is a right to limit, not consent (UST-42), New York's fraud-ban notice binds only a paid service (UST-08), "a city or ZIP code" widened the research's "city/region", and rematch was said to change the data model, which says the opposite (`Match`) | Dev Manager 4, DM-51 section 5 |
 | AM10-11 | 10 Nov 2026 | accuracy | SV2's brief, revision 1, proposed mechanisms without reading the code and contract they rely on: D7 had SV1's age port update an existing row (`record` refuses one, and `glow_identity` was excluded) and the birth input hold the date before the member gives a place; D11 gave the sensitive consent as `ConsentIntent` with a new purpose (it has no purpose field); D6 assumed `accept_consent` checks the version; D9 left out P04.2's chart and "looking for" requirements | Dev Manager 4, DM-52 sections 8, 9 and 11 |
 | AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
+| AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
 
 ## App Manager 2
 
@@ -1097,6 +1098,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-13 — A start gate checked a commit its branch does not hold (prompt)
+
+- **What happened:** SV2 Stage A's prompt, at `481e2f3`, checked `git merge-base --is-ancestor c864edd… HEAD`. `c864edd` is PR42's merge commit on `main`, and the manager branch does not contain it. SV1's prompt had checked the PR's head and said that `main`'s merge has the same tree.
+- **Caught by:** App Manager 10, running the gate's commands against the prompt's commit before giving it to Nathan.
+- **Effect:** none: the prompt had not gone out. Every session would have stopped at the gate and reported.
+- **Correction:** the gate checks PR42's head, `df8a04c`, whose tree equals `c864edd`'s (`a6624de`).
+- **Prevention:** before giving Nathan a prompt, the manager runs its start gate's commands against the commit the prompt names, and an ancestry check names a commit on the branch the session starts from.
 
 ### AM10-12 — Owned paths given without reading what the change writes (accuracy)
 
