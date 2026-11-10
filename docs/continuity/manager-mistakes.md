@@ -148,6 +148,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
 | AM10-10 | 9 Nov 2026 | accuracy | The second A05 message, revision 1, took its facts from the matrix's section 9 summary and the manager's reading of the design, not from each cited row and text: Apple's row has no derived-data rule (AP-23), California's is a right to limit, not consent (UST-42), New York's fraud-ban notice binds only a paid service (UST-08), "a city or ZIP code" widened the research's "city/region", and rematch was said to change the data model, which says the opposite (`Match`) | Dev Manager 4, DM-51 section 5 |
 | AM10-11 | 10 Nov 2026 | accuracy | SV2's brief, revision 1, proposed mechanisms without reading the code and contract they rely on: D7 had SV1's age port update an existing row (`record` refuses one, and `glow_identity` was excluded) and the birth input hold the date before the member gives a place; D11 gave the sensitive consent as `ConsentIntent` with a new purpose (it has no purpose field); D6 assumed `accept_consent` checks the version; D9 left out P04.2's chart and "looking for" requirements | Dev Manager 4, DM-52 sections 8, 9 and 11 |
+| AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
 
 ## App Manager 2
 
@@ -1096,6 +1097,17 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-12 — Owned paths given without reading what the change writes (accuracy)
+
+- **What happened:** SV2's brief, revisions 1 and 2, made D11's contract additions additive DTOs and gave them owned paths without reading what adding a DTO writes.
+  - `packages/contracts/scripts/generate.mjs` writes `apps/mobile/src/contracts/generated/` from every schema definition. CI's Mobile checks job runs its `--check`, which fails on any byte difference, and `corpus.test.mjs` imports the generated validators. The brief excluded `apps/**`, and D11 said the mobile app's generated validators stay untouched until P10.
+  - P04.3 registered `MediaCollection` in F05 of `flows-v1.json`, and P06.2 C1 its DTOs in F11, with a README section. The brief's owned paths left out the registry and the README.
+  - P06.2 C1's prompt had owned both, so the precedent D11 names was not read.
+- **Caught by:** App Manager 10, reading the generator, the corpus test and the registry while writing Stage A's prompt.
+- **Effect:** none on code: the prompt was held, and the paths went to the Dev Manager as DM-53, since DM-52's report repeats the untouched claim.
+- **Correction:** DM-53's answer, applied in revision 3.
+- **Prevention:** before a brief lists owned paths for a change to a generated or registered artifact, the manager reads the generator's output paths, the checks that compare them, and the owned paths of the precedent the brief names.
 
 ### AM10-11 — Mechanisms proposed without reading their code (accuracy)
 

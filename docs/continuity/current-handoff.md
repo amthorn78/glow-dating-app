@@ -1,4 +1,4 @@
-# Current handoff — App Manager 10 (10 November 2026; SV2's brief, revision 2, after DM-52; Stage A's prompt next)
+# Current handoff — App Manager 10 (10 November 2026; SV2's brief, revision 2; DM-53 holds Stage A's prompt)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -11,27 +11,27 @@ This file only routes: the current item, what happens next and who waits on whom
 - **SV1 is done:** merged with PR42 at `c864edd` (9 November 2026; [brief](../planning/sv1-identity.md), revision 5; [record](../testing/evidence/2026-11-09-sv1-identity.md), with the merge receipt). Corrections C1 and C2, the exact-head review with its threat model, C2's delta review and DM-45 to DM-50 are in the record and the review log. Its prompts are pruned; links are pinned at `c864edd`. Carried: DM-50 1.2 to SV2, natural expiry to SV4, and items to P07, P08, P09.2 and P11 ([carried items](../planning/carried-to-later-items.md); the P11 plan).
 - **P06.3 is done:** merged with PR41 at `da92f1f` ([record](../testing/evidence/2026-11-09-p06-3-notifications.md), with the merge receipt).
 - **The second A05 message is answered:** [OD-60](owner-directions.md) (10 November 2026). Every item is a setting editable in the admin console (the WordPress staff plugin, P07), at launch defaults and within fixed limits; orientation is matched both ways, and looking for and relationship status join as two-way list fields; English is his answer. It is routed to the carried-items file (SV2, SV3, SV4, P07, the third message) and the P11 plan (DM-51 X2).
-- **Now: SV2** (OD-49), profiles and media. [The brief](../planning/sv2-profiles-media.md), revision 2, applies [DM-52](dev-manager/reviews/2026-11-10-dm-52-sv2-brief.md)'s B1 to B55 as written, with Nathan's answers in its session ([OD-61](owner-directions.md): the chart required at once, a birth time required, no staff review, automated identity verification and photo approval, staff approval without ID behind a setting). Two stages, each reviewed and merged on its own. Next: Stage A's prompt, with its TypeSafe reading.
+- **Now: SV2** (OD-49), profiles and media. [The brief](../planning/sv2-profiles-media.md), revision 2, applies [DM-52](dev-manager/reviews/2026-11-10-dm-52-sv2-brief.md)'s B1 to B55 as written, with Nathan's answers in its session ([OD-61](owner-directions.md): the chart at once, a birth time, no staff review, automated ID and photo checks, staff approval without ID behind a setting). Two stages, each reviewed and merged on its own. **Stage A's prompt is held for [DM-53](../ephemeral/2026-11-10-dm-53-sv2-stage-a-paths.md):** D11's additions also write the mobile app's generated contract outputs and the flow registry, which the brief's owned paths leave out (AM10-12).
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3 and SV1 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
-- **Review log:** DM-01 to DM-52, with "Deferred conditions"; the next consultation confirms DM-52's conditions as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
+- **Review log:** DM-01 to DM-53, with "Deferred conditions"; DM-53 also confirms DM-52's conditions as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (10 November 2026, 02:04 UTC, App Manager 10)
+## Waiting checkpoint (10 November 2026, 02:19 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 10 | Stage A's prompt | Nothing is owed; the manager writes it next |
+| App Manager 10 | Dev Manager 4, through Nathan's relay | DM-53's answer (given to Nathan 10 November, 02:19 UTC) | No SV2 prompt goes out; the manager asks Nathan whether Dev Manager 4's session is still available |
 
 ## Next actions (App Manager 10)
 
-1. **Stage A's prompt** (the brief, D1), with its TypeSafe reading.
+1. **DM-53's answer:** apply it in the brief's revision 3, then **Stage A's prompt** (the brief, D1), with its TypeSafe reading.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV2 waits on it.
 3. **After SV2:** SV3 and SV4.
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (`git ls-remote`, 10 November 2026, 02:04 UTC)
+## Branches and PRs (`git ls-remote`, 10 November 2026, 02:19 UTC)
 
 - **Open PRs:** none. `main` is at `c864edd` (PR42's merge).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`73c109b` before this batch); and `claude/dev-manager` (`093204a`, DM-52's report, merged at `2eb2544`). The cleanup run 42718647056 deleted SV1's three session branches.
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`51da7f8` before this batch); and `claude/dev-manager` (`093204a`, DM-52's report, merged at `2eb2544`). The cleanup run 42718647056 deleted SV1's three session branches.
