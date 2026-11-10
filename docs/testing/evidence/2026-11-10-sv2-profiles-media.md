@@ -8,7 +8,7 @@
 
 ### The session
 
-- **The prompt:** [Stage A's implementation prompt](../../ephemeral/2026-11-10-sv2-stage-a-implementation-prompt.md), revision 1, from `a6624de1568ed248dc975d9ae3a9e8863969f9b6` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [Stage A's implementation prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-implementation-prompt.md), revision 1, from `a6624de1568ed248dc975d9ae3a9e8863969f9b6` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/sv2-stage-a-impl-0qqzvj`, started at `a6624de`.
 - **The code commits:**
   - `4e94215`: D5, the committed area table and its derivation step;
@@ -347,7 +347,7 @@ Correction C1 of Stage A, to [DM-54](../../continuity/dev-manager/reviews/2026-1
 
 ### The session
 
-- **The prompt:** [C1's correction prompt](../../ephemeral/2026-11-10-sv2-stage-a-c1-correction-prompt.md), revision 1, from `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [C1's correction prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-c1-correction-prompt.md), revision 1, from `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/funny-lamport-5f2s1u`, started at `033e8d4`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
 - **The code commit, the code head:** `86a2156` (`86a215675e0ad826425e16c14fb6b826664b9c34`).
 - **The records commit** (this section, and the data model's and the contract document's text) follows the run of record, as the push rule requires.
@@ -675,7 +675,7 @@ Correction C2 of Stage A, to [DM-55](../../continuity/dev-manager/reviews/2026-1
 
 ### The session
 
-- **The prompt:** [C2's correction prompt](../../ephemeral/2026-11-10-sv2-stage-a-c2-correction-prompt.md), revision 1, from `399c68d21d36cb477581587b62337c827196993f` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [C2's correction prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-c2-correction-prompt.md), revision 1, from `399c68d21d36cb477581587b62337c827196993f` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/awesome-maxwell-wo9jxa`, started at `399c68d`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
 - **The code commit, the code head:** `01a3acb` (`01a3acb3d725e05d6e2d6a2d78f5e102db9e9f5a`).
 - **The records commit** (this section; the data model's rows; the contract document's F02 to F04 sentences, index row and SV2 paragraph; the package README's and the proof README's SV2 sections; the P11 plan's "SV2 Stage A" entry) follows the run of record, as the push rule requires.
@@ -1235,3 +1235,38 @@ Nothing in the repository, on GitHub or in Notion changed.
   - the no-deadlock reason's option (a). V4, above in "Delta review of correction C3", records three more pairs of transactions that take two pointers in opposite orders. V5 carries the pointer order to Stage B's brief, with one order per transaction recommended;
   - N2 to N5's carry to Stage B is confirmed.
 - **The merge:** PR43 may merge once V1 to V5 are applied as written, the pull-request run on that final head passes with `Application checks passed`, Codex raises nothing new there, and the checklist is filled in. V1 to V5 are applied as written; the review log's "DM-56" holds the dispositions.
+
+## The merge receipt for Stage A (10 November 2026, App Manager 10)
+
+- **PR43 merged** at 23:41:17 UTC as the merge commit `4dc2061a33c6f63e2887b11aeb2fd32d6224e23e`.
+  - Its parents are `c864edd` (`main`) and `a644771` (PR43's head).
+  - It merged by the expected-head guard (`expectedHeadSha` `a644771477641f89bb9075e7684e3491397f76cf`), after the pre-merge checklist in PR43's description was filled.
+  - `main`'s tree equals `a644771`'s. The final head's non-Markdown paths are byte-identical to C3's code head `fee4fdc`.
+- **Its checks:**
+  - the trusted policy at `c864edd` read full scope (`behavior-or-empty`, 109 paths), with one merge base, `df8a04c`;
+  - PR run 42923450949 on `a644771` passed all eight jobs. The gate printed `Application checks passed`. The profile suite passed 53 of 53 in 75.4 s, its secret and value scans were clean, and its phase took 77 s. A second profile run was refused with the counts `108 108 92 38 978 802` unchanged, and `sv2-profile-results` (5,206 bytes) was uploaded. Every DM-41 retry step was skipped;
+  - push run 42923441007 on the same head passed, as a Markdown-only change against its parent;
+  - Codex's code review of `a644771` completed at 23:29:23 UTC with no findings. All six threads on PR43 are resolved: four P1 findings and one P2 were fixed, and the P2 on a future date was answered with DM-55's ruling;
+  - the reviews, corrections C1 to C3, C3's delta review and DM-52 to DM-56 are recorded above and in the review log;
+  - PR43's governing Markdown, the CI policy's Database proof checks paragraph, had the Dev Manager's read before the merge: DM-54 at `93a27ea`, DM-55 for its upload sentence at `496c39e`, and DM-56 at `e86b635`, with DM-56's V1 to V5 applied as written at `a644771`.
+- **The cleanup run** 42925412863 passed and deleted Stage A's four session branches, each "merged into main":
+  - `claude/sv2-stage-a-impl-0qqzvj` (`f2635fa`, the implementation);
+  - `claude/funny-lamport-5f2s1u` (`f54545c`, C1);
+  - `claude/awesome-maxwell-wo9jxa` (`ca0ad16`, C2);
+  - `claude/stoic-faraday-gist9o` (`414d4a7`, C3).
+
+  It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
+- **`git ls-remote`** after it (23:41 UTC): `main` at `4dc2061`, the manager branch at `a644771`, `claude/dev-manager` at `d342f05`, and nothing else. PR43's activity subscription is ended.
+- **`main`'s push run** 42925412949 on `4dc2061` was still running when this receipt was committed.
+- **Pruned:** Stage A's eleven prompts and consultations in `docs/ephemeral/`:
+  - DM-53 to DM-56's consultations;
+  - the implementation prompt, C1's, C2's and C3's prompts, both exact-head review prompts and C3's delta review prompt.
+
+  Their unique content lives in the brief, this record, the review log and the Dev Manager's reports. The nineteen links to them (twelve in the brief, four in the review log and three in this record) are pinned at `4dc2061`, where each file exists. Text that names a prompt's path, as this record's session headers do, stays true as history. DM-52's consultation stays until SV2's Stage B merges, since it consulted on the whole brief.
+- **Stage A is done; SV2 continues with Stage B** (photos). Carried forward, in the carried-items file:
+  - to Stage B: the pointer order (DM-56 V5), C3's allowlist pins, and the delta review's N2 to N5;
+  - to P07: Z18 (a self-declared minor's earlier birth input revisions, for G-01), the adult check's upper bound, a revocation or restriction of a non-active account, `publish` taking a `system:` subject, and a restricted profile's sets;
+  - to P08: Z19 (a new sensitive consent version's effect on saved values);
+  - to P11 (the P11 plan): Z20 (the 405) and `IdempotencyRecord`'s account key.
+
+  To the Dev Manager's next consultation: the confirmation that DM-56's V1 to V5 are applied.
