@@ -297,3 +297,46 @@ The 58th and 59th, `DB04.constraint-dropped` and `DB04.version-check-dropped`, a
 11. **The Database proof checks job:** the role-and-databases step's name now says three databases; the passfile has three lines; one Python block generates both JWT keys, each its own. The CI policy's Database proof checks paragraph (manager-owned) does not yet describe the SV2 steps.
 12. **D16 does not apply:** `identity_support.py` is unchanged, so DM-50 1.2's docstring and pin stay carried.
 13. **Profile restriction has no registry entry,** before and after SV2.
+
+### Manager verification (App Manager 10, 10 November 2026)
+
+**The diff.** `git diff a6624de f2635fa` was read for its scope, and in part for its content: 63 paths, each owned by the brief, revision 3: 58 to the code head `b97bc15`, and five Markdown files in the records commit `f2635fa`. About 12,200 lines are hand-written, excluding the generated contract outputs, the corpus, the area table and Markdown.
+- `glow_api`, `glow_chat`, `scripts`, the runtime's `requirements.in` and `requirements.lock`, and every dependency lock are unchanged. No `apps/` path other than the three generated contract outputs changed.
+- **The workflow:** every hunk is in the Database proof checks job. Its credentials step adds the third marker and `SECRET_KEY`, masked before anything prints, and a second RSA key from the same Python block; the new steps reuse the pinned `upload-artifact`.
+- **The contract:** the schema and `openapi.json` gain definitions only, with no line removed. The registry's four removed lines are existing last elements gaining a trailing comma. `node scripts/generate.mjs --check` at `f2635fa`, after `npm ci --ignore-scripts`, printed `Generated types and runtime validators match schemas.`
+- **D7:** `record` is unchanged. `transition` refuses outside a transaction and locks the account row, then the age state's row. The import line of `glow_domain/identity.py` gains `date` (the session's item 9).
+- **The area table:** SHA-256 `2bf5e4da9e99…1138`, the value migration 0006 pins; 925 data rows and none in Puerto Rico.
+- **Read against the brief:**
+  - every route authenticates through SV1's actor class, refuses a query string and any body that is not its DTO, logs a reason code only, and sends `Cache-Control: no-store`;
+  - the staff operations are module functions that no route imports;
+  - completion runs only in the owner's name-and-summary edit (`operations.py`, the profile edit). No other writer attempts it (the session's item 4; DM-54).
+
+**Classification.** The trusted classifier from `main` (`c864edd`), run with `python3 -I` and `--base c864edd… --head e0c0ffe… --merge-base` after the integration merge, returned:
+- full scope, `behavior-or-empty`;
+- the PR's whole diff, the manager's records since PR42 included;
+- one merge base, `df8a04c`.
+
+**Re-runs.** These ran in a scratch copy of the code head's whole tree (`git archive b97bc15`), in the clean environment, with hash-locked installs:
+- **API:** `Ran 516 tests` … `OK`; Ruff clean; `131 files already formatted`; mypy `no issues found in 60 source files`.
+- **mypy by hand** on `glow_profiles` and the seven new test modules: `no issues found in 24 source files`. The configured run's `files` is `glow_api`, `glow_domain`, `glow_chat`, `glow_identity`, so CI does not type-check `glow_profiles` (the session's item 10; DM-54).
+- **The proof's offline tests:** `Ran 218 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline.** Each failed as it should:
+- **R1:** `glow_api/urls.py` imports `glow_profiles.urls`. The sealed-runtime test module cannot load: `RuntimeError: Model class django.contrib.contenttypes.models.ContentType doesn't declare an explicit app_label and isn't in an application in INSTALLED_APPS.`
+- **R1b:** `glow_api/urls.py` imports the pure `glow_domain.profile_fields`. `test_no_runtime_module_names_the_profile_slice` and `test_the_runtime_imports_none_of_the_profile_slice` fail (`FAILED (failures=2)`).
+- **R2:** `operations.py` gets a logger and logs. `test_profiles_offline` fails (`FAILED (failures=1)`).
+- **R3:** the stored digest becomes an unkeyed SHA-256. `test_profiles_offline` fails (`FAILED (failures=1)`).
+
+Each file was restored and its hash checked against `b97bc15`, and the two test modules then pass (`Ran 14 tests` … `OK`).
+
+**The run of record**, read with the GitHub tools: push run 42759801460 on `b97bc15`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Every DM-41 retry step was `skipped`.
+- The profile suite: `cases: 44/44 passed in 49.4 s`; `profile secret scan: clean (842 secrets held …)`; `profile value scan: clean (108 member values held …)`; `profile phase: 50 s`.
+- The second profile run was refused, with the counts `74 74 60 30 606 516` unchanged.
+- The artifact `sv2-profile-results` is 4,379 bytes, and the cleanup removed the container.
+
+The records push run 42761123580 on `f2635fa` passed.
+
+**What goes to the Dev Manager** (DM-54): the session's items 1 to 7, 10 and 13, and the stale sentence of item 8. Items 9, 11 and 12 are settled here: the import line is needed by the age section; the CI policy's paragraph is the manager's, updated in this batch; D16 did not apply, so DM-50 1.2 stays carried.
