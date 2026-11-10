@@ -1204,6 +1204,7 @@ Each file was restored and its hash checked; the 22 guard tests then passed.
 - The one possible cycle is the one the session named. `set_field` holds `profile.*` and then wants `consent.onboarding` in its recompute; `save_profile` takes `consent.onboarding` and then `profile.*` in one call. A publication waits `FOR UPDATE` on each pointer.
 - It does not deadlock, because PostgreSQL grants `FOR SHARE` at once on a row that holds only share locks, without queueing behind a waiting `FOR UPDATE` (`heap_lock_tuple`; `README.tuplock`). That is implementation behaviour, not the documented conflict table. The review observed it on 17.11: the exact four-transaction cycle completed with no deadlock, and a control showed that a share request behind a *held* `FOR UPDATE` does wait.
 - **What the record may claim,** in the review's words: no deadlock, because publications take no account row, no member transaction reads `chat.history`, and PostgreSQL grants a share request on a share-only-locked row without queueing behind a waiting `FOR UPDATE`. That last point is implementation behaviour, observed on 17.11 by this review and not tested by a suite case. Either way the worst case is bounded: PostgreSQL's deadlock detection aborts one transaction, and `tx.run` answers it as a refused request, not a hang.
+- **The Dev Manager's pre-merge read (DM-56)** found more pairs of transactions that take two pointers in opposite orders: `set_area` (`profile.location`, then `consent.onboarding` in its recompute) against `save_profile` (`consent.onboarding`, then every `profile.*`), and the owner's catalog read (`profile.*`, then `consent.onboarding` and `consent.sensitive_profile`) against `save_profile` and `set_field`. The same PostgreSQL behaviour rules out each, so the claim above stands. Were a cycle to form, PostgreSQL would abort one transaction, and `tx.run` would answer it `provider_unavailable` (503, retryable), with that transaction rolled back.
 
 **The findings and the manager's dispositions** (step 6, rule (b): a nit is a recorded follow-up):
 
@@ -1220,3 +1221,17 @@ Each file was restored and its hash checked; the 22 guard tests then passed.
 Nothing in the repository, on GitHub or in Notion changed.
 
 **What follows:** the Dev Manager's pre-merge read (DM-56), then the pre-merge checklist in PR43's description, the PR run and Codex on the final head, and the merge.
+
+## The Dev Manager's pre-merge read (DM-56)
+
+- **The read:** Dev Manager 4's [DM-56 report](../../continuity/dev-manager/reviews/2026-11-10-dm-56-sv2-stage-a-pre-merge.md), answered at `d342f05`, a read of `e86b635` with the code head `fee4fdc`. It is integrated at `607ce47`.
+- **Its run:** PR43's pull-request run 42918781989 on `e86b635` passed every job, and its gate printed `Application checks passed`. The profile suite passed 53 of 53 in 59.9 s, both scans were clean, and the second run was refused with the counts `108 108 92 38 978 802` unchanged.
+- **Its verdicts:**
+  - the CI policy and the workflow are as DM-54 read them;
+  - the contract document and both READMEs match the code;
+  - two data-model sentences claimed more than the code does, and V1 and V2 correct them;
+  - Z1 to Z20 are confirmed as applied;
+  - C2-1 is approved, and V3 states the order in D7;
+  - the no-deadlock reason's option (a). V4, above in "Delta review of correction C3", records three more pairs of transactions that take two pointers in opposite orders. V5 carries the pointer order to Stage B's brief, with one order per transaction recommended;
+  - N2 to N5's carry to Stage B is confirmed.
+- **The merge:** PR43 may merge once V1 to V5 are applied as written, the pull-request run on that final head passes with `Application checks passed`, Codex raises nothing new there, and the checklist is filled in. V1 to V5 are applied as written; the review log's "DM-56" holds the dispositions.
