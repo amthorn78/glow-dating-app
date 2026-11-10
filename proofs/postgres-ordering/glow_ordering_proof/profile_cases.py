@@ -1669,6 +1669,319 @@ def completion_removals(ctx: ProfileContext) -> str:
     return f"{demoted} removals demoted or left paused; four emptying edits refused"
 
 
+# ---------------------------------------------------------------------------------------------
+# Correction C1 (DM-54, Y3 to Y5): every requirement writer ends with D9's one recompute
+# ---------------------------------------------------------------------------------------------
+
+
+def _switch_staff_approval(ctx: ProfileContext, enabled: bool) -> None:
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    switch = copy.deepcopy(settings_store.read_unlocked(ps.STAFF_APPROVAL).content)
+    if switch["enabled"] is not enabled:
+        switch["enabled"] = enabled
+        expect(ctx.publish(ps.STAFF_APPROVAL, switch).outcome == "applied", "switched")
+
+
+def _new_onboarding_version(ctx: ProfileContext) -> str:
+    """A new onboarding consent version, published as staff will (``consent.old_version_refused``
+    does the same); every member's accepted version lapses without a write."""
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    content = copy.deepcopy(settings_store.read_unlocked(ps.ONBOARDING_CONSENT).content)
+    content["text"] += f" (revision {uuid4().hex[:6]})"
+    expect(ctx.publish(ps.ONBOARDING_CONSENT, content).outcome == "applied", "a new version")
+    return str(settings_store.read_unlocked(ps.ONBOARDING_CONSENT).policy_version)
+
+
+@case("completion.every_requirement_writer_meeting_the_last_one_makes_it_visible", "9", "D9")
+def recompute_completes(ctx: ProfileContext) -> str:
+    from glow_profiles import staff
+
+    shown: list[str] = []
+
+    def completed(member: Any, before: int, what: str) -> None:
+        profile = _profile_row(member.account_id)
+        expect(profile.state == "visible", f"{what}: the profile is visible")
+        expect(ctx.missing(member) == [], f"{what}: nothing is missing")
+        expect(_events(profile.pk, "profile_completed") == before + 1, f"{what}: profile_completed")
+        shown.append(what)
+
+    def incomplete(member: Any, what: str) -> int:
+        profile = _profile_row(member.account_id)
+        expect(profile.state == "incomplete", f"{what}: incomplete first")
+        return _events(profile.pk, "profile_completed")
+
+    # The profile edit (F04 owner complete): every other requirement met first.
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    before = incomplete(member, "the profile edit")
+    expect(ctx.missing(member) == [], "the seeds met the last two without a write")
+    _edit(ctx, member)
+    completed(member, before, "the profile edit")
+
+    # A field (F04 owner complete): "looking for" is the last requirement.
+    member = ctx.member()
+    ctx.accept_onboarding(member)
+    born = ctx.adult_date()
+    ctx.data(ctx.adult(member, born), "own_age_state", "adult")
+    ctx.data(ctx.birth_input(member, born), "birth_input", "birth")
+    ctx.data(ctx.profile(member), "own_profile", "profile")
+    ctx.data(ctx.field(member, "gender", ["woman"]), "own_profile_fields", "gender")
+    ctx.data(ctx.area(member, NEW_YORK), "own_area", "area")
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    before = incomplete(member, "a field")
+    expect(ctx.missing(member) == ["profile_fields"], "only the field is missing")
+    ctx.data(ctx.field(member, "looking_for", ["casual"]), "own_profile_fields", "looking for")
+    completed(member, before, "a field (looking for)")
+
+    # A field that is no requirement still ends with the recompute (the sensitive fields): the
+    # seeds met the last requirements without a write, and the orientation write completes it.
+    ctx.ensure_test_lists()
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    ctx.data(ctx.sensitive(member, "accepted"), "sensitive_consent", "the sensitive consent")
+    before = incomplete(member, "orientation")
+    ctx.data(
+        ctx.field(member, "orientation", [ORIENTATION_VALUES[0]]), "own_profile_fields", "orient."
+    )
+    completed(member, before, "a field (orientation)")
+
+    # The area (F04 owner complete).
+    member = ctx.member()
+    ctx.accept_onboarding(member)
+    born = ctx.adult_date()
+    ctx.data(ctx.adult(member, born), "own_age_state", "adult")
+    ctx.data(ctx.birth_input(member, born), "birth_input", "birth")
+    ctx.data(ctx.profile(member), "own_profile", "profile")
+    ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "gender")
+    ctx.data(ctx.field(member, "looking_for", ["casual"]), "own_profile_fields", "looking for")
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    before = incomplete(member, "the area")
+    expect(ctx.missing(member) == ["area"], "only the area is missing")
+    ctx.data(ctx.area(member, LOS_ANGELES), "own_area", "the area")
+    completed(member, before, "the area")
+
+    # The onboarding consent's accept (F04 requirements_met, system).
+    member = ctx.visible_member()
+    ctx.data(ctx.withdraw_onboarding(member), "onboarding", "withdrawn")
+    before = incomplete(member, "the onboarding consent")
+    expect(ctx.missing(member) == ["consent"], "only the consent is missing")
+    accepted = ctx.accept_onboarding(member)
+    expect("profile" not in accepted["requirements"], "the read sees the profile visible")
+    completed(member, before, "the onboarding consent's accept")
+
+    # The adult check (F04 requirements_met): a failing rerun, the chart seeded again, then the
+    # date that passed before.
+    born = ctx.adult_date(31)
+    member = ctx.visible_member(birth_date=born)
+    ctx.data(ctx.adult(member, years_ago(16)), "own_age_state", "a failing rerun")
+    seed_chart(member.account_id)
+    before = incomplete(member, "the adult check")
+    expect(ctx.missing(member) == ["adult_check"], "only the adult check is missing")
+    ctx.data(ctx.adult(member, born), "own_age_state", "the adult check passes again")
+    completed(member, before, "the adult check")
+
+    # Staff's approval without ID verification (F04 requirements_met).
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    before = incomplete(member, "the staff approval")
+    expect(ctx.missing(member) == ["identity_verification"], "only verification is missing")
+    _switch_staff_approval(ctx, True)
+    approved = staff.approve_without_id(
+        member.account_id, staff_subject=STAFF, reason="SV2-proof", request_id=uuid4()
+    )
+    _switch_staff_approval(ctx, False)
+    expect(approved.outcome == "applied", "approved")
+    expect(approved.detail.get("profile") == "visible", "the operation reports it visible")
+    completed(member, before, "the staff approval")
+
+    # The birth input cannot meet the last requirement in Stage A: its new revision is pending,
+    # so the chart is missing until P11's adapter resolves it (its recompute is shown demoting).
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    born = ctx.get(member, ADULT, "own_age_state")["birth_date"]
+    ctx.data(ctx.birth_input(member, born, local_time="07:31:45"), "birth_input", "a new one")
+    expect(_profile_row(member.account_id).state == "incomplete", "a birth input never completes")
+    expect(ctx.missing(member) == ["chart"], "its new revision's chart is missing")
+    return f"{len(shown)} writers each made the profile visible: " + ", ".join(shown)
+
+
+@case("completion.a_write_that_finds_a_requirement_missing_demotes", "9", "D9")
+def recompute_demotes(ctx: ProfileContext) -> str:
+    from glow_persistence.models import Profile
+    from glow_profiles import staff
+
+    by_area, by_field, by_adult, by_edit, by_accept = (ctx.visible_member() for _ in range(5))
+    paused, restricted, removed = (ctx.visible_member() for _ in range(3))
+    ctx.data(_visibility(ctx, paused, "pause"), "own_profile", "paused")
+    outcome = staff.restrict_profile(
+        restricted.account_id, staff_subject=STAFF, reason="SV2-proof", request_id=uuid4()
+    )
+    expect(outcome.outcome == "applied", "restricted through glow_chat's writer")
+    # Harness write: SV2 has no writer to removed (F18's deletion is P08's).
+    Profile.objects.filter(account_id=removed.account_id).update(state="removed")
+    current = _new_onboarding_version(ctx)
+    # The requirement lapsed without a write: nothing moved yet.
+    for member in (by_area, by_field, by_adult, by_edit, by_accept):
+        expect(_profile_row(member.account_id).state == "visible", "a lapse alone moves nothing")
+        expect(ctx.missing(member) == ["consent"], "the lapsed consent is missing")
+    demotions = {member.account_id: 0 for member in (by_area, by_field, by_adult, by_accept)}
+    for account_id in demotions:
+        demotions[account_id] = _events(_profile_row(account_id).pk, "profile_demoted")
+
+    def demoted(member: Any, what: str, *, event: bool = True) -> None:
+        profile = _profile_row(member.account_id)
+        expect(profile.state == "incomplete", f"{what}: the visible profile is demoted")
+        if event:
+            expect(
+                _events(profile.pk, "profile_demoted") == demotions[member.account_id] + 1,
+                f"{what}: profile_demoted (requirement_removed)",
+            )
+
+    ctx.data(ctx.area(by_area, LOS_ANGELES), "own_area", "an area change")
+    demoted(by_area, "the area")
+    ctx.data(ctx.field(by_field, "gender", ["non-binary"]), "own_profile_fields", "a gender")
+    demoted(by_field, "a field")
+    born = ctx.get(by_adult, ADULT, "own_age_state")["birth_date"]
+    ctx.data(ctx.adult(by_adult, born), "own_age_state", "the same date again")
+    demoted(by_adult, "the adult check's unchanged date")
+    edits = _events(_profile_row(by_edit.account_id).pk, "profile_demoted")
+    _edit(ctx, by_edit)
+    demoted(by_edit, "the profile edit (the owner's edit)", event=False)
+    expect(_events(_profile_row(by_edit.account_id).pk, "profile_demoted") == edits, "no event")
+    # Accepting the new version is the last requirement again (F04 requirements_met).
+    accepted = ctx.accept_onboarding(by_accept)
+    expect(accepted["policy_version"] == current, "the new version accepted")
+    expect(_profile_row(by_accept.account_id).state == "visible", "accepting it completes")
+    ctx.data(ctx.area(by_accept, LOS_ANGELES), "own_area", "an area change, now current")
+    expect(_profile_row(by_accept.account_id).state == "visible", "nothing missing: it stays")
+    # paused, restricted and removed stay as they are.
+    ctx.data(ctx.area(paused, LOS_ANGELES), "own_area", "a paused member's area change")
+    expect(_profile_row(paused.account_id).state == "paused", "a paused profile stays paused")
+    expect("consent" in ctx.missing(paused), "though the consent is missing")
+    for member, state in ((restricted, "restricted"), (removed, "removed")):
+        ctx.data(ctx.withdraw_onboarding(member), "onboarding", f"{state}: withdrawn")
+        expect(_profile_row(member.account_id).state == state, f"{state}: stays {state}")
+        ctx.accept_onboarding(member)
+        expect(ctx.missing(member) == [], f"{state}: nothing missing")
+        expect(_profile_row(member.account_id).state == state, f"{state}: still {state}")
+    return (
+        "a lapsed consent version demoted at the area, a field, the adult check and the edit;"
+        " its acceptance completed; paused, restricted and removed stayed"
+    )
+
+
+@case("birth.a_failing_date_is_refused_and_nothing_of_it_is_stored", "7", "8", "D7", "D8", "D9")
+def birth_failing_date(ctx: ProfileContext) -> str:
+    from glow_persistence.models import (
+        AccountAgeState,
+        BirthInput,
+        EngineIdentity,
+        IdempotencyRecord,
+        OutboxEvent,
+    )
+
+    def snapshot(account_id: UUID) -> dict[str, Any]:
+        mapping = EngineIdentity.objects.filter(account_id=account_id).first()
+        age = AccountAgeState.objects.get(account_id=account_id)
+        account = _account(account_id)
+        profile = _profile_row(account_id)
+        return {
+            "inputs": [
+                (str(row.pk), row.version, row.state)
+                for row in BirthInput.objects.filter(account_id=account_id).order_by("version")
+            ],
+            "age": (age.state, age.birth_date, age.version),
+            "account": (account.eligibility_version, account.version),
+            "profile": (profile.state, profile.version),
+            "mapping": None if mapping is None else (mapping.state, mapping.version),
+            "events": OutboxEvent.objects.count(),
+            "records": IdempotencyRecord.objects.filter(actor_id=account_id).count(),
+        }
+
+    results: list[str] = []
+    for paused in (False, True):
+        member = ctx.visible_member()
+        account = member.account_id
+        if paused:
+            ctx.data(_visibility(ctx, member, "pause"), "own_profile", "paused")
+        held = BirthInput.objects.filter(account_id=account).order_by("-version")[0]
+        age_row = AccountAgeState.objects.get(account_id=account)
+        profile = _profile_row(account)
+        before = snapshot(account)
+        counts = {
+            "age": _events(age_row.pk, "age_state_changed"),
+            "held": _events(held.pk, "birth_input_invalidated"),
+            "demoted": _events(profile.pk, "profile_demoted"),
+        }
+        failing = years_ago(17, days=-123)
+        place = f"Synthetic Failing Place {uuid4().hex[:8]}"
+        body = ctx.birth_body(member, failing, local_time="02:47:19", place=place)
+        ctx.refused(ctx.command(member, BIRTH, body), 403, "forbidden", "a failing birth date")
+        # Nothing of it is stored.
+        rows = BirthInput.objects.filter(account_id=account)
+        expect(rows.count() == len(before["inputs"]), "no revision is written")
+        expect(
+            not BirthInput.objects.filter(birth_date=failing).exists()
+            and not BirthInput.objects.filter(place_label=place).exists()
+            and not rows.filter(local_time="02:47:19").exists(),
+            "no row holds its date, time or place",
+        )
+        expect(_found_in_database((place, failing)) == [], "no table holds its place or date")
+        expect(
+            IdempotencyRecord.objects.filter(actor_id=account).count() == before["records"],
+            "no idempotency record is stored",
+        )
+        # The failing rerun committed.
+        age = AccountAgeState.objects.get(account_id=account)
+        expect(age.state == "unknown" and age.birth_date is None, "the age state is unknown")
+        expect(_events(age.pk, "age_state_changed") == counts["age"] + 1, "age_state_changed")
+        held.refresh_from_db()
+        expect(held.state == "missing", "the current birth input is missing")
+        expect(
+            _events(held.pk, "birth_input_invalidated") == counts["held"] + 1,
+            "birth_input_invalidated",
+        )
+        mapping = EngineIdentity.objects.get(account_id=account)
+        expect(
+            mapping.state == "pending"
+            and mapping.engine_reference is None
+            and mapping.birth_input_id == held.pk,
+            "its mapping is back to pending, at that revision",
+        )
+        state = _profile_row(account).state
+        if paused:
+            expect(state == "paused", "a paused profile stays paused")
+            expect(_events(profile.pk, "profile_demoted") == counts["demoted"], "no demotion")
+        else:
+            expect(state == "incomplete", "the visible profile is incomplete")
+            expect(_events(profile.pk, "profile_demoted") == counts["demoted"] + 1, "demoted")
+        expect(_account(account).eligibility_version > before["account"][0], "eligibility bumped")
+        read = ctx.get(member, BIRTH, "birth_input")
+        expect(read["input_id"] == str(held.pk) and read["resolution"] == "missing", "owner read")
+        expect(ctx.get(member, ADULT, "own_age_state")["birth_date"] is None, "no date read")
+        # A retry of the same command, and a new one, is refused and changes nothing more.
+        after = snapshot(account)
+        ctx.refused(ctx.command(member, BIRTH, body), 403, "forbidden", "the same command again")
+        expect(snapshot(account) == after, "the retry changes no row")
+        again = ctx.birth_body(member, failing, local_time="02:47:19", place=place)
+        ctx.refused(ctx.command(member, BIRTH, again), 403, "forbidden", "a new command")
+        expect(snapshot(account) == after, "a new command changes no row")
+        results.append("paused" if paused else "visible")
+    return (
+        "refused with nothing of it stored; the rerun committed (unknown, missing, pending,"
+        f" demoted or left paused); retries changed nothing: {', '.join(results)}"
+    )
+
+
 # =============================================================================================
 # The schema's own refusals (the P11 plan's DB04, for SV2's tables)
 # =============================================================================================

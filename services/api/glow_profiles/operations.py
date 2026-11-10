@@ -13,9 +13,12 @@ Each command is one transaction (``tx.run``) that:
 ``glow_chat``'s reviewed writers (onboarding consent's accept and withdraw; pause and resume) nest
 inside as savepoints; any result of theirs but ``applied`` or ``no_change`` rolls the whole
 transaction back (D6, D9). Completion and demotion are SV2's own writers of the profile state the
-send check reads: a removal the member or staff is entitled to make moves a ``visible`` profile to
-``incomplete`` in the same transaction and is never refused; an edit that would leave a required
-value empty is refused; a ``paused`` profile stays paused, and resume rechecks completion (D9).
+send check reads, in one place: every writer of a completion requirement ends with D9's shared
+recompute (``recompute``; DM-54), so a profile becomes ``visible`` as soon as its last requirement
+is met, whoever meets it. A removal the member or staff is entitled to make moves a ``visible``
+profile to ``incomplete`` in the same transaction and is never refused; an edit that would leave a
+required value empty is refused; a ``paused`` profile stays paused, and resume rechecks
+completion (D9).
 
 The member's data never leaves these functions but in the owner's own projections; nothing here
 logs a value (a coordinate, a date or time, own words or a field's value).
@@ -56,7 +59,15 @@ from glow_persistence.models import (
     Profile,
     ProfileFieldChoice,
 )
-from glow_profiles import areas, contract, events, idempotency, requirements, settings_store
+from glow_profiles import (
+    areas,
+    contract,
+    events,
+    idempotency,
+    recompute,
+    requirements,
+    settings_store,
+)
 from glow_profiles import catalog as catalogs
 from glow_profiles.tx import (
     FORBIDDEN,
@@ -121,25 +132,6 @@ def _sensitive_accepted(account_id: UUID) -> bool:
 
 def _profile(account_id: UUID) -> Any:
     return Profile.objects.select_for_update().filter(account_id=account_id).first()
-
-
-def _demote_if_visible(tx: Tx, profile: Any, now: datetime) -> bool:
-    """D9's demotion (F04 ``requirement_removed``, system): a ``visible`` profile that lost a
-    requirement becomes ``incomplete`` in the same transaction; a ``paused`` one stays paused."""
-    if profile is None or profile.state != "visible":
-        return False
-    profile.state = "incomplete"
-    profile.version += 1
-    profile.save(update_fields=["state", "version", "updated_at"])
-    events.emit(
-        tx,
-        events.PROFILE_DEMOTED,
-        aggregate_id=profile.id,
-        aggregate_version=int(profile.version),
-        payload_ref=profile.id,
-        now=now,
-    )
-    return True
 
 
 def _key(intent: dict[str, Any]) -> str:
@@ -299,10 +291,11 @@ def _create_preferences(account_id: UUID, catalog: catalogs.Catalog) -> None:
 def save_profile(
     account_id: UUID, intent: dict[str, Any], *, probe: TransactionProbe | None = None
 ) -> Result:
-    """F04's owner ``edit``: the display name and the summary. Completion is this edit's
-    transition when every requirement is met (P04's reviewed table: "Remains incomplete unless
-    all current requirements permit completion"); a cleared summary moves a ``visible`` profile to
-    ``incomplete``; a ``paused`` profile stays paused."""
+    """F04's owner ``edit``: the display name and the summary. It ends with D9's recompute
+    (``recompute``): with every requirement met, an ``incomplete`` profile becomes ``visible``
+    (P04's reviewed table: "Remains incomplete unless all current requirements permit
+    completion"); a cleared summary moves a ``visible`` profile to ``incomplete``; a ``paused``
+    profile stays paused."""
     operation = "profile"
     digest = idempotency.digest(operation, intent)
 
@@ -334,17 +327,6 @@ def save_profile(
             profile.display_name = intent["display_name"]
             profile.bio = intent["summary"]
             profile.version += 1
-        # D9: completion's check on rows read after the account row lock.
-        missing = requirements.missing(
-            account_id, profile, found[ps.ONBOARDING_CONSENT].policy_version
-        )
-        completed = profile.state == "incomplete" and not missing
-        if completed:
-            profile.state = "visible"
-        elif profile.state == "visible" and missing:
-            # The owner's own edit that removes a requirement (the cleared summary) keeps F04's
-            # owner ``edit`` from visible to incomplete.
-            profile.state = "incomplete"
         profile.save()
         _bump_eligibility(account_id)
         events.emit(
@@ -355,15 +337,10 @@ def save_profile(
             payload_ref=profile.id,
             now=now,
         )
-        if completed:
-            events.emit(
-                tx,
-                events.PROFILE_COMPLETED,
-                aggregate_id=profile.id,
-                aggregate_version=int(profile.version),
-                payload_ref=profile.id,
-                now=now,
-            )
+        # D9: the shared recompute, on rows read after the account row lock. A completion here is
+        # F04's owner ``complete``; the owner's own edit that removes a requirement (the cleared
+        # summary) keeps F04's owner ``edit`` from visible to incomplete.
+        profile = recompute.recompute(tx, account_id, now, writer=recompute.PROFILE_EDIT).profile
         idempotency.store(
             account_id,
             operation,
@@ -442,6 +419,8 @@ def set_field(
             payload_ref=row.id,
             now=now,
         )
+        # D9: the shared recompute; a completion here is F04's owner ``complete``.
+        recompute.recompute(tx, account_id, now, writer=recompute.F04_OWNER)
         idempotency.store(
             account_id,
             operation,
@@ -646,6 +625,8 @@ def set_area(
             payload_ref=profile.id,
             now=now,
         )
+        # D9: the shared recompute; a completion here is F04's owner ``complete``.
+        profile = recompute.recompute(tx, account_id, now, writer=recompute.F04_OWNER).profile
         idempotency.store(
             account_id,
             operation,
@@ -684,7 +665,8 @@ def decide_onboarding_consent(
     """F02's accept and withdraw through ``glow_chat``'s ``accept_consent`` and
     ``withdraw_consent``, nested. SV2's version check comes first, under the account row lock and
     the consent policy's pointer lock: any version but the current one is refused (F02: "old
-    consent version rejected"). A withdrawal demotes a ``visible`` profile (D9)."""
+    consent version rejected"). It ends with D9's recompute: an acceptance can complete the
+    profile, and a withdrawal demotes a ``visible`` one."""
     operation = "consent"
     digest = idempotency.digest(operation, intent)
 
@@ -713,8 +695,10 @@ def decide_onboarding_consent(
             if latest is None:
                 raise Refused(STATE_CONFLICT, "no_consent")
             outcome = _chat_checked(chat().withdraw_consent(account_id))
-            if outcome.outcome == "applied":
-                _demote_if_visible(tx, profile, now)
+        # D9: the shared recompute. An acceptance that meets the last requirement completes the
+        # profile (F04 ``requirements_met``); a withdrawal demotes a visible one
+        # (``requirement_removed``).
+        profile = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW).profile
         latest = requirements.latest_decision(account_id, ONBOARDING_CONSENT_PURPOSE)
         idempotency.store(
             account_id,
@@ -843,17 +827,23 @@ def _withdraw_sensitive_data(tx: Tx, account_id: UUID, preferences: Any, now: da
 # -- the adult check and the one date (D7) ----------------------------------------------------
 
 
-def _invalidate_birth_input(tx: Tx, account_id: UUID, entered: Any, now: datetime) -> bool:
+def _invalidate_birth_input(
+    tx: Tx, account_id: UUID, entered: Any, now: datetime, *, whatever_its_date: bool = False
+) -> bool:
     """D7's choice: a new eligibility date, while a current birth input holds another, makes it
     stop being current (F03 ``date_changed``: its state becomes ``missing``) and returns any
-    mapping to ``pending``; re-entry is asked for by the read's ``resolution: missing``."""
+    mapping to ``pending``; re-entry is asked for by the read's ``resolution: missing``. A birth
+    input whose date fails the adult rule (DM-54) makes the current one stop being current
+    whatever its date (``whatever_its_date``)."""
     current = (
         BirthInput.objects.select_for_update()
         .filter(account_id=account_id)
         .order_by("-version")
         .first()
     )
-    if current is None or current.state == "missing" or current.birth_date == entered:
+    if current is None or current.state == "missing":
+        return False
+    if not whatever_its_date and current.birth_date == entered:
         return False
     current.state = "missing"
     current.save(update_fields=["state", "updated_at"])
@@ -885,8 +875,10 @@ def _mapping_to_pending(account_id: UUID, revision: Any) -> None:
 
 
 def _age_transition(tx: Tx, account_id: UUID, entered: Any, now: datetime) -> tuple[str, bool]:
-    """Every date change reruns the check (D7). Returns the port's outcome and whether the
-    rerun failed (so a ``visible`` profile is demoted)."""
+    """Every date change reruns the check (D7): a passing date becomes the age state's, and a
+    failing one sets ``unknown`` with no date (the date is never handed to the port). Returns the
+    port's outcome and whether the rerun failed; the writer's recompute then demotes a
+    ``visible`` profile."""
     passed = adult_outcome(entered, utc_date(now)) is AdultOutcome.PASS
     change = AgeTransition(
         AccountId(str(account_id)),
@@ -906,16 +898,18 @@ def adult_check(
 ) -> Result:
     """D7's adult check at the eligibility step, from the self-entered date. With the state
     ``unknown``, a failing date is refused and not stored. With ``self_declared_adult``, a new
-    date reruns the check: a pass keeps the state with the new date; a fail sets ``unknown``,
-    clears the date and demotes a ``visible`` profile. A new date also makes a current birth
-    input that holds another stop being current."""
+    date reruns the check: a pass keeps the state with the new date; a fail sets ``unknown`` and
+    clears the date. A new date also makes a current birth input that holds another stop being
+    current. It ends with D9's recompute: a pass can complete the profile, and a failing rerun
+    or a birth input that stopped being current demotes a ``visible`` one."""
     operation = "adult_check"
     digest = idempotency.digest(operation, intent)
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
         age = AccountAgeState.objects.select_for_update().filter(account_id=account_id).first()
-        profile = _profile(account_id)
+        # The profile's lock, in the writer's order; the recompute reads it again under it.
+        _profile(account_id)
         signal(tx.probe, "after_locks")
         now = clock(tx)
         if age is None:
@@ -933,6 +927,9 @@ def adult_check(
             raise Refused(code, f"adult_check:{outcome.value}")
         if age.state == "self_declared_adult" and age.birth_date == entered:
             age.refresh_from_db()
+            # D9: the shared recompute ends this writer too, so a requirement that lapsed without
+            # a write (a new consent version) demotes here.
+            recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
             idempotency.store(
                 account_id,
                 operation,
@@ -943,7 +940,7 @@ def adult_check(
                 now=now,
             )
             return Result("no_change", data=contract.own_age_state(age))
-        _, failed = _age_transition(tx, account_id, entered, now)
+        _age_transition(tx, account_id, entered, now)
         age.refresh_from_db()
         events.emit(
             tx,
@@ -953,9 +950,9 @@ def adult_check(
             payload_ref=age.id,
             now=now,
         )
-        invalidated = _invalidate_birth_input(tx, account_id, entered, now)
-        if failed or invalidated:
-            _demote_if_visible(tx, profile, now)
+        _invalidate_birth_input(tx, account_id, entered, now)
+        # D9: the shared recompute (F04 ``requirements_met`` or ``requirement_removed``).
+        recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
         idempotency.store(
             account_id,
             operation,
@@ -979,8 +976,11 @@ def save_birth_input(
     """F03's owner ``submit``, ``correct`` and ``change``: a new private revision, ``pending``.
     It needs the adult pass and the current onboarding consent (P04's ``/birth``). A birth time is
     required (Nathan: "birth time is required at signup"). A new revision returns any mapping to
-    ``pending`` and demotes a ``visible`` profile; another date changes the age state's date and
-    reruns the adult check (D7). SV2 creates no ``EngineIdentity`` and resolves nothing."""
+    ``pending``; another date changes the age state's date and reruns the adult check (D7). A
+    date that fails the adult rule is refused and nothing of the input is stored, while the
+    failing rerun commits (DM-54; ``_refuse_failing_birth_input``). It ends with D9's recompute,
+    which demotes a ``visible`` profile, since a new revision's chart is not resolved. SV2 creates
+    no ``EngineIdentity`` and resolves nothing."""
     operation = "birth_input"
     digest = idempotency.digest(operation, intent)
 
@@ -994,7 +994,8 @@ def save_birth_input(
             .order_by("-version")
             .first()
         )
-        profile = _profile(account_id)
+        # The profile's lock, in the writer's order; the recompute reads it again under it.
+        _profile(account_id)
         signal(tx.probe, "after_locks")
         now = clock(tx)
         record = idempotency.decide(account_id, operation, _key(intent), digest, now)
@@ -1016,6 +1017,10 @@ def save_birth_input(
         born = date.fromisoformat(given["birth_date"])
         if born > utc_date(now):
             raise Refused(INVALID_REQUEST, "birth_date_in_future")
+        if adult_outcome(born, utc_date(now)) is not AdultOutcome.PASS:
+            # D7, D8 (DM-54): a birth input whose date fails the adult rule is refused and
+            # nothing of it is stored, while the failing rerun commits.
+            return _refuse_failing_birth_input(tx, account_id, born, now)
         accepted = requirements.latest_decision(account_id, ONBOARDING_CONSENT_PURPOSE)
         revision = BirthInput.objects.create(
             account_id=account_id,
@@ -1030,10 +1035,10 @@ def save_birth_input(
             state="pending",
         )
         _mapping_to_pending(account_id, revision)
-        failed = False
         if age.birth_date != born:
-            # D7: one date. The birth input's date becomes the age state's, and the check reruns.
-            _, failed = _age_transition(tx, account_id, born, now)
+            # D7: one date. The birth input's date becomes the age state's, and the check reruns;
+            # a failing date never reaches here, so the rerun passes.
+            _age_transition(tx, account_id, born, now)
             age.refresh_from_db()
             events.emit(
                 tx,
@@ -1043,8 +1048,6 @@ def save_birth_input(
                 payload_ref=age.id,
                 now=now,
             )
-        # A new revision removes the chart requirement (D8, D9): a visible profile is demoted.
-        _demote_if_visible(tx, profile, now)
         _bump_eligibility(account_id)
         events.emit(
             tx,
@@ -1054,6 +1057,9 @@ def save_birth_input(
             payload_ref=revision.id,
             now=now,
         )
+        # D9: the shared recompute. A new revision is ``pending``, so the chart is missing and a
+        # visible profile is demoted (F04 ``requirement_removed``).
+        recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
         idempotency.store(
             account_id,
             operation,
@@ -1063,13 +1069,44 @@ def save_birth_input(
             result_version=int(revision.version),
             now=now,
         )
-        return Result(
-            "applied",
-            data=_birth_projection(revision, account_id),
-            detail={"adult_rerun_failed": failed},
-        )
+        return Result("applied", data=_birth_projection(revision, account_id))
 
     return run(body, probe)
+
+
+# The refusal of a birth input whose date fails the adult rule (DM-54). Its public code is the
+# adult check's for an under-age date.
+BIRTH_DATE_FAILS_ADULT_RULE = "birth_date_fails_adult_rule"
+
+
+def _refuse_failing_birth_input(tx: Tx, account_id: UUID, born: date, now: datetime) -> Result:
+    """D7 and D8 (DM-54, Y6 to Y8): the birth input is refused and nothing of it is stored (no
+    revision, no date, time or place, no mapping change toward it, no idempotency record), while
+    the transaction commits the failing rerun:
+
+    - the age state becomes ``unknown`` with no date (F02 ``adult_check_failed``), through the age
+      port, which bumps ``eligibility_version``;
+    - a current birth input stops being current (F03 ``date_changed``: ``missing``), its mapping
+      back to ``pending``;
+    - D9's recompute moves a ``visible`` profile to ``incomplete`` (F04 ``requirement_removed``);
+      a ``paused`` one stays paused.
+
+    The refusal is returned, not raised, so ``tx.run`` commits these effects. With no idempotency
+    record, a retry of this command or another is refused at the adult-check gate
+    (``adult_check_required``, since the state is now ``unknown``) and changes nothing more."""
+    _age_transition(tx, account_id, born, now)
+    age = AccountAgeState.objects.get(account_id=account_id)
+    events.emit(
+        tx,
+        events.AGE_STATE_CHANGED,
+        aggregate_id=age.id,
+        aggregate_version=int(age.version),
+        payload_ref=age.id,
+        now=now,
+    )
+    _invalidate_birth_input(tx, account_id, born, now, whatever_its_date=True)
+    recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
+    return Result("refused", FORBIDDEN, BIRTH_DATE_FAILS_ADULT_RULE)
 
 
 # -- visibility (D9; F06, through glow_chat) --------------------------------------------------
