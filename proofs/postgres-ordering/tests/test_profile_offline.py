@@ -526,6 +526,89 @@ class ProfilePlanTests(unittest.TestCase):
         self.assertEqual(declared, set(profile_cases.EXPECTED_PROFILE_ROUTES))
 
 
+# C3 (finding 3): the names a check's label may interpolate. Each holds a code, a route, a setting,
+# field or event name, a count, or another label, never a member's value; a new name here is
+# read before it is added. A failing check's label is printed in the case's detail line.
+LABEL_NAMES = {
+    "bumps",
+    "constraint",
+    "decision",
+    "demoted",
+    "event",
+    "expected",
+    "field",
+    "limit",
+    "name",
+    "path",
+    "removal",
+    "state",
+    "stored.operation",
+    "what",
+    "when",
+    "word",
+    "writer",
+}
+# The label's position in each checking call: ``expect(ok, what)``, ``ctx.refused(reply, status,
+# code, what)`` and ``ctx.data(reply, kind, what)``.
+LABEL_ARGUMENT = {"expect": 1, "refused": 3, "data": 2}
+
+
+def label_parts(label: ast.expr) -> list[str]:
+    """What a label is built from, beyond its literal text: each interpolated expression. A choice
+    between two literals is literal text."""
+    if isinstance(label, ast.Constant) and isinstance(label.value, str):
+        return []
+    if isinstance(label, ast.IfExp) and all(
+        isinstance(branch, ast.Constant) for branch in (label.body, label.orelse)
+    ):
+        return []
+    if isinstance(label, ast.JoinedStr):
+        return [
+            part
+            for value in label.values
+            if isinstance(value, ast.FormattedValue)
+            for part in label_parts(value.value)
+        ]
+    return [ast.unparse(label)]
+
+
+class ProfileLabelTests(unittest.TestCase):
+    def test_no_checks_label_holds_a_member_value(self) -> None:
+        tree = ast.parse(Path(profile_cases.__file__).read_text(encoding="utf-8"))
+        checked = 0
+        found = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            called = (
+                func.id
+                if isinstance(func, ast.Name)
+                else func.attr
+                if isinstance(func, ast.Attribute)
+                else ""
+            )
+            position = LABEL_ARGUMENT.get(called)
+            if position is None or len(node.args) <= position:
+                continue
+            checked += 1
+            for part in label_parts(node.args[position]):
+                if part not in LABEL_NAMES:
+                    found.append(f"{node.lineno}: {called} labelled by {part}")
+        self.assertEqual(found, [])
+        self.assertGreater(checked, 450)
+
+    def test_a_label_built_from_a_value_is_found(self) -> None:
+        call = ast.parse('ctx.refused(reply, 400, "invalid_request", born)').body[0]
+        assert isinstance(call, ast.Expr) and isinstance(call.value, ast.Call)
+        self.assertEqual(label_parts(call.value.args[3]), ["born"])
+        call = ast.parse('expect(found == years, f"whole years ({years})")').body[0]
+        assert isinstance(call, ast.Expr) and isinstance(call.value, ast.Call)
+        self.assertEqual(label_parts(call.value.args[1]), ["years"])
+        self.assertNotIn("born", LABEL_NAMES)
+        self.assertNotIn("years", LABEL_NAMES)
+
+
 class SchemaCheckCorpusTests(unittest.TestCase):
     """The proof's schema check decides every production corpus case it supports as the
     contract's validators do, and refuses a schema it does not support rather than passing it."""

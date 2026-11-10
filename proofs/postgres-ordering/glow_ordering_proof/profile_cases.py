@@ -2221,10 +2221,14 @@ def adult_date_first(ctx: ProfileContext) -> str:
 
     stranger = ctx.member()
     ctx.accept_onboarding(stranger)
-    for born, status, code in ((future, 400, "invalid_request"), (minor, 403, "forbidden")):
+    # Each check's label names the date's kind, never the date (C3, finding 3).
+    for born, status, code, what in (
+        (future, 400, "invalid_request", "an unknown account's future date"),
+        (minor, 403, "forbidden", "an unknown account's date under 18"),
+    ):
         age = AccountAgeState.objects.get(account_id=stranger.account_id)
         events_before = OutboxEvent.objects.count()
-        ctx.refused(ctx.command(stranger, ADULT, adult_body(stranger, born)), status, code, born)
+        ctx.refused(ctx.command(stranger, ADULT, adult_body(stranger, born)), status, code, what)
         again = AccountAgeState.objects.get(account_id=stranger.account_id)
         expect(
             (again.state, again.birth_date, again.version) == ("unknown", None, age.version),
@@ -2439,7 +2443,8 @@ def adult_age_years(ctx: ProfileContext) -> str:
         found = port.age_years(account, today)
         expect(type(found) is int, "an integer, never the date")
         expect(not isinstance(found, date), "never a date")
-        expect(found == years, f"whole years ({years})")
+        # The label names no age (C3, finding 3: no check's label holds a member value).
+        expect(found == years, "whole years, as the date gives them")
     return "whole years for a self-declared adult, None while unknown; an integer, never the date"
 
 
@@ -2862,7 +2867,7 @@ def ownership_replay(ctx: ProfileContext) -> str:
 
 
 # =============================================================================================
-# Acceptance check 12: the stored digests (D17); the scans run after every case
+# Acceptance check 12: the stored digests (D17); the scans run once, after the last case
 # =============================================================================================
 
 
