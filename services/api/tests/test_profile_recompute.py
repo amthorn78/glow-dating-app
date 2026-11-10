@@ -16,7 +16,13 @@ import ast
 import json
 import unittest
 
-from tests.test_profiles_offline import API_ROOT, last_json, modules, under_profile_settings
+from tests.test_profiles_offline import (
+    API_ROOT,
+    last_json,
+    modules,
+    scanned_modules,
+    under_profile_settings,
+)
 
 FLOWS = API_ROOT.parents[1] / "packages" / "contracts" / "production" / "flows-v1.json"
 
@@ -74,6 +80,124 @@ def _calls_of(writer: ast.FunctionDef, helpers: dict[str, ast.FunctionDef]) -> l
             if helper is not None and helper is not writer:
                 found += _recompute_calls(helper)
     return found
+
+
+# C3 (finding 1 (c)): the one write of a profile's state, and every other state write in
+# ``glow_profiles`` and the age port, named by its file, line, function and model. Each is a write
+# of another model's state; ``_binds`` checks that the variable written holds that model.
+RECOMPUTE_WRITE = ("glow_profiles/recompute.py", 138, "recompute", "profile.state = after")
+NOT_A_PROFILES_STATE = {
+    (
+        "glow_profiles/identity_verification.py",
+        82,
+        "approve_without_id",
+        "row.state = VerificationState.STAFF_APPROVED.value",
+    ): "IdentityVerification",
+    (
+        "glow_profiles/identity_verification.py",
+        96,
+        "revoke_approval",
+        "row.state = VerificationState.UNVERIFIED.value",
+    ): "IdentityVerification",
+    (
+        "glow_profiles/operations.py",
+        902,
+        "_invalidate_birth_input",
+        "current.state = 'missing'",
+    ): "BirthInput",
+    (
+        "glow_profiles/operations.py",
+        922,
+        "_mapping_to_pending",
+        "mapping.state = 'pending'",
+    ): "EngineIdentity",
+    (
+        "glow_identity/age.py",
+        98,
+        "transition",
+        "row.state = change.state.value",
+    ): "AccountAgeState",
+}
+
+
+def _state_writes(tree: ast.Module) -> list[tuple[int, str, str]]:
+    """Every way the static guard sees a state written, by line, function and statement: an
+    assignment to any ``.state``; any ``setattr``, ``__setattr__``, ``__dict__`` or ``vars``;
+    any ``bulk_update``; and any ``update``, ``update_or_create`` or ``get_or_create`` whose
+    keywords name ``state`` or ``defaults``, or are unpacked with ``**``, whatever the receiver."""
+    found = []
+    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+
+    def owner(node: ast.AST) -> str:
+        line = getattr(node, "lineno", 0)
+        holding = [
+            function.name
+            for function in functions
+            if function.lineno <= line <= (function.end_lineno or line)
+        ]
+        return holding[-1] if holding else "<module>"
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign | ast.AugAssign | ast.AnnAssign):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if any(
+                    isinstance(part, ast.Attribute) and part.attr == "state"
+                    for part in ast.walk(target)
+                ):
+                    found.append((node.lineno, owner(node), ast.unparse(node)))
+        if isinstance(node, ast.Attribute) and node.attr in {"__setattr__", "__dict__"}:
+            found.append((node.lineno, owner(node), ast.unparse(node)))
+        if isinstance(node, ast.Call):
+            called = ast.unparse(node.func)
+            attr = node.func.attr if isinstance(node.func, ast.Attribute) else called
+            keywords = {keyword.arg for keyword in node.keywords}
+            if (
+                called in {"setattr", "vars"}
+                or attr == "bulk_update"
+                or attr in {"update", "update_or_create", "get_or_create"}
+                and keywords & {"state", "defaults", "create_defaults", None}
+            ):
+                found.append((node.lineno, owner(node), ast.unparse(node)))
+    return found
+
+
+def _binds(function: ast.FunctionDef, variable: str, model: str, module: ast.Module) -> bool:
+    """Whether every value ``function`` binds to ``variable`` is ``model``'s: an expression naming
+    the model, or a call of a helper of the same module whose every return names it."""
+    helpers = {
+        node.name: node
+        for node in ast.walk(module)
+        if isinstance(node, ast.FunctionDef) and node is not function
+    }
+    values = [
+        node.value
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == variable for t in node.targets)
+    ]
+    if not values:
+        return False
+    for value in values:
+        if model in ast.unparse(value).split("(")[0].split("."):
+            continue
+        called = value.func if isinstance(value, ast.Call) else None
+        name = (
+            called.attr
+            if isinstance(called, ast.Attribute)
+            else called.id
+            if isinstance(called, ast.Name)
+            else ""
+        )
+        helper = helpers.get(name)
+        returns = (
+            [r.value for r in ast.walk(helper) if isinstance(r, ast.Return) and r.value]
+            if helper is not None
+            else []
+        )
+        if not returns or not all(model in ast.unparse(r) for r in returns):
+            return False
+    return True
 
 
 class RuleTests(unittest.TestCase):
@@ -197,6 +321,34 @@ class CallSiteTests(unittest.TestCase):
                         ):
                             writes.append((name, ast.unparse(node.value)))
         self.assertEqual(writes, [("recompute.py", "after")])
+        # C3 (finding 1 (c)): every state write the guard can see, under any name, in
+        # ``glow_profiles`` and the age port, is the recompute's or on the allowlist of writes
+        # that are not a profile's; and each allowlisted write holds the model it names.
+        trees = scanned_modules()
+        seen = {
+            (name, line, function, statement)
+            for name, tree in trees.items()
+            for line, function, statement in _state_writes(tree)
+        }
+        self.assertEqual(seen, {RECOMPUTE_WRITE, *NOT_A_PROFILES_STATE})
+        for (name, _line, function, statement), model in NOT_A_PROFILES_STATE.items():
+            with self.subTest(write=statement, model=model):
+                tree = trees[name]
+                defined = next(
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef) and node.name == function
+                )
+                variable = statement.split(".")[0]
+                self.assertTrue(_binds(defined, variable, model, tree), (variable, model))
+                self.assertNotEqual(model, "Profile")
+        recompute_tree = trees[RECOMPUTE_WRITE[0]]
+        recompute_function = next(
+            node
+            for node in ast.walk(recompute_tree)
+            if isinstance(node, ast.FunctionDef) and node.name == RECOMPUTE_WRITE[2]
+        )
+        self.assertTrue(_binds(recompute_function, "profile", "Profile", recompute_tree))
         # C2 (finding 7): nor a queryset ``.update(state=...)`` on a profile, anywhere.
         updates = [
             (name, node.lineno)

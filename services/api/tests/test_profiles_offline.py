@@ -85,6 +85,19 @@ REASON_EXPRESSIONS = {
 
 # The static logging guard's other module: SV2's age section in SV1's age port (D4, D7).
 AGE_PORT = API_ROOT / "glow_identity" / "age.py"
+# The identity verification port's adapter, whose ``PortOutcome`` reason ``staff.py`` raises as a
+# refusal's reason (C3, finding 1 (a)).
+IDENTITY_PORT = "identity_verification.py"
+PORT_OUTCOMES = {"applied", "no_change", "refused"}
+
+# C3 (finding 1 (b)): every attribute that names a logging method is checked, whatever its
+# receiver is called; so is any write to the standard streams.
+LOG_METHODS = {"debug", "info", "warning", "warn", "error", "exception", "critical", "fatal", "log"}
+STREAMS = {"stdout", "stderr", "__stdout__", "__stderr__"}
+# Modules that would print a value past the logging guard.
+STREAM_MODULES = {"warnings", "traceback", "faulthandler", "pprint"}
+# The views' one logger, and the one call that names it.
+VIEWS_LOGGER = "logger = logging.getLogger('glow_profiles.views')"
 
 
 def module_constants(tree: ast.Module) -> dict[str, str]:
@@ -127,6 +140,13 @@ def modules() -> dict[str, ast.Module]:
         path.name: ast.parse(path.read_text(encoding="utf-8"))
         for path in sorted(PROFILES.glob("*.py"))
     }
+
+
+def scanned_modules() -> dict[str, ast.Module]:
+    """``glow_profiles`` and the age port, by path from the API's root (C3)."""
+    found = {f"glow_profiles/{name}": tree for name, tree in modules().items()}
+    found["glow_identity/age.py"] = ast.parse(AGE_PORT.read_text(encoding="utf-8"))
+    return found
 
 
 class ProfileRoutesTests(unittest.TestCase):
@@ -256,6 +276,175 @@ class NoValueInLogsTests(unittest.TestCase):
             }:
                 found.append(f"{node.lineno} imports by name")
         self.assertEqual(found, [])
+
+    def test_the_views_hold_one_logger_and_name_it_only_to_log(self) -> None:
+        # C3 (finding 1 (b)): one ``getLogger`` call, bound once to ``logger`` at module level;
+        # ``logging`` imported plainly and named only there; ``logger`` named only as the
+        # receiver of the two checked calls, so it is never borrowed under another name.
+        tree = modules()["views.py"]
+        getters = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and ast.unparse(node.func).endswith("getLogger")
+        ]
+        self.assertEqual(len(getters), 1)
+        bound = [
+            ast.unparse(node)
+            for node in tree.body
+            if isinstance(node, ast.Assign) and "getLogger" in ast.unparse(node.value)
+        ]
+        self.assertEqual(bound, [VIEWS_LOGGER])
+        imports = [
+            ast.unparse(node)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+            and (
+                any(alias.name.split(".")[0] == "logging" for alias in node.names)
+                if isinstance(node, ast.Import)
+                else (node.module or "").split(".")[0] == "logging"
+            )
+        ]
+        self.assertEqual(imports, ["import logging"])
+        named: dict[str, list[str]] = {"logging": [], "logger": []}
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in named:
+                parent = parents[node]
+                named[node.id].append(
+                    "bound"
+                    if isinstance(node.ctx, ast.Store) and ast.unparse(parent) == VIEWS_LOGGER
+                    else ast.unparse(parent)
+                    if isinstance(parent, ast.Attribute)
+                    else f"{type(parent).__name__}:{node.lineno}"
+                )
+        self.assertEqual(named["logging"], ["logging.getLogger"])
+        self.assertEqual(sorted(named["logger"]), ["bound", "logger.info", "logger.info"])
+
+    def test_every_logging_call_is_checked_whatever_its_receiver(self) -> None:
+        # C3 (finding 1 (b)): any attribute naming a logging method, called or not, on any
+        # receiver, in ``glow_profiles`` or the age port. The two allowed are the views' checked
+        # ``logger.info`` calls and the contract's ``error`` builder, reached through
+        # ``glow_profiles.contract``; anything else is a logger by another name.
+        contract_functions = {
+            node.name for node in modules()["contract.py"].body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("error", contract_functions)
+        found = []
+        for name, tree in scanned_modules().items():
+            contract_imported = any(
+                isinstance(node, ast.ImportFrom)
+                and node.module == "glow_profiles"
+                and any(alias.name == "contract" and alias.asname is None for alias in node.names)
+                for node in tree.body
+            )
+            contract_rebound = any(
+                isinstance(node, ast.Name)
+                and node.id == "contract"
+                and isinstance(node.ctx, ast.Store)
+                for node in ast.walk(tree)
+            )
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute) and node.attr in LOG_METHODS:
+                    receiver = ast.unparse(node.value)
+                    if name == "glow_profiles/views.py" and receiver == "logger":
+                        if node.attr == "info":
+                            continue
+                    elif (
+                        receiver == "contract"
+                        and node.attr in contract_functions
+                        and contract_imported
+                        and not contract_rebound
+                    ):
+                        continue
+                    found.append(f"{name}:{node.lineno} {receiver}.{node.attr}")
+                if (
+                    isinstance(node, ast.Call)
+                    and ast.unparse(node.func) == "getattr"
+                    and len(node.args) > 1
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value in LOG_METHODS
+                ):
+                    found.append(f"{name}:{node.lineno} getattr of {node.args[1].value}")
+        self.assertEqual(found, [])
+
+    def test_nothing_writes_to_the_standard_streams(self) -> None:
+        # C3 (finding 1 (b)): no ``sys.stdout`` or ``sys.stderr`` (however ``sys`` is named or
+        # the stream imported), no ``print(..., file=...)``, no ``os.write``, and no module that
+        # prints past the logging guard, in ``glow_profiles`` or the age port.
+        found = []
+        for name, tree in scanned_modules().items():
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute) and node.attr in STREAMS:
+                    found.append(f"{name}:{node.lineno} {ast.unparse(node)}")
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    if isinstance(node, ast.Import):
+                        roots = {alias.name.split(".")[0] for alias in node.names}
+                        names = set()
+                    else:
+                        roots = {(node.module or "").split(".")[0]}
+                        names = {alias.name for alias in node.names}
+                    if roots & STREAM_MODULES:
+                        found.append(f"{name}:{node.lineno} imports {sorted(roots)}")
+                    if names & (STREAMS | {"write"}):
+                        found.append(f"{name}:{node.lineno} imports {sorted(names)}")
+                if isinstance(node, ast.Call):
+                    called = ast.unparse(node.func)
+                    if called == "print" and any(k.arg in {"file", None} for k in node.keywords):
+                        found.append(f"{name}:{node.lineno} prints to a file")
+                    if called.endswith("os.write") or called == "write" or called == "os.writev":
+                        found.append(f"{name}:{node.lineno} {called}")
+        self.assertEqual(found, [])
+
+    def test_the_age_ports_refusals_are_codes(self) -> None:
+        # C3 (finding 1 (a)): ``_reset_failing_date`` raises ``f"age:{refused}"`` from the age
+        # port's ``AgeTransitionRefused``, and the views log that reason. So every exception the
+        # age port defines is built from one literal code, never from a value.
+        tree = ast.parse(AGE_PORT.read_text(encoding="utf-8"))
+        defined = {node.name for node in tree.body if isinstance(node, ast.ClassDef)}
+        self.assertTrue({"AgeTransitionRefused", "AgeStateRecorded"} <= defined)
+        built: dict[str, int] = {}
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and ast.unparse(node.func) in defined):
+                continue
+            built[ast.unparse(node.func)] = built.get(ast.unparse(node.func), 0) + 1
+            with self.subTest(line=node.lineno):
+                self.assertEqual(node.keywords, [])
+                self.assertEqual(len(node.args), 1)
+                reason = node.args[0]
+                self.assertIsInstance(reason, ast.Constant, ast.unparse(reason))
+                assert isinstance(reason, ast.Constant)
+                self.assertIsNotNone(REASON_CODE.fullmatch(str(reason.value)), reason.value)
+        self.assertGreaterEqual(built.get("AgeTransitionRefused", 0), 4)
+        self.assertGreaterEqual(built.get("AgeStateRecorded", 0), 1)
+
+    def test_the_identity_ports_outcomes_are_codes(self) -> None:
+        # C3 (finding 1 (a)): ``approve_without_id`` and ``revoke_approval`` raise
+        # ``Refused(STATE_CONFLICT, outcome.reason)``, so every ``PortOutcome`` in
+        # ``glow_profiles`` is built from literals: a closed outcome and a code.
+        built: dict[str, int] = {}
+        for name, tree in modules().items():
+            for node in ast.walk(tree):
+                if not (
+                    isinstance(node, ast.Call)
+                    and ast.unparse(node.func).split(".")[-1] == "PortOutcome"
+                ):
+                    continue
+                built[name] = built.get(name, 0) + 1
+                with self.subTest(module=name, line=node.lineno):
+                    values = [*node.args, *(keyword.value for keyword in node.keywords)]
+                    self.assertTrue(all(keyword.arg for keyword in node.keywords))
+                    self.assertTrue(
+                        all(isinstance(value, ast.Constant) for value in values),
+                        ast.unparse(node),
+                    )
+                    self.assertIn(getattr(node.args[0], "value", None), PORT_OUTCOMES)
+                    reason = node.args[1] if len(node.args) > 1 else None
+                    reason = next((k.value for k in node.keywords if k.arg == "reason"), reason)
+                    if reason is not None:
+                        assert isinstance(reason, ast.Constant)
+                        self.assertIsNotNone(REASON_CODE.fullmatch(str(reason.value)), reason.value)
+        self.assertEqual(set(built), {IDENTITY_PORT})
+        self.assertGreaterEqual(built[IDENTITY_PORT], 6)
 
     def _assert_reason_is_a_code(self, reason: ast.expr, constants: dict[str, str]) -> None:
         if isinstance(reason, ast.Constant):
@@ -458,10 +647,6 @@ print(json.dumps({
         self.assertFalse(seen["sha1_default"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BodiesTheParserCannotHoldTests(unittest.TestCase):
     """C2, item 6 (finding 11; DM-55, section 8): a body the parser cannot hold, such as an integer
     too large for its number check or nesting deeper than the parser allows, and a text holding
@@ -550,3 +735,7 @@ print(json.dumps(out))
                 )
                 self.assertIs(answer["body"]["retryable"], False)
                 self.assertFalse(answer["echo"])
+
+
+if __name__ == "__main__":
+    unittest.main()
