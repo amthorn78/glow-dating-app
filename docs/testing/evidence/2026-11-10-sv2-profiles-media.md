@@ -556,3 +556,105 @@ Each file was restored and its hash checked against `86a2156`.
   - It is refused and stores nothing, which keeps "a failing date is refused and not stored".
 - **C1-4:** 403 `forbidden`, with the reason `birth_date_fails_adult_rule`. **Accepted:** DM-54 section 8 gives `forbidden` as the public code.
 - **C1-5:** the staff approval's result reports the profile's state after the recompute. **Accepted:** it is not a DTO.
+
+**Codex on `9c5f6ee`** (the commit that holds the review prompt's revision 2): its code review completed at 13:23:29 UTC with no new finding. Its summary's "unresolved" state is the P2 thread at `operations.py:1019`, open until the review's answer on C1-3 is disposed.
+
+## Exact-head review of Stage A (code head `86a2156`)
+
+- **The session:** started by Nathan from the exact-head review prompt, revision 2, at `9c5f6eeadc1364c1484539ba23ddcbd42d19adde` (`docs/ephemeral/2026-11-10-sv2-stage-a-review-prompt.md`). It reported on 10 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*` or `PG*` was present, and the GitHub token names were never read;
+  - the start gate passed, with one merge base, `df8a04c`, and no code after `86a2156`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`.
+- **How it worked:** it read the core code itself, and six parallel reviewers covered the workflow and runs, the contract, the records, the Dev Manager's conditions and the tests. It confirmed every finding first-hand unless the finding is marked "(reviewer)".
+- **What it ran:**
+  - the API's checks: `manage.py check`; 521 tests `OK`; Ruff clean; mypy clean on 78 files;
+  - the contract tests (47) and `generate.mjs --check`;
+  - the proof's offline tests (218), Ruff and mypy;
+  - the five required offline reversals, each failing its case. Its evidence reviewer re-ran 19 of the record's offline reversals at this head, and each failed as recorded;
+  - the Census zip (46,177 bytes): both source hashes and the derived file's match;
+  - informational, on a throwaway PostgreSQL under P06.DB's D4: the suite 47/47 in 75 s, and the twelve edits in the table below.
+- **What it read:** runs 42759801460 (44/44), 42769301337 (47/47) and PR43's pull-request run 42823651738 on `9c5f6ee` (47/47). In each, all eight jobs passed, the gate printed `Application checks passed`, and no retry fired. Apart from finding 5's prose date, no secret or member value is in the logs.
+- **The verdict: changes required, narrowly.** No finding is blocking. Eight findings fall in the correction classes (1 to 8), and four go to the Dev Manager with C1-3 (9, 10, 13 and 14).
+- **Its statements:**
+  - no path leaks a value, lets a member reach another member's object, acts unauthenticated, or makes a profile `visible` with a requirement missing;
+  - no existing test was weakened. One expectation was widened by D7 (`AccountAgeState` now has `birth_date`);
+  - none of the Dev Manager's conditions is plainly unmet. For a future date Y6 to Y8 are disputed; B8's history limit holds only for a direct change; Y4 is arguable;
+  - all 68 existing contract definitions are unchanged. The 20 new ones are each closed and bounded. The 19 registry entries each use an authorized role, with an allowed and a forbidden example;
+  - the workflow's diff, compared as parsed YAML, is confined to the Database proof checks job, and the CI policy's paragraph matches its steps;
+  - every lock and manifest is unchanged;
+  - every count in the records reproduces; the mismatches are finding 8.
+
+**The database edits** (informational only):
+
+| Edit | Suite result |
+|---|---|
+| A coordinate logged at `DEBUG` by the views' logger | Value scan `FOUND`, `PROFILE VERDICT: FAIL` |
+| The failing birth input's refusal raised | `birth.a_failing_date…` fails, 46/47 |
+| The recompute removed from revocation | 2 cases fail |
+| The recompute removed from the birth input's accepted path | 2 cases fail |
+| The unchanged-date recompute removed | 1 case fails |
+| A queryset update forcing `visible` in `set_area` | 3 cases fail |
+| Coordinates stored at four decimals | **Passes 47/47** |
+| No account row lock | **Passes 47/47** |
+| A withdrawn sensitive consent honoured | **Passes 47/47** |
+| The future-date refusal removed | **Passes 47/47** |
+| A birth date logged by `age.py` | **Passes 47/47** |
+| An unkeyed digest for the birth input | **Passes 47/47** |
+
+**The review's threat model**, as its report gives it (assets, actors and entry points are the prompt's):
+
+| # | Threat | What stops it | What proves it | Gap |
+|---|---|---|---|---|
+| 1 | An anonymous prober, or a stolen token, on the 15 routes | `views._Route`: SV1's actor only (`views.py:41-56`); `tx.lock_account` rereads the account's state under its lock (`tx.py:157-166`) | `ownership.every_route_refuses_strangers_and_stale_versions` | The 401 is shown on 13 of 15 patterns; the session is read at authentication, not under the lock (SV1's design) |
+| 2 | A member on another member's object | every operation takes the account from the actor; reads filter by it (`operations.py:185-264`) | the same case; `sets.start_at_all_and_stay_the_owners` | none found |
+| 3 | A stale or replayed command | the expected version and keyed record in each operation; `idempotency.decide` | a stale version on all 10 command routes; `ownership.a_replay_and_a_conflicting_key` | none found |
+| 4 | A publication crossing a fixed limit, or unaudited | `publication_refusals` before any write; `settings_store.publish` writes the version, pointer, `StaffAudit` and `policy_published` together | `FixedLimitTests`; `settings.fixed_limits_refused_before_any_write`; `settings.publication_writes_version_audit_event` | finding 1 |
+| 5 | A sensitive field without its consent, or outliving withdrawal | `carries_sensitive` and `_sensitive_accepted` under the account lock; `_withdraw_sensitive_data` | `fields.sensitive_needs_consent`; `consent.sensitive_withdrawal_scope` | findings 4, 9 |
+| 6 | One consent standing for the other; an old version accepted | `requirements.latest_decision(account, purpose)`; the version check under the pointer's lock | `consent.purposes_never_satisfy_or_revoke_each_other`; `consent.old_version_refused` | none found |
+| 7 | Coordinates kept or echoed | `nearest_area` returns the area only and writes nothing; query strings refused | `area.nearest_query_changes_nothing`; `area.coordinates_never_kept_or_echoed`; `area.no_route_returns_a_distance`; the run's value scan | finding 5 |
+| 8 | A birth input read by another, or an engine result invented | owner-only reads; no `EngineIdentity` created; no `resolved` written | `birth.submit_correct_change_write_private_revisions`; `birth.a_seeded_mapping_returns_to_pending`; `WritesTests` | none found |
+| 9 | A member who declares a date under 18 | `adult_check`; `_refuse_failing_birth_input`; the `age_state_birth_date` check | `adult.failing_dates_are_refused_and_not_stored`; `adult.a_corrected_date_reruns_and_demotes`; `birth.a_failing_date_is_refused_and_nothing_of_it_is_stored` | findings 2, 13 |
+| 10 | `visible` with a requirement missing, or left `visible` | `recompute.recompute` ends all eight writers; resume rechecks first | seven `completion.*` cases; `CallSiteTests` | a lapse without a write (DM-54 accepts it); findings 3, 7 |
+| 11 | A member route reaching a staff operation | `views` and `urls` import no staff code; `_check_staff` | `test_no_view_reaches_a_staff_operation`; `staff.no_member_route_reaches_a_staff_operation` | name-based (nit) |
+| 12 | Staff approval with the setting off, or standing in for more | the setting read `FOR SHARE` after the account lock; `requirements.missing` checks each requirement | `staff.approval_gated_narrow_survives_and_is_revocable` | none found |
+| 13 | Seeded rows reaching the runtime | seeds in the proof package with `fixture:` values; the port refuses `record_check_passed` | `WritesTests`; `completion.needs_the_chart_and_identity_verification_seeded` | none found |
+| 14 | Values in outbox events | `events.emit` takes IDs and a version only | `completion.each_change_emits_its_event`; the table search | finding 12 |
+| 15 | Stored digests reversed | `idempotency.digest`: `salted_hmac`, SHA-256, a salt naming the operation | `KeyedDigestTests`; `digests.keyed_and_not_reproducible_without_the_key` | finding 6 |
+| 16 | Values in logs or errors | only the views log, and a code only; `tx.run` reports exceptions by type | `NoValueInLogsTests`; `test_errors_validate_and_name_no_value`; the value scan | findings 5, 7, 11 |
+| 17 | The served runtime importing SV2 | nothing in `glow_api` names it; the new domain modules are pure | `ProfilesSealedRuntimeTests` | contrived edits only |
+| 18 | The area file changed or fetched | the pinned SHA-256 checked before load (migration `0006`) | `AreaTableTests`; `area.file_hash_and_925_areas` | none; re-derived byte for byte |
+| 19 | Secrets or member values in public CI logs and artifacts | generated in the job, masked, mode 0600; `profile_scan` before output or upload | `ProfileScanTests`; `ProfileWorkflowTests`; three runs' logs | finding 5 |
+
+**The review's findings and the manager's dispositions.** Under the manager workflow's step 6, "Fix or carry, by rule": rule (a) fixes a defect in a correction class before the merge, and the Dev Manager is consulted where a fix's design changes, where it touches a security boundary, a contract or an interface, or where the rule does not decide. The consultation is DM-55.
+
+| # | Severity (class) | Finding | Disposition |
+|---|---|---|---|
+| 1 | should fix (a publication crosses a fixed limit) | The history setting's limit ("more readable needs new consent wording") is crossed in two publications with no new wording. The first changes only the setting's own label; the second makes a cause readable, naming the onboarding version members already accepted (`profile_settings.py:405-415`). Only the direct change is tested | **Fix in correction C2, after DM-55** (item 2): the fix's design is on a privacy boundary |
+| 2 | should fix, after the Dev Manager rules (an account left an adult's; a condition unmet by the letter) | C1-3. The two writers disagree. From `self_declared_adult`, a future date at the eligibility step answers 200 and resets the account (P1), while at the birth input it answers 400 and changes nothing (P2). An under-18 date at the eligibility step answers 200 with a keyed record kept 24 hours (P5), while the birth input refuses it with no record. An under-18 birth input refused by an earlier gate (an unknown time, a stale version, a lapsed consent) skips the reset. No test pins a future-date behaviour. On the words: the letter leans to Codex, and DM-54's reasons (section 8: "a date under 18") and P04's rule lean to the session, so the words do not decide. Neither reading keeps anything of the refused input | **To the Dev Manager** (DM-55 item 1); fixed in C2 as ruled |
+| 3 | should fix (a test passes where it should fail) | Nothing proves the account row lock: without `select_for_update` in `lock_account`, the 521 API tests and the 47 cases pass | **Fix in C2** (test-only), with its reversal |
+| 4 | should fix (a sensitive field outliving withdrawal, through a test gap) | No case saves a sensitive field after a withdrawal: `_sensitive_accepted` reading "any accepted decision" passes everything | **Fix in C2** (test-only), with its reversal |
+| 5 | should fix (a test passes where it should fail) | The scans and the table search match exact text only, and the static logging guard covers `glow_profiles` alone. Coordinates stored at four decimals pass, as does a birth date logged by `glow_identity/age.py`. The fixture's prose date "29 February 2008" is in the public log and artifact while the scan reports 0 (a fixture constant, not a member's value) | **Fix in C2** (test and scan only): the scans match each fixture value in every form the code could print, the guard covers `age.py`, and no case prints a fixture date in prose |
+| 6 | should fix (a digest reproducible without the key, through a test gap) | The stored digest is checked for one command only; the birth input storing an unkeyed SHA-256 passes everything | **Fix in C2** (test-only): every command's stored digest |
+| 7 | should fix, low (a static guard defeated by a plausible edit) | A profile state written by `.update(state=…)`, a recompute dropped from one branch, and a refusal reason built with `Result(…)` all leave the 521 API tests green. The suite catches the first two; the third is unguarded (reviewer) | **Fix in C2** (test-only): the static guards cover the first and the third |
+| 8 | should fix (a record claims more than the code or runs show) | Eight claims: the contract document's F02 refusal sentence and F04 lapse sentence; the P11 plan's SV2 entry (still `b97bc15`, 44 of 44); the evidence record's "accepting the new version completes a profile" (an assertion that cannot fail), "Each writes a `StaffAudit` row" (only an `applied` outcome does), the scans' timing (once, after the last case), Stage A's 59 reversals (shown on `b97bc15` only), and three smaller ones (`glow_domain.identity`'s age section, 233 case rows, four records citing the brief's revision 3) | **Fix in C2.** The two contract sentences follow DM-55's rulings on items 1 and 4. Stage A's sections stand as written, and C2's record corrects them in its own section |
+| 9 | should fix or carry (arguably an old consent version accepted) | The sensitive consent is not checked against its current version: accepted at `v2` with `v3` current, a field and a narrowed set both save (P7). No condition asks for it; K1 to K3 carry only the onboarding case | **To the Dev Manager** (DM-55 item 3) |
+| 10 | should fix, for the Dev Manager (Y4, arguably) | C1-1. A lapse found by the profile edit is recorded as the owner's `edit`, with no `profile_demoted`, outside Y4's literal words ("the owner's own edit that clears the summary"). No event is removed, but SV3 must reread the state on `profile_edited`, and no record says so | **To the Dev Manager** (DM-55 item 4) |
+| 11 | should fix (arguably a record claim: "every refusal is the contract's `Error`") | Three bodies do not answer 400: a 321-digit integer coordinate and 10,000 nested arrays answer 500 `text/html`, and U+0000 in a stored text answers 503 with `retryable: true`. No value is echoed | **Fix in C2**, in the manager's words (DM-55 item 6, for confirmation) |
+| 12 | should fix or record | The sensitive withdrawal deletes field rows that earlier `profile_field_changed` events still name, and emits no field event, against the data model's rule that a payload reference "must target an existing owning record" | **To the Dev Manager** (DM-55 item 5) |
+| 13 | for the Dev Manager ("keep any birth data of a self-declared minor", by the letter) | After a date under 18, earlier birth input revisions keep their date, time and place as `missing`, and the owner's read returns them. The code follows Y6's operative words; Y6's closing clause ("no birth data of a self-declared minor is kept") says more | **To the Dev Manager** (DM-55 item 1, with C1-3) |
+| 14 | nit to should fix (W5's general sentence) | Re-acceptance at a new version from `accepted` is a transition both consent writers make and F02 lacks | **Fix in C2 under W5**, as two F02 entries (DM-55 item 6, for confirmation) |
+| 15 | nits | Ten nits, two of them pre-existing | **In C2** (test-only): the sealed-runtime test asserts its `refused`, the scan's verdict reads its own line rather than the word "clean" anywhere, the suite's case count is pinned, the four registry prerequisites are pinned, and `age_years` (no caller) is removed. **Carried, after DM-55:** a revocation or restriction of a non-active account, and `publish` accepting a `system:` subject (P07); the adult check's missing upper bound (G-01, P07); a wrong method answering `invalid_request` with status 405 (the contract document's error table, in C2's record). **Pre-existing:** the CI policy's "both uploads" (there are four), corrected by the manager in this batch; `IdempotencyRecord` with no account foreign key (P11) |
+
+**The review on the manager's readings:**
+- **C1-1:** `requirement_removed` in a field or area write is within W5 and Y4, since those writes cannot remove a requirement themselves. The profile edit's lapse demotion recorded as `edit` is outside Y4's literal words (finding 10).
+- **C1-3:** the words do not decide, so it goes to the Dev Manager. The firm finding is that the two writers disagree (finding 2). An impossible date is refused at parse on both routes, before any transaction.
+
+**What the review could not run or read:**
+- `npm run check` exactly as CI runs it: a contracts-only install lacks the mobile app's `ajv`. With the module path set, it passes 709 of 709;
+- the mobile app's checks;
+- most of Stage A's 46 database reversals;
+- the ordering and identity suites locally;
+- run 42758271326.
+
+Nothing in the repository changed; `git status` was clean at `9c5f6ee`.

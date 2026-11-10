@@ -391,3 +391,15 @@ The Database proof checks job must also stay within its 30-minute timeout.
 - **The manager's verification of C1** (10 November 2026): integrated at the merge `6e5d0d1`; the verification is in the evidence record, "Manager verification of correction C1". C1-1 to C1-5 accepted. C1-1 (a demotion in a field or area write is `requirement_removed`) and C1-3 (a future birth date refused with no rerun) are the manager's readings on DM-54's words, put to the exact-head review and to the Dev Manager at the pre-merge read.
 - **Stage A's exact-head review prompt, revision 1** (10 November 2026; [prompt](../ephemeral/2026-11-10-sv2-stage-a-review-prompt.md)): of `86a2156`, with a written threat model, held when Codex's review of its commit (`40db2c2`) raised a P2 finding on C1-3's point (a future birth date).
 - **Stage A's exact-head review prompt, revision 2** (10 November 2026; [prompt](../ephemeral/2026-11-10-sv2-stage-a-review-prompt.md)): puts both readings of C1-3 in focus item 3, Codex's and the session's; given to Nathan after Codex's review of its commit. Codex's two P1 threads from `033e8d4` are answered and resolved. Next: the review's report.
+- **Stage A's exact-head review** (10 November 2026; from revision 2, at `9c5f6ee`): of `86a2156`, with a written threat model. **Changes required, narrowly.** No finding is blocking. Findings 1 to 8 fall in the correction classes, and the review sends findings 9, 10, 13 and 14 to the Dev Manager with C1-3. The manager's dispositions are in the evidence record, "Exact-head review of Stage A".
+- **DM-55 consultation, revision 1** (10 November 2026; [consultation](../ephemeral/2026-11-10-dm-55-sv2-stage-a-review.md)), on:
+  - C1-3 at both writers, with the earlier revisions' erasure;
+  - the history setting's limit;
+  - the sensitive consent's version;
+  - C1-1;
+  - the withdrawal's field rows;
+  - the manager's settled items;
+  - DM-53's and DM-54's conditions as applied;
+  - correction C2's scope, with a full exact-head review.
+
+  Next: DM-55's answer, the brief's revision 5 and C2's prompt.
