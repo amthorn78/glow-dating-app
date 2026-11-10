@@ -102,3 +102,40 @@ That is your decision (DM-31), and this message takes no side. The decisions abo
 **The rest of A05 comes later,** in a third message before P07's brief: retention, and who moderates and how fast.
 
 **DECISION NEEDED:** your answers to P1 (gender (a) to (c); orientation (x) or (y); display (m) or (n)), P2 (age (a) to (c); location (a) to (c)), R (resurfacing (a) to (c); rematch (a) or (b)), H ((a) to (c)) and L (yes or no). A reply like "P1: a, x, m; P2: a, a; R: a, a; H: b; L: yes" is enough, or "accept your recommendations".
+
+---
+
+## Follow-up (10 November 2026)
+
+**Nathan's answer:** "I want the options that are the most flexible, progressive, and configurable, and I need to be able to easily update these things in the admin console"
+
+**The manager's reply, as sent:**
+
+**My reading of your answer: every choice becomes a setting you can change in the admin console. Each starts at the default below, and a few fixed limits are ones the console cannot cross.** The console is the WordPress staff plugin, which P07 builds. It changes settings only through scoped Django APIs (PF01 §1, OD-19).
+
+| Item | What you can change in the console | Launch default | Fixed limit, and why |
+|---|---|---|---|
+| P1 gender | The gender list (add, rename or retire values); members may also describe themselves in their own words, shown only if they choose | Woman, man, non-binary | Matching uses a list value; free words cannot drive the two-way rule |
+| P1 "show me" | Follows the list: any combination | Any combination | — |
+| P1 orientation | An optional field, with its own list and the member's own words; turn it off or on | On, optional, shown only if the member chooses | Never used for matching |
+| P1 display | Each member chooses whether each field shows | Gender and orientation hidden until the member shows them | "Show me" is never shown |
+| P2 age | The default range, and whether it applies both ways or only to the viewer | Both ways, 18 and up | Never below 18 |
+| P2 location | The distance choices and their default. Each member picks a city or region, or the phone's approximate location while the app is open | Both ways of locating offered | No exact coordinates and no exact distance shown, ever (the research: they enable triangulation) |
+| R resurfacing | On or off, the waiting period, and an undo of the last pass | Off; undo off | — |
+| R rematch | On or off, and the waiting period | Off | Never after a block or a report |
+| H history | For each cause (own pause, the other member's pause, restriction, suspension, withdrawn consent): hidden or read-only | Read-only for every cause | Unmatch and block stay hidden (OD-12); deletion follows Apple's rule (AP-33); a change that makes more readable reaches a member only after they accept updated consent wording (G-10) |
+| L language | Not a console setting: adding a language means translating and reviewing every screen and legal notice, so it ships as an app release | English, with the app's text kept ready for translation | — |
+
+**For every setting:**
+- each change is versioned and audited: who changed it, when, and the old and new value;
+- it applies from then on, and discovery refreshes;
+- a setting that collects a new kind of data (orientation, the phone's location) needs the app's permission wording and both stores' privacy declarations in place before it can be switched on, so the first release declares them.
+
+**What it changes in the plan:**
+- SV2 to SV4 build each setting as a stored, versioned record with its launch default, instead of a fixed rule;
+- P07's console gets their edit screens;
+- there is more test work, since each setting value needs its own tests, but no money cost.
+
+The design goes to the Dev Manager with SV2's brief, as every brief does. The fixed limits above are my recommendation, and the Dev Manager reads them there.
+
+**DECISION NEEDED:** is this your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change; for example, a default you want switched on at launch.
