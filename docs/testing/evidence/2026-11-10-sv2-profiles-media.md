@@ -909,3 +909,80 @@ The P2 on `40db2c2` (`operations.py:1019`) asked that a future date commit the r
 - **C2-4:** one name added to the document's list (`staff_approval`), and four prerequisites across SV2's entries, all pinned. **Accepted:** the review's "four" counted the second.
 - **C2-5:** the nesting case's bodies stay within the 16 KiB request limit. **Accepted:** the first body never reached the parser, and the session found it by its reversal.
 - **C2-6:** `profile_cases.py`'s comment "the scans run after every case" is stale (corrected claim 6). **A recorded follow-up:** it is fixed with the next code change to the profile suite, a correction after the review if one is needed, or Stage B.
+
+## Exact-head review of Stage A after C2 (code head `01a3acb`)
+
+- **The session:** started by Nathan from the exact-head review prompt after C2, revision 1, at `44455a59cba40f620bad0cdf81d4dfda62ee553b` (`docs/ephemeral/2026-11-10-sv2-stage-a-c2-review-prompt.md`). It reported on 10 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*` or `PG*` was present, and the GitHub token names were never read;
+  - the start gate passed, with one merge base, `df8a04c` (`main`'s `c864edd` has the same tree), and no code differing from `01a3acb`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`.
+- **What it ran,** in a scratch copy of `01a3acb`:
+  - the API's checks: `manage.py check`; 524 tests `OK`; Ruff; mypy clean on 78 files;
+  - the contract tests (49), `generate.mjs --check`, and `npm run check` (709 of 709);
+  - the proof's offline tests (221), Ruff and mypy (59 files);
+  - the five required offline reversals, each failing its case (R1 to R5);
+  - the Census zip (46,177 bytes): both pinned hashes matched, and `areas_source.py derive` reproduced the committed table byte for byte;
+  - informational, on a throwaway PostgreSQL under P06.DB's D4: the suite 53/53 with both scans clean and a second run refused, and four database reversals (DB1 to DB4), each failing a case.
+- **What it read:** runs 42759801460 (44/44), 42769301337 (47/47) and 42864458572 (53/53), and PR43's pull-request run 42869473767 on `44455a5` (53/53 in 77.7 s; profile phase 79 s; counts `108 108 92 38 978 802` unchanged). In each, all eight jobs passed, the gate printed `Application checks passed`, and no DM-41 retry fired. The SV2 steps' logs hold no unmasked secret, PEM line, coordinate or date.
+- **The verdict: changes required, narrowly, in tests only.** It found no defect in the code. Finding 1 is should fix in a correction class; findings 2 to 6 are nits.
+- **Its statements:**
+  - none of the Dev Manager's conditions is unmet in the code, read through the brief's revision 5;
+  - each of the first review's 15 findings is fixed as disposed, or carried as DM-55 ruled;
+  - each of C2's ten items is built as the brief words it;
+  - no test was weakened: C2's rewrites keep every later assertion, and the one removed assertion (the deleted rows) is the one DM-55's in-place rule replaced;
+  - of the 68 existing contract definitions, only `AppIntent` and `AppResponse` changed, by gaining members; the 20 new ones are closed; the outputs regenerate byte for byte; all 21 new registry entries use authorized roles, with an allowed and a forbidden example;
+  - the workflow's diff from `df8a04c` is confined to the Database proof checks job, and C2 did not change it;
+  - no lock or dependency manifest changed;
+  - the records' claims hold against the code and the runs.
+- **On the manager's readings:**
+  - **C2-1: confirmed.** Putting the date first for an `unknown` account too is within Z2's words. It changes no outcome but a refusal's code: a request carrying both a stale version and a failing or future date answers 403 or 400 instead of 409. Nothing is written either way, and the idempotency check still comes first.
+  - **C2-4: right.** One name added to the document's list (`staff_approval`), four prerequisites across SV2's 21 entries, each pinned exactly.
+
+**The review's threat model**, as its report gives it, condensed (assets, actors and entry points are the prompt's):
+
+| # | Threat | What stops it | What proves it |
+|---|---|---|---|
+| 1 | An anonymous prober on the 15 routes | SV1's actor only, with `IsAuthenticated`; `handle_exception` answers 401 with the contract's `Error` | `ownership.every_route_refuses_strangers_and_stale_versions` |
+| 2 | A stolen token | SV1's actor; `lock_account` and `read_account_shared` refuse an account that is not active | the same case; SV1's suite, 49/49 |
+| 3 | A member on another member's object | the account from the actor only; reads filter by it; another member's object ID is `not_found` | the ownership case; `sets.start_at_all_and_stay_the_owners` |
+| 4 | A stale or replayed command | each writer's expected version; `idempotency.decide` after the locks | `ownership.a_replay_and_a_conflicting_key` |
+| 5 | A publication crossing a fixed limit, in one step or two, or unaudited | `publication_refusals` before any write; `publish` writes the version, pointer, `StaffAudit` and `policy_published` together | `FixedLimitTests`; `settings.fixed_limits_refused_before_any_write`; `settings.history_limit_not_crossed_in_two_publications`; `settings.publication_writes_version_audit_event` |
+| 6 | A sensitive save without the current consent version, or a value outliving withdrawal | one `read_shared` call for the catalog and the consent; `_sensitive_accepted` checks the version; the rows set to "not stated" in place | `fields.sensitive_needs_consent`; `fields.sensitive_needs_the_current_consent_version`; `consent.sensitive_withdrawal_scope`; DB2, DB3 |
+| 7 | One consent satisfying the other; an old version accepted | `latest_decision` filters by purpose; the version checked under the pointer's lock; the `consent_purpose` constraint | `consent.purposes_never_satisfy_or_revoke_each_other`; `consent.old_version_refused` |
+| 8 | Coordinates kept or echoed | `nearest_area` writes nothing; a query string refused; every error a code only | `area.nearest_query_changes_nothing`; `area.coordinates_never_kept_or_echoed`; the value scan; `BodiesTheParserCannotHoldTests` |
+| 9 | A birth input read by another, or an engine result invented | owner-only reads; no `EngineIdentity` created; nothing writes `resolved` or `verified` | `birth.submit_correct_change_write_private_revisions`; `birth.a_seeded_mapping_returns_to_pending`; `WritesTests` |
+| 10 | A member who declares a date under 18 | the date first at both writers; `_reset_failing_date`; the `age_state_birth_date` constraint | `adult.a_self_declared_adults_date_comes_first_at_both_writers`; `birth.a_failing_date_is_refused_and_nothing_of_it_is_stored`; `CallSiteTests`; DB1, DB4 |
+| 11 | `visible` with a requirement missing, or left `visible` | `recompute` ends all eight writers on every non-raising path; resume rechecks | the `completion.*` cases; `CallSiteTests`; `completion.a_second_writer_waits_for_the_account_row_lock` |
+| 12 | A member route reaching a staff operation | `views` and `urls` import no staff code; the subject from the caller only; `_check_staff` | `test_no_view_reaches_a_staff_operation`; `staff.no_member_route_reaches_a_staff_operation`; gap: finding 1(d) |
+| 13 | Staff approval with the setting off, or standing in for more | the setting read `FOR SHARE` after the account lock; `requirements.missing` checks each | `staff.approval_gated_narrow_survives_and_is_revocable` |
+| 14 | Seeded rows reaching the runtime | seeds only in the proof's `profile_support`, with `fixture:` values; the port refuses `record_check_passed` | `WritesTests`; `completion.needs_the_chart_and_identity_verification_seeded` |
+| 15 | Values in the outbox, or an event naming a deleted record | `events.emit` takes references only; no SV2 path deletes a referenced row | `completion.each_change_emits_its_event`; the withdrawal case |
+| 16 | A stored digest reversed by trying values | `salted_hmac`, SHA-256, a salt naming the operation | `KeyedDigestTests`; `digests.*` (802 records, 10 kinds); R3 |
+| 17 | Values in logs or errors | the views log a code only; `tx.run` reports an exception by type; the parser echoes nothing | `NoValueInLogsTests`; the value scan; gaps: finding 1 |
+| 18 | The served runtime importing SV2 | `glow_api` names none of it | `ProfilesSealedRuntimeTests`; R1 |
+| 19 | The area file changed or fetched | migration 0006 checks the file's SHA-256; nothing fetched | `area.file_hash_and_925_areas`; the review's re-derivation |
+| 20 | Secrets or member values in CI logs or artifacts | generated in the job, masked, mode 0600; `profile_scan` before any output or upload | `ProfileScanTests`; the four runs' logs |
+
+**The review's findings and the manager's dispositions** (step 6, "Fix or carry, by rule"):
+
+| # | Severity (class) | Finding | Disposition |
+|---|---|---|---|
+| 1 | should fix, low (a test passes where it should fail: the first review's finding 7's class). The code at `01a3acb` is right | The static guards are name-based, and plausible edits pass all 524 API tests and 221 proof tests: **(a)** an `AgeTransitionRefused` message in `age.py` becomes the refusal reason `f"age:{refused}"`, which `views.py` logs at INFO, and the age-port guard covers logging only; **(b)** a second logger in `views.py`, a borrowed logger under another name, or `sys.stderr.write`; **(c)** a profile state written as `before.state = …`, through `bulk_update`, `setattr`, a queryset variable's `.update(**…)`, or from `age.py`; **(d)** a member view reaching staff code through a helper in `operations.py`; **(e)** a new operation whose inner function is not named `body`, or a recompute inside a condition | **Fix before the merge, in correction C3** (test-only), for (a) to (c), with the review's bounded fix: the refusal-reason check covers `AgeTransitionRefused(…)` in `age.py` and `PortOutcome(…)` in `glow_profiles/identity_verification.py`; `views.py` holds exactly one `getLogger` call, and every logging call is checked whatever its receiver is named; every `.state =`, `setattr(…, "state", …)` and `bulk_update` in `glow_profiles` is on an allowlist of non-profile writes or in `recompute.py`. **(d), (e) and lazy imports in `glow_domain`:** recorded as the guards' limits, as the review advises |
+| 2 | nit | `BodiesTheParserCannotHoldTests` is defined after `unittest.main()` in `test_profiles_offline.py`, so running the file as a script skips it (`manage.py test` runs it) | **In C3:** the class before `unittest.main()` |
+| 3 | nit | `profile_cases.py:2227`: `ctx.refused(…, born)` uses the fixture date as a check's label, so a failing run would print it in the case's detail (the scan withholds a failing log) | **In C3:** a label without the date |
+| 4 | nit (records) | The recompute's `consent.onboarding` read comes after the `profile.*` or `identity.staff_approval` pointers, so "the pointers `FOR SHARE` in name order" holds per `read_shared` call, not across a transaction. No deadlock is possible: a publication holds one pointer `FOR UPDATE` | **In C3's record:** Stage A's lock-order sentence corrected to "in name order within each `read_shared` call", with the reason no deadlock can follow. No code change |
+| 5 | nit (policy) | With `chosen_area` off and only the phone's location offered, `set_area` accepts any area ID, not only the query's answer | **Recorded, no change:** D5's "that area, or another" allows it, and both ways are on at launch |
+| 6 | nit | `set_preferences` and `set_filters` do not check the profile's state, so a restricted profile can still change its sets and filters. Nothing leaks | **Carried to P07** (what a restriction stops), in the carried-items file |
+| Known | recorded follow-up | C2-6, `profile_cases.py`'s stale comment on the scans' timing | **In C3**, as C2-6's disposition says (the next code change to the profile suite) |
+
+**A note on the database reversals:** DB4 (an idempotency record stored with the under-18 refusal) fails the date-first case and the digests case, though not `adult.failing_dates_are_refused_and_not_stored`. No gap follows: two cases catch it.
+
+**What the review read in part only, or could not run:**
+- DM-52 to DM-55's reports were read in part (DM-55's verdicts and items, DM-54's verdict table and Y10 and Y11); OD-60 and OD-61, and `glow_chat`'s functions, were not read. The conditions were checked through the brief's revision 5, which applies them word for word. The Dev Manager's pre-merge read covers the conditions as applied.
+- `profile_cases.py` was read in the cases the focus names; migration 0005, the corpus and the other profile test files were surveyed or run.
+- The mobile app's export and rendered checks, the ordering and identity suites, and the workflow's shell steps as a whole were not run locally; push run 42869454425 was not read.
+
+Nothing in the repository, on GitHub or in Notion changed.
+
+**C3's review:** C3 changes tests only (no non-test line), so a delta review follows it, reading every path C3 touches as it stands at C3's head (M05 S2). Codex reads the PR's final head as usual.

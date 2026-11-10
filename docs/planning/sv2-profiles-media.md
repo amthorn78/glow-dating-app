@@ -431,6 +431,30 @@ The Database proof checks job must also stay within its 30-minute timeout.
 
 **The review after C2:** a full exact-head code and security review, with its written threat model, of C2's head, not a delta review (DM-55, section 10; M05 S2). Its focus is the review plan's list, with Z5, Z8, Z11, Z12 and Z15. Codex reads the PR's head as usual. Then the Dev Manager's pre-merge read (DM-55, section 14).
 
+## Stage A, correction C3 (the review after C2)
+
+C3 corrects the tests of C2's code head `01a3acb` (integrated at `26419a9`; PR43) to the exact-head review after C2 (the evidence record, "Exact-head review of Stage A after C2"). That review found no defect in the code. Its one should-fix finding is in a correction class: a test passes where it should fail. Under step 6's rule (a), C3 fixes it before the merge. C3 changes tests and records only, and no design, so it needs no consultation first.
+
+**The items:**
+1. **The static guards** (finding 1, (a) to (c)), each with a reversal that fails its new check:
+   - **Refusal reasons:** the check also covers `AgeTransitionRefused(…)` in `glow_identity/age.py` and `PortOutcome(…)` in `glow_profiles/identity_verification.py`. A message built from a value fails it.
+   - **Logging:** `views.py` holds exactly one `getLogger` call. Every logging call in `glow_profiles` is checked whatever its receiver is named, and so is a write to `sys.stderr` or `sys.stdout`.
+   - **Profile state:** every `.state =`, `setattr(…, "state", …)` and `bulk_update` in `glow_profiles`, and any in `age.py`, is either in `recompute.py` or on a named allowlist of writes that are not a profile's.
+2. **The guards' limits** (finding 1, (d) and (e)): the record names what the guards cannot see. That is a member view reaching staff code through a helper in `operations.py`, a new operation whose inner function is not named `body`, a recompute inside a condition, and a lazy import in `glow_domain`. The profile suite's cases cover each behaviour.
+3. **`BodiesTheParserCannotHoldTests`** (finding 2) is defined before `unittest.main()`.
+4. **The fixture date as a label** (finding 3): `profile_cases.py`'s check at the eligibility step no longer uses the fixture date as a label, and no check's label holds a member value.
+5. **C2-6:** `profile_cases.py`'s comment on the scans' timing says they run once, after the last case.
+6. **The records** (finding 4): the record's new section "Correction C3" corrects Stage A's lock-order sentence. The settings' pointers are taken `FOR SHARE` in name order within each `read_shared` call. The recompute's onboarding read can follow a writer's other pointers. No deadlock follows, since a publication holds one pointer `FOR UPDATE`. It also names the guards' limits (item 2).
+
+**Owned paths (C3):**
+- `services/api/tests/`: SV2's profile tests (`test_profiles_offline.py`, `test_profile_recompute.py`);
+- `proofs/postgres-ordering/**`: the profile suite (`profile_cases.py`) and its offline tests;
+- the evidence record: "Correction C3".
+
+**The stop rule (C3):** the correction stops and reports, with no further change, if it needs any change outside tests and the record. That rules out `glow_profiles`, `glow_domain`, `glow_identity` (`age.py` included), `glow_chat`, `glow_api`, a model, migration, DTO or registry entry, the workflow, a lock or a dependency. It also stops if a new check fails on the code at `01a3acb` without a temporary edit, since that would be a code defect for the manager, not a test change. A reversal's temporary edit of code is allowed, and must be undone.
+
+**The review after C3:** a delta review (M05 S2: no non-test line changes). It reads every path C3 touches as it stands at C3's head, with the review's security focus. Then Codex on the final head, the Dev Manager's pre-merge read (DM-55 section 14, and C2-1), the PR run, and the merge.
+
 ## Sessions
 
 - **Brief, revision 1** (10 November 2026): written after OD-60 and the matrix's recheck; to the Dev Manager as DM-52 ([consultation](../ephemeral/2026-11-10-dm-52-sv2-brief.md), at `73c109b`).
@@ -468,3 +492,5 @@ The Database proof checks job must also stay within its 30-minute timeout.
 - **Correction C2's report** (10 November 2026; branch `claude/awesome-maxwell-wo9jxa`, code head `01a3acb`, records `ca0ad16`; the record, "Correction C2"): the ten items, with 32 reversals; run of record 42864458572, every job passed, the profile suite 53/53. No stop rule was met.
 - **The manager's verification of C2** (10 November 2026): integrated at the merge `26419a9`; the verification is in the evidence record, "Manager verification of correction C2". C2-1 to C2-5 accepted, C2-1 as a reading on DM-55's words for the review and the Dev Manager; C2-6, a stale code comment, a recorded follow-up. Codex's three findings on `496c39e` and `399c68d` are C2's items 1 to 3; its P2 on a future date is answered with DM-55's ruling.
 - **Stage A's exact-head review prompt after C2, revision 1** (10 November 2026; [prompt](../ephemeral/2026-11-10-sv2-stage-a-c2-review-prompt.md)): a full review of `01a3acb`, with a written threat model and TypeSafe's reading (Opus 5.5 at extra high), given to Nathan after Codex's review of its commit. Next: the review's report.
+- **Stage A's exact-head review after C2** (10 November 2026; from revision 1, at `44455a5`): of `01a3acb`, with a written threat model. **Changes required, narrowly, in tests only:** no defect in the code and no blocking finding; one should-fix finding (the static guards) in a correction class, and five nits. C2-1 confirmed. The dispositions are in the evidence record, "Exact-head review of Stage A after C2". The manager's section "Stage A, correction C3" lists C3's items, with no consultation needed (tests and records only).
+- **Stage A correction C3's prompt, revision 1** (10 November 2026; [prompt](../ephemeral/2026-11-10-sv2-stage-a-c3-correction-prompt.md)): the six items of "Stage A, correction C3", tests and records only, with TypeSafe's reading (Opus 5.5 at high), given to Nathan after Codex's review of its commit. Next: C3's report and the manager's verification, then C3's delta review.
