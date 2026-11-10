@@ -1830,7 +1830,91 @@ def constraints_refuse(ctx: ProfileContext) -> str:
             "violates foreign key constraint",
             lambda: Profile.objects.filter(account_id=account).update(area_id=uuid4()),
         ),
+        (
+            "violates foreign key constraint",
+            lambda: PreferenceSetEntry.objects.create(
+                account_id=uuid4(), field="gender", value_id="all"
+            ),
+        ),
+        # Each new model's version and state checks, and the rest of its own checks: each
+        # write breaks one constraint only (PostgreSQL tests CHECK constraints in name order).
+        (
+            "glow_persistence_area_version",
+            lambda: Area.objects.create(
+                area_id="99998",
+                name="Fixture Area",
+                latitude="10.000000",
+                longitude="10.000000",
+                version=0,
+            ),
+        ),
+        (
+            "glow_persistence_settingversion_version",
+            lambda: SettingVersion.objects.create(
+                name="profile.gender",
+                number=99,
+                content={},
+                published_at=now,
+                staff_subject=STAFF,
+                reason="SV2-proof",
+                version=0,
+            ),
+        ),
+        (
+            "glow_persistence_identityverification_version",
+            lambda: IdentityVerification.objects.create(account_id=other, version=0),
+        ),
+        (
+            "glow_persistence_identityverification_state",
+            lambda: IdentityVerification.objects.create(account_id=other, state="fixture-state"),
+        ),
+        (
+            "glow_persistence_preferencesetentry_version",
+            lambda: PreferenceSetEntry.objects.create(
+                account_id=account, field="gender", value_id="man", version=0
+            ),
+        ),
+        (
+            "preference_set_field",
+            lambda: PreferenceSetEntry.objects.create(
+                account_id=account, field="fixture-field", value_id="man"
+            ),
+        ),
+        (
+            "glow_persistence_profilefieldchoice_version",
+            lambda: ProfileFieldChoice.objects.create(
+                account_id=other,
+                field="orientation",
+                value_ids=["not-stated"],
+                setting_version=1,
+                version=0,
+            ),
+        ),
+        (
+            "profile_field_setting_version",
+            lambda: ProfileFieldChoice.objects.create(
+                account_id=other, field="gender", value_ids=["woman"], setting_version=0
+            ),
+        ),
     ]
+    # Every constraint migration 0005 declares has its write here.
+    import importlib
+
+    from django.db.migrations.operations.models import AddConstraint, CreateModel
+
+    schema = importlib.import_module("glow_persistence.migrations.0005_profiles_settings")
+    declared = {
+        operation.constraint.name
+        for operation in schema.Migration.operations
+        if isinstance(operation, AddConstraint)
+    } | {
+        constraint.name
+        for operation in schema.Migration.operations
+        if isinstance(operation, CreateModel)
+        for constraint in operation.options.get("constraints", [])
+    }
+    covered = {constraint for constraint, _ in writes}
+    expect(declared <= covered, "a write for every constraint migration 0005 declares")
     before = snapshot()
     for constraint, write in writes:
         named = False
@@ -1841,7 +1925,10 @@ def constraints_refuse(ctx: ProfileContext) -> str:
             named = constraint in str(error)
         expect(named, f"PostgreSQL refuses the write by {constraint}")
     expect(snapshot() == before, "the refused writes leave nothing behind")
-    return f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint"
+    return (
+        f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint:"
+        f" all {len(declared)} that migration 0005 declares, and two foreign keys"
+    )
 
 
 # =============================================================================================
