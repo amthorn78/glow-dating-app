@@ -1,4 +1,4 @@
-# Current handoff — App Manager 10 (10 November 2026; SV1 merged; the second A05 message with Nathan)
+# Current handoff — App Manager 10 (10 November 2026; the second A05 message answered, OD-60; SV2's brief next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -10,27 +10,28 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV1 is done:** merged with PR42 at `c864edd` (9 November 2026; [brief](../planning/sv1-identity.md), revision 5; [record](../testing/evidence/2026-11-09-sv1-identity.md), with the merge receipt). Corrections C1 and C2, the exact-head review with its threat model, C2's delta review and DM-45 to DM-50 are in the record and the review log. Its prompts are pruned; links are pinned at `c864edd`. Carried: DM-50 1.2 to SV2, natural expiry to SV4, and items to P07, P08, P09.2 and P11 ([carried items](../planning/carried-to-later-items.md); the P11 plan).
 - **P06.3 is done:** merged with PR41 at `da92f1f` ([record](../testing/evidence/2026-11-09-p06-3-notifications.md), with the merge receipt).
-- **Now: the [second A05 message](../ephemeral/2026-11-09-a05-second-decision-message.md),** revision 2, sent to Nathan on 10 November 2026, before SV2's brief (DM-37 4.5; OD-50; OD-32): P1 gender and "show me", P2 age range and location, R resurfacing and rematch, H chat history while messaging is stopped, L the language. [DM-51](dev-manager/reviews/2026-11-09-dm-51-a05-second-message.md) approved it with M1 to M17, applied as written, and X1 in the matrix; X2 waits on his answer to H. His answer becomes an owner direction, routed as the message's header says.
+- **The second A05 message is answered:** [OD-60](owner-directions.md) (10 November 2026). Every item is a setting editable in the admin console (the WordPress staff plugin, P07), at launch defaults and within fixed limits; orientation is matched both ways, and looking for and relationship status join as two-way list fields; English is his answer. It is routed to the carried-items file (SV2, SV3, SV4, P07, the third message) and the P11 plan (DM-51 X2).
+- **Now: SV2** (OD-49), profiles and media. First the matrix's recheck (its section 10) of the rows OD-60's taxonomy and the phone's location touch; then SV2's brief, with OD-60's settings and fixed limits, to the Dev Manager.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3 and SV1 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-51, with "Deferred conditions"; the next consultation reads the message as sent. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (10 November 2026, 00:05 UTC, App Manager 10)
+## Waiting checkpoint (10 November 2026, 00:27 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | Nathan | His answers to the second A05 message (P1, P2, R, H, L) | Nothing breaks: SV2's brief keeps the recorded defaults and says so (DM-37 4.5), but it waits for his answer, since P1 and P2 decide what a profile stores |
+| Nathan | App Manager 10 | The matrix's recheck, then SV2's brief | Nothing is owed; the manager works next |
 
 ## Next actions (App Manager 10)
 
-1. **Nathan's answer:** record it as an owner direction; route it to the carried-items file (SV2 to SV4), A05's Work Register row and the matrix's recheck (section 10); apply X2 if H is (b).
-2. **Then** SV2's brief, with the matrix's G-02 and G-10 and DM-50 1.2 (the carried-items file, "Carried to SV2").
+1. **The matrix's recheck** (section 10) of the rows OD-60's taxonomy and the phone's location touch, in a recheck record.
+2. **Then** SV2's brief, with OD-60, the matrix's G-02 and G-10, and DM-50 1.2 (the carried-items file, "Carried to SV2"), to the Dev Manager.
 3. **After SV2:** SV3 and SV4.
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (`git ls-remote`, 10 November 2026, 00:04 UTC)
+## Branches and PRs (`git ls-remote`, 10 November 2026, 00:27 UTC)
 
 - **Open PRs:** none. `main` is at `c864edd` (PR42's merge).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`a2c6709` before this batch); and `claude/dev-manager` (`0fc2426`, DM-51's report, merged at `bf0a8f3`). The cleanup run 42718647056 deleted SV1's three session branches.
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`1a220fb` before this batch); and `claude/dev-manager` (`0fc2426`, DM-51's report, merged at `bf0a8f3`). The cleanup run 42718647056 deleted SV1's three session branches.

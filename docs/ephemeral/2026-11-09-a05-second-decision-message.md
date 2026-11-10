@@ -175,3 +175,7 @@ The P1 orientation row becomes:
 - **Relationship status may count as information about a person's "sex life",** which two of the state laws treat as sensitive (UST-42, UST-48). It gets the same handling as orientation: consent at entry, never sold, and declared in both stores. The matrix's recheck of the rows this taxonomy touches covers it (section 10).
 
 **DECISION NEEDED:** is the table, with the orientation row and these two rows, your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change.
+
+**Nathan:** "yes"
+
+**Recorded** as OD-60: every item a setting editable in the admin console, at the launch defaults and within the fixed limits above; orientation matched both ways; looking for and relationship status added as two-way list fields; English as his answer.
