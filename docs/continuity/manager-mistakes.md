@@ -151,6 +151,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
 | AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
 | AM10-14 | 10 Nov 2026 | accuracy | Verifying SV2 Stage A's correction C1 (`40db2c2`), App Manager 10 accepted C1-3 (a future birth date refused with no rerun) as a reading of DM-54's words and put only its supporting argument in the review prompt's revision 1. It did not set it against the brief's acceptance item 7, which counts "a future date" among the dates that fail, or `adult_outcome`, which fails one | Codex, its P2 finding on `40db2c2` |
+| AM10-15 | 10 Nov 2026 | accuracy | DM-55's consultation (`496c39e`), item 1.4, proposed erasing the date, time, place and time zone of every birth input revision after a date under 18. It did not read what that breaks: `OwnBirthInput` requires a full `BirthInput`, so the owner's reads would fail on an erased revision; the next save compares its expected version with the erased row's; and `birth_time_uncertainty` ties the time to its precision | Dev Manager 4, DM-55 section 3 |
 
 ## App Manager 2
 
@@ -1099,6 +1100,18 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-15 — A data erasure proposed without reading what it breaks (accuracy)
+
+- **What happened:** DM-55 item 1.4 proposed that a reset erase every birth input revision's private fields, keeping the rows as `missing`, and named the migration it needed. It did not read the read path, the save path or the model checks that erasure touches:
+  - `OwnBirthInput` requires a full `BirthInput`, and `contract.own_birth_input` calls `birth_date.isoformat()`, so both owner reads would fail on an erased revision;
+  - the next save compares its expected version with the erased row's;
+  - `birth_time_uncertainty` ties `local_time` to `time_precision`;
+  - G-05's hold may need to stop an erasure.
+- **Caught by:** Dev Manager 4, in DM-55 section 3.
+- **Effect:** none: 1.4 was declined as worded and carried to P07 for G-01 (Z18), before any prompt.
+- **Correction:** Z2 and Z18 in DM-55's words.
+- **Prevention:** AM10-11's rule covers a consultation's proposals too. Before proposing a change to stored data, the manager reads every DTO and read that returns it, the writers that compare its version, and the model's checks on it.
 
 ### AM10-14 — A reading accepted with one side of the words (accuracy)
 

@@ -658,3 +658,13 @@ Each file was restored and its hash checked against `86a2156`.
 - run 42758271326.
 
 Nothing in the repository changed; `git status` was clean at `9c5f6ee`.
+
+**DM-55's rulings** (answered at `f165861`, a read of `496c39e`; the review log, "DM-55"):
+- **Finding 2 (C1-3):** option (b). A future date is invalid input at both writers, refused `invalid_request` with no change. A date under 18 from a self-declared adult is checked first at both writers, before their other refusals, and refused `forbidden` with no idempotency record while the reset commits. The manager's recommendation of (a) is withdrawn.
+- **Finding 13:** erasing the earlier revisions is declined as worded and carried to P07 for G-01 (Z18). Until then they keep their contents, readable only by their owner and never current again. Y6's closing clause becomes a sentence that claims only what the code does (Z2).
+- **Findings 1, 9, 10 and 12:** each approved as the manager recommended, 9 and 12 with conditions (Z6 to Z15).
+- **Findings 11 and 14:** confirmed in the manager's words.
+- **Finding 15:** confirmed, except that `age_years` stays and gets a test (Z16, Z17), and the 405 also goes to P11 (Z20).
+- **C2's review:** a full exact-head review with a written threat model.
+
+The brief's revision 5 holds the words, and its "Stage A, correction C2" section lists C2's items.
