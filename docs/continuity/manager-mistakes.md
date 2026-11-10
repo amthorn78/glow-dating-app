@@ -147,6 +147,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-08 | 9 Nov 2026 | follow-through | Implementation Control's Branches bullet kept the manager branch's "at this sync" hash one commit behind the status line at two syncs in a row (`30fdf1a` against `38142b3`; `38d48e2` against `cae9cea`); the status edit did not move the bullet | Dev Manager 4, DM-48 section 9 and DM-49 section 5 |
 | AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
 | AM10-10 | 9 Nov 2026 | accuracy | The second A05 message, revision 1, took its facts from the matrix's section 9 summary and the manager's reading of the design, not from each cited row and text: Apple's row has no derived-data rule (AP-23), California's is a right to limit, not consent (UST-42), New York's fraud-ban notice binds only a paid service (UST-08), "a city or ZIP code" widened the research's "city/region", and rematch was said to change the data model, which says the opposite (`Match`) | Dev Manager 4, DM-51 section 5 |
+| AM10-11 | 10 Nov 2026 | accuracy | SV2's brief, revision 1, proposed mechanisms without reading the code and contract they rely on: D7 had SV1's age port update an existing row (`record` refuses one, and `glow_identity` was excluded) and the birth input hold the date before the member gives a place; D11 gave the sensitive consent as `ConsentIntent` with a new purpose (it has no purpose field); D6 assumed `accept_consent` checks the version; D9 left out P04.2's chart and "looking for" requirements | Dev Manager 4, DM-52 sections 8, 9 and 11 |
 
 ## App Manager 2
 
@@ -1095,6 +1096,18 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-11 — Mechanisms proposed without reading their code (accuracy)
+
+- **What happened:** SV2's brief, revision 1, named existing functions, DTOs and rules as the mechanisms for its design without reading them.
+  - D7 had the adult check update SV1's `unknown` age row through `AgeAssurancePort`, whose `record` refuses an existing row by design, while the brief excluded `glow_identity`. It also kept the date in the birth input, which at that step cannot exist, since its shape needs a place the member has not given yet.
+  - D11 gave the sensitive-fields consent as `ConsentIntent` with a new purpose; `ConsentIntent` has no purpose field.
+  - D6 relied on `accept_consent` for F02's "old consent version rejected", which it does not check.
+  - D9's completion list left out P04.2's reviewed requirements, the resolved chart and a "looking for" value.
+- **Caught by:** Dev Manager 4, DM-52 sections 8, 9 and 11, which read each function, schema and fixture rule.
+- **Effect:** none on code: no prompt had gone out. Revision 2 applies B17 to B28 and B34 to B37.
+- **Correction:** DM-52's words, applied as written.
+- **Prevention:** before a brief names an existing function, DTO or reviewed rule as a mechanism, the manager reads its signature and docstring, the DTO's properties, or the fixture rule's text, and cites the line; a design that changes a reviewed rule says so.
 
 ### AM10-10 — Facts written from a summary, not from the rows (accuracy)
 

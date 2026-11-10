@@ -30,6 +30,11 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **The launch country is the US, all states, for now (OD-55):** the brief takes the matrix's store, US federal and US state rows; the UK and EU rows wait for a launch decision there.
   - **Before this brief:** P07's rows for the launch countries that are UNCONFIRMED, or rest on a source not read (Ofcom's and the ICO's guidance, New York's SAFE rule text, Connecticut's 2026 acts, New Jersey's current code), are re-read from their originals, by Nathan's CLI agent if the cloud still cannot reach them (OD-43); otherwise the brief carries them as UNCONFIRMED (DM-37 5.3). The UK's 6 and 12 November 2026 events (UK-22, UK-23) are read then, for a UK launch.
   - **PF01 §7's release gate** (1.17; DM-37 2.7) is in force before this brief: a request to publish, invite external testers or enable public traffic lists each binding row with its state.
+- **From SV2's brief (DM-52) and Nathan's answers of 10 November 2026:** no staff review stands before a profile or a photo shows. Approval is automated (identity verification; the automated photo check), and staff act only on reports, so P07's console has no approval queue. It has the staff approval of a member without identity verification, its revocation, and the setting that allows it (off at launch), each staff-only and audited. P07 plans what a member can do when the automated identity check fails: a retry, and an appeal its one operator answers (OD-23). Also:
+  - an area does not give a member's state (59 of the 935 core-based statistical areas span two or more states), so G-04's state notices do not read it from the area;
+  - the staff operations SV2 builds take their staff subject from the caller, and P07's staff authentication supplies it;
+  - a staff restriction of a photo is cleared only by the staff decision that closes the report, never by the automated check;
+  - a hold on a photo (G-02's seam) is released only by the item that builds it.
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
@@ -41,6 +46,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
   - **P08.1:** G-05's hold design (P08.2 enforces it against deletion; the P11 plan's PV07 is extended to holds); G-09 (GDPR and UK GDPR representatives, the DSA's contact points and legal representative, the intake for authority orders), carried, conditional, to a UK or EU launch, since Glow is a US company launching in the US for now (OD-55), with a representative's cost in M07 then; G-11 (DPIA, records of processing, the DPO decision, automated decisions, transfers, breach procedure, UK complaints), with P09 keeping incident escalation. It reads SV4's G-12 classification.
   - **P08.3:** G-07 (consumer and subscription law), only if Nathan chooses a paid launch (A06); no PF01 line now.
 - **A DPIA at a UK or EU launch** (DM-38 section 8): whether one is needed is read from the matrix's DPIA tests ("likely high risk", "large scale": EU-25, EU-46, EU-47), not from App Manager 8's follow-up reply under OD-55, which said one is needed "since orientation data, matching and age checks are high-risk". No decision rested on that reply, since the launch is the US only (OD-55).
+- **From SV2's brief (DM-52):** the consent wording says that a gender with a "show me" set can reveal orientation (onboarding consent) and that a viewer who narrows a field learns it for everyone they are shown (the sensitive-fields consent), as well as H's readable rule (DM-51 M15). The account deletion's photo purge asks G-02's hold port first. The identity verification company's copy of a member's ID and selfie is deleted on the schedule Nathan's decision sets, and on account deletion.
 
 ## Carried to SV1 (the identity slice; OD-49)
 
@@ -56,7 +62,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV2 (profiles and media; OD-49)
 
-- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 1 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16). It goes to the Dev Manager as DM-52.
+- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 2 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16) and applies DM-52's B1 to B55 as written, with Nathan's answers in its session (OD-61: identity verification in D18; the chart and the birth time in D8 and D9; automated photo approval in D10).
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
   - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
   - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), now with Nathan's answer (OD-60): consent at the step where orientation and relationship status are entered, and consent wording that says what H's read-only rule leaves readable (DM-51 M15).
@@ -67,6 +73,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 - **From P09.3a's matrix** (DM-37 2.2): eligibility reads G-01's account age state.
 - **From OD-60** (R and P2): resurfacing, an undo of the last pass, and rematch are settings, off at launch and switchable with a waiting period; rematch never after a block or a report, and as a reviewed transition on the one match record, never a second one (the data model, `Match`; DM-51 M10). Eligibility applies the two-way rule over the four list fields and the age range, and the distance filter over the member's chosen city or region or the phone's approximate location, never exposing exact coordinates or an exact distance. SV3 tests what repeated filter changes and tiny population groups reveal (the original research; DM-51 M9).
+- **From SV2's brief (DM-52):** a "show me" set that keeps all is a marker that includes values the console adds later and "not stated", and a narrowed set never includes "not stated"; a member with "not stated" in orientation or relationship status is seen only by viewers who keep all of that field. The age comes from the age state's date through a function that returns whole years, never from the birth input. A distance choice counts areas whose internal points are within it, and two members in one area are at distance zero. Every reader of consent filters by purpose.
 
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
@@ -79,6 +86,11 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From SV1** (the [SV1 record](../testing/evidence/2026-11-09-sv1-identity.md), "What could not run, and limits"): **natural expiry writes no `session_expired`.** allauth's layer refuses an expired session first, at the aligned expiry, so Glow's actor never finds the row: it stays `valid` past `expires_at`, and `expire_session` does not run. Readers check `expires_at`, so nothing is served past it, but the system `logout` that follows `session_expired` (P06.3, above) needs a sweep, or another trigger, before it relies on that event. The notification composer's check of whether a registration's session is current compares `expires_at` as well as the state, since a row past `expires_at` still reads `valid`. From SV1's exact-head review (F-9): once allauth purges an expired `UserSession`, the `AccountSession`'s `auth_session_ref` points at a deleted row, and the actor refuses with `no_user_session` before its own expiry check, so the row is never marked. The sweep therefore finds such rows by `expires_at`, not through the actor.
 - **From P06.3's exact-head review, F-4** (the P06.3 record, "Exact-head review of P06.3"): the in-memory composer's `_fixed` set and ledger grow without bound (`notifications.py`); the serving slice gives the ledger its real storage, a bound and a retention.
 - **From DM-44's optional item (4.1), not taken in P06.3:** whether turning every kind off also revokes the installation's registration and discards its token, so that Glow holds no token it does not use. F12 allows it (`revoke`). It is decided where real tokens first exist, here or in P09.2.
+- **From SV2's brief (DM-52):** a visible profile that loses a completion requirement becomes `incomplete`, and the send check then refuses. That cause is not among OD-60's H causes; SV4's design says what each member reads then, and until it does, SV4's interim default applies.
+
+## Carried to P10 (pre-integration readiness evidence)
+
+- **From SV2's brief (DM-52) and Nathan's answers of 10 November 2026:** the birth form requires a time ("birth time is required at signup"); P04's fixture still accepts an unknown time. Onboarding adds the identity verification step before a profile can show, and the owner sees the completion read's missing requirements.
 
 ## Carried to the second A05 message (before SV2's brief; DM-37 4.5)
 
@@ -160,3 +172,4 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
   - **OD-55's legal entity:** a US legal entity holds the store accounts and the service; its formation, and a D-U-N-S number for Apple's organization enrolment, are lines before those accounts (AP-57; G-08).
   - **G-09:** a representative service's cost, only for a later UK or EU launch (OD-55).
   - **Before Nathan approves an account's line,** that account's rows are rechecked: opening an account starts store deadlines, for example Google's trader declaration on account creation, and by 1 February 2027 at the latest (GP-59).
+- **From SV2's brief (DM-52) and Nathan's answers of 10 November 2026:** two services to cost: an identity verification company (a government photo ID with a selfie matched to it, for every member) and an automated photo check. Nathan approves each line before any account is created (OD-50).
