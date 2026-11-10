@@ -151,6 +151,19 @@ class ProfileSettingsModuleTests(unittest.TestCase):
                     self.assertNotIn("static_settings", module)
 
 
+# The suite's own result lines, as ``profile_suite.run`` prints them.
+SUITE_LINES = {
+    "profile secret scan: clean": (
+        "profile secret scan: clean (1040 secrets held; 0 found in 650 log records, 112 writes"
+        " and the results JSON)"
+    ),
+    "profile value scan: clean": (
+        "profile value scan: clean (133 member values held: coordinates, birth dates, times and"
+        " places, own words, sensitive values; 0 found in the same output)"
+    ),
+}
+
+
 class ProfileJobDirectory:
     """A job directory as the credentials step writes it, with synthetic values only."""
 
@@ -187,7 +200,7 @@ class ProfileJobDirectory:
         return path
 
     def clean_log(self, extra: str = "", clean: tuple[str, ...] = profile_scan.SUITE_CLEAN) -> None:
-        lines = "".join(f"{line} (1 held)\n" for line in clean)
+        lines = "".join(f"{SUITE_LINES[line]}\n" for line in clean)
         self.write("profile.log", "[profile] PASS a.case\n" + extra + lines)
 
     def every_value(self) -> list[str]:
@@ -287,6 +300,44 @@ class ProfileScanTests(unittest.TestCase):
                 self.assertFalse(self.job.results.exists())
                 self.assertIn("reported clean: False", printed)
 
+    def test_the_verdict_reads_the_suites_own_result_lines(self) -> None:
+        # C2 (finding 15): "clean" anywhere else in the log is not the suite's verdict.
+        found_secret = (
+            "profile secret scan: FOUND (1040 secrets held; 1 found in 650 log records, 112"
+            " writes and the results JSON)"
+        )
+        found_value = (
+            "profile value scan: FOUND (133 member values held: coordinates, birth dates, times"
+            " and places, own words, sensitive values; 2 found in the same output)"
+        )
+        logs = {
+            "a FOUND line, with clean words in a case's detail": (
+                "[profile] PASS a.case: profile secret scan: clean, profile value scan: clean\n"
+                + found_secret
+                + "\n"
+                + SUITE_LINES["profile value scan: clean"]
+                + "\n"
+            ),
+            "a value FOUND line": SUITE_LINES["profile secret scan: clean"] + "\n" + found_value,
+            "a clean line that found some": SUITE_LINES["profile secret scan: clean"].replace(
+                "0 found", "3 found"
+            )
+            + "\n"
+            + SUITE_LINES["profile value scan: clean"],
+            "a clean line twice": "\n".join(
+                (*SUITE_LINES.values(), SUITE_LINES["profile value scan: clean"])
+            ),
+            "a clean line not at a line's start": "x " + "\nx ".join(SUITE_LINES.values()),
+        }
+        for what, log in logs.items():
+            with self.subTest(log=what):
+                self.job.results.write_text("{}", encoding="utf-8")
+                self.job.write("profile.log", "[profile] PASS a.case\n" + log + "\n")
+                status, printed = self.job.run()
+                self.assertEqual(status, profile_scan.REFUSED)
+                self.assertIn("reported clean: False", printed)
+                self.assertFalse(self.job.results.exists())
+
     def test_an_absent_json_is_nothing_to_upload(self) -> None:
         self.job.clean_log()
         self.job.results.unlink()
@@ -323,6 +374,7 @@ class ProfileScanTests(unittest.TestCase):
                 "collections.abc",
                 "dataclasses",
                 "pathlib",
+                "re",
                 "sys",
                 "glow_ordering_proof.identity_scan",
             },
@@ -455,6 +507,11 @@ class ProfilePlanTests(unittest.TestCase):
             with self.subTest(decision=decision):
                 self.assertIn(decision, covered)
 
+    def test_the_case_count_is_pinned(self) -> None:
+        # C2 (finding 15): 47 cases after C1, and C2's six.
+        self.assertEqual(profile_cases.CASE_COUNT, 53)
+        self.assertEqual(len(profile_cases.plan()), profile_cases.CASE_COUNT)
+
     def test_the_expected_routes_are_the_api_routes(self) -> None:
         # Read from services/api's URL configuration as text, without importing it.
         tree = ast.parse((API_ROOT / "glow_profiles" / "urls.py").read_text(encoding="utf-8"))
@@ -516,6 +573,37 @@ class SchemaCheckCorpusTests(unittest.TestCase):
 
 
 class ValueLedgerTests(unittest.TestCase):
+    def test_every_form_the_code_could_print_is_found(self) -> None:
+        # C2 (finding 5): a date in Python's repr, compact, numeric or in prose; a time in
+        # Python's repr; a coordinate without its sign, or rounded or truncated to three decimals.
+        ledger = ValueLedger()
+        ledger.add("2008-02-29")
+        ledger.add("02:47:19")
+        ledger.add("40.7123457")
+        ledger.add("-74.0067891")
+        for printed in (
+            "datetime.date(2008, 2, 29)",
+            "29 February 2008",
+            "February 29, 2008",
+            "20080229",
+            "29/02/2008",
+            "02/29/2008",
+            "datetime.time(2, 47, 19)",
+            "lat 40.7123",
+            "lat 40.712",
+            "lat 40.71235",
+            "lon -74.0068",
+            "lon -74.007",
+            "lon 74.006",
+            "Decimal('40.7123457')",
+        ):
+            with self.subTest(printed=printed):
+                self.assertEqual(ledger.found_in(printed), 1)
+        # Coarser than three decimals is not a precise location; nor is another value.
+        for printed in ("lat 40.71", "lon -74.01", "1 March 2008", "02:47:18"):
+            with self.subTest(printed=printed):
+                self.assertEqual(ledger.found_in(printed), 0)
+
     def test_a_value_is_found_as_sent_or_as_json_escapes_it(self) -> None:
         ledger = ValueLedger()
         words = "é" * 39 + "x"

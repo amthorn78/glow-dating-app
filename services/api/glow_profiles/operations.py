@@ -125,9 +125,25 @@ def _bump_preferences(account_id: UUID) -> None:
     )
 
 
-def _sensitive_accepted(account_id: UUID) -> bool:
+def _sensitive_accepted(account_id: UUID, current_policy_version: str) -> bool:
+    """D6 (DM-55): a sensitive save needs the sensitive-fields consent accepted at its current
+    version, which the caller read under its policy pointer's lock with the save's other settings
+    (F02: "old consent version rejected"). Its purpose alone is read (D6)."""
     latest = requirements.latest_decision(account_id, SENSITIVE_PURPOSE)
-    return latest is not None and latest.state == "accepted"
+    return (
+        latest is not None
+        and latest.state == "accepted"
+        and latest.policy_version == current_policy_version
+    )
+
+
+def _catalog_and_sensitive_consent(tx: Tx) -> tuple[catalogs.Catalog, str]:
+    """The catalog's settings and the sensitive-fields consent's current version, in one
+    ``read_shared`` call: every pointer ``FOR SHARE``, after the account row lock, in name order
+    (the settings store's rule; ``consent.sensitive_profile`` sorts before every ``profile.*``)."""
+    found = settings_store.read_shared(tx, [*ps.CATALOG_SETTINGS, ps.SENSITIVE_CONSENT])
+    catalog = catalogs.build({name: found[name] for name in ps.CATALOG_SETTINGS})
+    return catalog, found[ps.SENSITIVE_CONSENT].policy_version
 
 
 def _profile(account_id: UUID) -> Any:
@@ -294,8 +310,9 @@ def save_profile(
     """F04's owner ``edit``: the display name and the summary. It ends with D9's recompute
     (``recompute``): with every requirement met, an ``incomplete`` profile becomes ``visible``
     (P04's reviewed table: "Remains incomplete unless all current requirements permit
-    completion"); a cleared summary moves a ``visible`` profile to ``incomplete``; a ``paused``
-    profile stays paused."""
+    completion"); a cleared summary moves a ``visible`` profile to ``incomplete`` as the owner's
+    ``edit``, and a lapse the edit finds but did not cause as ``requirement_removed`` (DM-55); a
+    ``paused`` profile stays paused."""
     operation = "profile"
     digest = idempotency.digest(operation, intent)
 
@@ -313,6 +330,8 @@ def save_profile(
             return Result("replayed", data=contract.own_profile(profile))
         if _expected(intent) != (0 if profile is None else int(profile.version)):
             raise Refused(STALE_VERSION, "stale_version")
+        # D9 (DM-55, section 6): the edit's own removal of a requirement is the cleared summary.
+        clears_summary = profile is not None and profile.bio != "" and intent["summary"] == ""
         if profile is None:
             profile = Profile.objects.create(
                 account_id=account_id,
@@ -338,9 +357,11 @@ def save_profile(
             now=now,
         )
         # D9: the shared recompute, on rows read after the account row lock. A completion here is
-        # F04's owner ``complete``; the owner's own edit that removes a requirement (the cleared
-        # summary) keeps F04's owner ``edit`` from visible to incomplete.
-        profile = recompute.recompute(tx, account_id, now, writer=recompute.PROFILE_EDIT).profile
+        # F04's owner ``complete``; a demotion is the owner's ``edit`` only when this edit clears
+        # the summary, and any other is ``requirement_removed``, a transition of its own (DM-55).
+        profile = recompute.recompute(
+            tx, account_id, now, writer=recompute.PROFILE_EDIT, clears_summary=clears_summary
+        ).profile
         idempotency.store(
             account_id,
             operation,
@@ -363,14 +384,15 @@ def set_field(
 ) -> Result:
     """One field's own value, own words and display flag: a new choice, checked against the
     current list (D2, D3). A sensitive field, or orientation's own words, needs the
-    sensitive-fields consent (D6). Gender and "looking for" are replaced, never cleared."""
+    sensitive-fields consent accepted at its current version (D6; DM-55). Gender and "looking for"
+    are replaced, never cleared."""
     field = str(intent["field"])
     operation = f"profile_field.{field}"
     digest = idempotency.digest(operation, intent)
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        catalog = catalogs.load(tx)
+        catalog, sensitive_version = _catalog_and_sensitive_consent(tx)
         profile = _profile(account_id)
         row = (
             ProfileFieldChoice.objects.select_for_update()
@@ -399,7 +421,9 @@ def set_field(
         )
         if refusal:
             raise Refused(INVALID_REQUEST, f"field:{refusal}")
-        if pf.carries_sensitive(field, values, own_words) and not _sensitive_accepted(account_id):
+        if pf.carries_sensitive(field, values, own_words) and not _sensitive_accepted(
+            account_id, sensitive_version
+        ):
             raise Refused(FORBIDDEN, "sensitive_consent_required")
         if row is None:
             row = ProfileFieldChoice(account_id=account_id, field=field)
@@ -442,13 +466,16 @@ def set_preferences(
     account_id: UUID, intent: dict[str, Any], *, probe: TransactionProbe | None = None
 ) -> Result:
     """The four "show me" sets, each the ``all`` marker or a narrowed list of live values;
-    narrowing orientation or relationship status needs the sensitive-fields consent (D6)."""
+    narrowing orientation or relationship status needs the sensitive-fields consent accepted at
+    its current version (D6; DM-55). ``PreferencesIntent`` carries all four sets, so a set
+    narrowed under an older version blocks every save until the member accepts the current one or
+    puts it back to all (DM-55, section 5: the rule, not a defect)."""
     operation = "preferences"
     digest = idempotency.digest(operation, intent)
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        catalog = catalogs.load(tx)
+        catalog, sensitive_version = _catalog_and_sensitive_consent(tx)
         preferences = Preferences.objects.select_for_update().filter(account_id=account_id).first()
         signal(tx.probe, "after_locks")
         now = clock(tx)
@@ -472,7 +499,7 @@ def set_preferences(
             if refusal:
                 raise Refused(INVALID_REQUEST, f"set:{refusal}")
         if any(pf.narrowed(selections[f]) for f in pf.SENSITIVE_FIELDS) and not _sensitive_accepted(
-            account_id
+            account_id, sensitive_version
         ):
             raise Refused(FORBIDDEN, "sensitive_consent_required")
         PreferenceSetEntry.objects.filter(account_id=account_id).delete()
@@ -725,9 +752,10 @@ def decide_sensitive_consent(
 ) -> Result:
     """The sensitive-fields consent (purpose ``sensitive_profile``), SV2's own writer (DM-52):
     the account row lock first, the version check under the consent policy's pointer lock, then
-    the decision. Withdrawal, in the same transaction, removes the member's own orientation and
-    relationship status values and orientation's own words, resets both "show me" sets to all,
-    and deletes the idempotency records of the commands that carried any of them."""
+    the decision. Withdrawal, in the same transaction, sets the member's own orientation and
+    relationship status rows to "not stated" in place, with no own words and the display flag off
+    (DM-55), resets both "show me" sets to all, and deletes the idempotency records of the
+    commands that carried any of them."""
     operation = "sensitive_consent"
     digest = idempotency.digest(operation, intent)
 
@@ -796,8 +824,34 @@ def decide_sensitive_consent(
 
 
 def _withdraw_sensitive_data(tx: Tx, account_id: UUID, preferences: Any, now: datetime) -> None:
-    """D6's withdrawal scope, in the withdrawal's transaction."""
-    ProfileFieldChoice.objects.filter(account_id=account_id, field__in=pf.SENSITIVE_FIELDS).delete()
+    """D6's withdrawal scope, in the withdrawal's transaction (DM-55, Z13). Each of the member's
+    orientation and relationship status rows is set to "not stated" in place: no own words, its
+    display flag off and its setting version unchanged, its version bumped, with
+    ``profile_field_changed``, so that every earlier event still names an existing record. A row
+    that already holds "not stated" with no own words and its flag off is left as it is, with no
+    event. Both "show me" sets go back to all, and the records of the commands that carried any
+    of them are deleted (D17)."""
+    rows = (
+        ProfileFieldChoice.objects.select_for_update()
+        .filter(account_id=account_id, field__in=pf.SENSITIVE_FIELDS)
+        .order_by("field")
+    )
+    for row in rows:
+        if list(row.value_ids) == [pf.NOT_STATED] and row.own_words is None and not row.shown:
+            continue
+        row.value_ids = [pf.NOT_STATED]
+        row.own_words = None
+        row.shown = False
+        row.version += 1
+        row.save(update_fields=["value_ids", "own_words", "shown", "version", "updated_at"])
+        events.emit(
+            tx,
+            events.PROFILE_FIELD_CHANGED,
+            aggregate_id=row.id,
+            aggregate_version=int(row.version),
+            payload_ref=row.id,
+            now=now,
+        )
     if preferences is not None:
         PreferenceSetEntry.objects.filter(
             account_id=account_id, field__in=pf.SENSITIVE_FIELDS
@@ -874,34 +928,33 @@ def _mapping_to_pending(account_id: UUID, revision: Any) -> None:
     mapping.save()
 
 
-def _age_transition(tx: Tx, account_id: UUID, entered: Any, now: datetime) -> tuple[str, bool]:
-    """Every date change reruns the check (D7): a passing date becomes the age state's, and a
-    failing one sets ``unknown`` with no date (the date is never handed to the port). Returns the
-    port's outcome and whether the rerun failed; the writer's recompute then demotes a
-    ``visible`` profile."""
-    passed = adult_outcome(entered, utc_date(now)) is AdultOutcome.PASS
+def _age_transition(tx: Tx, account_id: UUID, entered: Any, now: datetime) -> str:
+    """Every passing date change reruns the check (D7): the date becomes the age state's. A
+    date under 18 never reaches here (``_reset_failing_date``), nor a future one (DM-55)."""
+    if adult_outcome(entered, utc_date(now)) is not AdultOutcome.PASS:
+        raise Refused(STATE_CONFLICT, "age:not_a_passing_date")
     change = AgeTransition(
-        AccountId(str(account_id)),
-        AgeAssuranceState.SELF_DECLARED_ADULT if passed else AgeAssuranceState.UNKNOWN,
-        entered if passed else None,
-        now,
+        AccountId(str(account_id)), AgeAssuranceState.SELF_DECLARED_ADULT, entered, now
     )
     try:
-        outcome = OrmAgeAssurance().transition(change)
+        return OrmAgeAssurance().transition(change)
     except AgeTransitionRefused as refused:
         raise Refused(STATE_CONFLICT, f"age:{refused}") from None
-    return outcome, not passed
 
 
 def adult_check(
     account_id: UUID, intent: dict[str, Any], *, probe: TransactionProbe | None = None
 ) -> Result:
-    """D7's adult check at the eligibility step, from the self-entered date. With the state
-    ``unknown``, a failing date is refused and not stored. With ``self_declared_adult``, a new
-    date reruns the check: a pass keeps the state with the new date; a fail sets ``unknown`` and
-    clears the date. A new date also makes a current birth input that holds another stop being
-    current. It ends with D9's recompute: a pass can complete the profile, and a failing rerun
-    or a birth input that stopped being current demotes a ``visible`` one."""
+    """D7's adult check at the eligibility step, from the self-entered date. Its outcome comes
+    first, after the idempotency check and before the stale version check (DM-55). With the
+    state ``unknown``, a future date (``invalid_request``) and a date under 18 (``forbidden``) are
+    refused and change nothing. With ``self_declared_adult``, a future date is refused
+    ``invalid_request`` and changes nothing; a date under 18 is refused ``forbidden``,
+    nothing of it is stored and no idempotency record is kept, while the reset commits
+    (``_reset_failing_date``); a passing new date keeps the state with that date. A new date
+    also makes a current birth input that holds another stop being current. It ends with D9's
+    recompute: a pass can complete the profile, and a birth input that stopped being current
+    demotes a ``visible`` one."""
     operation = "adult_check"
     digest = idempotency.digest(operation, intent)
 
@@ -917,14 +970,22 @@ def adult_check(
         record = idempotency.decide(account_id, operation, _key(intent), digest, now)
         if record is not idempotency.NEW:
             return Result("replayed", data=contract.own_age_state(age))
-        if _expected(intent) != int(age.version):
-            raise Refused(STALE_VERSION, "stale_version")
         entered = date.fromisoformat(intent["birth_date"])
         outcome = adult_outcome(entered, utc_date(now))
-        if age.state == "unknown" and outcome is not AdultOutcome.PASS:
-            # D7: a failing date is refused and not stored; the state stays unknown.
-            code = FORBIDDEN if outcome is AdultOutcome.UNDER_AGE else INVALID_REQUEST
-            raise Refused(code, f"adult_check:{outcome.value}")
+        # D7 (DM-55): the date's outcome comes first, after the idempotency check and before the
+        # stale version check. A future date is invalid input and changes nothing, on either
+        # state. A date under 18 is refused: with ``unknown`` it changes nothing; from a
+        # self-declared adult nothing of it is stored and no idempotency record is kept, while
+        # the reset commits (returned, not raised).
+        if outcome is AdultOutcome.FUTURE:
+            raise Refused(INVALID_REQUEST, ADULT_CHECK_FUTURE)
+        if outcome is AdultOutcome.UNDER_AGE:
+            if age.state == "self_declared_adult":
+                _reset_failing_date(tx, account_id, now)
+                return Result("refused", FORBIDDEN, ADULT_CHECK_UNDER_AGE)
+            raise Refused(FORBIDDEN, ADULT_CHECK_UNDER_AGE)
+        if _expected(intent) != int(age.version):
+            raise Refused(STALE_VERSION, "stale_version")
         if age.state == "self_declared_adult" and age.birth_date == entered:
             age.refresh_from_db()
             # D9: the shared recompute ends this writer too, so a requirement that lapsed without
@@ -940,6 +1001,7 @@ def adult_check(
                 now=now,
             )
             return Result("no_change", data=contract.own_age_state(age))
+        # A passing date: from here on the outcome is ``PASS`` on both states.
         _age_transition(tx, account_id, entered, now)
         age.refresh_from_db()
         events.emit(
@@ -976,9 +1038,11 @@ def save_birth_input(
     """F03's owner ``submit``, ``correct`` and ``change``: a new private revision, ``pending``.
     It needs the adult pass and the current onboarding consent (P04's ``/birth``). A birth time is
     required (Nathan: "birth time is required at signup"). A new revision returns any mapping to
-    ``pending``; another date changes the age state's date and reruns the adult check (D7). A
-    date that fails the adult rule is refused and nothing of the input is stored, while the
-    failing rerun commits (DM-54; ``_refuse_failing_birth_input``). It ends with D9's recompute,
+    ``pending``; another date changes the age state's date and reruns the adult check (D7). The
+    date's outcome comes right after the adult-check gate (DM-55): a future date is refused as
+    invalid input and changes nothing; a date under 18 is refused and nothing of the input is
+    stored, while the failing rerun commits (DM-54; ``_reset_failing_date``). It ends with D9's
+    recompute,
     which demotes a ``visible`` profile, since a new revision's chart is not resolved. SV2 creates
     no ``EngineIdentity`` and resolves nothing."""
     operation = "birth_input"
@@ -1005,22 +1069,26 @@ def save_birth_input(
             return Result("replayed", data=_birth_projection(current, account_id))
         if age is None or age.state != "self_declared_adult":
             raise Refused(FORBIDDEN, "adult_check_required")
+        given = intent["input"]
+        born = date.fromisoformat(given["birth_date"])
+        outcome = adult_outcome(born, utc_date(now))
+        # D7, D8 (DM-55): the date's outcome comes right after the adult-check gate, before the
+        # onboarding consent, the stale version and the birth time. A future date is invalid
+        # input and changes nothing; a date under 18 is refused and nothing of the input is
+        # stored, while the reset commits (returned, not raised; no idempotency record).
+        if outcome is AdultOutcome.FUTURE:
+            raise Refused(INVALID_REQUEST, BIRTH_DATE_IN_FUTURE)
+        if outcome is AdultOutcome.UNDER_AGE:
+            _reset_failing_date(tx, account_id, now)
+            return Result("refused", FORBIDDEN, BIRTH_DATE_FAILS_ADULT_RULE)
         if not requirements.onboarding_current(account_id, consent.policy_version):
             raise Refused(FORBIDDEN, "onboarding_consent_required")
         if _expected(intent) != (0 if current is None else int(current.version)):
             raise Refused(STALE_VERSION, "stale_version")
-        given = intent["input"]
         if given["time_precision"] == "unknown":
             # D8: a server rule; the contract's BirthInput still allows unknown, and nothing
             # guesses a time.
             raise Refused(INVALID_REQUEST, "birth_time_required")
-        born = date.fromisoformat(given["birth_date"])
-        if born > utc_date(now):
-            raise Refused(INVALID_REQUEST, "birth_date_in_future")
-        if adult_outcome(born, utc_date(now)) is not AdultOutcome.PASS:
-            # D7, D8 (DM-54): a birth input whose date fails the adult rule is refused and
-            # nothing of it is stored, while the failing rerun commits.
-            return _refuse_failing_birth_input(tx, account_id, born, now)
         accepted = requirements.latest_decision(account_id, ONBOARDING_CONSENT_PURPOSE)
         revision = BirthInput.objects.create(
             account_id=account_id,
@@ -1037,7 +1105,7 @@ def save_birth_input(
         _mapping_to_pending(account_id, revision)
         if age.birth_date != born:
             # D7: one date. The birth input's date becomes the age state's, and the check reruns;
-            # a failing date never reaches here, so the rerun passes.
+            # a future or failing date never reaches here, so the rerun passes.
             _age_transition(tx, account_id, born, now)
             age.refresh_from_db()
             events.emit(
@@ -1074,27 +1142,37 @@ def save_birth_input(
     return run(body, probe)
 
 
-# The refusal of a birth input whose date fails the adult rule (DM-54). Its public code is the
-# adult check's for an under-age date.
+# The refusals of a date (D7, D8; DM-54, DM-55), each a closed code. A date under 18 at either
+# writer is ``forbidden``, as the adult check's for an ``unknown`` account; a future date is
+# ``invalid_request`` and changes nothing.
+ADULT_CHECK_UNDER_AGE = "adult_check:under_age"
+ADULT_CHECK_FUTURE = "adult_check:future"
 BIRTH_DATE_FAILS_ADULT_RULE = "birth_date_fails_adult_rule"
+BIRTH_DATE_IN_FUTURE = "birth_date_in_future"
 
 
-def _refuse_failing_birth_input(tx: Tx, account_id: UUID, born: date, now: datetime) -> Result:
-    """D7 and D8 (DM-54, Y6 to Y8): the birth input is refused and nothing of it is stored (no
-    revision, no date, time or place, no mapping change toward it, no idempotency record), while
-    the transaction commits the failing rerun:
+def _reset_failing_date(tx: Tx, account_id: UUID, now: datetime) -> None:
+    """D7 and D8 (DM-54, Y6 to Y8; DM-55, Z2): a date under 18 from a self-declared adult, at the
+    eligibility step or in a birth input. Nothing of the date is stored (no revision, no date,
+    time or place, no mapping change toward it, no idempotency record), while the transaction
+    commits the failing rerun:
 
     - the age state becomes ``unknown`` with no date (F02 ``adult_check_failed``), through the age
-      port, which bumps ``eligibility_version``;
-    - a current birth input stops being current (F03 ``date_changed``: ``missing``), its mapping
-      back to ``pending``;
+      port, which bumps ``eligibility_version``; the date is never handed to the port;
+    - the current birth input stops being current, whatever its date (F03 ``date_changed``:
+      ``missing``), its mapping back to ``pending``;
     - D9's recompute moves a ``visible`` profile to ``incomplete`` (F04 ``requirement_removed``);
       a ``paused`` one stays paused.
 
-    The refusal is returned, not raised, so ``tx.run`` commits these effects. With no idempotency
-    record, a retry of this command or another is refused at the adult-check gate
-    (``adult_check_required``, since the state is now ``unknown``) and changes nothing more."""
-    _age_transition(tx, account_id, born, now)
+    The caller returns its refusal, not raising it, so ``tx.run`` commits these effects. With no
+    idempotency record, a retry of the command or another is refused (the account is no longer an
+    adult's) and changes nothing more. Earlier revisions keep their contents, readable only by
+    their owner and never current again (G-01's decision, in P07; DM-55, Z18)."""
+    change = AgeTransition(AccountId(str(account_id)), AgeAssuranceState.UNKNOWN, None, now)
+    try:
+        OrmAgeAssurance().transition(change)
+    except AgeTransitionRefused as refused:
+        raise Refused(STATE_CONFLICT, f"age:{refused}") from None
     age = AccountAgeState.objects.get(account_id=account_id)
     events.emit(
         tx,
@@ -1104,9 +1182,8 @@ def _refuse_failing_birth_input(tx: Tx, account_id: UUID, born: date, now: datet
         payload_ref=age.id,
         now=now,
     )
-    _invalidate_birth_input(tx, account_id, born, now, whatever_its_date=True)
+    _invalidate_birth_input(tx, account_id, None, now, whatever_its_date=True)
     recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
-    return Result("refused", FORBIDDEN, BIRTH_DATE_FAILS_ADULT_RULE)
 
 
 # -- visibility (D9; F06, through glow_chat) --------------------------------------------------

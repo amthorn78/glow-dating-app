@@ -21,13 +21,16 @@ demotes at the member's next requirement write. Nothing else in SV2 moves a prof
 - a completion in an F04 owner command (the profile edit, the fields, the area): ``complete``
   (``owner``); one that follows a write in another flow (the consent, the adult check, the birth
   input, staff's approval): ``requirements_met`` (``system``);
-- a demotion in the profile edit: the owner's ``edit`` from ``visible`` to ``incomplete`` (the
-  cleared summary, the contract's "Compound actions"), carried by the edit's own
-  ``profile_edited``; any other: ``requirement_removed`` (``system``), with ``profile_demoted``.
+- a demotion in the profile edit that clears the summary itself: the owner's ``edit`` from
+  ``visible`` to ``incomplete`` (the contract's "Compound actions"), whatever else is missing,
+  carried by the edit's own ``profile_edited``; any other demotion, the profile edit's included
+  (a lapse it finds but did not cause, such as a new onboarding consent version):
+  ``requirement_removed`` (``system``), with ``profile_demoted`` (DM-55, section 6).
 
 Every completion emits ``profile_completed``. A change bumps the profile's version and the
-account's ``eligibility_version`` (the profile edit's own write already bumps both, and the change
-rides on it). Events carry references, never values.
+account's ``eligibility_version``, as a transition of its own; only the profile edit's ``complete``
+and its owner ``edit`` ride on the edit's own write, which already bumps both. Events carry
+references, never values.
 """
 
 from __future__ import annotations
@@ -72,17 +75,29 @@ def next_state(state: str, missing: list[str] | tuple[str, ...]) -> str:
     return state
 
 
-def entry(writer: str, before: str, after: str) -> str | None:
-    """The F04 registry entry of a change from ``before`` to ``after`` made by ``writer``."""
+def entry(writer: str, before: str, after: str, *, clears_summary: bool = False) -> str | None:
+    """The F04 registry entry of a change from ``before`` to ``after`` made by ``writer``. A
+    demotion is the owner's ``edit`` only when the profile edit itself clears the summary
+    (``clears_summary``), whatever else is missing; every other demotion is
+    ``requirement_removed`` (DM-55, section 6). The display name cannot be cleared (D9)."""
     if writer not in WRITERS:
         raise ValueError("not a requirement writer")
+    if clears_summary and writer != PROFILE_EDIT:
+        raise ValueError("only the profile edit clears the summary")
     if before == after:
         return None
     if (before, after) == (INCOMPLETE, VISIBLE):
         return REQUIREMENTS_MET if writer == OTHER_FLOW else COMPLETE
     if (before, after) == (VISIBLE, INCOMPLETE):
-        return EDIT if writer == PROFILE_EDIT else REQUIREMENT_REMOVED
+        return EDIT if clears_summary else REQUIREMENT_REMOVED
     raise ValueError("not a recompute change")
+
+
+def rides_on_the_edit(writer: str, change: str | None) -> bool:
+    """Whether a change rides on the profile edit's own write (its version bump and
+    ``profile_edited``): its ``complete`` and its owner ``edit`` only. Every other change is a
+    transition of its own, with its own bumps and event."""
+    return writer == PROFILE_EDIT and change in (COMPLETE, EDIT)
 
 
 @dataclass(frozen=True)
@@ -98,11 +113,13 @@ class Recomputed:
     missing: tuple[str, ...]
 
 
-def recompute(tx: Tx, account_id: UUID, now: datetime, *, writer: str) -> Recomputed:
+def recompute(
+    tx: Tx, account_id: UUID, now: datetime, *, writer: str, clears_summary: bool = False
+) -> Recomputed:
     """D9's recompute, the last state change of a requirement writer's transaction. The caller
     has taken the account row lock first (DM-13 4.1); this reads the onboarding consent policy's
     pointer ``FOR SHARE`` and the profile ``FOR UPDATE``, then every requirement on the current
-    rows."""
+    rows. ``clears_summary`` is the profile edit's: the edit itself cleared the summary."""
     if writer not in WRITERS:
         raise ValueError("not a requirement writer")
     if not connection.in_atomic_block:
@@ -114,14 +131,15 @@ def recompute(tx: Tx, account_id: UUID, now: datetime, *, writer: str) -> Recomp
         return Recomputed(None, None, None, None, missing)
     before = str(profile.state)
     after = next_state(before, missing)
-    change = entry(writer, before, after)
+    change = entry(writer, before, after, clears_summary=clears_summary)
     if change is None:
         return Recomputed(profile, before, after, None, missing)
+    rides = rides_on_the_edit(writer, change)
     profile.state = after
-    if writer != PROFILE_EDIT:
+    if not rides:
         profile.version += 1
     profile.save(update_fields=["state", "version", "updated_at"])
-    if writer != PROFILE_EDIT:
+    if not rides:
         AppAccount.objects.filter(pk=account_id).update(
             eligibility_version=F("eligibility_version") + 1,
             version=F("version") + 1,

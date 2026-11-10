@@ -63,8 +63,41 @@ STAFF = {"approve_without_id", "revoke_approval", "restrict_profile"}
 # reason and outcome, a field rule's refusal, the age transition's refusal and the adult outcome;
 # the identity verification port's reason; and a publication's fixed-limit codes.
 REASON = re.compile(r"[a-z_]+")
-REASON_PARTS = {"result.reason", "result.outcome", "refusal", "refused", "outcome.value"}
-REASON_EXPRESSIONS = {"outcome.reason", "'refused:' + ','.join(refusals)"}
+# A whole reason: a lowercase code, with one ``:``-qualified part at most (``tx.run``'s one
+# exception type, ``DeadlockDetected``, is the only other).
+REASON_CODE = re.compile(r"[a-z_]+(:[a-z_]+)?|DeadlockDetected")
+REASON_PARTS = {
+    "result.reason",
+    "result.outcome",
+    "refusal",
+    "refused",
+    "outcome.value",
+    # ``tx.run``'s integrity error, reported by the driver's exception type only.
+    "type(cause).__name__",
+}
+REASON_EXPRESSIONS = {
+    "outcome.reason",
+    "'refused:' + ','.join(refusals)",
+    # ``tx.run``: a refusal's own reason, and an exception reported by its type only.
+    "rollback.refused.reason",
+    "type(exc).__name__",
+}
+
+# The static logging guard's other module: SV2's age section in SV1's age port (D4, D7).
+AGE_PORT = API_ROOT / "glow_identity" / "age.py"
+
+
+def module_constants(tree: ast.Module) -> dict[str, str]:
+    """A module's upper-case string constants, by name."""
+    return {
+        target.id: node.value.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+        for target in node.targets
+        if isinstance(target, ast.Name) and target.id.isupper()
+    }
 
 
 def under_profile_settings(code: str) -> subprocess.CompletedProcess[str]:
@@ -197,31 +230,77 @@ class NoValueInLogsTests(unittest.TestCase):
                         found.append(f"{name}:{node.lineno} gets a logger")
         self.assertEqual(found, [])
 
+    def test_the_age_port_logs_and_prints_nothing(self) -> None:
+        # C2 (finding 5): the age state's date passes through SV1's age port (D7's transition,
+        # D4's ``age_years``), so the guard covers ``glow_identity/age.py`` too: no logging
+        # import, no logger, no print, no import by name.
+        tree = ast.parse(AGE_PORT.read_text(encoding="utf-8"))
+        found = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                names = (
+                    [alias.name for alias in node.names]
+                    if isinstance(node, ast.Import)
+                    else [node.module or ""]
+                )
+                if any(name.split(".")[0] in {"logging", "warnings"} for name in names):
+                    found.append(f"{node.lineno} imports logging")
+            if isinstance(node, ast.Name) and node.id in {"logger", "logging", "log", "print"}:
+                found.append(f"{node.lineno} names {node.id}")
+            if isinstance(node, ast.Attribute) and node.attr in {"getLogger", "warning", "debug"}:
+                found.append(f"{node.lineno} reaches {node.attr}")
+            if isinstance(node, ast.Call) and ast.unparse(node.func) in {
+                "__import__",
+                "importlib.import_module",
+                "import_module",
+            }:
+                found.append(f"{node.lineno} imports by name")
+        self.assertEqual(found, [])
+
+    def _assert_reason_is_a_code(self, reason: ast.expr, constants: dict[str, str]) -> None:
+        if isinstance(reason, ast.Constant):
+            self.assertIsNotNone(REASON_CODE.fullmatch(str(reason.value)), reason.value)
+        elif isinstance(reason, ast.Name) and reason.id in constants:
+            # A module constant holding a code (``BIRTH_DATE_FAILS_ADULT_RULE``).
+            self.assertIsNotNone(REASON_CODE.fullmatch(constants[reason.id]), reason.id)
+        elif isinstance(reason, ast.JoinedStr):
+            for part in reason.values:
+                if isinstance(part, ast.FormattedValue):
+                    self.assertIn(ast.unparse(part.value), REASON_PARTS)
+                else:
+                    assert isinstance(part, ast.Constant)
+                    self.assertRegex(str(part.value), r"[a-z_]*[:_]")
+        else:
+            self.assertIn(ast.unparse(reason), REASON_EXPRESSIONS)
+
     def test_every_refusal_reason_is_a_code(self) -> None:
+        # ``Refused(code, reason)`` and ``Result(outcome, code, reason)`` alike (C2, finding 7):
+        # a reason is a code, a module constant holding one, or a closed interpolation; never a
+        # value. A ``Result`` whose outcome is not a literal carries no reason at all.
         checked = 0
         for name, tree in modules().items():
+            constants = module_constants(tree)
             for node in ast.walk(tree):
-                if not (
-                    isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Name)
-                    and node.func.id == "Refused"
-                ):
+                if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+                    continue
+                if node.func.id == "Refused":
+                    reason: ast.expr | None = node.args[1]
+                elif node.func.id == "Result":
+                    reason = next((k.value for k in node.keywords if k.arg == "reason"), None)
+                    if reason is None and len(node.args) > 2:
+                        reason = node.args[2]
+                    if not (node.args and isinstance(node.args[0], ast.Constant)):
+                        with self.subTest(module=name, line=node.lineno):
+                            self.assertIsNone(reason, "a computed outcome carries no reason")
+                        continue
+                    if reason is None:
+                        continue
+                else:
                     continue
                 with self.subTest(module=name, line=node.lineno):
-                    reason = node.args[1]
-                    if isinstance(reason, ast.Constant):
-                        self.assertRegex(str(reason.value), REASON)
-                    elif isinstance(reason, ast.JoinedStr):
-                        for part in reason.values:
-                            if isinstance(part, ast.FormattedValue):
-                                self.assertIn(ast.unparse(part.value), REASON_PARTS)
-                            else:
-                                assert isinstance(part, ast.Constant)
-                                self.assertRegex(str(part.value), r"[a-z_]*[:_]")
-                    else:
-                        self.assertIn(ast.unparse(reason), REASON_EXPRESSIONS)
+                    self._assert_reason_is_a_code(reason, constants)
                     checked += 1
-        self.assertGreater(checked, 50)
+        self.assertGreater(checked, 60)
 
     def test_nothing_prints_but_the_area_steps_command(self) -> None:
         for name, tree in modules().items():
@@ -381,3 +460,93 @@ print(json.dumps({
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BodiesTheParserCannotHoldTests(unittest.TestCase):
+    """C2, item 6 (finding 11; DM-55, section 8): a body the parser cannot hold, such as an integer
+    too large for its number check or nesting deeper than the parser allows, and a text holding
+    U+0000, which the database cannot store, are refused ``invalid_request`` (400) with the
+    contract's ``Error``, like any other invalid body. No value is echoed. Each runs through the
+    route's own view, with the actor forced (the request is refused before any database read),
+    and each body is within the request size limit (16 KiB), so the parser, not the limit,
+    decides."""
+
+    def test_each_answers_400_with_the_contracts_error_and_no_value(self) -> None:
+        seen = last_json(
+            under_profile_settings(
+                """
+import json
+from uuid import uuid4
+from rest_framework.test import APIRequestFactory, force_authenticate
+from glow_identity.authentication import Actor
+from glow_profiles import views
+
+actor = Actor(uuid4(), 1, "active", uuid4(), "valid")
+
+
+class Signed:
+    is_authenticated = True
+
+
+factory = APIRequestFactory()
+from django.conf import settings
+
+digits = "7" * 321
+# 10,000 nested arrays, as the parser meets them (its depth is passed long before the body
+# ends), and 5,000 closed ones: each body within the request size limit, so the parser decides.
+opened = "[" * 10000
+closed = "[" * 5000 + "]" * 5000
+bodies = {
+    "a_321_digit_coordinate": ("NearestAreaView", '{"latitude": %s, "longitude": 1}' % digits),
+    "10000_nested_arrays": ("NearestAreaView", '{"latitude": %s' % opened),
+    "5000_closed_nested_arrays": (
+        "NearestAreaView", '{"latitude": %s, "longitude": 1}' % closed
+    ),
+    "u0000_in_a_stored_text": (
+        "ProfileView",
+        json.dumps({
+            "operation": "profile",
+            "meta": {"idempotency_key": "nul-key", "expected_version": 0},
+            "display_name": "Synthetic\\u0000Nul",
+            "summary": "A synthetic member.",
+        }),
+    ),
+}
+out = {}
+limit = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
+for case, (view, body) in bodies.items():
+    assert len(body.encode("utf-8")) < limit, case
+    request = factory.post("/x", data=body, content_type="application/json")
+    force_authenticate(request, user=Signed(), token=actor)
+    response = views.__dict__[view].as_view()(request)
+    response.render()
+    text = response.content.decode("utf-8")
+    out[case] = {
+        "status": response.status_code,
+        "type": response["Content-Type"],
+        "body": json.loads(text),
+        "echo": any(part in text for part in (digits[:40], "[[[", "Synthetic", "Nul", "nul-key")),
+    }
+print(json.dumps(out))
+"""
+            )
+        )
+        self.assertEqual(
+            set(seen),
+            {
+                "a_321_digit_coordinate",
+                "10000_nested_arrays",
+                "5000_closed_nested_arrays",
+                "u0000_in_a_stored_text",
+            },
+        )
+        for case, answer in seen.items():
+            with self.subTest(case=case):
+                self.assertEqual(answer["status"], 400)
+                self.assertTrue(answer["type"].startswith("application/json"))
+                self.assertEqual(answer["body"]["code"], "invalid_request")
+                self.assertEqual(
+                    set(answer["body"]), {"contract_version", "request_id", "code", "retryable"}
+                )
+                self.assertIs(answer["body"]["retryable"], False)
+                self.assertFalse(answer["echo"])
