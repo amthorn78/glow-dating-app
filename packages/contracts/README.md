@@ -179,6 +179,12 @@ map stays empty, and the sealed server routes are `services/api/glow_profiles`'s
   `date_changed` to `missing` from each resolution, and F04's `requirement_removed` (`system`), each
   with an allowed and a forbidden example in `tests/test_transition_contract.py`. `staff_approval`
   is a new trusted test prerequisite. F05 is Stage B's.
+- **Correction C1** (DM-54, Y4) adds two F04 entries, each with its allowed and forbidden
+  examples: `requirements_met` from `incomplete` to `visible` (`system`; `eligible`; `A05`), the
+  completion that follows a write in another flow (D9's recompute), as `requirement_removed` is the
+  demotion that follows one, while a completion in an F04 owner command keeps `complete`
+  (`owner`); and `restrict` from `visible` and from `paused` to `restricted` (`moderator`; `A05`),
+  SV2's staff operation through `glow_chat`'s writer. No existing entry changes, and no DTO.
 - **The shared corpus** gains 123 cases: each new DTO's valid forms, a private extra field, its
   bounds and conditional rules, coordinates or a distance where none may appear, and each new
   discriminator in `AppIntent` and `AppResponse`, through Python and the generated validators.

@@ -238,7 +238,32 @@ class ProfileContext:
         local_time: str | None = "04:13:27",
         precision: str = "known",
         expected: int | None = None,
+        place: str | None = None,
     ) -> Reply:
+        return self.command(
+            member,
+            BIRTH,
+            self.birth_body(
+                member,
+                birth_date,
+                local_time=local_time,
+                precision=precision,
+                expected=expected,
+                place=place,
+            ),
+        )
+
+    def birth_body(
+        self,
+        member: Member,
+        birth_date: str,
+        *,
+        local_time: str | None = "04:13:27",
+        precision: str = "known",
+        expected: int | None = None,
+        place: str | None = None,
+    ) -> dict[str, Any]:
+        """A birth input command's body, with a new key; its values go to the ledger."""
         if expected is None:
             current = self.call(member, "GET", BIRTH)
             expected = (
@@ -246,25 +271,21 @@ class ProfileContext:
                 if current.status == 404
                 else self.data(current, "birth_input", "the birth input")["version"]
             )
-        place = f"Synthetic Place {secrets.token_hex(3)}"
+        place = place or f"Synthetic Place {secrets.token_hex(3)}"
         for value in (birth_date, local_time, place):
             self.values.add(value)
-        return self.command(
-            member,
-            BIRTH,
-            {
-                "operation": "birth_input",
-                "meta": self.meta(expected),
-                "input": {
-                    "birth_date": birth_date,
-                    "local_time": local_time,
-                    "time_precision": precision,
-                    "place_label": place,
-                    "timezone_name": None,
-                    "timezone_provenance": None,
-                },
+        return {
+            "operation": "birth_input",
+            "meta": self.meta(expected),
+            "input": {
+                "birth_date": birth_date,
+                "local_time": local_time,
+                "time_precision": precision,
+                "place_label": place,
+                "timezone_name": None,
+                "timezone_provenance": None,
             },
-        )
+        }
 
     def profile(self, member: Member, summary: str = "A synthetic member.") -> Reply:
         current = self.call(member, "GET", PROFILE)

@@ -7,9 +7,12 @@ seed) and a reason, and writes ``StaffAudit`` with the caller's request ID.
 - ``publish_setting``: D2's publication (``settings_store.publish``).
 - ``approve_without_id``: D18's staff approval without identity verification, only while D2's
   setting allows it, read under its pointer's lock after the account row lock, so a switch-off
-  and an approval cannot cross. It stands in for identity verification only.
-- ``revoke_approval``: back to ``unverified``, at any time (the setting is not read); a ``visible``
-  profile then becomes ``incomplete`` (D9's rule for a removed requirement).
+  and an approval cannot cross. It stands in for identity verification only. It ends with D9's
+  recompute (DM-54), so an approval that meets the last requirement makes the profile ``visible``
+  (F04 ``requirements_met``).
+- ``revoke_approval``: back to ``unverified``, at any time (the setting is not read); it ends with
+  D9's recompute, so a ``visible`` profile then becomes ``incomplete`` (D9's rule for a removed
+  requirement; F04 ``requirement_removed``).
 - ``restrict_profile``: D9's restriction through ``glow_chat``'s ``restrict_profile``, nested.
 """
 
@@ -21,9 +24,9 @@ from uuid import UUID
 from glow_domain import profile_settings as ps
 from glow_domain.chat import TransactionProbe
 from glow_persistence.models import Profile, StaffAudit
-from glow_profiles import events, settings_store
+from glow_profiles import events, recompute, settings_store
 from glow_profiles.identity_verification import OrmIdentityVerification
-from glow_profiles.operations import _chat_checked, _demote_if_visible, chat
+from glow_profiles.operations import _chat_checked, chat
 from glow_profiles.tx import (
     FORBIDDEN,
     IDEMPOTENCY_CONFLICT,
@@ -143,7 +146,9 @@ def approve_without_id(
                 payload_ref=row.id,
                 now=now,
             )
-        return Result(outcome.outcome, detail={"state": row.state})
+        # D9: the shared recompute (F04 ``requirements_met`` when this meets the last one).
+        change = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
+        return Result(outcome.outcome, detail={"state": row.state, "profile": change.after})
 
     return run(body, probe)
 
@@ -162,7 +167,8 @@ def revoke_approval(
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        profile = Profile.objects.select_for_update().filter(account_id=account_id).first()
+        # The profile's lock, in the writer's order; the recompute reads it again under it.
+        Profile.objects.select_for_update().filter(account_id=account_id).first()
         signal(tx.probe, "after_locks")
         now = clock(tx)
         port = OrmIdentityVerification(now)
@@ -191,8 +197,12 @@ def revoke_approval(
             payload_ref=row.id,
             now=now,
         )
-        demoted = _demote_if_visible(tx, profile, now)
-        return Result("applied", detail={"state": row.state, "demoted": demoted})
+        # D9: the shared recompute (F04 ``requirement_removed`` for a visible profile).
+        change = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
+        return Result(
+            "applied",
+            detail={"state": row.state, "demoted": change.entry == recompute.REQUIREMENT_REMOVED},
+        )
 
     return run(body, probe)
 

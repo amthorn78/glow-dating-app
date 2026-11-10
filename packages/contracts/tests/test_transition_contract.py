@@ -494,6 +494,72 @@ class SV2StageATransitionTests(unittest.TestCase):
         # The owner's own edit that clears the summary keeps F04's owner edit.
         self.check("F04", "edit", "visible", "incomplete", OWNER, "allowed")
 
+    def test_f04_requirements_met_is_the_systems_completion(self):
+        # SV2 Stage A, correction C1 (DM-54, Y4): the completion that follows a write in another
+        # flow (D9's recompute), as requirement_removed is the demotion that follows one.
+        met = replace(SYSTEM, eligible=True, policies=frozenset({"A05"}))
+        self.check("F04", "requirements_met", "incomplete", "visible", met, "allowed")
+        self.check(
+            "F04",
+            "requirements_met",
+            "incomplete",
+            "visible",
+            replace(met, role="owner"),
+            "forbidden",
+        )
+        self.check(
+            "F04",
+            "requirements_met",
+            "incomplete",
+            "visible",
+            replace(OWNER, eligible=True),
+            "forbidden",
+        )
+        self.check("F04", "requirements_met", "incomplete", "visible", SYSTEM, "policy_unresolved")
+        self.check(
+            "F04",
+            "requirements_met",
+            "incomplete",
+            "visible",
+            replace(met, eligible=False),
+            "forbidden",
+        )
+        self.check("F04", "requirements_met", "paused", "visible", met, "state_conflict")
+        # A completion in an F04 owner command keeps the owner's complete.
+        self.check(
+            "F04",
+            "complete",
+            "incomplete",
+            "visible",
+            replace(OWNER, eligible=True, policies=frozenset({"A05"})),
+            "allowed",
+        )
+
+    def test_f04_restrict_is_the_moderators(self):
+        # SV2 Stage A, correction C1 (DM-54, Y4): SV2's staff operation, through glow_chat's
+        # writer, from visible and from paused.
+        for before in ("visible", "paused"):
+            self.check("F04", "restrict", before, "restricted", STAFF, "allowed")
+            self.check("F04", "restrict", before, "restricted", OWNER, "forbidden")
+            self.check(
+                "F04",
+                "restrict",
+                before,
+                "restricted",
+                replace(STAFF, object_id="another-profile"),
+                "forbidden",
+            )
+            self.check(
+                "F04",
+                "restrict",
+                before,
+                "restricted",
+                replace(STAFF, policies=frozenset()),
+                "policy_unresolved",
+            )
+        for before in ("incomplete", "restricted", "removed"):
+            self.check("F04", "restrict", before, "restricted", STAFF, "state_conflict")
+
     def test_sv2_projections_are_the_owners_only(self):
         for flow, definition in (
             ("F02", "OwnSensitiveConsent"),
