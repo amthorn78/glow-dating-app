@@ -509,3 +509,46 @@ Correction C1 of Stage A, to [DM-54](../../continuity/dev-manager/reviews/2026-1
 4. **C1-4, the refusal's code:** the failing birth input answers 403 `forbidden` with the reason `birth_date_fails_adult_rule`, as the adult check's under-age refusal is `forbidden`. No contract code is added.
 5. **C1-5, the staff approval's result** carries the profile's state after the recompute in its `detail` (`"profile"`), for P07's console and the suite; no DTO is involved.
 6. **No stop rule was met:** no model, migration, DTO, generated output, `glow_chat`, `glow_identity`, `glow_api`, workflow, lock or dependency changed; no existing registry entry changed; both new roles are ones the oracle authorizes; and the Database proof checks job took 9 minutes 40 seconds.
+
+### Manager verification of correction C1 (App Manager 10, 10 November 2026)
+
+**The diff.** `git diff 033e8d4 f54545c` was read for scope, and in part for content: 14 paths, each one C1's brief section owns.
+- 11 are code, to the code head `86a2156`. The other three are Markdown, in the records commits `baf8067` and `f54545c`.
+- `glow_chat`, `glow_identity`, `glow_api`, the workflow, the models, the migrations, the schema, the generated contract outputs and every lock are unchanged.
+- `pyproject.toml`'s one change adds `glow_profiles` to `[tool.mypy]`'s `files`.
+- The registry gains three F04 entries and no line elsewhere: `requirements_met` (`system`) and two `restrict` (`moderator`).
+- **Read against the brief:**
+  - `glow_profiles/recompute.py` applies D9's rule;
+  - `save_birth_input` returns `_refuse_failing_birth_input`'s refusal, not raising it, for an under-18 date: the age transition, the current revision to `missing` and the recompute commit, and no revision or idempotency record is written.
+
+**Integration.** Merged at `6e5d0d1`; its non-Markdown paths are byte-identical to `86a2156`. The trusted classifier from `main` (`c864edd`) returned full scope (`behavior-or-empty`), with one merge base, `df8a04c`.
+
+**Re-runs,** in a scratch copy of `86a2156` (`git archive`), in the clean environment, with hash-locked installs:
+- **API:** `Ran 521 tests` … `OK`; Ruff clean; `133 files already formatted`; the configured mypy `no issues found in 78 source files`, now with `glow_profiles`.
+- **Contract tests:** `Ran 47 tests` … `OK`.
+- **The proof's offline tests:** `Ran 218 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Two reversals, re-run offline.** Each failed as it should:
+- **C1-R1:** `set_area`'s recompute call removed. `test_every_requirement_writer_ends_with_the_recompute` fails (`writer='set_area'`).
+- **C1-R2:** a type error in `glow_profiles/recompute.py`. The configured mypy reports `Found 1 error in 1 file (checked 78 source files)`.
+
+Each file was restored and its hash checked against `86a2156`.
+
+**The run of record**, read with the GitHub tools: push run 42769301337 on `86a2156`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Every DM-41 retry step was `skipped`.
+- The second profile run was refused, with the counts `92 92 78 33 800 675` unchanged.
+- The artifact `sv2-profile-results` is 4,676 bytes, and the cleanup removed the container.
+
+**Codex.** Its review of `033e8d4` raised two P1 findings against the code before C1: the recompute missing from every writer but the profile edit, and a failing birth input stored. They are C1's items 1 and 3, and `86a2156` addresses both. Their threads close after Codex reviews the integrated head.
+
+**The session's decisions** (its "Decisions and deviations for the manager"):
+- **C1-1:** a demotion found by a field or area write is `requirement_removed` (`system`), with `profile_demoted`. **Accepted, the manager on DM-54's words.** Y4 makes `requirement_removed` "the demotion that follows another write". A field or area write cannot empty a required value, since D9 refuses that, so any demotion there comes from a lapse.
+  - **A note for the review and the Dev Manager:** a demotion inside the profile edit is always recorded as the owner's `edit`, even when the cause is a lapsed requirement rather than a cleared summary. Y4's words keep `edit` for "the owner's own edit that clears the summary".
+- **C1-2:** the recompute also runs on writes that change nothing. **Accepted:** D9 says every writer ends with it.
+- **C1-3:** a future birth date keeps its 400 refusal, with no rerun and no state change; only a date under 18 takes the refused-and-rerun path. **Accepted for the review, the manager's reading of DM-54's words, put to the Dev Manager at the pre-merge read.**
+  - A future date fails D7's validity ("valid, not in the future"), not its age test: it is not a declaration of age (P04's `birthInputValid` refuses it: "Future dates are unavailable").
+  - It is refused and stores nothing, which keeps "a failing date is refused and not stored".
+- **C1-4:** 403 `forbidden`, with the reason `birth_date_fails_adult_rule`. **Accepted:** DM-54 section 8 gives `forbidden` as the public code.
+- **C1-5:** the staff approval's result reports the profile's state after the recompute. **Accepted:** it is not a DTO.
