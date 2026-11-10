@@ -139,3 +139,21 @@ That is your decision (DM-31), and this message takes no side. The decisions abo
 The design goes to the Dev Manager with SV2's brief, as every brief does. The fixed limits above are my recommendation, and the Dev Manager reads them there.
 
 **DECISION NEEDED:** is this your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change; for example, a default you want switched on at launch.
+
+**Nathan:** "orientation DOES need to be used for matching"
+
+**The manager's reply, as sent:**
+
+**Then orientation matches the way gender does: both ways.** Each member states their orientation and chooses which orientations they want to see. Two people see each other only if each one's orientation is among those the other chose, as well as each one's gender. The rule Glow already has handles more than one such field (P05.1), so this adds a second field, not a new mechanism.
+
+The P1 orientation row becomes:
+
+| Item | What you can change in the console | Launch default | Fixed limit, and why |
+|---|---|---|---|
+| P1 orientation | The orientation list (add, rename or retire values); whether members can narrow by it; the member's own words, for display only | Optional to state. "Orientations I want to see" starts at all of them, so narrowing is the member's choice. Shown on the profile only if the member chooses | Matching uses a list value, both ways. A member who states none appears only to viewers who keep all orientations |
+
+**What this means:**
+- **Hiding protects less.** As with gender, a viewer who narrows to one orientation knows the orientation of everyone they are shown, whether or not those members show it on their profile.
+- **The data is now collected directly and used for matching.** It is still the same sensitive category: consent at the step where it is entered, never sold (UST-45), and declared in both stores (AP-23, GP-25), as already planned.
+
+**DECISION NEEDED:** is the table, with this row, your answer? A "yes" records it as an owner direction with these launch defaults. Otherwise, name what to change.
