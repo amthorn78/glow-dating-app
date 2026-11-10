@@ -374,7 +374,7 @@ with:
 
 > - **From SV2 Stage A (DM-54):** two launch values OD-60 does not give, each with a recommendation in OD-32's form. **The orientation list** ships empty, so orientation matches nothing until it has values, though Nathan said orientation "DOES need to be used for matching" (OD-60). **The distance choices** ship as `anywhere` only; a distance counts areas whose internal points are within it, and two members in one area are at distance zero (DM-52). Also the idempotency records' retention (24 hours, provisional).
 
-## 16. Notion (read-only, at about 05:50 UTC; both pages as of 05:32 UTC)
+## 16. Notion (read-only, at about 05:40 UTC; both pages as of 05:32 UTC)
 
 What I read: the parts named here, not the whole of either large page.
 
