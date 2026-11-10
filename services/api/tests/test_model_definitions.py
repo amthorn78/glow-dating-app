@@ -43,8 +43,10 @@ from glow_persistence.static_check import inspect_definitions
 loader, state = inspect_definitions()
 assert loader.connection is None
 assert not loader.applied_migrations
-# P02's 32, P06.2's two, SV1's age state (migration 0004).
-assert len([key for key in state.models if key[0] == 'glow_persistence']) == 35
+# P02's 32, P06.2's two, SV1's age state (migration 0004), and SV2 Stage A's five (0005: the
+# settings' versions, the area table, the field choices, the "show me" sets and the identity
+# verification record).
+assert len([key for key in state.models if key[0] == 'glow_persistence']) == 40
 assert connections['default'].connection is None
 """)
 
@@ -241,8 +243,9 @@ assert [(type(op).__name__, getattr(op, 'name', None)) for op in added.operation
 fields = dict(added.operations[0].fields)
 assert sorted(fields) == sorted(['id', 'created_at', 'updated_at', 'version', 'state', 'method',
     'recorded_at', 'policy_version', 'account']), sorted(fields)
-leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0004_account_age_state')], leaves
+# SV2 Stage A: 0005 now follows 0004 (test_sv2_stage_a_migrations_follow_0004).
+assert ('glow_persistence', '0004_account_age_state') in (
+    loader.disk_migrations[('glow_persistence', '0005_profiles_settings')].dependencies)
 source = (Path.cwd() / 'glow_persistence' / 'migrations' / '0004_account_age_state.py').read_text()
 assert 'RunSQL' not in source and 'RunPython' not in source
 meta = m.AccountAgeState._meta
@@ -256,7 +259,152 @@ assert not meta.get_field('recorded_at').null
 names = {c.name for c in meta.constraints}
 assert {'age_state_method', 'age_state_provenance',
     'glow_persistence_accountagestate_state'} <= names, names
-assert not {f.name for f in meta.get_fields()} & {'birth_date', 'date_of_birth', 'birthdate', 'age'}
+# SV2 (its brief's D7) adds the age state's date in 0005; 0004 itself has none (its fields above).
+dated = {f.name for f in meta.get_fields()} & {'birth_date', 'date_of_birth', 'birthdate', 'age'}
+assert dated == {'birth_date'}, dated
+""")
+
+    def test_sv2_stage_a_migrations_follow_0004(self):
+        # SV2 Stage A (its brief's D2 to D9 and D18): 0005 adds the schema, 0006 loads the area
+        # table from the committed file and 0007 seeds the settings' launch defaults; each is
+        # pinned as generated and recorded, and 0001 to 0004 are unchanged (above).
+        import hashlib
+
+        migrations = API_ROOT / "glow_persistence" / "migrations"
+        pinned = {
+            "0005_profiles_settings.py": (
+                "021c07a82b2bc9b81705af4b2172096d241463c1b896620b4e3fcc2d861ea9f6"
+            ),
+            "0006_area_table.py": (
+                "a465bb221bdd9f139eeede60eab2040c70ce765ab2fdaa6d2b90552457e817f7"
+            ),
+            "0007_settings_launch_defaults.py": (
+                "bb42f16d941d8ce505ec4323d4d8350d8e39f6746d7902f516fddf3fa96bc52e"
+            ),
+        }
+        for name, digest in pinned.items():
+            with self.subTest(migration=name):
+                content = (migrations / name).read_bytes()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), digest)
+        self.check_script("""
+from django.db.migrations.operations.models import CreateModel
+from django.db.migrations.operations.special import RunPython
+loader = MigrationLoader(None)
+schema = loader.disk_migrations[('glow_persistence', '0005_profiles_settings')]
+assert schema.dependencies == [('glow_persistence', '0004_account_age_state')]
+assert sorted(op.name for op in schema.operations if isinstance(op, CreateModel)) == [
+    'Area', 'IdentityVerification', 'PreferenceSetEntry', 'ProfileFieldChoice', 'SettingVersion']
+changed = sorted((type(op).__name__, op.model_name, op.name) for op in schema.operations
+    if type(op).__name__ in {'AddField', 'RemoveField'})
+assert changed == [
+    ('AddField', 'accountagestate', 'birth_date'),
+    ('AddField', 'identityverification', 'account'),
+    ('AddField', 'preferences', 'distance_choice'),
+    ('AddField', 'preferences', 'maximum_age'),
+    ('AddField', 'preferences', 'minimum_age'),
+    ('AddField', 'preferencesetentry', 'account'),
+    ('AddField', 'profile', 'area'),
+    ('AddField', 'profilefieldchoice', 'account'),
+    ('RemoveField', 'profile', 'location_label'),
+], changed
+assert {type(op).__name__ for op in schema.operations} == {
+    'CreateModel', 'AddField', 'RemoveField', 'AddConstraint', 'AddIndex'}
+for name, previous in (('0006_area_table', '0005_profiles_settings'),
+                       ('0007_settings_launch_defaults', '0006_area_table')):
+    data = loader.disk_migrations[('glow_persistence', name)]
+    assert data.dependencies == [('glow_persistence', previous)], name
+    assert [type(op) for op in data.operations] == [RunPython], name
+    assert data.operations[0].reversible, name
+leaves = loader.graph.leaf_nodes('glow_persistence')
+assert leaves == [('glow_persistence', '0007_settings_launch_defaults')], leaves
+migrations = Path.cwd() / 'glow_persistence' / 'migrations'
+for name in ('0005_profiles_settings', '0006_area_table', '0007_settings_launch_defaults'):
+    source = (migrations / f'{name}.py').read_text()
+    assert 'RunSQL' not in source, name
+    for word in ('urllib', 'requests', 'http.client', 'socket', 'urlopen'):
+        assert word not in source, (name, word)
+# 0007 seeds exactly the code's launch defaults, version 1 of each setting.
+import importlib.util
+from glow_domain import profile_settings as ps
+spec = importlib.util.spec_from_file_location(
+    'seed_0007', migrations / '0007_settings_launch_defaults.py')
+seed = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(seed)
+assert seed.SEED == ps.LAUNCH_DEFAULTS
+assert set(seed.SEED) == set(ps.ALL_SETTINGS)
+""")
+
+    def test_sv2_stage_a_models_hold_only_what_d2_to_d9_and_d18_need(self):
+        self.check_script("""
+from django.contrib.postgres.indexes import GinIndex
+def constraints(model):
+    return {c.name for c in model._meta.constraints}
+def names(model):
+    return {f.name for f in model._meta.get_fields()}
+
+# D2: each publication is a new version of one setting; versions are positive and unique.
+settings = m.SettingVersion._meta
+assert {'setting_version_number', 'setting_version_positive'} <= constraints(m.SettingVersion)
+assert settings.get_field('content').get_internal_type() == 'JSONField'
+assert {'name', 'number', 'content', 'published_at', 'staff_subject', 'reason'} <= names(
+    m.SettingVersion)
+
+# D5: the area table holds each area's published internal point; nothing else stores a place.
+area = m.Area._meta
+assert area.get_field('area_id').unique and area.get_field('area_id').max_length == 5
+assert area.get_field('name').max_length == 80
+for field in ('latitude', 'longitude'):
+    assert (area.get_field(field).max_digits, area.get_field(field).decimal_places) == (9, 6)
+assert 'area_internal_point' in constraints(m.Area)
+profile = m.Profile._meta
+assert 'location_label' not in names(m.Profile)
+assert profile.get_field('area').null
+assert profile.get_field('area').remote_field.model is m.Area
+assert profile.get_field('area').remote_field.on_delete is models.PROTECT
+located = {'latitude', 'longitude', 'coordinates', 'location', 'point', 'geohash', 'accuracy'}
+for model in apps.get_app_config('glow_persistence').get_models():
+    if model is not m.Area:
+        assert not names(model) & located, (model.__name__, names(model) & located)
+
+# D3: one row per account and field; the values are a list, matched through a GIN index.
+choice = m.ProfileFieldChoice._meta
+assert {'profile_field_choice', 'profile_field_name', 'profile_field_own_words',
+    'profile_field_shown', 'profile_field_setting_version'} <= constraints(m.ProfileFieldChoice)
+assert choice.get_field('own_words').max_length == 40 and choice.get_field('own_words').null
+assert [(type(i), i.fields, i.name) for i in choice.indexes] == [
+    (GinIndex, ['value_ids'], 'profile_field_values')]
+entry = m.PreferenceSetEntry._meta
+assert {'preference_set_value', 'preference_set_field', 'preference_set_not_stated'} <= (
+    constraints(m.PreferenceSetEntry))
+assert [(i.fields, i.name) for i in entry.indexes] == [
+    (['field', 'value_id', 'account'], 'preference_set_lookup')]
+assert entry.get_field('value_id').max_length == 100
+
+# D4: the age range never starts below 18 and never runs backwards; the distance choice is an ID.
+preferences = m.Preferences._meta
+assert {'preferences_age_floor', 'preferences_age_range'} <= constraints(m.Preferences)
+assert preferences.get_field('maximum_age').null
+assert preferences.get_field('distance_choice').max_length == 100
+
+# D6: a consent decision names its purpose: the onboarding consent or the sensitive fields'.
+assert 'consent_purpose' in constraints(m.ConsentDecision)
+
+# D7: the age state's date is present exactly while the state is self_declared_adult.
+age = m.AccountAgeState._meta
+assert age.get_field('birth_date').null
+assert 'age_state_birth_date' in constraints(m.AccountAgeState)
+
+# D18: one account-private record; Glow keeps no ID image, ID number or selfie.
+verification = m.IdentityVerification._meta
+account = verification.get_field('account')
+assert account.one_to_one and account.remote_field.model is m.AppAccount
+assert [v for v, _ in verification.get_field('state').choices] == [
+    'unverified', 'verified', 'staff_approved']
+assert [v for v, _ in verification.get_field('method').choices] == [
+    'none', 'automated_check', 'staff_approval']
+assert 'identity_verification_provenance' in constraints(m.IdentityVerification)
+assert not names(m.IdentityVerification) & {
+    'image', 'photo', 'selfie', 'document', 'id_number', 'document_number', 'birth_date'}
 """)
 
     def test_the_outbox_order_column_is_a_database_assigned_identity_beside_the_key(self):
@@ -369,6 +517,29 @@ for model, field, contract, property_name in (
 ):
     assert model._meta.get_field(field).max_length >= text_bound(
         defs[contract]['properties'][property_name])
+# SV2 Stage A: its request text fits storage, and a served area name fits its DTOs (D5). A
+# nullable property's text branch is measured; its null branch stores nothing.
+def text_branch(schema):
+    if 'anyOf' in schema and {'type': 'null'} in schema['anyOf']:
+        rest = [branch for branch in schema['anyOf'] if branch != {'type': 'null'}]
+        assert len(rest) == 1
+        return rest[0]
+    return schema
+for model, field, contract, property_name in (
+    (m.ProfileFieldChoice, 'own_words', 'ProfileFieldIntent', 'own_words'),
+    (m.Preferences, 'policy_version', 'FiltersIntent', 'policy_version'),
+    (m.Preferences, 'distance_choice', 'FiltersIntent', 'distance_choice'),
+    (m.Profile, 'area', 'AreaIntent', 'area_id'),
+    (m.ConsentDecision, 'policy_version', 'SensitiveConsentIntent', 'policy_version'),
+):
+    stored = model._meta.get_field(field)
+    if stored.is_relation:
+        stored = stored.target_field
+    assert stored.max_length >= text_bound(
+        text_branch(defs[contract]['properties'][property_name])), (model, field)
+for served in (defs['OwnArea']['properties']['area_name'],
+               defs['NearestArea']['properties']['area_name']):
+    assert text_bound(text_branch(served)) >= m.Area._meta.get_field('name').max_length
 """)
 
 
