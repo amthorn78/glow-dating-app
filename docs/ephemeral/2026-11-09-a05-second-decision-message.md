@@ -1,7 +1,7 @@
 # The second A05 decision message — who sees whom, resurfacing and rematch, chat history while messaging is stopped
 
 - **Owner:** App Manager 10. Sent to Nathan in the manager session on 10 November 2026, as written below, after DM-51 ([report](../continuity/dev-manager/reviews/2026-11-09-dm-51-a05-second-message.md), answered at `0fc2426`, a read of `a2c6709`) approved it with conditions M1 to M17, applied as written; the Dev Manager's next consultation reads it as sent.
-- **Revision 2, 10 November 2026:** DM-51's M1 to M17, as written. Revision 1 (9 November) was the text DM-51 read.
+- **Revision 2, 10 November 2026:** DM-51's M1 to M17, as written, and M3's finding applied once more, in the legal-advice paragraph ("Google asks", where revision 1 said "the stores ask"). Revision 1 (9 November) was the text DM-51 read.
 - **Why:** OD-50 sends the open A05 questions to Nathan in OD-32's form, through the Dev Manager first (the matrix, section 9). DM-37 4.5 put the preference taxonomy, resurfacing and rematch, and the history policy in this message, before SV2's brief; DM-38 section 8 adds a one-line confirmation of the language. P2 (age range and location) is also A05's (the discovery and reciprocal-eligibility fixtures, "A05 owns … age ranges, distance"), and no message has scheduled it. The matrix is [`docs/planning/store-legal-safety-requirements.md`](../planning/store-legal-safety-requirements.md); row IDs below are its rows.
 - **Where the answer goes:** the owner-direction register (a new OD row); the carried-items file's SV2, SV3 and SV4 sections; A05's Work Register row; and the matrix's recheck of the rows a chosen preference taxonomy touches, and of device location's rows if P2's answer is (b) (the matrix, section 10).
 - **Deletion condition:** prune after Nathan's answer is in the register and the Dev Manager's next consultation has read this message as sent.
@@ -96,7 +96,7 @@ OD-55 records English as my recommendation, which you did not change, not as you
 ## Whether to take legal advice
 
 That is your decision (DM-31), and this message takes no side. The decisions above touch readings the sources leave to interpretation:
-- whether own gender plus "show me" is "sexual orientation" or "sexuality" data under the state laws (UST-45, UST-47, UST-48); the stores ask Glow to declare derived data either way (GP-25);
+- whether own gender plus "show me" is "sexual orientation" or "sexuality" data under the state laws (UST-45, UST-47, UST-48); Google asks Glow to declare derived data either way (GP-25);
 - whether a chosen city or region, or the device's coarse location, counts as precise geolocation (UST-42).
 
 **The rest of A05 comes later,** in a third message before P07's brief: retention, and who moderates and how fast.

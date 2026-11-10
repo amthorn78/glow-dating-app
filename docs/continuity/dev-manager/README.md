@@ -613,7 +613,7 @@ App Manager 7 checked the report (`278369e`, a read of `016e9fe`) against the re
 
 ### DM-51 (App Manager 10, 10 November 2026)
 
-App Manager 10 read the report (`0fc2426`, a read of `a2c6709`) against the relayed message, which matches its section 2, and integrated it at the merge `bf0a8f3`. Nothing changed on the manager branch after `a2c6709` before the merge. M1 to M17 and X1 are applied as written; a script found each replaced passage exactly once and replaced it with the report's words. X2 waits for Nathan's answer on H.
+App Manager 10 read the report (`0fc2426`, a read of `a2c6709`) against the relayed message, which matches its section 2, and integrated it at the merge `bf0a8f3`. Nothing changed on the manager branch after `a2c6709` before the merge. M1 to M17 and X1 are applied as written; a script found each replaced passage exactly once and replaced it with the report's words. One change beyond them applies M3's own finding (only Google's form asks for derived data) to the legal-advice paragraph, which said "the stores ask"; it is the charter's exception (a change that only applies a finding's own text), and the next consultation's read of the message as sent covers it. X2 waits for Nathan's answer on H.
 
 | Item | Verdict | Disposition | Where applied |
 |---|---|---|---|
