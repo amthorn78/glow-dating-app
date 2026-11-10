@@ -211,6 +211,66 @@
       },
       "InteractionCommandResult": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionCommandResult"
+      },
+      "OwnWords": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnWords"
+      },
+      "AreaId": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AreaId"
+      },
+      "ProfileFieldIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ProfileFieldIntent"
+      },
+      "OwnFieldValue": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnFieldValue"
+      },
+      "OwnProfileFields": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnProfileFields"
+      },
+      "FiltersIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/FiltersIntent"
+      },
+      "OwnFilters": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnFilters"
+      },
+      "AreaIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AreaIntent"
+      },
+      "OwnArea": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnArea"
+      },
+      "AreaQuery": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AreaQuery"
+      },
+      "NearestArea": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/NearestArea"
+      },
+      "CatalogValue": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CatalogValue"
+      },
+      "CatalogField": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CatalogField"
+      },
+      "ConsentPolicy": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ConsentPolicy"
+      },
+      "ProfileCatalog": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/ProfileCatalog"
+      },
+      "OwnCompletion": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnCompletion"
+      },
+      "SensitiveConsentIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/SensitiveConsentIntent"
+      },
+      "OwnSensitiveConsent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnSensitiveConsent"
+      },
+      "AdultCheckIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/AdultCheckIntent"
+      },
+      "OwnAgeState": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnAgeState"
       }
     }
   },

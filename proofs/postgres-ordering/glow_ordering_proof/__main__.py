@@ -3,6 +3,7 @@
     python -m glow_ordering_proof facts       # SELECT version(), settings, the applied ledger
     python -m glow_ordering_proof run --seed 20260929 --results results.json
     python -m glow_ordering_proof identity --results identity.json   # SV1, identity settings
+    python -m glow_ordering_proof profile --results profile.json     # SV2, profile settings
 
 ``run`` executes the suite on two subjects (P06.2, D3): the reference design, then the
 app's adapter (``services/api``'s ``glow_chat``), each with the forced and named cases,
@@ -18,6 +19,10 @@ settings (the proof's own command, P06.DB's carried item 6).
 ``identity`` (SV1) runs the identity suite on the second disposable database, under
 ``glow_ordering_proof.identity_settings`` only (``identity_suite``); the ordering commands refuse
 those settings.
+
+``profile`` (SV2 Stage A) runs the profile suite on the third disposable database, under
+``glow_ordering_proof.profile_settings`` only (``profile_suite``); every other command refuses
+those settings, and ``profile`` refuses every other settings module.
 """
 
 from __future__ import annotations
@@ -239,7 +244,22 @@ def main(argv: list[str] | None = None) -> int:
     # SV1: the identity suite, under glow_ordering_proof.identity_settings only.
     identity_parser = commands.add_parser("identity")
     identity_parser.add_argument("--results", type=Path, default=None)
+    # SV2 Stage A: the profile suite, under glow_ordering_proof.profile_settings only.
+    profile_parser = commands.add_parser("profile")
+    profile_parser.add_argument("--results", type=Path, default=None)
     args = parser.parse_args(argv)
+    settings_module = os.environ.get("DJANGO_SETTINGS_MODULE")
+    if args.command == "profile":
+        if settings_module != "glow_ordering_proof.profile_settings":
+            print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings")
+            return 1
+        _setup()
+        from glow_ordering_proof import profile_suite
+
+        return profile_suite.run(args.results)
+    if settings_module == "glow_ordering_proof.profile_settings":
+        print("refusing: only the profile suite runs under the profile settings")
+        return 1
     if args.command == "identity":
         if os.environ.get("DJANGO_SETTINGS_MODULE") != "glow_ordering_proof.identity_settings":
             print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings")
