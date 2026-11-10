@@ -3,9 +3,12 @@ request checks, and the response projections.
 
 **Requests are closed intents:** each route parses its JSON body and checks it against its DTO
 here, with the contract's rules (unknown or missing fields fail; text lengths count Unicode scalar
-values; unpaired surrogates and blank text fail; identifiers allow no trailing newline). The
-contract's own validators decide the same cases (``tests/test_profile_contract.py`` runs the
-shared corpus through both). A refusal names the field's path, never its value.
+values; unpaired surrogates, U+0000 and blank text fail; identifiers allow no trailing newline;
+a body the parser cannot hold, such as an integer too large for its number check or nesting
+deeper than the parser allows, fails like any other). The contract's own validators decide
+the same cases (``tests/test_profile_contract.py`` runs the shared corpus through both), except
+U+0000 in a stored text, which only the server refuses, since the database cannot store it. A
+refusal names the field's path, never its value.
 
 **Responses are projections:** each builder below returns exactly its DTO's fields, the owner's
 own data only (D17). The API's tests validate them with the contract's own validator, and the
@@ -96,9 +99,11 @@ def integer(low: int, high: int) -> Checker:
 
 def number(low: float, high: float) -> Checker:
     def check(value: Any, at: str) -> None:
-        if type(value) not in (int, float) or not math.isfinite(value):
+        # An integer is compared exactly, never converted: a 321-digit integer cannot become a
+        # float (``math.isfinite`` would raise ``OverflowError``), and it is out of range anyway.
+        if type(value) is float and not math.isfinite(value):
             raise Invalid(at)
-        if not low <= value <= high:
+        if type(value) not in (int, float) or not low <= value <= high:
             raise Invalid(at)
 
     return check
@@ -295,7 +300,9 @@ def parse(definition: str, body: bytes) -> dict[str, Any]:
         value = json.loads(
             body.decode("utf-8"), parse_constant=_reject_constant, parse_float=_number
         )
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        # A body the parser cannot hold (nesting deeper than it allows, or an integer longer
+        # than Python's digit limit) is an invalid body like any other: 400, nothing echoed.
         raise Invalid(definition) from None
     REQUESTS[definition](value, definition)
     assert isinstance(value, dict)

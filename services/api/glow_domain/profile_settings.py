@@ -413,6 +413,11 @@ def _history_refusals(content: Any, current: Any, onboarding_version: str | None
             or version == current.get("consent_policy_version")
         ):
             refusals.append(MORE_READABLE_NEEDS_CONSENT)
+        if not more_readable and version != current.get("consent_policy_version"):
+            # D2 (DM-55, Z6): a publication that makes nothing more readable keeps the version the
+            # current setting names, so the limit cannot be crossed in two publications (the label
+            # moved first, then a cause made readable under a version members already accepted).
+            refusals.append(MORE_READABLE_NEEDS_CONSENT)
     return refusals
 
 

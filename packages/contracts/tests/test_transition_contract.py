@@ -1,5 +1,6 @@
 """Acceptance examples against P02 transition oracle, not HTTP/SQL enforcement."""
 
+import json
 import sys
 import unittest
 from dataclasses import replace
@@ -19,6 +20,44 @@ STAFF = Context(
     policies=frozenset({"A05"}),
 )
 PARTICIPANT = Context("alice", "participant", None, participant_ids=("alice", "bob"))
+ROOT = Path(__file__).resolve().parents[1]
+FLOWS_JSON = json.loads((ROOT / "production/flows-v1.json").read_text(encoding="utf-8"))
+# The oracle's trusted test prerequisites, as the contract document lists them.
+TRUSTED_PREREQUISITES = {
+    "consent_current",
+    "media_policy",
+    "reciprocal_likes",
+    "export_complete",
+    "purge_verified",
+    "staff_approval",
+}
+# Every SV2 entry and the prerequisites it requires: its policies, and whether it needs
+# eligibility. Four prerequisites in all: consent_current, A05, staff_approval and eligibility.
+SV2_PREREQUISITES = {
+    ("F02", "accept", "accepted", "accepted"): (("consent_current",), False),
+    ("F02", "accept_sensitive", "not_given", "accepted"): (("consent_current",), False),
+    ("F02", "accept_sensitive", "withdrawn", "accepted"): (("consent_current",), False),
+    ("F02", "accept_sensitive", "accepted", "accepted"): (("consent_current",), False),
+    ("F02", "withdraw_sensitive", "accepted", "withdrawn"): ((), False),
+    ("F02", "adult_check", "unknown", "self_declared_adult"): (("A05",), False),
+    ("F02", "adult_check", "self_declared_adult", "self_declared_adult"): (("A05",), False),
+    ("F02", "adult_check_failed", "self_declared_adult", "unknown"): ((), False),
+    ("F02", "id_check_passed", "unverified", "verified"): ((), False),
+    ("F02", "id_check_passed", "staff_approved", "verified"): ((), False),
+    ("F02", "approve_without_id", "unverified", "staff_approved"): (
+        ("A05", "staff_approval"),
+        False,
+    ),
+    ("F02", "revoke_approval", "staff_approved", "unverified"): (("A05",), False),
+    **{
+        ("F03", "date_changed", before, "missing"): ((), False)
+        for before in ("pending", "ambiguous", "resolved", "unavailable", "unsupported")
+    },
+    ("F04", "requirement_removed", "visible", "incomplete"): ((), False),
+    ("F04", "requirements_met", "incomplete", "visible"): (("A05",), True),
+    ("F04", "restrict", "visible", "restricted"): (("A05",), False),
+    ("F04", "restrict", "paused", "restricted"): (("A05",), False),
+}
 
 
 class FlowAcceptanceTests(unittest.TestCase):
@@ -559,6 +598,59 @@ class SV2StageATransitionTests(unittest.TestCase):
             )
         for before in ("incomplete", "restricted", "removed"):
             self.check("F04", "restrict", before, "restricted", STAFF, "state_conflict")
+
+    def test_f02_reacceptance_at_a_newer_version(self):
+        # SV2 Stage A, correction C2 (DM-55, finding 14, under W5): both consent writers accept a
+        # newer version from accepted. The current version is the trusted prerequisite
+        # consent_current; an old version lacks it.
+        current = replace(OWNER, policies=frozenset({"consent_current"}))
+        for event in ("accept", "accept_sensitive"):
+            with self.subTest(event=event):
+                self.check("F02", event, "accepted", "accepted", current, "allowed")
+                # An old version: refused before anything is decided.
+                self.check("F02", event, "accepted", "accepted", OWNER, "policy_unresolved")
+                self.check(
+                    "F02",
+                    event,
+                    "accepted",
+                    "accepted",
+                    replace(current, owner_id="bob"),
+                    "forbidden",
+                )
+                self.check("F02", event, "accepted", "accepted", SYSTEM, "forbidden")
+
+    def test_sv2_registry_prerequisites_are_pinned(self):
+        # SV2 Stage A, correction C2 (finding 15): each prerequisite SV2's entries require, pinned
+        # entry by entry, and the oracle's trusted test prerequisites pinned to the contract
+        # document's list, which SV2 extended with staff_approval.
+        flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
+        found = {
+            (flow, rule["event"], rule["from"], rule["to"]): (
+                tuple(rule["policies"]),
+                rule["eligible"],
+            )
+            for flow in ("F02", "F03", "F04")
+            for rule in flows[flow]["transitions"]
+            if (flow, rule["event"], rule["from"], rule["to"]) in SV2_PREREQUISITES
+        }
+        self.assertEqual(found, SV2_PREREQUISITES)
+        used = {
+            policy
+            for flow in FLOWS_JSON["flows"]
+            for rule in flow["transitions"]
+            for policy in rule["policies"]
+        }
+        trusted = {policy for policy in used if not policy[:1] == "A"}
+        self.assertEqual(trusted, TRUSTED_PREREQUISITES)
+        document = (ROOT.parents[1] / "docs/architecture/production-contracts.md").read_text(
+            encoding="utf-8"
+        )
+        sentence = next(
+            line for line in document.splitlines() if "explicit trusted test prerequisites" in line
+        )
+        listed = sentence.split(" in the oracle are explicit trusted test prerequisites")[0]
+        named = {name for name in listed.split("`")[1::2] if "." not in name}
+        self.assertEqual(named, TRUSTED_PREREQUISITES)
 
     def test_sv2_projections_are_the_owners_only(self):
         for flow, definition in (

@@ -73,11 +73,13 @@ def nonblank(text: str) -> bool:
 
 
 def text_ok(value: object, maximum: int) -> bool:
-    """Non-blank text of 1 to ``maximum`` code points with no unpaired surrogate."""
+    """Non-blank text of 1 to ``maximum`` code points with no unpaired surrogate and no U+0000,
+    which the database cannot store (a stored text holding one is ``invalid_request``)."""
     return (
         isinstance(value, str)
         and 1 <= len(value) <= maximum
         and not has_surrogate(value)
+        and "\x00" not in value
         and nonblank(value)
     )
 

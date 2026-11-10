@@ -169,6 +169,17 @@
           "active_match": false
         },
         {
+          "event": "accept",
+          "from": "accepted",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        },
+        {
           "event": "accept_sensitive",
           "from": "not_given",
           "to": "accepted",
@@ -182,6 +193,17 @@
         {
           "event": "accept_sensitive",
           "from": "withdrawn",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "accept_sensitive",
+          "from": "accepted",
           "to": "accepted",
           "role": "owner",
           "eligible": false,

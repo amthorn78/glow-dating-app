@@ -53,6 +53,7 @@ print(json.dumps({
     "packages": sorted(name for name in sys.modules if name.split(".")[0] in SEALED_PACKAGES),
     "modules": sorted(name for name in sys.modules if name in SEALED_MODULES),
     "engine": settings.DATABASES["default"]["ENGINE"],
+    "refused": refused,
     "installed": list(settings.INSTALLED_APPS),
     "routes": sorted(walk(get_resolver().url_patterns)),
 }))
@@ -87,6 +88,8 @@ class ProfilesSealedRuntimeTests(unittest.TestCase):
         self.assertEqual(seen["packages"], [])
         self.assertEqual(seen["modules"], [])
         self.assertEqual(seen["engine"], "django.db.backends.dummy")
+        # The dummy backend refuses a connection: nothing can reach a database (C2, finding 15).
+        self.assertEqual(seen["refused"], "ImproperlyConfigured")
         self.assertEqual(seen["installed"], ["rest_framework"])
         # The runtime's routes as they stood at SV2's start: no profile, consent, eligibility or
         # birth-input route is served.

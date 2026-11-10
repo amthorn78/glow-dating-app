@@ -39,7 +39,9 @@ from glow_ordering_proof.profile_support import (
     VISIBILITY,
     CaseFailed,
     ProfileContext,
+    db_today,
     expect,
+    forms,
     seed_chart,
     seed_verified,
     years_ago,
@@ -54,6 +56,9 @@ class Case:
 
 
 CASES: list[Case] = []
+# The suite's case count, pinned (C2, finding 15): a case lost or added without this changing
+# fails the run before any case runs, and the offline tests.
+CASE_COUNT = 53
 
 
 def case(
@@ -624,9 +629,12 @@ def _remember_coordinates(ctx: ProfileContext) -> None:
 
 
 def _found_in_database(texts: tuple[str, ...]) -> list[str]:
-    """Which tables hold any of ``texts`` in any row (every column, as JSON text)."""
+    """Which tables hold any of ``texts`` in any row (every column, as JSON text), in any form
+    the code could store it in (``profile_support.forms``: a date in prose or as Python prints
+    it, a coordinate at a lower precision, down to three decimals)."""
     from django.db import connection
 
+    texts = tuple(sorted({form for text in texts for form in forms(text)}))
     found: list[str] = []
     with connection.cursor() as cursor:
         cursor.execute(
@@ -913,9 +921,32 @@ def consent_sensitive_withdrawal(ctx: ProfileContext) -> str:
     records = IdempotencyRecord.objects.filter(actor_id=member.account_id)
     expect(records.filter(operation__in=carried).count() >= 3, "the commands left records")
     kept = records.exclude(operation__in=carried).count()
+    sensitive = ("orientation", "relationship_status")
+    before = {
+        row.field: row
+        for row in ProfileFieldChoice.objects.filter(
+            account_id=member.account_id, field__in=sensitive
+        )
+    }
+    expect(set(before) == set(sensitive), "both rows exist before the withdrawal")
+    changed = {field: _events(row.pk, "profile_field_changed") for field, row in before.items()}
     ctx.data(ctx.sensitive(member, "withdrawn"), "sensitive_consent", "withdrawn")
+    # C2 (DM-55, Z13): each row is set to "not stated" in place, with its event, so every earlier
+    # event still names an existing record.
+    for field, old in before.items():
+        row = ProfileFieldChoice.objects.filter(pk=old.pk).first()
+        expect(row is not None, f"{field}: the row still exists")
+        assert row is not None
+        expect(row.value_ids == ["not-stated"], f"{field}: not stated in place")
+        expect(row.own_words is None and row.shown is False, f"{field}: no own words, flag off")
+        expect(row.setting_version == old.setting_version, f"{field}: its setting version kept")
+        expect(row.version == old.version + 1, f"{field}: its version bumped")
+        expect(
+            _events(row.pk, "profile_field_changed") == changed[field] + 1,
+            f"{field}: profile_field_changed for it",
+        )
     rows = ProfileFieldChoice.objects.filter(account_id=member.account_id)
-    expect(not rows.filter(field__in=("orientation", "relationship_status")).exists(), "removed")
+    expect(rows.filter(field__in=sensitive).count() == 2, "both rows kept")
     own = ctx.get(member, FIELDS, "own_profile_fields")
     expect(own["orientation"]["value_ids"] == ["not-stated"], "orientation reads not stated")
     expect(own["orientation"]["own_words"] is None, "orientation's own words are removed")
@@ -941,7 +972,51 @@ def consent_sensitive_withdrawal(ctx: ProfileContext) -> str:
     expect(not records.filter(operation__in=carried).exists(), "their idempotency records deleted")
     expect(records.exclude(operation__in=carried).count() == kept + 1, "others kept")
     expect(_profile_row(member.account_id).state == "visible", "never hidden from keep-all viewers")
-    return "values, own words, narrowed sets and the commands' records removed; sets reset"
+    # A row that already holds "not stated", with no own words and its flag off, is left as it
+    # is, with no event; the other is reset with its event.
+    second = ctx.visible_member()
+    ctx.data(ctx.sensitive(second, "accepted"), "sensitive_consent", "accepted")
+    ctx.data(
+        ctx.field(second, "orientation", [ORIENTATION_VALUES[0]], shown=True),
+        "own_profile_fields",
+        "orientation",
+    )
+    ctx.data(
+        ctx.field(second, "relationship_status", ["not-stated"], shown=False),
+        "own_profile_fields",
+        "already not stated",
+    )
+    quiet = ProfileFieldChoice.objects.get(
+        account_id=second.account_id, field="relationship_status"
+    )
+    loud = ProfileFieldChoice.objects.get(account_id=second.account_id, field="orientation")
+    quiet_events = _events(quiet.pk, "profile_field_changed")
+    loud_events = _events(loud.pk, "profile_field_changed")
+    ctx.data(ctx.sensitive(second, "withdrawn"), "sensitive_consent", "withdrawn")
+    after = ProfileFieldChoice.objects.get(pk=quiet.pk)
+    expect(
+        (after.value_ids, after.own_words, after.shown, after.version, after.updated_at)
+        == (quiet.value_ids, quiet.own_words, quiet.shown, quiet.version, quiet.updated_at),
+        "an already reset row is unchanged",
+    )
+    expect(_events(quiet.pk, "profile_field_changed") == quiet_events, "with no event")
+    reset = ProfileFieldChoice.objects.get(pk=loud.pk)
+    expect(reset.value_ids == ["not-stated"] and reset.shown is False, "the other is reset")
+    expect(_events(loud.pk, "profile_field_changed") == loud_events + 1, "with its event")
+    # Every profile_field_changed event of the run names an existing row (Z15).
+    from glow_persistence.models import OutboxEvent
+
+    named = set(
+        OutboxEvent.objects.filter(event_type="profile_field_changed").values_list(
+            "payload_ref", flat=True
+        )
+    )
+    existing = set(ProfileFieldChoice.objects.filter(pk__in=named).values_list("pk", flat=True))
+    expect(named == existing, "every profile_field_changed event names an existing row")
+    return (
+        "rows set to not stated in place with their events, an already reset row left alone;"
+        " own words, narrowed sets and the commands' records removed; sets reset"
+    )
 
 
 @case("consent.withdrawal_on_a_paused_profile_stays_paused", "6", "9", "D9")
@@ -984,7 +1059,7 @@ def adult_pass(ctx: ProfileContext) -> str:
     expect(adult_outcome(date(2008, 2, 29), date(2026, 3, 1)) is AdultOutcome.PASS, "1 Mar")
     expect(adult_outcome(date(2008, 9, 23), date(2026, 9, 23)) is AdultOutcome.PASS, "18 today")
     expect(adult_outcome(date(2008, 9, 24), date(2026, 9, 23)) is AdultOutcome.UNDER_AGE, "a day")
-    return "18 today and 29 February 2008 pass through the route; the fixtures' boundaries hold"
+    return "18 today and the leap-day date pass through the route; the fixtures' boundaries hold"
 
 
 @case("adult.failing_dates_are_refused_and_not_stored", "7", "D7")
@@ -1012,7 +1087,9 @@ def adult_rerun(ctx: ProfileContext) -> str:
     first, second = ctx.visible_member(), ctx.visible_member()
     _, send = _match(ctx, first, second)
     expect(send("send-adult-1").outcome == "authorized", "a send is authorized")
-    data = ctx.data(ctx.adult(first, years_ago(17)), "own_age_state", "the corrected date")
+    # C2 (DM-55): refused (forbidden), with no idempotency record, while the reset commits.
+    ctx.refused(ctx.adult(first, years_ago(17)), 403, "forbidden", "the corrected date")
+    data = ctx.get(first, ADULT, "own_age_state")
     expect(data["state"] == "unknown" and data["birth_date"] is None, "unknown, the date cleared")
     row = AccountAgeState.objects.get(account_id=first.account_id)
     expect(row.state == "unknown" and row.birth_date is None, "stored as unknown with no date")
@@ -1020,7 +1097,7 @@ def adult_rerun(ctx: ProfileContext) -> str:
     expect(send("send-adult-2").outcome == "refused", "so a send is refused")
     current = BirthInput.objects.filter(account_id=first.account_id).order_by("-version")[0]
     expect(current.state == "missing", "the birth input holding another date stops being current")
-    return "a failing rerun sets unknown, clears the date and demotes; the send is refused"
+    return "a failing rerun is refused, sets unknown, clears the date and demotes; no send"
 
 
 @case("adult.a_birth_input_with_another_date_changes_it", "7", "D7")
@@ -1248,7 +1325,7 @@ def completion_each(ctx: ProfileContext) -> str:
 
     member = ctx.ready_member()
     seed_verified(member.account_id)
-    ctx.data(ctx.adult(member, years_ago(16)), "own_age_state", "a failing rerun")
+    ctx.refused(ctx.adult(member, years_ago(16)), 403, "forbidden", "a failing rerun")
     # The rerun also makes the birth input stop being current, so the chart is missing too.
     stays(member, ["adult_check", "chart"], "the adult check")
 
@@ -1554,6 +1631,7 @@ def completion_lock(ctx: ProfileContext) -> str:
     expect(wait.observed, "the completion waited on the account row lock")
     expect(withdrawn.outcome == "applied", "the withdrawal committed first")
     expect(completed.outcome == "applied", "the edit applied")
+    ctx.remember(member.account_id, intent)
     expect(_profile_row(member.account_id).state == "incomplete", "and saw the withdrawal")
     first = wait.summary()
     # The other order: a completion holds the lock; a withdrawal waits and demotes after it.
@@ -1591,6 +1669,8 @@ def completion_lock(ctx: ProfileContext) -> str:
         arriver.close()
     expect(wait.observed, "the withdrawal waited on the completion's account row lock")
     expect(completed.outcome == "applied" and withdrawn.outcome == "applied", "both applied")
+    ctx.remember(other.account_id, intent)
+    ctx.remember(other.account_id, withdrawal)
     expect(_profile_row(other.account_id).state == "incomplete", "the withdrawal demoted it")
     return f"{first}; {wait.summary()}"
 
@@ -1634,7 +1714,7 @@ def completion_removals(ctx: ProfileContext) -> str:
             elif removal == "birth_input":
                 ctx.data(ctx.birth_input(member, born, local_time="12:34:56"), "birth_input", "new")
             elif removal == "adult_rerun":
-                ctx.data(ctx.adult(member, years_ago(15)), "own_age_state", "failing rerun")
+                ctx.refused(ctx.adult(member, years_ago(15)), 403, "forbidden", "failing rerun")
             else:
                 revoked = staff.revoke_approval(
                     member.account_id, staff_subject=STAFF, reason="SV2-proof", request_id=uuid4()
@@ -1781,7 +1861,7 @@ def recompute_completes(ctx: ProfileContext) -> str:
     # date that passed before.
     born = ctx.adult_date(31)
     member = ctx.visible_member(birth_date=born)
-    ctx.data(ctx.adult(member, years_ago(16)), "own_age_state", "a failing rerun")
+    ctx.refused(ctx.adult(member, years_ago(16)), 403, "forbidden", "a failing rerun")
     seed_chart(member.account_id)
     before = incomplete(member, "the adult check")
     expect(ctx.missing(member) == ["adult_check"], "only the adult check is missing")
@@ -1833,7 +1913,9 @@ def recompute_demotes(ctx: ProfileContext) -> str:
     for member in (by_area, by_field, by_adult, by_edit, by_accept):
         expect(_profile_row(member.account_id).state == "visible", "a lapse alone moves nothing")
         expect(ctx.missing(member) == ["consent"], "the lapsed consent is missing")
-    demotions = {member.account_id: 0 for member in (by_area, by_field, by_adult, by_accept)}
+    demotions = {
+        member.account_id: 0 for member in (by_area, by_field, by_adult, by_edit, by_accept)
+    }
     for account_id in demotions:
         demotions[account_id] = _events(_profile_row(account_id).pk, "profile_demoted")
 
@@ -1853,15 +1935,23 @@ def recompute_demotes(ctx: ProfileContext) -> str:
     born = ctx.get(by_adult, ADULT, "own_age_state")["birth_date"]
     ctx.data(ctx.adult(by_adult, born), "own_age_state", "the same date again")
     demoted(by_adult, "the adult check's unchanged date")
-    edits = _events(_profile_row(by_edit.account_id).pk, "profile_demoted")
+    # C2 (DM-55, section 6): the profile edit that finds a lapse it did not cause demotes as
+    # requirement_removed, with profile_demoted, like every other writer.
     _edit(ctx, by_edit)
-    demoted(by_edit, "the profile edit (the owner's edit)", event=False)
-    expect(_events(_profile_row(by_edit.account_id).pk, "profile_demoted") == edits, "no event")
-    # Accepting the new version is the last requirement again (F04 requirements_met).
+    demoted(by_edit, "the profile edit finding a lapse (requirement_removed)")
+    # Accepting the new version is the last requirement again (F04 requirements_met): the member
+    # is demoted first, so the acceptance is what completes the profile.
+    ctx.data(ctx.area(by_accept, LOS_ANGELES), "own_area", "an area change, the consent lapsed")
+    demoted(by_accept, "the area, before the acceptance")
+    completions = _events(_profile_row(by_accept.account_id).pk, "profile_completed")
     accepted = ctx.accept_onboarding(by_accept)
     expect(accepted["policy_version"] == current, "the new version accepted")
     expect(_profile_row(by_accept.account_id).state == "visible", "accepting it completes")
-    ctx.data(ctx.area(by_accept, LOS_ANGELES), "own_area", "an area change, now current")
+    expect(
+        _events(_profile_row(by_accept.account_id).pk, "profile_completed") == completions + 1,
+        "the acceptance emits profile_completed",
+    )
+    ctx.data(ctx.area(by_accept, NEW_YORK), "own_area", "an area change, now current")
     expect(_profile_row(by_accept.account_id).state == "visible", "nothing missing: it stays")
     # paused, restricted and removed stay as they are.
     ctx.data(ctx.area(paused, LOS_ANGELES), "own_area", "a paused member's area change")
@@ -1874,8 +1964,9 @@ def recompute_demotes(ctx: ProfileContext) -> str:
         expect(ctx.missing(member) == [], f"{state}: nothing missing")
         expect(_profile_row(member.account_id).state == state, f"{state}: still {state}")
     return (
-        "a lapsed consent version demoted at the area, a field, the adult check and the edit;"
-        " its acceptance completed; paused, restricted and removed stayed"
+        "a lapsed consent version demoted at the area, a field, the adult check and the edit,"
+        " each with profile_demoted; its acceptance completed a demoted profile; paused,"
+        " restricted and removed stayed"
     )
 
 
@@ -1980,6 +2071,376 @@ def birth_failing_date(ctx: ProfileContext) -> str:
         "refused with nothing of it stored; the rerun committed (unknown, missing, pending,"
         f" demoted or left paused); retries changed nothing: {', '.join(results)}"
     )
+
+
+# =============================================================================================
+# Correction C2 (DM-55): the date first at both age writers, the history limit in two steps, the
+# sensitive consent's current version, the profile edit's lapse, the account row lock, age_years
+# =============================================================================================
+
+
+def _age_snapshot(account_id: UUID) -> dict[str, Any]:
+    """Every row a date's refusal could change, for one account."""
+    from glow_persistence.models import (
+        AccountAgeState,
+        BirthInput,
+        EngineIdentity,
+        IdempotencyRecord,
+        OutboxEvent,
+    )
+
+    mapping = EngineIdentity.objects.filter(account_id=account_id).first()
+    age = AccountAgeState.objects.get(account_id=account_id)
+    account = _account(account_id)
+    profile = _profile_row(account_id)
+    return {
+        "inputs": [
+            (str(row.pk), row.version, row.state)
+            for row in BirthInput.objects.filter(account_id=account_id).order_by("version")
+        ],
+        "age": (age.state, age.birth_date, age.version),
+        "account": (account.eligibility_version, account.version),
+        "profile": (profile.state, profile.version),
+        "mapping": None if mapping is None else (mapping.state, mapping.version),
+        "events": OutboxEvent.objects.count(),
+        "records": IdempotencyRecord.objects.filter(actor_id=account_id).count(),
+    }
+
+
+def _expect_reset(ctx: ProfileContext, member: Any, before: dict[str, Any], what: str) -> None:
+    """D7 (DM-55, Z2): a date under 18 from a self-declared adult reset the account, stored no
+    idempotency record, and nothing of the date; a retry is refused and changes nothing."""
+    from glow_persistence.models import AccountAgeState, BirthInput, EngineIdentity
+
+    account = member.account_id
+    age = AccountAgeState.objects.get(account_id=account)
+    expect(age.state == "unknown" and age.birth_date is None, f"{what}: the age state is unknown")
+    held = BirthInput.objects.filter(account_id=account).order_by("-version")[0]
+    expect(held.state == "missing", f"{what}: the current birth input is missing")
+    expect(
+        [row[0] for row in _age_snapshot(account)["inputs"]] == [r[0] for r in before["inputs"]],
+        f"{what}: no revision is written",
+    )
+    mapping = EngineIdentity.objects.filter(account_id=account).first()
+    expect(
+        mapping is None or (mapping.state == "pending" and mapping.engine_reference is None),
+        f"{what}: its mapping is back to pending",
+    )
+    profile = _profile_row(account)
+    expect(profile.state == "incomplete", f"{what}: the visible profile is incomplete")
+    for aggregate, event, wanted in (
+        (age.pk, "age_state_changed", before["counts"]["age"] + 1),
+        (held.pk, "birth_input_invalidated", before["counts"]["held"] + 1),
+        (profile.pk, "profile_demoted", before["counts"]["demoted"] + 1),
+    ):
+        expect(_events(aggregate, event) == wanted, f"{what}: {event}")
+    after = _age_snapshot(account)
+    expect(after["records"] == before["records"], f"{what}: no idempotency record is stored")
+    expect(after["account"][0] > before["account"][0], f"{what}: eligibility_version bumped")
+
+
+def _counted(member: Any) -> dict[str, Any]:
+    from glow_persistence.models import AccountAgeState, BirthInput
+
+    account = member.account_id
+    snapshot = _age_snapshot(account)
+    held = BirthInput.objects.filter(account_id=account).order_by("-version")[0]
+    snapshot["counts"] = {
+        "age": _events(AccountAgeState.objects.get(account_id=account).pk, "age_state_changed"),
+        "held": _events(held.pk, "birth_input_invalidated"),
+        "demoted": _events(_profile_row(account).pk, "profile_demoted"),
+    }
+    return snapshot
+
+
+@case("adult.a_self_declared_adults_date_comes_first_at_both_writers", "7", "8", "D7", "D8")
+def adult_date_first(ctx: ProfileContext) -> str:
+    future, minor = years_ago(-1), years_ago(17, days=-45)
+
+    def adult_body(member: Any, born: str, expected: int | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = ctx.get(member, ADULT, "own_age_state")["version"]
+        ctx.values.add(born)
+        return {"operation": "adult_check", "meta": ctx.meta(expected), "birth_date": born}
+
+    shown: list[str] = []
+    # A future date, at each writer: 400, and no row changes.
+    for writer in ("the eligibility step", "the birth input"):
+        member = ctx.visible_member()
+        before = _age_snapshot(member.account_id)
+        if writer == "the eligibility step":
+            reply = ctx.command(member, ADULT, adult_body(member, future))
+        else:
+            reply = ctx.command(member, BIRTH, ctx.birth_body(member, future))
+        ctx.refused(reply, 400, "invalid_request", f"{writer}: a future date")
+        expect(
+            _age_snapshot(member.account_id) == before, f"{writer}: a future date changes nothing"
+        )
+        shown.append(f"future at {writer}")
+    # A date under 18, at each writer, alone and behind each of the request's other refusals:
+    # 403, with the reset committed, no idempotency record, and a retry refused that changes
+    # nothing more.
+    plans: list[tuple[str, Callable[[Any], dict[str, Any]], str]] = [
+        ("the eligibility step", lambda m: adult_body(m, minor), ADULT),
+        ("the eligibility step behind a stale version", lambda m: adult_body(m, minor, 99), ADULT),
+        ("the birth input", lambda m: ctx.birth_body(m, minor), BIRTH),
+        (
+            "the birth input behind a stale version",
+            lambda m: ctx.birth_body(m, minor, expected=99),
+            BIRTH,
+        ),
+        (
+            "the birth input behind a birth time not given",
+            lambda m: ctx.birth_body(m, minor, local_time=None, precision="unknown"),
+            BIRTH,
+        ),
+    ]
+    for what, make, path in plans:
+        member = ctx.visible_member()
+        before = _counted(member)
+        body = make(member)
+        ctx.refused(ctx.command(member, path, body), 403, "forbidden", what)
+        _expect_reset(ctx, member, before, what)
+        settled = _age_snapshot(member.account_id)
+        ctx.refused(ctx.command(member, path, body), 403, "forbidden", f"{what}: the retry")
+        expect(_age_snapshot(member.account_id) == settled, f"{what}: the retry changes nothing")
+        again = make(member) if path == BIRTH else adult_body(member, minor)
+        ctx.refused(ctx.command(member, path, again), 403, "forbidden", f"{what}: a new command")
+        expect(_age_snapshot(member.account_id) == settled, f"{what}: a new command, nothing")
+        shown.append(what)
+    # Behind a lapsed onboarding consent (a new version, published last: it lapses every member).
+    member = ctx.visible_member()
+    _new_onboarding_version(ctx)
+    before = _counted(member)
+    what = "the birth input behind a lapsed onboarding consent"
+    ctx.refused(ctx.command(member, BIRTH, ctx.birth_body(member, minor)), 403, "forbidden", what)
+    _expect_reset(ctx, member, before, what)
+    shown.append(what)
+    # An unknown account: the existing refusals hold, and nothing changes.
+    from glow_persistence.models import AccountAgeState, OutboxEvent
+
+    stranger = ctx.member()
+    ctx.accept_onboarding(stranger)
+    for born, status, code in ((future, 400, "invalid_request"), (minor, 403, "forbidden")):
+        age = AccountAgeState.objects.get(account_id=stranger.account_id)
+        events_before = OutboxEvent.objects.count()
+        ctx.refused(ctx.command(stranger, ADULT, adult_body(stranger, born)), status, code, born)
+        again = AccountAgeState.objects.get(account_id=stranger.account_id)
+        expect(
+            (again.state, again.birth_date, again.version) == ("unknown", None, age.version),
+            "an unknown account's state is unchanged",
+        )
+        ctx.refused(
+            ctx.command(stranger, BIRTH, ctx.birth_body(stranger, born, expected=0)),
+            403,
+            "forbidden",
+            "the birth input's adult-check gate",
+        )
+        expect(OutboxEvent.objects.count() == events_before, "no event for an unknown account")
+    return "; ".join(shown) + "; an unknown account's refusals hold"
+
+
+@case("settings.history_limit_not_crossed_in_two_publications", "1", "D2")
+def settings_history_two_steps(ctx: ProfileContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    history = copy.deepcopy(settings_store.read_unlocked(ps.HISTORY).content)
+    if history["own_pause"] != "hidden":
+        history["own_pause"] = "hidden"
+        expect(ctx.publish(ps.HISTORY, history).outcome == "applied", "a cause made hidden")
+    label = history["consent_policy_version"]
+    current = _new_onboarding_version(ctx)
+    expect(current != label, "a newer onboarding version than the one the setting names")
+    # The first step of the two: the label alone moves. Refused, and nothing is written.
+    relabelled = dict(copy.deepcopy(history), consent_policy_version=current)
+    before = _counts()
+    refused = ctx.publish(ps.HISTORY, relabelled)
+    expect(refused.outcome == "refused", "the label alone cannot move")
+    expect(ps.MORE_READABLE_NEEDS_CONSENT in refused.reason, "the refusal names the limit")
+    expect(_counts() == before, "the first step writes nothing")
+    # The direct change: more readable under the version already named. Still refused.
+    direct = dict(copy.deepcopy(history), own_pause="read_only")
+    refused = ctx.publish(ps.HISTORY, direct)
+    expect(refused.outcome == "refused", "the direct change is refused")
+    expect(_counts() == before, "the direct change writes nothing")
+    # A new onboarding version, then a more readable change naming it: allowed.
+    allowed = dict(copy.deepcopy(history), own_pause="read_only", consent_policy_version=current)
+    expect(ctx.publish(ps.HISTORY, allowed).outcome == "applied", "the change naming it applies")
+    return "the two-step path is refused at its first step; the new version then allows it"
+
+
+@case("fields.sensitive_needs_the_current_consent_version", "2", "3", "6", "D3", "D6")
+def fields_sensitive_version(ctx: ProfileContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    ctx.ensure_test_lists()
+    member = ctx.ready_member()
+    saves: list[tuple[str, Callable[[], Any]]] = [
+        ("a sensitive value", lambda: ctx.field(member, "orientation", [ORIENTATION_VALUES[1]])),
+        (
+            "orientation's own words",
+            lambda: ctx.field(
+                member, "orientation", ["not-stated"], own_words=f"Own {uuid4().hex[:6]}"
+            ),
+        ),
+        ("a narrowed sensitive set", lambda: ctx.sets(member, {"relationship_status": ["single"]})),
+    ]
+
+    def all_refused(when: str) -> None:
+        for what, save in saves:
+            ctx.refused(save(), 403, "forbidden", f"{what} {when}")
+
+    all_refused("before the consent is accepted")
+    ctx.data(ctx.sensitive(member, "accepted"), "sensitive_consent", "accepted")
+    ctx.data(ctx.sensitive(member, "withdrawn"), "sensitive_consent", "withdrawn")
+    all_refused("after its withdrawal")
+    accepted = ctx.data(ctx.sensitive(member, "accepted"), "sensitive_consent", "accepted again")
+    content = copy.deepcopy(settings_store.read_unlocked(ps.SENSITIVE_CONSENT).content)
+    content["text"] += f" (revision {uuid4().hex[:6]})"
+    expect(ctx.publish(ps.SENSITIVE_CONSENT, content).outcome == "applied", "a new version")
+    current = ctx.catalog(member)["consents"]["sensitive_profile"]["policy_version"]
+    expect(current != accepted["policy_version"], "the accepted version is now an old one")
+    all_refused("at an old version")
+    # A save that carries no sensitive data still succeeds at an old version.
+    ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "gender, old version")
+    ctx.data(ctx.sets(member, {"gender": ["woman"]}), "own_preferences", "a set, old version")
+    ctx.data(ctx.field(member, "orientation", ["not-stated"]), "own_profile_fields", "left unset")
+    # Accepting the current version (F02 accept_sensitive from accepted) allows each again.
+    renewed = ctx.data(ctx.sensitive(member, "accepted"), "sensitive_consent", "the current one")
+    expect(renewed["policy_version"] == current, "the current version accepted")
+    for what, save in saves:
+        reply = save()
+        expect(reply.status == 200, f"{what} at the current version: answers 200")
+    return "each sensitive save refused before acceptance, after withdrawal and at an old version"
+
+
+@case("completion.the_profile_edit_is_the_owners_edit_only_when_it_clears_the_summary", "9", "D9")
+def profile_edit_entries(ctx: ProfileContext) -> str:
+    clearer, finder, both = (ctx.visible_member() for _ in range(3))
+
+    def counts(member: Any) -> tuple[int, int, int, int]:
+        profile = _profile_row(member.account_id)
+        return (
+            int(profile.version),
+            int(_account(member.account_id).eligibility_version),
+            _events(profile.pk, "profile_demoted"),
+            _events(profile.pk, "profile_edited"),
+        )
+
+    def check(member: Any, summary: str, bumps: int, demoted: int, what: str) -> None:
+        version, eligibility, demotions, edits = counts(member)
+        _edit(ctx, member, summary)
+        after = counts(member)
+        expect(_profile_row(member.account_id).state == "incomplete", f"{what}: demoted")
+        expect(after[0] == version + bumps, f"{what}: the profile's version bumped {bumps}")
+        expect(after[1] == eligibility + bumps, f"{what}: eligibility_version bumped {bumps}")
+        expect(after[2] == demotions + demoted, f"{what}: profile_demoted {demoted}")
+        expect(after[3] == edits + 1, f"{what}: the edit's own profile_edited")
+
+    # The edit that clears the summary: the owner's edit, riding on the edit's own write.
+    check(clearer, "", 1, 0, "the cleared summary")
+    _new_onboarding_version(ctx)
+    # A lapse the edit finds but did not cause: requirement_removed, a transition of its own.
+    check(finder, "A synthetic member, edited.", 2, 1, "a lapse the edit found")
+    # Clearing the summary while another requirement has lapsed: still the owner's edit.
+    check(both, "", 1, 0, "the cleared summary beside a lapse")
+    return (
+        "edit when the edit clears the summary, whatever else is missing; else requirement_removed"
+    )
+
+
+@case("completion.a_second_writer_waits_for_the_account_row_lock", "9", "D9")
+def account_row_lock(ctx: ProfileContext) -> str:
+    from django.db import DatabaseError, transaction
+    from glow_domain.chat import TransactionProbe
+    from glow_persistence.models import Profile
+    from glow_profiles import operations
+
+    from glow_ordering_proof.concurrency import Hold, PidSlot, Worker
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    member = ctx.ready_member()
+    catalog = ctx.catalog(member)
+    filters = ctx.get(member, FILTERS, "own_filters")
+    holding = {
+        "operation": "filters",
+        "meta": ctx.meta(filters["version"]),
+        "policy_version": catalog["policy_version"],
+        "minimum_age": 21,
+        "maximum_age": None,
+        "distance_choice": "anywhere",
+    }
+    profile = ctx.get(member, PROFILE, "own_profile")
+    arriving = {"operation": "area", "meta": ctx.meta(profile["version"]), "area_id": LOS_ANGELES}
+    passed = threading.Event()
+
+    def profile_row_free() -> bool:
+        try:
+            with transaction.atomic():
+                rows = Profile.objects.select_for_update(nowait=True)
+                list(rows.filter(account_id=member.account_id))
+        except DatabaseError:
+            return False
+        return True
+
+    # Two SV2 writers of one account whose own rows are disjoint (the preferences; the profile):
+    # only the account row lock orders them.
+    holder, arriver, prober = Worker("filters-holder"), Worker("area-arriver"), Worker("prober")
+    try:
+        hold, slot = Hold(), PidSlot()
+        probe = TransactionProbe(on_begin=slot.set, before_commit=hold.point)
+        held = holder.submit(
+            lambda: operations.set_filters(member.account_id, holding, probe=probe)
+        )
+        expect(hold.wait_held(), "the first writer holds the account row")
+        arriver_pid = arriver.run(_backend_pid)
+        moving = arriver.submit(
+            lambda: operations.set_area(
+                member.account_id, arriving, probe=TransactionProbe(after_first_lock=passed.set)
+            )
+        )
+        wait = observe_lock_wait(arriver_pid, holder_pid=slot.wait(), finished=moving.done)
+        waiting_at_first_lock = wait.observed and not moving.done() and not passed.is_set()
+        free = prober.run(profile_row_free) if wait.observed and not moving.done() else None
+        hold.release.set()
+        first = held.result(timeout=30)
+        second = moving.result(timeout=30)
+    finally:
+        hold.release.set()
+        holder.close()
+        arriver.close()
+        prober.close()
+    expect(wait.observed, "the second writer waited on the first's lock")
+    expect(waiting_at_first_lock, "it waited at the account row, before passing its first lock")
+    expect(free is True, "while it waited it held no lock on its own row: the account first")
+    expect(first.outcome == "applied" and second.outcome == "applied", "both applied, in order")
+    expect(passed.is_set(), "it passed the account row once the first committed")
+    ctx.remember(member.account_id, holding)
+    ctx.remember(member.account_id, arriving)
+    return wait.summary()
+
+
+@case("adult.age_years_is_whole_years_never_the_date", "7", "D4", "D7")
+def adult_age_years(ctx: ProfileContext) -> str:
+    from datetime import date
+
+    from glow_domain.identity import AccountId
+    from glow_identity.age import OrmAgeAssurance
+
+    member = ctx.member()
+    account = AccountId(str(member.account_id))
+    port = OrmAgeAssurance()
+    today = db_today()
+    expect(port.age_years(account, today) is None, "None while the state is unknown")
+    for born, years in ((years_ago(30, days=1), 29), (years_ago(30), 30), (years_ago(18), 18)):
+        ctx.data(ctx.adult(member, born), "own_age_state", "a passing date")
+        found = port.age_years(account, today)
+        expect(type(found) is int, "an integer, never the date")
+        expect(not isinstance(found, date), "never a date")
+        expect(found == years, f"whole years ({years})")
+    return "whole years for a self-declared adult, None while unknown; an integer, never the date"
 
 
 # =============================================================================================
@@ -2447,7 +2908,52 @@ def digests(ctx: ProfileContext) -> str:
         algorithm="sha256",
     ).hexdigest()
     expect(record.request_digest == keyed, "it is the run's keyed digest")
-    return "the stored digest is keyed: not the unkeyed SHA-256 and not another key's"
+    # Every command's stored digest (C2, finding 6): each record the run left, checked against
+    # the command that committed it, under its own operation's salt.
+    operations = set()
+    checked = 0
+    for stored in IdempotencyRecord.objects.all():
+        intent = ctx.intents.get((str(stored.actor_id), stored.key))
+        expect(intent is not None, f"{stored.operation}: the record's command is known")
+        assert intent is not None
+        text = idempotency.canonical(intent)
+        expect(len(stored.request_digest) == 64, f"{stored.operation}: 64 characters")
+        expect(
+            stored.request_digest != hashlib.sha256(text.encode()).hexdigest(),
+            f"{stored.operation}: not the unkeyed SHA-256",
+        )
+        expect(
+            stored.request_digest
+            == salted_hmac(
+                idempotency.SALT_PREFIX + stored.operation,
+                text,
+                secret=settings.SECRET_KEY,
+                algorithm="sha256",
+            ).hexdigest(),
+            f"{stored.operation}: keyed by the run's key, under its operation's salt",
+        )
+        operations.add(stored.operation.split(".")[0])
+        checked += 1
+    expect(operations == COMMAND_OPERATIONS, "every kind of command's digest is checked")
+    return (
+        f"every stored digest ({checked}, of {len(operations)} kinds of command) is keyed: not the"
+        " unkeyed SHA-256 and not another key's"
+    )
+
+
+# Every kind of SV2 command that stores an idempotency record (a field's operation by its root).
+COMMAND_OPERATIONS = {
+    "profile",
+    "profile_field",
+    "preferences",
+    "filters",
+    "area",
+    "consent",
+    "sensitive_consent",
+    "adult_check",
+    "birth_input",
+    "visibility",
+}
 
 
 def run_case(ctx: ProfileContext, entry: Case) -> tuple[bool, str]:

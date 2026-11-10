@@ -9,15 +9,16 @@ The Database proof checks job runs it after the profile suite::
 job holds there: the profile settings' ``SECRET_KEY`` and JWT signing key, the identity
 settings' ``SECRET_KEY`` and JWT signing key, the three databases' markers, the PostgreSQL
 superuser's password and every password in the passfile. It looks for each in the suite's log and
-in its results JSON, and it asks the log for the suite's own clean scans (its secrets and its
-member values). It passes only when no value is found in either file and the suite reported both
-scans clean. On a refusal it removes the results JSON, so nothing is left to upload. It prints
-counts and file names only, never a value or a line of either file, and imports nothing outside
-the standard library and ``identity_scan``.
+in its results JSON, and it reads the suite's own result line for each of its scans (its secrets
+and its member values), which must say clean with 0 found. It passes only when no value is found
+in either file and the suite reported both scans clean. On a refusal it removes the results
+JSON, so nothing is left to upload. It prints counts and file names only, never a value or a
+line of either file, and imports nothing outside the standard library and ``identity_scan``.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -36,6 +37,37 @@ VALUE_FILES = (
 PASSFILE = "passfile"
 KEY_FILES = ("profile-jwt-key.pem", "identity-jwt-key.pem")
 SUITE_CLEAN = ("profile secret scan: clean", "profile value scan: clean")
+# The suite's own result lines, each read as a whole line (C2, finding 15): exactly one line for
+# each scan, at the start of its line, clean, with 0 found. The word "clean" elsewhere in the log
+# (a case's detail, say) counts for nothing.
+SUITE_RESULT_LINES = (
+    (
+        "profile secret scan: ",
+        re.compile(
+            r"profile secret scan: clean \(\d+ secrets held; 0 found in \d+ log records,"
+            r" \d+ writes and the results JSON\)"
+        ),
+    ),
+    (
+        "profile value scan: ",
+        re.compile(
+            r"profile value scan: clean \(\d+ member values held: [a-z ,]+;"
+            r" 0 found in the same output\)"
+        ),
+    ),
+)
+
+
+def suite_reported_clean(log_text: str) -> bool:
+    """Whether the suite's own result line for each scan, and only that line, says clean."""
+    lines = log_text.splitlines()
+    for prefix, clean in SUITE_RESULT_LINES:
+        own = [line for line in lines if line.startswith(prefix)]
+        if len(own) != 1 or clean.fullmatch(own[0]) is None:
+            return False
+    return True
+
+
 PASSED = 0
 REFUSED = 3
 
@@ -81,7 +113,7 @@ def scan(directory: Path, log: Path, results: Path) -> Scan:
         except OSError:
             raise ScanError("the suite's results JSON could not be read") from None
         found_results = found_in(values, results_text(raw))
-    clean = all(line in log_text for line in SUITE_CLEAN)
+    clean = suite_reported_clean(log_text)
     return Scan(found_in(values, log_text), found_results, present, clean)
 
 

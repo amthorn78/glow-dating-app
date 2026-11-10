@@ -98,6 +98,12 @@ def run(results_path: Path | None) -> int:
     if settings.ROOT_URLCONF != "glow_ordering_proof.profile_urls":
         print("refusing: the profile suite runs only under glow_ordering_proof.profile_settings")
         return 1
+    if len(profile_cases.CASES) != profile_cases.CASE_COUNT:
+        print(
+            f"refusing: the suite holds {len(profile_cases.CASES)} cases, not the"
+            f" {profile_cases.CASE_COUNT} pinned"
+        )
+        return 1
     reasons = used_database_reasons()
     if reasons:
         print(

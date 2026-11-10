@@ -21,6 +21,7 @@ mail's codes, and Django's test client. Then:
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import threading
 from collections.abc import Iterator
@@ -63,11 +64,73 @@ LOS_ANGELES = "31080"
 __all__ = ["CaseFailed", "expect"]
 
 
+ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+ISO_TIME = re.compile(r"[0-9]{2}:[0-9]{2}:[0-9]{2}")
+DECIMAL = re.compile(r"-?[0-9]+\.[0-9]{4,}")
+# The coarsest precision a coordinate is searched at: three decimals, about 110 metres, finer
+# than the state laws' precise geolocation (1,750 or 1,850 feet; the recheck record).
+COARSEST_DECIMALS = 3
+
+
+def forms(value: str) -> tuple[str, ...]:
+    """Every form the code could print ``value`` in (C2, finding 5): as sent and as JSON escapes
+    it; a date also as Python's ``repr``, compact, numeric and in prose ("29 February 2008"); a
+    time as Python's ``repr``; a coordinate also without its sign, and rounded and truncated to
+    every lower precision down to three decimals. Forms shorter than five characters are not
+    searched."""
+    found = {value, json.dumps(value)[1:-1]}
+    if ISO_DATE.fullmatch(value):
+        try:
+            day = date.fromisoformat(value)
+        except ValueError:
+            day = None
+        if day is not None:
+            month = MONTHS[day.month - 1]
+            found |= {
+                f"date({day.year}, {day.month}, {day.day})",
+                f"{day.year:04d}{day.month:02d}{day.day:02d}",
+                f"{day.day} {month} {day.year}",
+                f"{day.day:02d} {month} {day.year}",
+                f"{month} {day.day}, {day.year}",
+                f"{day.day:02d}/{day.month:02d}/{day.year}",
+                f"{day.month:02d}/{day.day:02d}/{day.year}",
+                f"{day.day}.{day.month}.{day.year}",
+            }
+    elif ISO_TIME.fullmatch(value):
+        hour, minute, second = (int(part) for part in value.split(":"))
+        found.add(f"time({hour}, {minute}, {second})")
+    elif DECIMAL.fullmatch(value):
+        unsigned = value.lstrip("-")
+        decimals = len(unsigned.split(".")[1])
+        for text in (value, unsigned):
+            found.add(text)
+            for places in range(COARSEST_DECIMALS, decimals):
+                found.add(f"{float(text):.{places}f}")
+                found.add(text[: text.index(".") + 1 + places])
+    return tuple(sorted(form for form in found if len(form) >= 5))
+
+
+MONTHS = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+
+
 class ValueLedger:
-    """Member values the run handles that must appear in no output."""
+    """Member values the run handles that must appear in no output, in any of their forms."""
 
     def __init__(self) -> None:
-        self._values: set[str] = set()
+        self._values: dict[str, tuple[str, ...]] = {}
         self._lock = threading.Lock()
 
     def add(self, value: object) -> None:
@@ -76,18 +139,21 @@ class ValueLedger:
         if not isinstance(value, str) or len(value) < 5:
             return
         with self._lock:
-            self._values.add(value)
+            if value not in self._values:
+                self._values[value] = forms(value)
 
     def count(self) -> int:
         with self._lock:
             return len(self._values)
 
     def found_in(self, text: str) -> int:
-        """How many distinct values appear in ``text``, as sent or as JSON escapes them (a
-        non-ASCII value in a JSON body). The values are never returned."""
+        """How many distinct values appear in ``text`` in any of their forms (``forms``): as
+        sent, as JSON escapes them (a non-ASCII value in a JSON body), as Python prints a date or
+        a time, a date in prose, a coordinate at a lower precision. The values are never
+        returned."""
         with self._lock:
-            values = tuple(self._values)
-        return sum(1 for value in values if value in text or json.dumps(value)[1:-1] in text)
+            held = tuple(self._values.values())
+        return sum(1 for found in held if any(form in text for form in found))
 
 
 @dataclass
@@ -98,6 +164,9 @@ class ProfileContext:
     served: list[dict[str, Any]] = field(default_factory=list)
     # Every response's headers, as text, for the value scan (D5: no coordinate in a header).
     headers: list[str] = field(default_factory=list)
+    # Every command that committed, by actor and key, so that every stored idempotency digest
+    # can be checked against its own command (C2, finding 6).
+    intents: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     _keys: Iterator[int] = field(default_factory=lambda: iter(range(1, 10_000_000)))
 
     @property
@@ -137,10 +206,19 @@ class ProfileContext:
             headers=sent,
         )
         reply = Reply(response.status_code, _parsed(response))
+        if method == "POST" and reply.status == 200 and body is not None:
+            self.remember(member.account_id, body)
         self.headers.append("\n".join(f"{name}: {value}" for name, value in response.items()))
         if reply.body is not None:
             self.served.append(reply.body)
         return reply
+
+    def remember(self, account_id: UUID, intent: dict[str, Any]) -> None:
+        """A command that committed (through a route, or called directly by a case): the first
+        intent under its actor and key is the one its record binds."""
+        key = (intent.get("meta") or {}).get("idempotency_key")
+        if isinstance(key, str):
+            self.intents.setdefault((str(account_id), key), intent)
 
     @staticmethod
     def data(reply: Reply, kind: str, what: str) -> dict[str, Any]:

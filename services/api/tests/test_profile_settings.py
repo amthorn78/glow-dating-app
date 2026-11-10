@@ -213,6 +213,40 @@ class FixedLimitTests(unittest.TestCase):
             (),
         )
 
+    def test_h_cannot_cross_its_limit_in_two_publications(self) -> None:
+        # C2 (DM-55, Z6): a publication that makes nothing more readable keeps the version the
+        # current setting names, so the label cannot move first and a cause become readable after.
+        hidden = copy.deepcopy(ps.LAUNCH_DEFAULTS[ps.HISTORY])
+        hidden["own_pause"] = "hidden"
+        v1 = ps.policy_version(ps.ONBOARDING_CONSENT, 1)
+        v2 = ps.policy_version(ps.ONBOARDING_CONSENT, 2)
+        # The first step: the label alone moves to the current version. Refused.
+        relabelled = copy.deepcopy(hidden)
+        relabelled["consent_policy_version"] = v2
+        self.assertEqual(
+            ps.publication_refusals(ps.HISTORY, relabelled, hidden, onboarding_consent_version=v2),
+            (ps.MORE_READABLE_NEEDS_CONSENT,),
+        )
+        # The second step, had the first applied, names the version already accepted: refused.
+        readable = copy.deepcopy(relabelled)
+        readable["own_pause"] = "read_only"
+        self.assertIn(
+            ps.MORE_READABLE_NEEDS_CONSENT,
+            ps.publication_refusals(
+                ps.HISTORY, readable, relabelled, onboarding_consent_version=v2
+            ),
+        )
+        # Less readable with the label kept, or no change at all: allowed.
+        self.assertEqual(
+            ps.publication_refusals(
+                ps.HISTORY, hidden, ps.LAUNCH_DEFAULTS[ps.HISTORY], onboarding_consent_version=v2
+            ),
+            (),
+        )
+        self.assertEqual(
+            ps.publication_refusals(ps.HISTORY, hidden, hidden, onboarding_consent_version=v1), ()
+        )
+
     def test_closed_schemas_refuse_unknown_keys_and_types(self) -> None:
         for name in ps.ALL_SETTINGS:
             with self.subTest(setting=name):
