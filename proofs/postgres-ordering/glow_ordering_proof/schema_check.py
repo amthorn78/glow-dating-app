@@ -9,12 +9,18 @@ annotation); **any other keyword is an error**, so a schema change cannot pass u
 one branch whose values hold the body's ``kind`` is checked in full, and the others cannot
 match, since each requires values the body's ``kind`` is not. The API's tests validate the same
 builders with the contract's own validator (``packages/contracts/runtime.py``).
+
+SV2 Stage A extends the keywords to those its profile responses use, with JSON Schema 2020-12's
+meanings: ``anyOf``, ``allOf``, ``if``/``then``/``else``, ``items``, ``minItems``, ``maxItems``,
+``uniqueItems``, the ``array``, ``number`` and ``null`` types, and ``format`` for ``date`` and
+``date-time`` (as ``runtime.py`` checks them). Every other keyword is still an error.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +49,17 @@ _KEYWORDS = frozenset(
         "oneOf",
         "$ref",
         "description",
+        # SV2 Stage A:
+        "anyOf",
+        "allOf",
+        "if",
+        "then",
+        "else",
+        "items",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
+        "format",
     }
 )
 
@@ -75,7 +92,29 @@ def _type_ok(expected: str, value: Any) -> bool:
         return isinstance(value, int) and not isinstance(value, bool)
     if expected == "boolean":
         return isinstance(value, bool)
+    # SV2 Stage A:
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "number":
+        return isinstance(value, int | float) and not isinstance(value, bool)
+    if expected == "null":
+        return value is None
     raise UnsupportedSchema(f"type {expected}")
+
+
+def _format_ok(name: str, value: str) -> bool:
+    """``date`` and ``date-time`` as ``packages/contracts/runtime.py`` checks them: a real
+    calendar date; UTC whole seconds."""
+    try:
+        if name == "date":
+            date.fromisoformat(value)
+            return True
+        if name == "date-time":
+            datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+            return True
+    except ValueError:
+        return False
+    raise UnsupportedSchema(f"format {name}")
 
 
 def _kind_values(root: dict[str, Any], branch: dict[str, Any]) -> frozenset[str]:
@@ -113,11 +152,37 @@ def errors(root: dict[str, Any], schema: dict[str, Any], value: Any, at: str = "
             found.append(f"{at}: minLength")
         if "maxLength" in schema and len(value) > schema["maxLength"]:
             found.append(f"{at}: maxLength")
-    if isinstance(value, int) and not isinstance(value, bool):
+    if isinstance(value, int | float) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             found.append(f"{at}: minimum")
         if "maximum" in schema and value > schema["maximum"]:
             found.append(f"{at}: maximum")
+    if isinstance(value, str) and "format" in schema and not _format_ok(schema["format"], value):
+        found.append(f"{at}: format")
+    if isinstance(value, list):
+        if "minItems" in schema and len(value) < schema["minItems"]:
+            found.append(f"{at}: minItems")
+        if "maxItems" in schema and len(value) > schema["maxItems"]:
+            found.append(f"{at}: maxItems")
+        if schema.get("uniqueItems"):
+            seen = [json.dumps(item, sort_keys=True) for item in value]
+            if len(set(seen)) != len(seen):
+                found.append(f"{at}: uniqueItems")
+        if "items" in schema:
+            for index, item in enumerate(value):
+                found += errors(root, schema["items"], item, f"{at}[{index}]")
+    if "anyOf" in schema and not any(
+        not errors(root, branch, value, at) for branch in schema["anyOf"]
+    ):
+        found.append(f"{at}: anyOf")
+    for branch in schema.get("allOf", ()):
+        found += errors(root, branch, value, at)
+    if "if" in schema:
+        if not errors(root, schema["if"], value, at):
+            if "then" in schema:
+                found += errors(root, schema["then"], value, at)
+        elif "else" in schema:
+            found += errors(root, schema["else"], value, at)
     if "not" in schema and not errors(root, schema["not"], value, at):
         found.append(f"{at}: not")
     if isinstance(value, dict):
@@ -148,3 +213,30 @@ def check(definition: str, value: Any, root: dict[str, Any] | None = None) -> li
     """The errors of ``value`` against ``#/$defs/<definition>``; empty when it is valid."""
     schema_root = root if root is not None else load_schema()
     return errors(schema_root, {"$ref": f"#/$defs/{definition}"}, value)
+
+
+def unique_keys(value: Any) -> bool:
+    """The contract's key-uniqueness rule, applied after the schema (``runtime.py``'s
+    ``unique_keys`` and mobile ``validation.ts``): ``items`` by ``profile_id`` (by ``asset_id``
+    in a media collection) and ``selections`` by ``dimension`` hold no repeated key."""
+    if isinstance(value, dict):
+        item_key = "asset_id" if value.get("kind") == "media_collection" else "profile_id"
+        for collection, key in (("items", item_key), ("selections", "dimension")):
+            items = value.get(collection)
+            if isinstance(items, list):
+                keys = [item.get(key) if isinstance(item, dict) else None for item in items]
+                if len(keys) != len(set(map(str, keys))):
+                    return False
+        return all(unique_keys(item) for item in value.values())
+    if isinstance(value, list):
+        return all(unique_keys(item) for item in value)
+    return True
+
+
+def check_body(definition: str, value: Any, root: dict[str, Any] | None = None) -> list[str]:
+    """SV2: the schema's errors and the key-uniqueness rule, as the contract's validators apply
+    them; empty when ``value`` is valid."""
+    found = check(definition, value, root)
+    if not found and not unique_keys(value):
+        found.append("$: unique keys")
+    return found

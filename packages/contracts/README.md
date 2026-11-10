@@ -143,3 +143,59 @@ an error text) in each new DTO, nested messages and conversations, `ChannelEntit
 validators. The server's projections are `services/api/glow_domain/chat_projections.py`.
 See [production contracts](../../docs/architecture/production-contracts.md), "F11 under
 OD-45".
+
+## SV2 Stage A: the profile's contract
+
+SV2's Stage A ([brief](../../docs/planning/sv2-profiles-media.md), revision 5, D11; DM-52 to
+DM-55) adds closed DTOs to the unpublished design catalog, each in its flow's request or
+response contracts and projected to the `owner` only. Every existing DTO is unchanged; the new
+intents join `AppIntent` and the new responses join `AppResponse`, as P04.3's `MediaCollection` and
+C1's responses did, so older validators reject the new discriminators, and a deployed transport
+negotiates support before returning them. No route is activated: the production catalog's paths
+map stays empty, and the sealed server routes are `services/api/glow_profiles`'s.
+
+- **F02:** `SensitiveConsentIntent` → `OwnSensitiveConsent` (the sensitive-fields consent, its own
+  intent, since `ConsentIntent` has no purpose field); `AdultCheckIntent` → `OwnAgeState` (the
+  adult check's self-entered date at the eligibility step, D7).
+- **F04:** `ProfileFieldIntent` → `OwnProfileFields` (one of the four two-way list fields, with
+  `OwnFieldValue`, the bounded `OwnWords` and the display flag); `FiltersIntent` → `OwnFilters`
+  (the age range, never below 18, and the distance choice); `AreaIntent` → `OwnArea` (the home area
+  by its `AreaId`); `AreaQuery` → `NearestArea` (the phone's approximate location as a query that
+  changes nothing: bounded coordinates in the body, never echoed, and no distance in the answer);
+  `ProfileCatalog` (the lists as `CatalogField` and `CatalogValue`, which may be narrowed, the
+  defaults, the ways of locating, the distance choices by label, and the consent policies'
+  current versions as `ConsentPolicy`); and `OwnCompletion` (the owner's missing requirements, a
+  closed list of its own: `identity_verification` is the verification company's check, not
+  `OnboardingEligibility`'s `verify_identity`, which is email verification).
+- **"Show me" sets** keep `PreferencesIntent` and `OwnPreferences`: a set that keeps all is
+  exactly `["all"]` in `accepted_option_ids`, which includes values the console adds later and
+  `not-stated`; a narrowed set lists live values only and never holds `all` or `not-stated`.
+  Orientation and relationship status may hold `["not-stated"]` as a member's own value.
+- **The birth time** is required by the server (Nathan, 10 November 2026): `BirthInput` still
+  allows `time_precision` `unknown`, and the server refuses it as policy.
+- **The registry** (`flows-v1.json`; DM-53's W5) gains F02's `accept_sensitive`,
+  `withdraw_sensitive`, `adult_check`, `adult_check_failed`, `id_check_passed` (`provider`),
+  `approve_without_id` and `revoke_approval` (`moderator`, staff acting as moderators), F03's
+  `date_changed` to `missing` from each resolution, and F04's `requirement_removed` (`system`), each
+  with an allowed and a forbidden example in `tests/test_transition_contract.py`. `staff_approval`
+  is a new trusted test prerequisite. F05 is Stage B's.
+- **Correction C1** (DM-54, Y4) adds two F04 entries, each with its allowed and forbidden
+  examples: `requirements_met` from `incomplete` to `visible` (`system`; `eligible`; `A05`), the
+  completion that follows a write in another flow (D9's recompute), as `requirement_removed` is the
+  demotion that follows one, while a completion in an F04 owner command keeps `complete`
+  (`owner`); and `restrict` from `visible` and from `paused` to `restricted` (`moderator`; `A05`),
+  SV2's staff operation through `glow_chat`'s writer. No existing entry changes, and no DTO.
+- **Correction C2** (DM-55, finding 14, under W5) adds two F02 entries, each `owner` with the
+  policy `consent_current`: `accept` from `accepted` to `accepted` and `accept_sensitive` from
+  `accepted` to `accepted`, the re-acceptance at a newer version that both consent writers make.
+  Each has an allowed example (the current version, newer than the one accepted) and a refused one
+  (an old version: no `consent_current`, `policy_unresolved`; another owner, `forbidden`).
+  `test_sv2_registry_prerequisites_are_pinned` pins every SV2 entry's prerequisites (four in all:
+  `consent_current`, `A05`, `staff_approval` and eligibility) and the oracle's trusted test
+  prerequisites to the contract document's list. No existing entry changes, and no DTO.
+- **The shared corpus** gains 123 cases: each new DTO's valid forms, a private extra field, its
+  bounds and conditional rules, coordinates or a distance where none may appear, and each new
+  discriminator in `AppIntent` and `AppResponse`, through Python and the generated validators.
+  Regeneration rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`; `gapp-dev-v1.ts`
+  is unchanged. Ajv numbers its compiled schemas in order, so a review checks the outputs by
+  regenerating them, not by reading their diff.

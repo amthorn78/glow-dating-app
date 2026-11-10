@@ -1339,3 +1339,31 @@ The secret check passed, so the step took its passing branch; the counts-only br
 | N-6 | pre-existing (C1) | The facts table's D3 row said reauthentication for an email change is "off by default and kept off"; since C1, `conf.py` sets it on | **Corrected** in place, with a note |
 
 The review's observation is recorded too. The F-7 pin lives only in the database job's suite; the API's offline fragment test checks the listed keys, not their absence.
+
+## The merge receipt (9 November 2026, App Manager 10)
+
+- **PR42 merged** at 23:13:10 UTC as the merge commit `c864edd11dd16b0b5479170ce35158383be2b358`.
+  - Its parents are `da92f1f` (`main`) and `df8a04c` (PR42's head).
+  - It merged by the expected-head guard (`expectedHeadSha` `df8a04c5118d41016c14001308f796fd47626916`), after the pre-merge checklist in PR42's description was filled.
+  - `main`'s tree equals `df8a04c`'s. The final head's non-Markdown paths are byte-identical to C2's code head `6da8061`.
+- **Its checks:**
+  - the trusted policy at `da92f1f` read full scope (`behavior-or-empty`, 79 paths), with one merge base, `8d2de72`;
+  - PR run 42717102638 on `df8a04c` passed all eight jobs. The gate printed `Application checks passed`; the identity suite passed 49 of 49 in 43.8 s, and its secret scan was clean. Every DM-41 wait and retry step was skipped;
+  - push run 42717089645 on the same head passed, as a Markdown-only change against its parent;
+  - Codex's code review of `df8a04c` completed at 23:05:07 UTC with no findings. Its three threads on PR42 (the P1 and two P2s) were answered, fixed and resolved;
+  - the exact-head review, corrections C1 and C2, C2's delta review and DM-45 to DM-50 are recorded above and in the review log;
+  - PR42's governing Markdown (the CI policy's Database proof checks paragraph and step 6's sentence in the manager workflow) had the Dev Manager's read before the merge (DM-45 section 16 and DM-46 for step 6; DM-50 for the CI paragraph), with DM-50's conditions applied at `df8a04c`.
+- **The cleanup run** 42718647056 passed and deleted SV1's three session branches, each "merged into main": `claude/hopeful-cerf-kc91xx` (`157c1f6`, the implementation), `claude/stoic-franklin-ief71e` (`96dc3e2`, C1) and `claude/trusting-goldberg-e4ogat` (`080c9a9`, C2). It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The two review sessions pushed no branch.
+- **`git ls-remote`** after it (23:14 UTC): `main` at `c864edd`, the manager branch at `df8a04c`, `claude/dev-manager` at `85df720`, and nothing else. PR42's activity subscription is ended.
+- **`main`'s push run** 42718647067 on `c864edd`: all eight jobs passed, and the gate's log prints `Application checks passed` (completed at 23:21:34 UTC). The identity suite passed 49 of 49 in 43.6 s, with a clean secret scan, and the retry steps were skipped in the four Python jobs. It was still running when this receipt was first committed at `5d273fa`.
+- **Pruned:** SV1's eleven prompts and consultations in `docs/ephemeral/`: DM-45 to DM-50's consultations, the implementation prompt, C1's and C2's prompts, the exact-head review prompt and C2's delta review prompt.
+  - Their unique content lives in the brief, this record and the Dev Manager's six reports.
+  - The sixteen links to them, ten in the brief and six in the review log, are pinned at `c864edd`, where each file exists.
+  - Text that names a prompt's path, as this record's header and review sections do, stays true as history.
+- **SV1 is done.** Carried forward, in the carried-items file:
+  - to SV2 (or the first of SV2 to SV4 that changes `identity_support.py`): DM-50 1.2, the docstring's rewording and N-2's pin;
+  - to SV4: natural expiry writes no `session_expired`, with F-9;
+  - to P07: DM-45 9.1; to P08: the `UserSession` rows' retention; to P09.2: G-13's two parts;
+  - to P11 (the P11 plan, "From SV1"): DM-45 3.1, the session lifetime, and the deferred acceptance items.
+
+  To the Dev Manager's next consultation: DM-50's confirmation that 1.1 and 2.1 to 2.3 are applied.

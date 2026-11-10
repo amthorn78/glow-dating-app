@@ -8,6 +8,7 @@ repositories; field/check definitions alone do not enforce them. See data-model.
 import uuid
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F, Q
@@ -146,11 +147,38 @@ class AppAccount(Record):
 
 
 class PolicyRevision(Record):
-    """Versioned policy publication pointer; no policy is activated by this schema."""
+    """Versioned policy publication pointer; no policy is activated by this schema.
+
+    SV2 (its brief's D2): the current pointer of each setting, locked alongside the actions
+    that read it. ``policy_version`` is the current version's label (``<name>.v<number>``) and
+    ``artifact_ref`` the ``SettingVersion`` row it names."""
 
     name = models.CharField(max_length=100, unique=True)
     policy_version = models.CharField(max_length=100)
     artifact_ref = models.UUIDField()
+
+
+class SettingVersion(Record):
+    """One published version of a setting (SV2, migration 0005; its brief's D2; OD-60).
+
+    Append-only: a publication adds the next ``number`` and moves its ``PolicyRevision``
+    pointer, and no row is changed after it is written. ``content`` is validated against the
+    setting's closed schema and the fixed limits in code (``glow_domain.profile_settings``)
+    before it is written; the launch defaults are version 1, seeded by migration 0007 with the
+    staff subject ``system:launch-default``."""
+
+    name = models.CharField(max_length=100)
+    number = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    content = models.JSONField()
+    published_at = models.DateTimeField()
+    staff_subject = models.CharField(max_length=255)
+    reason = models.CharField(max_length=100)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.UniqueConstraint(fields=["name", "number"], name="setting_version_number"),
+            models.CheckConstraint(condition=Q(number__gte=1), name="setting_version_positive"),
+        ]
 
 
 class AccountSession(Record):
@@ -182,9 +210,11 @@ class AccountAgeState(Record):
     G-01; OD-55's D3 (a); the SV1 brief's D9).
 
     One row per account, written only through ``glow_domain.identity.AgeAssurancePort``
-    (its adapter is ``glow_identity.age``). Sign-up records ``unknown``. No birth date is
-    stored here: P04's onboarding holds the self-entered date, and a later slice writes the
-    state from it; P09.2 adds the stores' age signals as further states and methods.
+    (its adapter is ``glow_identity.age``). Sign-up records ``unknown``. SV2 (its brief's D7,
+    migration 0005) adds the self-entered birth date, the date's one home: present with
+    ``self_declared_adult`` and absent with ``unknown``, and written only by the port's
+    transition. SV3 reads a member's age from it in whole years, never the date; P09.2 adds the
+    stores' age signals as further states and methods.
     """
 
     account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
@@ -192,6 +222,7 @@ class AccountAgeState(Record):
     method = models.CharField(max_length=32, choices=choices("none", "self_declaration"))
     recorded_at = models.DateTimeField()
     policy_version = models.CharField(max_length=100, null=True, blank=True)
+    birth_date = models.DateField(null=True, blank=True)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
@@ -209,11 +240,20 @@ class AccountAgeState(Record):
                 ),
                 name="age_state_provenance",
             ),
+            # SV2 (D7): the date is present with self_declared_adult and absent with unknown.
+            models.CheckConstraint(
+                condition=Q(state="unknown", birth_date__isnull=True)
+                | Q(state="self_declared_adult", birth_date__isnull=False),
+                name="age_state_birth_date",
+            ),
         ]
 
 
 class ConsentDecision(Record):
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    # SV2 (D6): ``onboarding`` (F02's ConsentIntent, glow_chat's writer) or
+    # ``sensitive_profile`` (the sensitive-fields consent, glow_profiles' writer). Every reader
+    # filters by purpose.
     purpose = models.CharField(max_length=100)
     policy_version = models.CharField(max_length=100)
     state = models.CharField(max_length=16, choices=choices("accepted", "withdrawn"))
@@ -225,9 +265,35 @@ class ConsentDecision(Record):
             models.UniqueConstraint(
                 fields=["account", "purpose", "version"], name="consent_decision_revision"
             ),
+            models.CheckConstraint(
+                condition=Q(purpose__in=["onboarding", "sensitive_profile"]),
+                name="consent_purpose",
+            ),
         ]
         indexes = [
             models.Index(fields=["account", "purpose", "decided_at"], name="consent_current_lookup")
+        ]
+
+
+class Area(Record):
+    """A core-based statistical area, the member's home area (SV2, migrations 0005 and 0006;
+    its brief's D5). Reference data from the Census Bureau's 2024 Gazetteer, loaded by a data
+    migration from the committed table (``glow_profiles/data/cbsa_areas_2024.tsv``) after its
+    pinned hash is checked; never fetched. ``area_id`` is the stable GEOID; the internal point
+    is the published one, which every member in the area shares."""
+
+    area_id = models.CharField(max_length=5, unique=True)
+    name = models.CharField(max_length=80)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.CheckConstraint(
+                condition=Q(latitude__gte=-90, latitude__lte=90)
+                & Q(longitude__gte=-180, longitude__lte=180),
+                name="area_internal_point",
+            ),
         ]
 
 
@@ -235,8 +301,11 @@ class Profile(Record):
     account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
     display_name = models.CharField(max_length=80)
     bio = models.TextField(blank=True, max_length=500)
-    # Only the explicitly allowed coarse display label; never precise coordinates.
-    location_label = models.CharField(max_length=120, blank=True)
+    # SV2 (D5): the member's home area replaces the text label; the coordinates the phone sends
+    # are never stored. Its display text is the area's name.
+    area = models.ForeignKey(
+        Area, null=True, blank=True, on_delete=models.PROTECT, related_name="profiles"
+    )
     state = models.CharField(
         max_length=16,
         choices=choices("incomplete", "visible", "paused", "restricted", "removed"),
@@ -254,8 +323,151 @@ class Preferences(Record):
     account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
     # Missing policy means no eligibility permission. Values interpreted only by
     # the selected versioned policy; database JSON alone is not validation.
+    # SV2 (D3): the policy of the "show me" sets, which are rows (PreferenceSetEntry), not
+    # ``values``; it is the catalog version they were last written under.
     policy_version = models.CharField(max_length=100, null=True, blank=True)
     values = models.JSONField(default=dict)
+    # SV2 (D4, D5): the member's age range (never below 18) and distance choice (one of the
+    # location setting's choices, measured between area internal points by SV3).
+    minimum_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    maximum_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    distance_choice = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.CheckConstraint(
+                condition=Q(minimum_age__isnull=True) | Q(minimum_age__gte=18),
+                name="preferences_age_floor",
+            ),
+            models.CheckConstraint(
+                condition=Q(maximum_age__isnull=True)
+                | Q(minimum_age__isnull=False, maximum_age__gte=F("minimum_age")),
+                name="preferences_age_range",
+            ),
+        ]
+
+
+PROFILE_FIELDS = ("gender", "orientation", "looking_for", "relationship_status")
+
+
+class ProfileFieldChoice(Record):
+    """A member's own value in one of the four two-way list fields (SV2, migration 0005; its
+    brief's D3; OD-60, P1): one row per account and field, holding the selected value IDs and
+    the setting version they were chosen under. Orientation and relationship status may hold
+    the reserved ``not-stated``; a row they do not have reads as ``not-stated`` too. The own
+    words (gender and orientation only, display only) and the display flag are the field's.
+    SV3 queries ``value_ids`` through the GIN index."""
+
+    account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    field = models.CharField(max_length=32, choices=choices(*PROFILE_FIELDS))
+    value_ids = models.JSONField()
+    setting_version = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    own_words = models.CharField(max_length=40, null=True, blank=True)
+    shown = models.BooleanField(default=False)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.UniqueConstraint(fields=["account", "field"], name="profile_field_choice"),
+            models.CheckConstraint(
+                condition=Q(field__in=PROFILE_FIELDS), name="profile_field_name"
+            ),
+            models.CheckConstraint(
+                condition=Q(own_words__isnull=True) | Q(field__in=["gender", "orientation"]),
+                name="profile_field_own_words",
+            ),
+            models.CheckConstraint(
+                condition=~Q(field="looking_for") | Q(shown=True), name="profile_field_shown"
+            ),
+            models.CheckConstraint(
+                condition=Q(setting_version__gte=1), name="profile_field_setting_version"
+            ),
+        ]
+        indexes = [GinIndex(fields=["value_ids"], name="profile_field_values")]
+
+
+class PreferenceSetEntry(Record):
+    """One value of a member's "show me" set for one field (SV2, migration 0005; its brief's
+    D3): rows, so SV3 can test both directions for every candidate in one query. The set that
+    keeps all is the one row whose ``value_id`` is the reserved ``all``, never the list of
+    current values; a narrowed set holds list values only, never ``not-stated``."""
+
+    account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    field = models.CharField(max_length=32, choices=choices(*PROFILE_FIELDS))
+    value_id = models.CharField(max_length=100)
+    # The value's place in the set as the member submitted it (0 for the marker).
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.UniqueConstraint(
+                fields=["account", "field", "value_id"], name="preference_set_value"
+            ),
+            models.CheckConstraint(
+                condition=Q(field__in=PROFILE_FIELDS), name="preference_set_field"
+            ),
+            models.CheckConstraint(
+                condition=~Q(value_id="not-stated"), name="preference_set_not_stated"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["field", "value_id", "account"], name="preference_set_lookup")
+        ]
+
+
+class IdentityVerification(Record):
+    """The account's identity verification state (SV2, migration 0005; its brief's D18;
+    OD-61): ``unverified``, ``verified`` by the automated check (a government photo ID with a
+    selfie matched to it, by a verification company), or ``staff_approved`` without it while
+    the setting allows. It holds the method, the company's opaque reference or the staff
+    subject and reason, and the time; never an ID image, ID number or selfie. Written only
+    through the identity verification port, after the account row lock. It is not the
+    contract's ``verify_identity``, which means email verification. A row it does not have
+    reads as ``unverified``."""
+
+    account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
+    state = models.CharField(
+        max_length=24,
+        choices=choices("unverified", "verified", "staff_approved"),
+        default="unverified",
+    )
+    method = models.CharField(
+        max_length=24, choices=choices("none", "automated_check", "staff_approval"), default="none"
+    )
+    provider_reference = models.CharField(max_length=255, null=True, blank=True)
+    staff_subject = models.CharField(max_length=255, null=True, blank=True)
+    reason = models.CharField(max_length=100, null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            state_check("unverified", "verified", "staff_approved"),
+            models.CheckConstraint(
+                condition=Q(
+                    state="unverified",
+                    method="none",
+                    provider_reference__isnull=True,
+                    staff_subject__isnull=True,
+                    reason__isnull=True,
+                )
+                | Q(
+                    state="verified",
+                    method="automated_check",
+                    provider_reference__isnull=False,
+                    staff_subject__isnull=True,
+                    reason__isnull=True,
+                    decided_at__isnull=False,
+                )
+                | Q(
+                    state="staff_approved",
+                    method="staff_approval",
+                    provider_reference__isnull=True,
+                    staff_subject__isnull=False,
+                    reason__isnull=False,
+                    decided_at__isnull=False,
+                ),
+                name="identity_verification_provenance",
+            ),
+        ]
 
 
 class BirthInput(Record):

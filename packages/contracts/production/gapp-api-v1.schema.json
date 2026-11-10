@@ -3107,6 +3107,21 @@
         },
         {
           "$ref": "#/$defs/ReadCursorIntent"
+        },
+        {
+          "$ref": "#/$defs/ProfileFieldIntent"
+        },
+        {
+          "$ref": "#/$defs/FiltersIntent"
+        },
+        {
+          "$ref": "#/$defs/AreaIntent"
+        },
+        {
+          "$ref": "#/$defs/SensitiveConsentIntent"
+        },
+        {
+          "$ref": "#/$defs/AdultCheckIntent"
         }
       ]
     },
@@ -3210,6 +3225,30 @@
             },
             {
               "$ref": "#/$defs/MessagePage"
+            },
+            {
+              "$ref": "#/$defs/OwnProfileFields"
+            },
+            {
+              "$ref": "#/$defs/OwnFilters"
+            },
+            {
+              "$ref": "#/$defs/OwnArea"
+            },
+            {
+              "$ref": "#/$defs/NearestArea"
+            },
+            {
+              "$ref": "#/$defs/ProfileCatalog"
+            },
+            {
+              "$ref": "#/$defs/OwnCompletion"
+            },
+            {
+              "$ref": "#/$defs/OwnSensitiveConsent"
+            },
+            {
+              "$ref": "#/$defs/OwnAgeState"
             }
           ]
         }
@@ -3421,6 +3460,957 @@
                     "type": "null"
                   }
                 ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OwnWords": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+      "not": {
+        "pattern": "[\\ud800-\\udfff]"
+      },
+      "description": "A member's own words for their gender or orientation (SV2, D3): display only, never matched, searched or ranked; at most 40 Unicode scalar values. Orientation's are sensitive: saved only with the sensitive-fields consent."
+    },
+    "AreaId": {
+      "type": "string",
+      "pattern": "^[0-9]{5}$(?![\\s\\S])",
+      "minLength": 5,
+      "maxLength": 5,
+      "not": {
+        "pattern": "[\\ud800-\\udfff]"
+      },
+      "description": "A core-based statistical area's stable ID, the Census Bureau's GEOID (SV2, D5)."
+    },
+    "ProfileFieldIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "policy_version",
+        "field",
+        "value_ids",
+        "own_words",
+        "shown"
+      ],
+      "properties": {
+        "operation": {
+          "const": "profile_field"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "field": {
+          "type": "string",
+          "enum": [
+            "gender",
+            "orientation",
+            "looking_for",
+            "relationship_status"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "value_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+            "not": {
+              "pattern": "[\\ud800-\\udfff]"
+            }
+          },
+          "uniqueItems": true
+        },
+        "own_words": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OwnWords"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "description": "One of the four two-way list fields, with its own words and display choice, as a new choice (SV2, D3): list value IDs of the current catalog (policy_version), within the field's pick limit, or [\"not-stated\"] for orientation or relationship status. Orientation, relationship status and orientation's own words need the sensitive-fields consent. Looking for is always shown and has no own words; relationship status has no own words.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "const": "looking_for"
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "own_words": {
+                "type": "null"
+              },
+              "shown": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field": {
+                "const": "relationship_status"
+              }
+            },
+            "required": [
+              "field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "own_words": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OwnFieldValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "value_ids",
+        "own_words",
+        "shown",
+        "choose_again"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "value_ids": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+            "not": {
+              "pattern": "[\\ud800-\\udfff]"
+            }
+          },
+          "uniqueItems": true
+        },
+        "own_words": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OwnWords"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shown": {
+          "type": "boolean"
+        },
+        "choose_again": {
+          "type": "boolean"
+        }
+      },
+      "description": "The member's own value in one field (SV2, D3), for its owner only: version 0 when the field was never saved. choose_again: a value the member holds is retired, so the member chooses again at their next edit; it stays valid and matchable until then."
+    },
+    "OwnProfileFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "policy_version",
+        "gender",
+        "orientation",
+        "looking_for",
+        "relationship_status"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_profile_fields"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "gender": {
+          "$ref": "#/$defs/OwnFieldValue"
+        },
+        "orientation": {
+          "$ref": "#/$defs/OwnFieldValue"
+        },
+        "looking_for": {
+          "$ref": "#/$defs/OwnFieldValue"
+        },
+        "relationship_status": {
+          "$ref": "#/$defs/OwnFieldValue"
+        }
+      },
+      "description": "The owner's own four list fields (SV2, D3), never returned to anyone else; policy_version is the catalog version the read was made under."
+    },
+    "FiltersIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "policy_version",
+        "minimum_age",
+        "maximum_age",
+        "distance_choice"
+      ],
+      "properties": {
+        "operation": {
+          "const": "filters"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "minimum_age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 150
+        },
+        "maximum_age": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 18,
+              "maximum": 150
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distance_choice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "The member's age range, never below 18, and distance choice, one of the catalog's (SV2, D4, D5). A distance choice counts areas whose internal points are within it; no distance is ever returned."
+    },
+    "OwnFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version",
+        "policy_version",
+        "minimum_age",
+        "maximum_age",
+        "distance_choice"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_filters"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "minimum_age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 150
+        },
+        "maximum_age": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 18,
+              "maximum": 150
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distance_choice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "The owner's own age range and distance choice (SV2, D4, D5)."
+    },
+    "AreaIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "area_id"
+      ],
+      "properties": {
+        "operation": {
+          "const": "area"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "area_id": {
+          "$ref": "#/$defs/AreaId"
+        }
+      },
+      "description": "The member's home area, chosen by its ID (SV2, D5); only the area is kept. An area the phone-location query returned is set this way too."
+    },
+    "OwnArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version",
+        "area_id",
+        "area_name"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_area"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "area_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AreaId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "area_name": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "The owner's own home area (SV2, D5), or none yet."
+    },
+    "AreaQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "description": "The phone's approximate location, sent once, in the request body only (SV2, D5): a query that changes nothing. The coordinates are never stored, logged, returned, echoed in an error or put in the outbox or an idempotency record."
+    },
+    "NearestArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "area_id",
+        "area_name"
+      ],
+      "properties": {
+        "kind": {
+          "const": "nearest_area"
+        },
+        "area_id": {
+          "$ref": "#/$defs/AreaId"
+        },
+        "area_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "The area whose internal point is nearest to the queried location (SV2, D5): no coordinate and no distance."
+    },
+    "CatalogValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "One list value of the catalog (SV2, D2)."
+    },
+    "CatalogField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "values",
+        "retired_values",
+        "pick_limit",
+        "narrowable"
+      ],
+      "properties": {
+        "values": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/CatalogValue"
+          }
+        },
+        "retired_values": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/CatalogValue"
+          }
+        },
+        "pick_limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "narrowable": {
+          "type": "boolean"
+        }
+      },
+      "description": "One field's current list (SV2, D2): the values offered for new choices, the retired values (for showing a held one only), how many a member may pick (null: any number) and whether members may narrow by it."
+    },
+    "ConsentPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "text"
+      ],
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "[^\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "A consent policy's current version and wording (SV2, D6): development text, labelled as such, until P08 writes it."
+    },
+    "ProfileCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "policy_version",
+        "gender",
+        "orientation",
+        "looking_for",
+        "relationship_status",
+        "age_range",
+        "location",
+        "consents"
+      ],
+      "properties": {
+        "kind": {
+          "const": "profile_catalog"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "gender": {
+          "$ref": "#/$defs/CatalogField"
+        },
+        "orientation": {
+          "$ref": "#/$defs/CatalogField"
+        },
+        "looking_for": {
+          "$ref": "#/$defs/CatalogField"
+        },
+        "relationship_status": {
+          "$ref": "#/$defs/CatalogField"
+        },
+        "age_range": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "default_minimum",
+            "default_maximum",
+            "direction"
+          ],
+          "properties": {
+            "default_minimum": {
+              "type": "integer",
+              "minimum": 18,
+              "maximum": 150
+            },
+            "default_maximum": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 18,
+                  "maximum": 150
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "both_ways",
+                "viewer_only"
+              ],
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            }
+          }
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "chosen_area",
+            "approximate_location",
+            "distance_choices",
+            "default_distance"
+          ],
+          "properties": {
+            "chosen_area": {
+              "type": "boolean"
+            },
+            "approximate_location": {
+              "type": "boolean"
+            },
+            "distance_choices": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "$ref": "#/$defs/CatalogValue"
+              }
+            },
+            "default_distance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            }
+          }
+        },
+        "consents": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "onboarding",
+            "sensitive_profile"
+          ],
+          "properties": {
+            "onboarding": {
+              "$ref": "#/$defs/ConsentPolicy"
+            },
+            "sensitive_profile": {
+              "$ref": "#/$defs/ConsentPolicy"
+            }
+          }
+        }
+      },
+      "description": "The member's current catalog, read-only (SV2, D2, D11): the lists, which may be narrowed, the defaults, the ways of locating and the distance choices (labels only), and the consent policies' current versions. policy_version is the catalog's version, which ProfileFieldIntent, PreferencesIntent and FiltersIntent carry. In PreferenceSelection.accepted_option_ids, a set that keeps all is exactly [\"all\"], which includes values the console adds later and \"not stated\"; a narrowed set lists live values only and never holds \"all\" or \"not-stated\"."
+    },
+    "OwnCompletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "visibility",
+        "missing"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_completion"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "incomplete",
+            "visible",
+            "paused",
+            "restricted",
+            "removed"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "missing": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "enum": [
+              "consent",
+              "adult_check",
+              "profile_fields",
+              "area",
+              "photo",
+              "chart",
+              "identity_verification"
+            ],
+            "not": {
+              "pattern": "[\\ud800-\\udfff]"
+            }
+          },
+          "uniqueItems": true
+        }
+      },
+      "description": "The owner's completion read (SV2, D9, D11): what the profile still needs before it can show, from a closed list of its own. identity_verification is the verification company's check of a photo ID (or a staff approval without it), not OnboardingEligibility's verify_identity, which is email verification."
+    },
+    "SensitiveConsentIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "policy_version",
+        "decision"
+      ],
+      "properties": {
+        "operation": {
+          "const": "sensitive_consent"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "withdrawn"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "The sensitive-fields consent (SV2, D6; G-10): needed before orientation, relationship status or orientation's own words are saved, and before either field's set is narrowed. An acceptance names the policy's current version. A withdrawal removes those values and resets both sets to all."
+    },
+    "OwnSensitiveConsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version",
+        "state",
+        "policy_version"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sensitive_consent"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "not_given",
+            "accepted",
+            "withdrawn"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "The owner's own sensitive-fields consent (SV2, D6); never required for completion.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "not_given"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "policy_version": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "policy_version": {
+                "type": "string",
+                "not": {
+                  "pattern": "[\\ud800-\\udfff]"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AdultCheckIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "birth_date"
+      ],
+      "properties": {
+        "operation": {
+          "const": "adult_check"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "birth_date": {
+          "type": "string",
+          "format": "date",
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          },
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])"
+        }
+      },
+      "description": "The adult check's self-entered birth date, at the eligibility step (SV2, D7): 18 or over on the server's date passes; a failing date is refused and not stored. A new date reruns the check."
+    },
+    "OwnAgeState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version",
+        "state",
+        "birth_date"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_age_state"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "self_declared_adult"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "birth_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              },
+              "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "The owner's own age state (SV2, D7): the date that passed the adult check, present with self_declared_adult and absent with unknown.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "birth_date": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "birth_date": {
+                "type": "string",
+                "not": {
+                  "pattern": "[\\ud800-\\udfff]"
+                }
               }
             }
           }

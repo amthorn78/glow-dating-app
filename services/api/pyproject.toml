@@ -9,7 +9,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["glow_api", "glow_domain", "glow_chat", "glow_identity"]
+files = ["glow_api", "glow_domain", "glow_chat", "glow_identity", "glow_profiles"]
 
 [[tool.mypy.overrides]]
 module = ["django.*", "rest_framework.*"]

@@ -26,3 +26,8 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["glow_identity.*", "allauth.*", "rest_framework.*"]
 ignore_missing_imports = true
+
+# SV2 Stage A: the profile suite drives glow_profiles, imported from services/api the same way.
+[[tool.mypy.overrides]]
+module = ["glow_profiles", "glow_profiles.*"]
+ignore_missing_imports = true

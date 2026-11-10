@@ -146,6 +146,12 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-07 | 9 Nov 2026 | accuracy | DM-48 (`38142b3`) proposed words for acceptance check 11 ("the sixth request at `account/password/change` within 300 seconds … is refused") that describe a case allauth's default `5/m/user` also passes, since a sixth request sent at once is refused at 5 a minute too; and its D3 replacement left "They use Django's cache" pointing at the threat model | Dev Manager 4, DM-48 section 3 |
 | AM10-08 | 9 Nov 2026 | follow-through | Implementation Control's Branches bullet kept the manager branch's "at this sync" hash one commit behind the status line at two syncs in a row (`30fdf1a` against `38142b3`; `38d48e2` against `cae9cea`); the status edit did not move the bullet | Dev Manager 4, DM-48 section 9 and DM-49 section 5 |
 | AM10-09 | 9 Nov 2026 | follow-through | Integrating correction C1, App Manager 10 added C1.5 to P11's plan but left, in the same SV1 entry, "No reauthentication: an email change needs none", which C1 made false; the supersession sweep did not search for the replaced setting's state | Dev Manager 4, DM-50 section 4 |
+| AM10-10 | 9 Nov 2026 | accuracy | The second A05 message, revision 1, took its facts from the matrix's section 9 summary and the manager's reading of the design, not from each cited row and text: Apple's row has no derived-data rule (AP-23), California's is a right to limit, not consent (UST-42), New York's fraud-ban notice binds only a paid service (UST-08), "a city or ZIP code" widened the research's "city/region", and rematch was said to change the data model, which says the opposite (`Match`) | Dev Manager 4, DM-51 section 5 |
+| AM10-11 | 10 Nov 2026 | accuracy | SV2's brief, revision 1, proposed mechanisms without reading the code and contract they rely on: D7 had SV1's age port update an existing row (`record` refuses one, and `glow_identity` was excluded) and the birth input hold the date before the member gives a place; D11 gave the sensitive consent as `ConsentIntent` with a new purpose (it has no purpose field); D6 assumed `accept_consent` checks the version; D9 left out P04.2's chart and "looking for" requirements | Dev Manager 4, DM-52 sections 8, 9 and 11 |
+| AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
+| AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
+| AM10-14 | 10 Nov 2026 | accuracy | Verifying SV2 Stage A's correction C1 (`40db2c2`), App Manager 10 accepted C1-3 (a future birth date refused with no rerun) as a reading of DM-54's words and put only its supporting argument in the review prompt's revision 1. It did not set it against the brief's acceptance item 7, which counts "a future date" among the dates that fail, or `adult_outcome`, which fails one | Codex, its P2 finding on `40db2c2` |
+| AM10-15 | 10 Nov 2026 | accuracy | DM-55's consultation (`496c39e`), item 1.4, proposed erasing the date, time, place and time zone of every birth input revision after a date under 18. It did not read what that breaks: `OwnBirthInput` requires a full `BirthInput`, so the owner's reads would fail on an erased revision; the next save compares its expected version with the erased row's; and `birth_time_uncertainty` ties the time to its precision | Dev Manager 4, DM-55 section 3 |
 
 ## App Manager 2
 
@@ -1094,6 +1100,65 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-15 — A data erasure proposed without reading what it breaks (accuracy)
+
+- **What happened:** DM-55 item 1.4 proposed that a reset erase every birth input revision's private fields, keeping the rows as `missing`, and named the migration it needed. It did not read the read path, the save path or the model checks that erasure touches:
+  - `OwnBirthInput` requires a full `BirthInput`, and `contract.own_birth_input` calls `birth_date.isoformat()`, so both owner reads would fail on an erased revision;
+  - the next save compares its expected version with the erased row's;
+  - `birth_time_uncertainty` ties `local_time` to `time_precision`;
+  - G-05's hold may need to stop an erasure.
+- **Caught by:** Dev Manager 4, in DM-55 section 3.
+- **Effect:** none: 1.4 was declined as worded and carried to P07 for G-01 (Z18), before any prompt.
+- **Correction:** Z2 and Z18 in DM-55's words.
+- **Prevention:** AM10-11's rule covers a consultation's proposals too. Before proposing a change to stored data, the manager reads every DTO and read that returns it, the writers that compare its version, and the model's checks on it.
+
+### AM10-14 — A reading accepted with one side of the words (accuracy)
+
+- **What happened:** C1's session left C1-3 to the manager: a future birth date keeps its 400 refusal, and only a date under 18 takes DM-54's refused-and-rerun path. The manager accepted it as a reading for the review and the Dev Manager, citing D7's validity clause ("valid, not in the future"). The review prompt's revision 1 gave that side only. The brief's acceptance item 7 counts "a future date" among the dates that fail, and `adult_outcome` fails one; Y6 and Y7 speak of a date that fails "the rule" and "the adult rule".
+- **Caught by:** Codex, its P2 finding on `40db2c2` (`operations.py:1019`).
+- **Effect:** none: revision 1 was held before Nathan ran it.
+- **Correction:** the review prompt's revision 2 puts both readings in focus item 3, and the records say the reading is contested.
+- **Prevention:** before accepting a session's reading of a Dev Manager's words, the manager reads every place the brief and the code use the term at issue, and puts the counter-reading beside it.
+
+### AM10-13 — A start gate checked a commit its branch does not hold (prompt)
+
+- **What happened:** SV2 Stage A's prompt, at `481e2f3`, checked `git merge-base --is-ancestor c864edd… HEAD`. `c864edd` is PR42's merge commit on `main`, and the manager branch does not contain it. SV1's prompt had checked the PR's head and said that `main`'s merge has the same tree.
+- **Caught by:** App Manager 10, running the gate's commands against the prompt's commit before giving it to Nathan.
+- **Effect:** none: the prompt had not gone out. Every session would have stopped at the gate and reported.
+- **Correction:** the gate checks PR42's head, `df8a04c`, whose tree equals `c864edd`'s (`a6624de`).
+- **Prevention:** before giving Nathan a prompt, the manager runs its start gate's commands against the commit the prompt names, and an ancestry check names a commit on the branch the session starts from.
+
+### AM10-12 — Owned paths given without reading what the change writes (accuracy)
+
+- **What happened:** SV2's brief, revisions 1 and 2, made D11's contract additions additive DTOs and gave them owned paths without reading what adding a DTO writes.
+  - `packages/contracts/scripts/generate.mjs` writes `apps/mobile/src/contracts/generated/` from every schema definition. CI's Mobile checks job runs its `--check`, which fails on any byte difference, and `corpus.test.mjs` imports the generated validators. The brief excluded `apps/**`, and D11 said the mobile app's generated validators stay untouched until P10.
+  - P04.3 registered `MediaCollection` in F05 of `flows-v1.json`, and P06.2 C1 its DTOs in F11, with a README section. The brief's owned paths left out the registry and the README.
+  - P06.2 C1's prompt had owned both, so the precedent D11 names was not read.
+- **Caught by:** App Manager 10, reading the generator, the corpus test and the registry while writing Stage A's prompt.
+- **Effect:** none on code: the prompt was held, and the paths went to the Dev Manager as DM-53, since DM-52's report repeats the untouched claim.
+- **Correction:** DM-53's answer, applied in revision 3.
+- **Prevention:** before a brief lists owned paths for a change to a generated or registered artifact, the manager reads the generator's output paths, the checks that compare them, and the owned paths of the precedent the brief names.
+
+### AM10-11 — Mechanisms proposed without reading their code (accuracy)
+
+- **What happened:** SV2's brief, revision 1, named existing functions, DTOs and rules as the mechanisms for its design without reading them.
+  - D7 had the adult check update SV1's `unknown` age row through `AgeAssurancePort`, whose `record` refuses an existing row by design, while the brief excluded `glow_identity`. It also kept the date in the birth input, which at that step cannot exist, since its shape needs a place the member has not given yet.
+  - D11 gave the sensitive-fields consent as `ConsentIntent` with a new purpose; `ConsentIntent` has no purpose field.
+  - D6 relied on `accept_consent` for F02's "old consent version rejected", which it does not check.
+  - D9's completion list left out P04.2's reviewed requirements, the resolved chart and a "looking for" value.
+- **Caught by:** Dev Manager 4, DM-52 sections 8, 9 and 11, which read each function, schema and fixture rule.
+- **Effect:** none on code: no prompt had gone out. Revision 2 applies B17 to B28 and B34 to B37.
+- **Correction:** DM-52's words, applied as written.
+- **Prevention:** before a brief names an existing function, DTO or reviewed rule as a mechanism, the manager reads its signature and docstring, the DTO's properties, or the fixture rule's text, and cites the line; a design that changes a reviewed rule says so.
+
+### AM10-10 — Facts written from a summary, not from the rows (accuracy)
+
+- **What happened:** the second A05 message, revision 1, cited matrix rows and design texts but took their content from the matrix's section 9 summary and from the manager's own reading. Five statements were wrong against their sources: both stores ask for derived data (only Google's row says so, GP-25); California requires consent at its threshold (its row is a right to limit, UST-42); New York's fraud-ban notice binds now (only for a paid service, UST-08); the research's "city/region" became "a city or ZIP code", without its privacy testing; and rematch added later "changes the data model's one-pair rule" (the `Match` row says rematch is policy on one pair record). The matrix's own section 9 line carried the California error.
+- **Caught by:** Dev Manager 4, DM-51 section 5, which read every cited row.
+- **Effect:** none on Nathan: the message had not gone to him. Revision 2 applies M1 to M17, and X1 corrects the matrix.
+- **Correction:** DM-51's M1 to M17 and X1, applied as written.
+- **Prevention:** before a decision message goes to the Dev Manager, each statement that cites a row or a design text is checked against that row's own cells or that text's own words, not a summary of them; a paraphrase of a source is quoted or marked as a paraphrase.
 
 ### AM10-09 — A replaced state left in P11's plan (follow-through)
 
