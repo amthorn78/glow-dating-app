@@ -16,11 +16,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3 and SV1 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-56, with "Deferred conditions"; the next consultation confirms DM-56's V1 to V5 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (10 November 2026, 23:50 UTC, App Manager 10)
+## Waiting checkpoint (10 November 2026, 23:55 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | GitHub: `main`'s push run 42925412949 on `4dc2061` | Its result, for the receipt | A failure goes to the Dev Manager first (OD-32), with no action asked of Nathan |
+| Nobody | — | `main`'s push run 42925412949 on `4dc2061` passed (the receipt) | Nothing is owed; the manager writes the brief's revision 6 for Stage B next |
 
 ## Next actions (App Manager 10)
 
