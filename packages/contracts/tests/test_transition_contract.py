@@ -389,3 +389,130 @@ class CrossArtifactRegressionTests(unittest.TestCase):
             transition("F01", "purge_completed", "deletion_pending", "deleted", SYSTEM),
             "policy_unresolved",
         )
+
+
+class SV2StageATransitionTests(unittest.TestCase):
+    """SV2 Stage A (its brief's D11; DM-53's W5): each new entry with an allowed and a forbidden
+    example. Staff act as moderator; the identity verification company's verdict is the
+    provider's; the demotion that follows another write is the system's."""
+
+    def check(self, flow, event, before, after, actor, outcome):
+        self.assertEqual(transition(flow, event, before, after, actor), outcome)
+
+    def test_f02_sensitive_consent_has_events_of_its_own(self):
+        current = replace(OWNER, policies=frozenset({"consent_current"}))
+        for before in ("not_given", "withdrawn"):
+            self.check("F02", "accept_sensitive", before, "accepted", current, "allowed")
+            self.check(
+                "F02",
+                "accept_sensitive",
+                before,
+                "accepted",
+                replace(current, owner_id="bob"),
+                "forbidden",
+            )
+        self.check("F02", "accept_sensitive", "not_given", "accepted", OWNER, "policy_unresolved")
+        self.check("F02", "withdraw_sensitive", "accepted", "withdrawn", OWNER, "allowed")
+        self.check("F02", "withdraw_sensitive", "accepted", "withdrawn", SYSTEM, "forbidden")
+        # An optional consent never starts as required, and no rule repeats the onboarding one.
+        self.check("F02", "accept_sensitive", "required", "accepted", current, "state_conflict")
+        self.check("F02", "accept", "not_given", "accepted", current, "state_conflict")
+        self.check("F02", "withdraw_sensitive", "not_given", "withdrawn", OWNER, "state_conflict")
+
+    def test_f02_adult_check(self):
+        a05 = replace(OWNER, policies=frozenset({"A05"}))
+        for before in ("unknown", "self_declared_adult"):
+            self.check("F02", "adult_check", before, "self_declared_adult", a05, "allowed")
+            self.check(
+                "F02",
+                "adult_check",
+                before,
+                "self_declared_adult",
+                replace(a05, owner_id="bob"),
+                "forbidden",
+            )
+        self.check(
+            "F02", "adult_check", "unknown", "self_declared_adult", OWNER, "policy_unresolved"
+        )
+        self.check("F02", "adult_check_failed", "self_declared_adult", "unknown", OWNER, "allowed")
+        self.check(
+            "F02", "adult_check_failed", "self_declared_adult", "unknown", SYSTEM, "forbidden"
+        )
+        self.check("F02", "adult_check_failed", "unknown", "unknown", OWNER, "state_conflict")
+
+    def test_f02_identity_verification_and_staff_approval(self):
+        provider = Context(None, "provider", None)
+        for before in ("unverified", "staff_approved"):
+            self.check("F02", "id_check_passed", before, "verified", provider, "allowed")
+            self.check("F02", "id_check_passed", before, "verified", OWNER, "forbidden")
+        allowed = replace(STAFF, policies=frozenset({"A05", "staff_approval"}))
+        self.check("F02", "approve_without_id", "unverified", "staff_approved", allowed, "allowed")
+        # The setting off: the trusted prerequisite staff_approval is missing.
+        self.check(
+            "F02", "approve_without_id", "unverified", "staff_approved", STAFF, "policy_unresolved"
+        )
+        self.check("F02", "approve_without_id", "unverified", "staff_approved", OWNER, "forbidden")
+        self.check(
+            "F02",
+            "approve_without_id",
+            "unverified",
+            "staff_approved",
+            replace(allowed, object_id="another-account"),
+            "forbidden",
+        )
+        self.check(
+            "F02", "approve_without_id", "verified", "staff_approved", allowed, "state_conflict"
+        )
+        self.check("F02", "revoke_approval", "staff_approved", "unverified", STAFF, "allowed")
+        self.check("F02", "revoke_approval", "staff_approved", "unverified", OWNER, "forbidden")
+        # Neither event can be read as F01's email verification, nor F01's as theirs.
+        self.check("F01", "id_check_passed", "unverified", "verified", provider, "state_conflict")
+        self.check(
+            "F02", "verified", "unverified", "active", Context(None, "auth", None), "state_conflict"
+        )
+
+    def test_f03_a_new_eligibility_date_makes_the_birth_input_missing(self):
+        for before in ("pending", "ambiguous", "resolved", "unavailable", "unsupported"):
+            self.check("F03", "date_changed", before, "missing", OWNER, "allowed")
+            self.check(
+                "F03",
+                "date_changed",
+                before,
+                "missing",
+                replace(OWNER, owner_id="bob"),
+                "forbidden",
+            )
+        self.check("F03", "date_changed", "missing", "missing", OWNER, "state_conflict")
+        # missing has one way out, the owner's submit, so no engine path resolves it.
+        self.check("F03", "submit", "missing", "pending", OWNER, "allowed")
+        self.check("F03", "resolve", "missing", "resolved", SYSTEM, "state_conflict")
+
+    def test_f04_requirement_removed_is_the_systems_demotion(self):
+        self.check("F04", "requirement_removed", "visible", "incomplete", SYSTEM, "allowed")
+        self.check("F04", "requirement_removed", "visible", "incomplete", OWNER, "forbidden")
+        self.check("F04", "requirement_removed", "paused", "incomplete", SYSTEM, "state_conflict")
+        # The owner's own edit that clears the summary keeps F04's owner edit.
+        self.check("F04", "edit", "visible", "incomplete", OWNER, "allowed")
+
+    def test_sv2_projections_are_the_owners_only(self):
+        for flow, definition in (
+            ("F02", "OwnSensitiveConsent"),
+            ("F02", "OwnAgeState"),
+            ("F04", "OwnProfileFields"),
+            ("F04", "OwnFilters"),
+            ("F04", "OwnArea"),
+            ("F04", "NearestArea"),
+            ("F04", "ProfileCatalog"),
+            ("F04", "OwnCompletion"),
+        ):
+            with self.subTest(definition=definition):
+                self.assertEqual(read_projection(flow, definition, OWNER), "allowed")
+                for context in (
+                    replace(OWNER, actor_id="other-owner"),
+                    replace(OWNER, session_state="revoked"),
+                    STAFF,
+                    SYSTEM,
+                    Context(None, "provider", None),
+                    Context(None, "public", None),
+                ):
+                    self.assertEqual(read_projection(flow, definition, context), "not_found")

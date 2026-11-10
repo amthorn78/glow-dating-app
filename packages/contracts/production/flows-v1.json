@@ -120,10 +120,14 @@
       "domain_owner": "identity/consent",
       "data_owner": "App",
       "request_contracts": [
-        "ConsentIntent"
+        "ConsentIntent",
+        "SensitiveConsentIntent",
+        "AdultCheckIntent"
       ],
       "response_contracts": [
-        "OnboardingEligibility"
+        "OnboardingEligibility",
+        "OwnSensitiveConsent",
+        "OwnAgeState"
       ],
       "private_projection": "Own consent state/version",
       "public_projection": "None",
@@ -163,11 +167,120 @@
             "consent_current"
           ],
           "active_match": false
+        },
+        {
+          "event": "accept_sensitive",
+          "from": "not_given",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "accept_sensitive",
+          "from": "withdrawn",
+          "to": "accepted",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "consent_current"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "withdraw_sensitive",
+          "from": "accepted",
+          "to": "withdrawn",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "adult_check",
+          "from": "unknown",
+          "to": "self_declared_adult",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "adult_check",
+          "from": "self_declared_adult",
+          "to": "self_declared_adult",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "adult_check_failed",
+          "from": "self_declared_adult",
+          "to": "unknown",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "id_check_passed",
+          "from": "unverified",
+          "to": "verified",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "id_check_passed",
+          "from": "staff_approved",
+          "to": "verified",
+          "role": "provider",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "approve_without_id",
+          "from": "unverified",
+          "to": "staff_approved",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05",
+            "staff_approval"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "revoke_approval",
+          "from": "staff_approved",
+          "to": "unverified",
+          "role": "moderator",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
       "projection_roles": {
         "OnboardingEligibility": [
+          "owner"
+        ],
+        "OwnSensitiveConsent": [
+          "owner"
+        ],
+        "OwnAgeState": [
           "owner"
         ]
       }
@@ -290,6 +403,51 @@
           "eligible": false,
           "policies": [],
           "active_match": false
+        },
+        {
+          "event": "date_changed",
+          "from": "pending",
+          "to": "missing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "date_changed",
+          "from": "ambiguous",
+          "to": "missing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "date_changed",
+          "from": "resolved",
+          "to": "missing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "date_changed",
+          "from": "unavailable",
+          "to": "missing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "date_changed",
+          "from": "unsupported",
+          "to": "missing",
+          "role": "owner",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
@@ -306,11 +464,21 @@
       "request_contracts": [
         "ProfileIntent",
         "PreferencesIntent",
-        "OwnedObjectRequest"
+        "OwnedObjectRequest",
+        "ProfileFieldIntent",
+        "FiltersIntent",
+        "AreaIntent",
+        "AreaQuery"
       ],
       "response_contracts": [
         "OwnProfile",
-        "OwnPreferences"
+        "OwnPreferences",
+        "OwnProfileFields",
+        "OwnFilters",
+        "OwnArea",
+        "NearestArea",
+        "ProfileCatalog",
+        "OwnCompletion"
       ],
       "private_projection": "Own fields/preferences; no other private preferences",
       "public_projection": "CandidateProfile allowlist only",
@@ -424,6 +592,15 @@
           "eligible": false,
           "policies": [],
           "active_match": false
+        },
+        {
+          "event": "requirement_removed",
+          "from": "visible",
+          "to": "incomplete",
+          "role": "system",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
@@ -432,6 +609,24 @@
           "owner"
         ],
         "OwnPreferences": [
+          "owner"
+        ],
+        "OwnProfileFields": [
+          "owner"
+        ],
+        "OwnFilters": [
+          "owner"
+        ],
+        "OwnArea": [
+          "owner"
+        ],
+        "NearestArea": [
+          "owner"
+        ],
+        "ProfileCatalog": [
+          "owner"
+        ],
+        "OwnCompletion": [
           "owner"
         ]
       }

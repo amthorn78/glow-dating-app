@@ -153,6 +153,44 @@ export type ConversationMessage = {
   delivery: ('pending' | 'accepted' | 'failed') | null;
 };
 /**
+ * A member's own words for their gender or orientation (SV2, D3): display only, never matched, searched or ranked; at most 40 Unicode scalar values. Orientation's are sensitive: saved only with the sensitive-fields consent.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnWords".
+ */
+export type OwnWords = string;
+/**
+ * A core-based statistical area's stable ID, the Census Bureau's GEOID (SV2, D5).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "AreaId".
+ */
+export type AreaId = string;
+/**
+ * The owner's own sensitive-fields consent (SV2, D6); never required for completion.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnSensitiveConsent".
+ */
+export type OwnSensitiveConsent = {
+  kind: 'sensitive_consent';
+  version: number;
+  state: 'not_given' | 'accepted' | 'withdrawn';
+  policy_version: string | null;
+};
+/**
+ * The owner's own age state (SV2, D7): the date that passed the adult check, present with self_declared_adult and absent with unknown.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnAgeState".
+ */
+export type OwnAgeState = {
+  kind: 'own_age_state';
+  version: number;
+  state: 'unknown' | 'self_declared_adult';
+  birth_date: string | null;
+};
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "Text80".
  */
@@ -219,7 +257,31 @@ export type AppIntent =
   | SupportRequest
   | ExportRequest
   | DeletionRequest
-  | ReadCursorIntent;
+  | ReadCursorIntent
+  | ProfileFieldIntent
+  | FiltersIntent
+  | AreaIntent
+  | SensitiveConsentIntent
+  | AdultCheckIntent;
+/**
+ * One of the four two-way list fields, with its own words and display choice, as a new choice (SV2, D3): list value IDs of the current catalog (policy_version), within the field's pick limit, or ["not-stated"] for orientation or relationship status. Orientation, relationship status and orientation's own words need the sensitive-fields consent. Looking for is always shown and has no own words; relationship status has no own words.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ProfileFieldIntent".
+ */
+export type ProfileFieldIntent = {
+  operation: 'profile_field';
+  meta: CommandMeta;
+  policy_version: string;
+  field: 'gender' | 'orientation' | 'looking_for' | 'relationship_status';
+  /**
+   * @minItems 1
+   * @maxItems 50
+   */
+  value_ids: [string, ...string[]];
+  own_words: OwnWords | null;
+  shown: boolean;
+};
 
 /**
  * P02 app-owned production design baseline; no production route is implemented. All limits are transport ceilings, not launch policy. HDE ready projection is deliberately unavailable pending A01/A07.
@@ -253,7 +315,15 @@ export interface AppResponse {
     | MediaCollection
     | ConversationList
     | ConversationSummary
-    | MessagePage;
+    | MessagePage
+    | OwnProfileFields
+    | OwnFilters
+    | OwnArea
+    | NearestArea
+    | ProfileCatalog
+    | OwnCompletion
+    | OwnSensitiveConsent
+    | OwnAgeState;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -499,6 +569,158 @@ export interface MessagePage {
   messages: ConversationMessage[];
   older_cursor: string | null;
   newer_cursor: string | null;
+}
+/**
+ * The owner's own four list fields (SV2, D3), never returned to anyone else; policy_version is the catalog version the read was made under.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnProfileFields".
+ */
+export interface OwnProfileFields {
+  kind: 'own_profile_fields';
+  policy_version: string;
+  gender: OwnFieldValue;
+  orientation: OwnFieldValue;
+  looking_for: OwnFieldValue;
+  relationship_status: OwnFieldValue;
+}
+/**
+ * The member's own value in one field (SV2, D3), for its owner only: version 0 when the field was never saved. choose_again: a value the member holds is retired, so the member chooses again at their next edit; it stays valid and matchable until then.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnFieldValue".
+ */
+export interface OwnFieldValue {
+  version: number;
+  /**
+   * @maxItems 50
+   */
+  value_ids: string[];
+  own_words: OwnWords | null;
+  shown: boolean;
+  choose_again: boolean;
+}
+/**
+ * The owner's own age range and distance choice (SV2, D4, D5).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnFilters".
+ */
+export interface OwnFilters {
+  kind: 'own_filters';
+  version: number;
+  policy_version: string;
+  minimum_age: number;
+  maximum_age: number | null;
+  distance_choice: string;
+}
+/**
+ * The owner's own home area (SV2, D5), or none yet.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnArea".
+ */
+export interface OwnArea {
+  kind: 'own_area';
+  version: number;
+  area_id: AreaId | null;
+  area_name: string | null;
+}
+/**
+ * The area whose internal point is nearest to the queried location (SV2, D5): no coordinate and no distance.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "NearestArea".
+ */
+export interface NearestArea {
+  kind: 'nearest_area';
+  area_id: AreaId;
+  area_name: string;
+}
+/**
+ * The member's current catalog, read-only (SV2, D2, D11): the lists, which may be narrowed, the defaults, the ways of locating and the distance choices (labels only), and the consent policies' current versions. policy_version is the catalog's version, which ProfileFieldIntent, PreferencesIntent and FiltersIntent carry. In PreferenceSelection.accepted_option_ids, a set that keeps all is exactly ["all"], which includes values the console adds later and "not stated"; a narrowed set lists live values only and never holds "all" or "not-stated".
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ProfileCatalog".
+ */
+export interface ProfileCatalog {
+  kind: 'profile_catalog';
+  policy_version: string;
+  gender: CatalogField;
+  orientation: CatalogField;
+  looking_for: CatalogField;
+  relationship_status: CatalogField;
+  age_range: {
+    default_minimum: number;
+    default_maximum: number | null;
+    direction: 'both_ways' | 'viewer_only';
+  };
+  location: {
+    chosen_area: boolean;
+    approximate_location: boolean;
+    /**
+     * @minItems 1
+     * @maxItems 20
+     */
+    distance_choices: [CatalogValue, ...CatalogValue[]];
+    default_distance: string;
+  };
+  consents: {
+    onboarding: ConsentPolicy;
+    sensitive_profile: ConsentPolicy;
+  };
+}
+/**
+ * One field's current list (SV2, D2): the values offered for new choices, the retired values (for showing a held one only), how many a member may pick (null: any number) and whether members may narrow by it.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CatalogField".
+ */
+export interface CatalogField {
+  /**
+   * @maxItems 50
+   */
+  values: CatalogValue[];
+  /**
+   * @maxItems 200
+   */
+  retired_values: CatalogValue[];
+  pick_limit: number | null;
+  narrowable: boolean;
+}
+/**
+ * One list value of the catalog (SV2, D2).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CatalogValue".
+ */
+export interface CatalogValue {
+  id: string;
+  label: string;
+}
+/**
+ * A consent policy's current version and wording (SV2, D6): development text, labelled as such, until P08 writes it.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "ConsentPolicy".
+ */
+export interface ConsentPolicy {
+  policy_version: string;
+  text: string;
+}
+/**
+ * The owner's completion read (SV2, D9, D11): what the profile still needs before it can show, from a closed list of its own. identity_verification is the verification company's check of a photo ID (or a staff approval without it), not OnboardingEligibility's verify_identity, which is email verification.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnCompletion".
+ */
+export interface OwnCompletion {
+  kind: 'own_completion';
+  visibility: 'incomplete' | 'visible' | 'paused' | 'restricted' | 'removed';
+  /**
+   * @maxItems 7
+   */
+  missing: ('consent' | 'adult_check' | 'profile_fields' | 'area' | 'photo' | 'chart' | 'identity_verification')[];
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -754,6 +976,54 @@ export interface PublicSupportRequest {
   request_key: string;
 }
 /**
+ * The member's age range, never below 18, and distance choice, one of the catalog's (SV2, D4, D5). A distance choice counts areas whose internal points are within it; no distance is ever returned.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "FiltersIntent".
+ */
+export interface FiltersIntent {
+  operation: 'filters';
+  meta: CommandMeta;
+  policy_version: string;
+  minimum_age: number;
+  maximum_age: number | null;
+  distance_choice: string;
+}
+/**
+ * The member's home area, chosen by its ID (SV2, D5); only the area is kept. An area the phone-location query returned is set this way too.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "AreaIntent".
+ */
+export interface AreaIntent {
+  operation: 'area';
+  meta: CommandMeta;
+  area_id: AreaId;
+}
+/**
+ * The sensitive-fields consent (SV2, D6; G-10): needed before orientation, relationship status or orientation's own words are saved, and before either field's set is narrowed. An acceptance names the policy's current version. A withdrawal removes those values and resets both sets to all.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "SensitiveConsentIntent".
+ */
+export interface SensitiveConsentIntent {
+  operation: 'sensitive_consent';
+  meta: CommandMeta;
+  policy_version: string;
+  decision: 'accepted' | 'withdrawn';
+}
+/**
+ * The adult check's self-entered birth date, at the eligibility step (SV2, D7): 18 or over on the server's date passes; a failing date is refused and not stored. A new date reruns the check.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "AdultCheckIntent".
+ */
+export interface AdultCheckIntent {
+  operation: 'adult_check';
+  meta: CommandMeta;
+  birth_date: string;
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "AppResponse".
  */
@@ -786,7 +1056,15 @@ export interface AppResponse1 {
     | MediaCollection
     | ConversationList
     | ConversationSummary
-    | MessagePage;
+    | MessagePage
+    | OwnProfileFields
+    | OwnFilters
+    | OwnArea
+    | NearestArea
+    | ProfileCatalog
+    | OwnCompletion
+    | OwnSensitiveConsent
+    | OwnAgeState;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.
@@ -804,4 +1082,14 @@ export interface InteractionCommandResult {
   receipt: CommandReceipt;
   replayed: boolean;
   current_projection: InteractionOutcome | MatchProjection | BlockOutcome | null;
+}
+/**
+ * The phone's approximate location, sent once, in the request body only (SV2, D5): a query that changes nothing. The coordinates are never stored, logged, returned, echoed in an error or put in the outbox or an idempotency record.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "AreaQuery".
+ */
+export interface AreaQuery {
+  latitude: number;
+  longitude: number;
 }
