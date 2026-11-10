@@ -1144,3 +1144,38 @@ C3 changes no code path, so no threat changes. It narrows two gaps the review na
 4. **Item 1, beyond the brief's list:** the state guard also sees `__setattr__`, `__dict__`, `vars`, and `update_or_create` or `get_or_create` with `state`, `defaults` or `**`; the stream guard also refuses `print(file=…)`, `os.write`, and imports of `warnings`, `traceback`, `faulthandler` and `pprint`; and `_binds` checks each allowlisted write's model. Each passes on `01a3acb`.
 5. **The allowlist names lines** (the brief's words): an edit that moves an allowlisted line fails the state guard until the allowlist moves with it.
 6. **No stop rule was met:** no file outside the owned paths changed (`glow_profiles`, `glow_domain`, `glow_identity`, `glow_chat`, `glow_api`, models, migrations, DTOs, registry entries, the workflow, locks and dependencies are all unchanged); no new check failed on `01a3acb`'s code without a temporary edit; every reversal was undone.
+
+### Manager verification of correction C3 (App Manager 10, 10 November 2026)
+
+**Integrated** at the merge `bfc633b` (C3's code head `fee4fdc`, records head `414d4a7`). Nothing changed on the manager branch after `e55dd81` before the merge.
+
+**The scope:** `git diff --name-only e55dd81 414d4a7` lists five paths, each within "Stage A, correction C3"'s owned paths: the two API test files, `profile_cases.py`, the proof's `tests/test_profile_offline.py`, and the record.
+- The records commit `414d4a7` holds Markdown only.
+- No path outside tests changed: from `01a3acb` to `fee4fdc`, the four non-Markdown paths are tests or the profile suite.
+- `profile_cases.py`'s change is two check labels and one comment. No assertion changed.
+- The trusted classification, `main`'s policy run with `python3 -I` outside the tree: `"full": true`, `behavior-or-empty`, with one merge base, `df8a04c`.
+
+**Re-runs,** in a scratch copy of `fee4fdc`, in the clean environment, with the hash-locked installs:
+- **API:** `manage.py check`, no issues; `Ran 529 tests` … `OK`; Ruff clean; `133 files already formatted`; mypy `no issues found in 78 source files`.
+- **Contract tests:** `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 223 tests` … `OK`; Ruff clean; `59 files already formatted`; mypy `no issues found in 59 source files`.
+
+**Three reversals of the manager's own, re-run offline.** Each was appended at the file's end, so no allowlisted line moved, and each failed its new check:
+- **C3-R1:** `setattr(profile, "state", "visible")` in a new function in `staff.py`. `test_only_the_recompute_writes_a_profiles_state` fails.
+- **C3-R2:** a second `logging.getLogger(…)` in `views.py`. `test_the_views_hold_one_logger_and_name_it_only_to_log` fails.
+- **C3-R3:** an `AgeTransitionRefused(f"bad date {value}")` in `age.py`. `test_the_age_ports_refusals_are_codes` fails.
+
+Each file was restored and its hash checked; the 22 guard tests then passed.
+
+**The run of record**, read with the GitHub tools: push run 42908603138 on `fee4fdc`.
+- All eight jobs `success`, and the gate printed `Application checks passed`. Every DM-41 retry step was `skipped`.
+- The profile suite: `[profile] cases: 53/53 passed in 79.4 s`; both scans clean (1216 secrets and 163 member values held, 0 found); `PROFILE VERDICT: PASS`; `profile phase: 80 s`.
+- The second profile run was refused, with the counts `108 108 92 38 978 802` unchanged.
+- `sv2-profile-results` is 5,221 bytes, and the cleanup removed the container.
+
+**The session's deviations:**
+1. **The lazy-import limit has no profile-suite case:** the suite runs where `glow_profiles` is meant to load. The sealed-runtime test and the dummy database backend bound it instead. **Accepted.**
+2. **The no-deadlock reason rests on PostgreSQL's row locking.** It assumes a `FOR SHARE` lock is granted at once while only share locks are held, even with a `FOR UPDATE` request waiting, and no case tests it. **To C3's delta review, then the Dev Manager's pre-merge read.** The review confirms the reason or refutes it; if it cannot be shown, the record should claim only what is shown. Either way, PostgreSQL detects a deadlock and aborts one transaction, so the worst case is one refused request, not a hang.
+3. **Additions beyond the brief's list:** the age label, more patterns, and a model check on each allowlisted write. Each passes at `01a3acb`. **Accepted:** they are within items 1 and 4.
+4. **The allowlist pins line numbers,** as the brief asked, so an edit that moves one of those lines fails the guard until the allowlist moves with it. **Accepted, as a deliberate tripwire.** It is carried to Stage B, whose sessions update the allowlist with any edit that moves an allowlisted line (the carried-items file, "Carried to SV2").
+5. **Not run locally:** the mobile checks, the ordering and identity suites, and the job's shell steps as a whole. **Accepted:** C3 changes no file they read, and the run of record ran them.
