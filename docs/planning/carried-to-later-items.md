@@ -62,7 +62,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV2 (profiles and media; OD-49)
 
-- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 2 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16) and applies DM-52's B1 to B55 as written, with Nathan's answers in its session (OD-61: identity verification in D18; the chart and the birth time in D8 and D9; automated photo approval in D10).
+- **The brief is written:** [`sv2-profiles-media.md`](sv2-profiles-media.md), revision 3 (10 November 2026), folds in each entry below (OD-60 in D2 to D5; G-10 in D6; G-02 in D10; DM-50 1.2 in D16) and applies DM-52's B1 to B55 and DM-53's W1 to W10 as written, with Nathan's answers in DM-52's session (OD-61: identity verification in D18; the chart and the birth time in D8 and D9; automated photo approval in D10). Stage A's prompt is with Nathan.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1):
   - **G-02's seam:** the media quarantine path keeps a place for a detection step, its report evidence and a hold; it builds none of them.
   - **G-10** (explicit consent for orientation-revealing fields, the lawful-basis map, disclosures, device-storage consent, a recorded no-sale rule), now with Nathan's answer (OD-60): consent at the step where orientation and relationship status are entered, and consent wording that says what H's read-only rule leaves readable (DM-51 M15).
