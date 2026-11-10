@@ -12,6 +12,18 @@ P05.1 separates owner readiness from current ordered-pair disclosure, as describ
 here and in [reciprocal eligibility fixtures](reciprocal-eligibility-fixtures.md).
 Earlier boolean media/reciprocal seeds are not production evidence.
 
+**The server exists, sealed (SV2 Stage A, 10 November 2026).** `services/api/glow_profiles`
+now builds these operations on the server, on SV1's actor: the four two-way list fields with
+the member's own words and display choices, the "show me" sets, the age range, the home area,
+both consents, the adult check, the private birth input, completion, pause and resume. It is
+proven on a disposable PostgreSQL in CI and sealed from the served runtime until P11 ([SV2
+evidence](../testing/evidence/2026-11-10-sv2-profiles-media.md); the [production
+contracts](production-contracts.md), "F02 to F06 on the server"). This document's mobile
+fixtures and adapters are unchanged until P10 and P11 wire the client. Where the server's rules
+differ from them (the four list fields in place of the provisional catalog's demonstration
+dimension, an age range never starting below 18, a required birth time), the server's are
+recorded there.
+
 ## Runtime, ownership and contract boundary
 
 `apps/mobile/src/profiles/fixture-adapter.ts` supplies the explicit development-only
