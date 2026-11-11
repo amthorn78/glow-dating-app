@@ -1258,6 +1258,7 @@ Nothing in the repository, on GitHub or in Notion changed.
   It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
 - **`git ls-remote`** after it (23:41 UTC): `main` at `4dc2061`, the manager branch at `a644771`, `claude/dev-manager` at `d342f05`, and nothing else. PR43's activity subscription is ended.
 - **`main`'s push run** 42925412949 on `4dc2061`: all eight jobs passed, and the gate's log prints `Application checks passed` (completed at 23:51:40 UTC). The profile suite passed 53 of 53 in 78.8 s, with both scans clean, its phase took 80 s, and a second run was refused with the counts `108 108 92 38 978 802` unchanged. The DM-41 retry steps were skipped in the four Python jobs. It was still running when this receipt was first committed at `65a7221`.
+- **The manager branch holds `main`** (11 November 2026): `main`'s merge commit `4dc2061` is merged into it at `780fb20`, so the next PR's merge base is `4dc2061`, not PR43's head (the session's git rule; DM-57 item 5). Its content is unchanged.
 - **Pruned:** Stage A's eleven prompts and consultations in `docs/ephemeral/`:
   - DM-53 to DM-56's consultations;
   - the implementation prompt, C1's, C2's and C3's prompts, both exact-head review prompts and C3's delta review prompt.

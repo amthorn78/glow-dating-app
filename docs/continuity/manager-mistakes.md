@@ -151,6 +151,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
 | AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
 | AM10-14 | 10 Nov 2026 | accuracy | Verifying SV2 Stage A's correction C1 (`40db2c2`), App Manager 10 accepted C1-3 (a future birth date refused with no rerun) as a reading of DM-54's words and put only its supporting argument in the review prompt's revision 1. It did not set it against the brief's acceptance item 7, which counts "a future date" among the dates that fail, or `adult_outcome`, which fails one | Codex, its P2 finding on `40db2c2` |
+| AM10-17 | 10 Nov 2026 | follow-through | The handoff's waiting checkpoint after PR43's receipt gave 23:57 UTC, written before the clock was read; the clock read 23:55 (AM9-04 repeated) | App Manager 10, when the commit's own clock line printed |
+| AM10-16 | 10 Nov 2026 | accuracy | Pruning SV2 Stage A's prompts, App Manager 10's link-pinning script matched link targets by file name. The Dev Manager's reports in `reviews/` share their names with the consultations, so it also pointed 16 links to the reports at the pruned consultations | App Manager 10, reading the script's word diff before the commit |
 | AM10-15 | 10 Nov 2026 | accuracy | DM-55's consultation (`496c39e`), item 1.4, proposed erasing the date, time, place and time zone of every birth input revision after a date under 18. It did not read what that breaks: `OwnBirthInput` requires a full `BirthInput`, so the owner's reads would fail on an erased revision; the next save compares its expected version with the erased row's; and `birth_time_uncertainty` ties the time to its precision | Dev Manager 4, DM-55 section 3 |
 
 ## App Manager 2
@@ -1100,6 +1102,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-17 — A time written before the clock was read (follow-through)
+
+- **What happened:** completing PR43's merge receipt, the script that updated the handoff wrote the waiting checkpoint as 23:57 UTC. The clock, read in the same command, printed 23:55. AM9-04's rule is to read the clock before writing a time.
+- **Caught by:** App Manager 10, when the command's clock line printed.
+- **Effect:** none: the unpushed commit was amended to 23:55 before the push.
+- **Correction:** the checkpoint reads 23:55 UTC.
+- **Prevention:** the clock command runs before the script that writes a time, and the script takes the time from its output, not from the manager.
+
+### AM10-16 — Links rewritten by file name, not by path (accuracy)
+
+- **What happened:** to pin the links to SV2 Stage A's eleven pruned prompts and consultations at `4dc2061`, a script matched each link target's file name against the prune list. The Dev Manager's reports in `docs/continuity/dev-manager/reviews/` have the same file names as the consultations, so the script also pointed 16 links to DM-53 to DM-56's reports at the pruned consultations, in the brief, the review log and the evidence record.
+- **Caught by:** App Manager 10, reading the word diff's removed targets before the commit.
+- **Effect:** none: the changes were reverted, and the script was rerun matching each target's resolved path; it pinned 19 links, none to a report.
+- **Correction:** the pinned links point only to `docs/ephemeral/` files.
+- **Prevention:** a script that rewrites links resolves each target against its file's directory and matches the full path, and the manager reads the removed targets in the word diff before committing.
 
 ### AM10-15 — A data erasure proposed without reading what it breaks (accuracy)
 
