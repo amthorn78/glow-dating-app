@@ -1744,3 +1744,81 @@ After the restore, the 47 tests pass.
 **Integration:** the manager branch was fast-forwarded from `ecad10c` to `e30ef4a`. Codex's P2 on `request_purge` is answered by C1 on PR44's head that holds it.
 
 **What follows:** Codex on PR44's head that holds C1 and the exact-head review's prompt, then the full exact-head review of `7538c76` with its written threat model (DM-58 sections 3 and 7), then the Dev Manager's pre-merge read.
+
+## Exact-head review of Stage B after C1 (code head `7538c76`)
+
+- **The session:** started by Nathan from Stage B's exact-head review prompt, revision 1, at `8126c0c6df80f494c18070151b3831e1d6551f86` (`docs/ephemeral/2026-11-11-sv2-stage-b-review-prompt.md`). It reported on 11 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*` was present; the three expected AWS names were present, their values never read or passed;
+  - the start gate passed, with one merge base, `4dc2061`, and no code differing from `7538c76`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`, over 64 paths.
+- **What it ran,** in a scratch copy of `7538c76`:
+  - the API's checks: `manage.py check`; 559 tests `OK`; Ruff; mypy clean on 81 files;
+  - the contract tests (49) and `generate.mjs --check` (`Generated types and runtime validators match schemas.`);
+  - the proof's offline tests (226), Ruff and mypy (59 files);
+  - the four required offline reversals, each failing its case (R1 to R4), and six more of its own (R5 to R10, R12);
+  - informational, on a throwaway PostgreSQL under P06.DB's D4: the suite 67/67 with both scans clean, and five database reversals (R5 to R8, R11).
+- **What it read:** runs 42947095725 (64/64) and 42957799823 (67/67), and PR44's pull-request run 42963058038 on `8126c0c` (67/67 in 97.9 s). In each, all eight jobs passed, the gate printed `Application checks passed`, and no DM-41 retry fired. In the PR run's eight logs, no line holds a private-key header, a `delivery-` or `grant-` reference, `fixture-variant`, a PNG signature, `##[error]` or `##[warning]`.
+- **The verdict: changes required, in tests and records only.** It found no blocking finding and no defect in the code: the code behaves as the brief, DM-57, DM-58 and C1 require. Findings F1 to F4 are should fix in correction classes; F5 is should fix outside them; N1 to N9 are nits.
+- **Its statements:**
+  - every Dev Manager condition is met in the code: U1 to U5, U8 to U10, J6, J7 and DM-58 section 3's correction;
+  - item 1's premise holds: every write to a projected field goes through `transition`, which bumps the version, and no asset row is deleted anywhere;
+  - J2 to J5 hold as built; the ports' fixture calls have effects in process memory only (N5), with no external call;
+  - C1: `lock_account_any_state` equals `lock_account` without its state check; only the two writers use it; `glow_chat`'s `_revoke_account` takes the same row `FOR UPDATE`, so a purge serializes with a suspension or a deletion request; deviation 1 holds (`media.py:128` is still `asset.state = after`);
+  - no test was weakened: Stage A's cases gain an approved photo, the F05 test asserts more, and the seed tests narrow to `SEEDED_BY_0007` with 0009 pinned on its own;
+  - no DTO changed; the registry diff is exactly F05's `approve` and `reject`, `moderator` to `system`;
+  - `.github`, the `Dockerfile`, every lock, requirement and package file and `apps/` are unchanged from `4dc2061`;
+  - the records hold against the code and the runs, except F4 and nits N2, N5, N6 and N7.
+- **The coverage notes** (DM-58 section 5):
+  - **M2:** the suite's case suffices: the reversal passes offline and fails the suite at exactly `the seam was given the original`;
+  - **M3:** the suite catches the hold check's removal (`:3074`), but not its answer ignored: F1;
+  - **migration 0008's constraints:** F5.
+
+**The review's threat model,** condensed (assets, actors and entry points are the prompt's):
+
+| # | Threat | What stops it | What proves it |
+|---|---|---|---|
+| T1 | An anonymous prober on F05's routes | SV1's actor on every route (401); UUIDv4 asset IDs | `media.reorder_and_every_route…` |
+| T2 | A member on another member's photo | `locked_asset` and `read_asset` filter by account; reorder checks its set | the same case; the session's `REMOVAL.*` and `D17.*` reversals |
+| T3 | A stolen token | SV1's actor and the account-state gates; a delivery reference is not a credential (J2, P11) | SV1's suite; `media.every_other_photo_step_refuses_an_inactive_owner` |
+| T4 | A grant replayed, uploads raced, limits or expiry crossed | the account row lock; `used_at` and the state check; the store's time against the expiry; the grant's own version's byte limit; the live and 20-entry limits; `media_grant_used_in_time` | `media.completions_are_matched_to_their_grant`, `media.grant_within_the_policys_limits`; R11 |
+| T5 | A forged, duplicated, late or out-of-order store event | `receive` returns only events the adapter issued; `not_awaiting_upload`, `purge_not_requested`, `already_deleted` | `FixtureTests`; the completions and removal cases |
+| T6 | A member route reaching a provider, system or staff step | the views call only `media.command`, which dispatches the owner's three actions | `RouteTests`; `staff.no_member_route_reaches_a_staff_operation` |
+| T7 | An upload skipping quarantine, review or the seam | one writer, `transition`, bound to F05's table; the seam called unconditionally; `media_seam_passed` | `RegistryTests`, the two upload cases; R6. Gap: F3 |
+| T8 | An original delivered, or a key or credential exposed | only the variant gets a reference; the projection shows one only while `approved`; 32-hex random keys; the credential stays in the adapter | `media.an_upload_moves…`, `media.no_key_original_or_bytes_in_any_response`, `KeyTests` |
+| T9 | The check approving a held photo | the hold check at `media.py:636-637` | **F1:** only "the hold port was asked" is tested |
+| T10 | The check clearing a restriction or undoing a removal | nothing clears `restriction_ref`; only `purged` leaves `removal_pending`; `media_approved_unrevoked` | `media.the_checks_decisions…` |
+| T11 | A held, removed or restricted photo delivered | `delivery_reference`'s four conditions; `transition` clears the reference; `media_delivery_only_approved` | `media.an_upload_moves…`, `media.removal…`; R8 |
+| T12 | A removal never completing, completing early, or lost to an inactive owner | the remaining-objects check; `lock_account_any_state` in the two writers only (C1) | `media.removal…`, C1's three cases, `LockOrderTests`, `AccountStateTests`; R2, R3 |
+| T13 | `visible` without an approved photo, or left `visible` | `requirements.missing`; the recompute in `run_check`, `remove_photo` and `restrict_media` | `media.the_photo_requirement…`, `completion.refuses_each_missing_requirement` |
+| T14 | Pointers locked out of name order | `_hold`; the publication records its own pointer | `PointerOrderCheckTests`, `pointers.one_order…`; R1. Gap: F2 |
+| T15 | A media policy publication crossing a ceiling | absolute ceilings in code, checked before any write, so no two-step publication crosses one; `StaffAudit` on each | `MediaPolicyTests`, `media.policy_is…` |
+| T16 | A value in a log, event or error | no logging in `media.py`; events carry references; refusal reasons are codes | `NoValueInLogsTests`, the session's `LOG.*` reversal, the value scan (narrower than recorded: F4) |
+| T17 | An outbox event naming a deleted record | no asset, object or grant row is deleted | J1's rule in the data model |
+| T18 | The served runtime importing Stage B | `SEALED_MODULES` holds `glow_domain.media` | `test_profiles_sealed_runtime`; R4 |
+| T19 | Secrets in the public CI logs and artifacts | the job masks its secrets; the scan runs before any upload | the PR run's eight logs |
+| T20 | A staff caller in code | `_check_staff` needs a `staff:` subject; a request ID used once; `lock_account` | `media.the_checks_decisions…`; the inactive-owner case |
+| T21 | Migrations 0008 and 0009 | 0008 generated; both pinned by SHA-256; `makemigrations --check`; 0009's seed equals the code's default | `test_model_definitions`. Gap: F5 |
+
+**The review's findings and the manager's dispositions** (step 6, "Fix or carry, by rule"). F1 to F4 are in correction classes and are fixed before the merge. F5 is fixed in the same pass, as the review recommends, since it extends the same kind of case. None changes a design, a contract or the code, so the correction needs no consultation first. C2 changes tests and records only:
+
+| # | Severity (class) | Finding | Disposition |
+|---|---|---|---|
+| F1 | should fix (a test passes where it should fail; the check could approve a held photo) | Nothing shows a hold **stopping** an approval. The suite's case asserts only that the hold port was asked, with a hold that holds nothing, and the offline test checks the order of the text. R5 (the hold's answer ignored) passes the targeted API tests and the suite 67/67 on PostgreSQL | **In C2:** a suite case with the photo held, asserting the check's outcome `held`, the photo still `review_pending`, no approval `StaffAudit` row, no reference and no change to the profile; and an offline assertion that the approval's held branch returns before the transition |
+| F2 | should fix (a test passes where it should fail; pointers locked out of order unchecked) | The lock-site guard misses `select_for_update()` on a queryset held in a variable, and raw SQL whose table name comes from `PolicyRevision._meta.db_table` (R9, R10 pass); a lock outside `settings_store` also bypasses `_hold` | **In C2:** the guard fails on any mention of `PolicyRevision` or its table in a scanned source outside `settings_store.py` and `models.py`, with the proof's read-only mentions named, each by file and function; each new spelling with its reversal |
+| F3 | should fix (a test passes where it should fail; a photo reaching `approved` other than by its one path) | The state-write guard does not cover `MediaAsset.objects.create(state=…)` or `MediaAsset(state=…)` outside `transition`. The code has none today; R12 (an `approved` asset created in `staff.py`) passes every offline test | **In C2:** the guard (`tests/test_profile_recompute.py`) flags a `create`, `get_or_create`, `update_or_create` or constructor of `MediaAsset` with `state` anywhere but `request_upload`'s `upload_pending`, with its reversal |
+| F4 | should fix (a record claims more than the code shows) | The records say the scans cover "object keys … and photo bytes". The ledger (`profile_support.py:519, 527`) holds only the originals' keys, photo bytes only as the hex of their first 24 bytes, and no fixture credential token | **In C2:** the ledger widened to the variants' keys, the bytes' `repr` and the fixture's credential tokens, with a reversal; any record that still claims more is corrected in C2's section |
+| F5 | should fix (outside the classes) | Migration 0008's 11 constraints have no malformed-write case, where Stage A's 0005 has one for each (the P11 plan's DB04, partial) | **In C2:** a suite case writing each of 0008's constraints malformed and refused by PostgreSQL by name, as `constraints.malformed_direct_writes_are_refused` does for 0005 |
+| N1 | nit | `glow_domain/media.py:85`'s `REVIEW_SUBJECT` is unused; the review's `no_variant` rejection is audited as `system:photo-check` | **Carried to P07.1** (G-02), the next change to `glow_domain/media.py`: whether the review step's rejection carries its own subject, or the constant goes |
+| N2 | nit (records) | Decision 2's "a constraint holds it within the grant": `media_grant_used_in_time` sets only an upper bound, as DM-58 says | **In C2's record:** the sentence corrected; Stage B's section stands as written |
+| N3 | nit (P11) | The server stores and returns whatever reference the port gives; "cannot be an address" rests on the contract's pattern, which only the suite checks | **Carried to P11** (PV04), in the P11 plan |
+| N4 | nit (P11) | An original never uploaded (removed while `upload_pending`) still has a `MediaObject` row that needs an acknowledgment; R2 may send no delete event for a missing key | **Carried to P11** (PV04, DB08), in the P11 plan |
+| N5 | nit (records) | The data model's F05 unit-of-work row: "no external effect" holds outside the process only; fixture calls write to process memory, which a rollback does not undo | **In C2:** the row says so |
+| N6 | nit (records) | The fixture credential's key scope and expiry are recorded but not enforced: `put` takes no credential | **In C2's record** |
+| N7 | nit (records) | `packages/contracts/README.md`: "a rejection likewise" implies a reject-without-A05 example the F05 test does not have | **In C2:** the sentence corrected |
+| N8 | nit | Positions only grow while a photo holds the top one; after about 30,000 uploads, `positions_exhausted` blocks uploads for good | **Carried to P11**, in the P11 plan |
+| N9 | nit (records) | The proof README's Stage A sentence "(DB04, for SV2's tables)" now reads as covering 0008's tables | **In C2:** the sentence names 0005's and, with F5, 0008's |
+
+**What the review could not run:** the mobile checks (no `apps/` path changed; CI ran them), the ordering and identity suites, and the Database job's shell steps as a whole. A subagent read the full CI logs and reported counts only. Nothing in the repository, on GitHub or in Notion changed.
+
+**C2's review:** C2 changes tests and records only (no non-test line), so a delta review follows it, reading every path C2 touches as it stands at C2's head, with this review's security focus (M05 S2). Codex reads the PR's final head as usual, then the Dev Manager's pre-merge read (DM-58 section 7).
