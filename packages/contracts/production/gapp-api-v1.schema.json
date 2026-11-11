@@ -3249,6 +3249,9 @@
             },
             {
               "$ref": "#/$defs/OwnAgeState"
+            },
+            {
+              "$ref": "#/$defs/CandidateCardPage"
             }
           ]
         }
@@ -4416,6 +4419,354 @@
           }
         }
       ]
+    },
+    "CandidateDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "looking_for",
+        "gender",
+        "orientation",
+        "relationship_status",
+        "area_name"
+      ],
+      "properties": {
+        "looking_for": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+            "not": {
+              "pattern": "[\\ud800-\\udfff]"
+            }
+          },
+          "uniqueItems": true
+        },
+        "gender": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value_ids",
+                "own_words"
+              ],
+              "properties": {
+                "value_ids": {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 50,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+                    "not": {
+                      "pattern": "[\\ud800-\\udfff]"
+                    }
+                  },
+                  "uniqueItems": true
+                },
+                "own_words": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/OwnWords"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "own_words": {
+                        "type": "null"
+                      }
+                    },
+                    "required": [
+                      "own_words"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "value_ids": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "orientation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value_ids",
+                "own_words"
+              ],
+              "properties": {
+                "value_ids": {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 50,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+                    "not": {
+                      "pattern": "[\\ud800-\\udfff]"
+                    }
+                  },
+                  "uniqueItems": true
+                },
+                "own_words": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/OwnWords"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "own_words": {
+                        "type": "null"
+                      }
+                    },
+                    "required": [
+                      "own_words"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "value_ids": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relationship_status": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value_ids"
+              ],
+              "properties": {
+                "value_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 50,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+                    "not": {
+                      "pattern": "[\\ud800-\\udfff]"
+                    }
+                  },
+                  "uniqueItems": true
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "area_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Text80"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "What a candidate's card shows beyond CandidateProfile (SV3 Stage A, D13 (a); OD-60; DM-60 Q12): the candidate's \"looking for\" values, always; gender, orientation and relationship status only while the candidate's display flag for that field is on, with their own words for gender and orientation (display only); and the name of the area they chose. Never a \"show me\" set, a filter, an area ID, an internal point, a distance, a birth date, a count or a reason."
+    },
+    "CandidateCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "profile",
+        "details"
+      ],
+      "properties": {
+        "profile_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "profile": {
+          "$ref": "#/$defs/CandidateProfile"
+        },
+        "details": {
+          "$ref": "#/$defs/CandidateDetails"
+        }
+      },
+      "description": "One card of a CandidateCardPage (SV3 Stage A, D13 (a)): the existing CandidateProfile, unchanged, with CandidateDetails. profile_id is the profile's own, repeated at the card's top level so that the page's items keep the contract's unique-key rule."
+    },
+    "CandidateCardPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "collection",
+        "batch_id",
+        "version",
+        "state",
+        "items",
+        "next_cursor",
+        "expires_at"
+      ],
+      "properties": {
+        "kind": {
+          "const": "candidate_card_page"
+        },
+        "collection": {
+          "type": "string",
+          "enum": [
+            "recommendations",
+            "discovery"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "batch_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "ready",
+            "empty",
+            "stale",
+            "unavailable"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/CandidateCard"
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])",
+              "not": {
+                "pattern": "[\\ud800-\\udfff]"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Instant"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "pending",
+                  "empty",
+                  "stale",
+                  "unavailable"
+                ]
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              },
+              "next_cursor": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "ready"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "description": "A page of a recommendations or broader-discovery batch, as cards (SV3 Stage A, D7 and D13 (a)): CandidatePage's fields and state rules, the collection named by its own field, and CandidateCard items. Additive: CandidatePage is unchanged, and this discriminator joins AppResponse as earlier additions did."
     }
   }
 }

@@ -271,6 +271,15 @@
       },
       "OwnAgeState": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/OwnAgeState"
+      },
+      "CandidateDetails": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CandidateDetails"
+      },
+      "CandidateCard": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CandidateCard"
+      },
+      "CandidateCardPage": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/CandidateCardPage"
       }
     }
   },
