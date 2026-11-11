@@ -17,15 +17,15 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-59, with "Deferred conditions"; the next consultation confirms DM-59's L1 to L7 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (11 November 2026, 22:38 UTC, App Manager 11)
+## Waiting checkpoint (11 November 2026, 23:41 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub Actions and Codex | Stage A's PR run on the manager branch's head, and Codex's review of it | No review prompt goes to Nathan; a Codex pass running 60 minutes with no result gets one `@codex review` (OD-53); a run that is never dispatched goes to the Dev Manager first (OD-58) |
+| App Manager 11 | Codex, then Nathan and the review session | Codex on the prompt's commit, then the exact-head review's report | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): Stage A's PR run and Codex's review; then the exact-head code and security review prompt with its threat model (V1 and V2 in its focus), the Dev Manager's pre-merge read (the CI policy's paragraph, the rewritten texts, V1, and the session's two procedure gaps), and the merge. Stage B's prompt only after that. The next consultation confirms DM-60's Q1 to Q20.
+1. **SV3** (OD-49): Stage A's exact-head review (PR45; the run of record 43113579295 passed); its dispositions; the Dev Manager's pre-merge read (the CI policy's paragraph, the rewritten texts, V1, and the session's two procedure gaps); the merge. Stage B's prompt only after that. The next consultation confirms DM-60's Q1 to Q20.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 

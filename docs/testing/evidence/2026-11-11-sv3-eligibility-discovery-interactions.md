@@ -296,3 +296,21 @@ Read with the GitHub tools (read only) and GitHub's public status feed, 21:12 to
   - **V2, statements per page.** 222 to 224 statements per page request, mostly SV2's `delivery_reference`, run once per photo after the page's transaction (four statements a photo; at most 50 cards and the media policy's live photos). The count is bounded, as D7 requires, and DB11 measures it in P11. A nit, for the review to weigh.
 - **The run of record:** none yet. Run 43096394432 on `ad9ff08` is still `queued` with no jobs (read between 22:29 and 22:38 UTC), and run 43100390225 on `1128bf7` checked no code (above). Under the manager workflow's step 5 ("Push runs as evidence"), the run of record is the pull-request run on the manager branch's head. That head's non-Markdown paths are byte-identical to `ad9ff08`'s. No re-run is asked of anyone (OD-58).
 - **The session's process notes:** it pushed `1128bf7` before the code run finished, at Nathan's word, on two wrong statements of its own, and offered Nathan a re-run. All are recorded above by the session. The two procedure gaps it names go to the Dev Manager with the pre-merge read: Foundation has no `workflow_dispatch` trigger, and a Markdown-only push certifies no code.
+
+### The run of record for Stage A (PR45)
+
+- **Pull-request run [43113579295](https://github.com/amthorn78/glow-dating-app/actions/runs/43113579295)** on `88f9299` (PR45's head; its non-Markdown paths byte-identical to `ad9ff08`), 22:39:24 to 22:47:38 UTC.
+  - **Jobs:** all eight passed: Change scope, API checks, Mobile checks, API mobile smoke, API artifact checks, Stream proof checks, Database proof checks and the Foundation gate.
+  - **The gate:** it printed `Application checks passed`.
+  - **Retries:** none fired; the setup-python retry steps were skipped, and the Chromium install passed at the first attempt.
+- **The discovery phase** (read in the job's log by App Manager 11):
+  - the three other markers were refused on `glow_discovery_proof`, and the migrations applied from zero;
+  - `[discovery] cases: 32/32 passed in 52.4 s`;
+  - both scans clean: "1099 secrets held; 0 found in 647 log records, 66 writes and the results JSON", and "603 member values held … 0 found";
+  - statements per page request: 224, 223 and 222;
+  - the five plans at 1,000 members: pair 0.131 ms; recheck of a page of 50, 1.845 ms; broader selection 25.274 ms; recommendations selection 27.884 ms; viewer 0.045 ms (the disposable setup's measurement);
+  - `discovery phase: 53 s (the job's timeout is 30 minutes)`;
+  - the second run refused ("refusing a used database"), with its six row counts unchanged (1097 1097 1094 47 274 1368);
+  - `sv3-discovery-results` uploaded after the scan passed (artifact 13897074594).
+- **The other suites** in the same job passed: the ordering suite, the identity suite and the profile suite.
+- **Codex** reviewed `88f9299` at 22:42:36 UTC with no findings and nothing unresolved.

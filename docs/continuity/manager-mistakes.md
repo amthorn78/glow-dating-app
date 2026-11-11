@@ -163,6 +163,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-02 | 11 Nov 2026 | follow-through | Correcting Implementation Control's "Next items" bullet, replaced only its opening and left "P06.2-F (now, PR40)" further on in the same bullet; the readback searched for the edited strings only. A repeat of AM8-11's mechanism | Dev Manager 4, DM-60 section 18 |
 | AM11-03 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `fe1b6ba` gave 19:14 UTC, written before the clock was read; the clock read 19:12 (AM10-17's mechanism) | App Manager 11, when the commit's own clock line printed |
 | AM11-04 | 11 Nov 2026 | follow-through | The batch at `d35b0ba` pushed the handoff at 5,198 bytes, over its 5 KB limit, with its "Branches and PRs" section still at App Manager 10's handover (17:09 UTC); both corrected in the next commit, before Stage A's PR was opened, which cancelled the push run on `d35b0ba` (not a run of record) | App Manager 11, reading the commit's byte count |
+| AM11-05 | 11 Nov 2026 | follow-through | After opening PR45 at 22:39 UTC, told Nathan "NOTHING NEEDED" and set nothing to wake the manager when the run and Codex finished (22:47 and 22:42); the review prompt waited until Nathan asked at 23:37. A repeat of AM7-09 | Nathan: "still waiting?" |
+| AM11-06 | 11 Nov 2026 | accuracy | The review prompt's first TypeSafe action text counted its numbered items as sixteen; there are twenty. Caught before the reading was used; re-sent with the true count, the same cell, both readings recorded | App Manager 11, comparing the text with the prompt |
 
 ## App Manager 2
 
@@ -1111,6 +1113,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-05 — A wait with nothing set to end it (follow-through)
+
+- **What happened:** after opening PR45 at 22:39 UTC, the manager told Nathan "NOTHING NEEDED" and that it was waiting for the run and Codex. It set no wake-up, background watch or check-in. The run passed at 22:47 and Codex finished at 22:42, but nothing happened until Nathan asked "still waiting?" at 23:37.
+- **Caught by:** Nathan.
+- **Effect:** the exact-head review prompt reached Nathan about 50 minutes later than it could have.
+- **Correction:** the run and Codex were read at once, and the prompt written.
+- **Prevention:** AM7-09's, now a checklist step: a wait on CI or Codex ends the turn only after a background watch or a scheduled wake-up is set for it. The message to Nathan names that watch and the time it fires.
 
 ### AM11-02 — A stale phrase left in the bullet being corrected (follow-through)
 
