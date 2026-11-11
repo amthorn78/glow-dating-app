@@ -1989,3 +1989,44 @@ The records push run 42992446669 on `9740196` passed.
 **Integration:** the manager branch was fast-forwarded from `885f65b` to `9740196`.
 
 **What follows:** the delta review of C2 (M05 S2: C2 changes no non-test line), which reads every path C2 touches at `5bcbe54`, with the exact-head review's security focus. Then Codex on the final head, the Dev Manager's pre-merge read (DM-58 section 7, with C2's data-model sentence), the PR run, and the merge.
+
+## Delta review of Stage B's correction C2 (code head `5bcbe54`)
+
+- **The session:** started by Nathan from C2's delta review prompt, revision 1, at `c4324d39cd6f0b6166f8d5d7a12b5cad2001eb29` (`docs/ephemeral/2026-11-11-sv2-stage-b-c2-delta-review-prompt.md`). It reported on 11 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*`; the three expected AWS names and no other `AWS_*` name, their values never read or passed; the session started `dockerd` in its sandbox;
+  - the start gate passed, with one merge base, `4dc2061`, and no non-Markdown path differing from `5bcbe54`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`, over 65 paths.
+- **What it ran,** in a scratch copy of `5bcbe54`:
+  - the API's checks: `manage.py check`; 564 tests `OK`; Ruff; 140 files formatted; mypy clean on 81 files;
+  - the contract tests (49) and the proof's offline tests (228), Ruff and mypy (59 files);
+  - eleven offline reversals of its own (A1 to A4, B1 to B3 with B2b, C1 to C3);
+  - informational, on a throwaway PostgreSQL 17.11 under P06.DB's D4: one suite run with A3 and a credential token logged in the 0008 case, `68/69` with `media.a_hold_stops_the_checks_approval` failing at its unchanged snapshot, `profile value scan: FOUND (…; 1 found)` with the secret scan clean, `PROFILE VERDICT: FAIL`; the container, its credential files and `dockerd` removed or stopped afterwards.
+- **What it read:** runs 42990527042 (69/69 in 99.8 s), 42992446669 (records only: Change scope and the gate passed, the six application jobs skipped) and PR44's pull-request run 43021936005 on `c4324d3` (all eight jobs passed, `Application checks passed`, 69/69 in 75.0 s, both scans clean, the second run refused). In both Database job logs, no line holds `fixture-variant`, a `delivery-` or `grant-` reference, a PNG signature, a private-key header or PostgreSQL `DETAIL` text; the other six jobs' logs were not scanned for these. No workflow prints `docker logs`.
+- **The verdict: approve with nits.** No blocking or should-fix finding, and none in a correction class. F1 to F5 are closed, each new check fails for the edit it names, and the runs match the records. Nothing in the repository, on GitHub or in Notion changed.
+- **Its statements:**
+  - **F1:** A1 (an audit row in the held branch), A2 (the hold asked after `transition`) and A4 (the answer kept, the branch falling through) each fail the offline check; A3 passes offline and fails the suite case (N-d). No plausible edit passes both.
+  - **F2:** the four `POINTER_READS` entries are reads; no model has a foreign key to `PolicyRevision`, so no lock comes through a join; B3 (`getattr(m, "PolicyRevision")`) fails the new test, though C2's item 2 lists `getattr` among the limits.
+  - **F3:** every `MediaAsset` creation but `request_upload`'s is flagged, and C3 (`md.UPLOAD_PENDING` to `md.APPROVED`) fails. Two of the seven entries set the state their writer decides rather than a fixed initial state (`AccountAgeState`, `assurance.state.value`; `ConsentDecision`, accepted or withdrawn), so C2's "each its own model's initial state" is loose for them.
+  - **F4:** one store instance (`default_storage()`); credentials and references are never removed; `watch_store` and `hold_media` run around every case and a failure to gather fails it; nothing C2 added prints a value; the 24-byte PNG prefix includes the IHDR chunk and the dimensions, and values under five characters are skipped, so benign matches are unlikely.
+  - **F5:** 0008 declares 13 constraints (deviation 1 confirmed); read against the model and the migration, each of the 21 writes breaks exactly one; `SHADOWED` is right; a refusal's text is matched and discarded.
+  - **The records:** N2, N6, N7 and N9 hold against the code and the test, but for N-c; N5's sentence is true in substance (N-e); C2's section and the manager's verification match the code, the counts and the runs.
+  - **No test weakened;** `CASE_COUNT` 67 to 69 and the Stage B plan count 14 to 15 match the two cases; the scope is exactly the six test and suite paths.
+
+**The review's findings and the manager's dispositions** (step 6, "Fix or carry, by rule"). Every finding is a nit, outside the correction classes, so under rule (b) each is a recorded follow-up; nothing changes in tests or code before the merge:
+
+| # | Finding | Disposition |
+|---|---|---|
+| N-a | F3's recorded limits are incomplete: an async `acreate(..., state="approved")` and a clone (`pk = None`, `save(force_insert=True)`) pass every offline check, as they pass the older state-write guard (C1, C2). No code in `glow_profiles` or the age port uses either | **Recorded here,** as C2's item 3's further limits; **carried** to the next change to `test_profile_recompute.py` (the carried-items file) |
+| N-b | F2's recorded limits are incomplete: an escaped literal (`"glow_persistence_policy\x72evision"`) and an allowlisted line's text repeated in the same function, with the lock in a helper, pass (B1, B2b); `POINTER_READS` is compared as a set. `getattr` on the models module is caught (B3), so it is not a limit | **Recorded here,** as C2's item 2's further limits and its one correction; **carried** to the next change to `test_profile_pointer_order.py` |
+| N-c | The proof README's C2 sentence and `profile_support.py`'s module docstring say the ledger holds each object's bytes "as their hex and their `repr`"; it holds the start of each, the first 24 bytes, which any whole print contains | **The README corrected** in this batch ("the start of each object's bytes … their first 24 bytes, which any whole print of either contains"); the docstring, a code path, **carried** to the next change to `profile_support.py` |
+| N-d | F1's offline write list omits `.update(`, `bulk_create` and `events.emit(`, so an `.update(review_ref=…)` before the hold's return passes offline (A3); the suite case catches it | **Carried** to the next change to `test_profile_media.py` |
+| N-e | The data model's F05 unit-of-work row lists the fixture store's memory writes without its `reads` log, which `read` appends inside the transaction (`media_fixtures.py:99-104`) | **To the Dev Manager's pre-merge read** (DM-59), with words recommended, since the row is on its list |
+| N-f | `profile_suite.py`'s value-scan line names only the member values' kinds while its count (813) includes the photos' values (C2's deviation 4) | **Carried** to the next change to `profile_suite.py`; already recorded in C2's section and the proof README |
+
+**C2's records, as the review corrects them.** C2's section stands as written; these readings take precedence over it:
+- item 2's limits also include an escaped table literal and a repeated allowlisted line with the lock in a helper; `getattr` on the models module is caught;
+- item 3's limits also include an async create and a clone saved with `force_insert`; two of `CREATIONS_WITH_STATE`'s entries set a state their writer decides;
+- the ledger holds the start of each object's bytes, as item 4 says.
+
+**What follows:** the Dev Manager's pre-merge read (DM-59: DM-58 section 7's list, C2's data-model sentence with N-e, J1 to J9 and C1 as applied, the manager workflow at `52ae066`, the carried nits and the merge); then the PR run and Codex on the final head, the checklist in PR44's description, and the merge.
