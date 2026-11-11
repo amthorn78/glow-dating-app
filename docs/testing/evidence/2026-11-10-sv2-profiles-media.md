@@ -1496,3 +1496,64 @@ Each reversal is a temporary edit of the code head `d8f1bad`, applied once by a 
 14. **N5's pin** holds a long binding by its first 48 characters and its whole text's SHA-256, to keep lines readable.
 15. **DM-52 to DM-56 were read through a subagent** of this session for their Stage B content (above); DM-57 and DM-56 section 6 directly.
 16. **No stop rule was met:** no path outside the owned paths changed (`glow_api`, `glow_chat`, `glow_identity`, `apps/`, `scripts/`, the workflow, the `Dockerfile`, environment templates, requirement files and the CI policy are unchanged); no dependency or pin changed; no provider, R2, Cloudflare or other service was called and no credential used; no DTO changed and no registry entry but F05's `approve` and `reject`; every role is one the oracle authorizes; the served runtime imports none of the new code (`test_profiles_sealed_runtime`); `glow_chat`'s writers are called unchanged.
+
+### Manager verification of Stage B (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff 854c214 e7d6616` (the prompt's start to the records head) was read for its scope, and in part for its content. It has 35 paths, each owned by the brief, revision 7. Of these, 29 are non-Markdown files (+4,219 lines, −65) at the code head `d8f1bad`, and 19 of those are outside the tests (+2,935). The other six are the Markdown files in the records commit `e7d6616`.
+- **Unchanged:** `glow_api`, `glow_chat`, `glow_identity`, `apps/`, `scripts/`, `.github/`, the `Dockerfile`, every environment template, requirement file and dependency lock. No generated contract output and no DTO changed.
+- **The registry:** the only lines changed in `flows-v1.json` are F05's `approve` and `reject` roles, `moderator` to `system` (OD-61).
+- **D19:**
+  - `settings_store._hold` records each pointer on the transaction's `Tx`, and raises `PointerOrderError` when a held name sorts after the new one.
+  - `read_shared` (`FOR SHARE`) and `publish` (`select_for_update`) are the only pointer lock sites. No module outside `settings_store` locks a `PolicyRevision` row.
+  - `tx.run` refuses nesting, so each transaction has one `Tx`.
+- **Read against D10:**
+  - object keys are opaque hex;
+  - a completion is adopted once, within its grant's expiry and the byte limit of the grant's own policy version;
+  - processing happens at `review`, and an upload with no variant passes the seam with its original and is rejected (`no_variant`);
+  - the hold port is asked before approval, delivery and purge;
+  - `removed` follows the acknowledgment of every object;
+  - delivery is only of an approved, unrestricted, unremoved, unheld variant.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`) ran with `python3 -I` and `--base 4dc2061… --head e7d6616… --merge-base`, after the fast-forward. It returned:
+- full scope, `behavior-or-empty`;
+- the PR's whole diff (58 paths), the manager's records since PR43 included;
+- one merge base, `4dc2061`.
+
+**Re-runs.** These ran in a scratch copy of the code head's whole tree (`git archive d8f1bad`), in the clean environment, with hash-locked installs:
+- **API:** `Found 554 test(s)` … `OK`; `System check identified no issues (0 silenced).`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the static check agreed.
+- **The proof's offline tests:** `Ran 226 tests` … `OK`; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline.** Each was applied in the scratch copy, and the file was restored afterwards. Each ran against `tests.test_profile_pointer_order` and `tests.test_profile_media` (22 tests):
+- **M1:** `_hold`'s raise removed. `test_a_lock_out_of_order_is_an_internal_error_answered_provider_unavailable` fails (`FAILED (failures=1)`).
+- **M2:** the review calls the seam only when processing made a variant. The two modules pass (`Ran 22 tests`, `OK`), so no offline test sees it.
+  - The session's `SEAM.an-upload-with-no-variant-skips-the-seam` shows the profile suite's case `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected` failing at `the seam was given the original` (`profile_cases.py:3119`).
+  - That result comes from a local database run, which is iteration, not evidence.
+- **M3:** the approval's hold check removed. Only `test_every_photo_state_write_goes_through_the_registrys_table` errors, because its anchor is gone, as the session recorded for `CHECK.an-approval-without-the-hold-port`. No offline assertion is on the hold. The suite's case fails at `the approval asked the hold port first` (`profile_cases.py:3074`).
+
+After the restore, both files' SHA-256 matched `d8f1bad`'s, and the 22 tests pass. For the seam's no-variant path and the approval's hold, the profile suite on PostgreSQL is the only check that asserts the behaviour. The run of record ran both cases and passed. This goes to the exact-head review as a coverage note, not as a defect.
+
+**The run of record,** read with the GitHub tools: push run 42947095725 on `d8f1bad`.
+- All eight jobs were `success`, and every DM-41 retry step was `skipped`.
+- The Database proof checks job:
+  - the profile database refused both other markers;
+  - migrations 0008 and 0009 applied from zero, and `No changes detected`;
+  - `[profile] cases: 64/64 passed in 81.7 s`, with `profile secret scan: clean (1381 secrets held; 0 found in 902 log records, 152 writes and the results JSON)` and `profile value scan: clean (511 member values held …)`;
+  - `PROFILE VERDICT: PASS`, and `profile phase: 83 s`.
+- The second profile run was refused (`exit status: 1`), with the counts `123 123 99 44 1510 986` unchanged.
+- `sv2-profile-results` is 6,079 bytes, and `no proof container remains`.
+
+The records push run 42949445496 on `e7d6616` passed. Change scope and the gate were `success`, and the six application jobs were `skipped`: the change since the code head is ordinary documentation.
+
+**The session's sixteen decisions:**
+- **To the Dev Manager (DM-58):**
+  - 1: the collection's version is derived;
+  - 2: a grant's expiry is judged by the store's upload time;
+  - 3: `removed` photos are outside the collection's 20 entries and its read, where P04.3 kept removed tombstones within that bound (`private-media-fixtures.md`, "Provisional development policy and byte checks");
+  - 6: the store's calls are made inside the transaction, where the data model's unit-of-work table puts provider work after commit;
+  - 10: the owner's `MediaLifecycle` shows an approved photo's reference whatever a hold says.
+- **Settled here:**
+  - 4 follows D10's words and the carried item for P07 (`carried-to-later-items.md`: a photo's restriction is cleared only by the staff decision that closes the report);
+  - 5 follows the brief's check list ("approval, delivery and a removed asset's purge each ask the hold port first");
+  - 7, 8, 9 and 11 to 16 are within the brief, and each is recorded above.
