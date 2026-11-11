@@ -1950,3 +1950,42 @@ The brief's "Stage B, correction C2 (the exact-head review)", six items, tests a
 6. **Docker:** the sandbox had `dockerd` installed but not running; the session started it locally to run D4's recipe with the pinned image.
 7. **The three record corrections (item 6) are in the records commit,** with this section, after the run of record; the code commit holds tests only.
 8. **No stop rule was met:** no path under `glow_profiles`, `glow_domain`, `glow_persistence`, `glow_chat`, `glow_identity` or `glow_api` changed, nor a DTO, registry entry, workflow, lock file or dependency; every new check passed on the code at `7538c76` as it stands, with no temporary edit; every reversal's temporary edit of code was undone and checked by SHA-256. `CASE_COUNT` changed 67 to 69 for the brief's two cases, with the offline pin, and `ProfilePlanTests`' Stage B count 14 to 15 for the hold case. No test was weakened or deleted.
+
+### Manager verification of Stage B's correction C2 (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff 885f65b 9740196` was read for its scope and its code: 10 paths, each among C2's owned paths.
+- **The code head `5bcbe54`** changes six paths, each a test or the proof's suite: `profile_cases.py`, `profile_support.py` and `tests/test_profile_offline.py` in the proof; `test_profile_media.py`, `test_profile_pointer_order.py` and `test_profile_recompute.py` in `services/api/tests`. No path under `glow_profiles`, `glow_domain`, `glow_persistence`, `glow_chat`, `glow_identity` or `glow_api` changed, and no model, migration, DTO, registry entry, workflow, lock file or dependency.
+- **The records commit `9740196`** changes four Markdown paths: `data-model.md` (N5), this record, `packages/contracts/README.md` (N7) and `proofs/postgres-ordering/README.md` (N9).
+- **The deviations:**
+  - 1 to 3 widen the brief's checks (all 13 of 0008's declared constraints and 8 catalog constraints; creations that set a state whatever their receiver; grant and delivery references and a `repr`'s start in the ledger). Each is accepted.
+  - 4 goes to the delta review as a nit: `profile_suite.py`'s value-scan line names only the member values' kinds, while its count (813) now includes the photos' values.
+  - 5, 7 and 8 are within the brief.
+  - 6 is recorded: the session started `dockerd` in its sandbox for D4's local runs, which are iteration, not evidence.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`), with `python3 -I` and `--base 4dc2061… --head 9740196… --merge-base`, after the fast-forward: full scope, `behavior-or-empty`; the PR's whole diff (65 paths); one merge base, `4dc2061`. The manager workflow is unchanged since `52ae066` (DM-58 section 7).
+
+**Re-runs.** In a scratch copy of the code head's tree (`git archive 5bcbe54`), in the clean environment, with hash-locked installs:
+- **API:** `System check identified no issues (0 silenced).`; `Ran 564 tests` … `OK`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the contract tests `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 228 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline** (`tests.test_profile_media`, `tests.test_profile_pointer_order`, `tests.test_profile_recompute` and `tests.test_profiles_offline`, 55 tests). Each was restored afterwards and checked against `5bcbe54` by SHA-256. Each fails exactly C2's new test, which the checks before C2 passed:
+- **M7:** `run_check` asks the hold port and ignores its answer (`glow_profiles/media.py`): one failure, `RouteTests.test_a_hold_returns_before_the_approval_writes_anything`.
+- **M8:** an approved `MediaAsset` created in `glow_profiles/staff.py`: one failure, `CallSiteTests.test_a_photo_is_created_only_upload_pending`.
+- **M9:** a `PolicyRevision` queryset bound to a variable and locked in `glow_profiles/operations.py`: one failure, `NothingElseLocksAPointerTests.test_nothing_but_the_store_and_the_model_mentions_a_pointer`.
+
+After the restore, the 55 tests pass, and `media.py` (`491c734b25de6013…`), `staff.py` (`b642194b07e83033…`) and `operations.py` (`47f7235bb7a81eca…`) match `5bcbe54`.
+
+**The run of record,** read with the GitHub tools: push run 42990527042 on `5bcbe54`. All eight jobs `success`; every DM-41 retry step `skipped`. The Database proof checks job:
+- `[profile] cases: 69/69 passed in 99.8 s`, with both new cases passing (`media.a_hold_stops_the_checks_approval`, and `constraints.malformed_media_writes_are_refused` with its 21 writes);
+- `profile secret scan: clean (1447 secrets held; …)` and `profile value scan: clean (813 member values held …)`;
+- `PROFILE VERDICT: PASS`, `profile phase: 100 s`;
+- the second profile run refused (exit status 1), the counts `129 129 100 44 1568 1009` unchanged;
+- `sv2-profile-results` 6,396 bytes; `no proof container remains`.
+
+The records push run 42992446669 on `9740196` passed.
+
+**Integration:** the manager branch was fast-forwarded from `885f65b` to `9740196`.
+
+**What follows:** the delta review of C2 (M05 S2: C2 changes no non-test line), which reads every path C2 touches at `5bcbe54`, with the exact-head review's security focus. Then Codex on the final head, the Dev Manager's pre-merge read (DM-58 section 7, with C2's data-model sentence), the PR run, and the merge.
