@@ -6,8 +6,12 @@ It signs members in through SV1's identity routes with the identity suite's own 
 mail's codes, and Django's test client. Then:
 
 - ``ValueLedger``: every member value the run sends that must appear in no output (coordinates,
-  birth dates, times and places, own words, sensitive field values). It holds them only to show
-  that none is ever logged, printed or written; it never prints one.
+  birth dates, times and places, own words, sensitive field values) and, since SV2 Stage B, the
+  photos' values: grant and delivery references, every object key (the originals' and, since
+  correction C2, the variants'), the fixture store's upload credentials' tokens, and each
+  object's bytes as their hex and their ``repr`` (``add_bytes``; ``ObservedObjects``;
+  ``ProfileContext.hold_media``). It holds them only to show that none is ever logged, printed
+  or written; it never prints one.
 - ``ProfileContext``: the member routes, each served body checked against its DTO with the
   contract's own schema (``schema_check.check_body``), so an extra field fails; and helpers that
   drive a member to each state through the routes.
@@ -149,6 +153,19 @@ class ValueLedger:
             if value not in self._values:
                 self._values[value] = forms(value)
 
+    def add_bytes(self, data: bytes) -> None:
+        """SV2 Stage B, correction C2 (the exact-head review's F4): an object's bytes in each form
+        the code could print them: the hex of their first 24 bytes, which any print of their hex
+        starts with; their ``repr`` up to the end of their first 24 bytes, without the closing
+        quote, which any print of their ``repr`` starts with; and, for printable ASCII bytes (the
+        fixture's synthetic variant), their text."""
+        data = bytes(data)
+        start = repr(data[:24])
+        for value in (data.hex()[:48], repr(data)[: len(start) - 1]):
+            self.add(value)
+        if data.isascii() and data.decode("ascii").isprintable():
+            self.add(data.decode("ascii"))
+
     def count(self) -> int:
         with self._lock:
             return len(self._values)
@@ -161,6 +178,25 @@ class ValueLedger:
         with self._lock:
             held = tuple(self._values.values())
         return sum(1 for found in held if any(form in text for form in found))
+
+
+class ObservedObjects(dict[str, bytes]):
+    """The fixture store's objects (SV2 Stage B, correction C2; F4), observed as they are written:
+    each key and each object's bytes join the ledger when they are set, so an object written and
+    deleted within one case (a variant purged, say) is still held. The store sets every object by
+    item (``write``, ``put``, and a case's own setup), never by ``update`` or ``setdefault``."""
+
+    def __init__(self, held: dict[str, bytes], ledger: ValueLedger) -> None:
+        super().__init__(held)
+        self.ledger = ledger
+        for key, data in held.items():
+            ledger.add(key)
+            ledger.add_bytes(data)
+
+    def __setitem__(self, key: str, data: bytes) -> None:
+        self.ledger.add(key)
+        self.ledger.add_bytes(data)
+        super().__setitem__(key, data)
 
 
 @dataclass
@@ -486,6 +522,39 @@ class ProfileContext:
         return list(self.get(member, COMPLETION, "own_completion")["missing"])
 
     # -- photos (SV2 Stage B; D10) ------------------------------------------------------------
+
+    def watch_store(self) -> None:
+        """Observe the fixture store's objects (``ObservedObjects``; C2, F4), once per run."""
+        from glow_profiles.media_fixtures import default_storage
+
+        storage = default_storage()
+        if not isinstance(storage.objects, ObservedObjects):
+            storage.objects = ObservedObjects(storage.objects, self.values)
+
+    def hold_media(self) -> None:
+        """SV2 Stage B, correction C2 (the exact-head review's F4), after each case: every object
+        key the run made, the original's and each variant's, from their rows and the fixture
+        store; every grant reference; every upload credential the store issued, its key and its
+        token; every delivery reference and the key it was issued for; and every object's bytes
+        still in the store (``ObservedObjects`` holds the rest as they are written)."""
+        from glow_persistence.models import MediaObject, MediaUploadGrant
+        from glow_profiles.media_fixtures import default_storage
+
+        storage = default_storage()
+        for key in MediaObject.objects.values_list("key", flat=True):
+            self.values.add(key)
+        for key, reference in MediaUploadGrant.objects.values_list("object_key", "grant_ref"):
+            self.values.add(key)
+            self.values.add(reference)
+        for credential in list(storage.credentials.values()):
+            self.values.add(credential.key)
+            self.values.add(credential.token)
+        for reference, key in list(storage.references.items()):
+            self.values.add(reference)
+            self.values.add(key)
+        for key, data in list(storage.objects.items()):
+            self.values.add(key)
+            self.values.add_bytes(data)
 
     def media(self, member: Member) -> dict[str, Any]:
         return self.get(member, MEDIA, "media_collection")

@@ -8,7 +8,8 @@ database.
 - the fixture adapters: the check approves nothing, there is no hold and no detector, the store
   authenticates its own events only, and processing reads only the key it is given;
 - the projections: only an approved variant's reference, the closed DTOs unchanged;
-- no member route reaches a provider, system or staff step.
+- no member route reaches a provider, system or staff step;
+- the check's approval returns at a hold before it writes anything (correction C2, F1).
 
 The profile suite on the disposable PostgreSQL drives each writer through the routes and the
 ports.
@@ -402,6 +403,74 @@ class RouteTests(unittest.TestCase):
             and getattr(node.args[2], "value", None) == "approve"
         ]
         self.assertEqual(len(approvals), 1)
+
+    def test_a_hold_returns_before_the_approval_writes_anything(self) -> None:
+        # SV2 Stage B, correction C2 (the exact-head review's F1): the approval's held branch is
+        # an ``if`` on the hold port's answer whose one statement returns ``held``, and it comes
+        # before every write of the approval: its audit row, the delivery reference, the
+        # transition and the recompute. The port asked and its answer ignored fails here; the
+        # profile suite's ``media.a_hold_stops_the_checks_approval`` shows it on PostgreSQL.
+        tree = modules()["media.py"]
+        run_check = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "run_check"
+        )
+        body = next(
+            node
+            for node in run_check.body
+            if isinstance(node, ast.FunctionDef) and node.name == "body"
+        )
+        approving = [
+            index
+            for index, statement in enumerate(body.body)
+            if isinstance(statement, ast.If)
+            and ast.unparse(statement.test) == "decided.decision == 'approve'"
+        ]
+        self.assertEqual(len(approving), 1)
+        branch = body.body[approving[0]]
+        assert isinstance(branch, ast.If)
+        guards = [
+            index
+            for index, statement in enumerate(branch.body)
+            if isinstance(statement, ast.If)
+            and ast.unparse(statement.test) == "adapters.hold.held(asset.id)"
+        ]
+        self.assertEqual(len(guards), 1)
+        guard = branch.body[guards[0]]
+        assert isinstance(guard, ast.If)
+        self.assertEqual(
+            [ast.unparse(statement) for statement in guard.body],
+            ["return Result('no_change', reason='held')"],
+        )
+        self.assertEqual(guard.orelse, [])
+        # Nothing before the guard writes, in the check's body or in the approval's branch; and
+        # every write of the approval comes after it.
+        earlier = "\n".join(
+            ast.unparse(statement)
+            for statement in [*body.body[: approving[0]], *branch.body[: guards[0]]]
+        )
+        later = "\n".join(ast.unparse(statement) for statement in branch.body[guards[0] + 1 :])
+        for write in (
+            "_decision_audit(",
+            "transition(",
+            "delivery_reference(",
+            "recompute.recompute(",
+            ".save(",
+            ".create(",
+        ):
+            with self.subTest(write=write):
+                self.assertNotIn(write, earlier)
+        for write in (
+            "_decision_audit(tx, asset, 'approve'",
+            "transition(tx, asset.id, 'approve'",
+            "adapters.storage.delivery_reference(variant.key)",
+            "recompute.recompute(tx, account_id, now",
+        ):
+            with self.subTest(write=write):
+                self.assertIn(write, later)
+        # The port is asked once in the check, at this guard only.
+        self.assertEqual(ast.unparse(body).count("adapters.hold.held("), 1)
 
 
 class AccountStateTests(unittest.TestCase):

@@ -327,6 +327,95 @@ def _profile_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str
     return found
 
 
+# SV2 Stage B, correction C2 (the exact-head review's F3): the one creation of a photo, the
+# grant's new asset ``upload_pending``, by file, enclosing definitions and statement. Every other
+# state a photo reaches is ``transition``'s (``NOT_A_PROFILES_STATE``).
+ASSET_CREATE = (
+    "glow_profiles/media.py",
+    "request_upload.body",
+    "MediaAsset.objects.create(account_id=account_id, provider=adapters.storage.name,"
+    " storage_ref=key, position=position, state=md.UPLOAD_PENDING)",
+)
+# Every creation in ``glow_profiles`` and the age port that sets a ``state``, whatever its
+# receiver is named, by file, enclosing definitions, the call and the state it sets: a
+# ``create``, ``get_or_create`` or ``update_or_create``, or a class built with ``state=`` (or
+# ``**``). Each sets its own model's initial state, and only the photo's is ``MediaAsset``'s.
+CREATIONS_WITH_STATE = {
+    ("glow_identity/age.py", "OrmAgeAssurance.record", "AccountAgeState.objects.create")
+    + ("assurance.state.value",),
+    ("glow_profiles/events.py", "emit", "OutboxEvent.objects.create", "'pending'"),
+    ("glow_profiles/idempotency.py", "store", "IdempotencyRecord.objects.create", "'completed'"),
+    ("glow_profiles/media.py", "request_upload.body", "MediaAsset.objects.create")
+    + ("md.UPLOAD_PENDING",),
+    ("glow_profiles/operations.py", "save_birth_input.body", "BirthInput.objects.create")
+    + ("'pending'",),
+    ("glow_profiles/operations.py", "save_profile.body", "Profile.objects.create")
+    + ("'incomplete'",),
+    ("glow_profiles/operations.py", "decide_sensitive_consent.body")
+    + ("ConsentDecision.objects.create", "'accepted' if accepting else 'withdrawn'"),
+}
+CREATING = {"create", "get_or_create", "update_or_create", "bulk_create"}
+
+
+def _enclosing(tree: ast.Module, line: int) -> str:
+    """The classes and functions that enclose ``line``, outermost first, dotted."""
+    holding = sorted(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+            and node.lineno <= line <= (node.end_lineno or line)
+        ),
+        key=lambda node: node.lineno,
+    )
+    return ".".join(node.name for node in holding) or "<module>"
+
+
+def _asset_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str]]:
+    """Every ``create``, ``get_or_create``, ``update_or_create`` or ``bulk_create`` on a receiver
+    naming ``MediaAsset``, and every ``MediaAsset(...)`` built, in the scanned modules (F3)."""
+    found = []
+    for name, tree in trees.items():
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            creates = (
+                isinstance(func, ast.Attribute)
+                and func.attr in CREATING
+                and "MediaAsset" in ast.unparse(func.value).replace("(", ".").split(".")
+            )
+            builds = ast.unparse(func).split(".")[-1] == "MediaAsset"
+            if creates or builds:
+                found.append((name, _enclosing(tree, node.lineno), ast.unparse(node)))
+    return found
+
+
+def _creations_with_state(trees: dict[str, ast.Module]) -> set[tuple[str, ...]]:
+    """Every creation that sets a ``state`` (or unpacks ``**``), whatever its receiver: a
+    ``create``, ``get_or_create`` or ``update_or_create``, or a call of a name that starts with
+    a capital (a class built), by file, enclosing definitions, call and the state it sets (F3)."""
+    found = set()
+    for name, tree in trees.items():
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            last = ast.unparse(node.func).split(".")[-1]
+            if not (last in CREATING - {"bulk_create"} or last[:1].isupper()):
+                continue
+            for keyword in node.keywords:
+                if keyword.arg in ("state", None):
+                    found.add(
+                        (
+                            name,
+                            _enclosing(tree, node.lineno),
+                            ast.unparse(node.func),
+                            ast.unparse(keyword.value),
+                        )
+                    )
+    return found
+
+
 class RuleTests(unittest.TestCase):
     def test_the_rule_and_the_registry_entries(self) -> None:
         seen = last_json(
@@ -499,6 +588,46 @@ class CallSiteTests(unittest.TestCase):
         # SV2 Stage B (the delta review's N2): no profile is created, built or bulk-created
         # anywhere else in ``glow_profiles`` or the age port, whatever the receiver is named.
         self.assertEqual(_profile_creations(trees), [PROFILE_CREATE])
+
+    def test_a_photo_is_created_only_upload_pending(self) -> None:
+        # SV2 Stage B, correction C2 (the exact-head review's F3): the state-write guard above
+        # reads assignments and updates, so a ``MediaAsset.objects.create(state=...)`` or a
+        # ``MediaAsset(state=...)`` outside ``transition`` passed it. A photo is created once,
+        # by the grant, ``upload_pending``; and no creation anywhere in ``glow_profiles`` or the
+        # age port sets a state but the allowlist's, whatever its receiver is named.
+        trees = scanned_modules()
+        self.assertEqual(_asset_creations(trees), [ASSET_CREATE])
+        self.assertEqual(_creations_with_state(trees), CREATIONS_WITH_STATE)
+        photos = [entry for entry in CREATIONS_WITH_STATE if "MediaAsset" in entry[2]]
+        self.assertEqual(
+            photos, [(*ASSET_CREATE[:2], "MediaAsset.objects.create", "md.UPLOAD_PENDING")]
+        )
+
+    def test_the_creation_guard_sees_each_spelling(self) -> None:
+        # Each spelling F3 names, as ``_asset_creations`` and ``_creations_with_state`` see it.
+        tree = ast.parse(
+            "def restrict(asset_id):\n"
+            "    MediaAsset.objects.create(state='approved')\n"
+            "    models.MediaAsset(state='approved').save()\n"
+            "    MediaAsset.objects.get_or_create(pk=asset_id, state='approved')\n"
+            "    MediaAsset.objects.update_or_create(pk=asset_id, state='approved')\n"
+            "    model = MediaAsset\n"
+            "    model.objects.create(state='approved')\n"
+            "    Asset(**fields)\n"
+        )
+        trees = {"glow_profiles/staff.py": tree}
+        self.assertEqual(len(_asset_creations(trees)), 4)
+        self.assertEqual(
+            {(entry[2], entry[3]) for entry in _creations_with_state(trees)},
+            {
+                ("MediaAsset.objects.create", "'approved'"),
+                ("models.MediaAsset", "'approved'"),
+                ("MediaAsset.objects.get_or_create", "'approved'"),
+                ("MediaAsset.objects.update_or_create", "'approved'"),
+                ("model.objects.create", "'approved'"),
+                ("Asset", "fields"),
+            },
+        )
 
     def test_a_failing_date_returns_its_refusal_at_both_writers(self) -> None:
         # DM-54, Y6 to Y8; DM-55, Z2: at both writers a date under 18 from a self-declared adult

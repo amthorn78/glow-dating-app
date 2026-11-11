@@ -6,7 +6,9 @@ the parts that need no database.
   error and never a ``Refused``, which ``tx.run`` rolls back and answers ``provider_unavailable``
   (retryable, the error's type as the internal reason), never as a member's refusal;
 - a publication records its own pointer as held before its lock and before any pointer it reads;
-- nothing outside ``settings_store`` locks a ``PolicyRevision`` row, in the API or the proof.
+- nothing outside ``settings_store`` locks a ``PolicyRevision`` row, in the API or the proof;
+  and (correction C2, F2) nothing outside ``settings_store`` and the model mentions the model or
+  its table at all, but the proof's read-only mentions, each named by function and line.
 
 The profile suite runs every case under the check on the disposable PostgreSQL.
 """
@@ -231,6 +233,94 @@ class NothingElseLocksAPointerTests(unittest.TestCase):
             <= scanned | {str(path.relative_to(REPOSITORY)).split("/")[1] for path in _sources()},
             scanned,
         )
+
+    def test_nothing_but_the_store_and_the_model_mentions_a_pointer(self) -> None:
+        # SV2 Stage B, correction C2 (the exact-head review's F2): the lock-site check above
+        # reads a lock's own spelling, so a ``select_for_update()`` on a queryset held in a
+        # variable, or SQL whose table comes from ``PolicyRevision._meta.db_table``, passes it.
+        # This check reads any mention instead: the model's name or its table's, in any case, in
+        # code, a string, a comment or a docstring, in every scanned source but the model's and
+        # the store's. The proof's read-only mentions are named by function and line; any other,
+        # a lock or not, fails until it is read and named here.
+        self.assertEqual(_unnamed_mentions(), [])
+        found = {mention[:3] for mention in _mentions()}
+        self.assertEqual(found, POINTER_READS)
+
+    def test_the_search_word_matches_the_models_table(self) -> None:
+        # The table is Django's default for the model, ``glow_persistence_policyrevision``: no
+        # ``db_table`` is set in ``glow_persistence/models.py``, so the search word finds the
+        # table's name in SQL as it finds the model's.
+        text = (API_ROOT / "glow_persistence" / "models.py").read_text(encoding="utf-8")
+        self.assertNotIn("db_table", text)
+        self.assertIn(POINTER_WORD, "glow_persistence_policyrevision")
+        self.assertIn(POINTER_WORD, "PolicyRevision".lower())
+
+
+# SV2 Stage B, correction C2 (F2): the model's name and its table's, lower-cased; every mention
+# of either contains it.
+POINTER_WORD = "policyrevision"
+# The only sources that may mention the pointer in any form: its model and the store.
+POINTER_HOMES = {API_ROOT / "glow_persistence" / "models.py", SETTINGS_STORE}
+# The proof's read-only mentions, each by file, function and line (stripped): the counts a case
+# compares before and after a refused write, and the publication case's read of the moved
+# pointer. Neither locks.
+PROFILE_CASES = "proofs/postgres-ordering/glow_ordering_proof/profile_cases.py"
+POINTER_READS = {
+    (PROFILE_CASES, "_counts", "PolicyRevision,"),
+    (
+        PROFILE_CASES,
+        "_counts",
+        '"pointers": sum(PolicyRevision.objects.values_list("version", flat=True)),',
+    ),
+    (
+        PROFILE_CASES,
+        "settings_publication",
+        "from glow_persistence.models import OutboxEvent, PolicyRevision, StaffAudit",
+    ),
+    (
+        PROFILE_CASES,
+        "settings_publication",
+        "pointer = PolicyRevision.objects.get(name=ps.GENDER_LIST)",
+    ),
+}
+
+
+def _mentions() -> list[tuple[str, str, str, int]]:
+    """Every line of a scanned source, outside the model's and the store's, that mentions the
+    pointer: its file, its innermost function, its text (stripped) and its number."""
+    found = []
+    for path in _sources():
+        if path in POINTER_HOMES:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if POINTER_WORD not in text.lower():
+            continue
+        tree = ast.parse(text)
+        functions = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        ]
+        where = str(path.relative_to(REPOSITORY))
+        for number, line in enumerate(text.splitlines(), start=1):
+            if POINTER_WORD in line.lower():
+                holding = [
+                    function
+                    for function in functions
+                    if function.lineno <= number <= (function.end_lineno or number)
+                ]
+                holding.sort(key=lambda function: function.lineno)
+                owner = holding[-1].name if holding else "<module>"
+                found.append((where, owner, line.strip(), number))
+    return found
+
+
+def _unnamed_mentions() -> list[str]:
+    return [
+        f"{where}:{number} in {owner}: {line}"
+        for where, owner, line, number in _mentions()
+        if (where, owner, line) not in POINTER_READS
+    ]
 
 
 if __name__ == "__main__":

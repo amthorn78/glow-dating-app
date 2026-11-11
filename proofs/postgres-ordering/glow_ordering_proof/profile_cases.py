@@ -67,8 +67,9 @@ class Case:
 
 CASES: list[Case] = []
 # The suite's case count, pinned (C2, finding 15): a case lost or added without this changing
-# fails the run before any case runs, and the offline tests.
-CASE_COUNT = 67
+# fails the run before any case runs, and the offline tests. SV2 Stage B's correction C2 adds
+# two (a hold stopping the check's approval; migration 0008's constraints).
+CASE_COUNT = 69
 
 
 def case(
@@ -2474,7 +2475,8 @@ def adult_age_years(ctx: ProfileContext) -> str:
 
 
 # =============================================================================================
-# The schema's own refusals (the P11 plan's DB04, for SV2's tables)
+# The schema's own refusals (the P11 plan's DB04, for SV2's tables: migration 0005's constraints
+# and, since SV2 Stage B's correction C2, migration 0008's)
 # =============================================================================================
 
 
@@ -2732,6 +2734,230 @@ def constraints_refuse(ctx: ProfileContext) -> str:
     return (
         f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint:"
         f" all {len(declared)} that migration 0005 declares, and two foreign keys"
+    )
+
+
+# The unique keys, foreign keys and column checks PostgreSQL holds on migration 0008's two new
+# tables beyond the constraints it declares, by table, kind and (first) column. Django names them
+# itself; the case reads each name from the catalog. Django's ``version >= 0`` column checks are
+# shadowed by 0008's own ``version >= 1``, so they are held here but have no write of their own.
+ASSETS_TABLE = "glow_persistence_mediaasset"
+OBJECTS_TABLE = "glow_persistence_mediaobject"
+GRANTS_TABLE = "glow_persistence_mediauploadgrant"
+MEDIA_CATALOG = {
+    (OBJECTS_TABLE, "u", "key"),
+    (OBJECTS_TABLE, "f", "asset_id"),
+    (OBJECTS_TABLE, "c", "byte_size"),
+    (OBJECTS_TABLE, "c", "version"),
+    (GRANTS_TABLE, "u", "grant_ref"),
+    (GRANTS_TABLE, "u", "object_key"),
+    (GRANTS_TABLE, "u", "asset_id"),
+    (GRANTS_TABLE, "f", "asset_id"),
+    (GRANTS_TABLE, "f", "account_id"),
+    (GRANTS_TABLE, "c", "version"),
+}
+SHADOWED = {(OBJECTS_TABLE, "c", "version"), (GRANTS_TABLE, "c", "version")}
+
+
+@case("constraints.malformed_media_writes_are_refused", "10", "D10")
+def constraints_media(ctx: ProfileContext) -> str:
+    """SV2 Stage B, correction C2 (the exact-head review's F5): a direct write no SV2 writer
+    makes, against each constraint migration 0008 declares, and against each unique key, foreign
+    key and column check PostgreSQL holds on 0008's two new tables, is refused by PostgreSQL
+    itself, naming that constraint, and leaves nothing behind. Each write breaks one constraint
+    only. Harness writes only; the error's text is read for the constraint's name and never
+    kept."""
+    import importlib
+    from datetime import timedelta
+
+    from django.db import IntegrityError, connection, transaction
+    from django.db.migrations.operations.models import AddConstraint, CreateModel
+    from django.db.models import F
+    from django.utils import timezone
+    from glow_persistence.models import MediaAsset, MediaObject, MediaUploadGrant
+
+    member = ctx.member()
+    approved = UUID(ctx.approved_photo(member))
+    pending = UUID(ctx.request_upload(member)["asset_id"])
+    issued = MediaUploadGrant.objects.get(asset_id=approved)
+    original = MediaObject.objects.get(asset_id=approved, role="original")
+    now = timezone.now()
+    expect(
+        MediaObject.objects.filter(asset_id=approved, role="variant").count() == 1,
+        "the approved photo has one variant",
+    )
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT rel.relname, con.contype, att.attname, con.conname"
+            " FROM pg_constraint con"
+            " JOIN pg_class rel ON rel.oid = con.conrelid"
+            " JOIN pg_attribute att"
+            " ON att.attrelid = con.conrelid AND att.attnum = con.conkey[1]"
+            " WHERE rel.relname IN (%s, %s, %s) AND con.contype IN ('u', 'f', 'c')",
+            [ASSETS_TABLE, OBJECTS_TABLE, GRANTS_TABLE],
+        )
+        rows = cursor.fetchall()
+    schema = importlib.import_module("glow_persistence.migrations.0008_media_lifecycle")
+    declared = {
+        operation.constraint.name
+        for operation in schema.Migration.operations
+        if isinstance(operation, AddConstraint)
+    } | {
+        constraint.name
+        for operation in schema.Migration.operations
+        if isinstance(operation, CreateModel)
+        for constraint in operation.options.get("constraints", [])
+    }
+    others = [row for row in rows if row[0] != ASSETS_TABLE and row[3] not in declared]
+    catalog = {(table, kind, column): conname for table, kind, column, conname in others}
+    expect(len(catalog) == len(others), "one catalog name for each table, kind and column")
+    expect(
+        set(catalog) == MEDIA_CATALOG, "the catalog holds the unique keys, foreign keys and checks"
+    )
+    expect(
+        {row[3] for row in rows} >= declared - {"media_one_original"},
+        "the catalog holds every check migration 0008 declares (its partial unique is an index)",
+    )
+
+    def grant(asset_id: UUID) -> Any:
+        return MediaUploadGrant.objects.filter(asset_id=asset_id)
+
+    def variant() -> Any:
+        return MediaObject.objects.filter(asset_id=approved, role="variant")
+
+    writes: list[tuple[str, Callable[[], Any]]] = [
+        (
+            "media_delivery_only_approved",
+            lambda: MediaAsset.objects.filter(pk=pending).update(
+                approved_variant_ref="delivery-fixture"
+            ),
+        ),
+        (
+            "media_approved_unrevoked",
+            lambda: MediaAsset.objects.filter(pk=approved).update(restriction_ref=uuid4()),
+        ),
+        (
+            "media_removal_record",
+            lambda: MediaAsset.objects.filter(pk=pending).update(state="removal_pending"),
+        ),
+        (
+            "media_seam_passed",
+            lambda: MediaAsset.objects.filter(pk=approved).update(detection=None),
+        ),
+        (
+            "glow_persistence_mediaobject_version",
+            lambda: MediaObject.objects.filter(asset_id=pending).update(version=0),
+        ),
+        (
+            "media_object_role",
+            lambda: MediaObject.objects.create(asset_id=pending, role="fixture-role", key=md_key()),
+        ),
+        (
+            "media_object_opaque_key",
+            lambda: MediaObject.objects.create(
+                asset_id=pending, role="variant", key="Fixture-Key-Not-Hex"
+            ),
+        ),
+        ("media_object_adoption_evidence", lambda: variant().update(adopted_at=now)),
+        (
+            "media_one_original",
+            lambda: MediaObject.objects.create(asset_id=approved, role="original", key=md_key()),
+        ),
+        ("glow_persistence_mediauploadgrant_version", lambda: grant(pending).update(version=0)),
+        ("media_grant_expiry", lambda: grant(pending).update(expires_at=F("issued_at"))),
+        (
+            "media_grant_used_in_time",
+            lambda: grant(pending).update(used_at=F("expires_at") + timedelta(seconds=1)),
+        ),
+        (
+            "media_grant_opaque_key",
+            lambda: grant(pending).update(object_key="Fixture-Key-Not-Hex"),
+        ),
+        (
+            catalog[(OBJECTS_TABLE, "u", "key")],
+            lambda: MediaObject.objects.create(asset_id=pending, role="variant", key=original.key),
+        ),
+        (
+            catalog[(OBJECTS_TABLE, "f", "asset_id")],
+            lambda: MediaObject.objects.filter(asset_id=pending).update(asset_id=uuid4()),
+        ),
+        (catalog[(OBJECTS_TABLE, "c", "byte_size")], lambda: variant().update(byte_size=-1)),
+        (
+            catalog[(GRANTS_TABLE, "u", "grant_ref")],
+            lambda: grant(pending).update(grant_ref=issued.grant_ref),
+        ),
+        (
+            catalog[(GRANTS_TABLE, "u", "object_key")],
+            lambda: grant(pending).update(object_key=issued.object_key),
+        ),
+        (
+            catalog[(GRANTS_TABLE, "u", "asset_id")],
+            lambda: grant(pending).update(asset_id=approved),
+        ),
+        (
+            catalog[(GRANTS_TABLE, "f", "asset_id")],
+            lambda: grant(pending).update(asset_id=uuid4()),
+        ),
+        (
+            catalog[(GRANTS_TABLE, "f", "account_id")],
+            lambda: grant(pending).update(account_id=uuid4()),
+        ),
+    ]
+    covered = {constraint for constraint, _ in writes}
+    expect(declared <= covered, "a write for every constraint migration 0008 declares")
+    expect(
+        {catalog[entry] for entry in MEDIA_CATALOG - SHADOWED} <= covered,
+        "a write for every other unique key, foreign key and column check of its tables",
+    )
+    assets = [approved, pending]
+
+    def snapshot() -> tuple[Any, ...]:
+        return (
+            MediaAsset.objects.count(),
+            MediaObject.objects.count(),
+            MediaUploadGrant.objects.count(),
+            tuple(
+                MediaAsset.objects.filter(pk__in=assets)
+                .order_by("pk")
+                .values_list(
+                    "state", "approved_variant_ref", "restriction_ref", "detection", "version"
+                )
+            ),
+            tuple(
+                MediaObject.objects.filter(asset_id__in=assets)
+                .order_by("key")
+                .values_list("asset_id", "role", "key", "version", "byte_size", "adopted_at")
+            ),
+            tuple(
+                MediaUploadGrant.objects.filter(asset_id__in=assets)
+                .order_by("grant_ref")
+                .values_list(
+                    "asset_id",
+                    "account_id",
+                    "grant_ref",
+                    "object_key",
+                    "version",
+                    "expires_at",
+                    "used_at",
+                )
+            ),
+        )
+
+    before = snapshot()
+    for constraint, write in writes:
+        named = False
+        try:
+            with transaction.atomic():
+                write()
+        except IntegrityError as error:
+            named = f'constraint "{constraint}"' in str(error)
+        expect(named, f"PostgreSQL refuses the write by {constraint}")
+    expect(snapshot() == before, "the refused writes leave nothing behind")
+    return (
+        f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint:"
+        f" all {len(declared)} that migration 0008 declares, and {len(writes) - len(declared)}"
+        " unique keys, foreign keys and column checks of its two tables"
     )
 
 
@@ -3283,6 +3509,73 @@ def media_check(ctx: ProfileContext) -> str:
     )
     expect(subjects == {"system:photo-check"}, "every approval and rejection is the system's")
     return "approve and reject are the check's (system); restriction kept; removal never undone"
+
+
+@case("media.a_hold_stops_the_checks_approval", "10", "D9", "D10")
+def media_held(ctx: ProfileContext) -> str:
+    """SV2 Stage B, correction C2 (the exact-head review's F1): with the photo held (the test's
+    hold port holding that asset), the check that decides to approve it changes nothing: the
+    outcome is ``held``, the photo stays ``review_pending``, with no approval ``StaffAudit`` row,
+    no delivery reference issued or stored, no event and no change to the profile, which still
+    misses its photo. Released, the same check approves it and the profile completes, so the hold
+    alone stopped it."""
+    from glow_persistence.models import OutboxEvent, StaffAudit
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    member = ctx.ready_member(photo=False)
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    _edit(ctx, member)
+    expect(ctx.missing(member) == ["photo"], "only a photo is missing")
+    asset_id = UUID(ctx.uploaded_photo(member))
+    expect(media.review(asset_id).outcome == "applied", "reviewed")
+    profile = _profile_row(member.account_id)
+    storage = default_storage()
+
+    def snapshot() -> tuple[Any, ...]:
+        row = _asset_row(str(asset_id))
+        current = _profile_row(member.account_id)
+        return (
+            row.state,
+            row.version,
+            row.approved_variant_ref,
+            row.review_ref,
+            current.state,
+            current.version,
+            StaffAudit.objects.filter(object_id=asset_id).count(),
+            OutboxEvent.objects.filter(aggregate_id__in=[asset_id, profile.pk]).count(),
+            len(storage.references),
+        )
+
+    before = snapshot()
+    expect(before[0] == "review_pending" and before[4] == "incomplete", "in review; incomplete")
+    for _ in range(2):
+        hold, check = RecordingHold({asset_id}), DecidingCheck()
+        held = media.run_check(asset_id, ports=test_ports(check=check, hold=hold))
+        expect(held.outcome == "no_change" and held.reason == "held", "the outcome is held")
+        expect(check.asked == [asset_id], "the check decided to approve it")
+        expect(hold.asked == [asset_id], "the hold port was asked, and holds it")
+        expect(snapshot() == before, "nothing changed: photo, audit, events, reference, profile")
+    expect(
+        not StaffAudit.objects.filter(object_id=asset_id, action="approve").exists(),
+        "no approval StaffAudit row",
+    )
+    lifecycle = _lifecycle(ctx, member, str(asset_id))
+    expect(lifecycle["state"] == "review_pending", "still review_pending")
+    expect(lifecycle["approved_delivery_ref"] is None, "no delivery reference")
+    expect(ctx.missing(member) == ["photo"], "the profile still misses its photo")
+    expect(ctx.get(member, PROFILE, "own_profile")["media_ids"] == [], "no photo is listed")
+    released = media.run_check(
+        asset_id, ports=test_ports(check=DecidingCheck(), hold=RecordingHold())
+    )
+    expect(released.outcome == "applied", "released, the check approves it")
+    expect(released.detail.get("profile") == "visible", "and the profile completes")
+    expect(
+        StaffAudit.objects.filter(object_id=asset_id, action="approve").count() == 1,
+        "one approval StaffAudit row, after the release",
+    )
+    return "the check's approval held twice with nothing written; released, it approves"
 
 
 @case("media.removal_withholds_delivery_and_completes_on_every_objects_purge", "10", "D10")
@@ -3860,12 +4153,20 @@ def run_case(ctx: ProfileContext, entry: Case) -> tuple[bool, str]:
 
     cache.clear()
     ctx.identity.case_id = entry.case_id
+    # SV2 Stage B, correction C2 (F4): the photos' keys, credentials and bytes join the value
+    # ledger as the store writes them, and after the case from their rows and the store.
+    ctx.watch_store()
     try:
-        return True, entry.run(ctx)
+        outcome = True, entry.run(ctx)
     except CaseFailed as failed:
-        return False, f"FAILED: {failed}"
+        outcome = False, f"FAILED: {failed}"
     except BaseException as exc:  # noqa: BLE001 - recorded by type only; never a value
-        return False, f"ERROR: {type(exc).__name__}"
+        outcome = False, f"ERROR: {type(exc).__name__}"
+    try:
+        ctx.hold_media()
+    except BaseException as exc:  # noqa: BLE001 - recorded by type only; never a value
+        return False, f"ERROR: the value ledger's photo values: {type(exc).__name__}"
+    return outcome
 
 
 def plan() -> tuple[str, ...]:

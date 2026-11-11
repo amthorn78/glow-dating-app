@@ -34,7 +34,7 @@ from glow_ordering_proof import (
     profile_scan,
     schema_check,
 )
-from glow_ordering_proof.profile_support import ValueLedger
+from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
 from tests.test_identity_offline import KeyFiles, pem, workflow_step
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -529,17 +529,23 @@ class ProfilePlanTests(unittest.TestCase):
                 "pointers",
             )
         ]
-        # Stage B's eleven, and correction C1's three (DM-58 item 9: the purge in any account
-        # state, and every other photo step refusing an inactive owner).
-        self.assertEqual(len(stage_b), 14)
+        # Stage B's eleven, correction C1's three (DM-58 item 9: the purge in any account
+        # state, and every other photo step refusing an inactive owner), and correction C2's
+        # hold stopping the check's approval (F1).
+        self.assertEqual(len(stage_b), 15)
+        # Correction C2's two (F1 and F5), each under its own name.
+        plan = profile_cases.plan()
+        self.assertIn("media.a_hold_stops_the_checks_approval", plan)
+        self.assertIn("constraints.malformed_media_writes_are_refused", plan)
         self.assertTrue(
             all("10" in e.checks or "13" in e.checks or "12" in e.checks for e in stage_b)
         )
 
     def test_the_case_count_is_pinned(self) -> None:
         # C2 (finding 15): 47 cases after C1, and C2's six; SV2 Stage B's eleven (DM-57 section 5:
-        # the count changes with Stage B's cases); Stage B's correction C1's three (DM-58 item 9).
-        self.assertEqual(profile_cases.CASE_COUNT, 67)
+        # the count changes with Stage B's cases); Stage B's correction C1's three (DM-58 item 9);
+        # Stage B's correction C2's two (the exact-head review's F1 and F5).
+        self.assertEqual(profile_cases.CASE_COUNT, 69)
         self.assertEqual(len(profile_cases.plan()), profile_cases.CASE_COUNT)
 
     def test_the_expected_routes_are_the_api_routes(self) -> None:
@@ -984,6 +990,49 @@ class ValueLedgerTests(unittest.TestCase):
         self.assertEqual(ledger.found_in(json.dumps({"detail": words}, ensure_ascii=False)), 1)
         self.assertEqual(ledger.found_in("latitude 40.7123457"), 1)
         self.assertEqual(ledger.found_in("born 1990-06-15 abcd"), 1)
+
+    def test_a_photos_bytes_are_found_as_their_hex_and_their_repr(self) -> None:
+        # SV2 Stage B, correction C2 (the exact-head review's F4): a photo's bytes printed as
+        # their hex or their ``repr``, whole or from their start, as a log record or JSON would
+        # hold them; and the fixture variant's text, as itself or its ``repr``.
+        photo = synthetic_png(3, 2)
+        variant = b"fixture-variant:" + hashlib.sha256(photo).hexdigest().encode("ascii")
+        ledger = ValueLedger()
+        ledger.add_bytes(photo)
+        ledger.add_bytes(variant)
+        for printed in (
+            f"photo {photo!r}",
+            f"photo {photo[:30]!r}",
+            json.dumps({"detail": repr(photo)}),
+            f"photo {photo.hex()}",
+            f"start {photo[:24].hex()}",
+            f"variant {variant.decode()}",
+            f"variant {variant!r}",
+            f"variant {variant.hex()}",
+        ):
+            with self.subTest(printed=printed[:24]):
+                # The variant's ``repr`` holds its text too: two held values in one print.
+                self.assertGreaterEqual(ledger.found_in(printed), 1)
+        # Another photo's bytes (other dimensions) and a photo's first few bytes are not held.
+        for printed in (repr(synthetic_png(5, 5)), synthetic_png(5, 5).hex(), repr(photo[:12])):
+            with self.subTest(printed=printed[:24]):
+                self.assertEqual(ledger.found_in(printed), 0)
+
+    def test_the_stores_objects_join_the_ledger_as_they_are_written(self) -> None:
+        # A key and its bytes are held when they are set, and stay held after the object is
+        # deleted (a purge within the case).
+        ledger = ValueLedger()
+        held = {"0" * 31 + "a": synthetic_png(2, 3)}
+        objects = ObservedObjects(held, ledger)
+        key = secrets.token_hex(16)
+        photo = synthetic_png(4, 4)
+        objects[key] = photo
+        objects.pop(key)
+        self.assertEqual(ledger.found_in(f"key {key}"), 1)
+        self.assertEqual(ledger.found_in(f"bytes {photo!r}"), 1)
+        self.assertEqual(ledger.found_in(f"key {'0' * 31}a"), 1)
+        self.assertEqual(ledger.found_in(f"bytes {synthetic_png(2, 3)!r}"), 1)
+        self.assertEqual(dict(objects), held)
 
 
 class ProfileCommandTests(unittest.TestCase):
