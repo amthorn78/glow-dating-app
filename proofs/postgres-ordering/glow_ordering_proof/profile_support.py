@@ -16,6 +16,12 @@ mail's codes, and Django's test client. Then:
   each beginning ``fixture:``) and a ``verified`` identity verification (a ``fixture:``
   reference), each written in the case's own setup through the ORM in the disposable database.
   No SV2 code writes either.
+- **The photos** (SV2 Stage B; D9, D10): a member's approved photo is made through Stage B's own
+  path, never seeded: the grant through the member's route, a small synthetic PNG made here
+  (never a real image) put at the grant's key in the fixture store, the store's authenticated
+  completion, the system review step and the automated check, which the test drives with its own
+  adapter (``DecidingCheck``) in its own setup, since the runtime's check approves nothing. The
+  object key is read from the grant's row in the disposable database: no member is given it.
 """
 
 from __future__ import annotations
@@ -52,6 +58,7 @@ CONSENT = "/api/v1/consent"
 SENSITIVE = "/api/v1/consent/sensitive"
 ADULT = "/api/v1/eligibility/adult"
 BIRTH = "/api/v1/birth-input"
+MEDIA = "/api/v1/media"
 
 STAFF = "staff:profile-proof"
 # Synthetic test values the suite publishes into the lists (no launch value is changed): OD-60
@@ -446,9 +453,11 @@ class ProfileContext:
             born = today.replace(year=today.year - years, day=28)
         return (born - timedelta(days=37)).isoformat()
 
-    def ready_member(self, *, birth_date: str | None = None) -> Member:
+    def ready_member(self, *, birth_date: str | None = None, photo: bool = True) -> Member:
         """A member with every requirement but the seeded ones and the completing edit: onboarding
-        consent, the adult check, a birth input, a profile, a gender, "looking for" and an area."""
+        consent, the adult check, a birth input, a profile, a gender, "looking for", an area and
+        (SV2 Stage B, D9) an approved photo, through Stage B's own path, unless ``photo`` is
+        false."""
         member = self.member()
         born = birth_date or self.adult_date()
         self.accept_onboarding(member)
@@ -460,6 +469,8 @@ class ProfileContext:
             self.field(member, "looking_for", ["long-term"]), "own_profile_fields", "looking for"
         )
         self.data(self.area(member, NEW_YORK), "own_area", "the area")
+        if photo:
+            self.approved_photo(member)
         return member
 
     def visible_member(self, *, birth_date: str | None = None) -> Member:
@@ -473,6 +484,71 @@ class ProfileContext:
 
     def missing(self, member: Member) -> list[str]:
         return list(self.get(member, COMPLETION, "own_completion")["missing"])
+
+    # -- photos (SV2 Stage B; D10) ------------------------------------------------------------
+
+    def media(self, member: Member) -> dict[str, Any]:
+        return self.get(member, MEDIA, "media_collection")
+
+    def media_intent(
+        self,
+        member: Member,
+        action: str,
+        *,
+        asset_id: str | None = None,
+        ordered: tuple[str, ...] | list[str] = (),
+        expected: int | None = None,
+    ) -> dict[str, Any]:
+        if expected is None:
+            if action == "remove":
+                expected = self.get(member, f"{MEDIA}/{asset_id}", "media")["version"]
+            else:
+                expected = self.media(member)["version"]
+        return {
+            "operation": "media",
+            "meta": self.meta(expected),
+            "asset_id": asset_id,
+            "action": action,
+            "ordered_asset_ids": list(ordered),
+        }
+
+    def request_upload(self, member: Member) -> dict[str, Any]:
+        reply = self.command(member, MEDIA, self.media_intent(member, "request_upload"))
+        grant = self.data(reply, "media_upload_grant", "the upload grant")
+        self.values.add(grant["grant_ref"])
+        self.values.add(grant_key(grant["asset_id"]))
+        return grant
+
+    def put_photo(self, asset_id: str, data: bytes | None = None, **kwargs: Any) -> Any:
+        """The client's upload at the grant's key, and the store's completion event for it."""
+        from glow_profiles.media_fixtures import default_storage
+
+        data = synthetic_png() if data is None else data
+        self.values.add(data.hex()[:48])
+        return default_storage().put(grant_key(asset_id), data, **kwargs)
+
+    def uploaded_photo(self, member: Member) -> str:
+        """A photo through quarantine: the grant, the upload and its adopted completion."""
+        from glow_profiles import media
+
+        grant = self.request_upload(member)
+        result = media.record_upload(self.put_photo(grant["asset_id"]))
+        expect(result.outcome == "applied", "the completion is adopted")
+        return str(grant["asset_id"])
+
+    def approved_photo(self, member: Member) -> str:
+        """An approved photo through Stage B's own path: quarantine, the system review step and
+        G-02's seam, then the test's own check approving it."""
+        from glow_profiles import media
+
+        asset_id = self.uploaded_photo(member)
+        expect(media.review(UUID(asset_id)).outcome == "applied", "the review step ran")
+        approved = media.run_check(UUID(asset_id), ports=test_ports(check=DecidingCheck()))
+        expect(approved.outcome == "applied", "the test's check approved the photo")
+        lifecycle = self.get(member, f"{MEDIA}/{asset_id}", "media")
+        expect(lifecycle["state"] == "approved", "the photo is approved")
+        self.values.add(lifecycle["approved_delivery_ref"])
+        return asset_id
 
     # -- staff (no route; P07's console calls these) ------------------------------------------
 
@@ -509,6 +585,106 @@ class ProfileContext:
                 expect(result.outcome == "applied", f"the suite's test values publish in {name}")
         for value in (*ORIENTATION_VALUES, RELATIONSHIP_VALUE):
             self.values.add(value)
+
+
+# -- photos (SV2 Stage B): the test's own adapters and synthetic PNGs -----------------------
+
+
+def synthetic_png(width: int = 2, height: int = 2, *, shade: int = 128) -> bytes:
+    """A small synthetic PNG made in the test (never a real image): one grey shade, no metadata."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        crc = zlib.crc32(kind + body) & 0xFFFFFFFF
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
+    rows = b"".join(b"\x00" + bytes([shade]) * width for _ in range(height))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(rows))
+        + chunk(b"IEND", b"")
+    )
+
+
+class DecidingCheck:
+    """The test's automated check (D10: a test drives the check in its own setup): approves, or
+    rejects with ``reason``, and records each asset it was asked about."""
+
+    def __init__(self, decision: str = "approve", reason: str = "") -> None:
+        self.decision, self.reason = decision, reason
+        self.asked: list[UUID] = []
+
+    def decide(self, asset_id: UUID, variant_key: str | None) -> Any:
+        from glow_domain import media as md
+
+        self.asked.append(asset_id)
+        return md.CheckDecision(self.decision, self.reason)
+
+
+class RecordingHold:
+    """The test's hold port: holds the assets named, and records every asset it was asked about."""
+
+    def __init__(self, held: set[UUID] | None = None) -> None:
+        self.held_assets = set(held or ())
+        self.asked: list[UUID] = []
+
+    def held(self, asset_id: UUID) -> bool:
+        self.asked.append(asset_id)
+        return asset_id in self.held_assets
+
+
+class RecordingDetector:
+    """G-02's seam as SV2 configures it (no detector), recording the key it was given."""
+
+    def __init__(self) -> None:
+        self.given: list[tuple[UUID, str]] = []
+
+    def inspect(self, asset_id: UUID, key: str) -> Any:
+        from glow_domain import media as md
+
+        self.given.append((asset_id, key))
+        return md.Detection("review", md.NO_DETECTOR)
+
+
+class RecordingProcessing:
+    """The fixture's processing, recording the key it was asked to process."""
+
+    def __init__(self, storage: Any) -> None:
+        from glow_profiles.media_fixtures import FixtureProcessing
+
+        self.inner = FixtureProcessing(storage)
+        self.asked: list[str] = []
+
+    def process(self, original_key: str, *args: Any) -> Any:
+        self.asked.append(original_key)
+        return self.inner.process(original_key, *args)
+
+
+def test_ports(
+    *, check: Any = None, hold: Any = None, detection: Any = None, processing: Any = None
+) -> Any:
+    """The runtime's fixture ports with the test's own adapters in their place."""
+    from glow_domain import media as md
+    from glow_profiles.media_fixtures import default_ports, default_storage
+
+    base = default_ports()
+    return md.MediaPorts(
+        storage=default_storage(),
+        processing=processing or base.processing,
+        detection=detection or base.detection,
+        check=check or base.check,
+        hold=hold or base.hold,
+    )
+
+
+def grant_key(asset_id: str | UUID) -> str:
+    """The original's object key, from the grant's row (the test's setup; no member is given it)."""
+    from glow_persistence.models import MediaUploadGrant
+
+    return str(MediaUploadGrant.objects.get(asset_id=asset_id).object_key)
 
 
 def _json(body: dict[str, Any]) -> bytes:

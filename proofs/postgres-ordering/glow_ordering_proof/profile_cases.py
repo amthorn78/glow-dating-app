@@ -1,5 +1,7 @@
 """The profile cases (SV2 Stage A; its brief's acceptance checks 1 to 9, 11 and 12, with D2 to
-D9, D11, D13, D17 and D18), each run through the HTTP endpoints with Django's test client on the
+D9, D11, D13, D17 and D18; SV2 Stage B, checks 10 and 13 with check 9's photo requirement and
+checks 11 and 12 for the photo routes, with D9, D10, D17 and D19), each run through the HTTP
+endpoints with Django's test client on the
 disposable profile database, signed in through SV1's identity routes.
 
 Every case makes its own synthetic members. Settings are global: a case that publishes adds test
@@ -28,6 +30,7 @@ from glow_ordering_proof.profile_support import (
     FIELDS,
     FILTERS,
     LOS_ANGELES,
+    MEDIA,
     NEAREST,
     NEW_YORK,
     ORIENTATION_VALUES,
@@ -38,12 +41,19 @@ from glow_ordering_proof.profile_support import (
     STAFF,
     VISIBILITY,
     CaseFailed,
+    DecidingCheck,
     ProfileContext,
+    RecordingDetector,
+    RecordingHold,
+    RecordingProcessing,
     db_today,
     expect,
     forms,
+    grant_key,
     seed_chart,
     seed_verified,
+    synthetic_png,
+    test_ports,
     years_ago,
 )
 
@@ -58,7 +68,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned (C2, finding 15): a case lost or added without this changing
 # fails the run before any case runs, and the offline tests.
-CASE_COUNT = 53
+CASE_COUNT = 64
 
 
 def case(
@@ -1337,6 +1347,8 @@ def completion_each(ctx: ProfileContext) -> str:
     ctx.data(ctx.profile(member), "own_profile", "profile")
     ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "gender only")
     ctx.data(ctx.area(member, NEW_YORK), "own_area", "area")
+    # SV2 Stage B (D9): an approved photo, through Stage B's own path.
+    ctx.approved_photo(member)
     seed_chart(member.account_id)
     seed_verified(member.account_id)
     stays(member, ["profile_fields"], "the profile's fields (no looking for)")
@@ -1349,9 +1361,16 @@ def completion_each(ctx: ProfileContext) -> str:
     ctx.data(ctx.profile(member), "own_profile", "profile")
     ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "gender")
     ctx.data(ctx.field(member, "looking_for", ["casual"]), "own_profile_fields", "looking for")
+    ctx.approved_photo(member)
     seed_chart(member.account_id)
     seed_verified(member.account_id)
     stays(member, ["area"], "the area")
+
+    # SV2 Stage B (D9): at least one approved photo.
+    member = ctx.ready_member(photo=False)
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    stays(member, ["photo"], "a photo")
 
     member = ctx.ready_member()
     seed_verified(member.account_id)
@@ -1531,6 +1550,9 @@ EXPECTED_PROFILE_ROUTES = frozenset(
         "api/v1/eligibility/adult",
         "api/v1/birth-input",
         "api/v1/birth-input/<uuid:input_id>",
+        # SV2 Stage B: F05's member routes (D10, D11); no provider, system or staff step.
+        "api/v1/media",
+        "api/v1/media/<uuid:asset_id>",
     }
 )
 
@@ -1812,6 +1834,8 @@ def recompute_completes(ctx: ProfileContext) -> str:
     ctx.data(ctx.profile(member), "own_profile", "profile")
     ctx.data(ctx.field(member, "gender", ["woman"]), "own_profile_fields", "gender")
     ctx.data(ctx.area(member, NEW_YORK), "own_area", "area")
+    # SV2 Stage B (D9): an approved photo, through Stage B's own path.
+    ctx.approved_photo(member)
     seed_chart(member.account_id)
     seed_verified(member.account_id)
     before = incomplete(member, "a field")
@@ -1841,6 +1865,7 @@ def recompute_completes(ctx: ProfileContext) -> str:
     ctx.data(ctx.profile(member), "own_profile", "profile")
     ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "gender")
     ctx.data(ctx.field(member, "looking_for", ["casual"]), "own_profile_fields", "looking for")
+    ctx.approved_photo(member)
     seed_chart(member.account_id)
     seed_verified(member.account_id)
     before = incomplete(member, "the area")
@@ -2871,6 +2896,703 @@ def ownership_replay(ctx: ProfileContext) -> str:
 # =============================================================================================
 
 
+# =============================================================================================
+# SV2 Stage B: photos (acceptance check 10, with check 9's photo requirement and checks 11 and 12
+# for the new routes; D9, D10, D17) and one pointer order (check 13; D19)
+# =============================================================================================
+
+
+def _lifecycle(ctx: ProfileContext, member: Any, asset_id: str) -> dict[str, Any]:
+    return ctx.data(ctx.call(member, "GET", f"{MEDIA}/{asset_id}"), "media", "the asset")
+
+
+def _asset_row(asset_id: str) -> Any:
+    from glow_persistence.models import MediaAsset
+
+    return MediaAsset.objects.get(pk=asset_id)
+
+
+def _objects(asset_id: str) -> list[Any]:
+    from glow_persistence.models import MediaObject
+
+    return list(MediaObject.objects.filter(asset_id=asset_id).order_by("created_at"))
+
+
+def _media_policy() -> dict[str, Any]:
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    return copy.deepcopy(settings_store.read_unlocked(ps.MEDIA_POLICY).content)
+
+
+def _publish_media(ctx: ProfileContext, content: dict[str, Any]) -> Any:
+    from glow_domain import profile_settings as ps
+
+    return ctx.publish(ps.MEDIA_POLICY, content)
+
+
+@case("media.policy_is_development_media_1_within_ceilings", "1", "10", "D2", "D10")
+def media_policy(ctx: ProfileContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import SettingVersion, StaffAudit
+    from glow_profiles import settings_store
+
+    first = SettingVersion.objects.get(name=ps.MEDIA_POLICY, number=1)
+    expect(first.content == ps.LAUNCH_DEFAULTS[ps.MEDIA_POLICY], "version 1 is development-media-1")
+    expect(first.reason == "development-media-1", "seeded with the reason development-media-1")
+    expect(first.staff_subject == ps.LAUNCH_SUBJECT, "seeded by system:launch-default")
+    expect(
+        StaffAudit.objects.filter(object_id=first.id, action="seed_launch_default").count() == 1,
+        "the seed's audit row",
+    )
+    current = settings_store.read_unlocked(ps.MEDIA_POLICY)
+    expect(current.number == 1, "the pointer names version 1")
+    refused = 0
+    for changes in (
+        {"types": ["image/png", "image/gif"]},
+        {"max_bytes": ps.MEDIA_BYTES + 1},
+        {"max_pixels": ps.MEDIA_PIXELS + 1},
+        {"live_photos": ps.MEDIA_COLLECTION + 1},
+    ):
+        before = _counts()
+        result = _publish_media(ctx, {**current.content, **changes})
+        expect(result.outcome == "refused", "a publication above a ceiling is refused")
+        expect(result.code == "invalid_request", "as invalid_request")
+        expect(_counts() == before, "nothing is written")
+        refused += 1
+    expect(settings_store.read_unlocked(ps.MEDIA_POLICY).number == 1, "the pointer is unmoved")
+    return f"media.policy v1 is development-media-1; {refused} ceilings refused, nothing written"
+
+
+@case("media.grant_within_the_policys_limits", "10", "11", "D10", "D17")
+def media_grant(ctx: ProfileContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import MediaAsset, MediaUploadGrant
+    from glow_profiles.media_fixtures import default_storage
+
+    member = ctx.member()
+    empty = ctx.media(member)
+    expect(empty["version"] == 1 and empty["items"] == [], "an empty collection is version 1")
+    grant = ctx.request_upload(member)
+    row = MediaUploadGrant.objects.get(asset_id=grant["asset_id"])
+    expect(row.account_id == member.account_id, "the grant is the member's")
+    expect(row.policy_version == "media.policy.v1", "it records the version it was issued under")
+    seconds = (row.expires_at - row.issued_at).total_seconds()
+    expect(seconds == _media_policy()["grant_seconds"], "short-lived: the policy's grant time")
+    expect(row.used_at is None, "one-use: not yet used")
+    key = row.object_key
+    asset = MediaAsset.objects.get(pk=grant["asset_id"])
+    expect(asset.state == "upload_pending" and asset.storage_ref == key, "upload_pending")
+    for identifier in (member.account_id, grant["asset_id"]):
+        expect(UUID(str(identifier)).hex not in key, "the key holds no ID")
+        expect(str(identifier) not in key, "the key holds no ID in any form")
+    expect(len(key) == 32 and set(key) <= set("0123456789abcdef"), "the key is opaque")
+    credential = default_storage().credentials[key]
+    expect(credential.max_bytes == _media_policy()["max_bytes"], "the credential's byte limit")
+    texts = json.dumps(ctx.served) + "\n".join(ctx.headers)
+    expect(key not in texts, "no response holds the object key")
+    expect(credential.token not in texts, "no member is given the store's credential")
+    expect(set(grant) == {"kind", "asset_id", "grant_ref", "expires_at"}, "the DTO unchanged")
+    expect("/" not in grant["grant_ref"], "the grant reference holds no address")
+    listed = ctx.media(member)
+    expect([item["state"] for item in listed["items"]] == ["upload_pending"], "listed pending")
+    expect(listed["version"] == 2, "the collection's version advanced")
+    # A replay answers the same grant; another intent under the key is a conflict.
+    body = ctx.media_intent(member, "request_upload")
+    first = ctx.data(ctx.command(member, MEDIA, body), "media_upload_grant", "a second grant")
+    again = ctx.data(ctx.command(member, MEDIA, body), "media_upload_grant", "its replay")
+    expect(again == first, "the replay answers the same grant")
+    other = dict(body, action="reorder", ordered_asset_ids=[first["asset_id"]])
+    ctx.refused(ctx.command(member, MEDIA, other), 409, "idempotency_conflict", "another intent")
+    stale = ctx.media_intent(member, "request_upload", expected=1)
+    ctx.refused(ctx.command(member, MEDIA, stale), 409, "stale_version", "a stale version")
+    # The policy's live photos: four at most (development-media-1); a fifth is refused, and
+    # nothing is written.
+    while (
+        MediaAsset.objects.filter(account_id=member.account_id).count()
+        < ps.LAUNCH_DEFAULTS[ps.MEDIA_POLICY]["live_photos"]
+    ):
+        ctx.request_upload(member)
+    before = (MediaAsset.objects.count(), MediaUploadGrant.objects.count(), _counts())
+    beyond = ctx.command(member, MEDIA, ctx.media_intent(member, "request_upload"))
+    ctx.refused(beyond, 409, "state_conflict", "a grant beyond the policy's limits")
+    after = (MediaAsset.objects.count(), MediaUploadGrant.objects.count(), _counts())
+    expect(after == before, "the refused grant writes nothing")
+    # A rejected or removed photo is not live: a removal frees a place.
+    ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=grant["asset_id"])),
+        "media",
+        "a pending upload removed",
+    )
+    ctx.request_upload(member)
+    return "a grant within the policy's limits, one-use and short-lived; the fifth refused"
+
+
+@case("media.an_upload_moves_only_through_quarantine_the_seam_and_review", "10", "D10")
+def media_path(ctx: ProfileContext) -> str:
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    member = ctx.member()
+    grant = ctx.request_upload(member)
+    asset_id = UUID(grant["asset_id"])
+    key = grant_key(asset_id)
+    approving = test_ports(check=DecidingCheck())
+    # Before its completion: neither the review step nor the check moves it.
+    expect(media.review(asset_id).reason == "not_quarantined", "no review before quarantine")
+    expect(media.run_check(asset_id, ports=approving).reason == "not_in_review", "no approval")
+    expect(_lifecycle(ctx, member, str(asset_id))["state"] == "upload_pending", "still pending")
+    # Another object, written at another key, is never read for this asset.
+    stranger = md_key()
+    default_storage().put(stranger, synthetic_png(5, 5))
+    adopted = media.record_upload(ctx.put_photo(str(asset_id), synthetic_png(3, 2)))
+    expect(adopted.outcome == "applied", "the completion is adopted")
+    expect(_lifecycle(ctx, member, str(asset_id))["state"] == "quarantined", "quarantined")
+    expect(media.run_check(asset_id, ports=approving).reason == "not_in_review", "no approval")
+    storage = default_storage()
+    processing = RecordingProcessing(storage)
+    detector = RecordingDetector()
+    reads = len(storage.reads)
+    reviewed = media.review(asset_id, ports=test_ports(processing=processing, detection=detector))
+    expect(reviewed.outcome == "applied", "the system review step ran")
+    expect(processing.asked == [key], "processing read the adopted original only")
+    expect(storage.reads[reads:] == [key], "the store was read at the original's key only")
+    objects = _objects(str(asset_id))
+    expect([o.role for o in objects] == ["original", "variant"], "an original and a variant")
+    variant = objects[1].key
+    expect(variant != key and stranger not in (key, variant), "each object has its own key")
+    expect(detector.given == [(asset_id, variant)], "G-02's seam was given the variant")
+    row = _asset_row(str(asset_id))
+    expect(row.state == "review_pending" and row.detection == "no_detector", "no detector")
+    for object_key in (key, variant):
+        expect(len(object_key) == 32 and str(asset_id) not in object_key, "keys are opaque")
+        expect(UUID(str(member.account_id)).hex not in object_key, "no account ID in a key")
+    hold = RecordingHold()
+    approved = media.run_check(asset_id, ports=test_ports(check=DecidingCheck(), hold=hold))
+    expect(approved.outcome == "applied", "the check approved it")
+    expect(hold.asked == [asset_id], "the approval asked the hold port first")
+    audit = StaffAudit.objects.get(object_id=asset_id, action="approve")
+    expect(audit.staff_subject == "system:photo-check", "written with a system: subject")
+    lifecycle = _lifecycle(ctx, member, str(asset_id))
+    reference = lifecycle["approved_delivery_ref"]
+    expect(lifecycle["state"] == "approved" and reference, "approved, with its reference")
+    expect(reference not in (key, variant) and key not in reference, "never a key")
+    expect(row.review_ref is None and _asset_row(str(asset_id)).review_ref == audit.id, "review")
+    delivered = media.delivery_reference(asset_id, ports=test_ports(hold=hold))
+    expect(delivered.detail["delivery_ref"] == reference, "delivery returns the variant's")
+    expect(hold.asked == [asset_id, asset_id], "delivery asked the hold port first")
+    held = RecordingHold({asset_id})
+    withheld = media.delivery_reference(asset_id, ports=test_ports(hold=held))
+    expect(withheld.detail["delivery_ref"] is None, "a hold withholds delivery")
+    return "upload_pending, quarantined, the seam with the variant, review, approval (system)"
+
+
+def md_key() -> str:
+    from glow_domain import media as md
+
+    return str(md.new_object_key())
+
+
+@case("media.an_upload_with_no_variant_passes_the_seam_and_is_rejected", "10", "D10")
+def media_no_variant(ctx: ProfileContext) -> str:
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    member = ctx.member()
+    storage = default_storage()
+    shown = []
+    for what in ("an original that no longer matches its completion", "a file that is no PNG"):
+        grant = ctx.request_upload(member)
+        asset_id = UUID(grant["asset_id"])
+        key = grant_key(asset_id)
+        data = synthetic_png() if what.startswith("an original") else b"GIF89a" + bytes(64)
+        expect(media.record_upload(ctx.put_photo(str(asset_id), data)).outcome == "applied", "in")
+        if what.startswith("an original"):
+            # The object at the key changed after its completion was adopted.
+            storage.objects[key] = synthetic_png(4, 4)
+        detector = RecordingDetector()
+        reviewed = media.review(asset_id, ports=test_ports(detection=detector))
+        expect(reviewed.outcome == "applied", "the review step ran")
+        expect(detector.given == [(asset_id, key)], "the seam was given the original")
+        row = _asset_row(str(asset_id))
+        expect(row.state == "rejected", "rejected")
+        expect(row.rejection_reason == "no_variant", "with the reason that no variant was made")
+        expect(row.detection == "no_detector", "it passed the seam")
+        expect([o.role for o in _objects(str(asset_id))] == ["original"], "no variant written")
+        audit = StaffAudit.objects.get(object_id=asset_id, action="reject")
+        expect(audit.staff_subject == "system:photo-check", "the system's rejection")
+        expect(_events(asset_id, "media_in_review") == 1, "it passed review_pending")
+        expect(_lifecycle(ctx, member, str(asset_id))["approved_delivery_ref"] is None, "none")
+        shown.append(what)
+    # An unavailable store is not such a failure: nothing changes, and the step runs again.
+    grant = ctx.request_upload(member)
+    asset_id = UUID(grant["asset_id"])
+    expect(media.record_upload(ctx.put_photo(str(asset_id))).outcome == "applied", "adopted")
+    before = (_asset_row(str(asset_id)).version, _counts(), len(_objects(str(asset_id))))
+    storage.unavailable = True
+    try:
+        down = media.review(asset_id)
+    finally:
+        storage.unavailable = False
+    expect(down.outcome == "refused" and down.code == "provider_unavailable", "unavailable")
+    after = (_asset_row(str(asset_id)).version, _counts(), len(_objects(str(asset_id))))
+    expect(after == before, "an unavailable store changes nothing")
+    expect(_asset_row(str(asset_id)).state == "quarantined", "still quarantined")
+    expect(media.review(asset_id).outcome == "applied", "the step can run again")
+    expect(_asset_row(str(asset_id)).state == "review_pending", "and moves it to review")
+    return f"{len(shown)} uploads with no variant passed the seam and were rejected; a store down"
+
+
+@case("media.completions_are_matched_to_their_grant", "10", "D10")
+def media_completions(ctx: ProfileContext) -> str:
+    from datetime import timedelta
+
+    from glow_domain import media as md
+    from glow_persistence.models import MediaUploadGrant
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    storage = default_storage()
+    member = ctx.member()
+    # A completion for a key no grant names, and an event the adapter did not issue.
+    unknown = media.record_upload(storage.put(md_key(), synthetic_png()))
+    expect(unknown.outcome == "no_change", "a completion for no grant's key changes nothing")
+    grant = ctx.request_upload(member)
+    asset_id = UUID(grant["asset_id"])
+    key = grant_key(asset_id)
+    forged = md.UploadCompleted(uuid4(), key, 71, "0" * 32, db_now())
+    refused = media.record_upload(forged)
+    expect(refused.outcome == "refused" and refused.code == "forbidden", "unauthenticated")
+    expect(_asset_row(str(asset_id)).state == "upload_pending", "nothing changed")
+    # Above the byte limit of the policy version the grant records: not adopted.
+    limit = _media_policy()["max_bytes"]
+    big = media.record_upload(storage.put(key, bytes(limit + 1)))
+    expect(big.reason == "over_byte_limit", "an oversize completion changes nothing")
+    original = _objects(str(asset_id))[0]
+    expect(original.adopted_at is None, "its object is not adopted")
+    # The first completion that matches is adopted; a second one for the key changes nothing.
+    data = synthetic_png(2, 3)
+    good = ctx.put_photo(str(asset_id), data)
+    expect(media.record_upload(good).outcome == "applied", "the matching completion is adopted")
+    adopted = _objects(str(asset_id))[0]
+    expect(adopted.byte_size == len(data) and adopted.adopted_at is not None, "its size")
+    second = media.record_upload(ctx.put_photo(str(asset_id), synthetic_png(6, 6)))
+    expect(second.reason == "not_awaiting_upload", "a second completion changes nothing")
+    again = _objects(str(asset_id))[0]
+    expect(
+        (again.byte_size, again.entity_tag) == (adopted.byte_size, adopted.entity_tag),
+        "the adopted original is unchanged",
+    )
+    duplicate = media.record_upload(good)
+    expect(duplicate.reason == "not_awaiting_upload", "a duplicate event changes nothing")
+    expect(MediaUploadGrant.objects.get(asset_id=asset_id).used_at is not None, "used once")
+    # After the grant's time: not adopted.
+    late_grant = ctx.request_upload(member)
+    late_row = MediaUploadGrant.objects.get(asset_id=late_grant["asset_id"])
+    late = ctx.put_photo(
+        late_grant["asset_id"], uploaded_at=late_row.expires_at + timedelta(seconds=1)
+    )
+    expect(media.record_upload(late).reason == "grant_expired", "an expired grant adopts nothing")
+    # The byte limit is the grant's version's, not the current one's.
+    issued = ctx.request_upload(member)
+    current = _media_policy()
+    small = {**current, "max_bytes": 32}
+    expect(_publish_media(ctx, small).outcome == "applied", "a smaller byte limit published")
+    try:
+        under_old = media.record_upload(ctx.put_photo(issued["asset_id"], synthetic_png()))
+        expect(under_old.outcome == "applied", "adopted under the version its grant records")
+        newer = ctx.request_upload(member)
+        version = MediaUploadGrant.objects.get(asset_id=newer["asset_id"]).policy_version
+        expect(version != "media.policy.v1", "the newer grant records the newer version")
+        over_new = media.record_upload(ctx.put_photo(newer["asset_id"], synthetic_png()))
+        expect(over_new.reason == "over_byte_limit", "refused under the newer grant's version")
+    finally:
+        expect(_publish_media(ctx, current).outcome == "applied", "the limit published back")
+    return "completions matched to their grant's key, time and version's byte limit"
+
+
+def db_now() -> Any:
+    from django.utils import timezone
+
+    return timezone.now()
+
+
+@case("media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction", "10", "D10")
+def media_check(ctx: ProfileContext) -> str:
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media, staff
+
+    member = ctx.member()
+    asset_id = UUID(ctx.uploaded_photo(member))
+    expect(media.review(asset_id).outcome == "applied", "reviewed")
+    # The runtime's check approves nothing.
+    runtime = media.run_check(asset_id)
+    expect(runtime.reason == "undecided", "the runtime's check approves nothing")
+    expect(_asset_row(str(asset_id)).state == "review_pending", "still in review")
+    # No member route approves or rejects: the intent has no such action.
+    for action in ("approve", "reject", "uploaded", "purged"):
+        body = ctx.media_intent(member, "request_upload")
+        body["action"] = action
+        ctx.refused(ctx.command(member, MEDIA, body), 400, "invalid_request", "no member event")
+    rejecting = test_ports(check=DecidingCheck("reject", "fixture_reason"))
+    expect(media.run_check(asset_id, ports=rejecting).outcome == "applied", "rejected")
+    row = _asset_row(str(asset_id))
+    expect(row.state == "rejected" and row.rejection_reason == "fixture_reason", "its reason")
+    audit = StaffAudit.objects.get(object_id=asset_id, action="reject")
+    expect(audit.staff_subject == "system:photo-check", "a system: subject")
+    # A staff restriction on a report: back to review, delivery withheld, and the check never
+    # clears it.
+    photo = UUID(ctx.approved_photo(member))
+    request = uuid4()
+    restricted = staff.restrict_media(
+        photo, staff_subject=STAFF, reason="report-fixture", request_id=request
+    )
+    expect(restricted.outcome == "applied", "staff restricted it")
+    row = _asset_row(str(photo))
+    expect(row.state == "review_pending" and row.restriction_ref is not None, "a revocation")
+    expect(_lifecycle(ctx, member, str(photo))["approved_delivery_ref"] is None, "withheld")
+    expect(StaffAudit.objects.get(request_id=request).staff_subject == STAFF, "the staff's subject")
+    approving = test_ports(check=DecidingCheck())
+    kept = media.run_check(photo, ports=approving)
+    expect(kept.reason == "restricted", "the check never clears a staff restriction")
+    expect(_asset_row(str(photo)).state == "review_pending", "it stays restricted")
+    again = staff.restrict_media(
+        photo, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+    )
+    expect(again.outcome == "refused" and again.code == "state_conflict", "only an approved one")
+    member_subject = staff.restrict_media(
+        photo, staff_subject="member:x", reason="report-fixture", request_id=uuid4()
+    )
+    expect(member_subject.outcome == "refused", "a member's subject is refused")
+    # An approval never undoes an owner's removal.
+    pending = UUID(ctx.uploaded_photo(member))
+    expect(media.review(pending).outcome == "applied", "in review")
+    removed = ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(pending)))
+    ctx.data(removed, "media", "the owner removed it while in review")
+    after = media.run_check(pending, ports=approving)
+    expect(after.reason == "not_in_review", "the check cannot approve a removed photo")
+    row = _asset_row(str(pending))
+    expect(row.state == "removal_pending" and row.approved_variant_ref is None, "still removed")
+    subjects = set(
+        StaffAudit.objects.filter(action__in=["approve", "reject"]).values_list(
+            "staff_subject", flat=True
+        )
+    )
+    expect(subjects == {"system:photo-check"}, "every approval and rejection is the system's")
+    return "approve and reject are the check's (system); restriction kept; removal never undone"
+
+
+@case("media.removal_withholds_delivery_and_completes_on_every_objects_purge", "10", "D10")
+def media_removal(ctx: ProfileContext) -> str:
+    from glow_domain import media as md
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    storage = default_storage()
+    member = ctx.member()
+    photo = UUID(ctx.approved_photo(member))
+    keys = [o.key for o in _objects(str(photo))]
+    expect(len(keys) == 2, "an original and a variant")
+    expect(media.delivery_reference(photo).detail["delivery_ref"], "delivered while approved")
+    removed = ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(photo))),
+        "media",
+        "removed",
+    )
+    expect(removed["state"] == "removal_pending", "removal_pending")
+    expect(removed["approved_delivery_ref"] is None, "delivery withheld at once")
+    expect(media.delivery_reference(photo).detail["delivery_ref"] is None, "nothing delivers it")
+    repeat = ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(photo)))
+    expect(ctx.data(repeat, "media", "removed again")["state"] == "removal_pending", "repeat")
+    # An acknowledgment before the purge is requested is out of order: nothing changes.
+    early = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(early.reason == "purge_not_requested", "an out-of-order acknowledgment")
+    # The purge asks the hold port first; a hold stops it.
+    held = RecordingHold({photo})
+    deletions = len(storage.deletions)
+    stopped = media.request_purge(photo, ports=test_ports(hold=held))
+    expect(stopped.reason == "held" and held.asked == [photo], "the hold port was asked")
+    expect(len(storage.deletions) == deletions, "nothing deleted under a hold")
+    expect(_asset_row(str(photo)).purge_requested_at is None, "no purge requested")
+    asking = RecordingHold()
+    expect(media.request_purge(photo, ports=test_ports(hold=asking)).outcome == "applied", "go")
+    expect(asking.asked == [photo], "the purge asked the hold port first")
+    expect(sorted(storage.deletions[deletions:]) == sorted(keys), "every object is deleted")
+    forged = media.acknowledge_deletion(md.ObjectDeleted(uuid4(), keys[0]))
+    expect(forged.outcome == "refused" and forged.code == "forbidden", "unauthenticated")
+    first = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(first.outcome == "applied", "one object acknowledged")
+    expect(_asset_row(str(photo)).state == "removal_pending", "not removed until every object")
+    duplicate = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(duplicate.reason == "already_deleted", "a duplicate acknowledgment changes nothing")
+    expect(_asset_row(str(photo)).state == "removal_pending", "still pending")
+    last = media.acknowledge_deletion(storage.acknowledge(keys[1]))
+    expect(last.outcome == "applied", "the last object acknowledged")
+    expect(_asset_row(str(photo)).state == "removed", "removed on every object's purge")
+    expect(_events(photo, "media_purged") == 1, "media_purged")
+    expect(all(o.deleted_at is not None for o in _objects(str(photo))), "each acknowledged")
+    return "removal withheld delivery at once; removed only when both objects were acknowledged"
+
+
+@case("media.reorder_and_every_route_refuses_another_members_photo", "10", "11", "D10", "D17")
+def media_ownership(ctx: ProfileContext) -> str:
+    owner, stranger = ctx.ready_member(photo=False), ctx.member()
+    photos = [ctx.approved_photo(owner) for _ in range(3)]
+    theirs = ctx.approved_photo(stranger)
+    collection = ctx.media(owner)
+    expect([i["asset_id"] for i in collection["items"]] == photos, "in upload order")
+    wanted = [photos[2], photos[0], photos[1]]
+    reordered = ctx.data(
+        ctx.command(owner, MEDIA, ctx.media_intent(owner, "reorder", ordered=wanted)),
+        "media_collection",
+        "reordered",
+    )
+    expect([i["asset_id"] for i in reordered["items"]] == wanted, "the new order")
+    expect(reordered["version"] > collection["version"], "the collection's version advanced")
+    expect(ctx.get(owner, PROFILE, "own_profile")["media_ids"] == wanted, "the profile's order")
+    ctx.refused(
+        ctx.command(owner, MEDIA, ctx.media_intent(owner, "reorder", ordered=wanted[:2])),
+        409,
+        "state_conflict",
+        "not the whole approved set",
+    )
+    ctx.refused(
+        ctx.command(owner, MEDIA, ctx.media_intent(owner, "reorder", ordered=[*wanted, theirs])),
+        404,
+        "not_found",
+        "reorder with another owner's photo",
+    )
+    ctx.refused(
+        ctx.command(owner, MEDIA, ctx.media_intent(owner, "reorder", ordered=wanted, expected=1)),
+        409,
+        "stale_version",
+        "a stale collection",
+    )
+    ctx.refused(
+        ctx.command(owner, MEDIA, ctx.media_intent(owner, "remove", asset_id=theirs, expected=1)),
+        404,
+        "not_found",
+        "removal of another owner's photo",
+    )
+    ctx.refused(ctx.call(owner, "GET", f"{MEDIA}/{theirs}"), 404, "not_found", "their photo")
+    expect(theirs not in json.dumps(ctx.media(owner)), "their photo is in no collection of mine")
+    ctx.refused(
+        ctx.command(
+            owner, MEDIA, ctx.media_intent(owner, "remove", asset_id=photos[0], expected=99)
+        ),
+        409,
+        "stale_version",
+        "a stale asset version",
+    )
+    for method, body in (("GET", None), ("POST", ctx.media_intent(owner, "request_upload"))):
+        reply = ctx.call(owner, method, MEDIA, body, bearer=False)
+        ctx.refused(reply, 401, "unauthenticated", "no session")
+    ctx.refused(ctx.call(owner, "GET", f"{MEDIA}?state=approved"), 400, "invalid_request", "query")
+    extra = {**ctx.media_intent(owner, "request_upload"), "filename": "fixture.png"}
+    ctx.refused(ctx.command(owner, MEDIA, extra), 400, "invalid_request", "an extra field")
+    expect(_lifecycle(ctx, stranger, theirs)["state"] == "approved", "theirs is unchanged")
+    return "reorder of the whole approved set; another member's photo refused at every route"
+
+
+@case("media.the_photo_requirement_completes_and_its_removal_demotes", "9", "10", "D9", "D10")
+def media_requirement(ctx: ProfileContext) -> str:
+    from glow_profiles import media, staff
+
+    shown: list[str] = []
+    member = ctx.ready_member(photo=False)
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    _edit(ctx, member)
+    expect(ctx.missing(member) == ["photo"], "only a photo is missing")
+    profile = _profile_row(member.account_id)
+    expect(profile.state == "incomplete", "incomplete without a photo")
+    completed = _events(profile.pk, "profile_completed")
+    asset_id = UUID(ctx.uploaded_photo(member))
+    expect(media.review(asset_id).outcome == "applied", "reviewed")
+    expect(_profile_row(member.account_id).state == "incomplete", "a photo in review is none")
+    approved = media.run_check(asset_id, ports=test_ports(check=DecidingCheck()))
+    expect(approved.detail.get("profile") == "visible", "the check's approval completes it")
+    expect(_profile_row(member.account_id).state == "visible", "visible (requirements_met)")
+    expect(_events(profile.pk, "profile_completed") == completed + 1, "profile_completed")
+    expect(ctx.get(member, PROFILE, "own_profile")["media_ids"] == [str(asset_id)], "listed")
+    shown.append("the check's approval")
+    # A second photo: removing one keeps the profile visible; removing the last demotes it.
+    second = ctx.approved_photo(member)
+    demoted = _events(profile.pk, "profile_demoted")
+    ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=second)),
+        "media",
+        "one of two removed",
+    )
+    expect(_profile_row(member.account_id).state == "visible", "one approved photo remains")
+    ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(asset_id))),
+        "media",
+        "the last removed",
+    )
+    expect(_profile_row(member.account_id).state == "incomplete", "the last removal demotes")
+    expect(_events(profile.pk, "profile_demoted") == demoted + 1, "profile_demoted")
+    expect(ctx.missing(member) == ["photo"], "the photo is missing again")
+    shown.append("the removal of the last approved photo")
+    # Staff's restriction of the last approved photo demotes too.
+    member = ctx.visible_member()
+    photo = UUID(ctx.media(member)["items"][0]["asset_id"])
+    restricted = staff.restrict_media(
+        photo, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+    )
+    expect(restricted.detail.get("profile") == "incomplete", "the restriction demotes")
+    expect(_profile_row(member.account_id).state == "incomplete", "incomplete")
+    expect(ctx.missing(member) == ["photo"], "a restricted photo is no approved photo")
+    shown.append("the restriction of the last approved photo")
+    # A paused profile stays paused, and resume rechecks it.
+    member = ctx.visible_member()
+    photo_id = ctx.media(member)["items"][0]["asset_id"]
+    ctx.data(_visibility(ctx, member, "pause"), "own_profile", "paused")
+    ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=photo_id)),
+        "media",
+        "removed while paused",
+    )
+    expect(_profile_row(member.account_id).state == "paused", "a paused profile stays paused")
+    ctx.refused(_visibility(ctx, member, "resume"), 403, "forbidden", "resume rechecks it")
+    shown.append("a paused profile")
+    return f"{len(shown)} photo writers recomputed: " + ", ".join(shown)
+
+
+@case("pointers.one_order_in_every_transaction", "13", "D19")
+def pointers_order(ctx: ProfileContext) -> str:
+    from unittest import mock
+
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import OutboxEvent
+    from glow_profiles import events, media, settings_store, staff, tx
+
+    calls: list[tuple[Any, tuple[str, ...]]] = []
+    holds: list[tuple[Any, str]] = []
+    original_read, original_hold = settings_store.read_shared, settings_store._hold
+
+    def reading(transaction: Any, names: Any) -> Any:
+        calls.append((transaction, tuple(sorted(set(names)))))
+        return original_read(transaction, names)
+
+    def holding(transaction: Any, name: str) -> None:
+        holds.append((transaction, name))
+        original_hold(transaction, name)
+
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    seed_verified(member.account_id)
+    ctx.ensure_test_lists()
+    with (
+        mock.patch.object(settings_store, "read_shared", reading),
+        mock.patch.object(settings_store, "_hold", holding),
+    ):
+        # D19's four transactions, and Stage B's writers that recompute.
+        ctx.data(ctx.field(member, "gender", ["man"]), "own_profile_fields", "set_field")
+        ctx.data(ctx.area(member, LOS_ANGELES), "own_area", "set_area")
+        ctx.catalog(member)
+        _switch_staff_approval(ctx, True)
+        other = ctx.ready_member()
+        seed_chart(other.account_id)
+        approved = staff.approve_without_id(
+            other.account_id, staff_subject=STAFF, reason="SV2-proof", request_id=uuid4()
+        )
+        _switch_staff_approval(ctx, False)
+        expect(approved.outcome == "applied", "staff's approval without ID")
+        photo = ctx.media(member)["items"][0]["asset_id"]
+        ctx.data(
+            ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=photo)),
+            "media",
+            "a photo removed",
+        )
+        ctx.approved_photo(member)
+        restricted = staff.restrict_media(
+            UUID(ctx.media(member)["items"][-1]["asset_id"]),
+            staff_subject=STAFF,
+            reason="report-fixture",
+            request_id=uuid4(),
+        )
+        expect(restricted.outcome == "applied", "a restriction")
+        _edit(ctx, member)
+        current = settings_store.read_unlocked(ps.HISTORY).content
+        expect(ctx.publish(ps.HISTORY, current).outcome == "applied", "a history publication")
+    transactions: dict[int, list[tuple[str, ...]]] = {}
+    for transaction, names in calls:
+        transactions.setdefault(id(transaction), []).append(names)
+    held: dict[int, list[str]] = {}
+    for transaction, name in holds:
+        held.setdefault(id(transaction), [])
+        if name not in held[id(transaction)]:
+            held[id(transaction)].append(name)
+    expect(len(transactions) >= 8, "the transactions were seen")
+    for order in held.values():
+        expect(order == sorted(order), "every transaction locked its pointers in name order")
+    for sequence in transactions.values():
+        first = set(sequence[0])
+        later = {name for names in sequence[1:] for name in names}
+        if ps.HISTORY not in first:
+            expect(later <= first, "every pointer a member or staff writer reads is in its first")
+    recomputing = [s for s in transactions.values() if len(s) > 1]
+    expect(recomputing, "writers that recompute read consent.onboarding again")
+    for sequence in recomputing:
+        if ps.HISTORY not in sequence[0]:
+            expect(ps.ONBOARDING_CONSENT in sequence[0], "consent.onboarding in the first call")
+
+    # A lock out of order is an internal error that rolls the transaction back.
+    marker = uuid4()
+
+    def out_of_order(transaction: Any) -> Any:
+        events.emit(
+            transaction,
+            events.PROFILE_EDITED,
+            aggregate_id=marker,
+            aggregate_version=1,
+            payload_ref=marker,
+            now=db_now(),
+        )
+        settings_store.read_shared(transaction, [ps.LOCATION])
+        settings_store.read_shared(transaction, [ps.ONBOARDING_CONSENT])
+        return tx.Result("applied")
+
+    result = tx.run(out_of_order)
+    expect(result.outcome == "error" and result.code == "provider_unavailable", "an error")
+    expect(result.reason == "PointerOrderError", "named by its type, never a member's refusal")
+    expect(not OutboxEvent.objects.filter(aggregate_id=marker).exists(), "rolled back whole")
+    expect(media.delivery_reference(UUID(photo)).outcome == "read", "reads take no pointer")
+    return (
+        f"{len(transactions)} transactions locked their pointers in name order; a lock out of"
+        " order is an internal error that rolls back"
+    )
+
+
+@case("media.no_key_original_or_bytes_in_any_response", "12", "D10", "D17")
+def media_disclosure(ctx: ProfileContext) -> str:
+    from glow_persistence.models import MediaObject
+    from glow_profiles.media_fixtures import default_storage
+
+    member = ctx.member()
+    ctx.approved_photo(member)
+    keys = list(MediaObject.objects.values_list("key", flat=True))
+    tokens = [credential.token for credential in default_storage().credentials.values()]
+    served = json.dumps(ctx.served) + "\n".join(ctx.headers)
+    expect(keys and tokens, "the run made objects and credentials")
+    expect(not [key for key in keys if key in served], "no response holds an object key")
+    expect(not [token for token in tokens if token in served], "nor the store's credential")
+    for data in default_storage().objects.values():
+        expect(data.hex()[:48] not in served, "nor a photo's bytes")
+    references = [
+        item["approved_delivery_ref"]
+        for item in ctx.media(member)["items"]
+        if item["approved_delivery_ref"]
+    ]
+    expect(references, "an approved photo's reference is served to its owner")
+    for reference in references:
+        ctx.values.add(reference)
+    return f"{len(keys)} object keys and {len(tokens)} credentials served to no one"
+
+
 @case("digests.keyed_and_not_reproducible_without_the_key", "12", "D17")
 def digests(ctx: ProfileContext) -> str:
     import hashlib
@@ -2958,6 +3680,8 @@ COMMAND_OPERATIONS = {
     "adult_check",
     "birth_input",
     "visibility",
+    # SV2 Stage B: the member's photo commands (MediaIntent).
+    "media",
 }
 
 
