@@ -4,6 +4,7 @@
     python -m glow_ordering_proof run --seed 20260929 --results results.json
     python -m glow_ordering_proof identity --results identity.json   # SV1, identity settings
     python -m glow_ordering_proof profile --results profile.json     # SV2, profile settings
+    python -m glow_ordering_proof discovery --results discovery.json # SV3, discovery settings
 
 ``run`` executes the suite on two subjects (P06.2, D3): the reference design, then the
 app's adapter (``services/api``'s ``glow_chat``), each with the forced and named cases,
@@ -23,6 +24,10 @@ those settings.
 ``profile`` (SV2 Stage A) runs the profile suite on the third disposable database, under
 ``glow_ordering_proof.profile_settings`` only (``profile_suite``); every other command refuses
 those settings, and ``profile`` refuses every other settings module.
+
+``discovery`` (SV3 Stage A) runs the discovery suite on the fourth disposable database, under
+``glow_ordering_proof.discovery_settings`` only (``discovery_suite``); every other command refuses
+those settings, and ``discovery`` refuses every other settings module.
 """
 
 from __future__ import annotations
@@ -247,8 +252,22 @@ def main(argv: list[str] | None = None) -> int:
     # SV2 Stage A: the profile suite, under glow_ordering_proof.profile_settings only.
     profile_parser = commands.add_parser("profile")
     profile_parser.add_argument("--results", type=Path, default=None)
+    # SV3 Stage A: the discovery suite, under glow_ordering_proof.discovery_settings only.
+    discovery_parser = commands.add_parser("discovery")
+    discovery_parser.add_argument("--results", type=Path, default=None)
     args = parser.parse_args(argv)
     settings_module = os.environ.get("DJANGO_SETTINGS_MODULE")
+    if args.command == "discovery":
+        if settings_module != "glow_ordering_proof.discovery_settings":
+            print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings")
+            return 1
+        _setup()
+        from glow_ordering_proof import discovery_suite
+
+        return discovery_suite.run(args.results)
+    if settings_module == "glow_ordering_proof.discovery_settings":
+        print("refusing: only the discovery suite runs under the discovery settings")
+        return 1
     if args.command == "profile":
         if settings_module != "glow_ordering_proof.profile_settings":
             print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings")

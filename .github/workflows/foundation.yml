@@ -274,6 +274,11 @@ jobs:
       # PostgreSQL, glow_profile_proof, with its own marker and the same role, for the profile
       # suite after the identity suite. Its own two keys, a JWT signing key and a SECRET_KEY
       # (which also keys the stored idempotency digests, D17), are generated the same way.
+      # SV3 Stage A (eligibility and discovery; its brief's D14): a fourth database in the same
+      # PostgreSQL, glow_discovery_proof, with its own marker and the same role, for the discovery
+      # suite after the profile suite. Its own two keys, a JWT signing key and a SECRET_KEY (which
+      # also keys the stored digests and the discovery's tie-break and cursors, D6 and D7), are
+      # generated the same way.
       - name: Generate the disposable database's credentials (masked before anything prints)
         id: credentials
         shell: bash
@@ -292,6 +297,9 @@ jobs:
           # SV2: the profile database's marker, and the profile settings' SECRET_KEY.
           profile_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
           profile_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')
+          # SV3: the discovery database's marker, and the discovery settings' SECRET_KEY.
+          discovery_marker=$(python -c 'import secrets; print(secrets.token_hex(16))')
+          discovery_secret_key=$(python -c 'import secrets; print(secrets.token_hex(32))')
           echo "::add-mask::$superuser_password"
           echo "::add-mask::$role_password"
           echo "::add-mask::$marker"
@@ -300,25 +308,52 @@ jobs:
           echo "::add-mask::$identity_secret_key"
           echo "::add-mask::$profile_marker"
           echo "::add-mask::$profile_secret_key"
+          echo "::add-mask::$discovery_marker"
+          echo "::add-mask::$discovery_secret_key"
           test "$marker" != "$wrong_marker" || { echo "the two markers are equal; refusing"; exit 1; }
           test "$identity_marker" != "$marker" && test "$identity_marker" != "$wrong_marker" \
             || { echo "the markers are not distinct; refusing"; exit 1; }
           test "$profile_marker" != "$marker" && test "$profile_marker" != "$wrong_marker" \
             && test "$profile_marker" != "$identity_marker" \
             || { echo "the markers are not distinct; refusing"; exit 1; }
+          test "$discovery_marker" != "$marker" && test "$discovery_marker" != "$wrong_marker" \
+            && test "$discovery_marker" != "$identity_marker" \
+            && test "$discovery_marker" != "$profile_marker" \
+            || { echo "the markers are not distinct; refusing"; exit 1; }
           dir=$(mktemp -d "$RUNNER_TEMP/glow-proof-db.XXXXXX")
           printf '%s\n' "$superuser_password" > "$dir/superuser-password"
-          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_identity_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_profile_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" "$identity_marker" "$profile_marker" > "$dir/create-role.sql"
-          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n127.0.0.1:5433:glow_identity_proof:glow_proof:%s\n127.0.0.1:5433:glow_profile_proof:glow_proof:%s\n' "$role_password" "$role_password" "$role_password" > "$dir/passfile"
+          printf "CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE;\nCREATE DATABASE glow_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_identity_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_profile_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';\nCREATE DATABASE glow_discovery_proof OWNER glow_proof;\nCOMMENT ON DATABASE glow_discovery_proof IS 'glow-ordering-proof:%s';\n" "$role_password" "$marker" "$identity_marker" "$profile_marker" "$discovery_marker" > "$dir/create-role.sql"
+          printf '127.0.0.1:5433:glow_proof:glow_proof:%s\n127.0.0.1:5433:glow_identity_proof:glow_proof:%s\n127.0.0.1:5433:glow_profile_proof:glow_proof:%s\n127.0.0.1:5433:glow_discovery_proof:glow_proof:%s\n' "$role_password" "$role_password" "$role_password" "$role_password" > "$dir/passfile"
           printf '%s\n' "$marker" > "$dir/marker"
           printf '%s\n' "$wrong_marker" > "$dir/wrong-marker"
           printf '%s\n' "$identity_marker" > "$dir/identity-marker"
           printf '%s\n' "$identity_secret_key" > "$dir/identity-secret-key"
           printf '%s\n' "$profile_marker" > "$dir/profile-marker"
           printf '%s\n' "$profile_secret_key" > "$dir/profile-secret-key"
+          printf '%s\n' "$discovery_marker" > "$dir/discovery-marker"
+          printf '%s\n' "$discovery_secret_key" > "$dir/discovery-secret-key"
           # SV1's JWT signing key and SV2's: RSA, 2048 bits (RS256), each its own key, written by
           # Python straight to its file.
           python - "$dir/identity-jwt-key.pem" "$dir/profile-jwt-key.pem" <<'PYTHON'
+          import os
+          import sys
+
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric import rsa
+
+          for path in sys.argv[1:]:
+              key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+              data = key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              )
+              descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+              with os.fdopen(descriptor, "wb") as handle:
+                  handle.write(data)
+          PYTHON
+          # SV3's JWT signing key: its own key, generated the same way, straight to its file.
+          python - "$dir/discovery-jwt-key.pem" <<'PYTHON'
           import os
           import sys
 
@@ -359,7 +394,7 @@ jobs:
           done
           test "$ready" = 1 || { echo "PostgreSQL did not become ready within 60 s"; exit 1; }
           docker exec "$CONTAINER" pg_isready -h 127.0.0.1 -p 5432 -U postgres
-      - name: Create the non-superuser proof role and its three databases, each with its own marker as its comment
+      - name: Create the non-superuser proof role and its four databases, each with its own marker as its comment
         env:
           DIR: ${{ steps.credentials.outputs.dir }}
           CONTAINER: ${{ steps.credentials.outputs.container }}
@@ -373,6 +408,7 @@ jobs:
           echo "role glow_proof (NOSUPERUSER) and database glow_proof created, with the run's marker as its comment"
           echo "database glow_identity_proof (SV1) created for the same role, with its own marker as its comment"
           echo "database glow_profile_proof (SV2) created for the same role, with its own marker as its comment"
+          echo "database glow_discovery_proof (SV3) created for the same role, with its own marker as its comment"
       - name: Show that a wrong marker is refused and leaves the proof's database unchanged
         shell: bash
         env:
@@ -722,6 +758,120 @@ jobs:
         with:
           name: sv2-profile-results
           path: proofs/postgres-ordering/.work/profile-results.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      # SV3 Stage A (eligibility and discovery; its brief's D14): the discovery suite on the
+      # fourth disposable database, after the profile suite. Each step defines `discovery`, which
+      # runs a command with the discovery settings, the discovery database's marker (or the one
+      # named) and the paths of the discovery suite's own two keys.
+      - name: "SV3: show the discovery database refuses the other markers, then apply the reviewed migrations from zero"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          discovery() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_discovery_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/discovery-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/discovery-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings "${@:2}"
+          }
+          # The other databases' markers on the discovery database: refused before any statement.
+          for other in marker identity-marker profile-marker; do
+            set +e
+            discovery "$other" python -m django migrate --verbosity 1 > "$DIR/discovery-wrong-marker.log" 2>&1
+            status=$?
+            set -e
+            refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database' "$DIR/discovery-wrong-marker.log" || true)
+            rm -f "$DIR/discovery-wrong-marker.log"
+            echo "discovery migrate with the $other file's marker: exit status $status"
+            if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database's marker exited 0"; exit 1; fi
+            if [ -z "$refusal" ]; then echo "FAIL: the refusal message is missing (diagnostics withheld)"; exit 1; fi
+            echo "refusal: $refusal"
+          done
+          discovery discovery-marker python -m django migrate --verbosity 1
+          discovery discovery-marker python -m django makemigrations --check --dry-run
+      - name: "SV3: run the discovery suite (its phase timed), and show its output holds no secret or member value"
+        id: discovery
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+        run: |
+          discovery() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+              PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_discovery_proof PROOF_DB_USER=glow_proof \
+              PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/discovery-marker")" \
+              PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/discovery-secret-key" \
+              PROOF_IDENTITY_JWT_KEY_FILE="$DIR/discovery-jwt-key.pem" \
+              DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings "$@"
+          }
+          mkdir -p .work
+          started=$(date +%s)
+          set +e
+          discovery python -m glow_ordering_proof discovery --results .work/discovery-results.json > "$DIR/discovery.log" 2>&1
+          status=$?
+          finished=$(date +%s)
+          # Acceptance check 13, as SV2's step does it: none of the job's own secrets (the
+          # passwords, the four markers, the three suites' SECRET_KEYs, each line of the three
+          # signing keys) may be in the suite's output or in its results JSON, and the suite's own
+          # scans of every secret and member value it handled must report clean. Only then is the
+          # output shown and the JSON uploaded; otherwise the log shows counts only, never a line of
+          # the suite's output, and the check removes the JSON.
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            python -m glow_ordering_proof.discovery_scan "$DIR" "$DIR/discovery.log" .work/discovery-results.json
+          scan=$?
+          set -e
+          if [ "$scan" -eq 0 ]; then
+            echo "scan=passed" >> "$GITHUB_OUTPUT"
+            cat "$DIR/discovery.log"
+          else
+            echo "the full output is withheld; counts only, never a line of the suite's output:"
+            echo "lines in the suite's output: $(wc -l < "$DIR/discovery.log")"
+            echo "case lines: $(grep -c '^\[discovery\] PASS ' "$DIR/discovery.log" || true) passed, $(grep -c '^\[discovery\] FAIL ' "$DIR/discovery.log" || true) failed"
+          fi
+          rm -f "$DIR/discovery.log"
+          echo "discovery phase: $((finished - started)) s (the job's timeout is 30 minutes)"
+          if [ "$scan" -ne 0 ]; then echo "FAIL: the secret check did not pass"; exit 1; fi
+          test "$status" -eq 0
+      - name: "SV3: show that a second discovery run on the used database is refused before it writes"
+        shell: bash
+        env:
+          DIR: ${{ steps.credentials.outputs.dir }}
+          CONTAINER: ${{ steps.credentials.outputs.container }}
+        run: |
+          counts() {
+            docker exec "$CONTAINER" psql -X -q -At -v ON_ERROR_STOP=1 -U postgres -d glow_discovery_proof -c \
+              "SELECT (SELECT count(*) FROM auth_user) || ' ' || (SELECT count(*) FROM glow_persistence_appaccount) || ' ' || (SELECT count(*) FROM glow_persistence_profile) || ' ' || (SELECT count(*) FROM glow_persistence_recommendationbatch) || ' ' || (SELECT count(*) FROM glow_persistence_recommendationentry) || ' ' || (SELECT count(*) FROM glow_persistence_outboxevent)"
+          }
+          before=$(counts)
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \
+            PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_discovery_proof PROOF_DB_USER=glow_proof \
+            PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/discovery-marker")" \
+            PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/discovery-secret-key" \
+            PROOF_IDENTITY_JWT_KEY_FILE="$DIR/discovery-jwt-key.pem" \
+            DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings \
+            python -m glow_ordering_proof discovery > "$DIR/discovery-rerun.log" 2>&1
+          status=$?
+          set -e
+          after=$(counts)
+          refusal=$(grep -m 1 -F 'refusing a used database' "$DIR/discovery-rerun.log" || true)
+          rm -f "$DIR/discovery-rerun.log"
+          echo "rows (auth users, app accounts, profiles, batches, batch entries, outbox events) before: $before; after: $after"
+          echo "second discovery run exit status: $status"
+          if [ "$status" -eq 0 ]; then echo "FAIL: a second discovery run on the used database exited 0"; exit 1; fi
+          if [ -z "$refusal" ]; then echo "FAIL: the refusal is missing (diagnostics withheld)"; exit 1; fi
+          if [ "$before" != "$after" ]; then echo "FAIL: the refused run changed the database"; exit 1; fi
+          echo "refusal: $refusal"
+      # Uploaded only after the job's secret check has passed, as SV1's and SV2's are.
+      - name: "SV3: save the discovery suite's results JSON, once the secret check has passed"
+        if: ${{ always() && steps.discovery.outputs.scan == 'passed' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sv3-discovery-results
+          path: proofs/postgres-ordering/.work/discovery-results.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14

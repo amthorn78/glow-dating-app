@@ -1,0 +1,1576 @@
+"""The discovery cases (SV3 Stage A; its brief's acceptance checks 1 to 6 and 12 to 14, with D2 to
+D8, D13, D18 and D19; DM-60's examples), each run through the HTTP endpoints with Django's test
+client on the disposable discovery database, signed in through SV1's identity routes and built
+through SV2's member routes.
+
+Every case makes its own synthetic members and begins with no other ``visible`` profile
+(``DiscoveryContext.hide_everyone``). Settings are global: a case that publishes one restores what
+later cases rely on. Each case declares the acceptance checks it covers and returns a short detail
+line or raises ``CaseFailed``; neither ever holds a member's value.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import re
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import date
+from typing import Any
+from unittest import mock
+from uuid import UUID, uuid4
+
+from glow_ordering_proof.discovery_support import (
+    CHICAGO,
+    LOS_ANGELES,
+    NEW_YORK,
+    PAGE,
+    PHILADELPHIA,
+    DiscoveryContext,
+    expected_details,
+    expected_refs,
+    explain,
+    seed_population,
+)
+from glow_ordering_proof.identity_support import CaseFailed, Member, expect
+from glow_ordering_proof.profile_support import (
+    ORIENTATION_VALUES,
+    RecordingHold,
+    db_today,
+    test_ports,
+    years_ago,
+)
+
+
+@dataclass(frozen=True)
+class Case:
+    case_id: str
+    checks: tuple[str, ...]
+    run: Callable[[DiscoveryContext], str]
+
+
+CASES: list[Case] = []
+# The suite's case count, pinned: a case lost or added without this changing fails the run before
+# any case runs, and the offline tests.
+CASE_COUNT = 32
+
+
+def case(
+    case_id: str, *checks: str
+) -> Callable[[Callable[[DiscoveryContext], str]], Callable[[DiscoveryContext], str]]:
+    def register(function: Callable[[DiscoveryContext], str]) -> Callable[[DiscoveryContext], str]:
+        CASES.append(Case(case_id, checks, function))
+        return function
+
+    return register
+
+
+# -- helpers --------------------------------------------------------------------------------
+
+
+def _selection() -> Any:
+    """The selection as the pages read it, without locks (the adapter's own use)."""
+    from glow_discovery import policy
+    from glow_profiles import settings_store
+
+    found = {name: settings_store.read_unlocked(name) for name in policy.SELECTION_SETTINGS}
+    return policy.selection(found, db_today())
+
+
+def _service() -> Any:
+    from glow_discovery.eligibility import OrmEligibilityEvidence
+    from glow_domain.trusted_eligibility import TrustedEligibilityService
+
+    return TrustedEligibilityService(OrmEligibilityEvidence(_selection()))
+
+
+def _decision(viewer: Member | UUID, candidate: Member | UUID) -> Any:
+    from glow_domain.identity import AccountId
+
+    def account(who: Member | UUID) -> AccountId:
+        return AccountId(str(who.account_id if isinstance(who, Member) else who))
+
+    return _service().evaluate(account(viewer), account(candidate))
+
+
+def _ready(viewer: Member, candidate: Member) -> bool:
+    from glow_domain.trusted_eligibility import EligibilityDecisionState
+
+    return bool(_decision(viewer, candidate).state is EligibilityDecisionState.READY)
+
+
+def _rules(viewer: Member, candidate: Member) -> set[tuple[str, str]]:
+    decision = _decision(viewer, candidate)
+    if decision.eligibility is None:
+        return set()
+    return {(e.subject.value, e.rule.value) for e in decision.eligibility.exclusions}
+
+
+def _sees(ctx: DiscoveryContext, viewer: Member, candidate: Member) -> bool:
+    """Whether a fresh recommendations batch of ``viewer`` holds ``candidate``, and the trusted
+    adapter agrees (D2: one rule set for both)."""
+    shown = ctx.profile_id(candidate) in ctx.sees(viewer)
+    expect(shown == _ready(viewer, candidate), "the page and the trusted adapter agree")
+    return shown
+
+
+def _both(ctx: DiscoveryContext, first: Member, second: Member) -> tuple[bool, bool]:
+    return _sees(ctx, first, second), _sees(ctx, second, first)
+
+
+def _account(account_id: UUID) -> Any:
+    from glow_persistence.models import AppAccount
+
+    return AppAccount.objects.get(pk=account_id)
+
+
+def _visibility(ctx: DiscoveryContext, member: Member, action: str) -> None:
+    current = ctx.profiles.get(member, "/api/v1/profile", "own_profile")
+    body = {
+        "operation": "visibility",
+        "meta": ctx.profiles.meta(current["version"]),
+        "action": action,
+    }
+    ctx.profiles.data(
+        ctx.profiles.command(member, "/api/v1/profile/visibility", body), "own_profile", action
+    )
+
+
+def _summary(ctx: DiscoveryContext, member: Member, summary: str) -> str:
+    reply = ctx.profiles.profile(member, summary=summary)
+    return str(ctx.profiles.data(reply, "own_profile", "the profile edit")["visibility"])
+
+
+def _profile_state(account_id: UUID, state: str) -> None:
+    """A profile state written in setup (test data), for the states no member route reaches."""
+    from glow_persistence.models import Profile
+
+    Profile.objects.filter(account_id=account_id).update(state=state)
+
+
+def _refused_page(ctx: DiscoveryContext, member: Member, status: int, code: str, what: str) -> None:
+    ctx.profiles.refused(ctx.page_reply(member), status, code, what)
+
+
+def _batches(account_id: UUID) -> set[str]:
+    from glow_persistence.models import RecommendationBatch
+
+    return {
+        str(b)
+        for b in RecommendationBatch.objects.filter(account_id=account_id).values_list(
+            "id", flat=True
+        )
+    }
+
+
+def _stale_shape(reply: Any) -> dict[str, Any]:
+    body = dict(reply.body or {})
+    body.pop("request_id", None)
+    return body
+
+
+def _empty_shape(page: dict[str, Any]) -> dict[str, Any]:
+    shape = dict(page)
+    for name in ("batch_id", "expires_at"):
+        shape.pop(name, None)
+    return shape
+
+
+class _Probe:
+    """A transaction probe for the pages (D2): it only signals; the case's callback runs the
+    concurrent writes in another thread, on its own connection, and waits for them."""
+
+    on_begin = None
+    after_first_lock = None
+    after_locks = None
+    before_commit = None
+
+    def __init__(self, before_recheck: Callable[[], None]) -> None:
+        self.before_recheck = before_recheck
+
+
+def _in_thread(work: Callable[[], None]) -> None:
+    from django.db import connection
+
+    failure: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            work()
+        except BaseException as exc:  # noqa: BLE001 - re-raised by type in the case's thread
+            failure.append(exc)
+        finally:
+            connection.close()
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    thread.join(60)
+    expect(not thread.is_alive(), "the concurrent writes finished")
+    if failure:
+        raise CaseFailed(f"the concurrent writes failed: {type(failure[0]).__name__}")
+
+
+# -- 1. the predicates (acceptance check 1; D2, D3) -------------------------------------------
+
+
+@case("adapter.both_ways_agree", "1", "Outcome 1", "D2", "D3")
+def adapter_both_ways_agree(ctx: DiscoveryContext) -> str:
+    from django.db import transaction
+    from glow_discovery.eligibility import OrmPairActionTransaction
+    from glow_domain.identity import AccountId
+    from glow_domain.trusted_eligibility import EligibilityDecisionState, EvidenceProblem
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    expect(_both(ctx, viewer, candidate) == (True, True), "two visible members see each other")
+    expect(ctx.profile_id(viewer) not in ctx.sees(viewer), "a member is never their own candidate")
+    expect(ctx.sees(viewer, "discovery") == set(), "broader leaves out the recommended")
+    missing = _decision(viewer, uuid4())
+    expect(missing.state is EligibilityDecisionState.REJECTED, "a missing account is rejected")
+    expect(missing.problem is EvidenceProblem.MISSING_EVIDENCE, "as missing evidence")
+    expect(("pair", "self") in _rules(viewer, viewer), "a member is never their own candidate")
+    selection = _selection()
+    pair = OrmPairActionTransaction(selection)
+    v, c = AccountId(str(viewer.account_id)), AccountId(str(candidate.account_id))
+    with transaction.atomic():
+        evidence = pair.acquire(v, c)
+        expect(evidence is not None, "the action's read finds both members")
+        assert evidence is not None
+        expect(pair.commit_if_current(evidence.current_version), "unchanged evidence is current")
+    ctx.set_filters(candidate, minimum=19)
+    with transaction.atomic():
+        expect(not pair.commit_if_current(evidence.current_version), "a change makes it stale")
+    try:
+        pair.acquire(v, c)
+    except RuntimeError:
+        outside = True
+    else:
+        outside = False
+    expect(outside, "the action's read refuses to run outside a transaction")
+    return "both directions; the adapter agrees with the pages; missing, self and stale refused"
+
+
+@case("predicates.adult_state", "1", "D3")
+def adult_state(ctx: DiscoveryContext) -> str:
+    from glow_persistence.models import AccountAgeState
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    kept = AccountAgeState.objects.get(account_id=candidate.account_id)
+    born = kept.birth_date
+    # D3: visible can lag the age state, so ADULT is read directly. The lag is seeded in setup.
+    AccountAgeState.objects.filter(pk=kept.pk).update(
+        state="unknown", method="none", policy_version=None, birth_date=None
+    )
+    ctx.expect_visible(candidate)
+    expect(not _sees(ctx, viewer, candidate), "an unknown age state excludes the candidate")
+    expect(("candidate", "adult") in _rules(viewer, candidate), "by the adult rule")
+    AccountAgeState.objects.filter(pk=kept.pk).update(
+        state="self_declared_adult",
+        method="self_declaration",
+        policy_version="adult.self-declaration.v1",
+        birth_date=born,
+    )
+    expect(_sees(ctx, viewer, candidate), "restored, the candidate passes")
+    own = AccountAgeState.objects.get(account_id=viewer.account_id)
+    before = _batches(viewer.account_id)
+    AccountAgeState.objects.filter(pk=own.pk).update(
+        state="unknown", method="none", policy_version=None, birth_date=None
+    )
+    _refused_page(ctx, viewer, 403, "forbidden", "a viewer outside the accepted states")
+    expect(_batches(viewer.account_id) == before, "no batch is computed for them")
+    AccountAgeState.objects.filter(pk=own.pk).update(
+        state="self_declared_adult",
+        method="self_declaration",
+        policy_version="adult.self-declaration.v1",
+        birth_date=own.birth_date,
+    )
+    expect(_sees(ctx, viewer, candidate), "restored, the viewer pages again")
+    return "unknown excludes the candidate and refuses the viewer, each passing when restored"
+
+
+@case("predicates.consent", "1", "D3", "D7")
+def consent(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import ConsentDecision
+
+    viewer, candidate, other = ctx.visible(), ctx.visible(), ctx.visible()
+    first = ctx.page(viewer, limit=1)
+    expect(first["next_cursor"] is not None, "a first page with a cursor")
+    # DM-54, Q3: a new onboarding version fails every older acceptance at once, and every batch.
+    ctx.publish(ps.ONBOARDING_CONSENT, ctx.current(ps.ONBOARDING_CONSENT))
+    ctx.stale(viewer, "recommendations", first["next_cursor"], "a cursor after a new consent")
+    ctx.expect_visible(candidate)
+    _refused_page(ctx, viewer, 403, "forbidden", "a viewer at an old consent version")
+    ctx.profiles.accept_onboarding(viewer)
+    expect(not _sees(ctx, viewer, candidate), "a candidate at an old version is excluded")
+    expect(("candidate", "consent") in _rules(viewer, candidate), "by the consent rule")
+    ctx.profiles.accept_onboarding(candidate)
+    ctx.profiles.accept_onboarding(other)
+    expect(_sees(ctx, viewer, candidate), "accepted at the current version, it passes")
+    # Every reader filters by purpose: sensitive decisions numbered above the onboarding one change
+    # nothing; a sensitive decision alone never satisfies it.
+    latest = (
+        ConsentDecision.objects.filter(account_id=candidate.account_id, purpose="onboarding")
+        .order_by("-version")
+        .first()
+    )
+    assert latest is not None
+    label = ctx.current_label(ps.SENSITIVE_CONSENT)
+    for number in range(1, int(latest.version) + 3):
+        ConsentDecision.objects.create(
+            account_id=candidate.account_id,
+            purpose="sensitive_profile",
+            policy_version=label,
+            state="accepted",
+            decided_at=latest.decided_at,
+            version=number,
+        )
+    expect(_sees(ctx, viewer, candidate), "sensitive decisions numbered above it change nothing")
+    withdrawn = ConsentDecision.objects.create(
+        account_id=candidate.account_id,
+        purpose="onboarding",
+        policy_version=latest.policy_version,
+        state="withdrawn",
+        decided_at=latest.decided_at,
+        version=int(latest.version) + 1,
+    )
+    expect(not _sees(ctx, viewer, candidate), "a latest withdrawal excludes, visible or not")
+    withdrawn.delete()
+    expect(_sees(ctx, viewer, candidate), "the acceptance passes again")
+    held = list(
+        ConsentDecision.objects.filter(account_id=candidate.account_id, purpose="onboarding")
+    )
+    ConsentDecision.objects.filter(account_id=candidate.account_id, purpose="onboarding").delete()
+    expect(not _sees(ctx, viewer, candidate), "a sensitive decision alone, or none, excludes")
+    ConsentDecision.objects.bulk_create(held)
+    expect(_sees(ctx, viewer, candidate), "restored, it passes")
+    reply = ctx.profiles.withdraw_onboarding(candidate)
+    ctx.profiles.data(reply, "onboarding", "the withdrawal")
+    expect(not _sees(ctx, viewer, candidate), "a withdrawal through the route excludes")
+    ctx.profiles.accept_onboarding(candidate)
+    expect(_sees(ctx, viewer, candidate), "an acceptance restores")
+    return "old version, withdrawal, missing and purpose each exclude; restored each passes"
+
+
+@case("predicates.profile_states", "1", "D3")
+def profile_states(ctx: DiscoveryContext) -> str:
+    from glow_profiles import staff
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    _visibility(ctx, candidate, "pause")
+    expect(not _sees(ctx, viewer, candidate), "a paused candidate is excluded")
+    _visibility(ctx, candidate, "resume")
+    expect(_sees(ctx, viewer, candidate), "resumed, it passes")
+    expect(_summary(ctx, candidate, "") == "incomplete", "a cleared summary makes it incomplete")
+    expect(not _sees(ctx, viewer, candidate), "an incomplete candidate is excluded")
+    expect(_summary(ctx, candidate, "Back again.") == "visible", "completed again")
+    expect(_sees(ctx, viewer, candidate), "visible again, it passes")
+    restricted = staff.restrict_profile(
+        candidate.account_id,
+        staff_subject="staff:discovery-proof",
+        reason="SV3-proof",
+        request_id=uuid4(),
+    )
+    expect(restricted.outcome == "applied", "staff restrict the profile")
+    expect(not _sees(ctx, viewer, candidate), "a restricted candidate is excluded")
+    _profile_state(candidate.account_id, "removed")
+    expect(not _sees(ctx, viewer, candidate), "a removed candidate is excluded")
+    _profile_state(candidate.account_id, "visible")
+    expect(_sees(ctx, viewer, candidate), "restored, it passes")
+    _visibility(ctx, viewer, "pause")
+    _refused_page(ctx, viewer, 403, "forbidden", "a paused viewer")
+    _visibility(ctx, viewer, "resume")
+    expect(_summary(ctx, viewer, "") == "incomplete", "the viewer made incomplete")
+    _refused_page(ctx, viewer, 403, "forbidden", "an incomplete viewer")
+    expect(_summary(ctx, viewer, "Back again.") == "visible", "the viewer completed again")
+    _profile_state(viewer.account_id, "restricted")
+    _refused_page(ctx, viewer, 403, "forbidden", "a restricted viewer")
+    _profile_state(viewer.account_id, "removed")
+    _refused_page(ctx, viewer, 403, "forbidden", "a removed viewer")
+    _profile_state(viewer.account_id, "visible")
+    expect(_sees(ctx, viewer, candidate), "restored, the viewer pages again")
+    return "paused, incomplete, restricted and removed each exclude and refuse; restored each pass"
+
+
+@case("predicates.account_states", "1", "D3", "12")
+def account_states(ctx: DiscoveryContext) -> str:
+    from glow_persistence.models import AppAccount
+    from glow_profiles import operations
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.profile_id(candidate)
+    expect(operations.chat().suspend(candidate.account_id).outcome == "applied", "suspended")
+    expect(not _sees(ctx, viewer, candidate), "a suspended candidate is excluded")
+    AppAccount.objects.filter(pk=candidate.account_id).update(state="active")
+    expect(_sees(ctx, viewer, candidate), "active again (setup), it passes")
+    expect(operations.chat().delete(candidate.account_id).outcome == "applied", "deletion asked")
+    expect(not _sees(ctx, viewer, candidate), "a deletion-pending candidate is excluded")
+    AppAccount.objects.filter(pk=candidate.account_id).update(state="deleted")
+    expect(not _sees(ctx, viewer, candidate), "a deleted candidate is excluded")
+    AppAccount.objects.filter(pk=candidate.account_id).update(state="active")
+    expect(_sees(ctx, viewer, candidate), "active again (setup), it passes")
+    expect(operations.chat().suspend(viewer.account_id).outcome == "applied", "viewer suspended")
+    reply = ctx.page_reply(viewer)
+    ctx.profiles.refused(reply, 401, "unauthenticated", "a suspended viewer has no actor")
+    # SV1's actor and the account row lock refuse first; the viewer's own predicate, the statement
+    # each page runs, fails the account too.
+    from django.db import connection
+    from glow_discovery import predicates
+    from glow_discovery.eligibility import parameters
+
+    with connection.cursor() as cursor:
+        cursor.execute(predicates.VIEWER, parameters(_selection(), viewer.account_id))
+        expect(
+            cursor.fetchone()[0] is False, "the viewer's own predicate fails a suspended account"
+        )
+    return "suspended, deletion-pending and deleted each exclude; a suspended viewer has no page"
+
+
+@case("predicates.blocks", "1", "D3", "D7")
+def blocks(ctx: DiscoveryContext) -> str:
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.block(viewer.account_id, candidate.account_id)
+    expect(_both(ctx, viewer, candidate) == (False, False), "the viewer's block excludes both ways")
+    ctx.unblock(viewer.account_id, candidate.account_id)
+    expect(_both(ctx, viewer, candidate) == (True, True), "unblocked, both pass")
+    ctx.block(candidate.account_id, viewer.account_id)
+    expect(_both(ctx, viewer, candidate) == (False, False), "the candidate's block, both ways")
+    ctx.unblock(candidate.account_id, viewer.account_id)
+    expect(_both(ctx, viewer, candidate) == (True, True), "unblocked, both pass")
+    # D7: a block bumps only its actor's blocks_version, so the viewer's batch stays fresh, and
+    # each page rechecks both directions for every entry.
+    third = ctx.visible()
+    first = ctx.page(viewer, limit=1)
+    shown = ctx.ids(first)[0]
+    blocker = third if shown == ctx.profile_id(candidate) else candidate
+    blocker_id = ctx.profile_id(blocker)
+    ctx.block(blocker.account_id, viewer.account_id)
+    second = ctx.page(viewer, "recommendations", first["next_cursor"], 1)
+    expect(
+        blocker_id not in ctx.ids(second), "a block by the candidate drops them at the next page"
+    )
+    expect(second["state"] == "empty", "and nothing else was left")
+    return "a block in either direction excludes both ways and is rechecked on every page"
+
+
+@case("predicates.missing_rows", "1", "D3")
+def missing_rows(ctx: DiscoveryContext) -> str:
+    from glow_persistence.models import AccountAgeState, Preferences, PreferenceSetEntry
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    held = Preferences.objects.get(account_id=candidate.account_id)
+    Preferences.objects.filter(pk=held.pk).delete()
+    expect(not _sees(ctx, viewer, candidate), "no preferences row fails closed")
+    expect(("candidate", "preference") in _rules(viewer, candidate), "as the candidate's direction")
+    held.save(force_insert=True)
+    expect(_sees(ctx, viewer, candidate), "restored, it passes")
+    sets = list(PreferenceSetEntry.objects.filter(account_id=candidate.account_id, field="gender"))
+    PreferenceSetEntry.objects.filter(account_id=candidate.account_id, field="gender").delete()
+    expect(not _sees(ctx, viewer, candidate), "no set row for a field fails closed")
+    PreferenceSetEntry.objects.bulk_create(sets)
+    expect(_sees(ctx, viewer, candidate), "restored, it passes")
+    age = AccountAgeState.objects.get(account_id=candidate.account_id)
+    AccountAgeState.objects.filter(pk=age.pk).delete()
+    expect(not _sees(ctx, viewer, candidate), "no age state row fails closed")
+    expect(("candidate", "adult") in _rules(viewer, candidate), "as unknown, never a pass")
+    age.save(force_insert=True)
+    expect(_sees(ctx, viewer, candidate), "restored, it passes")
+    return "a missing preferences, set or age state row each fails closed"
+
+
+# -- 2. the two-way rule (acceptance check 2; D4) ---------------------------------------------
+
+
+def _sensitive_pair(ctx: DiscoveryContext) -> tuple[Member, Member]:
+    ctx.profiles.ensure_test_lists()
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.accept_sensitive(viewer)
+    ctx.accept_sensitive(candidate)
+    return viewer, candidate
+
+
+@case("two_way.each_field_both_directions", "2", "D4")
+def each_field_both_directions(ctx: DiscoveryContext) -> str:
+    from glow_ordering_proof.profile_support import RELATIONSHIP_VALUE
+
+    viewer, candidate = _sensitive_pair(ctx)
+    a, b = ORIENTATION_VALUES[0], ORIENTATION_VALUES[1]
+    ctx.set_field(viewer, "orientation", [a])
+    ctx.set_field(candidate, "orientation", [b])
+    ctx.set_field(viewer, "relationship_status", [RELATIONSHIP_VALUE])
+    ctx.set_field(candidate, "relationship_status", [RELATIONSHIP_VALUE])
+    expect(_both(ctx, viewer, candidate) == (True, True), "every set keeps all")
+    # (field, the viewer's own value, the candidate's own value, a value neither holds)
+    fields = (
+        ("gender", "woman", "woman", "man"),
+        ("looking_for", "long-term", "long-term", "casual"),
+        ("orientation", a, b, ORIENTATION_VALUES[2]),
+        ("relationship_status", RELATIONSHIP_VALUE, RELATIONSHIP_VALUE, "single"),
+    )
+    checked = 0
+    for name, viewer_value, candidate_value, neither in fields:
+        for narrower, wanted in ((viewer, candidate_value), (candidate, viewer_value)):
+            ctx.set_sets(narrower, {name: [neither]})
+            expect(not _sees(ctx, viewer, candidate), f"{name}: a miss in one direction excludes")
+            ctx.set_sets(narrower, {name: [wanted]})
+            expect(_sees(ctx, viewer, candidate), f"{name}: a match passes")
+            ctx.set_sets(narrower, {})
+            checked += 1
+    return f"{checked} field directions: each excludes on a miss and passes on a match"
+
+
+@case("two_way.keep_all", "2", "D4")
+def keep_all(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+
+    viewer, candidate = _sensitive_pair(ctx)
+    expect(_sees(ctx, viewer, candidate), "keep-all sees a member with no orientation row")
+    ctx.set_field(candidate, "orientation", ["not-stated"])
+    expect(_sees(ctx, viewer, candidate), "keep-all sees a member who states none")
+    # A value the console adds after the viewer's set was saved: keep-all still matches it.
+    content = ctx.current(ps.GENDER_LIST)
+    added = "fixture-gender-later"
+    if added not in {value["id"] for value in content["values"]}:
+        content["values"].append({"id": added, "label": "Fixture later value", "retired": False})
+        ctx.publish(ps.GENDER_LIST, content)
+    ctx.set_field(candidate, "gender", [added])
+    expect(_sees(ctx, viewer, candidate), "keep-all matches a value added after it was set")
+    ctx.set_field(candidate, "gender", ["woman"])
+    return "keep-all matches not stated and a later list value"
+
+
+@case("two_way.narrowed_never_not_stated", "2", "D4")
+def narrowed_never_not_stated(ctx: DiscoveryContext) -> str:
+    viewer, silent = _sensitive_pair(ctx)
+    stated_none, stated = ctx.visible(), ctx.visible()
+    ctx.accept_sensitive(stated_none)
+    ctx.accept_sensitive(stated)
+    a = ORIENTATION_VALUES[0]
+    ctx.set_field(viewer, "orientation", [a])
+    ctx.set_field(stated_none, "orientation", ["not-stated"])
+    ctx.set_field(stated, "orientation", [a])
+    ctx.set_sets(viewer, {"orientation": [a]})
+    seen = ctx.sees(viewer)
+    expect(ctx.profile_id(silent) not in seen, "a missing orientation row is not stated, excluded")
+    expect(ctx.profile_id(stated_none) not in seen, "not stated is in no narrowed set")
+    expect(ctx.profile_id(stated) in seen, "a stated match passes")
+    expect(_ready(viewer, stated) and not _ready(viewer, silent), "the adapter agrees")
+    ctx.set_sets(viewer, {})
+    return "a narrowed set never matches not stated, a missing row included"
+
+
+@case("two_way.retired_value", "2", "D4")
+def retired_value(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+
+    viewer, candidate = _sensitive_pair(ctx)
+    content = ctx.current(ps.RELATIONSHIP_LIST)
+    value = "fixture-relationship-retiring"
+    content["values"].append({"id": value, "label": "Fixture retiring value", "retired": False})
+    ctx.publish(ps.RELATIONSHIP_LIST, content)
+    ctx.set_field(candidate, "relationship_status", [value])
+    ctx.set_field(viewer, "relationship_status", [value])
+    ctx.set_sets(viewer, {"relationship_status": [value]})
+    expect(_sees(ctx, viewer, candidate), "a narrowed set matches the value")
+    content = ctx.current(ps.RELATIONSHIP_LIST)
+    for entry in content["values"]:
+        if entry["id"] == value:
+            entry["retired"] = True
+    ctx.publish(ps.RELATIONSHIP_LIST, content)
+    expect(_sees(ctx, viewer, candidate), "retired, it stays matchable for its holder")
+    return "a retired value stays matchable in a narrowed set"
+
+
+@case("two_way.not_narrowable", "2", "D4")
+def not_narrowable(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.set_sets(viewer, {"gender": ["man"]})
+    expect(not _sees(ctx, viewer, candidate), "a narrowed gender set excludes")
+    content = ctx.current(ps.NARROWING)
+    content["narrowable"]["gender"] = False
+    ctx.publish(ps.NARROWING, content)
+    try:
+        expect(_sees(ctx, viewer, candidate), "a field not narrowable reads as keeping all")
+    finally:
+        content["narrowable"]["gender"] = True
+        ctx.publish(ps.NARROWING, content)
+    expect(not _sees(ctx, viewer, candidate), "narrowable again, the set applies")
+    ctx.set_sets(viewer, {})
+    return "a field made not narrowable reads as keep-all; narrowable again, the set applies"
+
+
+# -- 3. age (acceptance check 3; D4) ----------------------------------------------------------
+
+
+@case("age.range_both_ways", "3", "D4")
+def range_both_ways(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+
+    viewer = ctx.visible(birth_date=years_ago(30, days=-40))
+    older = ctx.visible(birth_date=years_ago(45, days=-40))
+    same = ctx.visible(birth_date=years_ago(30, days=-40))
+    ctx.set_filters(viewer, minimum=25, maximum=35)
+    seen = ctx.sees(viewer)
+    expect(ctx.profile_id(older) not in seen, "outside the viewer's range, excluded")
+    expect(ctx.profile_id(same) in seen, "within it, included")
+    ctx.set_filters(same, minimum=18, maximum=25)
+    expect(ctx.profile_id(same) not in ctx.sees(viewer), "both ways: the viewer outside theirs")
+    content = ctx.current(ps.AGE_RANGE)
+    content["direction"] = "viewer_only"
+    ctx.publish(ps.AGE_RANGE, content)
+    try:
+        expect(ctx.profile_id(same) in ctx.sees(viewer), "viewer only: their range is not applied")
+    finally:
+        content["direction"] = "both_ways"
+        ctx.publish(ps.AGE_RANGE, content)
+    expect(ctx.profile_id(same) not in ctx.sees(viewer), "both ways again")
+    return "the range applies to the candidate, and to the viewer under both_ways"
+
+
+LEAP_BIRTHS = ("2008-02-29", "2008-02-28", "2008-03-01", "2000-02-29", "2008-09-23", "2008-09-24")
+LEAP_TODAYS = (
+    "2026-02-28",
+    "2026-03-01",
+    "2026-09-23",
+    "2026-09-24",
+    "2027-02-28",
+    "2027-03-01",
+    "2028-02-28",
+    "2028-02-29",
+    "2028-03-01",
+)
+
+
+@case("age.leap_days_and_age_state", "3", "D4", "13")
+def leap_days_and_age_state(ctx: DiscoveryContext) -> str:
+    from django.db import connection
+    from glow_discovery import predicates
+    from glow_domain.identity import whole_years
+    from glow_persistence.models import BirthInput
+
+    statement = "SELECT " + predicates.AGE.format(birth="%(birth)s::date")
+    pairs = 0
+    with connection.cursor() as cursor:
+        for born in LEAP_BIRTHS:
+            for today in LEAP_TODAYS:
+                cursor.execute(statement, {"birth": born, "today": today})
+                found = cursor.fetchone()[0]
+                expected = whole_years(date.fromisoformat(born), date.fromisoformat(today))
+                expect(found == expected, "the SQL rule is age_years' at a leap-day case")
+                pairs += 1
+    # D4: the age state's date, never the birth input's.
+    viewer = ctx.visible()
+    candidate = ctx.visible(birth_date=years_ago(30, days=-40))
+    BirthInput.objects.filter(account_id=candidate.account_id).update(
+        birth_date=date.fromisoformat(years_ago(60, days=-40))
+    )
+    ctx.set_filters(viewer, minimum=25, maximum=35)
+    page = ctx.page(viewer)
+    cards = [card for card in page["items"] if card["profile_id"] == ctx.profile_id(candidate)]
+    expect(len(cards) == 1, "the age state's age decides the range, not the birth input's")
+    expect(cards[0]["profile"]["age"] == 30, "and the card's age is the age state's")
+    for body in ctx.pages:
+        expect("birth" not in json.dumps(body), "no page carries a birth field")
+    return f"{pairs} leap-day pairs agree; the age state's date is used, never the birth input's"
+
+
+# -- 4. distance (acceptance check 4; D5) -----------------------------------------------------
+
+
+@case("distance.zero_boundary_viewer_only", "4", "D5", "13")
+def distance_cases(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import Area, OutboxEvent
+    from glow_profiles import areas
+
+    points = {
+        row.area_id: areas.AreaPoint(
+            row.area_id, row.name, float(row.latitude), float(row.longitude)
+        )
+        for row in Area.objects.filter(area_id__in=(NEW_YORK, PHILADELPHIA))
+    }
+    miles = areas.miles_between(points[NEW_YORK], points[PHILADELPHIA])
+    ctx.profiles.values.add(repr(miles))
+    ctx.private.add(repr(miles))
+    expect(abs(miles - round(miles)) > 0.001, "the boundary is not a whole mile")
+    below, above = math.floor(miles), math.ceil(miles)
+    content = ctx.current(ps.LOCATION)
+    wanted = {
+        "fixture-within-1": 1,
+        f"fixture-within-{below}": below,
+        f"fixture-within-{above}": above,
+    }
+    have = {choice["id"] for choice in content["distance_choices"]}
+    for choice_id, limit in wanted.items():
+        if choice_id not in have:
+            content["distance_choices"].append(
+                {"id": choice_id, "label": f"Fixture {limit} miles", "miles": limit}
+            )
+    ctx.publish(ps.LOCATION, content)
+    viewer = ctx.visible()
+    same = ctx.visible()
+    near = ctx.visible(area=PHILADELPHIA)
+    events = OutboxEvent.objects.exclude(event_type="preferences_changed").count()
+    ctx.set_filters(viewer, distance="fixture-within-1")
+    seen = ctx.sees(viewer)
+    expect(ctx.profile_id(same) in seen, "one area is distance zero")
+    expect(ctx.profile_id(near) not in seen, "another area beyond one mile is excluded")
+    ctx.set_filters(viewer, distance=f"fixture-within-{below}")
+    expect(ctx.profile_id(near) not in ctx.sees(viewer), "just short of the boundary, excluded")
+    ctx.set_filters(viewer, distance=f"fixture-within-{above}")
+    expect(ctx.profile_id(near) in ctx.sees(viewer), "within the boundary, included")
+    ctx.set_filters(near, distance="fixture-within-1")
+    expect(
+        ctx.profile_id(near) in ctx.sees(viewer), "distance applies in the viewer's direction only"
+    )
+    ctx.set_filters(viewer, distance="anywhere")
+    seen = ctx.sees(viewer)
+    expect({ctx.profile_id(same), ctx.profile_id(near)} <= seen, "anywhere filters nothing")
+    # The filters' own writes emit preferences_changed; the pages emit nothing.
+    after = OutboxEvent.objects.exclude(event_type="preferences_changed").count()
+    expect(after == events, "the pages wrote no outbox event")
+    for body in ctx.pages:
+        text = json.dumps(body)
+        expect("miles" not in text and "latitude" not in text, "no page names a distance or point")
+        expect(not any(isinstance(v, float) for v in _numbers(body)), "no page holds a fraction")
+    return "one area is zero; the boundary includes at its ceiling and excludes below; viewer only"
+
+
+def _numbers(value: Any) -> list[Any]:
+    if isinstance(value, dict):
+        return [n for item in value.values() for n in _numbers(item)]
+    if isinstance(value, list):
+        return [n for item in value for n in _numbers(item)]
+    return [value] if isinstance(value, int | float) and not isinstance(value, bool) else []
+
+
+# -- 5. pages (acceptance check 5; D6, D7) ----------------------------------------------------
+
+
+@case("pages.recommended_then_broader", "5", "D6", "D7")
+def recommended_then_broader(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    members = [ctx.visible() for _ in range(4)]
+    ids = {ctx.profile_id(m) for m in members}
+    with ctx.counting_port() as calls:
+        recommended = ctx.sees(viewer)
+        expect(recommended == ids, "every eligible ready pair is recommended")
+        expect(calls[0] == 4, "the port is asked once for each selected pair")
+        expect(ctx.sees(viewer, "discovery") == set(), "broader leaves the recommended out")
+        expect(calls[0] == 4, "broader asks the port nothing")
+    with ctx.counting_port("unsupported-contract") as calls:
+        expect(ctx.sees(viewer) == set(), "unsupported pairs are left out of recommendations")
+        expect(calls[0] == 4, "after asking the port")
+        expect(ctx.sees(viewer, "discovery") == ids, "broader still serves them")
+    with ctx.counting_port():
+        expect(ctx.sees(viewer) == ids, "recommended again")
+        late = ctx.visible()
+        expect(ctx.sees(viewer, "discovery") == {ctx.profile_id(late)}, "broader: the rest only")
+    return "recommended first; broader serves the eligible not in the current recommendations"
+
+
+@case("pages.keyed_stable_order", "5", "D6")
+def keyed_stable_order(ctx: DiscoveryContext) -> str:
+    from django.db import connection
+    from glow_discovery import keys, predicates
+
+    viewer = ctx.visible()
+    for _ in range(8):
+        ctx.visible()
+    pages = ctx.pages_of(viewer, limit=3)
+    batch = UUID(pages[0]["batch_id"])
+    served = ctx.all_ids(pages)
+    expect(len(served) == 8 and len(set(served)) == 8, "every candidate once")
+    keyed = sorted(served, key=lambda p: (keys.tie_break(batch, UUID(p)), p))
+    expect(served == keyed, "one band: the order is the keyed tie-break's")
+    unkeyed = sorted(served, key=lambda p: hashlib.sha256(f"{batch}:{p}".encode()).digest())
+    ipad, opad = keys.sql_pads()
+    with connection.cursor() as cursor:
+        for profile in served[:3]:
+            cursor.execute(
+                "SELECT " + predicates.TIE_BREAK.replace("c.profile_id", "%(profile)s::uuid"),
+                {"ipad": ipad, "opad": opad, "batch": str(batch), "profile": profile},
+            )
+            found = bytes(cursor.fetchone()[0])
+            expect(found == keys.tie_break(batch, UUID(profile)), "SQL's key is salted_hmac's")
+    again = ctx.page(viewer, "recommendations", pages[0]["next_cursor"], 3)
+    expect(ctx.ids(again) == ctx.ids(pages[1]), "the same cursor gives the same page")
+    fresh = ctx.pages_of(viewer, limit=3)
+    batch2 = UUID(fresh[0]["batch_id"])
+    expect(
+        ctx.all_ids(fresh) == sorted(served, key=lambda p: (keys.tie_break(batch2, UUID(p)), p)),
+        "a new batch follows its own key",
+    )
+    differs = "differs" if unkeyed != served else "coincides"
+    return f"stable within a batch, keyed by batch and profile; an unkeyed order {differs}"
+
+
+@case("pages.stale_cursors", "5", "12", "D7", "D8")
+def stale_cursors(ctx: DiscoveryContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import RecommendationBatch
+
+    viewer, other = ctx.visible(), ctx.visible()
+    for _ in range(2):
+        ctx.visible()
+    replies = []
+
+    def fresh() -> str:
+        cursor = ctx.page(viewer, limit=1)["next_cursor"]
+        expect(cursor is not None, "a cursor")
+        assert cursor is not None
+        expect(ctx.page(viewer, "recommendations", cursor, 1)["state"] == "ready", "it works")
+        return str(cursor)
+
+    cursor = fresh()
+    batch_hex, offset, mac = cursor.split(".")
+    forged = [
+        f"{batch_hex}.{offset}.{mac[:-1]}{'0' if mac[-1] != '0' else '1'}",
+        f"{batch_hex}.02.{mac}",
+        f"{uuid4().hex}.{offset}.{mac}",
+    ]
+    for value in forged:
+        replies.append(ctx.stale(viewer, "recommendations", value, "a forged cursor"))
+    replies.append(ctx.stale(other, "recommendations", cursor, "another viewer's cursor"))
+    replies.append(ctx.stale(viewer, "discovery", cursor, "the other collection's cursor"))
+    RecommendationBatch.objects.filter(pk=UUID(hex=batch_hex)).update(
+        expires_at=RecommendationBatch.objects.get(pk=UUID(hex=batch_hex)).created_at
+    )
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "an expired batch"))
+    cursor = fresh()
+    later = fresh()
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "a deleted batch"))
+    expect(len(_batches(viewer.account_id)) == 1, "one batch per viewer and collection")
+    ctx.set_filters(viewer, minimum=19)
+    replies.append(ctx.stale(viewer, "recommendations", later, "the viewer's own change"))
+    cursor = fresh()
+    ctx.publish(ps.RESURFACING, ctx.current(ps.RESURFACING))
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "a discovery setting published"))
+    cursor = fresh()
+    ctx.publish(ps.LOCATION, ctx.current(ps.LOCATION))
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "a profile setting published"))
+    shapes = {json.dumps(_stale_shape(reply), sort_keys=True) for reply in replies}
+    expect(len(shapes) == 1, "every stale cursor gets the same generic response")
+    return (
+        f"{len(replies)} stale cursors refused alike: forged, another's, expired, deleted, outdated"
+    )
+
+
+@case("pages.dropped_between_pages", "5", "D7")
+def dropped_between_pages(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    members = {ctx.profile_id(m): m for m in (ctx.visible() for _ in range(6))}
+    first = ctx.page(viewer, limit=2)
+    from glow_persistence.models import RecommendationEntry
+
+    order = [
+        str(p)
+        for p in RecommendationEntry.objects.filter(batch_id=UUID(first["batch_id"]))
+        .order_by("position")
+        .values_list("candidate__profile__id", flat=True)
+    ]
+    expect(order[:2] == ctx.ids(first), "the first page is the batch's first entries")
+    leaving = members[order[2]]
+    _visibility(ctx, leaving, "pause")
+    rest = [first]
+    while rest[-1]["next_cursor"] is not None:
+        rest.append(ctx.page(viewer, "recommendations", rest[-1]["next_cursor"], 2))
+    seen = ctx.all_ids(rest)
+    expect(order[2] not in seen, "a candidate made ineligible between pages is dropped")
+    expect(len(seen) == len(set(seen)) == 5, "no duplicate, nothing else lost")
+    return "a paused candidate drops at the next page; five distinct cards across pages"
+
+
+@case("pages.recheck_is_one_snapshot", "5", "D2", "DM-60 4")
+def recheck_is_one_snapshot(ctx: DiscoveryContext) -> str:
+    from glow_discovery import keys, pages
+    from glow_profiles import operations
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.set_sets(viewer, {"gender": ["woman"]})
+    first = ctx.page(viewer, limit=1)
+    expect(ctx.profile_id(candidate) in ctx.ids(first), "the candidate is in the batch")
+    batch = UUID(first["batch_id"])
+    ctx.set_field(candidate, "gender", ["man"])
+    fields = ctx.profiles.get(candidate, "/api/v1/profile/fields", "own_profile_fields")
+    profile = ctx.profiles.get(candidate, "/api/v1/profile", "own_profile")
+    catalog = ctx.profiles.catalog(candidate)["policy_version"]
+
+    def race() -> None:
+        # Between the page's locks and its recheck: the candidate states a match again, then pauses.
+        def writes() -> None:
+            done = operations.set_field(
+                candidate.account_id,
+                {
+                    "operation": "profile_field",
+                    "meta": {
+                        "idempotency_key": f"race-{uuid4().hex}",
+                        "expected_version": fields["gender"]["version"],
+                    },
+                    "policy_version": catalog,
+                    "field": "gender",
+                    "value_ids": ["woman"],
+                    "own_words": None,
+                    "shown": False,
+                },
+            )
+            expect(done.outcome == "applied", "the field write commits")
+            paused = operations.set_visibility(
+                candidate.account_id,
+                {
+                    "operation": "visibility",
+                    "meta": {
+                        "idempotency_key": f"race-{uuid4().hex}",
+                        "expected_version": profile["version"],
+                    },
+                    "action": "pause",
+                },
+            )
+            expect(paused.outcome == "applied", "the pause commits")
+
+        _in_thread(writes)
+
+    cursor = keys.cursor(viewer.account_id, "recommendations", batch, 0)
+    result = pages.continue_page(
+        viewer.account_id, "recommendations", cursor, 50, probe=_Probe(race)
+    )
+    expect(result.ok and result.data is not None, "the page reads")
+    assert result.data is not None
+    shown = [card["profile_id"] for card in result.data["items"]]
+    expect(
+        ctx.profile_id(candidate) not in shown, "never visible-and-matching at one moment: dropped"
+    )
+    return "a page's recheck reads one snapshot: no mix of two moments shows a paused profile"
+
+
+@case("pages.empty_and_no_provider_call", "5", "6", "D7", "D8")
+def empty_and_no_provider_call(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    shapes = []
+    with ctx.counting_port() as calls:
+        alone = ctx.page(viewer)
+        expect(alone["state"] == "empty" and calls[0] == 0, "an empty market: empty, no port call")
+        shapes.append(_empty_shape(alone))
+        candidate = ctx.visible()
+        ctx.block(viewer.account_id, candidate.account_id)
+        blocked = ctx.page(viewer)
+        expect(blocked["state"] == "empty" and calls[0] == 0, "all excluded: empty, no port call")
+        shapes.append(_empty_shape(blocked))
+        ctx.unblock(viewer.account_id, candidate.account_id)
+        ctx.block(candidate.account_id, viewer.account_id)
+        shapes.append(_empty_shape(ctx.page(viewer)))
+        ctx.unblock(candidate.account_id, viewer.account_id)
+        ctx.set_sets(viewer, {"looking_for": ["casual"]})
+        shapes.append(_empty_shape(ctx.page(viewer)))
+        expect(calls[0] == 0, "no provider call for any empty batch")
+    expect(len({json.dumps(s, sort_keys=True) for s in shapes}) == 1, "empty reads the same")
+    broader = ctx.page(viewer, "discovery")
+    expect(broader["state"] == "empty", "broader is empty too")
+    return "empty for no market, either block and a filter alike, with no provider call"
+
+
+@case("pages.port_states", "5", "D6")
+def port_states(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    members = {ctx.profile_id(ctx.visible()) for _ in range(2)}
+    for case_name, state in (
+        ("pending-chart", "pending"),
+        ("engine-unavailable", "unavailable"),
+        (None, "unavailable"),
+    ):
+        with ctx.counting_port(case_name) as calls:
+            page = ctx.page(viewer)
+            expect(page["state"] == state, f"the port's {case_name} is the batch's {state}")
+            expect(page["items"] == [] and page["next_cursor"] is None, "with no items or cursor")
+            expect(calls[0] == (0 if case_name is None else 2), "the port asked as selected")
+            expect(ctx.sees(viewer, "discovery") == members, "broader still serves them")
+    return "pending and unavailable (and no port) make recommendations so; broader serves"
+
+
+@case("pages.consumption", "5", "D7")
+def consumption(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    liked, passed, active, restricted, unmatched, untouched = (ctx.visible() for _ in range(6))
+    target_view = ctx.page(liked, limit=1)
+    ctx.seed_interaction(viewer.account_id, liked.account_id, "liked")
+    ctx.seed_interaction(viewer.account_id, passed.account_id, "passed")
+    ctx.seed_interaction(untouched.account_id, viewer.account_id, "liked")
+    for member, state in ((active, "active"), (restricted, "restricted"), (unmatched, "unmatched")):
+        ctx.seed_match(viewer.account_id, member.account_id, state)
+    # A like or pass changes nothing in its target's batches or their freshness.
+    if target_view["next_cursor"] is not None:
+        page = ctx.page(liked, "recommendations", target_view["next_cursor"], 1)
+        expect(page["state"] in ("ready", "empty"), "the target's batch stays fresh")
+    for member in (liked, passed, active, restricted, unmatched, untouched):
+        ctx.profile_id(member)
+    expected = {ctx.profile_id(untouched)}
+    expect(ctx.sees(viewer) == expected, "recommendations: consumed pairs excluded")
+    with ctx.counting_port("unsupported-contract"):
+        expect(ctx.sees(viewer) == set(), "no current recommendations batch")
+    expect(ctx.sees(viewer, "discovery") == expected, "broader: consumed pairs excluded")
+    for member in (active, restricted, unmatched):
+        expect(ctx.profile_id(viewer) not in ctx.sees(member), "a match excludes both ways")
+    expect(ctx.profile_id(viewer) in ctx.sees(liked), "a like changes nothing for its target")
+    # Each page's recheck drops a candidate consumed since the batch was built.
+    late = [ctx.visible() for _ in range(2)]
+    first = ctx.page(viewer, limit=1)
+    remaining = [m for m in (untouched, *late) if ctx.profile_id(m) not in ctx.ids(first)]
+    ctx.seed_interaction(viewer.account_id, remaining[0].account_id, "passed")
+    ctx.seed_match(viewer.account_id, remaining[1].account_id, "active")
+    rest = [first]
+    while rest[-1]["next_cursor"] is not None:
+        rest.append(ctx.page(viewer, "recommendations", rest[-1]["next_cursor"], 1))
+    seen = set(ctx.all_ids(rest[1:]))
+    expect(not {ctx.profile_id(m) for m in remaining[:2]} & seen, "consumed since: dropped")
+    return "liked, passed and each match state excluded in both collections and on recheck"
+
+
+@case("pages.one_batch_per_collection", "5", "12", "D7")
+def one_batch_per_collection(ctx: DiscoveryContext) -> str:
+    from glow_persistence.models import RecommendationBatch, RecommendationEntry
+
+    viewer = ctx.visible()
+    ctx.visible()
+    ctx.visible()
+    made = []
+    for collection in (
+        "recommendations",
+        "discovery",
+        "recommendations",
+        "discovery",
+        "recommendations",
+    ):
+        made.append(ctx.page(viewer, collection)["batch_id"])
+    held = RecommendationBatch.objects.filter(account_id=viewer.account_id)
+    expect(held.count() == 2, "one batch per collection")
+    gone = [UUID(b) for b in made[:-2]]
+    expect(not RecommendationEntry.objects.filter(batch_id__in=gone).exists(), "with entries gone")
+    for limit in (0, 51):
+        reply = ctx.page_reply(viewer, limit=limit)
+        ctx.profiles.refused(reply, 400, "invalid_request", f"a page of {limit}")
+    return "creating a batch deletes the collection's earlier one; a page is 1 to 50"
+
+
+# -- 6. disclosure (acceptance check 6; D8) ---------------------------------------------------
+
+
+@case("disclosure.population_of_one", "6", "D8")
+def population_of_one(ctx: DiscoveryContext) -> str:
+    viewer, candidate = ctx.visible(), ctx.visible()
+    ctx.set_sets(viewer, {"gender": ["woman"]})
+    on = ctx.page(viewer)
+    ctx.set_sets(viewer, {"gender": ["man"]})
+    off = ctx.page(viewer)
+    ctx.set_sets(viewer, {})
+    candidate_id = ctx.profile_id(candidate)
+    expect(ctx.ids(on) == [candidate_id], "the filter on: the one member shown")
+    expect(off["state"] == "empty", "the filter off-target: empty")
+    ctx.hide_everyone()
+    market = ctx.page(ctx.visible())
+    expect(_empty_shape(off) == _empty_shape(market), "the empty page reads as an empty market's")
+    card = on["items"][0]
+    ctx.disclosure = {
+        "population": 1,
+        "filter_on": {"state": on["state"], "cards": len(on["items"])},
+        "filter_off": {"state": off["state"], "cards": 0},
+        "card_gender_shown": card["details"]["gender"] is not None,
+        "revealed": (
+            "the viewer learns that the one member's gender is in the narrowed set (accepted by"
+            " OD-60); the card itself does not show the gender while its flag is off, and the"
+            " empty page is the same as an empty market's"
+        ),
+    }
+    return "population of one: on shows the member, off is an empty market's page"
+
+
+@case("disclosure.no_count_reason_or_private_value", "6", "13", "D8", "D13")
+def no_private_value(ctx: DiscoveryContext) -> str:
+    from glow_ordering_proof.profile_support import RELATIONSHIP_VALUE
+
+    viewer, candidate = _sensitive_pair(ctx)
+    ctx.set_field(candidate, "relationship_status", [RELATIONSHIP_VALUE], shown=False)
+    ctx.set_field(
+        candidate,
+        "orientation",
+        [ORIENTATION_VALUES[2]],
+        own_words="Synthetic hidden words",
+        shown=False,
+    )
+    ctx.set_field(candidate, "looking_for", ["long-term"])
+    ctx.set_sets(candidate, {"looking_for": ["long-term", "new-friends"], "gender": ["woman"]})
+    ctx.set_filters(candidate, minimum=21, maximum=61)
+    before = ctx.page(viewer)
+    cards = [c for c in before["items"] if c["profile_id"] == ctx.profile_id(candidate)]
+    expect(len(cards) == 1, "the candidate is shown")
+    card = cards[0]
+    expect(
+        card["details"] == expected_details(candidate.account_id), "exactly the displayed fields"
+    )
+    expect(card["profile"] == _expected_profile(candidate.account_id), "exactly the profile's own")
+    text = json.dumps(card)
+    for hidden in ("new-friends", RELATIONSHIP_VALUE, ORIENTATION_VALUES[2], "Synthetic hidden"):
+        expect(hidden not in text, "no set, hidden field or filter value on the card")
+    expect(
+        set(before)
+        == {
+            "kind",
+            "collection",
+            "batch_id",
+            "version",
+            "state",
+            "items",
+            "next_cursor",
+            "expires_at",
+        },
+        "no count or reason on the page",
+    )
+    ctx.seed_interaction(candidate.account_id, viewer.account_id, "liked")
+    after = ctx.page(viewer)
+    again = [c for c in after["items"] if c["profile_id"] == ctx.profile_id(candidate)]
+    expect(again == cards, "an unreciprocated like changes nothing the target sees")
+    ctx.block(candidate.account_id, viewer.account_id)
+    one, other = ctx.page(viewer), ctx.page(candidate)
+    expect(_empty_shape(one) == _empty_shape(other), "neither page shows who blocked")
+    return "the card shows its displayed fields only; no count, reason, set, filter or direction"
+
+
+def _expected_profile(account_id: UUID) -> dict[str, Any]:
+    """What ``CandidateProfile`` must hold of the candidate, from their own rows."""
+    from glow_domain.identity import whole_years
+    from glow_persistence.models import AccountAgeState, Profile
+
+    profile = Profile.objects.get(account_id=account_id)
+    born = AccountAgeState.objects.get(account_id=account_id).birth_date
+    return {
+        "profile_id": str(profile.id),
+        "display_name": profile.display_name,
+        "age": whole_years(born, db_today()),
+        "summary": profile.bio,
+        "media_delivery_refs": expected_refs(account_id),
+        "compatibility": {"status": "pending"},
+    }
+
+
+# -- the card (D13) ---------------------------------------------------------------------------
+
+
+@case("card.fields_area_and_photos", "6", "D13")
+def card_fields_area_and_photos(ctx: DiscoveryContext) -> str:
+    from glow_profiles import media
+
+    from glow_ordering_proof.profile_support import RELATIONSHIP_VALUE
+
+    viewer, candidate = _sensitive_pair(ctx)
+    ctx.set_field(candidate, "gender", ["non-binary"], own_words="Synthetic own words", shown=True)
+    ctx.set_field(
+        candidate,
+        "orientation",
+        [ORIENTATION_VALUES[0]],
+        own_words="Synthetic orient words",
+        shown=True,
+    )
+    ctx.set_field(candidate, "relationship_status", [RELATIONSHIP_VALUE], shown=True)
+    ctx.set_field(candidate, "looking_for", ["long-term", "new-friends"])
+    held = ctx.profiles.approved_photo(candidate)
+    third = ctx.profiles.approved_photo(candidate)
+    removal = ctx.profiles.media_intent(candidate, "remove", asset_id=third)
+    ctx.profiles.data(ctx.profiles.command(candidate, "/api/v1/media", removal), "media", "removed")
+    ctx.profiles.uploaded_photo(candidate)
+    hold = RecordingHold({UUID(held)})
+    with mock.patch.object(media, "default_ports", lambda: test_ports(hold=hold)):
+        page = ctx.page(viewer)
+        expected = expected_refs(candidate.account_id)
+    card = next(c for c in page["items"] if c["profile_id"] == ctx.profile_id(candidate))
+    expect(card["details"] == expected_details(candidate.account_id), "the shown fields, exactly")
+    for name in ("display_name", "summary", "age", "compatibility"):
+        expect(card["profile"][name] == _expected_profile(candidate.account_id)[name], name)
+    expect(card["details"]["gender"]["own_words"] is not None, "with the own words")
+    expect(card["details"]["relationship_status"] is not None, "relationship status shown")
+    expect(card["details"]["area_name"], "the area's name")
+    expect(card["profile"]["media_delivery_refs"] == expected, "approved, deliverable photos only")
+    expect(len(expected) == 1, "the held, removed and unapproved photos have no reference")
+    expect(UUID(held) in hold.asked, "the hold port was asked")
+    ctx.set_field(candidate, "gender", ["non-binary"], own_words="Synthetic own words", shown=False)
+    page = ctx.page(viewer)
+    card = next(c for c in page["items"] if c["profile_id"] == ctx.profile_id(candidate))
+    expect(card["details"]["gender"] is None, "a field whose flag is off is not shown")
+    return (
+        "the card shows the flagged fields with own words, the area's name and deliverable photos"
+    )
+
+
+# -- 12. the route (acceptance check 12) ------------------------------------------------------
+
+
+@case("route.refusals", "12", "D13")
+def route_refusals(ctx: DiscoveryContext) -> str:
+    viewer = ctx.visible()
+    refused = 0
+    reply = ctx.profiles.call(
+        viewer, "POST", PAGE, {"collection": "discovery", "cursor": None, "limit": 5}, bearer=False
+    )
+    ctx.profiles.refused(reply, 401, "unauthenticated", "no token")
+    refused += 1
+    reply = ctx.profiles.call(
+        viewer,
+        "POST",
+        PAGE,
+        {"collection": "discovery", "cursor": None, "limit": 5},
+        bearer="not-a-token",
+    )
+    ctx.profiles.refused(reply, 401, "unauthenticated", "a bad token")
+    refused += 1
+    for method in ("GET", "PUT", "DELETE"):
+        ctx.profiles.refused(
+            ctx.profiles.call(viewer, method, PAGE, None), 405, "invalid_request", method
+        )
+        refused += 1
+    ctx.profiles.refused(
+        ctx.profiles.call(
+            viewer,
+            "POST",
+            PAGE + "?collection=discovery",
+            {"collection": "discovery", "cursor": None, "limit": 5},
+        ),
+        400,
+        "invalid_request",
+        "a query string",
+    )
+    ctx.profiles.refused(
+        ctx.profiles.call(
+            viewer,
+            "POST",
+            PAGE,
+            {"collection": "discovery", "cursor": None, "limit": 5},
+            content_type="text/plain",
+        ),
+        400,
+        "invalid_request",
+        "another content type",
+    )
+    refused += 2
+    good = {"collection": "discovery", "cursor": None, "limit": 5}
+    for bad in (
+        {**good, "extra": 1},
+        {"collection": "discovery", "limit": 5},
+        {**good, "limit": 1.5},
+        {**good, "limit": "5"},
+        {**good, "collection": "everyone"},
+        {**good, "cursor": "a" * 101},
+        {**good, "cursor": "abc\n"},
+        {**good, "cursor": ""},
+        {**good, "viewer_id": str(uuid4())},
+    ):
+        ctx.profiles.refused(
+            ctx.profiles.call(viewer, "POST", PAGE, bad),
+            400,
+            "invalid_request",
+            "not a PageRequest",
+        )
+        refused += 1
+    for raw in (b"not json", b'{"collection": "discovery", "cursor": null, "limit": NaN}', b"[]"):
+        response = viewer.device.client.generic(
+            "POST",
+            PAGE,
+            data=raw,
+            content_type="application/json",
+            headers={"Authorization": f"Bearer {viewer.device.access}"},
+        )
+        expect(response.status_code == 400, "a body the parser cannot hold")
+        refused += 1
+    return f"{refused} refusals: no actor, a method, a query, a type, not a PageRequest"
+
+
+# -- 14. one pointer order (acceptance check 14; D19) -------------------------------------------
+
+
+@case("pointers.name_order", "14", "D19")
+def pointer_order(ctx: DiscoveryContext) -> str:
+    from glow_discovery import policy
+    from glow_profiles import settings_store
+
+    viewer = ctx.visible()
+    ctx.visible()
+    calls: list[tuple[int, tuple[str, ...], tuple[str, ...]]] = []
+    real = settings_store.read_shared
+
+    def recording(tx: Any, names: Any) -> Any:
+        listed = tuple(names)
+        found = real(tx, listed)
+        calls.append((id(tx), listed, tuple(tx.pointers)))
+        return found
+
+    with mock.patch.object(settings_store, "read_shared", recording):
+        first = ctx.page(viewer, limit=1)
+        if first["next_cursor"] is not None:
+            ctx.page(viewer, "recommendations", first["next_cursor"], 1)
+        ctx.page(viewer, "discovery")
+    transactions: dict[int, list[tuple[tuple[str, ...], tuple[str, ...]]]] = {}
+    for tx, names, held in calls:
+        transactions.setdefault(tx, []).append((names, held))
+    expect(len(transactions) >= 2, "each page's transaction read its settings")
+    for seen in transactions.values():
+        expect(len(seen) == 1, "all the pointers in the transaction's first read_shared call")
+        names, held = seen[0]
+        expect(tuple(sorted(names)) == policy.SELECTION_SETTINGS, "the selection's settings")
+        expect(list(held) == sorted(held), "held in name order")
+    return f"{len(transactions)} transactions, each taking its pointers once, in name order"
+
+
+# -- 13. no private value in a log (acceptance check 13) ----------------------------------------
+
+
+@case("logs.no_private_value", "13", "D8", "D17")
+def logs_no_private_value(ctx: DiscoveryContext) -> str:
+    import logging
+
+    viewer = ctx.visible(area=CHICAGO)
+    candidate = ctx.visible(area=LOS_ANGELES)
+    ctx.set_field(candidate, "gender", ["woman"], own_words="Synthetic logged words", shown=True)
+    records: list[str] = []
+
+    class Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(self.format(record))
+
+    handler = Capture(level=logging.DEBUG)
+    root = logging.getLogger()
+    root.addHandler(handler)
+    try:
+        ctx.pages_of(viewer)
+        ctx.stale(viewer, "recommendations", "f" * 32 + ".01." + "0" * 64, "a forged cursor")
+        ctx.page_reply(viewer, limit=99)
+    finally:
+        root.removeHandler(handler)
+    text = "\n".join(records)
+    expect(ctx.profiles.values.found_in(text) == 0, "no member value in the DEBUG capture")
+    expect(ctx.profiles.ledger.found_in(text) == 0, "no secret in the DEBUG capture")
+    for area_id in (CHICAGO, LOS_ANGELES):
+        expect(re.search(rf"\b{area_id}\b", text) is None, "no area ID in the DEBUG capture")
+    return f"{len(records)} DEBUG records: no member value, secret or area ID"
+
+
+# -- the schema's own refusals (the P11 plan's DB04, for the batch and entry tables) ------------
+
+
+BATCH_TABLES = ("glow_persistence_recommendationbatch", "glow_persistence_recommendationentry")
+
+
+def _foreign_keys() -> dict[tuple[str, str], str]:
+    """The foreign keys PostgreSQL holds on the two tables, by table and column, from the catalog
+    (Django names them itself)."""
+    from django.db import connection
+
+    found: dict[tuple[str, str], str] = {}
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT t.relname, a.attname, c.conname FROM pg_catalog.pg_constraint c"
+            " JOIN pg_catalog.pg_class t ON c.conrelid = t.oid"
+            " JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)"
+            " WHERE c.contype = 'f' AND t.relname = ANY(%s)",
+            [list(BATCH_TABLES)],
+        )
+        for table, column, name in cursor.fetchall():
+            found[(str(table), str(column))] = str(name)
+    return found
+
+
+@case("constraints.batch_writes_are_refused", "DB04", "D7", "D18")
+def batch_writes_are_refused(ctx: DiscoveryContext) -> str:
+    """A direct write no SV3 code makes, against each constraint the batch and entry tables hold
+    from migrations 0002 and 0010, and their foreign keys, is refused by PostgreSQL itself, naming
+    that constraint, and leaves nothing behind. Harness writes only; the error's text is read for
+    the constraint's name and never kept."""
+    import importlib
+
+    from django.db import IntegrityError, transaction
+    from django.db.migrations.operations.models import AddConstraint
+    from django.utils import timezone
+    from glow_persistence.models import RecommendationBatch, RecommendationEntry
+
+    owner, first, second = ctx.profiles.member(), ctx.profiles.member(), ctx.profiles.member()
+    now = timezone.now()
+
+    def batch(**changes: Any) -> Any:
+        values: dict[str, Any] = {
+            "account_id": owner.account_id,
+            "collection": "recommendations",
+            "eligibility_version": 1,
+            "preferences_version": 1,
+            "blocks_version": 1,
+            "policy_version": "discovery.1.1.1.1.1",
+            "limit": 100,
+            "state": "ready",
+            "expires_at": now,
+        }
+        values.update(changes)
+        return RecommendationBatch.objects.create(**values)
+
+    held = batch()
+
+    def entry(**changes: Any) -> Any:
+        values: dict[str, Any] = {
+            "batch_id": held.id,
+            "candidate_id": first.account_id,
+            "position": 0,
+            "candidate_eligibility_version": 1,
+            "candidate_preferences_version": 1,
+            "candidate_blocks_version": 1,
+        }
+        values.update(changes)
+        return RecommendationEntry.objects.create(**values)
+
+    entry()
+
+    def snapshot() -> tuple[int, int]:
+        return RecommendationBatch.objects.count(), RecommendationEntry.objects.count()
+
+    keys = _foreign_keys()
+    writes: list[tuple[str, Callable[[], Any]]] = [
+        ("batch_collection", lambda: batch(collection="everyone")),
+        ("batch_one_per_collection", lambda: batch()),
+        ("batch_bound", lambda: batch(collection="discovery", limit=0)),
+        ("batch_bound", lambda: batch(collection="discovery", limit=101)),
+        ("batch_elig_revision", lambda: batch(collection="discovery", eligibility_version=0)),
+        (
+            "glow_persistence_recommendationbatch_state",
+            lambda: batch(collection="discovery", state="open"),
+        ),
+        (
+            "glow_persistence_recommendationbatch_version",
+            lambda: batch(collection="discovery", version=0),
+        ),
+        ("batch_distinct_candidate", lambda: entry(position=1)),
+        ("batch_position", lambda: entry(candidate_id=second.account_id)),
+        ("entry_position_bound", lambda: entry(candidate_id=second.account_id, position=100)),
+        (
+            "entry_elig_revision",
+            lambda: entry(
+                candidate_id=second.account_id, position=1, candidate_eligibility_version=0
+            ),
+        ),
+        (
+            "glow_persistence_recommendationentry_version",
+            lambda: entry(candidate_id=second.account_id, position=1, version=0),
+        ),
+        (
+            keys[(BATCH_TABLES[1], "batch_id")],
+            lambda: entry(batch_id=uuid4(), position=1, candidate_id=second.account_id),
+        ),
+        (keys[(BATCH_TABLES[1], "candidate_id")], lambda: entry(candidate_id=uuid4(), position=1)),
+        (keys[(BATCH_TABLES[0], "account_id")], lambda: batch(account_id=uuid4())),
+    ]
+    declared: set[str] = set()
+    for name in ("0002_app_domain", "0010_batch_collection"):
+        migration = importlib.import_module(f"glow_persistence.migrations.{name}")
+        declared |= {
+            operation.constraint.name
+            for operation in migration.Migration.operations
+            if isinstance(operation, AddConstraint)
+            and operation.model_name in ("recommendationbatch", "recommendationentry")
+        }
+    covered = {constraint for constraint, _ in writes}
+    expect(declared <= covered, "a write for every constraint the two tables declare")
+    before = snapshot()
+    for constraint, write in writes:
+        named = False
+        try:
+            with transaction.atomic():
+                write()
+        except IntegrityError as error:
+            named = constraint in str(error)
+        expect(named, f"PostgreSQL refuses the write by {constraint}")
+    expect(snapshot() == before, "the refused writes leave nothing behind")
+    RecommendationBatch.objects.filter(pk=held.pk).delete()
+    return (
+        f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint:"
+        f" all {len(declared)} the two tables declare (0002 and 0010) and three foreign keys"
+    )
+
+
+# -- the plans and the bounds at 1,000 members (D7, D14 Q13; DB11) ----------------------------
+
+
+@case("plans.population_and_bounds", "5", "D7", "D14", "DB11")
+def plans_population_and_bounds(ctx: DiscoveryContext) -> str:
+    from glow_discovery import policy, predicates
+    from glow_discovery.eligibility import parameters
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import Profile, RecommendationEntry
+    from glow_profiles import requirements
+
+    label = ctx.current_label(ps.ONBOARDING_CONSENT)
+    seeded = seed_population(1000, (NEW_YORK, PHILADELPHIA, LOS_ANGELES, CHICAGO), label)
+    for account_id in seeded:
+        profile = Profile.objects.get(account_id=account_id)
+        expect(
+            requirements.missing(account_id, profile, label) == [], "a seeded member is complete"
+        )
+    viewer = ctx.visible()
+    counts: dict[str, int] = {}
+    with ctx.count_statements() as counted:
+        first = ctx.page(viewer, limit=50)
+    counts["recommendations page 1 (creates the batch)"] = counted[0]
+    expect(len(first["items"]) == 50 and first["next_cursor"], "a page holds 50, with a cursor")
+    batch = UUID(first["batch_id"])
+    expect(RecommendationEntry.objects.filter(batch_id=batch).count() == policy.BATCH_LIMIT, "100")
+    with ctx.count_statements() as counted:
+        second = ctx.page(viewer, "recommendations", first["next_cursor"], 50)
+    counts["recommendations page 2 (cursor)"] = counted[0]
+    expect(len(second["items"]) == 50 and second["next_cursor"] is None, "the batch ends at 100")
+    with ctx.count_statements() as counted:
+        broader = ctx.page(viewer, "discovery", None, 50)
+    counts["discovery page 1 (creates the batch)"] = counted[0]
+    expect(not set(ctx.ids(broader)) & set(ctx.ids(first) + ctx.ids(second)), "broader: the rest")
+    ctx.statements = counts
+    # D7's bound: a fixed number for the page's transaction and the actor, and four for each card's
+    # photo (SV2's delivery_reference: its owner, then its own transaction), each card with one.
+    for name, number in counts.items():
+        expect(number <= 60 + 4 * 50, f"bounded statements: {name}")
+    selection = _selection()
+    values = parameters(selection, viewer.account_id)
+    values.update(batch=str(uuid4()), exclude_batch=None, limit=policy.BATCH_LIMIT)
+    ctx.plans["selection (recommendations)"] = explain(predicates.SELECTION, values)
+    values.update(exclude_batch=batch)
+    ctx.plans["selection (broader, leaving out the recommendations batch)"] = explain(
+        predicates.SELECTION, values
+    )
+    recheck = parameters(selection, viewer.account_id)
+    recheck.update(batch_id=batch, offset=0, limit=51)
+    ctx.plans["recheck (a page of 50)"] = explain(predicates.RECHECK, recheck)
+    pair = parameters(selection, viewer.account_id)
+    pair.update(candidate=seeded[0])
+    ctx.plans["pair (the trusted adapter)"] = explain(predicates.PAIR, pair)
+    ctx.plans["viewer"] = explain(predicates.VIEWER, parameters(selection, viewer.account_id))
+    return (
+        f"1,000 seeded complete members; batches of 100, pages of 50; statements per page "
+        f"{sorted(counts.values())}; {len(ctx.plans)} plans recorded"
+    )
+
+
+def run_case(ctx: DiscoveryContext, entry: Case) -> tuple[bool, str]:
+    from django.core.cache import cache
+
+    cache.clear()
+    ctx.profiles.identity.case_id = entry.case_id
+    ctx.profiles.watch_store()
+    ctx.hide_everyone()
+    try:
+        outcome = True, entry.run(ctx)
+    except CaseFailed as failed:
+        outcome = False, f"FAILED: {failed}"
+    except BaseException as exc:  # noqa: BLE001 - recorded by type only; never a value
+        outcome = False, f"ERROR: {type(exc).__name__}"
+    try:
+        ctx.profiles.hold_media()
+    except BaseException as exc:  # noqa: BLE001 - recorded by type only; never a value
+        return False, f"ERROR: the value ledger's photo values: {type(exc).__name__}"
+    return outcome
+
+
+def plan() -> tuple[str, ...]:
+    return tuple(entry.case_id for entry in CASES)
