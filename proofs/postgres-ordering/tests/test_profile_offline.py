@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import hashlib
 import importlib
 import io
 import json
@@ -33,7 +34,7 @@ from glow_ordering_proof import (
     profile_scan,
     schema_check,
 )
-from glow_ordering_proof.profile_support import ValueLedger
+from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
 from tests.test_identity_offline import KeyFiles, pem, workflow_step
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -494,22 +495,57 @@ class ProfileWorkflowTests(unittest.TestCase):
 
 
 class ProfilePlanTests(unittest.TestCase):
-    def test_the_plan_covers_every_stage_a_acceptance_check(self) -> None:
+    def test_the_plan_covers_every_acceptance_check(self) -> None:
         plan = profile_cases.plan()
         self.assertEqual(len(plan), len(set(plan)))
         covered = {check for entry in profile_cases.CASES for check in entry.checks}
-        # Stage A's checks: 1 to 9, 11 and 12 (10, the photos, is Stage B's).
-        for check in [*(str(n) for n in range(1, 10)), "11", "12"]:
+        # Stage A's checks, 1 to 9, 11 and 12, and SV2 Stage B's, 10 (the photos) and 13 (one
+        # pointer order).
+        for check in (str(n) for n in range(1, 14)):
             with self.subTest(check=check):
                 self.assertIn(check, covered)
-        self.assertNotIn("10", covered)
-        for decision in ("D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D17", "D18"):
+        for decision in (
+            "D2",
+            "D3",
+            "D4",
+            "D5",
+            "D6",
+            "D7",
+            "D8",
+            "D9",
+            "D10",
+            "D17",
+            "D18",
+            "D19",
+        ):
             with self.subTest(decision=decision):
                 self.assertIn(decision, covered)
+        stage_b = [
+            entry
+            for entry in profile_cases.CASES
+            if entry.case_id.split(".")[0]
+            in (
+                "media",
+                "pointers",
+            )
+        ]
+        # Stage B's eleven, correction C1's three (DM-58 item 9: the purge in any account
+        # state, and every other photo step refusing an inactive owner), and correction C2's
+        # hold stopping the check's approval (F1).
+        self.assertEqual(len(stage_b), 15)
+        # Correction C2's two (F1 and F5), each under its own name.
+        plan = profile_cases.plan()
+        self.assertIn("media.a_hold_stops_the_checks_approval", plan)
+        self.assertIn("constraints.malformed_media_writes_are_refused", plan)
+        self.assertTrue(
+            all("10" in e.checks or "13" in e.checks or "12" in e.checks for e in stage_b)
+        )
 
     def test_the_case_count_is_pinned(self) -> None:
-        # C2 (finding 15): 47 cases after C1, and C2's six.
-        self.assertEqual(profile_cases.CASE_COUNT, 53)
+        # C2 (finding 15): 47 cases after C1, and C2's six; SV2 Stage B's eleven (DM-57 section 5:
+        # the count changes with Stage B's cases); Stage B's correction C1's three (DM-58 item 9);
+        # Stage B's correction C2's two (the exact-head review's F1 and F5).
+        self.assertEqual(profile_cases.CASE_COUNT, 69)
         self.assertEqual(len(profile_cases.plan()), profile_cases.CASE_COUNT)
 
     def test_the_expected_routes_are_the_api_routes(self) -> None:
@@ -572,6 +608,218 @@ def label_parts(label: ast.expr) -> list[str]:
     return [ast.unparse(label)]
 
 
+def _bound(target: ast.expr) -> set[str]:
+    if isinstance(target, ast.Name):
+        return {target.id}
+    if isinstance(target, ast.Tuple | ast.List):
+        return set().union(*(_bound(element) for element in target.elts))
+    if isinstance(target, ast.Starred):
+        return _bound(target.value)
+    return set()
+
+
+def label_bindings(tree: ast.Module) -> dict[str, set[str]]:
+    """SV2 Stage B (the delta review's N5): every binding of a name in ``LABEL_NAMES`` in the
+    cases, by name: its kind and what it binds, as text. A parameter is named by its function."""
+    found: dict[str, set[str]] = {}
+
+    def add(names: set[str], text: str) -> None:
+        for name in names & LABEL_NAMES:
+            found.setdefault(name, set()).add(text)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                add(_bound(target), "= " + ast.unparse(node.value))
+        elif isinstance(node, ast.AnnAssign | ast.AugAssign):
+            add(_bound(node.target), "op= " + ast.unparse(node.value or ast.Constant(None)))
+        elif isinstance(node, ast.NamedExpr):
+            add(_bound(node.target), ":= " + ast.unparse(node.value))
+        elif isinstance(node, ast.For | ast.comprehension):
+            add(_bound(node.target), "in " + ast.unparse(node.iter))
+        elif isinstance(node, ast.withitem) and node.optional_vars is not None:
+            add(_bound(node.optional_vars), "with " + ast.unparse(node.context_expr))
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            add({node.name}, "except")
+        elif isinstance(node, ast.FunctionDef | ast.Lambda):
+            arguments = node.args
+            for argument in [*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs]:
+                owner = node.name if isinstance(node, ast.FunctionDef) else "<lambda>"
+                add({argument.arg}, f"parameter of {owner}")
+    return found
+
+
+def label_parameter_calls(tree: ast.Module) -> list[tuple[str, str, ast.expr]]:
+    """Every argument a call in the cases passes to a parameter in ``LABEL_NAMES`` of a function
+    the cases define: the function, the parameter and the argument."""
+    functions = {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    found = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        function = functions.get(node.func.id)
+        if function is None:
+            continue
+        names = [argument.arg for argument in function.args.args]
+        for index, value in enumerate(node.args):
+            if index < len(names) and names[index] in LABEL_NAMES:
+                found.append((function.name, names[index], value))
+        for keyword in node.keywords:
+            if keyword.arg in LABEL_NAMES:
+                found.append((function.name, keyword.arg, keyword.value))
+    return found
+
+
+def literal_text(value: ast.expr) -> bool:
+    """Literal text, a literal value (a code, a count, a list of codes), or a label built only
+    from names in ``LABEL_NAMES``."""
+    try:
+        ast.literal_eval(value)
+    except ValueError:
+        return all(part in LABEL_NAMES for part in label_parts(value))
+    return True
+
+
+def pinned(text: str) -> str:
+    """A binding as the pin holds it: its text, or a long one's start and its whole text's
+    SHA-256."""
+    if len(text) <= 64:
+        return text
+    return text[:48] + " ... sha256:" + hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+# SV2 Stage B (the delta review's N5): every binding of a label name in the cases, pinned, so a
+# name rebound to a member value fails until the binding is read and added here. A long
+# binding is pinned by its start and the SHA-256 of its whole text (``pinned``).
+LABEL_BINDINGS: dict[str, frozenset[str]] = {
+    "bumps": frozenset(
+        {
+            "parameter of check",
+        }
+    ),
+    "constraint": frozenset(
+        {
+            "in operation.options.get('constraints', [])",
+            "in writes",
+        }
+    ),
+    "decision": frozenset(
+        {
+            "in ('accepted', 'withdrawn', 'accepted')",
+            "in ('accepted', 'withdrawn', 'accepted', 'withdrawn')",
+        }
+    ),
+    "demoted": frozenset(
+        {
+            "= 0",
+            "= _events(profile.pk, 'profile_demoted')",
+            "op= 1",
+            "parameter of check",
+        }
+    ),
+    "event": frozenset(
+        {
+            "= events.first()",
+            "in ((age.pk, 'age_state_changed', before['counts ... sha256:6216e5c770f68e7c",
+            "in OutboxEvent.objects.filter(schema_version='glow-profiles-1')",
+            "parameter of demoted",
+        }
+    ),
+    "expected": frozenset(
+        {
+            "= ctx.get(member, ADULT, 'own_age_state')['version']",
+            "= {(profile.pk, 'profile_edited'), (profile.pk,  ... sha256:8a73046be5538e1a",
+            "parameter of adult_body",
+            "parameter of stays",
+        }
+    ),
+    "field": frozenset(
+        {
+            "= ProfileFieldChoice.objects.get(account_id=acco ... sha256:dc43bce42493ddd8",
+            "in ('gender', 'orientation', 'looking_for', 'rel ... sha256:520d721d276b38e8",
+            "in (('orientation', PreferenceSetEntry.objects.f ... sha256:a9285fb5cc7a41f9",
+            "in PreferenceSetEntry.objects.filter(account_id= ... sha256:05ba411f1ba78c88",
+            "in before.items()",
+        }
+    ),
+    "limit": frozenset(
+        {
+            "= _media_policy()['max_bytes']",
+            "in _crossing_publications()",
+        }
+    ),
+    "name": frozenset(
+        {
+            "in ('gender', 'looking_for')",
+            "in (('gender', ['man']), ('orientation', [ORIENT ... sha256:35c16ba9884a2e9f",
+            "in (('gender', ['woman', 'man']), ('orientation' ... sha256:afe7f55ba30b7935",
+            "in (('orientation', [ORIENTATION_VALUES[1]], Non ... sha256:612fa843d81f8e51",
+            "in (ps.ONBOARDING_CONSENT, ps.SENSITIVE_CONSENT)",
+            "in _crossing_publications()",
+            "in holds",
+            "in names",
+            "in ps.ALL_SETTINGS",
+            "parameter of holding",
+        }
+    ),
+    "path": frozenset(
+        {
+            "in ('/api/v1/staff/approve', '/api/v1/settings', ... sha256:b67311ee30f90c2f",
+            "in ((PROFILE, {'operation': 'profile', 'meta': s ... sha256:7d5562a0f17695f4",
+            "in (PROFILE, FIELDS, PREFERENCES, FILTERS, AREA, ... sha256:76acaaa1e7d749e6",
+            "in (PROFILE, VISIBILITY, FIELDS, PREFERENCES, FI ... sha256:c2ee2be28b3d8e9c",
+            "in paths",
+            "in plans",
+        }
+    ),
+    "removal": frozenset(
+        {
+            "in ('consent', 'summary', 'birth_input', 'adult_ ... sha256:208dbd04f4850696",
+            "parameter of prepared",
+        }
+    ),
+    "state": frozenset(
+        {
+            "= _profile_row(account).state",
+            "= _profile_row(member.account_id).state",
+            "= pf.FieldState(tuple(row.value_ids), row.own_words, row.shown)",
+            "in ((restricted, 'restricted'), (removed, 'removed'))",
+        }
+    ),
+    "what": frozenset(
+        {
+            "= 'the birth input behind a lapsed onboarding consent'",
+            "in ('an original that no longer matches its comp ... sha256:53bb77fe08ad52fb",
+            "in ((future, 400, 'invalid_request', \"an unknown ... sha256:c23e75e7e35095e6",
+            "in plans",
+            "in saves",
+            "parameter of _expect_reset",
+            "parameter of check",
+            "parameter of completed",
+            "parameter of demoted",
+            "parameter of incomplete",
+            "parameter of stays",
+        }
+    ),
+    "when": frozenset(
+        {
+            "parameter of all_refused",
+        }
+    ),
+    "word": frozenset(
+        {
+            "in ('distance_miles', 'miles', 'kilometres', 'la ... sha256:7f02d4e727057488",
+            "in ('staff', 'setting', 'approve', 'revoke', 're ... sha256:e7db6abad681fc16",
+        }
+    ),
+    "writer": frozenset(
+        {
+            "in ('the eligibility step', 'the birth input')",
+        }
+    ),
+}
+
+
 class ProfileLabelTests(unittest.TestCase):
     def test_no_checks_label_holds_a_member_value(self) -> None:
         tree = ast.parse(Path(profile_cases.__file__).read_text(encoding="utf-8"))
@@ -607,6 +855,44 @@ class ProfileLabelTests(unittest.TestCase):
         self.assertEqual(label_parts(call.value.args[1]), ["years"])
         self.assertNotIn("born", LABEL_NAMES)
         self.assertNotIn("years", LABEL_NAMES)
+
+
+class LabelBindingTests(unittest.TestCase):
+    """SV2 Stage B (the delta review's N5): a name in ``LABEL_NAMES`` is trusted only where it is
+    bound as pinned, and a label parameter is passed only literal text or another label name."""
+
+    def test_every_binding_of_a_label_name_is_pinned(self) -> None:
+        tree = ast.parse(Path(profile_cases.__file__).read_text(encoding="utf-8"))
+        found = {
+            name: frozenset(pinned(text) for text in texts)
+            for name, texts in label_bindings(tree).items()
+        }
+        self.assertEqual(found, LABEL_BINDINGS)
+        self.assertLessEqual(set(LABEL_BINDINGS), LABEL_NAMES)
+
+    def test_every_label_parameter_is_passed_a_label(self) -> None:
+        tree = ast.parse(Path(profile_cases.__file__).read_text(encoding="utf-8"))
+        calls = label_parameter_calls(tree)
+        self.assertGreater(len(calls), 40)
+        found = [
+            f"{value.lineno}: {function}({parameter}=...)"
+            for function, parameter, value in calls
+            if not literal_text(value)
+        ]
+        self.assertEqual(found, [])
+
+    def test_a_label_name_rebound_to_a_value_is_found(self) -> None:
+        rebound = ast.parse("def case(ctx, member):\n    what = member.birth_date\n")
+        self.assertEqual(
+            label_bindings(rebound)["what"],
+            {"= member.birth_date"},
+        )
+        passed = ast.parse(
+            "def stays(member, expected, what):\n    pass\n"
+            "def case(ctx, member, born):\n    stays(member, [], born)\n"
+        )
+        calls = label_parameter_calls(passed)
+        self.assertEqual([literal_text(value) for _f, _p, value in calls], [True, False])
 
 
 class SchemaCheckCorpusTests(unittest.TestCase):
@@ -650,6 +936,10 @@ class SchemaCheckCorpusTests(unittest.TestCase):
             "OwnSensitiveConsent",
             "OwnAgeState",
             "OwnBirthInput",
+            # SV2 Stage B: F05's responses.
+            "MediaLifecycle",
+            "MediaCollection",
+            "MediaUploadGrant",
         ):
             with self.subTest(definition=definition):
                 self.assertIn(definition, decided)
@@ -700,6 +990,49 @@ class ValueLedgerTests(unittest.TestCase):
         self.assertEqual(ledger.found_in(json.dumps({"detail": words}, ensure_ascii=False)), 1)
         self.assertEqual(ledger.found_in("latitude 40.7123457"), 1)
         self.assertEqual(ledger.found_in("born 1990-06-15 abcd"), 1)
+
+    def test_a_photos_bytes_are_found_as_their_hex_and_their_repr(self) -> None:
+        # SV2 Stage B, correction C2 (the exact-head review's F4): a photo's bytes printed as
+        # their hex or their ``repr``, whole or from their start, as a log record or JSON would
+        # hold them; and the fixture variant's text, as itself or its ``repr``.
+        photo = synthetic_png(3, 2)
+        variant = b"fixture-variant:" + hashlib.sha256(photo).hexdigest().encode("ascii")
+        ledger = ValueLedger()
+        ledger.add_bytes(photo)
+        ledger.add_bytes(variant)
+        for printed in (
+            f"photo {photo!r}",
+            f"photo {photo[:30]!r}",
+            json.dumps({"detail": repr(photo)}),
+            f"photo {photo.hex()}",
+            f"start {photo[:24].hex()}",
+            f"variant {variant.decode()}",
+            f"variant {variant!r}",
+            f"variant {variant.hex()}",
+        ):
+            with self.subTest(printed=printed[:24]):
+                # The variant's ``repr`` holds its text too: two held values in one print.
+                self.assertGreaterEqual(ledger.found_in(printed), 1)
+        # Another photo's bytes (other dimensions) and a photo's first few bytes are not held.
+        for printed in (repr(synthetic_png(5, 5)), synthetic_png(5, 5).hex(), repr(photo[:12])):
+            with self.subTest(printed=printed[:24]):
+                self.assertEqual(ledger.found_in(printed), 0)
+
+    def test_the_stores_objects_join_the_ledger_as_they_are_written(self) -> None:
+        # A key and its bytes are held when they are set, and stay held after the object is
+        # deleted (a purge within the case).
+        ledger = ValueLedger()
+        held = {"0" * 31 + "a": synthetic_png(2, 3)}
+        objects = ObservedObjects(held, ledger)
+        key = secrets.token_hex(16)
+        photo = synthetic_png(4, 4)
+        objects[key] = photo
+        objects.pop(key)
+        self.assertEqual(ledger.found_in(f"key {key}"), 1)
+        self.assertEqual(ledger.found_in(f"bytes {photo!r}"), 1)
+        self.assertEqual(ledger.found_in(f"key {'0' * 31}a"), 1)
+        self.assertEqual(ledger.found_in(f"bytes {synthetic_png(2, 3)!r}"), 1)
+        self.assertEqual(dict(objects), held)
 
 
 class ProfileCommandTests(unittest.TestCase):

@@ -205,6 +205,8 @@ class RequestParityTests(unittest.TestCase):
                 "AreaQuery",
                 "SensitiveConsentIntent",
                 "AdultCheckIntent",
+                # SV2 Stage B: F05's owner command, an existing DTO.
+                "MediaIntent",
             },
         )
 

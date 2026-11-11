@@ -26,7 +26,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from glow_identity.authentication import Actor, GlowActorAuthentication
-from glow_profiles import contract, operations
+from glow_profiles import contract, media, operations
 from glow_profiles.tx import INVALID_REQUEST, PROVIDER_UNAVAILABLE, STATUS, UNAUTHENTICATED, Result
 
 logger = logging.getLogger("glow_profiles.views")
@@ -223,3 +223,17 @@ class BirthInputView(_Route):
 
 class BirthInputByIdView(_Route):
     reads = "birth_input"
+
+
+class MediaView(_Route):
+    """F05: the owner's collection, and their ``MediaIntent`` (a grant, a removal, an order). No
+    route delivers a provider or system event."""
+
+    http_method_names = ["get", "post"]
+    reads = "media"
+    definition = "MediaIntent"
+    command = staticmethod(_command(media.command))
+
+
+class MediaByIdView(_Route):
+    reads = "media_asset"

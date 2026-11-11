@@ -8,7 +8,7 @@
 
 ### The session
 
-- **The prompt:** [Stage A's implementation prompt](../../ephemeral/2026-11-10-sv2-stage-a-implementation-prompt.md), revision 1, from `a6624de1568ed248dc975d9ae3a9e8863969f9b6` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [Stage A's implementation prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-implementation-prompt.md), revision 1, from `a6624de1568ed248dc975d9ae3a9e8863969f9b6` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/sv2-stage-a-impl-0qqzvj`, started at `a6624de`.
 - **The code commits:**
   - `4e94215`: D5, the committed area table and its derivation step;
@@ -347,7 +347,7 @@ Correction C1 of Stage A, to [DM-54](../../continuity/dev-manager/reviews/2026-1
 
 ### The session
 
-- **The prompt:** [C1's correction prompt](../../ephemeral/2026-11-10-sv2-stage-a-c1-correction-prompt.md), revision 1, from `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [C1's correction prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-c1-correction-prompt.md), revision 1, from `033e8d4cf2ef85bc2b05bfd6b5489852bd2e9fd3` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/funny-lamport-5f2s1u`, started at `033e8d4`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
 - **The code commit, the code head:** `86a2156` (`86a215675e0ad826425e16c14fb6b826664b9c34`).
 - **The records commit** (this section, and the data model's and the contract document's text) follows the run of record, as the push rule requires.
@@ -675,7 +675,7 @@ Correction C2 of Stage A, to [DM-55](../../continuity/dev-manager/reviews/2026-1
 
 ### The session
 
-- **The prompt:** [C2's correction prompt](../../ephemeral/2026-11-10-sv2-stage-a-c2-correction-prompt.md), revision 1, from `399c68d21d36cb477581587b62337c827196993f` of `claude/magical-wozniak-yfmmx2`.
+- **The prompt:** [C2's correction prompt](https://github.com/amthorn78/glow-dating-app/blob/4dc2061a33c6f63e2887b11aeb2fd32d6224e23e/docs/ephemeral/2026-11-10-sv2-stage-a-c2-correction-prompt.md), revision 1, from `399c68d21d36cb477581587b62337c827196993f` of `claude/magical-wozniak-yfmmx2`.
 - **The branch:** `claude/awesome-maxwell-wo9jxa`, started at `399c68d`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
 - **The code commit, the code head:** `01a3acb` (`01a3acb3d725e05d6e2d6a2d78f5e102db9e9f5a`).
 - **The records commit** (this section; the data model's rows; the contract document's F02 to F04 sentences, index row and SV2 paragraph; the package README's and the proof README's SV2 sections; the P11 plan's "SV2 Stage A" entry) follows the run of record, as the push rule requires.
@@ -1235,3 +1235,813 @@ Nothing in the repository, on GitHub or in Notion changed.
   - the no-deadlock reason's option (a). V4, above in "Delta review of correction C3", records three more pairs of transactions that take two pointers in opposite orders. V5 carries the pointer order to Stage B's brief, with one order per transaction recommended;
   - N2 to N5's carry to Stage B is confirmed.
 - **The merge:** PR43 may merge once V1 to V5 are applied as written, the pull-request run on that final head passes with `Application checks passed`, Codex raises nothing new there, and the checklist is filled in. V1 to V5 are applied as written; the review log's "DM-56" holds the dispositions.
+
+## The merge receipt for Stage A (10 November 2026, App Manager 10)
+
+- **PR43 merged** at 23:41:17 UTC as the merge commit `4dc2061a33c6f63e2887b11aeb2fd32d6224e23e`.
+  - Its parents are `c864edd` (`main`) and `a644771` (PR43's head).
+  - It merged by the expected-head guard (`expectedHeadSha` `a644771477641f89bb9075e7684e3491397f76cf`), after the pre-merge checklist in PR43's description was filled.
+  - `main`'s tree equals `a644771`'s. The final head's non-Markdown paths are byte-identical to C3's code head `fee4fdc`.
+- **Its checks:**
+  - the trusted policy at `c864edd` read full scope (`behavior-or-empty`, 109 paths), with one merge base, `df8a04c`;
+  - PR run 42923450949 on `a644771` passed all eight jobs. The gate printed `Application checks passed`. The profile suite passed 53 of 53 in 75.4 s, its secret and value scans were clean, and its phase took 77 s. A second profile run was refused with the counts `108 108 92 38 978 802` unchanged, and `sv2-profile-results` (5,206 bytes) was uploaded. Every DM-41 retry step was skipped;
+  - push run 42923441007 on the same head passed, as a Markdown-only change against its parent;
+  - Codex's code review of `a644771` completed at 23:29:23 UTC with no findings. All six threads on PR43 are resolved: four P1 findings and one P2 were fixed, and the P2 on a future date was answered with DM-55's ruling;
+  - the reviews, corrections C1 to C3, C3's delta review and DM-52 to DM-56 are recorded above and in the review log;
+  - PR43's governing Markdown, the CI policy's Database proof checks paragraph, had the Dev Manager's read before the merge: DM-54 at `93a27ea`, DM-55 for its upload sentence at `496c39e`, and DM-56 at `e86b635`, with DM-56's V1 to V5 applied as written at `a644771`.
+- **The cleanup run** 42925412863 passed and deleted Stage A's four session branches, each "merged into main":
+  - `claude/sv2-stage-a-impl-0qqzvj` (`f2635fa`, the implementation);
+  - `claude/funny-lamport-5f2s1u` (`f54545c`, C1);
+  - `claude/awesome-maxwell-wo9jxa` (`ca0ad16`, C2);
+  - `claude/stoic-faraday-gist9o` (`414d4a7`, C3).
+
+  It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
+- **`git ls-remote`** after it (23:41 UTC): `main` at `4dc2061`, the manager branch at `a644771`, `claude/dev-manager` at `d342f05`, and nothing else. PR43's activity subscription is ended.
+- **`main`'s push run** 42925412949 on `4dc2061`: all eight jobs passed, and the gate's log prints `Application checks passed` (completed at 23:51:40 UTC). The profile suite passed 53 of 53 in 78.8 s, with both scans clean, its phase took 80 s, and a second run was refused with the counts `108 108 92 38 978 802` unchanged. The DM-41 retry steps were skipped in the four Python jobs. It was still running when this receipt was first committed at `65a7221`.
+- **The manager branch holds `main`** (11 November 2026): `main`'s merge commit `4dc2061` is merged into it at `780fb20`, so the next PR's merge base is `4dc2061`, not PR43's head (the session's git rule; DM-57 item 5). Its content is unchanged.
+- **Pruned:** Stage A's eleven prompts and consultations in `docs/ephemeral/`:
+  - DM-53 to DM-56's consultations;
+  - the implementation prompt, C1's, C2's and C3's prompts, both exact-head review prompts and C3's delta review prompt.
+
+  Their unique content lives in the brief, this record, the review log and the Dev Manager's reports. The nineteen links to them (twelve in the brief, four in the review log and three in this record) are pinned at `4dc2061`, where each file exists. Text that names a prompt's path, as this record's session headers do, stays true as history. DM-52's consultation stays until SV2's Stage B merges, since it consulted on the whole brief.
+- **Stage A is done; SV2 continues with Stage B** (photos). Carried forward, in the carried-items file:
+  - to Stage B: the pointer order (DM-56 V5), C3's allowlist pins, and the delta review's N2 to N5;
+  - to P07: Z18 (a self-declared minor's earlier birth input revisions, for G-01), the adult check's upper bound, a revocation or restriction of a non-active account, `publish` taking a `system:` subject, and a restricted profile's sets;
+  - to P08: Z19 (a new sensitive consent version's effect on saved values);
+  - to P11 (the P11 plan): Z20 (the 405) and `IdempotencyRecord`'s account key.
+
+  To the Dev Manager's next consultation: the confirmation that DM-56's V1 to V5 are applied.
+
+## Stage B
+
+SV2's Stage B, as the brief's "Stage B (revision 6)" lists it (the brief, revision 7, with DM-57's U1 to U5 and U8 to U10 as written): photos in private R2 object storage behind fixture ports (OD-62; D10), the photo requirement (D9), F05's `approve` and `reject` as the system's (D11), one pointer order in every transaction (D19), Stage A's carried guards, and the profile suite's new cases. Local database runs here are iteration, not evidence; the evidence of record is the CI run on the code head, below. Stage A's sections stand as written.
+
+### The session
+
+- **The prompt:** Stage B's implementation prompt, revision 1, from `854c2143d6cd8b60a546bc3d520d5f41d5316636` of `claude/magical-wozniak-yfmmx2`, started by Nathan.
+- **The branch:** `claude/sweet-ramanujan-wkn311`, started at `854c214`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
+- **The code commits:**
+  - `762ac74`: D19, the media policy and its seed, the models and migrations 0008 and 0009, the ports, fixture adapters and photo writers, the routes, the photo requirement, F05's registry change and its test, the API's tests, C3's allowlist and the guards for N2 to N4;
+  - `42343b4`: the profile suite's eleven cases, Stage A's cases given an approved photo, `CASE_COUNT`, the plan and schema tests, and N5;
+  - `d8f1bad` (**the code head**): the fixture store records each delivery reference's key, so that a reference made for the original is seen (a gap found while writing the reversals, before any push).
+- **The records commit** (this section and the brief's owned records) follows the run of record, as the push rule requires.
+
+### Start gate and environment
+
+- **The environment check, names only.** None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` was set (the prompt's loop printed nothing), and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*` name (`compgen -e | grep -E '^(STREAM_|PG|R2_|CLOUDFLARE_|CF_)'` printed nothing). **Three AWS names were present, as DM-57 section 8 expected:** `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY`, and no other `AWS_*` name. Their values were never read, printed or used, and no command passed them: every repository command ran in a clean process environment (`env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API, and the proof's `PROOF_*` names for a local database run); the installs took the proxy and CA variables by reference, never printed. `GH_TOKEN` and `GITHUB_TOKEN` were present and never read.
+- **The toolchain:** `Python 3.12.14` (`python3.12`; `services/api/.python-version`: 3.12.14); Node `v24.19.0` and npm `11.9.0`, both `/root/.local/bin`, first on `PATH`; `Docker version 29.9.2, build a82e528`.
+- **The start gate,** each line as the prompt has it:
+  - `git fetch origin claude/magical-wozniak-yfmmx2 main`: fetched (`main` at `4dc2061`; the manager branch at `854c214` itself);
+  - `git switch -C claude/sweet-ramanujan-wkn311 854c214…` and `git rev-parse HEAD`: `854c2143d6cd8b60a546bc3d520d5f41d5316636`;
+  - `Stage A present` (`4dc2061` is an ancestor);
+  - no non-Markdown path differs from `main`'s `4dc2061`: printed nothing;
+  - no owned path differs from the live manager branch: printed nothing; `854c214` is on it;
+  - `grep -rn -F '"media.policy"' services/api`: printed nothing;
+  - the migrations were `0001` to `0007` only;
+  - `grep -c '^## Stage B'` on this record: `0`;
+  - the brief's "Sessions" recorded no Stage B implementation session.
+- **What was read:** the instructions, the brief (revision 7) whole, DM-57 whole, the evidence record's Stage A sections, C3 and its delta review, the media design's sources, the contract's F05 and its DTOs, the transition oracle and its tests, the data model's rows, `models.py`, Stage A's code, tests and proof, and the Database proof checks job. **DM-52 to DM-56** (about 2,700 lines) were read for this stage by a subagent of this session, which reported every passage on media, the pointer order, the guards and Stage B's carries with its line numbers; DM-56 section 6 and DM-57 were read directly. The subagent found no "Tried" list in DM-52 to DM-56; the N2 to N5 probes are in the carried-items file and in "Delta review of correction C3". OD-60, OD-61 and OD-62 were read in the register (`docs/continuity/owner-directions.md`).
+
+### Items and acceptance checks
+
+Each test is in `services/api/tests/` (the API's, no database), `packages/contracts/tests/`, or `proofs/postgres-ordering` (its offline tests, or the profile suite's cases on the third disposable database, through the HTTP endpoints). Each reversal is named in "The reversals", below.
+
+| Item or check | Files | Tests | Reversals |
+|---|---|---|---|
+| **1. Photos (Outcome item 7; D10, OD-62)**: the media policy, the grant and its model, the ports and fixture adapters, the quarantine path with G-02's seam and the hold port, the check's approval and rejection, staff's restriction, reorder, removal and its acknowledgment, the delivery reference, F05's member routes | `glow_domain/media.py` (F05's table, the five ports, keys); `glow_domain/profile_settings.py` (`media.policy`, its schema and ceilings); `glow_profiles/media.py` (the writers and reads), `media_fixtures.py` (the adapters), `staff.py` (`restrict_media`), `contract.py`, `events.py`, `operations.py` (the reads), `views.py`, `urls.py`; `glow_persistence/models.py` (`MediaAsset`'s records, `MediaObject`, `MediaUploadGrant`); migrations 0008 and 0009 | API: `test_profile_media` (19: the table is F05's, the policy, keys and references, the fixtures, the projections, no member route to a provider, system or staff step, every state write through the table), `test_model_definitions` (0008 and 0009 pinned; the models hold only what D10 needs). Proof: `media.policy_is_development_media_1_within_ceilings`, `media.grant_within_the_policys_limits`, `media.an_upload_moves_only_through_quarantine_the_seam_and_review`, `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected`, `media.completions_are_matched_to_their_grant`, `media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction`, `media.removal_withholds_delivery_and_completes_on_every_objects_purge`, `media.reorder_and_every_route_refuses_another_members_photo`, `media.no_key_original_or_bytes_in_any_response` | `MEDIA.*` (2), `GRANT.*` (3), `COMPLETION.*` (4), `SEAM.*` (5), `CHECK.*` (5), `REMOVAL.*` (5), `D17.*`, `LOG.*` |
+| **2. The photo requirement (D9)** | `glow_profiles/requirements.py` (`photo`), `media.py` (`run_check`, `remove_photo` end with the recompute), `staff.py` (`restrict_media` too); `contract.own_profile` (`media_ids`) | API: `test_profile_recompute` (`run_check`, `remove_photo` and `restrict_media` are `OTHER_FLOW` writers; seven photo steps are not). Proof: `media.the_photo_requirement_completes_and_its_removal_demotes`; `completion.refuses_each_missing_requirement` (a photo); every Stage A case that makes a profile `visible`, with its photo approved through Stage B's own path | `D9.*` (2) |
+| **3. The registry (D11)** | `packages/contracts/production/flows-v1.json` (F05's `approve` and `reject`: `system`) | Contracts: `test_f05_quarantine_cannot_be_published_by_uploader`. API: `RegistryTests.test_the_writers_table_is_f05s_registry` | `CHECK.approve-by-a-moderator-in-the-registry` |
+| **4. One pointer order (D19); check 13** | `glow_profiles/tx.py` (`Tx.pointers`), `settings_store.py` (`_hold`, `PointerOrderError`, `publish` recording its own pointer), `operations.py` (`set_field`, `set_area`, the catalog read), `staff.py` (approval without ID) | API: `test_profile_pointer_order` (the error answered `provider_unavailable`, not a refusal, and refused before its lock; a later call in order passes; a publication's own pointer held before its lock and its read; nothing outside `settings_store` locks a pointer, in the API and the proof). Proof: `pointers.one_order_in_every_transaction` (27 transactions observed: every one locked its pointers in name order, and every member and staff writer read every pointer in its first call; a lock out of order rolled the transaction back whole); every case runs under the check | `D19.*` (6) |
+| **5. Carried from Stage A** | `tests/test_profile_recompute.py` (the allowlist; N2, N3), `tests/test_profiles_offline.py` (N4), `proofs/postgres-ordering/tests/test_profile_offline.py` (N5) | The allowlist: `operations.py`'s two lines moved (902 to 927, 922 to 947) and `media.py:128` (`transition`, `asset.state = after`, `MediaAsset`) added. **N2:** every `create`, `get_or_create`, `update_or_create` or `bulk_create` on a receiver naming `Profile`, and every `Profile(...)` built, anywhere in the scanned modules, is the profile edit's one create; a `bulk_create` that upserts (`update_conflicts`, `update_fields`, `unique_fields`, `**`) or builds an object with `state` is a state write. **N3:** `_binds` fails on any other binding of the written variable (unpacking, an annotated or augmented assignment, walrus, `for` or comprehension, `with`, `except`, a parameter, an import, `global`). **N4:** no `open` in any form, `write_text`, `write_bytes` or other file-making call, nor a `write` on a file the module opened, but the area table's derivation step. **N5:** every binding of a label name in the cases is pinned (`LABEL_BINDINGS`, 61), and every call of a case's helper passes its label parameters literal text or another label name (49 calls). **D16 does not apply:** `identity_support.py` is unchanged | `N2.*` (2), `N3.*` (2), `N4.*` (2), `N5.*` (2) |
+| **6. The proof** | `profile_cases.py` (eleven cases; `CASE_COUNT` 53 to 64; `completion.refuses_each_missing_requirement` and `completion.every_requirement_writer_meeting_the_last_one_makes_it_visible` give their hand-built members an approved photo; `EXPECTED_PROFILE_ROUTES` gains the two media routes; `COMMAND_OPERATIONS` gains `media`); `profile_support.py` (the photo helpers, the test's own adapters, synthetic PNGs; `ready_member` approves a photo unless told not to); `tests/test_profile_offline.py` | `ProfilePlanTests` (checks 1 to 13 and D10, D19 covered; the count pinned at 64; eleven Stage B cases), `SchemaCheckCorpusTests` (the three media DTOs decided). The job's SV2 steps are unchanged | (the job's own checks) |
+| **Check 11 for the new routes** | `views.py`, `urls.py` | Proof: `media.reorder_and_every_route_refuses_another_members_photo` (another member's photo `not_found` on read, removal and reorder; unauthenticated GET and POST 401; a stale collection and a stale asset version 409; a query string and an extra field 400), `media.grant_within_the_policys_limits` (a replay, another intent under the key, a stale version) | `REMOVAL.removal-by-another-owner`, `REMOVAL.reorder-with-another-owners-photo`, `D17.another-members-photo-returned` |
+| **Check 12 for the new routes** | `profile_support.py` (object keys, grant references, delivery references and the start of each photo's bytes join the value ledger) | Proof: the suite's value scan (511 member values held) and the job's own check; `media.no_key_original_or_bytes_in_any_response`; `digests.keyed_and_not_reproducible_without_the_key` now checks the `media` commands' digests | `LOG.an-object-key-logged` |
+
+**Stage A's tests changed to follow the brief,** none weakened: `test_model_definitions` (42 models, not 40; the leaf is 0009; 0007 holds every setting but the media policy), `test_profile_settings` (0007's seed and reasons are `SEEDED_BY_0007`'s; the media policy's reason is `development-media-1`), `test_profile_contract` (`MediaIntent` joins the server's request checks), `test_profiles_offline` (the two media routes; `restrict_media` and the photo operations in the lock-order test), `test_profile_recompute` (the allowlist lines; the photo writers), `test_profiles_sealed_runtime` (`glow_domain.media` sealed), the contracts' F05 test (U9), and the proof's plan and count tests (DM-57 section 5).
+
+### The reversals (D15)
+
+Each reversal is a temporary edit of the code head `d8f1bad`, applied once by a harness in the session's scratchpad (`reverse.py`, with `reversals.json` generated by `make_reversals.py`, which checks each anchor occurs exactly once) in a **throwaway copy** of the code head (`git archive`), never the working tree: the named tests then ran in that copy, the profile suite on a new throwaway database each (D4; iteration, not evidence), migrated from zero. Every copy was removed afterwards, and `git status` held only this records commit's files. **42 reversals; every one made its tests fail, each for the reason it names.** Notes:
+- `REMOVAL.delivery-not-withheld-at-once` is stopped by the new constraint `media_delivery_only_approved`: the removal answers 409, so no reference survives it, and the cases fail at the removal.
+- `LOG.an-object-key-logged` passes every case, but the suite's value scan finds the keys in its log capture (`profile value scan: FOUND`, 113 of 511 values), so the suite fails; the API's two logging guards fail too.
+- `SEAM.a-variant-from-another-object` fails 45 cases: every photo is then rejected with `no_variant`, so each case that needs an approved photo fails at `the test's check approved the photo`. `SEAM.an-object-key-holds-the-account-id` fails 9, among them `media.grant_within_the_policys_limits` (`the key holds no ID`) and `media.an_upload_moves_only_through_quarantine_the_seam_and_review` (`no account ID in a key`); others fail as a member's second grant collides on the unique key.
+- `CHECK.an-approval-without-the-hold-port`'s API test errors (its anchor, the hold check, is gone) rather than failing an assertion; the suite's case fails at `the approval asked the hold port first`.
+
+| Reversal | The temporary edit | File | Failing output |
+|---|---|---|---|
+| `D19.set-field-pointer-dropped` | `set_field` without its added `consent.onboarding` (its first call as in Stage A) | operations.py | suite `24/64 passed`; first: `settings.pointer_read_under_lock`: `gender: answers 200` |
+| `D19.set-area-pointer-dropped` | `set_area` reads `profile.location` alone first | operations.py | suite `22/64 passed`; first: `settings.pointer_read_under_lock`: `the area: answers 200` |
+| `D19.staff-approval-pointer-dropped` | staff's approval without ID reads `identity.staff_approval` alone first | staff.py | suite `60/64 passed`; first: `staff.approval_gated_narrow_survives_and_is_revocable`: `approved while on` |
+| `D19.catalog-read-in-two-calls` | the owner's catalog read in two calls again (`profile.*`, then both consents) | operations.py | suite `18/64 passed`; first: `settings.launch_defaults`: `the catalog: answers 200` |
+| `D19.publish-own-pointer-unrecorded` | `publish` does not record its own pointer as held | settings_store.py | api: `FAIL test_a_publication_records_its_own_pointer_before_its_lock_and_its_read`: `AssertionError: Lists differ: [[]] != [['chat.history']]` |
+| `D19.check-disabled` | the check never raises | settings_store.py | api: `FAIL test_a_lock_out_of_order_is_an_internal_error_answered_provider_unavailable`: `AssertionError: Lists differ: ['applied', '', '', True] != ['error', 'provider_unavailable', 'PointerOrderErro` / suite `63/64 passed`; first: `pointers.one_order_in_every_transaction`: `an error` |
+| `MEDIA.ceiling-crossed-written` | `publish` writes a media publication whatever its refusals | settings_store.py | suite `62/64 passed`; first: `media.policy_is_development_media_1_within_ceilings`: `a publication above a ceiling is refused` |
+| `MEDIA.bytes-ceiling-dropped-in-the-domain` | the byte ceiling dropped from the media policy's limits | profile_settings.py | api: `FAIL test_a_publication_above_each_ceiling_is_refused_naming_it`: `AssertionError: Tuples differ: () != ('media_bytes_within_ceiling',)` / suite `62/64 passed`; first: `media.policy_is_development_media_1_within_ceilings`: `a publication above a ceiling is refused` |
+| `GRANT.beyond-the-policys-limits` | a grant beyond the policy's live photos issued | media.py | suite `63/64 passed`; first: `media.grant_within_the_policys_limits`: `a grant beyond the policy's limits: answers 409` |
+| `GRANT.second-use-accepted` | a used grant accepts a second completion (re-adoption, no transition) | media.py | suite `63/64 passed`; first: `media.completions_are_matched_to_their_grant`: `a second completion changes nothing` |
+| `GRANT.checked-against-the-current-version` | the completion checked against the current policy version, not the grant's | media.py | suite `63/64 passed`; first: `media.completions_are_matched_to_their_grant`: `adopted under the version its grant records` |
+| `COMPLETION.another-keys-completion-adopted` | a completion for a key no grant names adopted by the latest pending grant | media.py | suite `63/64 passed`; first: `media.completions_are_matched_to_their_grant`: `a completion for no grant's key changes nothing` |
+| `COMPLETION.oversize-adopted` | the byte-limit check removed | media.py | suite `63/64 passed`; first: `media.completions_are_matched_to_their_grant`: `an oversize completion changes nothing` |
+| `COMPLETION.second-completion-changes-the-asset` | a second completion for an adopted key rewrites the original's size and entity tag | media.py | suite `63/64 passed`; first: `media.completions_are_matched_to_their_grant`: `the adopted original is unchanged` |
+| `COMPLETION.a-member-route-delivers-a-provider-event` | a member route `api/v1/media/events` that calls `record_upload` | urls.py, views.py | api: `FAIL test_no_member_route_reaches_a_provider_system_or_staff_step`; `FAIL test_the_member_routes_are_served_and_no_staff_route`: `AssertionError: Items in the first set but not the second:` / suite `63/64 passed`; first: `staff.no_member_route_reaches_a_staff_operation`: `SV1's routes and SV2's only` |
+| `SEAM.a-variant-from-another-object` | processing given another object's key than the adopted original's | media.py | suite `19/64 passed`; first: `settings.pointer_read_under_lock`: `the test's check approved the photo` |
+| `SEAM.an-upload-with-no-variant-skips-the-seam` | the seam called only when a variant was made | media.py | suite `63/64 passed`; first: `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected`: `the seam was given the original` |
+| `SEAM.an-unavailable-store-rejects-the-asset` | an unavailable store treated as no variant (rejection) | media.py | suite `63/64 passed`; first: `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected`: `unavailable` |
+| `SEAM.the-original-referenced-for-delivery` | the delivery reference made for the original's key | media.py | suite `63/64 passed`; first: `media.an_upload_moves_only_through_quarantine_the_seam_and_review`: `the reference is the variant's only` |
+| `SEAM.an-object-key-holds-the-account-id` | the original's key is the account ID's hex | media.py | suite `55/64 passed`; first: `area.coordinates_never_kept_or_echoed`: `no table holds the coordinates (outbox and idempotency records included)` |
+| `CHECK.approve-by-a-moderator-in-the-registry` | F05's `approve` back to `moderator` in `flows-v1.json` | flows-v1.json | api: `FAIL test_the_writers_table_is_f05s_registry`: `AssertionError: {('up[209 chars]d', 'system'), ('reject', 'review_pending'): ([471 chars]or')} != {('up[209 ch` / contract: `FAIL test_f05_quarantine_cannot_be_published_by_uploader`: `AssertionError: 'allowed' != 'forbidden'` |
+| `CHECK.decision-written-with-a-staff-subject` | the check's decisions written with a `staff:` subject | media.py | suite `61/64 passed`; first: `media.an_upload_moves_only_through_quarantine_the_seam_and_review`: `written with a system: subject` |
+| `CHECK.an-approval-clears-a-staff-restriction` | the check clears the restriction record, then approves | media.py | suite `63/64 passed`; first: `media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction`: `the check never clears a staff restriction` |
+| `CHECK.an-approval-undoes-an-owners-removal` | the check moves a `removal_pending` asset back to review, then approves | media.py | suite `63/64 passed`; first: `media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction`: `the check cannot approve a removed photo` |
+| `CHECK.an-approval-without-the-hold-port` | the approval's hold check removed | media.py | api: `ERROR test_every_photo_state_write_goes_through_the_registrys_table` / suite `63/64 passed`; first: `media.an_upload_moves_only_through_quarantine_the_seam_and_review`: `the approval asked the hold port first` |
+| `REMOVAL.delivery-not-withheld-at-once` | `removal_pending` keeps the delivery reference | media.py | suite `61/64 passed`; first: `media.removal_withholds_delivery_and_completes_on_every_objects_purge`: `removed: answers 200` |
+| `REMOVAL.removed-before-every-objects-acknowledgment` | `purged` after the first object's acknowledgment | media.py | suite `63/64 passed`; first: `media.removal_withholds_delivery_and_completes_on_every_objects_purge`: `not removed until every object` |
+| `REMOVAL.the-purge-without-the-hold-port` | the purge's hold check removed | media.py | suite `63/64 passed`; first: `media.removal_withholds_delivery_and_completes_on_every_objects_purge`: `the hold port was asked` |
+| `REMOVAL.removal-by-another-owner` | `locked_asset` without the owner filter (every photo writer) | media.py | suite `63/64 passed`; first: `media.reorder_and_every_route_refuses_another_members_photo`: `removal of another owner's photo: answers 404` |
+| `REMOVAL.reorder-with-another-owners-photo` | reorder's ownership check removed | media.py | suite `63/64 passed`; first: `media.reorder_and_every_route_refuses_another_members_photo`: `reorder with another owner's photo: answers 404` |
+| `D9.the-checks-approval-leaves-incomplete` | the check's approval without the recompute | media.py | api: `FAIL test_every_requirement_writer_ends_with_the_recompute`: `AssertionError: [] is not true : run_check does not recompute` / suite `63/64 passed`; first: `media.the_photo_requirement_completes_and_its_removal_demotes`: `the check's approval completes it` |
+| `D9.the-last-photos-removal-leaves-visible` | the removal without the recompute | media.py | suite `63/64 passed`; first: `media.the_photo_requirement_completes_and_its_removal_demotes`: `the last removal demotes` |
+| `D17.another-members-photo-returned` | the asset read without the owner filter | media.py | suite `63/64 passed`; first: `media.reorder_and_every_route_refuses_another_members_photo`: `their photo: answers 404` |
+| `LOG.an-object-key-logged` | the completion's key logged at `warning` | media.py | api: `FAIL test_every_logging_call_is_checked_whatever_its_receiver`; `FAIL test_nothing_but_the_views_reaches_logging_or_imports_by_name`: `AssertionError: Lists differ: ["glow_profiles/media.py:418 logging.getLogger('glow_profiles.media').warning"] ` / suite `64/64 passed`; `profile value scan: FOUND` |
+| `N2.a-profile-created-outside-operations` | `Profile.objects.create(..., state='visible')` in `staff.py` | staff.py | api: `FAIL test_only_the_recompute_writes_a_profiles_state`: `AssertionError: Lists differ: [('gl[159 chars]e')"), ('glow_profiles/staff.py', '_probe', "P[86 chars]')")] !=` |
+| `N2.a-bulk-create-upsert-of-state` | a `Profile` `bulk_create` upsert of `state` in `operations.py` | operations.py | api: `FAIL test_only_the_recompute_writes_a_profiles_state`: `AssertionError: Items in the first set but not the second:` |
+| `N3.a-profile-bound-by-walrus` | `_invalidate_birth_input`'s `current` also bound to a `Profile` by walrus, same line | operations.py | api: `FAIL test_only_the_recompute_writes_a_profiles_state`: `AssertionError: False is not true : ('current', 'BirthInput')` |
+| `N3.a-profile-bound-by-tuple-unpacking` | `_mapping_to_pending`'s `mapping` also bound to a `Profile` by tuple unpacking, same line | operations.py | api: `FAIL test_only_the_recompute_writes_a_profiles_state`: `AssertionError: False is not true : ('mapping', 'EngineIdentity')` |
+| `N4.a-file-the-module-opens-itself` | `open(...).write(...)` in `operations.py` | operations.py | api: `FAIL test_no_module_writes_a_file_it_opens_itself`: `AssertionError: Items in the first set but not the second:` |
+| `N4.a-path-write-text` | `Path(...).write_text(...)` in `media.py` | media.py | api: `FAIL test_no_module_writes_a_file_it_opens_itself`: `AssertionError: Items in the first set but not the second:` |
+| `N5.a-label-name-rebound-to-a-member-value` | `what` bound to a fixture birth date in a case | profile_cases.py | prooftests: `FAIL test_every_binding_of_a_label_name_is_pinned`: `AssertionError: {'what': frozenset({'parameter of completed[3091 chars]8"})} != {'bumps': frozenset({'paramete` |
+| `N5.a-label-parameter-passed-a-member-value` | `stays(..., what)` passed a fixture birth date | profile_cases.py | prooftests: `FAIL test_every_label_parameter_is_passed_a_label`: `AssertionError: Lists differ: ['1334: stays(what=...)'] != []` |
+
+### The contract (D11)
+
+- **The registry entries changed:** F05's `approve` and `reject` from `review_pending` (to `approved`, to `rejected`): `role` `moderator` to `system`, their policies (`A05`) unchanged. These are the only existing entries that change (DM-57 U9). `restrict_media` stays `moderator`.
+- **Added:** none. Every transition Stage B's writers make is in F05 already: `upload_grant`, `uploaded`, `review`, `approve`, `reject`, `reorder`, `remove` from each of its five states, `purged`, `restrict_media`; an upload with no variant takes `review`, then `reject`. F04's `requirements_met` and `requirement_removed` (Stage A's) are the recompute's. The writers' table in `glow_domain/media.py` equals the registry's F05 entries, roles included (`RegistryTests`).
+- **The F05 test's change** (`test_f05_quarantine_cannot_be_published_by_uploader`): its line letting `STAFF` approve is replaced. The examples now: the uploader (`forbidden`) and staff (`forbidden`) cannot approve from `review_pending`; the system with `A05` can (`allowed`), and without it is `policy_unresolved`; the system's rejection with `A05` is `allowed`, staff's and the owner's `forbidden`; an approval from `quarantined` or `removal_pending` is a `state_conflict`; the two removals and the owner's refused purge are kept.
+- **No DTO changes, and none is added.** F05's member routes use `MediaIntent`, `MediaLifecycle`, `MediaUploadGrant` and `MediaCollection` as they are; `MediaUploadGrant` carries no credential (DM-57 U3). The server's `MediaIntent` check decides every corpus case of the definition, and every case one change away, as the contract's validators do (`RequestParityTests`).
+- **Generated outputs:** `npm run generate --prefix packages/contracts`, run twice: the SHA-256 of each file in `apps/mobile/src/contracts/generated/` was the same before, after the first run and after the second. **No generated file changed**, since no DTO changed and the registry is not a generator input. No `apps/` path changed.
+- **The README:** a Stage B bullet in "SV2 Stage A: the profile's contract". **The contract document:** F05's index row and its server mapping ("F02 to F06 on the server (SV2 Stages A and B, sealed until P11)").
+
+### The threat model's inputs
+
+**Every new route** (`glow_profiles/urls.py`; sealed: only the proof's `profile_urls.py` serves them). Who may call: an actor from SV1's `GlowActorAuthentication` only, as Stage A's routes. Each refuses an unauthenticated call (401 `unauthenticated`), another method (405), any query string and a body that is not its DTO (400 `invalid_request`), and another member's asset (404 `not_found`); each command refuses a stale version (409 `stale_version`) and another intent under a used key (409 `idempotency_conflict`). No refusal or log line carries a value; `Cache-Control: no-store`. Tests: `media.reorder_and_every_route_refuses_another_members_photo`, `media.grant_within_the_policys_limits`, `ProfileRoutesTests`, `RouteTests`.
+
+| Route | Methods | Request → response | Refusals of its own |
+|---|---|---|---|
+| `api/v1/media` | GET, POST | `MediaIntent` → `MediaUploadGrant` (`request_upload`), `MediaLifecycle` (`remove`), `MediaCollection` (`reorder`); GET `MediaCollection` | 409 `state_conflict` (a grant beyond the live photos or the 20 entries; a reorder that is not exactly the approved set; positions exhausted); 409 `stale_version` (the collection's version for a grant or a reorder, the asset's for a removal); 404 (another member's asset in a removal or reorder); 400 (an action no member has: `approve`, `reject`, `uploaded`, `purged`) |
+| `api/v1/media/<asset_id>` | GET | → `MediaLifecycle` | 404 for another member's asset |
+
+**Every provider and system event, how it reaches the domain, and what it may change** (`glow_profiles/media.py`; no route reaches any of them; the proof calls them in process, as P11's workers will):
+- `record_upload(raw)` (F05 `uploaded`, `provider`): only an event the storage adapter authenticates (`StoragePort.receive`; the fixture returns only an event it issued, unchanged; any other value is `refused`, `event_not_authenticated`). It may move its grant's asset `upload_pending` → `quarantined` and adopt the original's size and entity tag, only if no completion was adopted for the grant, the asset is `upload_pending`, the upload's time is within the grant's, and its size is within the byte limit of the policy version the grant records; anything else is `no_change` with a code (`no_grant_for_key`, `not_awaiting_upload`, `grant_expired`, `over_byte_limit`). Test: `media.completions_are_matched_to_their_grant`.
+- `acknowledge_deletion(raw)` (the store's deletion of one object, `provider`): authenticated the same way. It may record one object deleted, only for an asset in `removal_pending` whose purge was requested and an object not yet recorded; the last object's acknowledgment moves the asset to `removed` (F05 `purged`). A duplicate or out-of-order one is `no_change`. Test: `media.removal_withholds_delivery_and_completes_on_every_objects_purge`.
+- `review(asset_id)` (F05 `review`, `system`): only from `quarantined`. It processes the adopted original only, checked against its completion's size and entity tag and the bounds of its grant's version, writes a variant under a new key, passes G-02's seam with the variant (or the original when there is none), and moves to `review_pending`; with no variant it then rejects (`system`, `no_variant`). An unavailable store is refused `provider_unavailable` and changes nothing. A seam outcome other than review is refused (`detection_route_not_built`). Tests: `media.an_upload_moves_only_through_quarantine_the_seam_and_review`, `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected`.
+- `run_check(asset_id)` (F05 `approve` or `reject`, `system`): only from `review_pending` and only with no staff restriction. Approval asks the hold port first, takes the storage port's delivery reference for the variant, writes `StaffAudit` (`system:photo-check`) and ends with D9's recompute; rejection writes `StaffAudit` and the reason code. The runtime's check is `undecided`, always. Test: `media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction`.
+- `request_purge(asset_id)` (system): only from `removal_pending`; asks the hold port first, then asks the store to delete every object not yet acknowledged. Changes no state.
+- `delivery_reference(asset_id)` (a system read for P11's delivery): an approved variant's reference only, asking the hold port first; `None` in any other state, under a restriction or a removal, or with a hold.
+
+**Every staff operation, and how its subject reaches it:** `staff.restrict_media(asset_id, staff_subject, reason, request_id)` (F05 `restrict_media`, `moderator`): a Python call only, its subject (`staff:` and up to 200 characters of `[A-Za-z0-9._@-]`) and reason from its caller in code until P07's staff authentication, as Stage A's staff operations; a member's subject is refused. Only from `approved`: back to `review_pending`, delivery withheld, the restriction's `StaffAudit` row kept as the asset's restriction record, and D9's recompute. A used request ID is `idempotency_conflict`. No operation clears a restriction in SV2: the staff decision that closes a report is P07's. Tests: `media.the_checks_decisions_are_the_systems_and_never_clear_a_restriction`, `media.the_photo_requirement_completes_and_its_removal_demotes`.
+
+**Every stored reference and key, what it may hold, and what removes it** (all account-private; each row cascades with the account, whose deletion is P08's; no row is deleted otherwise):
+
+| Value | Where | What it may hold | What removes or changes it | Tests |
+|---|---|---|---|---|
+| Object keys (the original's, each variant's) | `MediaObject.key`, `MediaAsset.storage_ref`, `MediaUploadGrant.object_key` | 32 random hexadecimal characters (database constraints on both key columns): no account, profile or asset ID, filename or member value | never; the store's object is deleted on purge and its row records the acknowledgment | `media.grant_within_the_policys_limits`, `media.an_upload_moves…`, `KeyTests` |
+| The grant's reference | `MediaUploadGrant.grant_ref` | `grant-` and 32 random hexadecimal characters; fits `PolicyVersion`, so no address | never | `KeyTests`, `media.grant…` |
+| The delivery reference | `MediaAsset.approved_variant_ref` | the storage port's opaque reference for the variant (the fixture's: `delivery-` and 32 random hexadecimal characters); never a key or an address | cleared by every transition out of `approved` (restriction, removal); a constraint holds it null outside `approved` | `media.an_upload_moves…`, `media.removal…` |
+| The original's size and entity tag | `MediaObject.byte_size`, `entity_tag` | the adopted completion's | never | `media.completions…` |
+| The policy version | `MediaUploadGrant.policy_version` | a `media.policy` label | never | `media.completions…` |
+| The revocation records | `MediaAsset.removal_requested_at`, `restriction_ref` | a time; a `StaffAudit` ID | never (P07 closes a report) | `media.the_checks_decisions…` |
+| The decision evidence | `MediaAsset.review_ref`, `rejection_reason`, `detection`; `StaffAudit` | an audit ID; a code; `no_detector` | never | `media.*` |
+| The store's upload credential | the fixture's memory only | a random token, scoped to one key, expiring with the grant | the process | `media.grant…`, `media.no_key_original_or_bytes_in_any_response` |
+| Photo bytes | the fixture store's memory only | synthetic PNGs made by the test; synthetic variant bytes | the store's deletion | the value scan |
+
+**The media policy's settings and ceilings** (`media.policy`; version 1 seeded by 0009, `system:launch-default`, reason `development-media-1`): types `image/png`; 1,048,576 bytes; 2,048 × 2,048; 4,194,304 declared pixels; four live photos; a 60-second grant; three transfer attempts (a client's, not counted by the server). **Ceilings in code** (a publication above one is refused, naming it, with nothing written): no type beyond PNG (`media_types_within_ceiling`), at most 1 MiB (`media_bytes_within_ceiling`), at most 4,194,304 declared pixels (`media_pixels_within_ceiling`), at most 20 live photos, the contract's collection entries (`media_live_photos_within_collection`). Schema bounds: dimensions 1 to 65,535, a grant of 1 to 3,600 seconds, 1 to 10 attempts. Tests: `MediaPolicyTests`; `media.policy_is_development_media_1_within_ceilings`.
+
+**Each transaction's pointer locks, in order, and D19's check** (READ COMMITTED; the account row first in every writer; then the pointers `FOR SHARE`, all in the first `read_shared` call, in name order; a pointer read again later is already held):
+- `save_profile`: `consent.onboarding`, the seven `profile.*`. `set_field` (changed): `consent.onboarding`, `consent.sensitive_profile`, the seven `profile.*`. `set_preferences`: `consent.sensitive_profile`, the seven `profile.*`. `set_filters` and the fields read: the seven `profile.*`. `set_area` (changed): `consent.onboarding`, `profile.location`. The catalog read (changed): `consent.onboarding`, `consent.sensitive_profile`, the seven `profile.*`. The onboarding consent, the birth input, visibility, the completion and consent reads: `consent.onboarding`. The adult check and staff's revocation: `consent.onboarding` in the recompute only. The sensitive consent: `consent.sensitive_profile`. The phone-location query: `profile.location`. Staff's approval without ID (changed): `consent.onboarding`, `identity.staff_approval`. Staff's profile restriction: none.
+- **Stage B's:** `request_upload`: `media.policy`. `remove_photo`, `run_check` and `restrict_media`: `consent.onboarding`, `media.policy`. `reorder_photos`, `record_upload`, `acknowledge_deletion`, `review`, `request_purge` and the reads: none (a completion and the review read their grant's recorded version by label, `version_content`, with no lock: versions are append-only).
+- **A publication:** its own pointer, recorded as held, then `FOR UPDATE`; `chat.history`'s then `consent.onboarding` `FOR SHARE`, which sorts after it.
+- **The check:** `settings_store` records each transaction's pointers on its `Tx`; a lock on a pointer that sorts before a held one, and is not itself held, raises `PointerOrderError` before the lock is taken, and `tx.run` rolls the transaction back and answers `provider_unavailable` (retryable, `PointerOrderError`). Members take the account row and then pointers in this order; publications take pointers only, in this order, and no account row; so no wait cycle forms whatever PostgreSQL's queueing does (D19). Tests: `test_profile_pointer_order`; `pointers.one_order_in_every_transaction`; every case.
+
+**Each event and what it carries** (schema `glow-profiles-1`; the asset's ID, its version and itself as the payload reference; never a value, key, reference or byte): `media_upload_granted`, `media_uploaded`, `media_in_review`, `media_approved`, `media_rejected`, `media_reordered` (one per moved photo), `media_removal_requested`, `media_purged`, `media_restricted`; and D9's `profile_completed` and `profile_demoted` from the recompute. No row an event names is deleted. Tests: the media cases count them (`media_in_review`, `media_purged`, `profile_completed`, `profile_demoted`); Stage A's `completion.each_change_emits_its_event` checks every `glow-profiles-1` event carries a reference only.
+
+### Commands and results
+
+**The installs** (each in the clean environment, the proxy and CA variables by reference): `services/api`: `python3.12 -m venv .venv`, `.venv/bin/python -m pip install --timeout 60 --progress-bar off --require-hashes -r requirements-dev.lock`: exit 0. `proofs/postgres-ordering`: the same with its `requirements-dev.lock`: exit 0. `npm ci --ignore-scripts` in `packages/contracts` and in `apps/mobile`: exit 0 each.
+
+**API** (`services/api`, `GLOW_ENV=test`, at the code head `d8f1bad`):
+- `python manage.py check`: `System check identified no issues (0 silenced).`
+- `python manage.py test tests --verbosity 2`: `Ran 554 tests`, `OK` (529 at `854c214`; Stage B adds 25: `test_profile_media`'s 19, `test_profile_pointer_order`'s 3, two model-definition tests and the stream guard's file test).
+- `python smoke.py`: `PASS /health/live: HTTP 200`, `PASS /health/ready: HTTP 503`, `PASS /api/v1/development/recommendations: HTTP 200`.
+- `ruff check .`: `All checks passed!`; `ruff format --check .`: `140 files already formatted`.
+- `mypy`: `Success: no issues found in 81 source files`.
+- `python -m glow_persistence.static_check`: `Static definitions agree: 42 app models; migrations=0001_event_infrastructure,…,0007_settings_launch_defaults,0008_media_lifecycle,0009_media_policy_seed`.
+- **Migration 0008** was generated by `makemigrations glow_persistence --name media_lifecycle` under the static registry (`glow_persistence.static_settings`, the dummy backend, inside `static_check.no_database_access()`), then formatted by Ruff; 0009 is hand-written, as 0007 is.
+
+**The contracts:** `npm run generate --prefix packages/contracts` twice (no generated file changed: the SHA-256 of each was the same before and after both runs); `npm run check --prefix packages/contracts`: `Generated types and runtime validators match schemas.`, `tests 709`, `pass 709`, `fail 0`. From `services/api`, `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests`: `Ran 49 tests`, `OK`.
+
+**The mobile app:** `npm run check --prefix apps/mobile`: exit 0, `tests 691`, `pass 691`, `fail 0`, with no `apps/` path changed. Its export and rendered checks are CI's.
+
+**The proof** (`proofs/postgres-ordering`): `python -m unittest discover -s tests -t .`: `Ran 226 tests`, `OK` (223 before: `LabelBindingTests`' three added); `ruff check .`: `All checks passed!`; `ruff format --check .`: `59 files already formatted`; `mypy`: `Success: no issues found in 59 source files`.
+
+**Local database runs: iteration, not evidence** (P06.DB's D4). Docker's daemon was started in the sandbox; the CI job's image pinned by digest (`postgres@sha256:d74eeac9…`) was pulled from Docker Hub once (the first attempt succeeded) and published on `127.0.0.1:5433` only; the superuser's and the role's passwords, each database's marker, the `SECRET_KEY` and the JWT key were generated into a directory only the session's user could read, and never printed; a non-superuser role owned each database, each with its own marker as its comment; none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or a `PG*` name was present, and no `AWS_*` name was passed.
+- the suite with Stage A's cases and the photo seeding only (53 cases): 52 of 53, the one failure the pinned route set (fixed: the two media routes);
+- **the suite at `42343b4`:** `[profile] cases: 64/64 passed in 84.5 s`; `profile secret scan: clean (1381 secrets held; 0 found in 902 log records, 152 writes and the results JSON)`; `profile value scan: clean (511 member values held …; 0 found in the same output)`; `PROFILE VERDICT: PASS`; the migrations from zero and `makemigrations --check --dry-run` (`No changes detected`) before it;
+- the 32 reversals with a suite run, each on its own new database (above); the unreversed cases passed in each, as their summary lines show;
+- the container, its volume, the key directory and every log were removed (`docker ps -a` lists none).
+
+**The reversals:** the 42 above, by the harness in the scratchpad, in throwaway copies of `d8f1bad`.
+
+
+### The run of record
+
+**Foundation push run [42947095725](https://github.com/amthorn78/glow-dating-app/actions/runs/42947095725)** on `d8f1bade8198c4c3f504ce9ca0a9279ef78b94bd`, **the code head** (attempt 1, 02:35:45 to 02:45:08 UTC on 11 November 2026), read with the GitHub tools: the run, its jobs and steps, and each job's log through `get_job_logs` (the Database job's last lines directly; all seven logs in full by a subagent of this session, which reported the lines below and counts of the patterns searched, never a match). The run's conclusion was `success`; all eight jobs' conclusions were `success`, and the gate (`Foundation gate`) printed **`Application checks passed`**:
+
+- **Change scope:** success; `"full": true` (the branch's first push, so `missing-or-invalid-comparison`: full checks ran).
+- **API checks:** success. The scope and branch-cleanup policies' tests (`Ran 14 tests`, `Ran 18 tests`, `OK`); `System check identified no issues (0 silenced).`; `manage.py test tests --verbosity 2`: **`Ran 554 tests`**, `OK`; `All checks passed!`, `140 files already formatted`, `Success: no issues found in 81 source files`; the Python contract tests `Ran 49 tests`, `OK`.
+- **Mobile checks:** success. `Generated types and runtime validators match schemas.`; the contracts' tests `tests 709`, `pass 709`, `fail 0`; the app's `npm run check` and `check:expo`: `tests 691`, `pass 691`, `fail 0`; `export:development`; the rendered checks **`104 passed (4.6m)`**.
+- **API mobile smoke, API artifact checks, Stream proof checks:** success (the Stream offline tests `Ran 648 tests`, `OK`, and `run plan: fits`; the built image's loopback smoke passed).
+- **Database proof checks:** success, in **9 minutes 11 seconds** (02:35:53 to 02:45:04) of its 30-minute timeout.
+  - The offline tests **`Ran 226 tests`**, `OK`; `All checks passed!`, `59 files already formatted`, `Success: no issues found in 59 source files`.
+  - A wrong marker refused (`wrong-marker migrate exit status: 1`, the database unchanged, 0 relations before and after) and `dbshell` refused (`dbshell exit status: 1`).
+  - **The ordering suite:** `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 14.2 s`, `== VERDICT: PASS ==`; a second run refused (`second run exit status: 1`), every count unchanged, with migrations 0008 and 0009 applied to its database.
+  - **The identity suite:** `[identity] cases: 49/49 passed in 37.4 s`; `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`; `IDENTITY VERDICT: PASS`; `identity phase: 38 s`; a second identity run refused, the counts `53 53 63 32 50` before and after.
+  - **The profile suite:** the profile database refused both other markers (`exit status 1` each); the migrations from zero (0008 and 0009 among them) and `No changes detected`; **`[profile] cases: 64/64 passed in 81.7 s`** (64 `PASS` lines, no `FAIL`); **`profile secret scan: clean (1381 secrets held; 0 found in 902 log records, 152 writes and the results JSON)`**; **`profile value scan: clean (511 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`**; the job's own check: `the job's secrets found in the profile suite's output: 0`, `… in the profile results JSON: 0`, `the suite's own scans (secrets, member values) reported clean: True`; `PROFILE VERDICT: PASS`; **`profile phase: 83 s`**. The digests case checked `986` stored digests of `11` kinds of command (`media` among them); the pointer-order case observed 27 transactions; the disclosure case found none of 223 object keys and 117 credentials in any response.
+  - **The second profile run** was refused (`second profile run exit status: 1`; `refusing a used database: auth users exist; app accounts exist; outbox events exist; a setting was published beyond its launch default. The profile suite runs once per new database.`), with the counts of auth users, app accounts, profiles, setting versions, outbox events and idempotency records **`123 123 99 44 1510 986` before and after**.
+  - `sv2-profile-results` (6,079 bytes) uploaded after the check passed; the container, its credential files and the marker files removed (`no proof container remains`).
+- **No toolchain retry fired:** every "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" step (API checks, API mobile smoke, Stream proof checks, Database proof checks) was `skipped`.
+- **No secret, coordinate, key, reference or photo byte in the logs.** In all seven jobs' logs (2,135, 2,185, 2,545, 677, 319, 254 and 191 lines): no line holds any of the suite's coordinates at full or four-decimal precision, a private key's header, a `delivery-` or `grant-` reference, `fixture-variant` or a PNG signature. The only masked lines (`***`, two to four per job) are the checkout, setup-python and setup-node actions' own token inputs. The only 32-hex tokens are two Expo export bundle file names (their build content hashes) in the Mobile job's `export:development` step. No log has a `##[error]` line.
+
+### What could not run, and the limits
+
+- **The mobile app's export and rendered checks** were not run locally; the run of record ran them. `playwright install` was not run.
+- **The Database proof checks job's shell steps** were not rerun locally as a whole; the local runs follow its profile steps on one database. Stage B changes neither the workflow nor its steps. **The ordering and identity suites** were not run locally; the run of record ran them, with migrations 0008 and 0009 applied to their databases.
+- **No R2, no processor, no detector, no check vendor and no hold record exist.** The storage, processing, detection, check and hold ports have fixture adapters only; the processing fixture checks PNG framing and the policy's bounds and decodes nothing; its variant is synthetic. The test drives the check with its own adapter, and its holding and recording adapters are the test's own. PV04 owns the real path.
+- **Not claimed:** the real target and its persistence; the deployed wiring; R2's events, Queues, signed upload addresses, deletion and caches (PV04, DB08); crash and restart (DB07); SV3's candidate delivery of approved photos; P07's report closure and its clearing of a restriction; G-02's detection service and G-05's hold record; a DB04-style suite case for migration 0008's new constraints (they are exercised where the cases reach them, as `REMOVAL.delivery-not-withheld-at-once` shows, but no case writes each one malformed).
+
+### Decisions and deviations for the manager
+
+1. **`MediaCollection.version` is derived, not stored:** 1 plus the sum of the account's asset versions. Every asset's creation and every transition bumps an asset's version, and no asset row is deleted, so it starts at 1 and advances with every adopted transition and order change (P04.3's semantics) with no new column.
+2. **A grant's time is judged by the store's upload time:** a completion is adopted only if its reported upload time is not after the grant's expiry, and `used_at` records that time (a constraint holds it within the grant). A completion processed later, for an upload made in time, is still adopted. The completion event is the adapter's, authenticated.
+3. **"Live photos" are `upload_pending`, `quarantined`, `review_pending` and `approved`;** a rejected or removed photo frees a place. The collection's 20 entries (every state but `removed`) are a second limit at the grant.
+4. **No operation clears a staff restriction in SV2.** The brief's words leave it to "the staff decision that closes the report", which is P07's; a restricted photo stays in `review_pending`, and the check passes it by (`restricted`).
+5. **The hold port is asked at the purge's request,** before the store is asked to delete, not again at each object's acknowledgment: by then the object is deleted, and the record says so.
+6. **The store's upload credential is issued inside the grant's transaction** (the fixture's in memory), and the purge's deletion request inside the purge's. P11 decides where a real adapter's calls go relative to the commit (the data model's "work only after commit").
+7. **The check's rejection reason** from its port is stored only when it is a code (`[a-z_]{1,64}`); otherwise `rejected`.
+8. **A variant's object row holds its size and no entity tag;** only an original's adoption records an entity tag (`media_object_adoption_evidence`).
+9. **The fixture authenticates events by identity:** it returns only an event it issued itself, unchanged. No key is generated for it.
+10. **`delivery_reference`** is a system read with no route, for P11's delivery; the owner's own `MediaLifecycle` shows an approved photo's reference whatever a hold says, since the DTO requires one while `approved` and a hold is not a state.
+11. **New database constraints** on `MediaAsset` (`media_delivery_only_approved`, `media_approved_unrevoked`, `media_removal_record`, `media_seam_passed`), `MediaObject` and `MediaUploadGrant` back the writers' rules. A filename or other non-hexadecimal key cannot be stored, so the key reversal uses the account ID's hex.
+12. **`FIXED_LIMITS` gains the four media ceilings,** and `ALL_SETTINGS` the media policy, with `SEEDED_BY_0007` naming 0007's fourteen; Stage A's seed tests now compare 0007 with those fourteen.
+13. **The fixture store records each delivery reference's key** (`d8f1bad`), added after the reversal harness showed a reference made for the original would otherwise go unseen.
+14. **N5's pin** holds a long binding by its first 48 characters and its whole text's SHA-256, to keep lines readable.
+15. **DM-52 to DM-56 were read through a subagent** of this session for their Stage B content (above); DM-57 and DM-56 section 6 directly.
+16. **No stop rule was met:** no path outside the owned paths changed (`glow_api`, `glow_chat`, `glow_identity`, `apps/`, `scripts/`, the workflow, the `Dockerfile`, environment templates, requirement files and the CI policy are unchanged); no dependency or pin changed; no provider, R2, Cloudflare or other service was called and no credential used; no DTO changed and no registry entry but F05's `approve` and `reject`; every role is one the oracle authorizes; the served runtime imports none of the new code (`test_profiles_sealed_runtime`); `glow_chat`'s writers are called unchanged.
+
+### Manager verification of Stage B (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff 854c214 e7d6616` (the prompt's start to the records head) was read for its scope, and in part for its content. It has 35 paths, each owned by the brief, revision 7. Of these, 29 are non-Markdown files (+4,219 lines, −65) at the code head `d8f1bad`, and 19 of those are outside the tests (+2,935). The other six are the Markdown files in the records commit `e7d6616`.
+- **Unchanged:** `glow_api`, `glow_chat`, `glow_identity`, `apps/`, `scripts/`, `.github/`, the `Dockerfile`, every environment template, requirement file and dependency lock. No generated contract output and no DTO changed.
+- **The registry:** the only lines changed in `flows-v1.json` are F05's `approve` and `reject` roles, `moderator` to `system` (OD-61).
+- **D19:**
+  - `settings_store._hold` records each pointer on the transaction's `Tx`, and raises `PointerOrderError` when a held name sorts after the new one.
+  - `read_shared` (`FOR SHARE`) and `publish` (`select_for_update`) are the only pointer lock sites. No module outside `settings_store` locks a `PolicyRevision` row.
+  - `tx.run` refuses nesting, so each transaction has one `Tx`.
+- **Read against D10:**
+  - object keys are opaque hex;
+  - a completion is adopted once, within its grant's expiry and the byte limit of the grant's own policy version;
+  - processing happens at `review`, and an upload with no variant passes the seam with its original and is rejected (`no_variant`);
+  - the hold port is asked before approval, delivery and purge;
+  - `removed` follows the acknowledgment of every object;
+  - delivery is only of an approved, unrestricted, unremoved, unheld variant.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`) ran with `python3 -I` and `--base 4dc2061… --head e7d6616… --merge-base`, after the fast-forward. It returned:
+- full scope, `behavior-or-empty`;
+- the PR's whole diff (58 paths), the manager's records since PR43 included;
+- one merge base, `4dc2061`.
+
+**Re-runs.** These ran in a scratch copy of the code head's whole tree (`git archive d8f1bad`), in the clean environment, with hash-locked installs:
+- **API:** `Found 554 test(s)` … `OK`; `System check identified no issues (0 silenced).`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the static check agreed.
+- **The proof's offline tests:** `Ran 226 tests` … `OK`; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline.** Each was applied in the scratch copy, and the file was restored afterwards. Each ran against `tests.test_profile_pointer_order` and `tests.test_profile_media` (22 tests):
+- **M1:** `_hold`'s raise removed. `test_a_lock_out_of_order_is_an_internal_error_answered_provider_unavailable` fails (`FAILED (failures=1)`).
+- **M2:** the review calls the seam only when processing made a variant. The two modules pass (`Ran 22 tests`, `OK`), so no offline test sees it.
+  - The session's `SEAM.an-upload-with-no-variant-skips-the-seam` shows the profile suite's case `media.an_upload_with_no_variant_passes_the_seam_and_is_rejected` failing at `the seam was given the original` (`profile_cases.py:3119`).
+  - That result comes from a local database run, which is iteration, not evidence.
+- **M3:** the approval's hold check removed. Only `test_every_photo_state_write_goes_through_the_registrys_table` errors, because its anchor is gone, as the session recorded for `CHECK.an-approval-without-the-hold-port`. No offline assertion is on the hold. The suite's case fails at `the approval asked the hold port first` (`profile_cases.py:3074`).
+
+After the restore, both files' SHA-256 matched `d8f1bad`'s, and the 22 tests pass. For the seam's no-variant path and the approval's hold, the profile suite on PostgreSQL is the only check that asserts the behaviour. The run of record ran both cases and passed. This goes to the exact-head review as a coverage note, not as a defect.
+
+**The run of record,** read with the GitHub tools: push run 42947095725 on `d8f1bad`.
+- All eight jobs were `success`, and every DM-41 retry step was `skipped`.
+- The Database proof checks job:
+  - the profile database refused both other markers;
+  - migrations 0008 and 0009 applied from zero, and `No changes detected`;
+  - `[profile] cases: 64/64 passed in 81.7 s`, with `profile secret scan: clean (1381 secrets held; 0 found in 902 log records, 152 writes and the results JSON)` and `profile value scan: clean (511 member values held …)`;
+  - `PROFILE VERDICT: PASS`, and `profile phase: 83 s`.
+- The second profile run was refused (`exit status: 1`), with the counts `123 123 99 44 1510 986` unchanged.
+- `sv2-profile-results` is 6,079 bytes, and `no proof container remains`.
+
+The records push run 42949445496 on `e7d6616` passed. Change scope and the gate were `success`, and the six application jobs were `skipped`: the change since the code head is ordinary documentation.
+
+**The session's sixteen decisions:**
+- **To the Dev Manager (DM-58):**
+  - 1: the collection's version is derived;
+  - 2: a grant's expiry is judged by the store's upload time;
+  - 3: `removed` photos are outside the collection's 20 entries and its read, where P04.3 kept removed tombstones within that bound (`private-media-fixtures.md`, "Provisional development policy and byte checks");
+  - 6: the store's calls are made inside the transaction, where the data model's unit-of-work table puts provider work after commit;
+  - 10: the owner's `MediaLifecycle` shows an approved photo's reference whatever a hold says.
+- **Settled here:**
+  - 4 follows D10's words and the carried item for P07 (`carried-to-later-items.md`: a photo's restriction is cleared only by the staff decision that closes the report);
+  - 5 follows the brief's check list ("approval, delivery and a removed asset's purge each ask the hold port first");
+  - 7, 8, 9 and 11 to 16 are within the brief, and each is recorded above.
+
+**Codex on `82d246b`** (PR44's first head, opened at that commit): its code review completed at 03:19:45 UTC with one P2 finding, "Allow media purge to finish for inactive accounts" (`media.py`, `request_purge`). Confirmed: `request_purge` and `acknowledge_deletion` lock the owner's account row with `lock_account`, which refuses an account that is not `active`, so a photo removed before its owner is suspended or asks for deletion stays `removal_pending`, with its objects kept; delivery stays withheld. No test covers it. The fix changes the account-state gate on F05's system steps, so it goes to the Dev Manager as DM-58's item 9 ([addendum](../../ephemeral/2026-11-11-dm-58-addendum-inactive-owner-purge.md)); its thread stays open until the disposition.
+
+## Stage B, correction C1
+
+SV2 Stage B's correction C1, as the brief's "Stage B, correction C1 (DM-58 item 9)" lists it (the brief, revision 8; DM-58 section 3): Codex's P2 on PR44 (`82d246b`), an inactive owner's purge refused by the account-state gate. Stage B's sections stand as written. Local database runs here are iteration, not evidence; the evidence of record is the CI run on the code head, below.
+
+### The session
+
+- **The prompt:** Stage B correction C1's prompt, revision 1, from `ecad10c797b56d724c6039cc771717f6ccfad6e9` of `claude/magical-wozniak-yfmmx2`, started by Nathan.
+- **The branch:** `claude/gracious-davinci-lpqt02`, started at `ecad10c`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
+- **The code commit, the code head:** `7538c7642f38ac374f2a0f7ca22c8887a3a31922` (`7538c76`): items 1 and 2.
+- **The records commit** (this section, the data model's `MediaAsset` row, the contract document's F05 server mapping and the proof README) follows the run of record, as the push rule requires.
+
+### Start gate and environment
+
+- **The environment check, names only.**
+  - None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` was set (the prompt's loop printed nothing).
+  - No `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*` name (`compgen -e | grep -E '^(STREAM_|PG|R2_|CLOUDFLARE_|CF_)'` printed nothing).
+  - **Three AWS names were present, as DM-57 and DM-58 expected:** `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY`, and no other `AWS_*` name. Their values were never read, printed or used, and no command passed them.
+  - `GH_TOKEN` and `GITHUB_TOKEN` were present and never read.
+  - Every repository command ran in a clean process environment (`env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API, and the proof's `PROOF_*` names and `DJANGO_SETTINGS_MODULE` for a local database run); the installs, Docker's daemon and its one pull took the proxy and CA variables by reference, never printed.
+- **The toolchain:** `Python 3.12.14` (`python3.12`); Node `v24.19.0` and npm `11.9.0`, both `/root/.local/bin` (`which node` and `which npm` resolve there; the first `PATH` entry is the Nix profile, which holds neither); `Docker version 29.9.2, build a82e528`.
+- **The start gate,** each line as the prompt has it:
+  - `git fetch origin claude/magical-wozniak-yfmmx2 main`: fetched (`main` at `4dc2061`; the manager branch at `ecad10c` itself);
+  - `git switch -C claude/gracious-davinci-lpqt02 ecad10c…` and `git rev-parse HEAD`: `ecad10c797b56d724c6039cc771717f6ccfad6e9`; `e7d6616` is an ancestor;
+  - no non-Markdown path differs from `d8f1bad`: printed nothing;
+  - no owned path differs from the live manager branch: printed nothing; `ecad10c` is on it;
+  - `grep -rn 'lock_account_any_state' services/api proofs`: printed nothing;
+  - `grep -c '^## Stage B, correction C1'` on this record: `0`; on the brief, `'^## Stage B, correction C1 (DM-58 item 9)'`: `1`.
+- **What was read:** the root `AGENTS.md` and `CLAUDE.md`, `services/api/README.md` and `proofs/postgres-ordering/README.md`; the brief, revision 8: D10's bullet on reorder and removal, acceptance check 10 and "Stage B, correction C1 (DM-58 item 9)"; DM-58 sections 3 and 7; this record's "Stage B" and "Manager verification of Stage B", with Codex's finding; `glow_profiles/tx.py` and `glow_profiles/media.py` whole; `glow_chat/contact.py`'s `suspend`, `delete` and `_revoke_account`; the tests changed, below.
+
+### Items
+
+| Item | Files | Checks | Reversals |
+|---|---|---|---|
+| **1. The two writers** | `glow_profiles/tx.py`: `lock_account_any_state`, beside `lock_account`, which is unchanged: the account row `FOR UPDATE`, an absent row refused `not_found` / `account_missing`, `after_first_lock` signalled, no state check; the module docstring states the rule. `glow_profiles/media.py`: `request_purge` and `acknowledge_deletion` call it first, in place of `lock_account`; the purge still asks the hold port before the store; both docstrings and the module docstring state the rule. No other lock changed | API: `LockOrderTests` (three tests), `AccountStateTests` (three). Proof: the three cases below | `C1.the-purge-gated`, `C1.the-acknowledgment-gated`, `C1.the-any-state-lock-checks-the-state`, `C1.the-purge-without-the-hold-port` |
+| **2. The tests** | `tests/test_profiles_offline.py`; `tests/test_profile_media.py`; `profile_cases.py` (three cases, `CASE_COUNT` 64 to 67); `tests/test_profile_offline.py` (the count pinned at 67; Stage B's cases counted 14) | Below | `C1.review-ungated`, and those of item 1 |
+| **3. The records** | `docs/architecture/data-model.md` (the `MediaAsset` row); `docs/architecture/production-contracts.md` (F05's server mapping, "The account's state"); `proofs/postgres-ordering/README.md` (the profile suite's paragraph: 67 cases, Stage A's 53, Stage B's eleven by name and C1's three); this section | Read against the code at `7538c76` | (records) |
+
+**The tests, item 2:**
+- **`LockOrderTests`** (`tests/test_profiles_offline.py`):
+  - `test_every_operation_takes_the_account_row_first`: its expectation changes as the brief says. `ANY_STATE` (`request_purge`, `acknowledge_deletion`) must begin with `lock_account_any_state(tx, account_id)`; every other command, staff operation, system step and read keeps `lock_account(tx, account_id)` or `read_account_shared(tx, account_id)`, as before. Nothing else in it changes.
+  - New: `test_only_the_two_writers_take_the_account_row_in_any_state`: in every module of `services/api` but its tests and `.venv`, the name is used only in `media.py`'s `request_purge` and `acknowledge_deletion`, once each, and imported only by `media.py`.
+  - New: `test_the_any_state_lock_is_lock_account_without_its_state_check`: its statements are `lock_account`'s first three and `return account`; `lock_account`'s are those three, the `account_not_active` refusal and `return account`.
+- **`AccountStateTests`** (`tests/test_profile_media.py`, new): the purge begins with the any-state lock and asks `adapters.hold.held` once, before `adapters.storage.delete` and before `purge_requested_at` is set; the acknowledgment begins with it and records a deletion only for a `removal_pending` asset whose purge was requested; every other photo step's first statement is `lock_account` or `read_account_shared`. The purge's hold check had no offline assertion before (it was the suite's only); it has one now.
+- **The suite's three cases** (`profile_cases.py`; checks 10 and D10; the owner is made inactive with `glow_chat`'s `OrmContactPersistence(provider="fixture").suspend` or `.delete`, called unchanged):
+  - `media.a_photo_removed_before_its_owner_is_suspended_is_still_purged`: an approved photo (two objects) removed, delivery withheld at once; the owner suspended; a hold still stops the purge, with nothing deleted; the purge is asked, the hold port asked first, every object's deletion asked; one acknowledgment leaves it `removal_pending`, the last makes it `removed` (`media_purged` once, every object acknowledged); the account stays `suspended`. **Delivery is checked withheld at each step** (`_withheld`: the row holds no delivery reference, and `delivery_reference` returns none: it refuses an owner who is not active).
+  - `media.a_purge_asked_before_its_owner_asks_for_deletion_completes`: an approved photo removed; the purge asked while the owner is active; then the owner asks for deletion (`deletion_pending`, with its `DeletionJob`); the first acknowledgment leaves it `removal_pending`, a duplicate changes nothing (`already_deleted`), the last makes it `removed`; delivery withheld throughout; the account stays `deletion_pending`.
+  - `media.every_other_photo_step_refuses_an_inactive_owner`: for a suspended owner and for one who asked for deletion, each with an upload pending, one quarantined, one in review and one approved: `record_upload`, `review`, `run_check` (the test's approving check never asked), staff's `restrict_media` and `delivery_reference` each answer `refused` / `forbidden` / `account_not_active`; the grant stays unused, and the counts, the objects and each asset's state and version are unchanged. Staff's restriction and the delivery read are beyond the three the brief names; they check the same rule (deviation 4).
+- **`CASE_COUNT`** becomes 67 (`profile_cases.py`), with `test_the_case_count_is_pinned` (64 to 67) and `test_the_plan_covers_every_acceptance_check`'s count of Stage B's `media` and `pointers` cases (11 to 14). These are the two expectations the brief changes; no test was weakened or removed.
+- **C3's state-write guard** (the allowlist in `tests/test_profile_recompute.py`, `NOT_A_PROFILES_STATE`) pins `media.py:128` (`transition`, `asset.state = after`). C1 does not move it (deviation 1), so the allowlist is unchanged.
+
+### The reversals (D15)
+
+Each reversal is a temporary edit of the working tree at the code commit `7538c76`, applied by a harness in the session's scratchpad (`reverse.py`; each anchor checked to occur exactly once). For each: the API's `LockOrderTests`, `AccountStateTests` and `test_profile_recompute` (11 tests), then the profile suite on a new throwaway database (D4; iteration, not evidence), migrated from zero; then the file restored with `git checkout HEAD --`, and **every file's SHA-256 checked equal to the commit's** (`media.py` `491c734b…afc8ce3d`, `tx.py` `14c6141e…f707f70`, after every reversal). Each made its tests fail, for the reason it names.
+
+| Reversal | The temporary edit | File | Failing output |
+|---|---|---|---|
+| `BASE.the-code-at-d8f1bad` (the stop rule's check) | `tx.py` and `media.py` as at `d8f1bad` | both | api `FAILED (failures=5, errors=1)`: `LockOrderTests` (`request_purge`, `acknowledge_deletion`: `'lock_account(tx, account_id)' != 'lock_account_any_state(tx, account_id)'`; the any-state lock used nowhere; its definition absent: `KeyError`, an error), `AccountStateTests` (both writers). Suite `65/67 passed`: `media.a_photo_removed_before_its_owner_is_suspended_is_still_purged`: `a hold stops the purge`; `media.a_purge_asked_before_its_owner_asks_for_deletion_completes`: `one object acknowledged after the deletion request`. `media.every_other_photo_step_refuses_an_inactive_owner` **passes**, as it should on the gated code. Every failure is item 1's |
+| `C1.the-purge-gated` | `request_purge` begins with `lock_account` again | media.py | api `FAILED (failures=3)`: `LockOrderTests` (`request_purge`; the any-state lock's users), `AccountStateTests` (the purge). Suite `66/67 passed`: `media.a_photo_removed_before_its_owner_is_suspended_is_still_purged`: `a hold stops the purge` (the suspended owner's purge refused before the hold port is asked) |
+| `C1.the-acknowledgment-gated` | `acknowledge_deletion` begins with `lock_account` again | media.py | api `FAILED (failures=3)`: `LockOrderTests` (`acknowledge_deletion`; the users), `AccountStateTests` (the acknowledgment). Suite `65/67 passed`: the suspension case at `one object acknowledged for a suspended owner`; the deletion case at `one object acknowledged after the deletion request` |
+| `C1.review-ungated` | `review` begins with `lock_account_any_state` | media.py | api `FAILED (failures=3)`: `LockOrderTests` (`review`: `'lock_account_any_state(tx, account_id)' != 'lock_account(tx, account_id)'`; the users), `AccountStateTests.test_every_other_photo_step_keeps_its_gate` (`review`). Suite `66/67 passed`: `media.every_other_photo_step_refuses_an_inactive_owner`: `review refuses an inactive owner` |
+| `C1.the-any-state-lock-checks-the-state` | `lock_account_any_state` refuses an account that is not active | tx.py | api `FAILED (failures=1)`: `test_the_any_state_lock_is_lock_account_without_its_state_check`. Suite `65/67 passed`: both purge cases, as for the code at `d8f1bad` |
+| `C1.the-purge-without-the-hold-port` | `request_purge`'s hold check removed | media.py | api `FAILED (failures=1)`: `AccountStateTests` (the purge: `0 != 1`). Suite `64/67 passed`: Stage B's `media.removal_withholds_delivery_and_completes_on_every_objects_purge` (`the hold port was asked`) and both purge cases (`a hold stops the purge`; `the purge asked the hold port first`) |
+
+The brief's reversals are all here: the gate restored in each writer fails its case and `LockOrderTests`; `lock_account_any_state` in `review` fails the third case.
+
+### Each F05 step's account-state rule after C1 (for the exact-head review's threat model)
+
+Every step is one `tx.run` transaction that takes the photo owner's `AppAccount` row first (DM-13 4.1). An absent row is `not_found` / `account_missing` everywhere.
+
+- **In any account state** (`lock_account_any_state`, the row `FOR UPDATE`; `active`, `suspended`, `deletion_pending` or any other):
+  - `request_purge(asset_id)` (system): only from `removal_pending`; asks the hold port first (a hold stops it, `held`), then asks the store to delete every object not yet acknowledged, and sets `purge_requested_at`;
+  - `acknowledge_deletion(raw)` (F05 `purged`, `provider`, authenticated by the storage adapter): records one object deleted only for a `removal_pending` asset whose purge was requested; the last object's acknowledgment moves it to `removed`.
+  - `glow_chat`'s `suspend` and `delete` take the same row `FOR UPDATE`, so either serializes with these two. Neither changes the account.
+- **Refuse an account that is not `active`** (`forbidden` / `account_not_active`):
+  - the member's commands, through `MediaIntent` at `api/v1/media` (the actor class refuses an inactive account first, and each also takes `lock_account`): `request_upload`, `remove_photo`, `reorder_photos`;
+  - the member's reads (`api/v1/media`, `api/v1/media/<asset_id>`): `operations.read`, `read_account_shared` (the row `FOR SHARE`);
+  - the provider's completion: `record_upload` (`lock_account`);
+  - the system's steps: `review` and `run_check` (`lock_account`);
+  - staff's `restrict_media` (`lock_account`);
+  - the system read `delivery_reference` (`read_account_shared`).
+- Tests: `LockOrderTests`, `AccountStateTests`; the three cases above; Stage B's media cases for the active owner.
+
+### Commands and results
+
+**The installs** (each in the clean environment, the proxy and CA variables by reference): `services/api`: `python3.12 -m venv .venv`, `.venv/bin/python -m pip install --timeout 60 --progress-bar off --require-hashes -r requirements-dev.lock`: exit 0. `proofs/postgres-ordering`: the same with its `requirements-dev.lock`: exit 0. No npm install was needed: no contract, generated output or `apps/` path changed.
+
+**API** (`services/api`, `GLOW_ENV=test`, at `7538c76`):
+- `python manage.py check`: `System check identified no issues (0 silenced).`
+- `python manage.py test tests --verbosity 2`: `Ran 559 tests`, `OK` (554 at `d8f1bad`; C1 adds 5: `LockOrderTests`' two and `AccountStateTests`' three).
+- `ruff check .`: `All checks passed!`; `ruff format --check .`: `140 files already formatted`.
+- `mypy`: `Success: no issues found in 81 source files`.
+- `python -m glow_persistence.static_check`: `Static definitions agree: 42 app models` (no model or migration changed).
+
+**The contracts** (from `services/api`): `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v`: `Ran 49 tests`, `OK`.
+
+**The proof** (`proofs/postgres-ordering`): `python -m unittest discover -s tests -t . -v`: `Ran 226 tests`, `OK` (the same count; two expectations changed); `ruff check .`: `All checks passed!`; `ruff format --check .`: `59 files already formatted`; `mypy`: `Success: no issues found in 59 source files`.
+
+**Local database runs: iteration, not evidence** (P06.DB's D4):
+- Docker's daemon was started in the sandbox; the CI job's image pinned by digest (`postgres@sha256:d74eeac9…`) was pulled from Docker Hub once and published on `127.0.0.1:5433` only.
+- The superuser's and the role's passwords, each database's marker, the `SECRET_KEY`s and the JWT keys were generated into directories only the session's user could read (mode 700, files 600), and never printed. A non-superuser role owned each database, each new database had its own marker as its comment, and each was dropped after its run.
+- None of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or a `PG*` name was present, and no `AWS_*` name was passed.
+- **The suite at `7538c76`:** migrations from zero (exit 0), `No changes detected`; `[profile] cases: 67/67 passed in 86.3 s`; `profile secret scan: clean (1425 secrets held; 0 found in 910 log records, 158 writes and the results JSON)`; `profile value scan: clean (535 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`; `PROFILE VERDICT: PASS`; the job's check (`profile_scan`): `0`, `0`, `True`.
+- The six reversal runs above, each on its own new database.
+- The container, its volume, the key directories and every log were removed (`docker ps -a` lists none).
+
+### The run of record
+
+**Foundation push run [42957799823](https://github.com/amthorn78/glow-dating-app/actions/runs/42957799823)** on `7538c7642f38ac374f2a0f7ca22c8887a3a31922`, **the code head**.
+- **When:** attempt 1, 04:13:22 to 04:21:38 UTC on 11 November 2026.
+- **How it was read:** with the GitHub tools: the run, its jobs and steps, the Database job's last lines directly, and all eight logs in full through `get_job_logs` (content, never a download address) by a subagent of this session. The subagent reported the lines below and counts of the patterns searched, never a match.
+- **The result:** the run's conclusion was `success`, all eight jobs' conclusions were `success`, and the gate (`Foundation gate`, 04:21:36 to 04:21:38) printed **`Application checks passed`**. The jobs:
+
+- **Change scope:** success; `{"full": true, "reason": "missing-or-invalid-comparison", "paths": []}` (the branch's first push): full checks ran.
+- **API checks:** success (04:13:33 to 04:14:30). The scope and branch-cleanup policies' tests (`Ran 14 tests`, `Ran 18 tests`, `OK`); `System check identified no issues (0 silenced).`; `manage.py test tests --verbosity 2`: **`Ran 559 tests`**, `OK`; `All checks passed!`, `140 files already formatted`, `Success: no issues found in 81 source files`; the Python contract tests `Ran 49 tests`, `OK`.
+- **Mobile checks:** success (04:13:33 to 04:21:34). `Generated types and runtime validators match schemas.`; the contracts' tests `tests 709`, `pass 709`, `fail 0`; the app's `npm run check` and `check:expo`: `tests 691`, `pass 691`, `fail 0`; the rendered checks **`104 passed (5.3m)`**.
+- **API mobile smoke, API artifact checks, Stream proof checks:** success. The smoke's `PASS: spawned loopback API -> mobile TypeScript client; …`; `built-image loopback smoke passed`; the Stream offline tests `Ran 648 tests`, `OK`, and `run plan: fits`.
+- **Database proof checks:** success, in **6 minutes 18 seconds** (04:13:33 to 04:19:51) of its 30-minute timeout.
+  - The offline tests **`Ran 226 tests`**, `OK`; `All checks passed!`, `59 files already formatted`, `Success: no issues found in 59 source files`.
+  - A wrong marker refused (`wrong-marker migrate exit status: 1`, 0 relations before and after) and `dbshell` refused (`dbshell exit status: 1`).
+  - **The ordering suite:** `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 10.7 s`, `== VERDICT: PASS ==`. A second run was refused (`second run exit status: 1`), every count unchanged.
+  - **The identity suite:** `[identity] cases: 49/49 passed in 30.0 s`; `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`; `IDENTITY VERDICT: PASS`; `identity phase: 31 s`. A second identity run was refused, with the counts `53 53 63 32 50` before and after.
+  - **The profile suite:**
+    - the profile database refused both other markers (`exit status 1` each); the migrations from zero and `No changes detected`;
+    - **`[profile] cases: 67/67 passed in 55.6 s`**, C1's three among them (`media.a_photo_removed_before_its_owner_is_suspended_is_still_purged`, `media.a_purge_asked_before_its_owner_asks_for_deletion_completes`, `media.every_other_photo_step_refuses_an_inactive_owner`: `10 steps refused for a suspended and a deleting owner (account_not_active)`);
+    - **`profile secret scan: clean (1425 secrets held; 0 found in 910 log records, 158 writes and the results JSON)`** and **`profile value scan: clean (535 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`**;
+    - the job's own check: `the job's secrets found in the profile suite's output: 0`, `… in the profile results JSON: 0`, `the suite's own scans (secrets, member values) reported clean: True`;
+    - `PROFILE VERDICT: PASS`; **`profile phase: 56 s`**;
+    - the digests case checked `998` stored digests of `11` kinds of command; the pointer-order case observed 27 transactions; the disclosure case found none of 239 object keys and 127 credentials in any response.
+  - **The second profile run** was refused (`second profile run exit status: 1`; `refusing a used database: auth users exist; app accounts exist; outbox events exist; a setting was published beyond its launch default. The profile suite runs once per new database.`), with the counts of auth users, app accounts, profiles, setting versions, outbox events and idempotency records **`127 127 99 44 1550 998` before and after**.
+  - `sv2-profile-results` (6,259 bytes) was uploaded after the check passed; the container, its credential files and the marker files were removed (`no proof container remains`).
+- **No toolchain retry fired:** every "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" step was `skipped`, in API checks, API mobile smoke, Stream proof checks and Database proof checks.
+- **No secret, key, reference or photo byte in the logs.** The eight jobs' logs hold 192, 2,137, 2,545, 677, 319, 2,190, 256 and 79 lines. None holds a private key's header, a `delivery-` or `grant-` reference, `fixture-variant` or a PNG signature. No log has a `##[error]` or `##[warning]` line.
+
+### What could not run, and the limits
+
+- **The mobile app's checks** were not run locally: no contract, generated output or `apps/` path changed. The run of record ran them.
+- **The Database proof checks job's shell steps** were not rerun locally as a whole, and **the ordering and identity suites** were not run locally; the local runs follow the job's profile steps on one database each. C1 changes neither the workflow nor its steps.
+- **No R2, processor, detector, check vendor or hold record exists,** as in Stage B; the ports have fixture adapters only, and the hold port is the test's own.
+- **Not claimed:** P08's account deletion and its system step that removes the photos a member did not remove (DM-58 J9, carried); whether G-02's seam should inspect an inactive account's adopted upload before its purge (J8, carried to P07.1); a purge concurrent with a suspension observed waiting on the account row (the two take the same row `FOR UPDATE`, as `_revoke_account` and `lock_account_any_state` read; no suite case holds one and observes the other); a suspended member's own routes (the actor class refuses them before any operation; no C1 case calls them).
+
+### Decisions and deviations for the manager
+
+1. **The state-write guard's allowlist is not in an owned path, so C1 keeps the pinned line where it is.** The prompt names the allowlist in `tests/test_profiles_offline.py`; it is `NOT_A_PROFILES_STATE` in `tests/test_profile_recompute.py`, which C1 does not own, and it pins `media.py:128` (`asset.state = after`). The new import line would have moved that line to 129. Rather than write outside the owned paths, or stop, `media.py`'s module docstring was rewritten one line shorter: the system's steps paragraph now states the account-state rule and runs into the D9 paragraph, whose text is unchanged. The line stays at 128 and `test_profile_recompute` passes unchanged. The brief's sentence ("A line C1 moves … updates the allowlist in the same change") therefore did not apply.
+2. **`lock_account` is unchanged,** and `lock_account_any_state` repeats its first three statements, rather than `lock_account` calling the new function. The gated function's text, the one every other step relies on, stays as `d8f1bad` had it; `test_the_any_state_lock_is_lock_account_without_its_state_check` pins the two as equal but for the state check.
+3. **The hold port is asked at the purge's request only,** not at each acknowledgment, as Stage B's decision 5 settled; C1 keeps it.
+4. **The third case checks five steps, not three:** `record_upload`, `review` and `run_check`, as the brief names, and also staff's `restrict_media` and the system read `delivery_reference`. Both are gated steps under the same rule, and the case needed an approved photo anyway. It runs for both inactive states, `suspended` and `deletion_pending`.
+5. **The first case also shows a hold stopping the purge of a suspended owner,** with nothing deleted, before the purge proceeds: "the purge still asks the hold port first" in any state.
+6. **"Delivery stays withheld throughout"** is checked on the row (no delivery reference) and through `delivery_reference`, which refuses an inactive owner and returns none for an asset that is not approved. The owner's own routes are not called after the suspension or the deletion request.
+7. **`AccountStateTests` adds an offline assertion on the purge's hold check** (before the store's deletion and before `purge_requested_at`). Stage B's `REMOVAL.the-purge-without-the-hold-port` was caught only by the suite; `C1.the-purge-without-the-hold-port` is now caught offline too. The approval's hold check (M3) and the seam's no-variant path (M2) are unchanged: no offline assertion was added for them.
+8. **The code commit was pushed before the local reversals finished.** The reversals edit only the local working tree, are never committed, and each was restored and checked by SHA-256 (above); nothing more was pushed until the run of record finished.
+9. **The contract document's F05 index row** (its "Flows" table) is unchanged; C1 changes only the server mapping, as the owned paths say. Its mapping still names the brief's revision 7 as Stage B's, which it was.
+10. **No stop rule was met:**
+    - no path outside C1's owned paths changed: `glow_chat`, `glow_identity`, `glow_domain`, `glow_api`, `tests/test_profile_recompute.py`, the workflow, every lock file and dependency are unchanged;
+    - no model, migration, DTO or registry entry changed;
+    - no other step's account-state gate changed (`LockOrderTests`, `AccountStateTests`);
+    - no provider, R2, Cloudflare or other service was called, and no credential used;
+    - every new check that fails on the code at `d8f1bad` fails for item 1's reason (`BASE.the-code-at-d8f1bad`).
+
+### Manager verification of Stage B's correction C1 (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff ecad10c e30ef4a` was read for its scope and its code: 10 paths, each among C1's owned paths, with the code head `7538c76` and the records commit `e30ef4a` (Markdown only).
+- **The code:** `tx.py` gains `lock_account_any_state`, `lock_account`'s first three statements without its state check, and `lock_account` is unchanged. `request_purge` and `acknowledge_deletion` call it in place of `lock_account`; the purge still asks the hold port before the store. No other lock site changed, and no model, migration, DTO, registry entry, workflow, lock file or dependency changed.
+- **Deviation 1** is the manager's mistake (AM10-19): the brief and the prompt placed the state-write guard's allowlist in `tests/test_profiles_offline.py`; it is `NOT_A_PROFILES_STATE` in `tests/test_profile_recompute.py`, which pins `media.py:128` and is not C1's. The session kept line 128 in place by shortening the module docstring, so the guard passes unchanged (`media.py:128` is still `asset.state = after`). Deviations 2 to 9 are within the brief.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`), with `python3 -I` and `--base 4dc2061… --head e30ef4a… --merge-base`, after the fast-forward: full scope, `behavior-or-empty`; the PR's whole diff (63 paths); one merge base, `4dc2061`. The manager workflow is unchanged since `52ae066` (DM-58 section 6).
+
+**Re-runs.** In a scratch copy of the code head's tree (`git archive 7538c76`), in the clean environment, with hash-locked installs:
+- **API:** `System check identified no issues (0 silenced).`; `Ran 559 tests` … `OK`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the contract tests `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 226 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline** (`tests.test_profiles_offline`, `tests.test_profile_media` and `tests.test_profile_recompute`, 47 tests), each restored afterwards and checked against `7538c76` by SHA-256:
+- **M4:** `lock_account` back in `request_purge`: three failures (`LockOrderTests`' two and `AccountStateTests`' hold-port test).
+- **M5:** the any-state lock given the state check: `test_the_any_state_lock_is_lock_account_without_its_state_check` fails.
+- **M6:** `review` takes the any-state lock: three failures (`LockOrderTests`' two and `test_every_other_photo_step_keeps_its_gate` for `review`).
+
+After the restore, the 47 tests pass.
+
+**The run of record,** read with the GitHub tools: push run 42957799823 on `7538c76`. All eight jobs `success`; every DM-41 retry step `skipped`. The Database proof checks job: `[profile] cases: 67/67 passed in 55.6 s`, with the three new cases passing (`a_photo_removed_before_its_owner_is_suspended_is_still_purged`, `a_purge_asked_before_its_owner_asks_for_deletion_completes`, `every_other_photo_step_refuses_an_inactive_owner`: 10 steps refused for a suspended and a deleting owner); `profile secret scan: clean (1425 secrets held; …)`, `profile value scan: clean (535 member values held …)`, `PROFILE VERDICT: PASS`, `profile phase: 56 s`; the second profile run refused (exit status 1), the counts `127 127 99 44 1550 998` unchanged; `sv2-profile-results` 6,259 bytes; `no proof container remains`. The records push run 42959433903 on `e30ef4a` passed.
+
+**Integration:** the manager branch was fast-forwarded from `ecad10c` to `e30ef4a`. Codex's P2 on `request_purge` is answered by C1 on PR44's head that holds it.
+
+**What follows:** Codex on PR44's head that holds C1 and the exact-head review's prompt, then the full exact-head review of `7538c76` with its written threat model (DM-58 sections 3 and 7), then the Dev Manager's pre-merge read.
+
+## Exact-head review of Stage B after C1 (code head `7538c76`)
+
+- **The session:** started by Nathan from Stage B's exact-head review prompt, revision 1, at `8126c0c6df80f494c18070151b3831e1d6551f86` (`docs/ephemeral/2026-11-11-sv2-stage-b-review-prompt.md`). It reported on 11 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*` was present; the three expected AWS names were present, their values never read or passed;
+  - the start gate passed, with one merge base, `4dc2061`, and no code differing from `7538c76`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`, over 64 paths.
+- **What it ran,** in a scratch copy of `7538c76`:
+  - the API's checks: `manage.py check`; 559 tests `OK`; Ruff; mypy clean on 81 files;
+  - the contract tests (49) and `generate.mjs --check` (`Generated types and runtime validators match schemas.`);
+  - the proof's offline tests (226), Ruff and mypy (59 files);
+  - the four required offline reversals, each failing its case (R1 to R4), and six more of its own (R5 to R10, R12);
+  - informational, on a throwaway PostgreSQL under P06.DB's D4: the suite 67/67 with both scans clean, and five database reversals (R5 to R8, R11).
+- **What it read:** runs 42947095725 (64/64) and 42957799823 (67/67), and PR44's pull-request run 42963058038 on `8126c0c` (67/67 in 97.9 s). In each, all eight jobs passed, the gate printed `Application checks passed`, and no DM-41 retry fired. In the PR run's eight logs, no line holds a private-key header, a `delivery-` or `grant-` reference, `fixture-variant`, a PNG signature, `##[error]` or `##[warning]`.
+- **The verdict: changes required, in tests and records only.** It found no blocking finding and no defect in the code: the code behaves as the brief, DM-57, DM-58 and C1 require. Findings F1 to F4 are should fix in correction classes; F5 is should fix outside them; N1 to N9 are nits.
+- **Its statements:**
+  - every Dev Manager condition is met in the code: U1 to U5, U8 to U10, J6, J7 and DM-58 section 3's correction;
+  - item 1's premise holds: every write to a projected field goes through `transition`, which bumps the version, and no asset row is deleted anywhere;
+  - J2 to J5 hold as built; the ports' fixture calls have effects in process memory only (N5), with no external call;
+  - C1: `lock_account_any_state` equals `lock_account` without its state check; only the two writers use it; `glow_chat`'s `_revoke_account` takes the same row `FOR UPDATE`, so a purge serializes with a suspension or a deletion request; deviation 1 holds (`media.py:128` is still `asset.state = after`);
+  - no test was weakened: Stage A's cases gain an approved photo, the F05 test asserts more, and the seed tests narrow to `SEEDED_BY_0007` with 0009 pinned on its own;
+  - no DTO changed; the registry diff is exactly F05's `approve` and `reject`, `moderator` to `system`;
+  - `.github`, the `Dockerfile`, every lock, requirement and package file and `apps/` are unchanged from `4dc2061`;
+  - the records hold against the code and the runs, except F4 and nits N2, N5, N6 and N7.
+- **The coverage notes** (DM-58 section 5):
+  - **M2:** the suite's case suffices: the reversal passes offline and fails the suite at exactly `the seam was given the original`;
+  - **M3:** the suite catches the hold check's removal (`:3074`), but not its answer ignored: F1;
+  - **migration 0008's constraints:** F5.
+
+**The review's threat model,** condensed (assets, actors and entry points are the prompt's):
+
+| # | Threat | What stops it | What proves it |
+|---|---|---|---|
+| T1 | An anonymous prober on F05's routes | SV1's actor on every route (401); UUIDv4 asset IDs | `media.reorder_and_every_route…` |
+| T2 | A member on another member's photo | `locked_asset` and `read_asset` filter by account; reorder checks its set | the same case; the session's `REMOVAL.*` and `D17.*` reversals |
+| T3 | A stolen token | SV1's actor and the account-state gates; a delivery reference is not a credential (J2, P11) | SV1's suite; `media.every_other_photo_step_refuses_an_inactive_owner` |
+| T4 | A grant replayed, uploads raced, limits or expiry crossed | the account row lock; `used_at` and the state check; the store's time against the expiry; the grant's own version's byte limit; the live and 20-entry limits; `media_grant_used_in_time` | `media.completions_are_matched_to_their_grant`, `media.grant_within_the_policys_limits`; R11 |
+| T5 | A forged, duplicated, late or out-of-order store event | `receive` returns only events the adapter issued; `not_awaiting_upload`, `purge_not_requested`, `already_deleted` | `FixtureTests`; the completions and removal cases |
+| T6 | A member route reaching a provider, system or staff step | the views call only `media.command`, which dispatches the owner's three actions | `RouteTests`; `staff.no_member_route_reaches_a_staff_operation` |
+| T7 | An upload skipping quarantine, review or the seam | one writer, `transition`, bound to F05's table; the seam called unconditionally; `media_seam_passed` | `RegistryTests`, the two upload cases; R6. Gap: F3 |
+| T8 | An original delivered, or a key or credential exposed | only the variant gets a reference; the projection shows one only while `approved`; 32-hex random keys; the credential stays in the adapter | `media.an_upload_moves…`, `media.no_key_original_or_bytes_in_any_response`, `KeyTests` |
+| T9 | The check approving a held photo | the hold check at `media.py:636-637` | **F1:** only "the hold port was asked" is tested |
+| T10 | The check clearing a restriction or undoing a removal | nothing clears `restriction_ref`; only `purged` leaves `removal_pending`; `media_approved_unrevoked` | `media.the_checks_decisions…` |
+| T11 | A held, removed or restricted photo delivered | `delivery_reference`'s four conditions; `transition` clears the reference; `media_delivery_only_approved` | `media.an_upload_moves…`, `media.removal…`; R8 |
+| T12 | A removal never completing, completing early, or lost to an inactive owner | the remaining-objects check; `lock_account_any_state` in the two writers only (C1) | `media.removal…`, C1's three cases, `LockOrderTests`, `AccountStateTests`; R2, R3 |
+| T13 | `visible` without an approved photo, or left `visible` | `requirements.missing`; the recompute in `run_check`, `remove_photo` and `restrict_media` | `media.the_photo_requirement…`, `completion.refuses_each_missing_requirement` |
+| T14 | Pointers locked out of name order | `_hold`; the publication records its own pointer | `PointerOrderCheckTests`, `pointers.one_order…`; R1. Gap: F2 |
+| T15 | A media policy publication crossing a ceiling | absolute ceilings in code, checked before any write, so no two-step publication crosses one; `StaffAudit` on each | `MediaPolicyTests`, `media.policy_is…` |
+| T16 | A value in a log, event or error | no logging in `media.py`; events carry references; refusal reasons are codes | `NoValueInLogsTests`, the session's `LOG.*` reversal, the value scan (narrower than recorded: F4) |
+| T17 | An outbox event naming a deleted record | no asset, object or grant row is deleted | J1's rule in the data model |
+| T18 | The served runtime importing Stage B | `SEALED_MODULES` holds `glow_domain.media` | `test_profiles_sealed_runtime`; R4 |
+| T19 | Secrets in the public CI logs and artifacts | the job masks its secrets; the scan runs before any upload | the PR run's eight logs |
+| T20 | A staff caller in code | `_check_staff` needs a `staff:` subject; a request ID used once; `lock_account` | `media.the_checks_decisions…`; the inactive-owner case |
+| T21 | Migrations 0008 and 0009 | 0008 generated; both pinned by SHA-256; `makemigrations --check`; 0009's seed equals the code's default | `test_model_definitions`. Gap: F5 |
+
+**The review's findings and the manager's dispositions** (step 6, "Fix or carry, by rule"). F1 to F4 are in correction classes and are fixed before the merge. F5 is fixed in the same pass, as the review recommends, since it extends the same kind of case. None changes a design, a contract or the code, so the correction needs no consultation first. C2 changes tests and records only:
+
+| # | Severity (class) | Finding | Disposition |
+|---|---|---|---|
+| F1 | should fix (a test passes where it should fail; the check could approve a held photo) | Nothing shows a hold **stopping** an approval. The suite's case asserts only that the hold port was asked, with a hold that holds nothing, and the offline test checks the order of the text. R5 (the hold's answer ignored) passes the targeted API tests and the suite 67/67 on PostgreSQL | **In C2:** a suite case with the photo held, asserting the check's outcome `held`, the photo still `review_pending`, no approval `StaffAudit` row, no reference and no change to the profile; and an offline assertion that the approval's held branch returns before the transition |
+| F2 | should fix (a test passes where it should fail; pointers locked out of order unchecked) | The lock-site guard misses `select_for_update()` on a queryset held in a variable, and raw SQL whose table name comes from `PolicyRevision._meta.db_table` (R9, R10 pass); a lock outside `settings_store` also bypasses `_hold` | **In C2:** the guard fails on any mention of `PolicyRevision` or its table in a scanned source outside `settings_store.py` and `models.py`, with the proof's read-only mentions named, each by file and function; each new spelling with its reversal |
+| F3 | should fix (a test passes where it should fail; a photo reaching `approved` other than by its one path) | The state-write guard does not cover `MediaAsset.objects.create(state=…)` or `MediaAsset(state=…)` outside `transition`. The code has none today; R12 (an `approved` asset created in `staff.py`) passes every offline test | **In C2:** the guard (`tests/test_profile_recompute.py`) flags a `create`, `get_or_create`, `update_or_create` or constructor of `MediaAsset` with `state` anywhere but `request_upload`'s `upload_pending`, with its reversal |
+| F4 | should fix (a record claims more than the code shows) | The records say the scans cover "object keys … and photo bytes". The ledger (`profile_support.py:519, 527`) holds only the originals' keys, photo bytes only as the hex of their first 24 bytes, and no fixture credential token | **In C2:** the ledger widened to the variants' keys, the bytes' `repr` and the fixture's credential tokens, with a reversal; any record that still claims more is corrected in C2's section |
+| F5 | should fix (outside the classes) | Migration 0008's 11 constraints have no malformed-write case, where Stage A's 0005 has one for each (the P11 plan's DB04, partial) | **In C2:** a suite case writing each of 0008's constraints malformed and refused by PostgreSQL by name, as `constraints.malformed_direct_writes_are_refused` does for 0005 |
+| N1 | nit | `glow_domain/media.py:85`'s `REVIEW_SUBJECT` is unused; the review's `no_variant` rejection is audited as `system:photo-check` | **Carried to P07.1** (G-02), the next change to `glow_domain/media.py`: whether the review step's rejection carries its own subject, or the constant goes |
+| N2 | nit (records) | Decision 2's "a constraint holds it within the grant": `media_grant_used_in_time` sets only an upper bound, as DM-58 says | **In C2's record:** the sentence corrected; Stage B's section stands as written |
+| N3 | nit (P11) | The server stores and returns whatever reference the port gives; "cannot be an address" rests on the contract's pattern, which only the suite checks | **Carried to P11** (PV04), in the P11 plan |
+| N4 | nit (P11) | An original never uploaded (removed while `upload_pending`) still has a `MediaObject` row that needs an acknowledgment; R2 may send no delete event for a missing key | **Carried to P11** (PV04, DB08), in the P11 plan |
+| N5 | nit (records) | The data model's F05 unit-of-work row: "no external effect" holds outside the process only; fixture calls write to process memory, which a rollback does not undo | **In C2:** the row says so |
+| N6 | nit (records) | The fixture credential's key scope and expiry are recorded but not enforced: `put` takes no credential | **In C2's record** |
+| N7 | nit (records) | `packages/contracts/README.md`: "a rejection likewise" implies a reject-without-A05 example the F05 test does not have | **In C2:** the sentence corrected |
+| N8 | nit | Positions only grow while a photo holds the top one; after about 30,000 uploads, `positions_exhausted` blocks uploads for good | **Carried to P11**, in the P11 plan |
+| N9 | nit (records) | The proof README's Stage A sentence "(DB04, for SV2's tables)" now reads as covering 0008's tables | **In C2:** the sentence names 0005's and, with F5, 0008's |
+
+**What the review could not run:** the mobile checks (no `apps/` path changed; CI ran them), the ordering and identity suites, and the Database job's shell steps as a whole. A subagent read the full CI logs and reported counts only. Nothing in the repository, on GitHub or in Notion changed.
+
+**C2's review:** C2 changes tests and records only (no non-test line), so a delta review follows it, reading every path C2 touches as it stands at C2's head, with this review's security focus (M05 S2). Codex reads the PR's final head as usual, then the Dev Manager's pre-merge read (DM-58 section 7).
+
+## Stage B, correction C2
+
+The brief's "Stage B, correction C2 (the exact-head review)", six items, tests and records only, against the exact-head review's F1 to F5 and nits N2, N5, N6, N7 and N9. Local database runs here are iteration, not evidence; the evidence of record is the CI run on the code head.
+
+### The session
+
+- **Started by Nathan** from correction C2's prompt, revision 1, at `885f65b2ef9472f59620cf61c727264af96aaa08` of the manager branch (`docs/ephemeral/2026-11-11-sv2-stage-b-c2-correction-prompt.md`), on 11 November 2026.
+- **Branch:** `claude/eloquent-dijkstra-dmah71`, from `885f65b`. It matches `claude/**`, so the Foundation workflow ran on the push.
+- **Code head:** `5bcbe549b7370264785c158ac95931730f7bf331` (tests only). **Records head:** the commit that adds this section and the three record corrections (item 6), pushed after the run of record finished.
+
+### Start gate and environment
+
+- **The start gate passed:** `git rev-parse HEAD` printed `885f65b2ef9472f59620cf61c727264af96aaa08`; no non-Markdown path differs from `7538c76`; no owned path differs between `885f65b` and the live manager branch, whose head was `885f65b` itself; `CASE_COUNT = 67` once; no "Stage B, correction C2" section in this record; the brief's C2 section present once.
+- **The environment check (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`; no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*` name; the three expected AWS names, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_CA_BUNDLE`, and no other `AWS_*` name, their values never read, printed or passed; `GH_TOKEN` and `GITHUB_TOKEN` present, never read.
+- **The toolchain:** `Python 3.12.14`; `node v24.19.0` and `npm 11.9.0`, both from `$HOME/.local/bin` (second on `PATH`, after the Nix profile's `bin`, which holds neither); `Docker version 29.9.2`. No Docker daemon was running; the session started `dockerd` in its sandbox (decision 6).
+- **Every repository command** ran under `env -i PATH HOME LANG=C.UTF-8`, the proxy and CA variables by reference, and only the command's own variables (`GLOW_ENV=test` for the API; the proof's `PROOF_*` and `DJANGO_SETTINGS_MODULE` for the local suite). No `AWS_*` name passed.
+
+### Item 1 — a hold stops an approval (F1)
+
+- **Files:** `proofs/postgres-ordering/glow_ordering_proof/profile_cases.py` (`media.a_hold_stops_the_checks_approval`); `services/api/tests/test_profile_media.py` (`RouteTests.test_a_hold_returns_before_the_approval_writes_anything`).
+- **The suite case:** a member with every requirement but the photo (the two seeds and the completing edit; `missing == ["photo"]`) uploads a photo, which the review step moves to `review_pending`. The test's check decides to approve it and the test's hold port (`RecordingHold({asset_id})`) holds it. Twice, the check's result is `no_change` with reason `held`; the check and the hold port were each asked once; and a snapshot is unchanged: the asset's state (`review_pending`), version, delivery reference and review reference, the profile's state (`incomplete`) and version, the asset's `StaffAudit` rows, the outbox events of the asset and the profile, and the delivery references the fixture store has issued (none new). No approval `StaffAudit` row exists; the owner's lifecycle shows `review_pending` with no reference; the profile still misses its photo and lists none. Released (`RecordingHold()`), the same check approves it and the profile becomes `visible`, with one approval row: the hold alone stopped it.
+- **The offline assertion:** in `run_check`'s body, the one `if decided.decision == 'approve':` branch holds exactly one `if adapters.hold.held(asset.id):` whose only statement is `return Result('no_change', reason='held')`, with no `else`; nothing before it, in the body or the branch, contains `_decision_audit(`, `transition(`, `delivery_reference(`, `recompute.recompute(`, `.save(` or `.create(`; each of the approval's four writes comes after it; and the port is asked once in the body.
+- **Reversal R1** (`glow_profiles/media.py`: the two lines of the held branch replaced by a bare `adapters.hold.held(asset.id)`, the port asked and its answer ignored):
+  - offline: `FAIL: test_a_hold_returns_before_the_approval_writes_anything` (`AssertionError: 0 != 1`), the only failure of `RouteTests` (3 tests): the existing order check passes the reversal, as the review found;
+  - on a throwaway PostgreSQL 17.11 (D4): `[profile] FAIL media.a_hold_stops_the_checks_approval (10, D9, D10) 1.0 s: FAILED: the outcome is held`, `[profile] cases: 68/69 passed`, every other case passing.
+  - Undone with `git checkout`; `media.py`'s SHA-256 `491c734b25de6013…` matches `HEAD` and `7538c76` after both.
+
+### Item 2 — the lock-site guard (F2)
+
+- **File:** `services/api/tests/test_profile_pointer_order.py`: `NothingElseLocksAPointerTests.test_nothing_but_the_store_and_the_model_mentions_a_pointer` and `test_the_search_word_matches_the_models_table`. The existing lock-spelling check is unchanged.
+- **The check:** every line of every scanned source (the API's packages and the proof, not their tests, migrations or virtual environments, as before) outside `glow_persistence/models.py` and `glow_profiles/settings_store.py` whose lower-cased text holds `policyrevision` is a mention: code, a string, an f-string's literal parts, a comment or a docstring. Each mention is named by file, innermost function and stripped line; the set must equal the allowlist exactly, so a new mention, a lock or not, fails until it is read and named. The second test checks that `models.py` sets no `db_table`, so the table is Django's default, `glow_persistence_policyrevision`, which the search word matches.
+- **The allowlist (`POINTER_READS`), the proof's four read-only mentions, none a lock:** in `profile_cases.py`, `_counts` (`PolicyRevision,` in its import, and `"pointers": sum(PolicyRevision.objects.values_list("version", flat=True)),`) and `settings_publication` (its import line, and `pointer = PolicyRevision.objects.get(name=ps.GENDER_LIST)`).
+- **Reversal R2a** (`glow_profiles/staff.py`: a function binding `rows = PolicyRevision.objects.filter(name=name)` and returning `rows.select_for_update()`): `FAIL: test_nothing_but_the_store_and_the_model_mentions_a_pointer` (`Lists differ: ['services/api/glow_profiles/staff.py:307 …'] != []`), the only failure of the class's three tests: the existing check passes it.
+- **Reversal R2b** (`glow_profiles/operations.py`: `table = PolicyRevision._meta.db_table` then `cursor.execute(f"SELECT id FROM {table} WHERE name = %s FOR SHARE", [name])`): the same failure (`['services/api/glow_profiles/operations.py…'] != []`), again the only one.
+- Each undone; `staff.py` `b642194b07e83033…` and `operations.py` `47f7235bb7a81eca…` match `HEAD` and `7538c76`.
+- **What it still cannot see:** a name built at run time (`"Policy" + "Revision"`, a table name split across lines or strings, `getattr` on the models module, `apps.get_models()` or the introspection's table list iterated); a source outside the scanned roots (tests, migrations, non-Python files). The model and the store themselves are read only by the lock-spelling check.
+
+### Item 3 — the state-write guard (F3)
+
+- **File:** `services/api/tests/test_profile_recompute.py`: `CallSiteTests.test_a_photo_is_created_only_upload_pending` and `test_the_creation_guard_sees_each_spelling`, with `ASSET_CREATE`, `CREATIONS_WITH_STATE`, `_enclosing`, `_asset_creations` and `_creations_with_state`. `NOT_A_PROFILES_STATE` and the existing checks are unchanged.
+- **The checks,** over `scanned_modules()` (`glow_profiles` and the age port):
+  - every `create`, `get_or_create`, `update_or_create` or `bulk_create` on a receiver naming `MediaAsset`, and every call of a name ending `MediaAsset`, is exactly one: `request_upload.body`'s `MediaAsset.objects.create(…, state=md.UPLOAD_PENDING)`;
+  - every `create`, `get_or_create` or `update_or_create`, and every call of a capitalized name (a class built), whose keywords set `state` or unpack `**`, whatever the receiver is named, equals the allowlist, each by file, enclosing definitions, call and the state it sets.
+- **The allowlist (`CREATIONS_WITH_STATE`), seven, each its own model's initial state:** `glow_identity/age.py` `OrmAgeAssurance.record` (`AccountAgeState`, `assurance.state.value`); `events.py` `emit` (`OutboxEvent`, `'pending'`); `idempotency.py` `store` (`IdempotencyRecord`, `'completed'`); `media.py` `request_upload.body` (`MediaAsset`, `md.UPLOAD_PENDING`); `operations.py` `save_birth_input.body` (`BirthInput`, `'pending'`), `save_profile.body` (`Profile`, `'incomplete'`) and `decide_sensitive_consent.body` (`ConsentDecision`, `'accepted' if accepting else 'withdrawn'`).
+- **The spellings test** shows each form F3 names seen: `create`, `models.MediaAsset(...)`, `get_or_create` and `update_or_create` by the named check (four), and those, an alias's `model.objects.create(state=...)` and a `**` constructor by the receiver-independent one (six).
+- **Reversal R3** (`glow_profiles/staff.py`: `_approve_directly` returning `MediaAsset.objects.create(account_id=…, provider="fixture", position=1, state="approved")`): `FAIL: test_a_photo_is_created_only_upload_pending` (`Lists differ: [… ('glow_profiles/staff.py', '_approve_di…')] != […]`), the only failure of `CallSiteTests` (5 tests): the existing state-write check passes it. Undone; `staff.py` matches `HEAD` and `7538c76`.
+- **What it still cannot see:** a class held under a lower-case name and called (`cls(state=…)`); a state passed through a positional argument or a dict built elsewhere and handed to a lower-case factory; raw SQL; any module outside `glow_profiles` and the age port.
+
+### Item 4 — the scans' ledger (F4)
+
+- **Files:** `proofs/postgres-ordering/glow_ordering_proof/profile_support.py` (`ValueLedger.add_bytes`, `ObservedObjects`, `ProfileContext.watch_store` and `hold_media`), `profile_cases.py` (`run_case`), `tests/test_profile_offline.py` (`ValueLedgerTests`, two new tests).
+- **What the value ledger now holds,** besides Stage A's member values:
+  - every object key, the original's and each variant's, from every `MediaObject` and `MediaUploadGrant` row after each case, and from the fixture store as each object is written;
+  - every grant reference (from the rows) and every delivery reference the store issued, with the key it was issued for;
+  - every upload credential the store issued: its key and its token;
+  - each object's bytes, as the store writes them (`ObservedObjects`, which the store's `objects` becomes before the first case, so an object written and purged within one case is still held) and as they remain after each case: the hex of their first 24 bytes, which any print of their hex starts with; their `repr` up to the end of their first 24 bytes, without the closing quote, which any print of their `repr` starts with; and the text of printable ASCII bytes (the fixture's synthetic variant). Each form is searched as written and as JSON escapes it (`forms`).
+- `run_case` calls `watch_store` before each case and `hold_media` after it; a failure of `hold_media` fails the case (`ERROR: the value ledger's photo values: …`).
+- **Offline:** a photo's bytes printed as their `repr` (whole, from their first 30 bytes, inside JSON), their hex (whole, first 24 bytes) and the variant as text, `repr` and hex are each found; another photo's bytes and a photo's first 12 bytes are not; an object set and then popped stays held, key and bytes.
+- **Reversals,** on a throwaway database (D4), each in `media.an_upload_moves_only_through_quarantine_the_seam_and_review`:
+  - **R4a**, the variant's key written to a log record (`logging.getLogger("glow_ordering_proof.c2_reversal").warning("variant %s", variant)`): `[profile] cases: 69/69 passed`, `profile value scan: FOUND (813 member values held: …; 1 found in the same output)`, `PROFILE VERDICT: FAIL`, exit 1;
+  - **R4b**, the photo's `repr` written to a log record (`….warning("photo %r", synthetic_png(3, 2))`): the same, `profile value scan: FOUND (…; 1 found …)`, `PROFILE VERDICT: FAIL`.
+  - Each undone; `profile_cases.py` `eaa4ba0db962b60f…` matches `HEAD`.
+- **What it still cannot see:** an object set by `dict.update` or `setdefault` (the store uses neither); bytes printed in another encoding (base64, a decoded PNG's text) or from their middle; a value in an output the suite does not capture. The suite's printed value-scan line (`profile_suite.py`, outside C2's paths) still names only the member values' kinds; its count now includes the photos' values (decision 4).
+
+### Item 5 — migration 0008's constraints (F5)
+
+- **File:** `profile_cases.py`: `constraints.malformed_media_writes_are_refused` (checks `10`, `D10`), with `MEDIA_CATALOG` and `SHADOWED`.
+- **The case:** a member with an approved photo and a pending upload. 21 direct writes no SV2 writer makes, each breaking one constraint only, each inside its own `transaction.atomic()`, each refused by PostgreSQL with an error naming that constraint (`constraint "<name>"` in the error's text, which is never kept), and a snapshot of the rows' counts and the touched rows' values unchanged after all of them:
+  - **the 13 constraints migration 0008 declares,** read from the migration module as the 0005 case reads 0005 and each required to have a write: `media_delivery_only_approved`, `media_approved_unrevoked`, `media_removal_record`, `media_seam_passed` (`MediaAsset`); `glow_persistence_mediaobject_version`, `media_object_role`, `media_object_opaque_key`, `media_object_adoption_evidence`, `media_one_original` (`MediaObject`); `glow_persistence_mediauploadgrant_version`, `media_grant_expiry`, `media_grant_used_in_time`, `media_grant_opaque_key` (`MediaUploadGrant`);
+  - **the 8 other constraints PostgreSQL holds on 0008's two new tables,** each named by Django and read by name from `pg_constraint`: `MediaObject`'s unique key and its asset's foreign key, and Django's `byte_size >= 0` check; `MediaUploadGrant`'s unique `grant_ref`, `object_key` and asset (one-to-one), and its asset's and account's foreign keys. The catalog's set must equal `MEDIA_CATALOG`, so a new unique key, foreign key or check on these tables fails the case until it has a write. Django's two `version >= 0` column checks are in the catalog but shadowed by 0008's `version >= 1`, so they have no write (`SHADOWED`).
+- **Local:** `[profile] PASS constraints.malformed_media_writes_are_refused (10, D10) 0.5 s: 21 malformed direct writes refused by PostgreSQL, each by its constraint: all 13 that migration 0008 declares, and 8 unique keys, foreign keys and column checks of its two tables`.
+- **Reversal R5** (`glow_persistence/migrations/0008_media_lifecycle.py`: the `media_grant_used_in_time` operation deleted, on a throwaway database only): `makemigrations --check` printed `+ Create constraint media_grant_used_in_time on model mediauploadgrant`; `[profile] FAIL constraints.malformed_media_writes_are_refused (10, D10) 0.5 s: FAILED: PostgreSQL refuses the write by media_grant_used_in_time`, `68/69`. Undone; the migration's SHA-256 `6d91f4fb1763f801…` matches `HEAD` and `7538c76`.
+- **Not covered:** NOT NULL columns and primary keys; `MediaAsset`'s constraints from before 0008.
+- **The review counted 0008's constraints as 11;** the migration declares 13 `AddConstraint` operations, the two `_version` checks among them, and the case covers all 13 (decision 1).
+
+### Item 6 — the records (N2, N5, N6, N7, N9), and what the ledger holds
+
+- **N2, decision 2 of "Stage B" corrected** (that section stands as written): "A grant's time is judged by the store's upload time: a completion is adopted only if its reported upload time is not after the grant's expiry, and `used_at` records that time. `media_grant_used_in_time` sets an upper bound only (`used_at` at or before `expires_at`); no constraint holds `used_at` at or after `issued_at`."
+- **N6, recorded:** the fixture credential (`FixtureCredential`) records a key, a byte limit and an expiry, and none of them is enforced: `put` takes no credential, so the fixture store accepts an upload at any key, of any size, at any time. What refuses an upload outside its grant is the domain's own check at the completion (the grant's key, `used_at` and the asset's state, the expiry against the store's upload time, the byte limit of the grant's policy version). A real adapter's credential is P11's (PV04).
+- **N5:** `docs/architecture/data-model.md`, the F05 unit-of-work row: "with no effect outside the process: their calls write to the process's memory (the fixture store's objects, credentials, deletion requests and delivery references), which a rollback does not undo".
+- **N7:** `packages/contracts/README.md`, the Stage B bullet now says what `test_f05_quarantine_cannot_be_published_by_uploader` asserts: the uploader and staff `forbidden` for both decisions; the system with `A05` `allowed` for both; without `A05`, `policy_unresolved` for an approval only (the test has no rejection without `A05`); and an approval from `quarantined` (uploader, or system with `A05`) or `removal_pending` (system with `A05`) a `state_conflict`.
+- **N9:** `proofs/postgres-ordering/README.md`: Stage A's DB04 sentence now names 0005's tables; a new sentence describes C2's two cases (0008's 13 and 8), the ledger's new values, and the count, 69, with Stage A's 53, Stage B's eleven, C1's three and C2's two.
+- **F4's records:** Stage B's "Check 12 for the new routes" row ("object keys, grant references, delivery references and the start of each photo's bytes join the value ledger") held, at `7538c76`, the originals' keys from `request_upload`, the grant references, the delivery references of photos approved through `approved_photo` and the disclosure case, and the hex of the first 24 bytes of photos put through `put_photo`: no variant key, no credential token, no bytes `repr`, and no bytes put by a case directly. Since C2 it holds what item 4 lists.
+
+### Commands and results
+
+| Command (clean environment) | Result |
+|---|---|
+| `python3.12 -m venv .venv && .venv/bin/python -m pip install --require-hashes -r requirements-dev.lock` (`services/api`, then `proofs/postgres-ordering`) | exit 0, each |
+| `manage.py check` (`GLOW_ENV=test`) | `System check identified no issues (0 silenced).` |
+| `manage.py test tests --verbosity 2` | `Ran 564 tests` `OK` (559 at `7538c76`; five new) |
+| `ruff check .`; `ruff format --check .`; `mypy` (API) | `All checks passed!`; `140 files already formatted`; `Success: no issues found in 81 source files` |
+| `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v` | `Ran 49 tests` `OK` |
+| `python -m unittest discover -s tests -t . -v` (proof) | `Ran 228 tests` `OK` (226 at `7538c76`; two new) |
+| `ruff check .`; `ruff format --check .`; `mypy` (proof) | `All checks passed!`; `59 files already formatted`; `Success: no issues found in 59 source files` |
+| The profile suite on a throwaway PostgreSQL 17.11 (D4), final code (iteration) | migrate exit 0; `No changes detected`; `[profile] cases: 69/69 passed in 120.6 s`; `profile secret scan: clean (1447 secrets held; 0 found in 918 log records, 162 writes and the results JSON)`; `profile value scan: clean (813 member values held: …; 0 found in the same output)`; `PROFILE VERDICT: PASS` |
+| An earlier local run (iteration) | `68/69`: the new 0008 case's catalog check omitted the `MediaAsset` table, which holds four of 0008's constraints; corrected before the commit |
+| Reversals R1 to R5 | as each item records; every file restored and its SHA-256 matched to `HEAD` |
+
+**Local database runs (D4):** six, each a new container from the CI job's pinned image (`postgres@sha256:d74eeac9…`, server `17.11 (Debian 17.11-1.pgdg13+2)`), published on `127.0.0.1` only, with a generated superuser and role password, one database with the run's marker as its comment, the proof's settings in a clean environment with none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or a `PG*` name, and the container and its credential files removed afterwards (`docker ps -a` empty at the end). Iteration, not evidence.
+
+### The run of record
+
+- **Foundation run 42990527042** on `5bcbe549b7370264785c158ac95931730f7bf331` (push), attempt 1: **conclusion success**. Read with the GitHub tools; a subagent of this session read the full logs and reported results and counts only.
+- **Jobs (8), each success:** Change scope; API mobile smoke; Mobile checks; API artifact checks; API checks; Stream proof checks; Database proof checks; Foundation gate, which printed `Application checks passed` (scope full, every input job success).
+- **Counts:** API `Ran 564 tests` `OK`; contracts `Ran 49 tests` `OK`; API Ruff, `140 files already formatted`, mypy 81 files clean; the proof's offline `Ran 228 tests` `OK`.
+- **The profile suite:** both other markers refused on the profile database (`exit status 1` each, with the refusal printed); `No changes detected`; **`[profile] cases: 69/69 passed in 99.8 s`** (69 `PASS` lines, no `FAIL`), among them `media.a_hold_stops_the_checks_approval … 0.8 s: the check's approval held twice with nothing written; released, it approves` and `constraints.malformed_media_writes_are_refused … 0.5 s: 21 malformed direct writes refused by PostgreSQL, each by its constraint: all 13 that migration 0008 declares, and 8 unique keys, foreign keys and column checks of its two tables`; **`profile secret scan: clean (1447 secrets held; 0 found in 918 log records, 162 writes and the results JSON)`**; **`profile value scan: clean (813 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`**; `PROFILE VERDICT: PASS`; the job's own check: `the job's secrets found in the profile suite's output: 0`, `… in the profile results JSON: 0`, `the suite's own scans (secrets, member values) reported clean: True`; **`profile phase: 100 s`**. The digests case checked `1009` stored digests of `11` kinds of command; the pointer-order case observed 27 transactions; the disclosure case found none of 244 object keys and 130 credentials in any response.
+- **The second profile run:** `second profile run exit status: 1`, refused as a used database (auth users, app accounts and outbox events exist; a setting was published beyond its launch default); rows before and after `129 129 100 44 1568 1009`, unchanged.
+- **No DM-41 retry fired:** both retry steps skipped in all four jobs that have them. No `##[error]` or `##[warning]` line.
+- The value ledger's count rose from Stage B's run of record (511) to 813 with item 4's values.
+
+### What could not run, and the limits
+
+- The mobile checks, the API smoke and the artifact checks were not run locally (no `apps/` or image path changed); CI ran them. The ordering, identity and Stream suites were not run locally. `generate.mjs --check` was not run (no contract or generated path changed).
+- The reversals' database halves ran only locally (iteration); CI ran the final code, not the reversals.
+- Each guard's limits are under its item.
+
+### Decisions and deviations for the manager
+
+1. **0008 has 13 declared constraints, not 11:** the case covers every `AddConstraint` the migration holds, the two `_version` checks among them, and adds the 8 unique keys, foreign keys and column checks PostgreSQL holds on its two new tables, named from the catalog, beyond the brief's words; Django's two `version >= 0` checks are recorded as shadowed.
+2. **The state-write guard (F3) goes beyond `MediaAsset` by name:** it also pins every creation that sets a state, whatever its receiver (seven), so an aliased model is seen.
+3. **The ledger (F4) holds more than the brief lists:** grant references from the rows and every delivery reference the store issued, besides the variants' keys, the bytes' `repr` and the credential tokens. A `repr` is held as its start, up to the end of the first 24 bytes, which every print of the whole `repr` contains, as the hex was already held; the variant's text is held too.
+4. **`profile_suite.py` is unchanged** (outside C2's paths): its value-scan line still reads "member values held: coordinates, birth dates, times and places, own words, sensitive values", though its count now includes the photos' values. A later change in that file can name them.
+5. **The ledger's photo values are gathered in `run_case`,** before and after each case, so `profile_suite.py` needs no change; a failure to gather them fails the case.
+6. **Docker:** the sandbox had `dockerd` installed but not running; the session started it locally to run D4's recipe with the pinned image.
+7. **The three record corrections (item 6) are in the records commit,** with this section, after the run of record; the code commit holds tests only.
+8. **No stop rule was met:** no path under `glow_profiles`, `glow_domain`, `glow_persistence`, `glow_chat`, `glow_identity` or `glow_api` changed, nor a DTO, registry entry, workflow, lock file or dependency; every new check passed on the code at `7538c76` as it stands, with no temporary edit; every reversal's temporary edit of code was undone and checked by SHA-256. `CASE_COUNT` changed 67 to 69 for the brief's two cases, with the offline pin, and `ProfilePlanTests`' Stage B count 14 to 15 for the hold case. No test was weakened or deleted.
+
+### Manager verification of Stage B's correction C2 (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff 885f65b 9740196` was read for its scope and its code: 10 paths, each among C2's owned paths.
+- **The code head `5bcbe54`** changes six paths, each a test or the proof's suite: `profile_cases.py`, `profile_support.py` and `tests/test_profile_offline.py` in the proof; `test_profile_media.py`, `test_profile_pointer_order.py` and `test_profile_recompute.py` in `services/api/tests`. No path under `glow_profiles`, `glow_domain`, `glow_persistence`, `glow_chat`, `glow_identity` or `glow_api` changed, and no model, migration, DTO, registry entry, workflow, lock file or dependency.
+- **The records commit `9740196`** changes four Markdown paths: `data-model.md` (N5), this record, `packages/contracts/README.md` (N7) and `proofs/postgres-ordering/README.md` (N9).
+- **The deviations:**
+  - 1 to 3 widen the brief's checks (all 13 of 0008's declared constraints and 8 catalog constraints; creations that set a state whatever their receiver; grant and delivery references and a `repr`'s start in the ledger). Each is accepted.
+  - 4 goes to the delta review as a nit: `profile_suite.py`'s value-scan line names only the member values' kinds, while its count (813) now includes the photos' values.
+  - 5, 7 and 8 are within the brief.
+  - 6 is recorded: the session started `dockerd` in its sandbox for D4's local runs, which are iteration, not evidence.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`), with `python3 -I` and `--base 4dc2061… --head 9740196… --merge-base`, after the fast-forward: full scope, `behavior-or-empty`; the PR's whole diff (65 paths); one merge base, `4dc2061`. The manager workflow is unchanged since `52ae066` (DM-58 section 7).
+
+**Re-runs.** In a scratch copy of the code head's tree (`git archive 5bcbe54`), in the clean environment, with hash-locked installs:
+- **API:** `System check identified no issues (0 silenced).`; `Ran 564 tests` … `OK`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the contract tests `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 228 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline** (`tests.test_profile_media`, `tests.test_profile_pointer_order`, `tests.test_profile_recompute` and `tests.test_profiles_offline`, 55 tests). Each was restored afterwards and checked against `5bcbe54` by SHA-256. Each fails exactly C2's new test, which the checks before C2 passed:
+- **M7:** `run_check` asks the hold port and ignores its answer (`glow_profiles/media.py`): one failure, `RouteTests.test_a_hold_returns_before_the_approval_writes_anything`.
+- **M8:** an approved `MediaAsset` created in `glow_profiles/staff.py`: one failure, `CallSiteTests.test_a_photo_is_created_only_upload_pending`.
+- **M9:** a `PolicyRevision` queryset bound to a variable and locked in `glow_profiles/operations.py`: one failure, `NothingElseLocksAPointerTests.test_nothing_but_the_store_and_the_model_mentions_a_pointer`.
+
+After the restore, the 55 tests pass, and `media.py` (`491c734b25de6013…`), `staff.py` (`b642194b07e83033…`) and `operations.py` (`47f7235bb7a81eca…`) match `5bcbe54`.
+
+**The run of record,** read with the GitHub tools: push run 42990527042 on `5bcbe54`. All eight jobs `success`; every DM-41 retry step `skipped`. The Database proof checks job:
+- `[profile] cases: 69/69 passed in 99.8 s`, with both new cases passing (`media.a_hold_stops_the_checks_approval`, and `constraints.malformed_media_writes_are_refused` with its 21 writes);
+- `profile secret scan: clean (1447 secrets held; …)` and `profile value scan: clean (813 member values held …)`;
+- `PROFILE VERDICT: PASS`, `profile phase: 100 s`;
+- the second profile run refused (exit status 1), the counts `129 129 100 44 1568 1009` unchanged;
+- `sv2-profile-results` 6,396 bytes; `no proof container remains`.
+
+The records push run 42992446669 on `9740196` passed.
+
+**Integration:** the manager branch was fast-forwarded from `885f65b` to `9740196`.
+
+**What follows:** the delta review of C2 (M05 S2: C2 changes no non-test line), which reads every path C2 touches at `5bcbe54`, with the exact-head review's security focus. Then Codex on the final head, the Dev Manager's pre-merge read (DM-58 section 7, with C2's data-model sentence), the PR run, and the merge.
+
+## Delta review of Stage B's correction C2 (code head `5bcbe54`)
+
+- **The session:** started by Nathan from C2's delta review prompt, revision 1, at `c4324d39cd6f0b6166f8d5d7a12b5cad2001eb29` (`docs/ephemeral/2026-11-11-sv2-stage-b-c2-delta-review-prompt.md`). It reported on 11 November 2026, and its report was relayed to App Manager 10.
+- **The gates:**
+  - the environment check passed: none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY`, `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*` or `CF_*`; the three expected AWS names and no other `AWS_*` name, their values never read or passed; the session started `dockerd` in its sandbox;
+  - the start gate passed, with one merge base, `4dc2061`, and no non-Markdown path differing from `5bcbe54`;
+  - the trusted classification is `"full": true`, `behavior-or-empty`, over 65 paths.
+- **What it ran,** in a scratch copy of `5bcbe54`:
+  - the API's checks: `manage.py check`; 564 tests `OK`; Ruff; 140 files formatted; mypy clean on 81 files;
+  - the contract tests (49) and the proof's offline tests (228), Ruff and mypy (59 files);
+  - eleven offline reversals of its own (A1 to A4, B1 to B3 with B2b, C1 to C3);
+  - informational, on a throwaway PostgreSQL 17.11 under P06.DB's D4: one suite run with A3 and a credential token logged in the 0008 case, `68/69` with `media.a_hold_stops_the_checks_approval` failing at its unchanged snapshot, `profile value scan: FOUND (…; 1 found)` with the secret scan clean, `PROFILE VERDICT: FAIL`; the container, its credential files and `dockerd` removed or stopped afterwards.
+- **What it read:** runs 42990527042 (69/69 in 99.8 s), 42992446669 (records only: Change scope and the gate passed, the six application jobs skipped) and PR44's pull-request run 43021936005 on `c4324d3` (all eight jobs passed, `Application checks passed`, 69/69 in 75.0 s, both scans clean, the second run refused). In both Database job logs, no line holds `fixture-variant`, a `delivery-` or `grant-` reference, a PNG signature, a private-key header or PostgreSQL `DETAIL` text; the other six jobs' logs were not scanned for these. No workflow prints `docker logs`.
+- **The verdict: approve with nits.** No blocking or should-fix finding, and none in a correction class. F1 to F5 are closed, each new check fails for the edit it names, and the runs match the records. Nothing in the repository, on GitHub or in Notion changed.
+- **Its statements:**
+  - **F1:** A1 (an audit row in the held branch), A2 (the hold asked after `transition`) and A4 (the answer kept, the branch falling through) each fail the offline check; A3 passes offline and fails the suite case (N-d). No plausible edit passes both.
+  - **F2:** the four `POINTER_READS` entries are reads; no model has a foreign key to `PolicyRevision`, so no lock comes through a join; B3 (`getattr(m, "PolicyRevision")`) fails the new test, though C2's item 2 lists `getattr` among the limits.
+  - **F3:** every `MediaAsset` creation but `request_upload`'s is flagged, and C3 (`md.UPLOAD_PENDING` to `md.APPROVED`) fails. Two of the seven entries set the state their writer decides rather than a fixed initial state (`AccountAgeState`, `assurance.state.value`; `ConsentDecision`, accepted or withdrawn), so C2's "each its own model's initial state" is loose for them.
+  - **F4:** one store instance (`default_storage()`); credentials and references are never removed; `watch_store` and `hold_media` run around every case and a failure to gather fails it; nothing C2 added prints a value; the 24-byte PNG prefix includes the IHDR chunk and the dimensions, and values under five characters are skipped, so benign matches are unlikely.
+  - **F5:** 0008 declares 13 constraints (deviation 1 confirmed); read against the model and the migration, each of the 21 writes breaks exactly one; `SHADOWED` is right; a refusal's text is matched and discarded.
+  - **The records:** N2, N6, N7 and N9 hold against the code and the test, but for N-c; N5's sentence is true in substance (N-e); C2's section and the manager's verification match the code, the counts and the runs.
+  - **No test weakened;** `CASE_COUNT` 67 to 69 and the Stage B plan count 14 to 15 match the two cases; the scope is exactly the six test and suite paths.
+
+**The review's findings and the manager's dispositions** (step 6, "Fix or carry, by rule"). Every finding is a nit, outside the correction classes, so under rule (b) each is a recorded follow-up; nothing changes in tests or code before the merge:
+
+| # | Finding | Disposition |
+|---|---|---|
+| N-a | F3's recorded limits are incomplete: an async `acreate(..., state="approved")` and a clone (`pk = None`, `save(force_insert=True)`) pass every offline check, as they pass the older state-write guard (C1, C2). No code in `glow_profiles` or the age port uses either | **Recorded here,** as C2's item 3's further limits; **carried** to the next change to `test_profile_recompute.py` (the carried-items file) |
+| N-b | F2's recorded limits are incomplete: an escaped literal (`"glow_persistence_policy\x72evision"`) and an allowlisted line's text repeated in the same function, with the lock in a helper, pass (B1, B2b); `POINTER_READS` is compared as a set. `getattr` on the models module is caught (B3), so it is not a limit | **Recorded here,** as C2's item 2's further limits and its one correction; **carried** to the next change to `test_profile_pointer_order.py` |
+| N-c | The proof README's C2 sentence and `profile_support.py`'s module docstring say the ledger holds each object's bytes "as their hex and their `repr`"; it holds the start of each, the first 24 bytes, which any whole print contains | **The README corrected** in this batch ("the start of each object's bytes … their first 24 bytes, which any whole print of either contains"); the docstring, a code path, **carried** to the next change to `profile_support.py` |
+| N-d | F1's offline write list omits `.update(`, `bulk_create` and `events.emit(`, so an `.update(review_ref=…)` before the hold's return passes offline (A3); the suite case catches it | **Carried** to the next change to `test_profile_media.py` |
+| N-e | The data model's F05 unit-of-work row lists the fixture store's memory writes without its `reads` log, which `read` appends inside the transaction (`media_fixtures.py:99-104`) | **To the Dev Manager's pre-merge read** (DM-59), with words recommended, since the row is on its list |
+| N-f | `profile_suite.py`'s value-scan line names only the member values' kinds while its count (813) includes the photos' values (C2's deviation 4) | **Carried** to the next change to `profile_suite.py`; already recorded in C2's section and the proof README |
+
+**C2's records, as the review corrects them.** C2's section stands as written; these readings take precedence over it:
+- item 2's limits also include an escaped table literal and a repeated allowlisted line with the lock in a helper; `getattr` on the models module is caught;
+- item 3's limits also include an async create and a clone saved with `force_insert`; two of `CREATIONS_WITH_STATE`'s entries set a state their writer decides;
+- the ledger holds the start of each object's bytes, as item 4 says.
+
+**What follows:** the Dev Manager's pre-merge read (DM-59: DM-58 section 7's list, C2's data-model sentence with N-e, J1 to J9 and C1 as applied, the manager workflow at `52ae066`, the carried nits and the merge); then the PR run and Codex on the final head, the checklist in PR44's description, and the merge.
+
+### PR44's pull-request run on `9464dd8`: Mobile checks failed outside the PR
+
+- **Run 43044190450** on `9464dd8` (DM-59's commit, Markdown only): six jobs passed, the Database proof checks with the profile suite among them. **Mobile checks** failed at "Install Chromium for rendered fixture checks" (`npx playwright install --with-deps chromium`, 15:03:12 to 15:13:17 UTC): apt could not fetch nine font packages, each attempt reporting `Temporary failure resolving 'azure.archive.ubuntu.com'`, then `Failed to install browsers`. The Foundation gate failed only for that job.
+- **The diagnosis:** outside the PR. `git diff --name-only c4324d3 9464dd8 -- . ':!*.md'` prints nothing, and the same code passed all eight jobs at `c4324d3` (run 43021936005). The failure is the runner's package-mirror name resolution. The step has no retry (DM-41's covers `actions/setup-python` only).
+- **Done:** one comment on PR44 (the PR-activity rules for a PR the manager opened); no re-run, which the manager cannot perform (OD-58), and no empty commit. The explanation goes to the Dev Manager as DM-59's item 7 ([addendum](../../ephemeral/2026-11-11-dm-59-addendum-chromium-install.md); recommended: (b), the explanation accepted and a one-time retry of the step carried to the next workflow change). PR44 merges only on a passing PR run of its final head (OD-21).
+- **Run 43046997028** on `4b2c03a` (the addendum's commit, Markdown only) failed the same way: Mobile checks' Chromium install from 15:20:05 to 15:30:16 UTC, on another runner, with the same nine packages and the same error; the other six jobs passed by 15:25, and the gate failed only for that job. The name-resolution failure lasted at least from 15:03 to 15:30 UTC. Codex's review of `4b2c03a` completed with no findings. The Dev Manager was told in DM-59's relay, which carried DM-59 and its item 7 together, read at `4b2c03a`.
+
+### DM-59, the Dev Manager's pre-merge read
+
+- **The report** (`docs/continuity/dev-manager/reviews/2026-11-11-dm-59-sv2-stage-b-pre-merge.md`, at `d2b46ad`, a read of `4b2c03a`; integrated at the merge `75cf4fc`): the rewritten texts approved with conditions; N-e approved in the manager's words; J1 to J9 and C1 confirmed as applied; the manager workflow's read at `52ae066` standing as PR44's pre-merge read if the file is unchanged at the final head; the carried nits confirmed; item 7's (b) approved. The review log's "DM-59" lists each disposition.
+- **L1 to L7,** applied by script from the report's quoted blocks in this batch: each old passage found once, each new text present once. L1 is the data model's F05 unit-of-work row ("reads" added); L2 to L4 the P11 plan's Stage B entry (C2's run of record, the earlier runs, C1's and C2's PV04 evidence and 0008's DB04 case); L5 and L6 revision 8 in the contract document and the media fixtures note; L7 "Carried to the next change to the Foundation workflow".
+- **The merge** waits on the PR run of this batch's head, the final head, passing with `Application checks passed`, and on Codex raising nothing new there. If that run's Mobile checks fail at the same step with the same name-resolution error while every other job passes, the manager records the run, makes no commit only to start a run, and makes its next records commit no sooner than an hour after the failure; any other failure goes back to the Dev Manager (DM-59 section 7).
+- **Run 43050934985** on `17e441e`, the final head, failed the same way: Mobile checks' Chromium install from 15:43:47 to 15:53:53 UTC, on another runner, with the same nine packages and the same `Temporary failure resolving 'azure.archive.ubuntu.com'`; the other six jobs passed, the Database proof checks among them, and the gate failed only for that job. Codex's review of `17e441e` completed at 15:44 UTC with no findings. Under DM-59 section 7, the run is recorded, no commit is made only to start a run, and the next records commit, this one, came no sooner than an hour after the failure; its pull-request run is the next attempt.
+

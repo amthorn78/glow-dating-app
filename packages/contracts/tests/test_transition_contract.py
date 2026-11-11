@@ -135,9 +135,20 @@ class FlowAcceptanceTests(unittest.TestCase):
         )
 
     def test_f05_quarantine_cannot_be_published_by_uploader(self):
+        # SV2 Stage B (its brief's D11; OD-61; DM-53 W5; DM-57 U9): approval and rejection are the
+        # automated check's decisions, so F05's approve and reject are the system's, with A05's
+        # current policy; staff act only on reports (restrict_media stays the moderator's).
+        checked = replace(SYSTEM, policies=frozenset({"A05"}))
         self.check("F05", "approve", "quarantined", "approved", OWNER, "state_conflict")
+        self.check("F05", "approve", "quarantined", "approved", checked, "state_conflict")
         self.check("F05", "approve", "review_pending", "approved", OWNER, "forbidden")
-        self.check("F05", "approve", "review_pending", "approved", STAFF, "allowed")
+        self.check("F05", "approve", "review_pending", "approved", STAFF, "forbidden")
+        self.check("F05", "approve", "review_pending", "approved", checked, "allowed")
+        self.check("F05", "approve", "review_pending", "approved", SYSTEM, "policy_unresolved")
+        self.check("F05", "reject", "review_pending", "rejected", checked, "allowed")
+        self.check("F05", "reject", "review_pending", "rejected", STAFF, "forbidden")
+        self.check("F05", "reject", "review_pending", "rejected", OWNER, "forbidden")
+        self.check("F05", "approve", "removal_pending", "approved", checked, "state_conflict")
         for state in ("quarantined", "review_pending"):
             self.check("F05", "remove", state, "removal_pending", OWNER, "allowed")
         self.check("F05", "purged", "removal_pending", "removed", OWNER, "forbidden")

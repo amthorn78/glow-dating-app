@@ -1,4 +1,5 @@
-"""The outbox events SV2's writers emit (schema ``glow-profiles-1``; the SV2 brief's D2 and D9).
+"""The outbox events SV2's writers emit (schema ``glow-profiles-1``; the SV2 brief's D2, D9 and
+D10).
 
 Each carries only an aggregate reference, its version and a payload reference: never a value
 (no field value, own words, set, date, time, coordinate or text). They are logical events for
@@ -32,6 +33,16 @@ BIRTH_INPUT_SUBMITTED = "birth_input_submitted"
 # A new eligibility date stopped the current birth input being current (F03 date_changed).
 BIRTH_INPUT_INVALIDATED = "birth_input_invalidated"
 IDENTITY_VERIFICATION_CHANGED = "identity_verification_changed"
+# SV2 Stage B (D10): one per F05 transition, each naming the asset and its version.
+MEDIA_UPLOAD_GRANTED = "media_upload_granted"
+MEDIA_UPLOADED = "media_uploaded"
+MEDIA_IN_REVIEW = "media_in_review"
+MEDIA_APPROVED = "media_approved"
+MEDIA_REJECTED = "media_rejected"
+MEDIA_REORDERED = "media_reordered"
+MEDIA_REMOVAL_REQUESTED = "media_removal_requested"
+MEDIA_PURGED = "media_purged"
+MEDIA_RESTRICTED = "media_restricted"
 
 ALL: tuple[str, ...] = (
     POLICY_PUBLISHED,
@@ -47,6 +58,15 @@ ALL: tuple[str, ...] = (
     BIRTH_INPUT_SUBMITTED,
     BIRTH_INPUT_INVALIDATED,
     IDENTITY_VERIFICATION_CHANGED,
+    MEDIA_UPLOAD_GRANTED,
+    MEDIA_UPLOADED,
+    MEDIA_IN_REVIEW,
+    MEDIA_APPROVED,
+    MEDIA_REJECTED,
+    MEDIA_REORDERED,
+    MEDIA_REMOVAL_REQUESTED,
+    MEDIA_PURGED,
+    MEDIA_RESTRICTED,
 )
 
 

@@ -740,7 +740,7 @@
           "event": "approve",
           "from": "review_pending",
           "to": "approved",
-          "role": "moderator",
+          "role": "system",
           "eligible": false,
           "policies": [
             "A05"
@@ -751,7 +751,7 @@
           "event": "reject",
           "from": "review_pending",
           "to": "rejected",
-          "role": "moderator",
+          "role": "system",
           "eligible": false,
           "policies": [
             "A05"

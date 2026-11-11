@@ -9,7 +9,9 @@ after the account row lock, which every writer of a requirement takes first:
 - ``profile_fields``: a display name, a non-empty summary, a gender and at least one "looking for"
   value;
 - ``area``: a home area;
-- ``photo``: Stage B adds it (an approved photo); Stage A neither checks nor reports it;
+- ``photo``: at least one approved photo, approved by the automated check (SV2 Stage B; D10). A
+  photo under a staff restriction is back in review, and one its owner removed is
+  ``removal_pending``, so neither counts;
 - ``chart``: the current birth input revision and its mapping are both ``resolved``, and the
   mapping points at that revision. SV2 has no HDE, so nothing resolves in the sealed runtime; a
   test seeds both in its own setup;
@@ -32,6 +34,7 @@ from glow_persistence.models import (
     ConsentDecision,
     EngineIdentity,
     IdentityVerification,
+    MediaAsset,
     ProfileFieldChoice,
 )
 
@@ -42,7 +45,7 @@ AREA = "area"
 PHOTO = "photo"
 CHART = "chart"
 IDENTITY_VERIFICATION = "identity_verification"
-# The completion read's closed list (D11), in order. Stage A never reports ``photo``.
+# The completion read's closed list (D11), in order.
 ALL: tuple[str, ...] = (
     CONSENT,
     ADULT_CHECK,
@@ -52,7 +55,6 @@ ALL: tuple[str, ...] = (
     CHART,
     IDENTITY_VERIFICATION,
 )
-STAGE_A: tuple[str, ...] = tuple(item for item in ALL if item != PHOTO)
 
 
 def latest_decision(account_id: UUID, purpose: str) -> Any:
@@ -113,6 +115,8 @@ def missing(account_id: UUID, profile: Any, onboarding_policy_version: str) -> l
         found.append(PROFILE_FIELDS)
     if profile is None or profile.area_id is None:
         found.append(AREA)
+    if not MediaAsset.objects.filter(account_id=account_id, state="approved").exists():
+        found.append(PHOTO)
     if not chart_resolved(account_id):
         found.append(CHART)
     verification = IdentityVerification.objects.filter(account_id=account_id).first()

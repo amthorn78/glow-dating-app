@@ -5,6 +5,10 @@ sources linked below. This is integration preparation under GAPP-PF01. It does
 not activate a provider, settle account eligibility or approve launch policy.
 The fixture adapter's events are synthetic; no provider callback is registered.
 
+**Decided (OD-62, 11 November 2026):** photos use private R2 object storage, not
+Cloudflare Images. The Images rows below stay as the research they were. The SV2
+brief's D10 (revision 6) gives the design, and P11 verifies R2's mechanisms (PV04).
+
 ## Native selection and image display
 
 The inspected mobile manifest pins Expo **57.0.24**, React Native **0.86.3** and

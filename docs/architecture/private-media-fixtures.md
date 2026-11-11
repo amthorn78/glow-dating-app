@@ -102,3 +102,23 @@ Unknown/obsolete policy grants no upload or approved delivery permission. Same
 session memory is the only recovery scope; private presentation clears on logout,
 expiry or replacement. No real photos, database, provider, HDE or Railway object is
 used or changed by this adapter.
+
+## The server (SV2 Stage B, sealed until P11)
+
+The server side of F05 now exists in `services/api/glow_profiles` (`media.py`, `media_fixtures.py`)
+and `glow_domain/media.py`, built by SV2 Stage B ([the brief](../planning/sv2-profiles-media.md),
+revision 8, D10; the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md),
+"Stage B"). It is **sealed until P11**: it runs only under the disposable-PostgreSQL proof's profile
+settings, and the served runtime imports none of it. It keeps this record's semantics on
+PostgreSQL: the collection's version, a removal's own version, separate revocation records for an
+owner's removal and a moderation restriction, only provider completion into `quarantined` and only
+system review into `review_pending`, and purge alone into `removed`. Where Nathan's later decisions
+change them, the server follows the brief: photos are private R2 objects (OD-62), approval and
+rejection are an automated check's decisions with a `system:` subject, and a moderation restriction
+is cleared only by the staff decision that closes its report, never by the check (OD-61; D10), and
+every adopted upload passes G-02's seam, one with no variant included (DM-57 U1). Its adapters are
+fixtures: the processing fixture checks PNG framing and the policy's bounds as this record's
+parser does, decodes nothing and writes a synthetic, non-delivering variant; PV04 still owns real
+storage, decoding, metadata removal, delivery and purge.
+
+One rule of this record changes on the server (DM-58): a `removed` photo leaves the collection, both its read and its 20 entries, where this record kept removed tombstones within that bound and needed a fresh fixture session once the collection was full. A server has no fresh session, so that rule would stop an account after 20 uploads in its lifetime. A removed asset stays readable by its ID, and every other state, a rejected photo included, counts toward the 20 entries until the member removes it.

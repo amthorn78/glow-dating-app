@@ -30,4 +30,10 @@ urlpatterns = [
         views.BirthInputByIdView.as_view(),
         name="glow_birth_input_by_id",
     ),
+    path("api/v1/media", views.MediaView.as_view(), name="glow_media"),
+    path(
+        "api/v1/media/<uuid:asset_id>",
+        views.MediaByIdView.as_view(),
+        name="glow_media_by_id",
+    ),
 ]

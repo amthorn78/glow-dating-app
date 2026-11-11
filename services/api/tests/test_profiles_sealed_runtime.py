@@ -25,6 +25,8 @@ SEALED_MODULES = (
     "glow_domain.profile_fields",
     "glow_domain.profile_settings",
     "glow_domain.identity_verification",
+    # SV2 Stage B: the photo ports (D10).
+    "glow_domain.media",
 )
 
 RUNTIME = """

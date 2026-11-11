@@ -14,7 +14,11 @@ member can state none until a publication adds values, and every member is "not 
 meanwhile); and OD-60 names no distance choices, so version 1 offers one, ``anywhere``, which
 filters nothing.
 
-The media policy (D10) is Stage B's.
+The media policy (D10; SV2 Stage B) is ``media.policy``: its version 1 holds
+``development-media-1``'s values and is seeded by migration 0009 (0007's seed never changes after it
+is applied), with the reason ``development-media-1`` (DM-57 U10). Its ceilings are code: the types,
+bytes and declared pixels of ``development-media-1`` until PV04 proves a real decode path's limits,
+and the contract's 20 collection entries; a publication above one is refused, naming it.
 """
 
 from __future__ import annotations
@@ -45,8 +49,11 @@ HISTORY = "chat.history"
 STAFF_APPROVAL = "identity.staff_approval"
 ONBOARDING_CONSENT = "consent.onboarding"
 SENSITIVE_CONSENT = "consent.sensitive_profile"
+MEDIA_POLICY = "media.policy"
 
-ALL_SETTINGS: tuple[str, ...] = (
+# The settings migration 0007 seeds (SV2 Stage A), in its order; Stage B's media policy is
+# seeded by migration 0009 (D2; DM-57 U10).
+SEEDED_BY_0007: tuple[str, ...] = (
     GENDER_LIST,
     ORIENTATION_LIST,
     LOOKING_FOR_LIST,
@@ -62,6 +69,7 @@ ALL_SETTINGS: tuple[str, ...] = (
     ONBOARDING_CONSENT,
     SENSITIVE_CONSENT,
 )
+ALL_SETTINGS: tuple[str, ...] = (*SEEDED_BY_0007, MEDIA_POLICY)
 # The settings a member's catalog read and their profile commands depend on, in this order.
 CATALOG_SETTINGS: tuple[str, ...] = (
     GENDER_LIST,
@@ -76,8 +84,17 @@ CATALOG_SETTINGS: tuple[str, ...] = (
 LAUNCH_SUBJECT = "system:launch-default"
 # The seed's reason: OD-60, or for D18's setting the register row of Nathan's answers of
 # 10 November 2026 (OD-61).
+# The media policy's seed reason is ``development-media-1``, whose values it holds (DM-57 U10).
+MEDIA_SEED_REASON = "development-media-1"
 LAUNCH_REASONS: dict[str, str] = {
-    name: ("OD-61" if name == STAFF_APPROVAL else "OD-60") for name in ALL_SETTINGS
+    name: (
+        "OD-61"
+        if name == STAFF_APPROVAL
+        else MEDIA_SEED_REASON
+        if name == MEDIA_POLICY
+        else "OD-60"
+    )
+    for name in ALL_SETTINGS
 }
 
 AGE_FLOOR = 18
@@ -117,6 +134,23 @@ SHOW_ME_NEVER_SHOWN = "show_me_never_shown"
 NOT_STATED_KEEP_ALL_ONLY = "not_stated_seen_only_by_keep_all"
 MORE_READABLE_NEEDS_CONSENT = "more_readable_needs_consent_wording"
 STAFF_APPROVAL_IDENTITY_ONLY = "staff_approval_stands_in_for_identity_verification_only"
+MEDIA_TYPES_CEILING = "media_types_within_ceiling"
+MEDIA_BYTES_CEILING = "media_bytes_within_ceiling"
+MEDIA_PIXELS_CEILING = "media_pixels_within_ceiling"
+MEDIA_COLLECTION_CEILING = "media_live_photos_within_collection"
+
+# The media policy's ceilings (D10; DM-52 B31): development-media-1's types, bytes and declared
+# pixels until PV04 proves a real decode path's limits, and the contract's 20 collection entries
+# (``MediaCollection.items``' bound). Code, never data.
+MEDIA_TYPES = ("image/png",)
+MEDIA_BYTES = 1_048_576
+MEDIA_PIXELS = 4_194_304
+MEDIA_COLLECTION = 20
+# Bounds of the media policy's schema (not ceilings): a PNG's dimension, a short-lived grant and
+# a client's transfer attempts.
+MEDIA_DIMENSION_MAX = 65_535
+MEDIA_GRANT_SECONDS_MAX = 3_600
+MEDIA_ATTEMPTS_MAX = 10
 
 FIXED_LIMITS: dict[str, str] = {
     MATCHING_USES_LIST_VALUES: "matching uses list values",
@@ -139,6 +173,12 @@ FIXED_LIMITS: dict[str, str] = {
     ),
     LIST_RESERVED_VALUE: 'a list value is never the reserved "all" or "not-stated"',
     LIST_VALUE_REMOVED: "a published list value is retired, never removed, so its holders keep it",
+    MEDIA_TYPES_CEILING: "the media policy accepts no type beyond PNG (D10)",
+    MEDIA_BYTES_CEILING: "the media policy's byte limit is at most 1 MiB (D10)",
+    MEDIA_PIXELS_CEILING: "the media policy's declared pixels are at most 4,194,304 (D10)",
+    MEDIA_COLLECTION_CEILING: (
+        "the media policy's live photos fit the contract's 20 collection entries (D10)"
+    ),
 }
 
 ONBOARDING_TEXT = (
@@ -225,7 +265,31 @@ LAUNCH_DEFAULTS: dict[str, dict[str, Any]] = {
     STAFF_APPROVAL: {"enabled": False, "stands_in_for": ["identity_verification"]},
     ONBOARDING_CONSENT: {"development": True, "text": ONBOARDING_TEXT},
     SENSITIVE_CONSENT: {"development": True, "text": SENSITIVE_TEXT},
+    # D10: development-media-1 (``private-media-fixtures.md``): PNG only, 1 MiB, 2,048 x 2,048,
+    # 4,194,304 declared pixels, four live photos, a 60-second grant, three transfer attempts. The
+    # launch values are A05's ("media limits"), for the third A05 message.
+    MEDIA_POLICY: {
+        "types": ["image/png"],
+        "max_bytes": 1_048_576,
+        "max_width": 2_048,
+        "max_height": 2_048,
+        "max_pixels": 4_194_304,
+        "live_photos": 4,
+        "grant_seconds": 60,
+        "transfer_attempts": 3,
+    },
 }
+
+MEDIA_KEYS: tuple[str, ...] = (
+    "types",
+    "max_bytes",
+    "max_width",
+    "max_height",
+    "max_pixels",
+    "live_photos",
+    "grant_seconds",
+    "transfer_attempts",
+)
 
 
 def policy_version(name: str, number: int) -> str:
@@ -431,6 +495,40 @@ def _staff_approval_refusals(content: Any) -> list[str]:
     return []
 
 
+def _media_refusals(content: Any) -> list[str]:
+    """D10: the media policy's closed schema, then its ceilings in code."""
+    if not _keys(content, MEDIA_KEYS):
+        return [SCHEMA]
+    types = content["types"]
+    if (
+        not isinstance(types, list)
+        or not types
+        or not all(isinstance(value, str) for value in types)
+        or len(set(types)) != len(types)
+    ):
+        return [SCHEMA]
+    if not all(_int(content[key], 1, 2**31 - 1) for key in ("max_bytes", "max_pixels")):
+        return [SCHEMA]
+    if not all(_int(content[key], 1, MEDIA_DIMENSION_MAX) for key in ("max_width", "max_height")):
+        return [SCHEMA]
+    if not _int(content["live_photos"], 1, 2**15 - 1):
+        return [SCHEMA]
+    if not _int(content["grant_seconds"], 1, MEDIA_GRANT_SECONDS_MAX):
+        return [SCHEMA]
+    if not _int(content["transfer_attempts"], 1, MEDIA_ATTEMPTS_MAX):
+        return [SCHEMA]
+    refusals: list[str] = []
+    if not set(types) <= set(MEDIA_TYPES):
+        refusals.append(MEDIA_TYPES_CEILING)
+    if content["max_bytes"] > MEDIA_BYTES:
+        refusals.append(MEDIA_BYTES_CEILING)
+    if content["max_pixels"] > MEDIA_PIXELS:
+        refusals.append(MEDIA_PIXELS_CEILING)
+    if content["live_photos"] > MEDIA_COLLECTION:
+        refusals.append(MEDIA_COLLECTION_CEILING)
+    return refusals
+
+
 def _consent_refusals(content: Any) -> list[str]:
     if not _keys(content, ("development", "text")) or not _bool(content["development"]):
         return [SCHEMA]
@@ -467,6 +565,8 @@ def publication_refusals(
         found = _staff_approval_refusals(content)
     elif name in (ONBOARDING_CONSENT, SENSITIVE_CONSENT):
         found = _consent_refusals(content)
+    elif name == MEDIA_POLICY:
+        found = _media_refusals(content)
     else:
         found = [SCHEMA]
     return tuple(dict.fromkeys(found))

@@ -542,6 +542,16 @@ class EngineIdentity(Record):
 
 
 class MediaAsset(Record):
+    """One photo (F05; SV2 Stage B, migration 0008; its brief's D10; OD-62).
+
+    ``storage_ref`` is the original's object key, Glow's own, random and opaque (``MediaObject``);
+    ``approved_variant_ref`` is the delivery reference the storage port gives an approved
+    variant, present only while ``approved``. The owner's removal (``removal_requested_at``) and a
+    staff restriction on a report (``restriction_ref``, the restriction's ``StaffAudit`` row) are
+    separate revocation records: an approval needs neither, and the automated check clears
+    neither. ``detection`` records G-02's seam (``no_detector`` in SV2) and
+    ``rejection_reason`` the check's reason code."""
+
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
     provider = models.CharField(max_length=32)
     storage_ref = models.CharField(max_length=255, null=True, blank=True)
@@ -561,6 +571,13 @@ class MediaAsset(Record):
         default="upload_pending",
     )
     review_ref = models.UUIDField(null=True, blank=True)
+    detection = models.CharField(
+        max_length=24, choices=choices("no_detector"), null=True, blank=True
+    )
+    rejection_reason = models.CharField(max_length=64, null=True, blank=True)
+    restriction_ref = models.UUIDField(null=True, blank=True)
+    removal_requested_at = models.DateTimeField(null=True, blank=True)
+    purge_requested_at = models.DateTimeField(null=True, blank=True)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
@@ -583,6 +600,94 @@ class MediaAsset(Record):
                 condition=~Q(state="approved")
                 | Q(approved_variant_ref__isnull=False, review_ref__isnull=False),
                 name="media_approval_evidence",
+            ),
+            # SV2 Stage B (D10): a delivery reference exists only while approved, and never
+            # through a revocation record of either kind.
+            models.CheckConstraint(
+                condition=Q(state="approved") | Q(approved_variant_ref__isnull=True),
+                name="media_delivery_only_approved",
+            ),
+            models.CheckConstraint(
+                condition=~Q(state="approved")
+                | Q(restriction_ref__isnull=True, removal_requested_at__isnull=True),
+                name="media_approved_unrevoked",
+            ),
+            models.CheckConstraint(
+                condition=~Q(state__in=["removal_pending", "removed"])
+                | Q(removal_requested_at__isnull=False),
+                name="media_removal_record",
+            ),
+            models.CheckConstraint(
+                condition=~Q(state__in=["review_pending", "approved", "rejected"])
+                | Q(detection__isnull=False),
+                name="media_seam_passed",
+            ),
+        ]
+
+
+class MediaObject(Record):
+    """One object of a photo in private storage (SV2 Stage B, migration 0008; D10; OD-62): the
+    original, at the key its grant names, and each variant processing writes. A key is Glow's own,
+    32 random hexadecimal characters: no account, profile or asset ID, filename or member value.
+    The original's size and entity tag are the adopted completion's. ``deleted_at`` is the storage
+    adapter's acknowledgment that the object is deleted; an asset is ``removed`` only when every
+    one of its objects has it."""
+
+    asset = models.ForeignKey(MediaAsset, on_delete=models.CASCADE, related_name="objects_held")
+    role = models.CharField(max_length=16, choices=choices("original", "variant"))
+    key = models.CharField(max_length=64, unique=True)
+    byte_size = models.PositiveIntegerField(null=True, blank=True)
+    entity_tag = models.CharField(max_length=128, null=True, blank=True)
+    adopted_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.CheckConstraint(
+                condition=Q(role__in=["original", "variant"]), name="media_object_role"
+            ),
+            models.CheckConstraint(
+                condition=Q(key__regex=r"^[0-9a-f]{32}$"), name="media_object_opaque_key"
+            ),
+            models.CheckConstraint(
+                condition=Q(adopted_at__isnull=True)
+                | Q(byte_size__isnull=False, entity_tag__isnull=False),
+                name="media_object_adoption_evidence",
+            ),
+            models.UniqueConstraint(
+                fields=["asset"], condition=Q(role="original"), name="media_one_original"
+            ),
+        ]
+
+
+class MediaUploadGrant(Record):
+    """An upload grant (SV2 Stage B, migration 0008; D10; DM-57 U3): one per asset, one-use and
+    short-lived by Glow's own record, within the media policy version it was issued under
+    (``policy_version``), whose byte limit its completion is checked against. ``grant_ref`` is the
+    opaque reference ``MediaUploadGrant`` returns; ``object_key`` is the original's key, which the
+    store's upload credential (P11's) is scoped to and no member is given. ``used_at`` is the
+    adoption of its first matching completion; nothing after it changes the asset."""
+
+    account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    asset = models.OneToOneField(MediaAsset, on_delete=models.CASCADE, related_name="grant")
+    grant_ref = models.CharField(max_length=100, unique=True)
+    object_key = models.CharField(max_length=64, unique=True)
+    policy_version = models.CharField(max_length=100)
+    issued_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.CheckConstraint(
+                condition=Q(expires_at__gt=F("issued_at")), name="media_grant_expiry"
+            ),
+            models.CheckConstraint(
+                condition=Q(used_at__isnull=True) | Q(used_at__lte=F("expires_at")),
+                name="media_grant_used_in_time",
+            ),
+            models.CheckConstraint(
+                condition=Q(object_key__regex=r"^[0-9a-f]{32}$"), name="media_grant_opaque_key"
             ),
         ]
 
