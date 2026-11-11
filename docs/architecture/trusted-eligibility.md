@@ -190,3 +190,7 @@ block insertion races, time-dependent expiry and policy publication races, actio
 retry/idempotency behavior, post-commit dispatch and block/send ordering. The
 older `FixturePairEvaluationService` remains a development-only primitive for
 direct supplied policy values; it is not promoted to a production input route.
+
+## The server's adapter (SV3 Stage A, sealed until P11)
+
+A conforming adapter now exists, sealed: `glow_discovery.eligibility.OrmEligibilityEvidence` implements `EligibilityEvidenceRepository` over the ORM, reading both members' authoritative rows in one statement and building `PairEvidenceVersion` from both accounts' `eligibility_version`, `preferences_version` and `blocks_version`, both profiles' versions and the selection's policy version; `OrmPairActionTransaction` implements `PairActionTransaction` for an action that already holds its locks (Stage B's like). They run only under the disposable-PostgreSQL proof's discovery settings (the [SV3 brief](../planning/sv3-eligibility-discovery-interactions.md), D2; the [SV3 evidence record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Stage A"); the served runtime imports none of it. This module's types and service are unchanged.
