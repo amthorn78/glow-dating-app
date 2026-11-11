@@ -161,6 +161,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-22 | 11 Nov 2026 | follow-through | Implementation Control's "Phase" bullet left ending "Now: P06.2-F, the mobile hardening, in PR40" after PR40 to PR44 merged, and its "Next items" bullet left saying "now SV2 … Stage B next" after PR44 merged. A repeat of AM8-22's mechanism, as AM10-20 is. Recorded by App Manager 11 | App Manager 11, reading the status section's standing bullets in its first sync |
 | AM11-01 | 11 Nov 2026 | accuracy | The first report told Nathan that the next message would carry a prompt for the matrix recheck; the recheck is the manager's own records reading (the OD-60 and P06.3 recheck records), not a session | App Manager 11, reading the earlier recheck records before writing the prompt |
 | AM11-02 | 11 Nov 2026 | follow-through | Correcting Implementation Control's "Next items" bullet, replaced only its opening and left "P06.2-F (now, PR40)" further on in the same bullet; the readback searched for the edited strings only. A repeat of AM8-11's mechanism | Dev Manager 4, DM-60 section 18 |
+| AM11-03 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `fe1b6ba` gave 19:14 UTC, written before the clock was read; the clock read 19:12 (AM10-17's mechanism) | App Manager 11, when the commit's own clock line printed |
 
 ## App Manager 2
 
