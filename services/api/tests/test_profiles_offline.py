@@ -74,6 +74,9 @@ MEDIA_COMMANDS = {
     "request_purge",
 }
 MEDIA_READS = {"delivery_reference"}
+# SV2 Stage B, correction C1 (DM-58 item 9): the two writers that take the account row in any
+# account state; every other command, staff operation, system step and read keeps its gate.
+ANY_STATE = {"request_purge", "acknowledge_deletion"}
 
 # A refusal reason is a code. Its only interpolations are other closed codes: glow_chat's result
 # reason and outcome, a field rule's refusal, the age transition's refusal and the adult outcome;
@@ -646,11 +649,82 @@ class LockOrderTests(unittest.TestCase):
                     if isinstance(inner, ast.FunctionDef) and inner.name == "body":
                         found[function.name] = ast.unparse(inner.body[0])
         self.assertEqual(set(found), COMMANDS | READS | STAFF | MEDIA_COMMANDS | MEDIA_READS)
+        self.assertLessEqual(ANY_STATE, MEDIA_COMMANDS)
         for operation, first in found.items():
             with self.subTest(operation=operation):
                 shared = operation in READS | MEDIA_READS
-                expected = "read_account_shared" if shared else "lock_account"
+                expected = (
+                    "lock_account_any_state"
+                    if operation in ANY_STATE
+                    else "read_account_shared"
+                    if shared
+                    else "lock_account"
+                )
                 self.assertEqual(first, f"{expected}(tx, account_id)")
+
+    def test_only_the_two_writers_take_the_account_row_in_any_state(self) -> None:
+        # C1 (DM-58 item 9): ``lock_account_any_state`` is used only by the purge and the
+        # deletion acknowledgment, once each, in every module of the API but its tests; its only
+        # import is ``media.py``'s.
+        used: list[tuple[str, str]] = []
+        imported: list[str] = []
+        for path in sorted(API_ROOT.rglob("*.py")):
+            relative = path.relative_to(API_ROOT)
+            if relative.parts[0] in {".venv", "tests"}:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            outer = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
+            for node in ast.walk(tree):
+                if isinstance(node, ast.alias) and node.name == "lock_account_any_state":
+                    imported.append(str(relative))
+                named = (
+                    node.id
+                    if isinstance(node, ast.Name)
+                    else node.attr
+                    if isinstance(node, ast.Attribute)
+                    else None
+                )
+                if named == "lock_account_any_state":
+                    holding = [
+                        function.name
+                        for function in outer
+                        if function.lineno <= node.lineno <= (function.end_lineno or 0)
+                    ]
+                    used.append((str(relative), holding[0] if holding else "<module>"))
+        media_py = str(Path("glow_profiles") / "media.py")
+        self.assertEqual(
+            sorted(used), [(media_py, "acknowledge_deletion"), (media_py, "request_purge")]
+        )
+        self.assertEqual(imported, [media_py])
+
+    def test_the_any_state_lock_is_lock_account_without_its_state_check(self) -> None:
+        # C1 (DM-58 item 9): the same row ``FOR UPDATE``, the same refusal of an absent row and
+        # the same signal, and no state check; ``lock_account`` keeps its refusal.
+        tree = ast.parse((PROFILES / "tx.py").read_text(encoding="utf-8"))
+        bodies = {
+            node.name: [ast.unparse(statement) for statement in node.body[1:]]
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+        }
+        gated, any_state = bodies["lock_account"], bodies["lock_account_any_state"]
+        self.assertEqual(
+            any_state,
+            [
+                "account = AppAccount.objects.select_for_update().filter(pk=account_id).first()",
+                "if account is None:\n    raise Refused(NOT_FOUND, 'account_missing')",
+                "signal(tx.probe, 'after_first_lock')",
+                "return account",
+            ],
+        )
+        self.assertEqual(
+            gated,
+            [
+                *any_state[:3],
+                "if account.state != 'active':\n    raise Refused(FORBIDDEN, 'account_not_active')",
+                "return account",
+            ],
+        )
+        self.assertNotIn(".state", "\n".join(any_state))
 
 
 class KeyedDigestTests(unittest.TestCase):

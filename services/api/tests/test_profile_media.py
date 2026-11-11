@@ -404,5 +404,56 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(len(approvals), 1)
 
 
+class AccountStateTests(unittest.TestCase):
+    """SV2 Stage B, correction C1 (DM-58 item 9): the purge and the store's deletion
+    acknowledgment take the account row in any account state; the purge still asks the hold port
+    before the store, and every other photo step keeps its gate (``LockOrderTests``)."""
+
+    def bodies(self) -> dict[str, list[str]]:
+        found = {}
+        for node in modules()["media.py"].body:
+            if isinstance(node, ast.FunctionDef):
+                for inner in node.body:
+                    if isinstance(inner, ast.FunctionDef) and inner.name == "body":
+                        found[node.name] = [ast.unparse(statement) for statement in inner.body]
+        return found
+
+    def test_the_purge_takes_the_row_in_any_state_and_asks_the_hold_port_first(self) -> None:
+        purge = self.bodies()["request_purge"]
+        self.assertEqual(purge[0], "lock_account_any_state(tx, account_id)")
+        text = "\n".join(purge)
+        self.assertEqual(text.count("adapters.hold.held(asset.id)"), 1)
+        self.assertEqual(text.count("adapters.storage.delete(keys)"), 1)
+        self.assertLess(
+            text.index("adapters.hold.held(asset.id)"), text.index("adapters.storage.delete(keys)")
+        )
+        self.assertLess(
+            text.index("adapters.hold.held(asset.id)"), text.index("asset.purge_requested_at = now")
+        )
+
+    def test_the_acknowledgment_takes_the_row_in_any_state_and_needs_a_requested_purge(
+        self,
+    ) -> None:
+        acknowledgment = self.bodies()["acknowledge_deletion"]
+        self.assertEqual(acknowledgment[0], "lock_account_any_state(tx, account_id)")
+        text = "\n".join(acknowledgment)
+        self.assertIn(
+            "if asset.state != md.REMOVAL_PENDING or asset.purge_requested_at is None:", text
+        )
+        self.assertLess(
+            text.index("asset.purge_requested_at is None"), text.index("held.deleted_at = now")
+        )
+
+    def test_every_other_photo_step_keeps_its_gate(self) -> None:
+        for name, statements in self.bodies().items():
+            if name in ("request_purge", "acknowledge_deletion"):
+                continue
+            with self.subTest(step=name):
+                self.assertIn(
+                    statements[0],
+                    ("lock_account(tx, account_id)", "read_account_shared(tx, account_id)"),
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

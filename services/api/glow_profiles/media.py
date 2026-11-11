@@ -22,18 +22,17 @@ records; any other changes nothing. A deletion is recorded only for an object wh
 requested; ``removed`` follows the acknowledgment of every object of the asset.
 
 **The system's steps** (F05 ``system``): ``review``, Glow's own processing on the adopted original
-only, then G-02's seam for every adopted upload (given the variant, or the original when
-processing made none; an upload with no variant is rejected with ``no_variant``); ``run_check``,
-the automated check's approval or rejection, written to ``StaffAudit`` with a ``system:``
-subject, asking the hold port before approval and never acting on an asset under a staff
-restriction; ``request_purge``, asking the hold port before the store is asked to delete; and
+only, then G-02's seam for every adopted upload (given the variant, or the original when processing
+made none; an upload with no variant is rejected with ``no_variant``); ``run_check``, the automated
+check's approval or rejection, written to ``StaffAudit`` with a ``system:`` subject, asking the hold
+port before approval and never acting on an asset under a staff restriction; ``request_purge``,
+asking the hold port before the store is asked to delete, in any account state (as
+``acknowledge_deletion``; every other step refuses an account that is not ``active``); and
 ``delivery_reference``, an approved variant's reference for P11's delivery, asking the hold port
-first. Staff's restriction on a report is ``staff.restrict_media``.
-
-**D9:** the check's approval ends with the recompute (``requirements_met`` when it meets the last
-requirement); the removal or restriction of the last approved photo demotes a ``visible`` profile
-(``requirement_removed``). Nothing here logs or returns an object key, an original's reference or
-photo bytes.
+first. Staff's restriction on a report is ``staff.restrict_media``. **D9:** the check's approval
+ends with the recompute (``requirements_met`` when it meets the last requirement); the removal or
+restriction of the last approved photo demotes a ``visible`` profile (``requirement_removed``).
+Nothing here logs or returns an object key, an original's reference or photo bytes.
 """
 
 from __future__ import annotations
@@ -62,6 +61,7 @@ from glow_profiles.tx import (
     Tx,
     clock,
     lock_account,
+    lock_account_any_state,
     read_account_shared,
     run,
     signal,
@@ -456,7 +456,10 @@ def acknowledge_deletion(raw: object, *, ports: md.MediaPorts | None = None) -> 
     """The store's acknowledgment that one object is deleted, authenticated by the storage
     adapter. Recorded only for an object of an asset whose purge was requested; a duplicate or an
     out-of-order acknowledgment changes nothing. F05 ``purged`` follows the acknowledgment of
-    every object of the asset, the original and each variant (D10)."""
+    every object of the asset, the original and each variant (D10). It runs in any account state,
+    under the account row's lock (``lock_account_any_state``; DM-58 item 9): the store has
+    already deleted the object, so its acknowledgment is never lost to a suspension or a
+    deletion request."""
     adapters = _ports(ports)
     event = adapters.storage.receive(raw)
     if not isinstance(event, md.ObjectDeleted):
@@ -467,7 +470,7 @@ def acknowledge_deletion(raw: object, *, ports: md.MediaPorts | None = None) -> 
     account_id, asset_id = found.asset.account_id, found.asset_id
 
     def body(tx: Tx) -> Result:
-        lock_account(tx, account_id)
+        lock_account_any_state(tx, account_id)
         asset = locked_asset(account_id, asset_id)
         held = MediaObject.objects.select_for_update().filter(key=event.key).first()
         signal(tx.probe, "after_locks")
@@ -662,7 +665,10 @@ def request_purge(
 ) -> Result:
     """The purge of a removed asset (D10): asks the hold port first, then asks the store to
     delete every object of the asset not yet acknowledged deleted. The asset stays
-    ``removal_pending`` until the store acknowledges each (``acknowledge_deletion``)."""
+    ``removal_pending`` until the store acknowledges each (``acknowledge_deletion``). It runs in
+    any account state, under the account row's lock (``lock_account_any_state``; DM-58 item 9),
+    so a photo removed before its owner is suspended or asks for deletion is still purged; the
+    hold port is still asked before the store."""
     adapters = _ports(ports)
     found = _owner(asset_id)
     if found is None:
@@ -670,7 +676,7 @@ def request_purge(
     account_id: UUID = found
 
     def body(tx: Tx) -> Result:
-        lock_account(tx, account_id)
+        lock_account_any_state(tx, account_id)
         asset = locked_asset(account_id, asset_id)
         signal(tx.probe, "after_locks")
         now = clock(tx)

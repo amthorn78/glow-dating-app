@@ -68,7 +68,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned (C2, finding 15): a case lost or added without this changing
 # fails the run before any case runs, and the offline tests.
-CASE_COUNT = 64
+CASE_COUNT = 67
 
 
 def case(
@@ -3335,6 +3335,175 @@ def media_removal(ctx: ProfileContext) -> str:
     expect(_events(photo, "media_purged") == 1, "media_purged")
     expect(all(o.deleted_at is not None for o in _objects(str(photo))), "each acknowledged")
     return "removal withheld delivery at once; removed only when both objects were acknowledged"
+
+
+# SV2 Stage B, correction C1 (DM-58 item 9): the purge and the store's deletion acknowledgment
+# run in any account state, under the account row's lock; every other photo step refuses an
+# account that is not active. The owner is suspended or asks for deletion through glow_chat's own
+# writers (``suspend``, ``delete``), called unchanged.
+
+
+def _withheld(asset_id: UUID) -> bool:
+    """Delivery withheld: no reference on the row, and the system read returns none (it refuses
+    an owner who is not active, and returns none for an asset that is not approved)."""
+    from glow_profiles import media
+
+    read = media.delivery_reference(asset_id)
+    return (
+        _asset_row(str(asset_id)).approved_variant_ref is None
+        and read.outcome in ("read", "refused")
+        and read.detail.get("delivery_ref") is None
+    )
+
+
+def _inactive_refusal(result: Any) -> bool:
+    return (result.outcome, result.code, result.reason) == (
+        "refused",
+        "forbidden",
+        "account_not_active",
+    )
+
+
+@case("media.a_photo_removed_before_its_owner_is_suspended_is_still_purged", "10", "D10")
+def media_purge_after_suspension(ctx: ProfileContext) -> str:
+    from glow_chat.contact import OrmContactPersistence
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    storage = default_storage()
+    member = ctx.member()
+    photo = UUID(ctx.approved_photo(member))
+    keys = [o.key for o in _objects(str(photo))]
+    expect(len(keys) == 2, "an original and a variant")
+    removed = ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(photo))),
+        "media",
+        "removed",
+    )
+    expect(removed["state"] == "removal_pending", "removal_pending")
+    expect(removed["approved_delivery_ref"] is None and _withheld(photo), "withheld at once")
+    suspended = OrmContactPersistence(provider="fixture").suspend(member.account_id)
+    expect(suspended.outcome == "applied", "glow_chat suspended the owner")
+    expect(_account(member.account_id).state == "suspended", "the owner is suspended")
+    expect(_withheld(photo), "withheld after the suspension")
+    # The purge still asks the hold port first, whatever the owner's state: a hold stops it.
+    deletions = len(storage.deletions)
+    held = RecordingHold({photo})
+    stopped = media.request_purge(photo, ports=test_ports(hold=held))
+    expect(stopped.reason == "held" and held.asked == [photo], "a hold stops the purge")
+    expect(len(storage.deletions) == deletions, "nothing deleted under a hold")
+    asking = RecordingHold()
+    purge = media.request_purge(photo, ports=test_ports(hold=asking))
+    expect(purge.outcome == "applied", "the purge is asked for a suspended owner")
+    expect(asking.asked == [photo], "the purge asked the hold port first")
+    expect(sorted(storage.deletions[deletions:]) == sorted(keys), "every object is deleted")
+    expect(_withheld(photo), "withheld while the purge is pending")
+    first = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(first.outcome == "applied", "one object acknowledged for a suspended owner")
+    expect(_asset_row(str(photo)).state == "removal_pending", "not removed until every object")
+    expect(_withheld(photo), "withheld after one acknowledgment")
+    last = media.acknowledge_deletion(storage.acknowledge(keys[1]))
+    expect(last.outcome == "applied", "the last object acknowledged for a suspended owner")
+    expect(_asset_row(str(photo)).state == "removed", "removed after every object's acknowledgment")
+    expect(_events(photo, "media_purged") == 1, "media_purged")
+    expect(all(o.deleted_at is not None for o in _objects(str(photo))), "each acknowledged")
+    expect(_withheld(photo), "withheld once removed")
+    expect(_account(member.account_id).state == "suspended", "the account is unchanged")
+    return "removed, then suspended: the purge asked the hold port, both objects acknowledged"
+
+
+@case("media.a_purge_asked_before_its_owner_asks_for_deletion_completes", "10", "D10")
+def media_purge_after_deletion_request(ctx: ProfileContext) -> str:
+    from glow_chat.contact import OrmContactPersistence
+    from glow_persistence.models import DeletionJob
+    from glow_profiles import media
+    from glow_profiles.media_fixtures import default_storage
+
+    storage = default_storage()
+    member = ctx.member()
+    photo = UUID(ctx.approved_photo(member))
+    keys = [o.key for o in _objects(str(photo))]
+    expect(len(keys) == 2, "an original and a variant")
+    ctx.data(
+        ctx.command(member, MEDIA, ctx.media_intent(member, "remove", asset_id=str(photo))),
+        "media",
+        "removed",
+    )
+    expect(_withheld(photo), "withheld at once")
+    deletions = len(storage.deletions)
+    asking = RecordingHold()
+    purge = media.request_purge(photo, ports=test_ports(hold=asking))
+    expect(purge.outcome == "applied", "the purge is asked while the owner is active")
+    expect(asking.asked == [photo], "the purge asked the hold port first")
+    expect(sorted(storage.deletions[deletions:]) == sorted(keys), "every object is deleted")
+    deleting = OrmContactPersistence(provider="fixture").delete(member.account_id)
+    expect(deleting.outcome == "applied", "glow_chat recorded the deletion request")
+    expect(_account(member.account_id).state == "deletion_pending", "the owner asked to delete")
+    expect(DeletionJob.objects.filter(account_id=member.account_id).count() == 1, "its job")
+    expect(_withheld(photo), "withheld after the deletion request")
+    first = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(first.outcome == "applied", "one object acknowledged after the deletion request")
+    expect(_asset_row(str(photo)).state == "removal_pending", "not removed until every object")
+    expect(_withheld(photo), "withheld after one acknowledgment")
+    duplicate = media.acknowledge_deletion(storage.acknowledge(keys[0]))
+    expect(duplicate.reason == "already_deleted", "a duplicate acknowledgment changes nothing")
+    last = media.acknowledge_deletion(storage.acknowledge(keys[1]))
+    expect(last.outcome == "applied", "the last object acknowledged after the deletion request")
+    expect(_asset_row(str(photo)).state == "removed", "removed after every object's acknowledgment")
+    expect(_events(photo, "media_purged") == 1, "media_purged")
+    expect(_withheld(photo), "withheld once removed")
+    expect(_account(member.account_id).state == "deletion_pending", "the account is unchanged")
+    return "purge asked, then deletion requested: both acknowledgments completed the purge"
+
+
+@case("media.every_other_photo_step_refuses_an_inactive_owner", "10", "D10")
+def media_inactive_owner(ctx: ProfileContext) -> str:
+    from glow_chat.contact import OrmContactPersistence
+    from glow_persistence.models import MediaObject, MediaUploadGrant
+    from glow_profiles import media, staff
+
+    chat = OrmContactPersistence(provider="fixture")
+    refused = 0
+    for revoke, becomes in ((chat.suspend, "suspended"), (chat.delete, "deletion_pending")):
+        member = ctx.member()
+        pending = UUID(ctx.request_upload(member)["asset_id"])
+        quarantined = UUID(ctx.uploaded_photo(member))
+        in_review = UUID(ctx.uploaded_photo(member))
+        expect(media.review(in_review).outcome == "applied", "in review while active")
+        photo = UUID(ctx.approved_photo(member))
+        completion = ctx.put_photo(str(pending))
+        expect(revoke(member.account_id).outcome == "applied", "glow_chat revoked the account")
+        expect(_account(member.account_id).state == becomes, "the owner is not active")
+        before = (
+            _counts(),
+            MediaObject.objects.count(),
+            [(row.state, row.version) for row in map(_asset_row, map(str, (pending, quarantined)))],
+            [(row.state, row.version) for row in map(_asset_row, map(str, (in_review, photo)))],
+        )
+        adopted = media.record_upload(completion)
+        expect(_inactive_refusal(adopted), "record_upload refuses an inactive owner")
+        expect(MediaUploadGrant.objects.get(asset_id=pending).used_at is None, "not adopted")
+        reviewed = media.review(quarantined)
+        expect(_inactive_refusal(reviewed), "review refuses an inactive owner")
+        approving = test_ports(check=DecidingCheck())
+        checked = media.run_check(in_review, ports=approving)
+        expect(_inactive_refusal(checked), "run_check refuses an inactive owner")
+        expect(approving.check.asked == [], "the check was never asked")
+        restricted = staff.restrict_media(
+            photo, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+        )
+        expect(_inactive_refusal(restricted), "staff's restriction refuses an inactive owner")
+        delivered = media.delivery_reference(photo)
+        expect(_inactive_refusal(delivered), "the delivery read refuses an inactive owner")
+        after = (
+            _counts(),
+            MediaObject.objects.count(),
+            [(row.state, row.version) for row in map(_asset_row, map(str, (pending, quarantined)))],
+            [(row.state, row.version) for row in map(_asset_row, map(str, (in_review, photo)))],
+        )
+        expect(after == before, "nothing changed for an inactive owner")
+        refused += 5
+    return f"{refused} steps refused for a suspended and a deleting owner (account_not_active)"
 
 
 @case("media.reorder_and_every_route_refuses_another_members_photo", "10", "11", "D10", "D17")

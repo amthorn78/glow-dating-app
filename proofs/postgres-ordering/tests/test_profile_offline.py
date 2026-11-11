@@ -529,15 +529,17 @@ class ProfilePlanTests(unittest.TestCase):
                 "pointers",
             )
         ]
-        self.assertEqual(len(stage_b), 11)
+        # Stage B's eleven, and correction C1's three (DM-58 item 9: the purge in any account
+        # state, and every other photo step refusing an inactive owner).
+        self.assertEqual(len(stage_b), 14)
         self.assertTrue(
             all("10" in e.checks or "13" in e.checks or "12" in e.checks for e in stage_b)
         )
 
     def test_the_case_count_is_pinned(self) -> None:
         # C2 (finding 15): 47 cases after C1, and C2's six; SV2 Stage B's eleven (DM-57 section 5:
-        # the count changes with Stage B's cases).
-        self.assertEqual(profile_cases.CASE_COUNT, 64)
+        # the count changes with Stage B's cases); Stage B's correction C1's three (DM-58 item 9).
+        self.assertEqual(profile_cases.CASE_COUNT, 67)
         self.assertEqual(len(profile_cases.plan()), profile_cases.CASE_COUNT)
 
     def test_the_expected_routes_are_the_api_routes(self) -> None:

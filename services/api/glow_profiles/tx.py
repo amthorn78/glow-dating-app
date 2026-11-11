@@ -7,6 +7,8 @@
   back.
 - **The account row first:** every writer locks the actor's ``AppAccount`` row ``FOR UPDATE``
   before anything else, so a requirement's writer and a completion check cannot interleave.
+  ``lock_account`` refuses an account that is not ``active``; only F05's purge and the store's
+  deletion acknowledgment take the row in any state (``lock_account_any_state``; DM-58 item 9).
 - **The time** is ``clock_timestamp()`` read after the locks.
 - **A refusal** names a contract error code and an internal reason, both codes, never a value. A
   deadlock or any other database error becomes a result, by type only; nothing is retried.
@@ -166,6 +168,20 @@ def lock_account(tx: Tx, account_id: UUID) -> Any:
     signal(tx.probe, "after_first_lock")
     if account.state != "active":
         raise Refused(FORBIDDEN, "account_not_active")
+    return account
+
+
+def lock_account_any_state(tx: Tx, account_id: UUID) -> Any:
+    """The photo owner's account row, ``FOR UPDATE``, first, in any account state: only for F05's
+    purge and the store's deletion acknowledgment, which only reduce what Glow holds (D10;
+    DM-58 item 9), so a photo removed before its owner is suspended or asks for deletion is
+    still purged. An absent row is a refusal, as for ``lock_account``; ``glow_chat``'s account
+    revocation takes the same row ``FOR UPDATE``, so the two still serialize. Every other step
+    keeps ``lock_account`` or ``read_account_shared``."""
+    account = AppAccount.objects.select_for_update().filter(pk=account_id).first()
+    if account is None:
+        raise Refused(NOT_FOUND, "account_missing")
+    signal(tx.probe, "after_first_lock")
     return account
 
 
