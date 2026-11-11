@@ -247,4 +247,5 @@ Each stage's prompt asks for:
 
 - **DM-60** (11 November 2026; [consultation](../ephemeral/2026-11-11-dm-60-sv3-brief.md), at `674e00e`): revision 1 to the Dev Manager.
 - **DM-60 answered** (11 November; [report](../continuity/dev-manager/reviews/2026-11-11-dm-60-sv3-brief.md), at `777a6ad`, a read of `674e00e`): approved with Q1 to Q20 in given words, nothing referred to Nathan. Revision 2 applies them (merge `72791a7`).
-- **Stage A's implementation prompt** ([prompt](../ephemeral/2026-11-11-sv3-stage-a-implementation-prompt.md)), revision 1: given to Nathan with this batch.
+- **Stage A's implementation prompt** ([prompt](../ephemeral/2026-11-11-sv3-stage-a-implementation-prompt.md)), revision 1, from `aa9ed70`; TypeSafe's reading in its header.
+- **Stage A built** (11 November; session `session_01Q789u3fkmYbVMk8LUNFAjc`, branch `claude/loving-maxwell-cqu7eq`): code head `ad9ff08`, records `4dee875`. Its code head's push run 43096394432 was never dispatched by GitHub (the record's diagnostic), so no run of record exists yet. The manager verified it and integrated it by fast-forward (the record, "Manager verification of Stage A"); the pull-request run on the manager branch's head is the run of record (step 5).

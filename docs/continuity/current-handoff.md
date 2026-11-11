@@ -10,22 +10,22 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49), profiles and media: [the brief](../planning/sv2-profiles-media.md), revision 8 (DM-52 to DM-59; [OD-61](owner-directions.md), [OD-62](owner-directions.md)). Stage A merged with [PR43](https://github.com/amthorn78/glow-dating-app/pull/43) at `4dc2061` (10 November 2026), Stage B with [PR44](https://github.com/amthorn78/glow-dating-app/pull/44) at `3240ef0` (11 November 2026); both merge receipts are in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 2, applies [DM-60](../continuity/dev-manager/reviews/2026-11-11-dm-60-sv3-brief.md)'s Q1 to Q20 (merge `72791a7`). [Stage A's prompt](../ephemeral/2026-11-11-sv3-stage-a-implementation-prompt.md), revision 1, is with Nathan; Stage B follows after Stage A merges.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 2 (DM-60's Q1 to Q20). Stage A is built, verified and integrated (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)); its PR's run is the run of record, since GitHub never dispatched the code head's push run. Stage B follows after Stage A merges.
 - **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror (15:03 to 15:53 UTC). DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-59, with "Deferred conditions"; the next consultation confirms DM-59's L1 to L7 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (11 November 2026, 19:12 UTC, App Manager 11)
+## Waiting checkpoint (11 November 2026, 22:38 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | Nathan, then SV3 Stage A's implementation session | The session's report (a relay), from the prompt given at this commit | Nothing else starts (OD-29); App Manager 11 verifies the branch when the report arrives |
+| App Manager 11 | GitHub Actions and Codex | Stage A's PR run on the manager branch's head, and Codex's review of it | No review prompt goes to Nathan; a Codex pass running 60 minutes with no result gets one `@codex review` (OD-53); a run that is never dispatched goes to the Dev Manager first (OD-58) |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): receive Stage A's report and verify it against the pushed branch; then Stage A's PR from the manager branch, Codex, the exact-head review with its threat model, the Dev Manager's pre-merge read, and the merge. Stage B's prompt only after that. The next consultation confirms DM-60's Q1 to Q20.
+1. **SV3** (OD-49): Stage A's PR run and Codex's review; then the exact-head code and security review prompt with its threat model (V1 and V2 in its focus), the Dev Manager's pre-merge read (the CI policy's paragraph, the rewritten texts, V1, and the session's two procedure gaps), and the merge. Stage B's prompt only after that. The next consultation confirms DM-60's Q1 to Q20.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 

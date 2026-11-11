@@ -251,3 +251,48 @@ Read with the GitHub tools (read only) and GitHub's public status feed, 21:12 to
 - **Seeds in setup** (test data, as SV2's suite seeds): the chart and identity rows, directional interactions and matches (consumption is read, not written, in Stage A), a lagging age state or consent row, profile states no member route reaches (`removed`, back to `visible`), an account back to `active` after suspension or deletion, a batch's expiry in the past, and the plans' population.
 - **The commit message of `ad9ff08`** says the suite has 31 cases; it has 32 (the constraints case was added, and the commit amended, before the push). The record and the pinned count are 32.
 - **Not run here:** the mobile app's export and rendered checks, and `playwright install` (CI's, and CI has run none of its checks on Stage A's code: "The run of record"); any provider, HDE, Stream or Railway call; `proofs/stream-chat`. Stage B's checks 7 to 11 and the concurrency cases DB05 and DB10's action half are Stage B's.
+
+## Manager verification of Stage A
+
+- **Who and when:** App Manager 11, 11 November 2026, from 22:29 UTC (the clock at its first command) to 22:38 UTC, on the session's branch `claude/loving-maxwell-cqu7eq` at `4dee875` (code head `ad9ff08`; records `1128bf7`, `3b8185f`, `4dee875`), integrated into the manager branch by fast-forward (`aa9ed70` to `4dee875`).
+- **Scope:** `git diff --stat aa9ed70 4dee875`: 45 files, 18,356 insertions and 5,127 deletions, most of both in the regenerated `validators.js`. Every path is in Stage A's owned set. `glow_api`, `glow_chat`, `glow_identity`, `glow_profiles` and `glow_domain` are unchanged; so are `glow_domain/profile_settings.py` and `glow_chat/contact.py`, which are Stage B's. `services/api/pyproject.toml` changes only mypy's `files` (adding `glow_discovery`), and `proofs/postgres-ordering/pyproject.toml` only gains a mypy override for `glow_discovery`. The model change is `RecommendationBatch.collection`, with its check and the one-batch-per-collection unique constraint, in migration `0010_batch_collection`. The registry change is F07's added `CandidateCardPage` response with its `owner` projection; no existing entry or DTO changes.
+- **Classification:** full scope (code, a migration, a contract change, a workflow change and the proof).
+- **The workflow diff, read whole:** only the Database proof checks job's steps change.
+  - The credentials step adds the fourth marker and `SECRET_KEY`, both masked, the distinctness check over all four markers, the database and its passfile line, and the discovery JWT key, written by Python straight to a 0600 file.
+  - The role step's name and echo count four databases.
+  - Three new steps follow the profile suite: the other three markers refused on the new database, then the migrations from zero and `makemigrations --check --dry-run`; the suite, timed, with its own scan before any output is shown; and a second run's refusal with six row counts unchanged.
+  - The upload of `sv3-discovery-results` runs only when the scan passed.
+  - The job's timeout is unchanged (30 minutes). No other job, trigger or permission changes.
+- **Re-run here,** in a clean worktree of `4dee875`, in clean process environments:
+
+| Check | Result |
+|---|---|
+| API (`GLOW_ENV=test`): `manage.py check`; `manage.py test tests` | no issues; 583 tests, OK |
+| API: ruff, format, mypy, static check, smoke | clean; 156 files formatted; mypy no issues in 92 files; the static check's limits line; smoke `PASS` |
+| Contracts: `npm run check` | "Generated types and runtime validators match schemas"; 763/763 |
+| Contracts: Python tests | 50, OK |
+| Mobile: `npm run check` | 691/691 |
+| Proof: `pip check`; offline tests; ruff; format; mypy | no broken requirements; 248, OK; clean; 66 files formatted; no issues in 66 files |
+| The worktree after every check | clean (`git status` empty) |
+
+  The contracts' corpus test first failed here with `Cannot find module 'ajv/dist/runtime/ucs2length'`: it loads the mobile app's generated validators, which need `apps/mobile`'s packages. After `npm ci --ignore-scripts` in `apps/mobile` it passed. That was this verification's setup, not the code.
+- **Reversals re-run here** (offline, each restored and the tree clean afterwards):
+  - the cursor's MAC without the collection: `KeyTests.test_a_cursor_is_bound_to_its_viewer_collection_batch_and_offset` fails;
+  - the card ignoring a field's `shown` flag: `ContractTests.test_the_card_shows_only_what_display_allows` fails.
+
+  The database reversals were not re-run: this container's Docker daemon is not running. CI's run on the PR is their check.
+- **The code, read against the brief:**
+  - `predicates.py` is one source for the selection, each page's recheck and the adapter's pair read. Each predicate holds for both members, fails closed (`IS TRUE`), and checks blocks in both directions. Distance applies in the viewer's direction only, a choice the setting does not offer fails, and nothing selects a birth date, a coordinate, an area ID or a distance.
+  - The selection and the recheck are each one statement (D2, Q1). A page with a cursor writes nothing.
+  - The batch's policy version is made of the five settings the selection reads, in name order (Q3).
+  - The cursor's MAC covers the viewer, the collection, the batch and the offset, and every stale cause gives one `stale_version` response (Q4). Creating a batch deletes the viewer's earlier batch of that collection (Q5's bound).
+  - The card goes through `profile_fields.displayed` and never carries a set, a filter, an area ID or a distance (Q12).
+- **The session's findings, dispositioned:**
+  - `D3.candidate_adult` not failing: accepted. ADULT is enforced twice for a candidate, because a state outside the accepted set has no date and so no age. When P09.2 adds an accepted state with a date, the candidate-side reversal becomes observable and is run again (carried with Q18).
+  - The other design details in its "Findings" (one band from the fixture, no snapshot written, resurfacing not applied in Stage A, a 403 for an ineligible viewer, one stale body, the card's repeated `profile_id`) are within the brief.
+  - The commit message's "31 cases" for 32: a nit; the record and the pinned count say 32.
+- **For the exact-head review, and the Dev Manager's pre-merge read:**
+  - **V1, the tie-break's key in SQL parameters.** The selection computes the keyed tie-break in SQL (`predicates.TIE_BREAK`), with the HMAC key's inner and outer pads passed as statement parameters (`keys.sql_pads`). The pads are the derived tie-break key itself, XORed with constants. A server that logs statement parameters would record them, for example PostgreSQL's `log_min_duration_statement` or Django's query log under `DEBUG`. Anyone holding them could compute the order, the band leak Q2 closes. The derived key is `sha256(salt + SECRET_KEY)`, which does not reveal `SECRET_KEY`. The review checks whether any logging path records them, and the Dev Manager rules on whether this is acceptable or needs a different key (for example a per-batch random salt kept in the batch row and never returned).
+  - **V2, statements per page.** 222 to 224 statements per page request, mostly SV2's `delivery_reference`, run once per photo after the page's transaction (four statements a photo; at most 50 cards and the media policy's live photos). The count is bounded, as D7 requires, and DB11 measures it in P11. A nit, for the review to weigh.
+- **The run of record:** none yet. Run 43096394432 on `ad9ff08` is still `queued` with no jobs (read between 22:29 and 22:38 UTC), and run 43100390225 on `1128bf7` checked no code (above). Under the manager workflow's step 5 ("Push runs as evidence"), the run of record is the pull-request run on the manager branch's head. That head's non-Markdown paths are byte-identical to `ad9ff08`'s. No re-run is asked of anyone (OD-58).
+- **The session's process notes:** it pushed `1128bf7` before the code run finished, at Nathan's word, on two wrong statements of its own, and offered Nathan a re-run. All are recorded above by the session. The two procedure gaps it names go to the Dev Manager with the pre-merge read: Foundation has no `workflow_dispatch` trigger, and a Markdown-only push certifies no code.
