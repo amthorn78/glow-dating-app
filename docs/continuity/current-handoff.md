@@ -1,4 +1,4 @@
-# Current handoff — App Manager 10 (11 November 2026; SV2 Stage B's merge)
+# Current handoff — App Manager 11 (11 November 2026; SV2 done, SV3 next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -6,32 +6,31 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager: App Manager 10**, created by App Manager 9 at Nathan's direction (OD-58), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch).
+- **Manager: App Manager 11**, created by App Manager 10 at Nathan's direction ([OD-63](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list). No PR is open: App Manager 11 opens the next item's PR from this branch. App Manager 10 pushes nothing after its handover commit.
+- **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
-- **SV1 is done:** merged with PR42 at `c864edd` (9 November 2026; [brief](../planning/sv1-identity.md); [record](../testing/evidence/2026-11-09-sv1-identity.md), with the merge receipt).
-- **The second A05 message is answered:** [OD-60](owner-directions.md), routed to the carried items and the P11 plan.
-- **Now: SV2** (OD-49), profiles and media. [The brief](../planning/sv2-profiles-media.md), revision 8 (DM-52 to DM-58; [OD-61](owner-directions.md)). Two stages, each reviewed and merged on its own. **Stage A merged** with [PR43](https://github.com/amthorn78/glow-dating-app/pull/43) at `4dc2061` (10 November 2026): built (`b97bc15`) and corrected by C1 to C3, with two exact-head reviews, C3's delta review and DM-54 to DM-56 (the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md), with the merge receipt). **Now: Stage B** (photos in R2 storage, [OD-62](owner-directions.md), and D19's pointer order; DM-57). **It is built** (code head `d8f1bad`) and verified by the manager (the evidence record), integrated by fast-forward; [PR44](https://github.com/amthorn78/glow-dating-app/pull/44) is open. [DM-58](../continuity/dev-manager/reviews/2026-11-11-dm-58-sv2-stage-b-decisions.md) ruled on five of its decisions and Codex's P2 (J1 to J9, applied), C1 (`7538c76`; an inactive owner's purge) and C2 (`5bcbe54`; tests and records) are verified and integrated. C2's delta review approved with nits. **[DM-59](../continuity/dev-manager/reviews/2026-11-11-dm-59-sv2-stage-b-pre-merge.md)**, the pre-merge read, approved the merge with L1 to L7, applied.
+- **SV2 is done** (OD-49), profiles and media: [the brief](../planning/sv2-profiles-media.md), revision 8 (DM-52 to DM-59; [OD-61](owner-directions.md), [OD-62](owner-directions.md)). Stage A merged with [PR43](https://github.com/amthorn78/glow-dating-app/pull/43) at `4dc2061` (10 November 2026), Stage B with [PR44](https://github.com/amthorn78/glow-dating-app/pull/44) at `3240ef0` (11 November 2026); both merge receipts are in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
+- **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror (15:03 to 15:53 UTC). DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
-- **The order** (OD-49): P06.2-F, P06.3, the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
-- **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3 and SV1 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
+- **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
+- **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-59, with "Deferred conditions"; the next consultation confirms DM-59's L1 to L7 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (11 November 2026, 16:57 UTC, App Manager 10)
+## Waiting checkpoint (11 November 2026, 17:12 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | GitHub's runners and Codex | This commit's PR run (three failed on the runners' package mirror, the last at 15:53 UTC) and Codex | On a repeat: record it; no commit only to start a run; the next records commit an hour later at the soonest (DM-59) |
+| Nathan | App Manager 11 | Its first report (the start procedure's "First report") | Nothing is in flight; App Manager 11 starts from Next actions |
 
-## Next actions (App Manager 10)
+## Next actions (App Manager 11)
 
-1. **The merge:** the PR run passing and Codex clean; PR44's checklist; the merge, its receipt (`main` brought in first), the prune and the cleanup.
-2. **App Manager 11** (OD-63): once PR44 is merged and only kept branches remain, the handover checklist; App Manager 10 creates it.
-3. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV2 waits on it.
-4. **After SV2:** SV3 and SV4.
+1. **SV3** (OD-49), eligibility, discovery and interactions: its brief from PF01 and the carried-items file's "Carried to SV3", after the matrix's recheck of the rows it takes (DM-37 5.1), to the Dev Manager before its prompt (DM-31 item 3). That consultation also confirms DM-59's L1 to L7.
+2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
+3. **Then SV4.**
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (`git ls-remote`, 11 November 2026, 15:41 UTC)
+## Branches and PRs (`git ls-remote`, 11 November 2026, 17:09 UTC)
 
-- **Open PRs:** PR44 (SV2 Stage B), opened at `82d246b`. `main` is at `4dc2061`.
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`4b2c03a` before this batch); `claude/sweet-ramanujan-wkn311` (`e7d6616`, Stage B's); `claude/gracious-davinci-lpqt02` (`e30ef4a`, C1's); `claude/eloquent-dijkstra-dmah71` (`9740196`, C2's); `claude/dev-manager` (`d2b46ad`, DM-59's report, merged at `75cf4fc`).
+- **Open PRs:** none. `main` is at `3240ef0` (PR44).
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`a9a4e05` when listed; fast-forwarded to `3240ef0`, then this handover commit); `claude/dev-manager` (`d2b46ad`, DM-59's report, merged at `75cf4fc`). All three are on the cleanup's keep-list; the cleanup run 43065281784 deleted Stage B's three session branches.

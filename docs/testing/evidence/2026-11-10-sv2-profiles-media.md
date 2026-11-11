@@ -1558,7 +1558,7 @@ The records push run 42949445496 on `e7d6616` passed. Change scope and the gate 
   - 5 follows the brief's check list ("approval, delivery and a removed asset's purge each ask the hold port first");
   - 7, 8, 9 and 11 to 16 are within the brief, and each is recorded above.
 
-**Codex on `82d246b`** (PR44's first head, opened at that commit): its code review completed at 03:19:45 UTC with one P2 finding, "Allow media purge to finish for inactive accounts" (`media.py`, `request_purge`). Confirmed: `request_purge` and `acknowledge_deletion` lock the owner's account row with `lock_account`, which refuses an account that is not `active`, so a photo removed before its owner is suspended or asks for deletion stays `removal_pending`, with its objects kept; delivery stays withheld. No test covers it. The fix changes the account-state gate on F05's system steps, so it goes to the Dev Manager as DM-58's item 9 ([addendum](../../ephemeral/2026-11-11-dm-58-addendum-inactive-owner-purge.md)); its thread stays open until the disposition.
+**Codex on `82d246b`** (PR44's first head, opened at that commit): its code review completed at 03:19:45 UTC with one P2 finding, "Allow media purge to finish for inactive accounts" (`media.py`, `request_purge`). Confirmed: `request_purge` and `acknowledge_deletion` lock the owner's account row with `lock_account`, which refuses an account that is not `active`, so a photo removed before its owner is suspended or asks for deletion stays `removal_pending`, with its objects kept; delivery stays withheld. No test covers it. The fix changes the account-state gate on F05's system steps, so it goes to the Dev Manager as DM-58's item 9 ([addendum](https://github.com/amthorn78/glow-dating-app/blob/3240ef0acca7983e5b60b9a111be371ed5a16b74/docs/ephemeral/2026-11-11-dm-58-addendum-inactive-owner-purge.md)); its thread stays open until the disposition.
 
 ## Stage B, correction C1
 
@@ -2035,7 +2035,7 @@ The records push run 42992446669 on `9740196` passed.
 
 - **Run 43044190450** on `9464dd8` (DM-59's commit, Markdown only): six jobs passed, the Database proof checks with the profile suite among them. **Mobile checks** failed at "Install Chromium for rendered fixture checks" (`npx playwright install --with-deps chromium`, 15:03:12 to 15:13:17 UTC): apt could not fetch nine font packages, each attempt reporting `Temporary failure resolving 'azure.archive.ubuntu.com'`, then `Failed to install browsers`. The Foundation gate failed only for that job.
 - **The diagnosis:** outside the PR. `git diff --name-only c4324d3 9464dd8 -- . ':!*.md'` prints nothing, and the same code passed all eight jobs at `c4324d3` (run 43021936005). The failure is the runner's package-mirror name resolution. The step has no retry (DM-41's covers `actions/setup-python` only).
-- **Done:** one comment on PR44 (the PR-activity rules for a PR the manager opened); no re-run, which the manager cannot perform (OD-58), and no empty commit. The explanation goes to the Dev Manager as DM-59's item 7 ([addendum](../../ephemeral/2026-11-11-dm-59-addendum-chromium-install.md); recommended: (b), the explanation accepted and a one-time retry of the step carried to the next workflow change). PR44 merges only on a passing PR run of its final head (OD-21).
+- **Done:** one comment on PR44 (the PR-activity rules for a PR the manager opened); no re-run, which the manager cannot perform (OD-58), and no empty commit. The explanation goes to the Dev Manager as DM-59's item 7 ([addendum](https://github.com/amthorn78/glow-dating-app/blob/3240ef0acca7983e5b60b9a111be371ed5a16b74/docs/ephemeral/2026-11-11-dm-59-addendum-chromium-install.md); recommended: (b), the explanation accepted and a one-time retry of the step carried to the next workflow change). PR44 merges only on a passing PR run of its final head (OD-21).
 - **Run 43046997028** on `4b2c03a` (the addendum's commit, Markdown only) failed the same way: Mobile checks' Chromium install from 15:20:05 to 15:30:16 UTC, on another runner, with the same nine packages and the same error; the other six jobs passed by 15:25, and the gate failed only for that job. The name-resolution failure lasted at least from 15:03 to 15:30 UTC. Codex's review of `4b2c03a` completed with no findings. The Dev Manager was told in DM-59's relay, which carried DM-59 and its item 7 together, read at `4b2c03a`.
 
 ### DM-59, the Dev Manager's pre-merge read
@@ -2044,4 +2044,38 @@ The records push run 42992446669 on `9740196` passed.
 - **L1 to L7,** applied by script from the report's quoted blocks in this batch: each old passage found once, each new text present once. L1 is the data model's F05 unit-of-work row ("reads" added); L2 to L4 the P11 plan's Stage B entry (C2's run of record, the earlier runs, C1's and C2's PV04 evidence and 0008's DB04 case); L5 and L6 revision 8 in the contract document and the media fixtures note; L7 "Carried to the next change to the Foundation workflow".
 - **The merge** waits on the PR run of this batch's head, the final head, passing with `Application checks passed`, and on Codex raising nothing new there. If that run's Mobile checks fail at the same step with the same name-resolution error while every other job passes, the manager records the run, makes no commit only to start a run, and makes its next records commit no sooner than an hour after the failure; any other failure goes back to the Dev Manager (DM-59 section 7).
 - **Run 43050934985** on `17e441e`, the final head, failed the same way: Mobile checks' Chromium install from 15:43:47 to 15:53:53 UTC, on another runner, with the same nine packages and the same `Temporary failure resolving 'azure.archive.ubuntu.com'`; the other six jobs passed, the Database proof checks among them, and the gate failed only for that job. Codex's review of `17e441e` completed at 15:44 UTC with no findings. Under DM-59 section 7, the run is recorded, no commit is made only to start a run, and the next records commit, this one, came no sooner than an hour after the failure; its pull-request run is the next attempt.
+
+## The merge receipt for Stage B (11 November 2026, App Manager 10)
+
+- **PR44 merged** at 17:08:51 UTC as the merge commit `3240ef0acca7983e5b60b9a111be371ed5a16b74`.
+  - Its parents are `4dc2061` (`main`) and `a9a4e05` (PR44's head).
+  - It merged by the expected-head guard (`expectedHeadSha` `a9a4e0587129a726132e24682fb6b542b841ed68`), after the pre-merge checklist in PR44's description was filled.
+  - `main`'s tree equals `a9a4e05`'s. The final head's non-Markdown paths are byte-identical to C2's code head `5bcbe54`; Stage B's application code is C1's `7538c76`.
+- **Its checks:**
+  - the trusted policy at `4dc2061` read full scope (`behavior-or-empty`, 69 paths), with one merge base, `4dc2061`;
+  - PR run 43063498285 on `a9a4e05` passed all eight jobs. The gate printed `Application checks passed`. The profile suite passed 69 of 69 in 57.6 s, its secret and value scans were clean (1,447 secrets and 813 values held), and its phase took 58 s. A second profile run was refused with the counts `129 129 100 44 1568 1009` unchanged, `sv2-profile-results` (6,365 bytes) was uploaded, and no proof container remained;
+  - push run 43063486723 on the same head passed, as a Markdown-only change against its parent;
+  - the pull-request runs on `9464dd8` (43044190450), `4b2c03a` (43046997028) and `17e441e` (43050934985), each a Markdown-only head, failed only at Mobile checks' Chromium install on the runners' package-mirror name resolution, from at least 15:03 to 15:53 UTC; their records are above, under DM-59 item 7 and section 7;
+  - Codex's code review of `a9a4e05` completed at 17:00:59 UTC with no findings. Its one thread on PR44 (`82d246b`, an inactive owner's purge) was answered by C1 and is resolved;
+  - Stage B, corrections C1 and C2, the exact-head review of `7538c76`, C2's delta review and DM-57 to DM-59 are recorded above and in the review log;
+  - PR44's governing Markdown, the manager workflow (DM-57 U11), had the Dev Manager's read at `52ae066` (DM-58 section 6); it is unchanged at `a9a4e05`, and DM-59 item 4 confirmed the read stands. DM-59's L1 to L7 were applied as written at `17e441e`.
+- **The cleanup run** 43065281784 passed and deleted Stage B's three session branches, each "merged into main":
+  - `claude/sweet-ramanujan-wkn311` (`e7d6616`, the implementation);
+  - `claude/gracious-davinci-lpqt02` (`e30ef4a`, C1);
+  - `claude/eloquent-dijkstra-dmah71` (`9740196`, C2).
+
+  It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
+- **`git ls-remote`** after it (17:09 UTC): `main` at `3240ef0`, the manager branch at `a9a4e05`, `claude/dev-manager` at `d2b46ad`, and nothing else. No PR is open. PR44's activity subscription is ended.
+- **`main`'s push run** 43065281916 on `3240ef0` was still running when this receipt was first committed; by then six of its jobs had passed, Mobile checks' Chromium install among them (24 s, the mirror reachable again).
+- **The manager branch holds `main`:** fast-forwarded to `3240ef0`, since no commit followed PR44's head, so the next PR's merge base is `3240ef0` (DM-57 item 5).
+- **Pruned:** Stage B's eleven prompts and consultations in `docs/ephemeral/`:
+  - DM-52's (it consulted on the whole brief), DM-57's, DM-58's with its addendum, and DM-59's with its addendum;
+  - the implementation prompt, C1's and C2's prompts, the exact-head review prompt and C2's delta review prompt.
+
+  Their unique content lives in the brief, this record, the review log and the Dev Manager's reports. The eighteen links to them (ten in the brief, six in the review log and two in this record) are pinned at `3240ef0`, where each file exists. Text that names a prompt's path, as this record's session headers do, stays true as history.
+- **SV2 is done.** Carried forward:
+  - in the carried-items file: to P07 and P07.1, J8 and the exact-head review's N1; to P08, J9; "Carried to the next change to SV2's profile guards and suite" (the delta review's N-a to N-d and N-f); "Carried to the next change to the Foundation workflow" (DM-59's L7, the Chromium install's retry);
+  - in the P11 plan: J2, the exact-head review's N3, N4 and N8, and Stage B's entry (L2 to L4).
+
+  To the Dev Manager's next consultation: the confirmation that DM-59's L1 to L7 are applied.
 
