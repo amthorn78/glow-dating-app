@@ -1717,3 +1717,30 @@ Every step is one `tx.run` transaction that takes the photo owner's `AppAccount`
     - no other step's account-state gate changed (`LockOrderTests`, `AccountStateTests`);
     - no provider, R2, Cloudflare or other service was called, and no credential used;
     - every new check that fails on the code at `d8f1bad` fails for item 1's reason (`BASE.the-code-at-d8f1bad`).
+
+### Manager verification of Stage B's correction C1 (App Manager 10, 11 November 2026)
+
+**The diff.** `git diff ecad10c e30ef4a` was read for its scope and its code: 10 paths, each among C1's owned paths, with the code head `7538c76` and the records commit `e30ef4a` (Markdown only).
+- **The code:** `tx.py` gains `lock_account_any_state`, `lock_account`'s first three statements without its state check, and `lock_account` is unchanged. `request_purge` and `acknowledge_deletion` call it in place of `lock_account`; the purge still asks the hold port before the store. No other lock site changed, and no model, migration, DTO, registry entry, workflow, lock file or dependency changed.
+- **Deviation 1** is the manager's mistake (AM10-19): the brief and the prompt placed the state-write guard's allowlist in `tests/test_profiles_offline.py`; it is `NOT_A_PROFILES_STATE` in `tests/test_profile_recompute.py`, which pins `media.py:128` and is not C1's. The session kept line 128 in place by shortening the module docstring, so the guard passes unchanged (`media.py:128` is still `asset.state = after`). Deviations 2 to 9 are within the brief.
+
+**Classification.** The trusted classifier from `main` (`4dc2061`; byte-identical to `main`'s `scripts/change_scope.py`), with `python3 -I` and `--base 4dc2061… --head e30ef4a… --merge-base`, after the fast-forward: full scope, `behavior-or-empty`; the PR's whole diff (63 paths); one merge base, `4dc2061`. The manager workflow is unchanged since `52ae066` (DM-58 section 6).
+
+**Re-runs.** In a scratch copy of the code head's tree (`git archive 7538c76`), in the clean environment, with hash-locked installs:
+- **API:** `System check identified no issues (0 silenced).`; `Ran 559 tests` … `OK`; Ruff `All checks passed!`; `140 files already formatted`; mypy `no issues found in 81 source files`; the contract tests `Ran 49 tests` … `OK`.
+- **The proof's offline tests:** `Ran 226 tests` … `OK`; Ruff clean; mypy `no issues found in 59 source files`.
+
+The manager runs no database test locally.
+
+**Reversals, re-run offline** (`tests.test_profiles_offline`, `tests.test_profile_media` and `tests.test_profile_recompute`, 47 tests), each restored afterwards and checked against `7538c76` by SHA-256:
+- **M4:** `lock_account` back in `request_purge`: three failures (`LockOrderTests`' two and `AccountStateTests`' hold-port test).
+- **M5:** the any-state lock given the state check: `test_the_any_state_lock_is_lock_account_without_its_state_check` fails.
+- **M6:** `review` takes the any-state lock: three failures (`LockOrderTests`' two and `test_every_other_photo_step_keeps_its_gate` for `review`).
+
+After the restore, the 47 tests pass.
+
+**The run of record,** read with the GitHub tools: push run 42957799823 on `7538c76`. All eight jobs `success`; every DM-41 retry step `skipped`. The Database proof checks job: `[profile] cases: 67/67 passed in 55.6 s`, with the three new cases passing (`a_photo_removed_before_its_owner_is_suspended_is_still_purged`, `a_purge_asked_before_its_owner_asks_for_deletion_completes`, `every_other_photo_step_refuses_an_inactive_owner`: 10 steps refused for a suspended and a deleting owner); `profile secret scan: clean (1425 secrets held; …)`, `profile value scan: clean (535 member values held …)`, `PROFILE VERDICT: PASS`, `profile phase: 56 s`; the second profile run refused (exit status 1), the counts `127 127 99 44 1550 998` unchanged; `sv2-profile-results` 6,259 bytes; `no proof container remains`. The records push run 42959433903 on `e30ef4a` passed.
+
+**Integration:** the manager branch was fast-forwarded from `ecad10c` to `e30ef4a`. Codex's P2 on `request_purge` is answered by C1 on PR44's head that holds it.
+
+**What follows:** Codex on PR44's head that holds C1 and the exact-head review's prompt, then the full exact-head review of `7538c76` with its written threat model (DM-58 sections 3 and 7), then the Dev Manager's pre-merge read.

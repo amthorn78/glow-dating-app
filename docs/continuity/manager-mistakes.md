@@ -151,6 +151,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-12 | 10 Nov 2026 | accuracy | SV2's brief, revisions 1 and 2, gave D11's additive DTOs owned paths without reading what a DTO addition writes: `generate.mjs` rewrites `apps/mobile/src/contracts/generated/`, which CI compares byte for byte and the corpus test imports, and P04.3 and C1 also registered their DTOs in `flows-v1.json`. The brief excluded `apps/**`, left out the registry, and said the mobile app's generated validators stay untouched | App Manager 10, writing Stage A's prompt |
 | AM10-13 | 10 Nov 2026 | prompt | SV2 Stage A's prompt, at `481e2f3`, had its start gate check `main`'s merge commit `c864edd` as an ancestor of the session's branch. That commit is not on the manager branch, so every session would have stopped at the gate | App Manager 10, dry-running the gate before giving Nathan the prompt |
 | AM10-14 | 10 Nov 2026 | accuracy | Verifying SV2 Stage A's correction C1 (`40db2c2`), App Manager 10 accepted C1-3 (a future birth date refused with no rerun) as a reading of DM-54's words and put only its supporting argument in the review prompt's revision 1. It did not set it against the brief's acceptance item 7, which counts "a future date" among the dates that fail, or `adult_outcome`, which fails one | Codex, its P2 finding on `40db2c2` |
+| AM10-19 | 11 Nov 2026 | accuracy | The brief's "Stage B, correction C1" and C1's prompt placed the state-write guard's allowlist in `tests/test_profiles_offline.py`, from memory; it is `NOT_A_PROFILES_STATE` in `tests/test_profile_recompute.py`, outside C1's owned paths, so the brief's rule to update it could not apply | C1's session, its deviation 1 |
 | AM10-18 | 11 Nov 2026 | follow-through | Routing Stage B's prompt, the handoff's checkpoint and branch list were written as 01:24 UTC in the same command whose clock read 01:19: AM10-17's prevention was written but not followed | App Manager 10, reading the command's clock line |
 | AM10-17 | 10 Nov 2026 | follow-through | The handoff's waiting checkpoint after PR43's receipt gave 23:57 UTC, written before the clock was read; the clock read 23:55 (AM9-04 repeated) | App Manager 10, when the commit's own clock line printed |
 | AM10-16 | 10 Nov 2026 | accuracy | Pruning SV2 Stage A's prompts, App Manager 10's link-pinning script matched link targets by file name. The Dev Manager's reports in `reviews/` share their names with the consultations, so it also pointed 16 links to the reports at the pruned consultations | App Manager 10, reading the script's word diff before the commit |
@@ -1103,6 +1104,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 10
+
+### AM10-19 — A test's location named from memory (accuracy)
+
+- **What happened:** the brief's "Stage B, correction C1 (DM-58 item 9)" and C1's prompt, revision 1, told the session that the state-write guard's allowlist was in `tests/test_profiles_offline.py`, beside `LockOrderTests`, and that a line C1 moved would update it. The allowlist is `NOT_A_PROFILES_STATE` in `tests/test_profile_recompute.py`, which pins `media.py:128` and is not one of C1's owned paths. No one checked the location against the code.
+- **Caught by:** C1's session (its deviation 1).
+- **Effect:** none in the code. The session kept the pinned line at 128 by shortening `media.py`'s module docstring, wrote nothing outside its owned paths, and the guard passes unchanged.
+- **Correction:** the manager's verification of C1 records the location; the brief's C1 section stands as history.
+- **Prevention:** a brief or prompt that names a file, a test class or a line for a session finds it in the code (`git grep`) before it is written, as a start gate's commands are dry-run.
 
 ### AM10-18 — AM10-17 repeated the next day (follow-through)
 
