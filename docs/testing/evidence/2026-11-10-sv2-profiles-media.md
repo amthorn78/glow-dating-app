@@ -2030,3 +2030,9 @@ The records push run 42992446669 on `9740196` passed.
 - the ledger holds the start of each object's bytes, as item 4 says.
 
 **What follows:** the Dev Manager's pre-merge read (DM-59: DM-58 section 7's list, C2's data-model sentence with N-e, J1 to J9 and C1 as applied, the manager workflow at `52ae066`, the carried nits and the merge); then the PR run and Codex on the final head, the checklist in PR44's description, and the merge.
+
+### PR44's pull-request run on `9464dd8`: Mobile checks failed outside the PR
+
+- **Run 43044190450** on `9464dd8` (DM-59's commit, Markdown only): six jobs passed, the Database proof checks with the profile suite among them. **Mobile checks** failed at "Install Chromium for rendered fixture checks" (`npx playwright install --with-deps chromium`, 15:03:12 to 15:13:17 UTC): apt could not fetch nine font packages, each attempt reporting `Temporary failure resolving 'azure.archive.ubuntu.com'`, then `Failed to install browsers`. The Foundation gate failed only for that job.
+- **The diagnosis:** outside the PR. `git diff --name-only c4324d3 9464dd8 -- . ':!*.md'` prints nothing, and the same code passed all eight jobs at `c4324d3` (run 43021936005). The failure is the runner's package-mirror name resolution. The step has no retry (DM-41's covers `actions/setup-python` only).
+- **Done:** one comment on PR44 (the PR-activity rules for a PR the manager opened); no re-run, which the manager cannot perform (OD-58), and no empty commit. The explanation goes to the Dev Manager as DM-59's item 7 ([addendum](../../ephemeral/2026-11-11-dm-59-addendum-chromium-install.md); recommended: (b), the explanation accepted and a one-time retry of the step carried to the next workflow change). PR44 merges only on a passing PR run of its final head (OD-21).

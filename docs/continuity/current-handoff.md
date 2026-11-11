@@ -16,11 +16,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3 and SV1 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-59 (DM-59 pending), with "Deferred conditions"; DM-59 confirms DM-58's J1 to J9 and C1 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (11 November 2026, 14:59 UTC, App Manager 10)
+## Waiting checkpoint (11 November 2026, 15:17 UTC, App Manager 10)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 10 | Codex, then Nathan, relaying DM-59 to Dev Manager 4 | Codex's review of PR44's head, which holds DM-59; then the Dev Manager's report | DM-59 goes to Nathan when Codex is clean; PR44 waits for it |
+| App Manager 10 | Codex, then Nathan, relaying DM-59 and its addendum | Codex on the addendum's commit; then the Dev Manager's report | The addendum goes to Nathan when Codex is clean; PR44 waits for it and a green final run |
 
 ## Next actions (App Manager 10)
 
