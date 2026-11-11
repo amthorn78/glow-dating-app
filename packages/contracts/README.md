@@ -199,3 +199,14 @@ map stays empty, and the sealed server routes are `services/api/glow_profiles`'s
   Regeneration rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`; `gapp-dev-v1.ts`
   is unchanged. Ajv numbers its compiled schemas in order, so a review checks the outputs by
   regenerating them, not by reading their diff.
+- **SV2 Stage B** (the brief, revision 7, D10 and D11; DM-57 U9): F05's `approve` and `reject` from
+  `review_pending` become the automated check's (`system`, still with `A05`; OD-61). They are the
+  only existing entries that change, and `test_f05_quarantine_cannot_be_published_by_uploader`
+  changes with them: the uploader and staff are now `forbidden`, the system with `A05` is
+  `allowed` and without it `policy_unresolved`, a rejection likewise, and an approval from
+  `quarantined` or `removal_pending` a `state_conflict`. `restrict_media` stays `moderator`. No entry
+  is added, since every transition Stage B's writers make is in F05 already (an upload with no
+  variant takes `review`, then `reject`), and no DTO: F05's member routes use `MediaIntent`,
+  `MediaLifecycle`, `MediaUploadGrant` and `MediaCollection` unchanged, and `MediaUploadGrant`
+  carries no credential (DM-57 U3). Regeneration changes no generated output, and the corpus is
+  unchanged.
