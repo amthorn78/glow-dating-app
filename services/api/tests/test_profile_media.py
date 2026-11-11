@@ -264,6 +264,7 @@ class FixtureTests(unittest.TestCase):
         self.assertNotIn(key, reference)
         self.assertIsNotNone(POLICY_VERSION.fullmatch(reference))
         self.assertNotIn("/", reference)
+        self.assertEqual(storage.references, {reference: key})
 
 
 def _asset(state: str, ref: str | None = "delivery-0123", version: int = 2) -> SimpleNamespace:

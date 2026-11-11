@@ -83,6 +83,8 @@ class FixtureStorage:
     credentials: dict[str, FixtureCredential] = field(default_factory=dict)
     deletions: list[str] = field(default_factory=list)
     reads: list[str] = field(default_factory=list)
+    # Each delivery reference issued, and the key it was issued for (a test reads it).
+    references: dict[str, str] = field(default_factory=dict)
     _issued: dict[UUID, md.StorageEvent] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -116,7 +118,10 @@ class FixtureStorage:
 
     def delivery_reference(self, key: str) -> str:
         # An opaque reference, never the key and never an address (P11 issues the address).
-        return "delivery-" + secrets.token_hex(16)
+        reference = "delivery-" + secrets.token_hex(16)
+        with self._lock:
+            self.references[reference] = key
+        return reference
 
     def receive(self, raw: object) -> md.StorageEvent | None:
         if not isinstance(raw, md.UploadCompleted | md.ObjectDeleted):

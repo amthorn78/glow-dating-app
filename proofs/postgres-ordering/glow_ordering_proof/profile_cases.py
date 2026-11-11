@@ -3078,6 +3078,7 @@ def media_path(ctx: ProfileContext) -> str:
     reference = lifecycle["approved_delivery_ref"]
     expect(lifecycle["state"] == "approved" and reference, "approved, with its reference")
     expect(reference not in (key, variant) and key not in reference, "never a key")
+    expect(storage.references[reference] == variant, "the reference is the variant's only")
     expect(row.review_ref is None and _asset_row(str(asset_id)).review_ref == audit.id, "review")
     delivered = media.delivery_reference(asset_id, ports=test_ports(hold=hold))
     expect(delivered.detail["delivery_ref"] == reference, "delivery returns the variant's")
