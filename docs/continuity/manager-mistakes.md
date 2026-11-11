@@ -165,6 +165,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-04 | 11 Nov 2026 | follow-through | The batch at `d35b0ba` pushed the handoff at 5,198 bytes, over its 5 KB limit, with its "Branches and PRs" section still at App Manager 10's handover (17:09 UTC); both corrected in the next commit, before Stage A's PR was opened, which cancelled the push run on `d35b0ba` (not a run of record) | App Manager 11, reading the commit's byte count |
 | AM11-05 | 11 Nov 2026 | follow-through | After opening PR45 at 22:39 UTC, told Nathan "NOTHING NEEDED" and set nothing to wake the manager when the run and Codex finished (22:47 and 22:42); the review prompt waited until Nathan asked at 23:37. A repeat of AM7-09 | Nathan: "still waiting?" |
 | AM11-06 | 11 Nov 2026 | accuracy | The review prompt's first TypeSafe action text counted its numbered items as sixteen; there are twenty. Caught before the reading was used; re-sent with the true count, the same cell, both readings recorded | App Manager 11, comparing the text with the prompt |
+| AM11-07 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `b09cbf3` gave 23:41 UTC, written before the clock was read (it read 23:40): AM11-03 repeated within the hour. The time now comes from the clock inside the same command that writes it | App Manager 11, reading the commit's clock line |
 
 ## App Manager 2
 

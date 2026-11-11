@@ -17,7 +17,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-59, with "Deferred conditions"; the next consultation confirms DM-59's L1 to L7 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (11 November 2026, 23:41 UTC, App Manager 11)
+## Waiting checkpoint (11 November 2026, 23:40 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
