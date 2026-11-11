@@ -13,6 +13,23 @@ content against the setting's closed schema and the fixed limits in code
 moves the pointer, writes a ``StaffAudit`` row and emits ``policy_published``. A refusal names
 the limit it crosses and writes nothing. A change applies from then on: no member's data is
 rewritten.
+
+**One pointer order** (the brief's D19; DM-56 V5; DM-57 U8). Every transaction locks settings
+pointers in name order: it never locks a pointer whose name sorts before one it already holds,
+unless it already holds that pointer. This module is the only code that locks a ``PolicyRevision``
+row (``read_shared``'s ``FOR SHARE`` and ``publish``'s ``FOR UPDATE``), and it records each
+transaction's held pointers on its ``Tx``, the publication's own included, before any further
+read. A lock out of order raises ``PointerOrderError``: a programming error, never a member's
+refusal, so ``tx.run`` rolls the transaction back and answers it as any unexpected exception
+(``provider_unavailable``, retryable, with the error's type as the internal reason). Members take
+their account row first and then pointers in this order; publications take pointers only, in
+this order, and never an account row; so no wait cycle can form whatever PostgreSQL's queueing
+does. SV2's member and staff transactions meet the rule by taking all their pointers in their
+first ``read_shared`` call; a pointer read again later in the same transaction, as the recompute
+rereads ``consent.onboarding``, is already held and waits for nothing.
+
+A setting's earlier version is read by its label with ``version_content`` (no lock: versions are
+append-only), as the media completion checks the byte limit of the version its grant records.
 """
 
 from __future__ import annotations
@@ -49,6 +66,25 @@ class Setting:
     pointer_id: UUID
 
 
+class PointerOrderError(RuntimeError):
+    """D19: a settings pointer locked out of name order. A programming error, never a refusal:
+    it is not ``Refused``, so ``tx.run`` rolls the transaction back and answers it as an internal
+    error (``provider_unavailable``), never as a member's refusal. Its message is a code."""
+
+    def __init__(self) -> None:
+        super().__init__("pointer_out_of_order")
+
+
+def _hold(tx: Tx, name: str) -> None:
+    """Records ``name`` as held by ``tx`` before its lock is taken, and refuses (D19) a pointer
+    that sorts before one the transaction already holds unless it already holds that one."""
+    if name in tx.pointers:
+        return
+    if any(held > name for held in tx.pointers):
+        raise PointerOrderError()
+    tx.pointers.append(name)
+
+
 def _setting(name: str, pointer_id: UUID, policy_version: str, artifact_ref: UUID) -> Setting:
     row = SettingVersion.objects.filter(pk=artifact_ref, name=name).first()
     if row is None:
@@ -61,9 +97,11 @@ def _setting(name: str, pointer_id: UUID, policy_version: str, artifact_ref: UUI
 def read_shared(tx: Tx, names: Iterable[str]) -> dict[str, Setting]:
     """The current version of each setting, its pointer locked ``FOR SHARE``, in name order (the
     data model: "Policy pointer is transactionally locked alongside actions"). A setting with no
-    pointer is ``policy_unresolved``: no permissive default."""
+    pointer is ``policy_unresolved``: no permissive default. Each lock is checked against the
+    transaction's held pointers first (D19)."""
     found: dict[str, Setting] = {}
     for name in sorted(set(names)):
+        _hold(tx, name)
         tx.cursor.execute(
             "SELECT id, policy_version, artifact_ref FROM glow_persistence_policyrevision"
             " WHERE name = %s FOR SHARE",
@@ -82,6 +120,17 @@ def read_unlocked(name: str) -> Setting:
     if pointer is None:
         raise Refused(POLICY_UNRESOLVED, "setting_unresolved")
     return _setting(name, pointer.id, str(pointer.policy_version), pointer.artifact_ref)
+
+
+def version_content(name: str, policy_version: str) -> dict[str, Any]:
+    """The content of one recorded version of ``name``, by its label, with no lock: setting
+    versions are append-only, so a version once written never changes (D10: a media completion is
+    checked against the version its grant records, not the current one)."""
+    for row in SettingVersion.objects.filter(name=name).order_by("number"):
+        if ps.policy_version(name, int(row.number)) == policy_version:
+            content: dict[str, Any] = row.content
+            return content
+    raise Refused(POLICY_UNRESOLVED, "setting_version_missing")
 
 
 def history(name: str) -> list[dict[str, Any]]:
@@ -115,6 +164,10 @@ def publish(
         return Result("refused", INVALID_REQUEST, "staff_subject_or_reason")
 
     def body(tx: Tx) -> Result:
+        # D19 (DM-57 U8): the publication's own pointer is recorded as held before its lock and
+        # before any pointer it reads (``chat.history``'s ``consent.onboarding``, which sorts
+        # after it).
+        _hold(tx, name)
         pointer = PolicyRevision.objects.select_for_update().filter(name=name).first()
         if pointer is None:
             raise Refused(POLICY_UNRESOLVED, "setting_unresolved")

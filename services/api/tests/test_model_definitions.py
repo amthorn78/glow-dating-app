@@ -45,8 +45,8 @@ assert loader.connection is None
 assert not loader.applied_migrations
 # P02's 32, P06.2's two, SV1's age state (migration 0004), and SV2 Stage A's five (0005: the
 # settings' versions, the area table, the field choices, the "show me" sets and the identity
-# verification record).
-assert len([key for key in state.models if key[0] == 'glow_persistence']) == 40
+# verification record), and SV2 Stage B's two (0008: a photo's objects and its upload grant).
+assert len([key for key in state.models if key[0] == 'glow_persistence']) == 42
 assert connections['default'].connection is None
 """)
 
@@ -315,8 +315,9 @@ for name, previous in (('0006_area_table', '0005_profiles_settings'),
     assert data.dependencies == [('glow_persistence', previous)], name
     assert [type(op) for op in data.operations] == [RunPython], name
     assert data.operations[0].reversible, name
+# SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007).
 leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0007_settings_launch_defaults')], leaves
+assert leaves == [('glow_persistence', '0009_media_policy_seed')], leaves
 migrations = Path.cwd() / 'glow_persistence' / 'migrations'
 for name in ('0005_profiles_settings', '0006_area_table', '0007_settings_launch_defaults'):
     source = (migrations / f'{name}.py').read_text()
@@ -330,8 +331,104 @@ spec = importlib.util.spec_from_file_location(
     'seed_0007', migrations / '0007_settings_launch_defaults.py')
 seed = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(seed)
-assert seed.SEED == ps.LAUNCH_DEFAULTS
-assert set(seed.SEED) == set(ps.ALL_SETTINGS)
+# Stage B seeds the media policy in 0009, so 0007 holds every setting but that one.
+assert seed.SEED == {name: ps.LAUNCH_DEFAULTS[name] for name in ps.SEEDED_BY_0007}
+assert set(seed.SEED) == set(ps.ALL_SETTINGS) - {ps.MEDIA_POLICY}
+""")
+
+    def test_sv2_stage_b_migrations_follow_0007(self):
+        # SV2 Stage B (its brief's D2 and D10; DM-57 U10): 0008 adds the photo's objects, its upload
+        # grant and the asset's revocation records; 0009 seeds the media policy's version 1 with the
+        # reason development-media-1, since 0007's seed never changes after it is applied. Each is
+        # pinned as generated and recorded; 0001 to 0007 are unchanged (above).
+        import hashlib
+
+        migrations = API_ROOT / "glow_persistence" / "migrations"
+        pinned = {
+            "0008_media_lifecycle.py": (
+                "6d91f4fb1763f801cb59ab59ffe806770a4e6e29bd8f333dd44a9a29c8e63b66"
+            ),
+            "0009_media_policy_seed.py": (
+                "1533f2eb55b77488da691324fe442a8aff74bdc293cf984aaddb7e1be15d55a9"
+            ),
+        }
+        for name, digest in pinned.items():
+            with self.subTest(migration=name):
+                content = (migrations / name).read_bytes()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), digest)
+        self.check_script("""
+from django.db.migrations.operations.models import CreateModel
+from django.db.migrations.operations.special import RunPython
+loader = MigrationLoader(None)
+schema = loader.disk_migrations[('glow_persistence', '0008_media_lifecycle')]
+assert schema.dependencies == [('glow_persistence', '0007_settings_launch_defaults')]
+assert sorted(op.name for op in schema.operations if isinstance(op, CreateModel)) == [
+    'MediaObject', 'MediaUploadGrant']
+added = sorted((op.model_name, op.name) for op in schema.operations
+    if type(op).__name__ == 'AddField')
+assert added == [
+    ('mediaasset', 'detection'), ('mediaasset', 'purge_requested_at'),
+    ('mediaasset', 'rejection_reason'), ('mediaasset', 'removal_requested_at'),
+    ('mediaasset', 'restriction_ref'), ('mediaobject', 'asset'),
+    ('mediauploadgrant', 'account'), ('mediauploadgrant', 'asset'),
+], added
+assert {type(op).__name__ for op in schema.operations} == {
+    'CreateModel', 'AddField', 'AddConstraint'}
+data = loader.disk_migrations[('glow_persistence', '0009_media_policy_seed')]
+assert data.dependencies == [('glow_persistence', '0008_media_lifecycle')]
+assert [type(op) for op in data.operations] == [RunPython]
+assert data.operations[0].reversible
+migrations = Path.cwd() / 'glow_persistence' / 'migrations'
+for name in ('0008_media_lifecycle', '0009_media_policy_seed'):
+    source = (migrations / f'{name}.py').read_text()
+    assert 'RunSQL' not in source, name
+    for word in ('urllib', 'requests', 'http.client', 'socket', 'urlopen', 'boto', 's3'):
+        assert word not in source, (name, word)
+import importlib.util
+from glow_domain import profile_settings as ps
+spec = importlib.util.spec_from_file_location(
+    'seed_0009', migrations / '0009_media_policy_seed.py')
+seed = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(seed)
+assert seed.NAME == ps.MEDIA_POLICY
+assert seed.SEED == ps.LAUNCH_DEFAULTS[ps.MEDIA_POLICY]
+assert seed.REASON == ps.LAUNCH_REASONS[ps.MEDIA_POLICY] == 'development-media-1'
+assert seed.LAUNCH_SUBJECT == ps.LAUNCH_SUBJECT
+assert 'OutboxEvent' not in (migrations / '0009_media_policy_seed.py').read_text()
+""")
+
+    def test_sv2_stage_b_models_hold_only_what_d10_needs(self):
+        self.check_script("""
+def constraints(model):
+    return {c.name for c in model._meta.constraints}
+def names(model):
+    return {f.name for f in model._meta.get_fields()}
+
+asset = m.MediaAsset._meta
+assert {'detection', 'rejection_reason', 'restriction_ref', 'removal_requested_at',
+    'purge_requested_at'} <= names(m.MediaAsset)
+assert {'media_delivery_only_approved', 'media_approved_unrevoked', 'media_removal_record',
+    'media_seam_passed', 'media_approval_evidence', 'media_current_order'} <= constraints(
+    m.MediaAsset)
+objects = m.MediaObject._meta
+assert names(m.MediaObject) == {'id', 'created_at', 'updated_at', 'version', 'asset', 'role',
+    'key', 'byte_size', 'entity_tag', 'adopted_at', 'deleted_at'}, names(m.MediaObject)
+assert objects.get_field('key').unique
+assert objects.get_field('asset').remote_field.on_delete is models.CASCADE
+assert {'media_object_role', 'media_object_opaque_key', 'media_object_adoption_evidence',
+    'media_one_original'} <= constraints(m.MediaObject)
+grant = m.MediaUploadGrant._meta
+assert names(m.MediaUploadGrant) == {'id', 'created_at', 'updated_at', 'version', 'account',
+    'asset', 'grant_ref', 'object_key', 'policy_version', 'issued_at', 'expires_at', 'used_at'}
+assert grant.get_field('asset').one_to_one
+assert grant.get_field('grant_ref').unique and grant.get_field('object_key').unique
+assert {'media_grant_expiry', 'media_grant_used_in_time', 'media_grant_opaque_key'} <= (
+    constraints(m.MediaUploadGrant))
+# No byte, filename, address or credential column: keys and references only (D10).
+for model in (m.MediaAsset, m.MediaObject, m.MediaUploadGrant):
+    for field in names(model):
+        for word in ('filename', 'url', 'address', 'credential', 'secret', 'token', 'bytes_'):
+            assert word not in field, (model, field)
 """)
 
     def test_sv2_stage_a_models_hold_only_what_d2_to_d9_and_d18_need(self):

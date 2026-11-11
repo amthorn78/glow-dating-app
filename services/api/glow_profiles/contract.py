@@ -22,7 +22,7 @@ import math
 import re
 import uuid
 from collections.abc import Callable
-from datetime import date
+from datetime import UTC, date
 from typing import Any
 
 from glow_domain import profile_fields as pf
@@ -234,6 +234,32 @@ def _preferences_intent(value: Any, at: str) -> None:
         raise Invalid(f"{at}.selections")
 
 
+MEDIA_ACTIONS = ("request_upload", "remove", "reorder")
+MEDIA_ENTRIES = 20
+
+
+def _media_intent(value: Any, at: str) -> None:
+    """F05's owner command (``MediaIntent``): a new upload, a removal of one asset, or the order
+    of the current approved set; each action's ``asset_id`` and ``ordered_asset_ids`` as the
+    contract's conditions give them."""
+    closed(
+        {
+            "operation": const("media"),
+            "meta": COMMAND_META,
+            "asset_id": nullable(uuid_text),
+            "action": enum(*MEDIA_ACTIONS),
+            "ordered_asset_ids": array(uuid_text, max_items=MEDIA_ENTRIES, unique=True),
+        }
+    )(value, at)
+    action, asset, ordered = value["action"], value["asset_id"], value["ordered_asset_ids"]
+    if action == "request_upload" and (asset is not None or ordered):
+        raise Invalid(f"{at}.asset_id")
+    if action == "remove" and (asset is None or ordered):
+        raise Invalid(f"{at}.asset_id")
+    if action == "reorder" and (asset is not None or not ordered):
+        raise Invalid(f"{at}.ordered_asset_ids")
+
+
 REQUESTS: dict[str, Checker] = {
     "ProfileIntent": closed(
         {
@@ -283,6 +309,7 @@ REQUESTS: dict[str, Checker] = {
     "AdultCheckIntent": closed(
         {"operation": const("adult_check"), "meta": COMMAND_META, "birth_date": date_text}
     ),
+    "MediaIntent": _media_intent,
 }
 
 
@@ -338,7 +365,7 @@ def error(code: str, request_id: str, *, retryable: bool = False) -> dict[str, A
     }
 
 
-def own_profile(profile: Any) -> dict[str, Any]:
+def own_profile(profile: Any, media_ids: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
     return {
         "kind": "own_profile",
         "profile_id": str(profile.id),
@@ -346,8 +373,8 @@ def own_profile(profile: Any) -> dict[str, Any]:
         "display_name": profile.display_name,
         "summary": profile.bio,
         "visibility": profile.state,
-        # Stage B adds the approved photos.
-        "media_ids": [],
+        # SV2 Stage B: the owner's approved photos, in their order (never another state's).
+        "media_ids": list(media_ids),
     }
 
 
@@ -519,4 +546,45 @@ def own_birth_input(row: Any, mapping: Any) -> dict[str, Any]:
         },
         "resolution": row.state,
         "mapping_version": int(mapping.version) if mapped else None,
+    }
+
+
+# -- photos (F05; D10, D17): the owner's own assets only -------------------------------------
+
+
+def instant(value: Any) -> str:
+    """The contract's ``Instant``: UTC, whole seconds (a fraction is dropped, never rounded up,
+    so a grant's stated expiry is never later than Glow's own record)."""
+    return str(value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+
+def media_lifecycle(asset: Any) -> dict[str, Any]:
+    # D10: only an approved variant's delivery reference, and only while approved; never an
+    # object key, an original's reference or another member's asset.
+    approved = asset.state == "approved"
+    return {
+        "kind": "media",
+        "asset_id": str(asset.id),
+        "version": int(asset.version),
+        "state": asset.state,
+        "approved_delivery_ref": asset.approved_variant_ref if approved else None,
+    }
+
+
+def media_collection(version: int, assets: list[Any]) -> dict[str, Any]:
+    return {
+        "kind": "media_collection",
+        "version": int(version),
+        "items": [media_lifecycle(asset) for asset in assets],
+    }
+
+
+def media_upload_grant(grant: Any) -> dict[str, Any]:
+    # DM-57 U3: ``MediaUploadGrant`` unchanged. ``grant_ref`` is the grant's opaque reference,
+    # whose pattern cannot hold an address; the store's credential goes to no member in SV2.
+    return {
+        "kind": "media_upload_grant",
+        "asset_id": str(grant.asset_id),
+        "grant_ref": grant.grant_ref,
+        "expires_at": instant(grant.expires_at),
     }

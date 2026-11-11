@@ -92,6 +92,9 @@ class Tx:
     trace: Trace
     probe: TransactionProbe | None
     events: list[UUID] = field(default_factory=list)
+    # D19: the settings pointers this transaction holds, in the order it locked them. Only
+    # ``settings_store`` records and checks them.
+    pointers: list[str] = field(default_factory=list)
 
 
 def caller_transaction_open() -> bool:

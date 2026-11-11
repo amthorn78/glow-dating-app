@@ -88,8 +88,14 @@ class LaunchDefaultTests(unittest.TestCase):
         self.assertTrue(all(history[cause] == "read_only" for cause in ps.HISTORY_CAUSES))
         self.assertEqual(ps.LAUNCH_DEFAULTS[ps.STAFF_APPROVAL]["enabled"], False)
         self.assertEqual(ps.LAUNCH_REASONS[ps.STAFF_APPROVAL], "OD-61")
+        # SV2 Stage B (DM-57 U10): the media policy's seed reason is development-media-1.
+        self.assertEqual(ps.LAUNCH_REASONS[ps.MEDIA_POLICY], "development-media-1")
         self.assertEqual(
-            {ps.LAUNCH_REASONS[name] for name in ps.ALL_SETTINGS if name != ps.STAFF_APPROVAL},
+            {
+                ps.LAUNCH_REASONS[name]
+                for name in ps.ALL_SETTINGS
+                if name not in (ps.STAFF_APPROVAL, ps.MEDIA_POLICY)
+            },
             {"OD-60"},
         )
 
@@ -104,8 +110,11 @@ class LaunchDefaultTests(unittest.TestCase):
 
     def test_the_seed_migration_holds_the_same_content(self) -> None:
         seed = seed_module()
-        self.assertEqual(seed.SEED, {name: ps.LAUNCH_DEFAULTS[name] for name in ps.ALL_SETTINGS})
-        self.assertEqual(seed.REASONS, ps.LAUNCH_REASONS)
+        # SV2 Stage B: 0007 holds every setting but the media policy, which 0009 seeds.
+        self.assertEqual(seed.SEED, {name: ps.LAUNCH_DEFAULTS[name] for name in ps.SEEDED_BY_0007})
+        self.assertEqual(
+            seed.REASONS, {name: ps.LAUNCH_REASONS[name] for name in ps.SEEDED_BY_0007}
+        )
         self.assertEqual(seed.LAUNCH_SUBJECT, ps.LAUNCH_SUBJECT)
         tree = ast.parse(SEED_MIGRATION.read_text(encoding="utf-8"))
         names = {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}

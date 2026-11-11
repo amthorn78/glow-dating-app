@@ -40,6 +40,9 @@ PROFILE_ROUTES = {
     "api/v1/eligibility/adult",
     "api/v1/birth-input",
     "api/v1/birth-input/<uuid:input_id>",
+    # SV2 Stage B: F05's member routes (D10, D11), with its existing DTOs.
+    "api/v1/media",
+    "api/v1/media/<uuid:asset_id>",
 }
 
 # The member operations (commands take the account row lock; reads take it shared) and the staff
@@ -57,7 +60,20 @@ COMMANDS = {
     "set_visibility",
 }
 READS = {"read", "nearest_area"}
-STAFF = {"approve_without_id", "revoke_approval", "restrict_profile"}
+STAFF = {"approve_without_id", "revoke_approval", "restrict_profile", "restrict_media"}
+# SV2 Stage B (D10): the photo writers and reads in ``media.py``; each locks the photo owner's
+# account row first, or holds it shared for a read.
+MEDIA_COMMANDS = {
+    "request_upload",
+    "remove_photo",
+    "reorder_photos",
+    "record_upload",
+    "acknowledge_deletion",
+    "review",
+    "run_check",
+    "request_purge",
+}
+MEDIA_READS = {"delivery_reference"}
 
 # A refusal reason is a code. Its only interpolations are other closed codes: glow_chat's result
 # reason and outcome, a field rule's refusal, the age transition's refusal and the adult outcome;
@@ -96,6 +112,15 @@ LOG_METHODS = {"debug", "info", "warning", "warn", "error", "exception", "critic
 STREAMS = {"stdout", "stderr", "__stdout__", "__stderr__"}
 # Modules that would print a value past the logging guard.
 STREAM_MODULES = {"warnings", "traceback", "faulthandler", "pprint"}
+# SV2 Stage B (the delta review's N4): every call that opens or writes a file the module opens
+# itself, and the one the scanned modules hold: the area table's derivation step, a command run by
+# hand, writing the derived table to the new file named on its command line (``xb``).
+FILE_CALLS = {"open", "fdopen", "write_text", "write_bytes", "touch", "mkdir", "symlink_to"}
+FILE_WRITES = {"write", "writelines"}
+DERIVATION_WRITES = {
+    ("glow_profiles/areas_source.py", "main", "open(target, 'xb')"),
+    ("glow_profiles/areas_source.py", "main", "handle.write(derived)"),
+}
 # The views' one logger, and the one call that names it.
 VIEWS_LOGGER = "logger = logging.getLogger('glow_profiles.views')"
 
@@ -395,6 +420,61 @@ class NoValueInLogsTests(unittest.TestCase):
                         found.append(f"{name}:{node.lineno} {called}")
         self.assertEqual(found, [])
 
+    def test_no_module_writes_a_file_it_opens_itself(self) -> None:
+        # SV2 Stage B (the delta review's N4): no ``open(...)`` in any form (the builtin,
+        # ``io.open``, ``os.open``, ``os.fdopen``, ``codecs.open``, a ``Path``'s ``open``), no
+        # ``write_text``, ``write_bytes`` or other file-making call, and no ``write`` on a file
+        # the module opened, in ``glow_profiles`` or the age port; the area table's derivation
+        # step is the one allowed writer.
+        found = set()
+        for name, tree in scanned_modules().items():
+            functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+            opened: set[str] = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.withitem) and isinstance(node.context_expr, ast.Call):
+                    called = node.context_expr.func
+                    attr = called.attr if isinstance(called, ast.Attribute) else ""
+                    named = called.id if isinstance(called, ast.Name) else attr
+                    if named in FILE_CALLS and isinstance(node.optional_vars, ast.Name):
+                        opened.add(node.optional_vars.id)
+                if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+                    called = node.value.func
+                    named = (
+                        called.id
+                        if isinstance(called, ast.Name)
+                        else called.attr
+                        if isinstance(called, ast.Attribute)
+                        else ""
+                    )
+                    if named in FILE_CALLS:
+                        opened.update(t.id for t in node.targets if isinstance(t, ast.Name))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                named = (
+                    func.id
+                    if isinstance(func, ast.Name)
+                    else func.attr
+                    if isinstance(func, ast.Attribute)
+                    else ""
+                )
+                receiver = func.value if isinstance(func, ast.Attribute) else None
+                writes_opened = named in FILE_WRITES and (
+                    isinstance(receiver, ast.Call)
+                    or isinstance(receiver, ast.Name)
+                    and receiver.id in opened
+                )
+                if named in FILE_CALLS or writes_opened:
+                    holding = [
+                        function.name
+                        for function in functions
+                        if function.lineno <= node.lineno <= (function.end_lineno or node.lineno)
+                    ]
+                    owner = holding[-1] if holding else "<module>"
+                    found.add((name, owner, ast.unparse(node)))
+        self.assertEqual(found, DERIVATION_WRITES)
+
     def test_the_age_ports_refusals_are_codes(self) -> None:
         # C3 (finding 1 (a)): ``_reset_failing_date`` raises ``f"age:{refused}"`` from the age
         # port's ``AgeTransitionRefused``, and the views log that reason. So every exception the
@@ -558,17 +638,18 @@ class LockOrderTests(unittest.TestCase):
 
     def test_every_operation_takes_the_account_row_first(self) -> None:
         found: dict[str, str] = {}
-        for name in ("operations.py", "staff.py"):
+        for name in ("operations.py", "staff.py", "media.py"):
             for function in modules()[name].body:
                 if not isinstance(function, ast.FunctionDef):
                     continue
                 for inner in function.body:
                     if isinstance(inner, ast.FunctionDef) and inner.name == "body":
                         found[function.name] = ast.unparse(inner.body[0])
-        self.assertEqual(set(found), COMMANDS | READS | STAFF)
+        self.assertEqual(set(found), COMMANDS | READS | STAFF | MEDIA_COMMANDS | MEDIA_READS)
         for operation, first in found.items():
             with self.subTest(operation=operation):
-                expected = "read_account_shared" if operation in READS else "lock_account"
+                shared = operation in READS | MEDIA_READS
+                expected = "read_account_shared" if shared else "lock_account"
                 self.assertEqual(first, f"{expected}(tx, account_id)")
 
 

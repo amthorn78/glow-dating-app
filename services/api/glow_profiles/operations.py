@@ -64,6 +64,7 @@ from glow_profiles import (
     contract,
     events,
     idempotency,
+    media,
     recompute,
     requirements,
     settings_store,
@@ -137,17 +138,29 @@ def _sensitive_accepted(account_id: UUID, current_policy_version: str) -> bool:
     )
 
 
-def _catalog_and_sensitive_consent(tx: Tx) -> tuple[catalogs.Catalog, str]:
+def _catalog_and_sensitive_consent(
+    tx: Tx, *, recomputes: bool = False
+) -> tuple[catalogs.Catalog, str]:
     """The catalog's settings and the sensitive-fields consent's current version, in one
     ``read_shared`` call: every pointer ``FOR SHARE``, after the account row lock, in name order
-    (the settings store's rule; ``consent.sensitive_profile`` sorts before every ``profile.*``)."""
-    found = settings_store.read_shared(tx, [*ps.CATALOG_SETTINGS, ps.SENSITIVE_CONSENT])
+    (the settings store's rule; ``consent.sensitive_profile`` sorts before every ``profile.*``).
+    A writer that ends with D9's recompute (``recomputes``) also takes ``consent.onboarding`` in
+    this call, so the recompute's read of it is already held (D19)."""
+    names = [*ps.CATALOG_SETTINGS, ps.SENSITIVE_CONSENT]
+    if recomputes:
+        names.append(ps.ONBOARDING_CONSENT)
+    found = settings_store.read_shared(tx, names)
     catalog = catalogs.build({name: found[name] for name in ps.CATALOG_SETTINGS})
     return catalog, found[ps.SENSITIVE_CONSENT].policy_version
 
 
 def _profile(account_id: UUID) -> Any:
     return Profile.objects.select_for_update().filter(account_id=account_id).first()
+
+
+def _own_profile(profile: Any) -> dict[str, Any]:
+    """``OwnProfile`` with the owner's approved photos, in their order (SV2 Stage B)."""
+    return contract.own_profile(profile, media.approved_ids(profile.account_id))
 
 
 def _key(intent: dict[str, Any]) -> str:
@@ -209,19 +222,23 @@ def read(account_id: UUID, what: str, object_id: UUID | None = None) -> Result:
         if what == "profile":
             if profile is None or (object_id is not None and profile.id != object_id):
                 raise Refused(NOT_FOUND, "profile_missing")
-            return Result("read", data=contract.own_profile(profile))
+            return Result("read", data=_own_profile(profile))
         if what == "completion":
             onboarding = settings_store.read_shared(tx, [ps.ONBOARDING_CONSENT])
             label = onboarding[ps.ONBOARDING_CONSENT].policy_version
             missing = requirements.missing(account_id, profile, label)
             return Result("read", data=contract.own_completion(profile, missing))
-        if what in ("fields", "catalog"):
+        if what == "fields":
             catalog = catalogs.load(tx)
-            if what == "fields":
-                if profile is None:
-                    raise Refused(NOT_FOUND, "profile_missing")
-                return Result("read", data=_fields_projection(account_id, catalog))
-            consents = settings_store.read_shared(tx, [ps.ONBOARDING_CONSENT, ps.SENSITIVE_CONSENT])
+            if profile is None:
+                raise Refused(NOT_FOUND, "profile_missing")
+            return Result("read", data=_fields_projection(account_id, catalog))
+        if what == "catalog":
+            # D19: the seven profile.* pointers and both consents, in one call, in name order.
+            consents = settings_store.read_shared(
+                tx, [*ps.CATALOG_SETTINGS, ps.ONBOARDING_CONSENT, ps.SENSITIVE_CONSENT]
+            )
+            catalog = catalogs.build({name: consents[name] for name in ps.CATALOG_SETTINGS})
             return Result(
                 "read",
                 data=contract.profile_catalog(
@@ -257,6 +274,11 @@ def read(account_id: UUID, what: str, object_id: UUID | None = None) -> Result:
             onboarding = settings_store.read_shared(tx, [ps.ONBOARDING_CONSENT])
             label = onboarding[ps.ONBOARDING_CONSENT].policy_version
             return Result("read", data=_onboarding_projection(account_id, profile, label))
+        if what == "media":
+            # F05: the owner's own collection (D17).
+            return Result("read", data=media.collection(account_id))
+        if what == "media_asset":
+            return Result("read", data=media.read_asset(account_id, object_id))
         if what == "sensitive_consent":
             latest = requirements.latest_decision(account_id, SENSITIVE_PURPOSE)
             return Result("read", data=contract.sensitive_consent(latest))
@@ -327,7 +349,7 @@ def save_profile(
         if record is not idempotency.NEW:
             if profile is None:
                 raise Refused(NOT_FOUND, "profile_missing")
-            return Result("replayed", data=contract.own_profile(profile))
+            return Result("replayed", data=_own_profile(profile))
         if _expected(intent) != (0 if profile is None else int(profile.version)):
             raise Refused(STALE_VERSION, "stale_version")
         # D9 (DM-55, section 6): the edit's own removal of a requirement is the cleared summary.
@@ -371,7 +393,7 @@ def save_profile(
             result_version=int(profile.version),
             now=now,
         )
-        return Result("applied", data=contract.own_profile(profile))
+        return Result("applied", data=_own_profile(profile))
 
     return run(body, probe)
 
@@ -392,7 +414,8 @@ def set_field(
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        catalog, sensitive_version = _catalog_and_sensitive_consent(tx)
+        # D19: the recompute's consent.onboarding is taken here, with the catalog's pointers.
+        catalog, sensitive_version = _catalog_and_sensitive_consent(tx, recomputes=True)
         profile = _profile(account_id)
         row = (
             ProfileFieldChoice.objects.select_for_update()
@@ -619,7 +642,9 @@ def set_area(
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        location = settings_store.read_shared(tx, [ps.LOCATION])[ps.LOCATION].content
+        # D19: the recompute's consent.onboarding is taken with profile.location, in one call.
+        found = settings_store.read_shared(tx, [ps.LOCATION, ps.ONBOARDING_CONSENT])
+        location = found[ps.LOCATION].content
         profile = _profile(account_id)
         signal(tx.probe, "after_locks")
         now = clock(tx)
@@ -1208,7 +1233,7 @@ def set_visibility(
         if profile is None:
             raise Refused(NOT_FOUND, "profile_missing")
         if record is not idempotency.NEW:
-            return Result("replayed", data=contract.own_profile(profile))
+            return Result("replayed", data=_own_profile(profile))
         if _expected(intent) != int(profile.version):
             raise Refused(STALE_VERSION, "stale_version")
         if intent["action"] == "pause":
@@ -1233,7 +1258,7 @@ def set_visibility(
         )
         return Result(
             "applied" if outcome.outcome == "applied" else "no_change",
-            data=contract.own_profile(profile),
+            data=_own_profile(profile),
         )
 
     return run(body, probe)
