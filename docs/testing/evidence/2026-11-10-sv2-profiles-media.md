@@ -2066,7 +2066,7 @@ The records push run 42992446669 on `9740196` passed.
 
   It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
 - **`git ls-remote`** after it (17:09 UTC): `main` at `3240ef0`, the manager branch at `a9a4e05`, `claude/dev-manager` at `d2b46ad`, and nothing else. No PR is open. PR44's activity subscription is ended.
-- **`main`'s push run** 43065281916 on `3240ef0` was still running when this receipt was first committed; by then six of its jobs had passed, Mobile checks' Chromium install among them (24 s, the mirror reachable again).
+- **`main`'s push run** 43065281916 on `3240ef0` passed all eight jobs (17:08:55 to 17:19:36 UTC), and the gate printed `Application checks passed`. Mobile checks' Chromium install took 24 s, the mirror reachable again. The profile suite passed 69 of 69 in 101.4 s, its secret and value scans were clean (1,447 secrets and 813 values held), and its phase took 103 s. A second profile run was refused with the counts `129 129 100 44 1568 1009` unchanged, `sv2-profile-results` (6,412 bytes) was uploaded, and no proof container remained. The receipt's first commit, `48f47f1`, recorded the run as still running; this line completes it.
 - **The manager branch holds `main`:** fast-forwarded to `3240ef0`, since no commit followed PR44's head, so the next PR's merge base is `3240ef0` (DM-57 item 5).
 - **Pruned:** Stage B's eleven prompts and consultations in `docs/ephemeral/`:
   - DM-52's (it consulted on the whole brief), DM-57's, DM-58's with its addendum, and DM-59's with its addendum;
