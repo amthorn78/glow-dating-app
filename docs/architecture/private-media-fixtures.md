@@ -120,3 +120,5 @@ every adopted upload passes G-02's seam, one with no variant included (DM-57 U1)
 fixtures: the processing fixture checks PNG framing and the policy's bounds as this record's
 parser does, decodes nothing and writes a synthetic, non-delivering variant; PV04 still owns real
 storage, decoding, metadata removal, delivery and purge.
+
+One rule of this record changes on the server (DM-58): a `removed` photo leaves the collection, both its read and its 20 entries, where this record kept removed tombstones within that bound and needed a fresh fixture session once the collection was full. A server has no fresh session, so that rule would stop an account after 20 uploads in its lifetime. A removed asset stays readable by its ID, and every other state, a rejected photo included, counts toward the 20 entries until the member removes it.
