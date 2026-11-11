@@ -314,3 +314,12 @@ Read with the GitHub tools (read only) and GitHub's public status feed, 21:12 to
   - `sv3-discovery-results` uploaded after the scan passed (artifact 13897074594).
 - **The other suites** in the same job passed: the ordering suite, the identity suite and the profile suite.
 - **Codex** reviewed `88f9299` at 22:42:36 UTC with no findings and nothing unresolved.
+
+### Codex on `7e4d826`: CX1, a lock cycle in page creation
+
+- **Codex's review of `7e4d826`** (the commit that holds the review prompt; its code is identical to `88f9299`'s) completed at about 23:43 UTC with one P2 ([thread](https://github.com/amthorn78/glow-dating-app/pull/45#discussion_r4544471290), `services/api/glow_discovery/pages.py:207`). In Codex's words: *"When two mutually eligible members create discovery batches concurrently, each transaction takes `FOR UPDATE` on its own account here and then inserts a `RecommendationEntry` referencing the other account. PostgreSQL's foreign-key checks require `FOR KEY SHARE` on those referenced accounts, which conflicts with the other transaction's `FOR UPDATE`, creating a deadlock. `glow_profiles.tx.run` converts the aborted transaction into `provider_unavailable` without retrying, so otherwise valid page requests intermittently return 503."*
+- **The manager's verification:** confirmed in the code.
+  - `pages.create` takes `lock_account` (`FOR UPDATE`) on the viewer, then `bulk_create`s entries referencing the candidates' `AppAccount` rows.
+  - The foreign-key check's `FOR KEY SHARE` conflicts with `FOR UPDATE`.
+  - The manager also found a second cycle. A `glow_chat` pair writer (`block`, `unblock`, `unmatch`, `activate_match`) holding a candidate below the viewer `FOR UPDATE` waits for the viewer, while the page waits for the candidate. The proof has no concurrent page-creation case, so neither shows in a run.
+- **Disposition:** its fix changes the lock design, and the cleanest one reaches `glow_chat` and `glow_profiles`, outside Stage A's owned paths. It goes to the Dev Manager as [DM-61](../../ephemeral/2026-11-11-dm-61-sv3-stage-a-lock-cycle.md), with V1, before any correction (step 6). The exact-head review's prompt is held, to be revised for the corrected head (23:46 UTC).
