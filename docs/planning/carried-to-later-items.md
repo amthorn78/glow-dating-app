@@ -44,6 +44,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
   P07's staff authentication and console decide the first two, and G-01 the third.
 - **From SV2 Stage A's exact-head review after C2 (finding 6):** `set_preferences` and `set_filters` do not check the profile's state, so a `restricted` profile can still change its "show me" sets and filters. Nothing leaks, and a restricted profile is not shown. P07 decides what a restriction stops.
+- **From SV2's brief, revision 6 (DM-57), for G-02 (P07.1):** photos sit in a private R2 bucket, and nothing is served publicly (D10). G-02's seam is given each adopted upload's variant, or its original when processing made none (D10). P07.1's detection service must be one Glow hands those bytes to, or one that reads the private bucket: a scanner that sees only publicly served images would see none of them. An original keeps its metadata, so P07.1 also decides how one is sent outside Glow, under the matrix's third-party rows (AP-30, EU-42).
 
 ## Carried to P08 (privacy lifecycle and conditional monetization)
 
