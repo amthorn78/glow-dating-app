@@ -107,7 +107,7 @@ used or changed by this adapter.
 
 The server side of F05 now exists in `services/api/glow_profiles` (`media.py`, `media_fixtures.py`)
 and `glow_domain/media.py`, built by SV2 Stage B ([the brief](../planning/sv2-profiles-media.md),
-revision 7, D10; the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md),
+revision 8, D10; the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md),
 "Stage B"). It is **sealed until P11**: it runs only under the disposable-PostgreSQL proof's profile
 settings, and the served runtime imports none of it. It keeps this record's semantics on
 PostgreSQL: the collection's version, a removal's own version, separate revocation records for an
