@@ -160,6 +160,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-21 | 11 Nov 2026 | follow-through | Implementation Control's "Standing directions" line left saying the register copy holds OD-01 to OD-62 after OD-63 was added to the copy at `8130439`. A repeat of AM9-07. Recorded by App Manager 11 | App Manager 11, reading the whole page at its start |
 | AM10-22 | 11 Nov 2026 | follow-through | Implementation Control's "Phase" bullet left ending "Now: P06.2-F, the mobile hardening, in PR40" after PR40 to PR44 merged, and its "Next items" bullet left saying "now SV2 … Stage B next" after PR44 merged. A repeat of AM8-22's mechanism, as AM10-20 is. Recorded by App Manager 11 | App Manager 11, reading the status section's standing bullets in its first sync |
 | AM11-01 | 11 Nov 2026 | accuracy | The first report told Nathan that the next message would carry a prompt for the matrix recheck; the recheck is the manager's own records reading (the OD-60 and P06.3 recheck records), not a session | App Manager 11, reading the earlier recheck records before writing the prompt |
+| AM11-02 | 11 Nov 2026 | follow-through | Correcting Implementation Control's "Next items" bullet, replaced only its opening and left "P06.2-F (now, PR40)" further on in the same bullet; the readback searched for the edited strings only. A repeat of AM8-11's mechanism | Dev Manager 4, DM-60 section 18 |
 
 ## App Manager 2
 
@@ -1108,6 +1109,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-02 — A stale phrase left in the bullet being corrected (follow-through)
+
+- **What happened:** App Manager 11's first sync corrected the opening of Implementation Control's "Next items" bullet ("now SV2 …") and left, in the same bullet, "P06.2-F (now, PR40)". Its readback counted the new strings and the old opening only.
+- **Caught by:** Dev Manager 4, DM-60 section 18.
+- **Effect:** Notion called a merged item current for about an hour; no decision rested on it.
+- **Correction:** "P06.2-F (**done**, PR40)" at the next sync, read back.
+- **Prevention:** AM8-11's, which this repeats: when a sync corrects a standing line, read the whole line after the edit and search it for every status word ("now", "next", "in flight", "pending"), not only for the edited strings.
 
 ### AM11-01 — A session promised for the manager's own work (accuracy)
 
