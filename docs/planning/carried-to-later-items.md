@@ -85,6 +85,8 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV3 (eligibility, discovery and interactions; OD-49)
 
+- **Folded into SV3's brief, revision 1** ([`sv3-eligibility-discovery-interactions.md`](sv3-eligibility-discovery-interactions.md), 11 November 2026): every item below, each named in the brief's "Why". The brief now owns them.
+
 - **From P09.3a's matrix** (DM-37 2.2): eligibility reads G-01's account age state.
 - **From OD-60** (R and P2): resurfacing, an undo of the last pass, and rematch are settings, off at launch and switchable with a waiting period; rematch never after a block or a report, and as a reviewed transition on the one match record, never a second one (the data model, `Match`; DM-51 M10). Eligibility applies the two-way rule over the four list fields and the age range, and the distance filter over the member's chosen city or region or the phone's approximate location, never exposing exact coordinates or an exact distance. SV3 tests what repeated filter changes and tiny population groups reveal (the original research; DM-51 M9).
 - **From SV2's brief (DM-52):** a "show me" set that keeps all is a marker that includes values the console adds later and "not stated", and a narrowed set never includes "not stated"; a member with "not stated" in orientation or relationship status is seen only by viewers who keep all of that field. The age comes from the age state's date through a function that returns whole years, never from the birth input. A distance choice counts areas whose internal points are within it, and two members in one area are at distance zero. Every reader of consent filters by purpose.
@@ -133,6 +135,9 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to P09 (security, native quality and release preparation)
 
+- **From SV3's matrix recheck** ([record](../testing/evidence/2026-11-11-sv3-matrix-recheck.md); SV3's brief, D17), for G-01's item and P09.2's release-gate list:
+  - whether Glow's recommendations or broader discovery are an "addictive feed" under California's SB 976 (UST-37, from 1 January 2027) or an "algorithmic feed" under New York's SAFE for Kids Act (UST-38, from 25 January 2027) is a reading for counsel; whether to take advice is Nathan's (DM-31);
+  - UST-37's and UST-39's statutory text, and USF-11's rule citation, re-read from California's bulk data and the eCFR, in Nathan's CLI agent (OD-43), before P09.2's or G-01's brief, whichever comes first.
 - **G-13, Restore Credentials, both parts, before April 2027** (DM-45 13.1; GP-36): Android's guide asks for a WebAuthn relying party server: the app registers a restore key after sign-in, and on a new device the server verifies its assertion and issues a new session. Raw authentication tokens stay out of the app's backup, and the restore key is deleted when the member signs out or the server ends the session. P09.2's brief names the server part's owner (through a maintained library; PF01 §4: no custom token cryptography) and builds the native part.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.2):
   - **G-01's store parts:** the native age signals in P09.2 (Apple's Declared Age Range, Google's Play Age Signals); Restrict Minor Access in Play Console (GP-11).

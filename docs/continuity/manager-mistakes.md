@@ -156,6 +156,9 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-17 | 10 Nov 2026 | follow-through | The handoff's waiting checkpoint after PR43's receipt gave 23:57 UTC, written before the clock was read; the clock read 23:55 (AM9-04 repeated) | App Manager 10, when the commit's own clock line printed |
 | AM10-16 | 10 Nov 2026 | accuracy | Pruning SV2 Stage A's prompts, App Manager 10's link-pinning script matched link targets by file name. The Dev Manager's reports in `reviews/` share their names with the consultations, so it also pointed 16 links to the reports at the pruned consultations | App Manager 10, reading the script's word diff before the commit |
 | AM10-15 | 10 Nov 2026 | accuracy | DM-55's consultation (`496c39e`), item 1.4, proposed erasing the date, time, place and time zone of every birth input revision after a date under 18. It did not read what that breaks: `OwnBirthInput` requires a full `BirthInput`, so the owner's reads would fail on an erased revision; the next save compares its expected version with the erased row's; and `birth_time_uncertainty` ties the time to its precision | Dev Manager 4, DM-55 section 3 |
+| AM10-20 | 11 Nov 2026 | follow-through | Implementation Control's "Mistakes log" bullet left listing AM10-01 as the last entry, at `0e890dc`, through AM10-02 to AM10-19 and App Manager 10's last sync at `8130439`. A repeat of AM8-22's mechanism. Recorded by App Manager 11 | App Manager 11, reading the whole page at its start |
+| AM10-21 | 11 Nov 2026 | follow-through | Implementation Control's "Standing directions" line left saying the register copy holds OD-01 to OD-62 after OD-63 was added to the copy at `8130439`. A repeat of AM9-07. Recorded by App Manager 11 | App Manager 11, reading the whole page at its start |
+| AM11-01 | 11 Nov 2026 | accuracy | The first report told Nathan that the next message would carry a prompt for the matrix recheck; the recheck is the manager's own records reading (the OD-60 and P06.3 recheck records), not a session | App Manager 11, reading the earlier recheck records before writing the prompt |
 
 ## App Manager 2
 
@@ -1102,6 +1105,24 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none acted on; both texts stood from 8 November, 09:37 UTC, until App Manager 10 replaced them.
 - **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
+
+## App Manager 11
+
+### AM11-01 — A session promised for the manager's own work (accuracy)
+
+- **What happened:** the first report to Nathan said that the next message would carry one prompt, for the matrix recheck for SV3. The two earlier rechecks (8 and 10 November) were App Manager 10's own records readings of public pages, each recorded as "not an implementation or review session", and DM-37 5.1 has the brief recheck its rows on the day it is written.
+- **Caught by:** App Manager 11, reading the OD-60 recheck record to write that prompt, before any prompt was given.
+- **Effect:** Nathan was told to expect a session that was not needed. No prompt was written or given. The next message corrected it.
+- **Correction:** the recheck was done by the manager and recorded (`docs/testing/evidence/2026-11-11-sv3-matrix-recheck.md`), and the next message to Nathan said the earlier statement was wrong.
+- **Prevention:** before naming a session's prompt for a step, read how the step was done last time, in its evidence record.
+
+### AM10-21 and AM10-20 (recorded by App Manager 11)
+
+- **What happened:** App Manager 10's last Notion sync, at `8130439`, moved Implementation Control's status section, but two standing lines stayed old. The "Mistakes log" bullet still listed AM10-01 as the last entry, at `0e890dc`, although the log held AM10-02 to AM10-19. The "Standing directions" line still said the register copy held OD-01 to OD-62, although OD-63 had been added to the copy.
+- **Caught by:** App Manager 11, reading the whole page at its start.
+- **Effect:** Notion understated the mistakes log by 18 entries and the register by one row; no decision rested on either.
+- **Correction:** both lines corrected in App Manager 11's first sync, with readbacks.
+- **Prevention:** AM8-22's and AM9-07's: the readback of a sync covers every standing line of the page, not only the status paragraph.
 
 ## App Manager 10
 
