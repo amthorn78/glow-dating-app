@@ -9,7 +9,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Manager: App Manager 11**, created by App Manager 10 at Nathan's direction ([OD-63](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list). No PR is open: App Manager 11 opens SV3 Stage A's PR from this branch once Stage A has a code head. App Manager 10 pushed nothing after its handover commit `8130439`.
 - **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
-- **SV2 is done** (OD-49), profiles and media: [the brief](../planning/sv2-profiles-media.md), revision 8 (DM-52 to DM-59; [OD-61](owner-directions.md), [OD-62](owner-directions.md)). Stage A merged with [PR43](https://github.com/amthorn78/glow-dating-app/pull/43) at `4dc2061` (10 November 2026), Stage B with [PR44](https://github.com/amthorn78/glow-dating-app/pull/44) at `3240ef0` (11 November 2026); both merge receipts are in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
+- **SV2 is done** (OD-49): [the brief](../planning/sv2-profiles-media.md), revision 8; PR43 at `4dc2061` and PR44 at `3240ef0`, with their receipts in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
 - **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 2 (DM-60's Q1 to Q20). Stage A is built, verified and integrated (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)); its PR's run is the run of record, since GitHub never dispatched the code head's push run. Stage B follows after Stage A merges.
 - **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror (15:03 to 15:53 UTC). DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
@@ -31,7 +31,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (`git ls-remote`, 11 November 2026, 17:09 UTC)
+## Branches and PRs (11 November 2026, 22:39 UTC)
 
-- **Open PRs:** none. `main` is at `3240ef0` (PR44).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2` (`a9a4e05` when listed; fast-forwarded to `3240ef0`, then this handover commit); `claude/dev-manager` (`d2b46ad`, DM-59's report, merged at `75cf4fc`). All three are on the cleanup's keep-list; the cleanup run 43065281784 deleted Stage B's three session branches.
+- **Open PRs:** Stage A's, opened from the manager branch after this commit. `main` is at `3240ef0` (PR44).
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`777a6ad`, DM-60's report, merged at `72791a7`); Stage A's session branch `claude/loving-maxwell-cqu7eq` (`4dee875`, fully merged into the manager branch; the cleanup deletes it once Stage A's PR merges).
