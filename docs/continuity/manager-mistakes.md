@@ -171,6 +171,10 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-10 | 12 Nov 2026 | process | Held DM-62's relay message for a Codex pass on its own commit, a wait the workflow sets only for review and correction prompts; Codex had already passed the same code at `c3fb5bb` with nothing new. Nathan had nothing to run until he asked what the manager was doing | Nathan: "what are you even doing?" |
 | AM11-11 | 12 Nov 2026 | follow-through | Brief revision 3's sync left Implementation Control's "Next items" saying "its brief, revision 2"; the sweep searched the repository, not Notion's standing lines, for the previous revision number. AM5-22's mechanism, repeated | Dev Manager 4, DM-62 section 7 |
 | AM11-12 | 12 Nov 2026 | follow-through | The batch at `b67bae2`, which merged DM-62's report, left the handoff's branch list giving `claude/dev-manager` at DM-61's head (`133a715`); AM11-11's new sweep was run for the brief's revision number only. Corrected in the next commit, before any session read it | App Manager 11, listing the branches for Notion's "Branches" bullet |
+| AM11-13 | 12 Nov 2026 | accuracy | The exact-head review prompt's revision 2 said "Four offline reversals, at least" over a list of five; seen before it was given, and given as written rather than revised and re-reviewed by Codex | App Manager 11, reading the filled prompt |
+| AM11-14 | 12 Nov 2026 | follow-through | The CI policy's discovery sentence, written by the manager at `d35b0ba`, still said the suite's key keys "its keyed tie-break" after DM-61's K2 removed the key; the sweep for K2 did not search for "keyed" outside the brief, and C1's prompt did not list the CI policy or the fixtures note among its records | The exact-head review, F5 |
+| AM11-15 | 12 Nov 2026 | follow-through | Recording PR45's run of record for Stage A (`b09cbf3`), and later C1's, the manager left the P11 plan's SV3 entry saying "Run of record: none yet" and concurrency "not claimed" | The exact-head review, F6 |
+| AM11-16 | 12 Nov 2026 | accuracy | The evidence record's "PR45's run on `4b771e0`" said "Every other job passed"; the gate job also failed, as designed | The exact-head review, N6; corrected at the next batch |
 
 ## App Manager 2
 
@@ -1119,6 +1123,18 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-13 to AM11-16 — Four slips the exact-head review and the manager found
+
+- **What happened:**
+  - **AM11-13:** the review prompt's revision 2 (`3b36969`) headed its reversal list "Four offline reversals, at least" over five items. The manager saw it before giving the prompt and gave it as written, to avoid another commit and Codex pass, saying so to Nathan.
+  - **AM11-14:** the CI policy's discovery sentence, the manager's own (`d35b0ba`), kept "its keyed tie-break" after DM-61's K2. The sweep at `1ffff7d` searched the brief, not every text, for "keyed", and C1's prompt listed neither the CI policy nor `discovery-fixtures.md`.
+  - **AM11-15:** the P11 plan's SV3 entry kept "Run of record: none yet" after the manager recorded PR45's run of record (`b09cbf3`), and "concurrency … not claimed" after C1's.
+  - **AM11-16:** the evidence record said "Every other job passed" of a run whose gate job also failed.
+- **Caught by:** the manager (AM11-13); the exact-head review, F5, F6 and N6 (AM11-14 to AM11-16).
+- **Effect:** none on code. Three records claimed more than the runs and code show, until C2; AM11-16's line is corrected at this batch.
+- **Correction:** AM11-16 now; AM11-14 and AM11-15 in C2, as the review's F5 and F6 (DM-65).
+- **Prevention:** AM11-11's sweep, applied to a replaced design as well as a revision number: when a decision replaces a design, search every text (`docs`, `.github`, code comments) for the old design's own words (here "keyed"), and when a run of record lands, search for "none yet" and "not claimed" in each record that names the item.
 
 ### AM11-12 — The branch list left at the Dev Manager's previous head (follow-through)
 
