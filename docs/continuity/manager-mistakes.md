@@ -170,6 +170,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-09 | 12 Nov 2026 | accuracy | C1's prompt, revision 1, named the tie-break's files as `predicates.py`, `pages.py` and `keys.py` "and what they need", without `eligibility.py`, whose `parameters` passes the pads it told the session to remove. Corrected in revision 2 before it was given | App Manager 11, checking Codex's CX2 against the prompt |
 | AM11-10 | 12 Nov 2026 | process | Held DM-62's relay message for a Codex pass on its own commit, a wait the workflow sets only for review and correction prompts; Codex had already passed the same code at `c3fb5bb` with nothing new. Nathan had nothing to run until he asked what the manager was doing | Nathan: "what are you even doing?" |
 | AM11-11 | 12 Nov 2026 | follow-through | Brief revision 3's sync left Implementation Control's "Next items" saying "its brief, revision 2"; the sweep searched the repository, not Notion's standing lines, for the previous revision number. AM5-22's mechanism, repeated | Dev Manager 4, DM-62 section 7 |
+| AM11-12 | 12 Nov 2026 | follow-through | The batch at `b67bae2`, which merged DM-62's report, left the handoff's branch list giving `claude/dev-manager` at DM-61's head (`133a715`); AM11-11's new sweep was run for the brief's revision number only. Corrected in the next commit, before any session read it | App Manager 11, listing the branches for Notion's "Branches" bullet |
 
 ## App Manager 2
 

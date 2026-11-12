@@ -31,7 +31,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (12 November 2026, 00:33 UTC)
+## Branches and PRs (12 November 2026, 02:23 UTC)
 
 - **Open PRs:** [PR45](https://github.com/amthorn78/glow-dating-app/pull/45), SV3 Stage A, from the manager branch. `main` is at `3240ef0` (PR44).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`133a715`, DM-61's report, merged at `ee2ebd8`); Stage A's session branch `claude/loving-maxwell-cqu7eq` (`4dee875`, fully merged into the manager branch; the cleanup deletes it once Stage A's PR merges).
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`880635d`, DM-62's report, merged at `f5c69fa`); Stage A's session branch `claude/loving-maxwell-cqu7eq` (`4dee875`, fully merged into the manager branch; the cleanup deletes it once Stage A's PR merges).
