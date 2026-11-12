@@ -333,3 +333,14 @@ Read with the GitHub tools (read only) and GitHub's public status feed, 21:12 to
   - PostgreSQL's default `log_min_error_statement` is `error`, so a failing or cancelled statement's text is logged.
   - This is V1 as DM-61 widened it (its item 2), and needs no logging setting.
 - **Disposition:** K2 already removes the key from SQL and C1 carries it, so there is no new decision and no consultation. Revision 1 of C1's prompt named the tie-break's files without `eligibility.py` (AM11-09). Revision 2 names it and its parameters, adds CX2 to the prompt's background, and has the tie-break check cover the statement's text as sent. The thread stays open until Codex reads C1's head (00:41 UTC).
+
+### Codex on `a919dea`: CX3, a card's age above the contract's maximum
+
+- **Codex's review of `a919dea`** (the commit that holds C1's prompt, revision 2; code unchanged since `ad9ff08`) completed at about 00:45 UTC with one P2 ([thread](https://github.com/amthorn78/glow-dating-app/pull/45#discussion_r4544877615), `services/api/glow_discovery/contract.py:119`). In Codex's words: *"If a visible member has an accepted birth date more than 150 years ago, this emits a card that violates `CandidateProfile.age`'s maximum of 150. This state is not excluded upstream: `adult_outcome()` only checks the lower age bound, the default preference range has no maximum, and discovery's predicates impose no upper bound. For example, `1800-01-01` passes the adult check but projects age 226 on the review date. One such candidate makes the entire page invalid for schema-validating consumers."*
+- **The manager's verification:** confirmed.
+  - The production schema's `BirthInput` and `AdultCheckIntent` accept any `YYYY-MM-DD` date except year `0000`, and `glow_domain.identity.adult_outcome` refuses only a future date and an age under 18.
+  - The launch default `profile.age_range` has `default_maximum: None` (migration 0007), and `predicates.in_range` treats a null `maximum_age` as no upper limit.
+  - `predicates.AGE` computes whole years, and `RECHECK` recomputes it on every page; `contract.card` emits `int(row["age"])` against `CandidateProfile.age`'s `minimum 18, maximum 150`.
+  - No middleware or view validates the response, so the page goes out and fails as a whole in the app's validator.
+  - The bound exists as `glow_domain.profile_settings.AGE_CEILING = 150`.
+- **Disposition:** a defect in Stage A's own code, fixed before the merge (fix or carry, (a)). The fix touches a contract and the eligibility design, so it goes to the Dev Manager as [DM-62](../../ephemeral/2026-11-12-dm-62-sv3-stage-a-age-bound.md), with a recommended discovery predicate at `AGE_CEILING` in C1. C1's prompt, revision 2, is held, and revision 3 follows DM-62's answer (00:49 UTC).

@@ -2,6 +2,7 @@
 
 - **Owner:** App Manager 11. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
 - **Revision 2, 12 November 2026.** Revision 1 (`1ffff7d`) named the tie-break's files without `eligibility.py`, whose `parameters` passes the key's pads to the database. Revision 2 names it and adds Codex's CX2 on `1ffff7d` to "What came before". The work is unchanged.
+- **Held** (12 November, 00:49 UTC): Codex's CX3 on `a919dea` goes to the Dev Manager as DM-62. Revision 3 follows its answer and is the one given to Nathan.
 - **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 3, "Stage A, correction C1 (DM-61)", with D2, D6, D14, check 5, the owned paths and the exclusions as K1 to K7 wrote them.
 - **Where the result goes:**
   - the session's changes in C1's owned paths, and its record, a new section "Stage A, correction C1" in `docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md`, on its own branch;
