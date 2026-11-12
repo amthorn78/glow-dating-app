@@ -524,6 +524,7 @@ App Manager 11, 12 November 2026 (finished at 03:46 UTC). Not a code review: the
 - **The photo read's wait** (the session's first deviation): `media.delivery_reference` runs each card's read in its own transaction (`run(body)`), holding one `FOR SHARE` lock, so it can wait for a writer but holds nothing another waits for: no cycle. The session's statement holds.
 - **Two sentences C1's item 4 missed,** found by a search across line breaks: the data model's `AccountAgeState` row ("takes the account row `FOR UPDATE` before the age state's row") and its `RecommendationBatch` row ("after the owner's account row lock (`FOR UPDATE`)"). With `glow_chat/reads.py`'s module docstring (the session's second deviation), three texts still state the old mode.
 - **Disposition:** the first deviation departs from DM-61's words for check 5, and the three texts need a home, so both go to the Dev Manager as [DM-63](../../ephemeral/2026-11-12-dm-63-sv3-stage-a-c1-verification.md) before the review prompt's revision 2.
+- **DM-63's answer** (`715ef27`, a read of `8828112`): the rule is the page's transaction's, and C1 shows it; DM-61's "completes without waiting" was too broad (LM1 to LM3, in the brief's revision 6). The three texts are known items for the review (LM6) and are fixed in the correction after it, in DM-63's words (LM5). Nothing in C1 changes.
 
 ### PR45's run on `4b771e0`: SV2's profile suite, one case
 
