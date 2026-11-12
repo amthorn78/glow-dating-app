@@ -166,6 +166,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-05 | 11 Nov 2026 | follow-through | After opening PR45 at 22:39 UTC, told Nathan "NOTHING NEEDED" and set nothing to wake the manager when the run and Codex finished (22:47 and 22:42); the review prompt waited until Nathan asked at 23:37. A repeat of AM7-09 | Nathan: "still waiting?" |
 | AM11-06 | 11 Nov 2026 | accuracy | The review prompt's first TypeSafe action text counted its numbered items as sixteen; there are twenty. Caught before the reading was used; re-sent with the true count, the same cell, both readings recorded | App Manager 11, comparing the text with the prompt |
 | AM11-07 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `b09cbf3` gave 23:41 UTC, written before the clock was read (it read 23:40): AM11-03 repeated within the hour. The time now comes from the clock inside the same command that writes it | App Manager 11, reading the commit's clock line |
+| AM11-08 | 12 Nov 2026 | follow-through | The Notion sync for `1ffff7d` changed Implementation Control's "Branches" bullet from three branches to four and left its next sentence, "All three are kept by the cleanup's keep-list"; the edit replaced the list, not the bullet. AM11-02's mechanism, repeated | App Manager 11, reading the bullet back |
+| AM11-09 | 12 Nov 2026 | accuracy | C1's prompt, revision 1, named the tie-break's files as `predicates.py`, `pages.py` and `keys.py` "and what they need", without `eligibility.py`, whose `parameters` passes the pads it told the session to remove. Corrected in revision 2 before it was given | App Manager 11, checking Codex's CX2 against the prompt |
 
 ## App Manager 2
 
@@ -1114,6 +1116,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-09 — The prompt named the tie-break's files without the one that passes the key (accuracy)
+
+- **What happened:** C1's prompt, revision 1 (`1ffff7d`), gave the tie-break's owned files as `predicates.py`, `pages.py` and `keys.py` "and what they need", and listed the same three to read whole. It told the session to remove `keys.sql_pads` "and their parameters", which are set in `eligibility.parameters`, a file it never named. The brief's own path, `services/api/glow_discovery/**`, does include it.
+- **Caught by:** App Manager 11, checking Codex's CX2 (`eligibility.py:67`) against the prompt.
+- **Effect:** the prompt had not been given. A session reading the parenthesis as a limit could have stopped, or left the pads' parameters behind. One more revision, TypeSafe reading and Codex pass.
+- **Correction:** revision 2 names `eligibility.py` in the owned paths, the reading list and item 2.
+- **Prevention:** when a prompt removes a function or a value, find every caller and every place that sets it with a scan, and name each file in the owned paths and the reading list.
+
+### AM11-08 — The branch count changed and the sentence after it did not (follow-through)
+
+- **What happened:** the sync for `1ffff7d` replaced the list in Implementation Control's "Branches" bullet, from three branches to four, and left the bullet's next sentence, "All three are kept by the cleanup's keep-list", unchanged. Stage A's session branch is the fourth, and it is not on the keep-list.
+- **Caught by:** App Manager 11, reading the bullet back.
+- **Effect:** Notion's bullet read wrongly for about ten minutes; no decision rested on it.
+- **Correction:** the sentence now says the first three are on the keep-list, read back in the next sync.
+- **Prevention:** AM11-02's, repeated, so now a checklist item: the manager workflow's claims checklist reads back every whole bullet an edit touches, and checks each count and status word in it against the edit.
 
 ### AM11-05 — A wait with nothing set to end it (follow-through)
 

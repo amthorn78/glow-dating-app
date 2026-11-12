@@ -137,6 +137,7 @@ Nathan's direction, 24 September 2026:
 - Check every count in a message to Nathan against its source.
 - Name what clears a stuck state.
 - Fetch a whole Notion page, write a property and the body together, and read both back, and read back the whole status section, not only what changed.
+- After an edit, read back every whole bullet or line it touched, and check each count and status word in it ("three", "now", "next", "pending") against the edit (AM11-02, AM11-08).
 
 ## Branches and pushes
 

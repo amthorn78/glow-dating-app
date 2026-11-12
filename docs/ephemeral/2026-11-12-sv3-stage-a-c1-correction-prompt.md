@@ -1,14 +1,15 @@
 # SV3 Stage A correction C1 prompt — account locks `FOR NO KEY UPDATE`, and a random tie-break (DM-61)
 
 - **Owner:** App Manager 11. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 12 November 2026.**
+- **Revision 2, 12 November 2026.** Revision 1 (`1ffff7d`) named the tie-break's files without `eligibility.py`, whose `parameters` passes the key's pads to the database. Revision 2 names it and adds Codex's CX2 on `1ffff7d` to "What came before". The work is unchanged.
 - **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 3, "Stage A, correction C1 (DM-61)", with D2, D6, D14, check 5, the owned paths and the exclusions as K1 to K7 wrote them.
 - **Where the result goes:**
   - the session's changes in C1's owned paths, and its record, a new section "Stage A, correction C1" in `docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md`, on its own branch;
   - the run of record: the Foundation run on its last code commit;
   - the manager adds its verification and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.31 (confidence 0.75); rung probabilities low 0.00, medium 0.03, high 0.64, extra high 0.32, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.08, Opus 5.5 0.90, Sonnet 5.5 0.02, Haiku 5.5 0.00 (confidence 0.87). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.002, Fable 5.1 at high 0.051, Fable 5.1 at extra high 0.026, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.027, Opus 5.5 at high 0.576, Opus 5.5 at extra high 0.288, Opus 5.5 at max 0.009, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.001, Sonnet 5.5 at high 0.013, Sonnet 5.5 at extra high 0.006, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-12T00:34:16Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.21 (confidence 0.79); rung probabilities low 0.00, medium 0.05, high 0.70, extra high 0.24, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.10, Opus 5.5 0.88, Sonnet 5.5 0.02, Haiku 5.5 0.00 (confidence 0.84). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.005, Fable 5.1 at high 0.070, Fable 5.1 at extra high 0.024, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.044, Opus 5.5 at high 0.616, Opus 5.5 at extra high 0.211, Opus 5.5 at max 0.009, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.001, Sonnet 5.5 at high 0.014, Sonnet 5.5 at extra high 0.005, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-12T00:39:06Z, for revision 2. Nathan picks the cell.
+  - **Revision 1's reading,** from the same action text: the same cell, Opus 5.5 at high (score 2.31, confidence 0.75; high 0.64, extra high 0.32; Opus 5.5 0.90), sent 2026-11-12T00:34:16Z.
 - **The Dev Manager's read:** none before it runs. The brief's revision 3 applies DM-61's K1 to K7 as written, and DM-61 says they need no read before this prompt (DM-61, section 2). This prompt authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29). Then, in order:
@@ -22,12 +23,13 @@
 
 ---
 
-You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 1, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 2, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **Stage A** built eligibility and discovery in `services/api/glow_discovery`, sealed until P11, with a discovery suite on a fourth disposable database. Its code head is `ad9ff08`, integrated by fast-forward into PR45. Its run of record, PR45's run 43113579295, passed every job, with the discovery suite at 32/32. The evidence record's "Stage A" and "Manager verification of Stage A" describe it.
 - **Codex's review of PR45** found CX1, a lock cycle in page creation. `pages.create` locks the viewer's account `FOR UPDATE`, then inserts entries that reference the candidates' accounts. PostgreSQL's foreign-key check takes `FOR KEY SHARE` on each referenced row, and `FOR UPDATE` blocks it. So two mutually eligible viewers creating pages at once can deadlock, and so can a page and a `glow_chat` pair writer (`block`, for one) whose lower account is the candidate.
 - **The manager's verification** raised V1. The keyed tie-break computed HMAC in SQL with the key's pads as statement parameters, so a log that records statements or parameters records the key.
+- **Codex's review of `1ffff7d`** (the commit that held this prompt's revision 1) found CX2, which is V1 with one more fact. Django 5.2's psycopg 3 backend binds parameters on the client by default, so the pads are written into the statement's text, and PostgreSQL logs the text of a failing or cancelled statement by default. K2 takes the key out of SQL, so it closes CX2 too.
 - **The Dev Manager ruled** (DM-61: `docs/continuity/dev-manager/reviews/2026-11-12-dm-61-sv3-stage-a-lock-cycle.md`):
   - **CX1:** every explicit lock of an `AppAccount` row becomes `FOR NO KEY UPDATE`, in the app and in the ordering proof's reference design (K1, K5);
   - **V1:** the tie-break becomes a random value drawn inside the selection, with no key at all (K2, replacing DM-60's Q2).
@@ -46,7 +48,7 @@ You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the publ
       - `services/api/glow_chat/contact.py` (`_lock` for `AppAccount` rows only; every other row's lock, and every writer's body, unchanged);
       - the module docstrings of `services/api/glow_profiles/operations.py` and `media.py`;
       - the reference design's account locks in `proofs/postgres-ordering/glow_ordering_proof/reference.py`;
-    - **the tie-break:** `services/api/glow_discovery/` (`predicates.py`, `pages.py`, `keys.py` and what they need);
+    - **the tie-break:** `services/api/glow_discovery/**`, the brief's own path for Stage A: above all `predicates.py`, `pages.py`, `keys.py` and `eligibility.py`, whose `parameters` passes the pads;
     - **the tests:** `services/api/tests/` (the discovery tests, and the pin of the two lock functions' bodies in `test_profiles_offline.py`);
     - **the proof:** `proofs/postgres-ordering/**`, that is, the discovery suite's cases and support, the scan of account locks, the offline tests and the README;
     - **the records:**
@@ -115,7 +117,7 @@ If a check fails, stop and report. The prompt is stale if:
 - DM-61's report, whole, above all section 3.4 and section 4.2, which give the proof's cases and reversals;
 - the evidence record's "Stage A", "Manager verification of Stage A" and "Codex on `7e4d826`";
 - the P06.DB brief's D5 (the reference design) and the data model's "unit of work" table;
-- every file in the owned paths that you change, whole, and `glow_discovery/pages.py`, `predicates.py`, `keys.py`, the discovery suite (`discovery_cases.py`, `discovery_support.py`, `discovery_suite.py`) and its probes;
+- every file in the owned paths that you change, whole, and `glow_discovery/pages.py`, `predicates.py`, `keys.py`, `eligibility.py`, the discovery suite (`discovery_cases.py`, `discovery_support.py`, `discovery_suite.py`) and its probes;
 - PostgreSQL 17's manual on row-level locks ("Explicit Locking", Table 13.3), if you can reach it; if not, say so.
 
 ## 3. What to do
@@ -126,14 +128,14 @@ If a check fails, stop and report. The prompt is stale if:
    - Update the test that pins the two lock functions' bodies.
 2. **The random tie-break** (item 2; K2):
    - The selection draws `gen_random_uuid()` for each candidate and orders by it within a band. The entries' positions keep the order, and nothing stores the value.
-   - Remove `keys.tie_break`, `keys.sql_pads`, `predicates.TIE_BREAK` and their parameters. Keep the cursor's MAC as it is.
+   - Remove `keys.tie_break`, `keys.sql_pads`, `predicates.TIE_BREAK` and their parameters (`ipad` and `opad`, set in `eligibility.parameters`). Keep the cursor's MAC as it is.
 3. **The proof** (item 3; K3, K4; DM-61 sections 3.4 and 4.2), with the probes holding each interleaving at its locks, from separate connections:
    - **Codex's cycle:** two mutually eligible viewers create batches at once, each holding its own account lock before either writes its entries, in both orders. Both pages succeed.
    - **The second cycle:** `glow_chat`'s `block` between a candidate and the viewer, the candidate's account below the viewer's, races the viewer's page creation in both interleavings. Both succeed.
    - **The rule:** a page whose candidate's writer holds that candidate's account lock completes without waiting.
    - **The scan:** no explicit lock of an `AppAccount` row in `services/api` or the reference design is anything but `FOR NO KEY UPDATE`.
    - **The tie-break:**
-     - no executed statement or parameter carries a value derived from `SECRET_KEY`;
+     - no executed statement or parameter carries a value derived from `SECRET_KEY`, the statement's text as sent included (client-side binding writes the parameters into it);
      - the order is stable within a batch, across its pages;
      - two batches over the same ten or more candidates in one band are ordered differently.
    - **The reversals,** each run and recorded with its failing output:
@@ -172,7 +174,7 @@ Commit each logical step with a clear message ending in the session's attributio
 ## 5. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<START_SHA>`), your branch, your code head and records head;
+- the prompt revision (revision 2, from `<START_SHA>`), your branch, your code head and records head;
 - the start gate's and the environment check's results;
 - for each of the four items: what changed, its tests, and each reversal's result;
 - every explicit `AppAccount` lock, before and after;
