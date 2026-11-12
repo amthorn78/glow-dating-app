@@ -175,6 +175,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-14 | 12 Nov 2026 | follow-through | The CI policy's discovery sentence, written by the manager at `d35b0ba`, still said the suite's key keys "its keyed tie-break" after DM-61's K2 removed the key; the sweep for K2 did not search for "keyed" outside the brief, and C1's prompt did not list the CI policy or the fixtures note among its records | The exact-head review, F5 |
 | AM11-15 | 12 Nov 2026 | follow-through | Recording PR45's run of record for Stage A (`b09cbf3`), and later C1's, the manager left the P11 plan's SV3 entry saying "Run of record: none yet" and concurrency "not claimed" | The exact-head review, F6 |
 | AM11-16 | 12 Nov 2026 | accuracy | The evidence record's "PR45's run on `4b771e0`" said "Every other job passed"; the gate job also failed, as designed | The exact-head review, N6; corrected at the next batch |
+| AM11-17 | 12 Nov 2026 | follow-through | Gave DM-65 at `c661dce` without a watch on Codex's pass, then wrote C2's prompt at `2475d7b` without reading PR45's comments; Codex's P2 on `c661dce` (17:39 UTC) was found only at 18:47, after the pass on the prompt's commit. Both of its findings were already C2's items, so the prompt stood | App Manager 11, reading PR45's comments before giving C2's prompt |
 
 ## App Manager 2
 
@@ -1123,6 +1124,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-17 — A Codex pass on a consultation's commit left unread (follow-through)
+
+- **What happened:** after AM11-10, consultations go to Nathan without waiting for Codex. The manager gave DM-65 at `c661dce` and set no watch for that pass, so its P2 (17:39 UTC, `pointers.name_order`'s `id(tx)`) went unread. C2's prompt was then written at `2475d7b` without reading PR45's comments; the finding surfaced only when the watch on the prompt's commit ended at 18:47.
+- **Caught by:** App Manager 11, listing PR45's review comments before giving the prompt.
+- **Effect:** none on the work: both new findings were the review's F4 and DM-64's item, already C2's items 4 and 10. The prompt went as written.
+- **Correction:** both recorded (the brief's "Sessions"; the evidence record with C2's verification).
+- **Prevention:** not waiting for Codex before a consultation still means reading its result: before writing any prompt, list PR45's review comments since the last one read, and set a watch on every pass whose result is not yet read.
 
 ### AM11-13 to AM11-16 — Four slips the exact-head review and the manager found
 

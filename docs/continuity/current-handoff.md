@@ -1,4 +1,4 @@
-# Current handoff — App Manager 11 (12 November 2026; SV3 Stage A and C1 in PR45; C2 next)
+# Current handoff — App Manager 11 (12 November 2026; SV3 Stage A and C1 in PR45; C2 stopped, DM-66)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -10,22 +10,22 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): [the brief](../planning/sv2-profiles-media.md), revision 8; PR43 at `4dc2061` and PR44 at `3240ef0`, with their receipts in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 7 (the Dev Manager's DM-60 to DM-65). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); The exact-head review asked for changes; DM-65 ruled; C2 (ten items) is next, then its delta re-review. F7's decision is with Nathan (not holding the merge). Until C2, three failure signatures are recorded, not re-run. Stage B follows after Stage A merges.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 7 (the Dev Manager's DM-60 to DM-65). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); C2 stopped at its stop rule (a clock text no rule covers; its work is committed in its own container, unpushed); DM-66 is with the Dev Manager. F7's decision is with Nathan (not holding the merge). Until C2, three failure signatures are recorded, not re-run. Stage B follows after Stage A merges.
 - **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror (15:03 to 15:53 UTC). DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
-- **Review log:** DM-01 to DM-65, with "Deferred conditions"; DM-63 confirms DM-62's Y1 to Y6 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
+- **Review log:** DM-01 to DM-66 (DM-66 open), with "Deferred conditions"; DM-63 confirms DM-62's Y1 to Y6 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (12 November 2026, 18:43 UTC, App Manager 11)
+## Waiting checkpoint (12 November 2026, 23:44 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | Codex, then Nathan and the C2 session | Codex on the commit holding C2's prompt, then C2's report; F7's decision | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
+| App Manager 11 | Nathan and Dev Manager 4; Nathan | DM-66's answer, then the relay to C2's session; F7's decision | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): correction C2 and its delta re-review; the pre-merge read; the merge. Then Stage B.
+1. **SV3** (OD-49): DM-66; C2 to finish, then its delta re-review; the pre-merge read; the merge. Then Stage B.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 
