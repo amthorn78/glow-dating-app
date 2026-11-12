@@ -72,7 +72,7 @@ outside it; a failure there leaves an `unverified` account that cannot sign in. 
 mandatory and by code (three attempts, 15 minutes), never by link: no frontend URL is set, so no
 message carries a link. After allauth marks the address verified, F01's `verified` transition
 runs (`glow_identity.revocation.mark_verified`): its own transaction, the account row locked
-`FOR UPDATE` before anything else, refused unless the state is `unverified` (an `active` account
+`FOR NO KEY UPDATE` (since SV3 Stage A's correction C1; DM-61) before anything else, refused unless the state is `unverified` (an `active` account
 is no change), `version` and `eligibility_version` bumped; if it did not commit, the next sign-in
 takes it, so a verified address never leaves its account `unverified`. A confirmed
 password-reset code also verifies the address, outside the account adapter (allauth's
@@ -193,7 +193,10 @@ Changing a mapping reference, input, policy or safety state invalidates reuse.
 selection, each page's recheck and the trusted adapter (`glow_discovery.eligibility`, behind
 `TrustedEligibilityService`). Each is **one statement**, so in READ COMMITTED it reads one
 snapshot, and each reads, for the viewer and for the candidate: the account's state (ACTIVE), the
-age state (ADULT: an accepted state, `self_declared_adult` only, with its date), the latest
+age state (ADULT: an accepted state, `self_declared_adult` only, with its date, and the age that
+date gives in whole years on the server's UTC date at most `AGE_CEILING`, 150, the maximum of
+`CandidateProfile.age`, so a member whose date gives 151 or more is treated as a state outside the
+set; since C1, DM-62), the latest
 `onboarding` consent decision by purpose at the current version (CONSENT; a `sensitive_profile`
 decision never counts, and a new version fails every older acceptance at once), the profile's state
 (`visible`, which carries VERIFIED, COMPLETE and MODERATION), the four fields' rows against the
@@ -206,8 +209,8 @@ area is distance zero), and `active` blocks in both directions. The selection an
 consumption (D7): no like or pass from the viewer, and no match row for the pair in any state.
 Every predicate fails closed: a missing row is NULL or no row, never a pass. The adapter builds its
 `PairEvidenceVersion` from both accounts' three revisions, both profiles' versions and the
-selection's policy version. A page holds the viewer's account row (`FOR UPDATE` to create a batch,
-`FOR SHARE` to continue one) and the settings' pointers `FOR SHARE` while it reads, so every
+selection's policy version. A page holds the viewer's account row (`FOR NO KEY UPDATE` to create a
+batch, `FOR SHARE` to continue one) and the settings' pointers `FOR SHARE` while it reads, so every
 viewer-side fact is stable for the transaction; the candidates' facts come from the one statement.
 
 The future PostgreSQL UOW acquires policy/account/pair rows in stable order and
@@ -275,6 +278,13 @@ evidence ([evidence record](../testing/evidence/2026-10-05-p06-2-chat-integratio
 **The transaction design** is P06.DB's reference design (its brief, D5), carried as
 written: `READ COMMITTED`; row locks by primary key with `SELECT ... FOR UPDATE` in one
 canonical order (the lower account, the higher account, the match, the sending session);
+since SV3 Stage A's correction C1 (DM-61), every explicit lock of an `AppAccount` row, in
+the app and in the reference design, is `FOR NO KEY UPDATE`: it excludes every other writer
+and every `FOR SHARE` reader, as `FOR UPDATE` did, but not the `FOR KEY SHARE` that
+PostgreSQL's foreign-key check takes, so a write that references another member's account
+(a batch's entries, a block, a match) never waits on that member's writers and no lock cycle
+forms through one; nothing deletes an account row or changes its keys, which would take
+`FOR UPDATE` by itself;
 every check in code under the locks, with the time read after them; authorize, then
 deduplicate; a locked read that finds no row refuses; deletion is the lifecycle
 transition. The send writes its `MessageSubmission` and its `OutboxEvent` in one
@@ -382,7 +392,7 @@ brief, point h), and P11 serves no token endpoint [Corrected by M05, finding 24:
 **The grant's transaction** (B1; F1, DM-14 item 3; closes Stage A's F1 gap).
 `OrmContactPersistence.grant_token` runs the rule in one transaction: the account row,
 then the session row, locked `SELECT ... FOR SHARE` in the send's order, so a grant
-waits for an epoch bump in flight (which holds the account `FOR UPDATE`) and then
+waits for an epoch bump in flight (which holds the account `FOR NO KEY UPDATE`) and then
 refuses at the new epoch, and a bump waits for a grant in flight; the time is
 `clock_timestamp()` read under those locks and passed as `now`, so the issue time and
 the revocation's cut-off come from one clock, the database's, and the app server's
@@ -452,7 +462,8 @@ committed. `OrmConversationReads` runs only under the proof's settings, as the r
   the active `Block` rows either way, both `Profile` states and both latest onboarding
   `ConsentDecision` rows under those account locks (the send's own
   `_contact_state_checks`). A read waits for a revocation in flight, which holds one of
-  those rows `FOR UPDATE`, and reads its result; a revocation waits for a read in flight.
+  those rows under its writer's lock (an account `FOR NO KEY UPDATE`, any other row
+  `FOR UPDATE`), and reads its result; a revocation waits for a read in flight.
   The time is `clock_timestamp()` after the locks. This is the interim default under F06
   (DM-22 3.1): the A05 history question goes to Nathan before P11 serves the reads.
 - **The history read checks twice** (DM-22 3.2). The first check's transaction reads the
