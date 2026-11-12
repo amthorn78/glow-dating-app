@@ -1,4 +1,4 @@
-# Current handoff — App Manager 11 (12 November 2026; SV3 Stage A in PR45, correction C1 next)
+# Current handoff — App Manager 11 (12 November 2026; SV3 Stage A in PR45; DM-62, then correction C1)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
