@@ -1120,6 +1120,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 
 ## App Manager 11
 
+### AM11-12 — The branch list left at the Dev Manager's previous head (follow-through)
+
+- **What happened:** the batch at `b67bae2` merged DM-62's report (`f5c69fa`) and left the handoff's "Branches and PRs" giving `claude/dev-manager` at `133a715`, DM-61's head. The sweep the same batch added (AM11-11) was run for the brief's revision number only.
+- **Caught by:** App Manager 11, listing the branches for Notion's "Branches" bullet.
+- **Effect:** the handoff was wrong at `b67bae2` for a few minutes; no session read it. Corrected at `823be0b`, with the summary row; this section follows at the next batch.
+- **Correction:** the branch list gives `880635d`, merged at `f5c69fa`.
+- **Prevention:** the supersession sweep for a batch that merges a branch includes that branch's head wherever a record names it (the handoff's "Branches and PRs", Notion's "Branches").
+
 ### AM11-11 — The brief's old revision number left in Notion (follow-through)
 
 - **What happened:** the sync for the brief's revision 3 (`1ffff7d`) updated Implementation Control's status, "Branches" and "Mistakes log" lines, and left "Next items" saying "its brief, revision 2, approved by the Dev Manager in DM-60". The supersession sweep searched the repository only.

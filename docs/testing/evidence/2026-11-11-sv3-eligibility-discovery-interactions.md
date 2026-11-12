@@ -511,3 +511,16 @@ Only the sentences that state the account lock's mode, the keyed tie-break or AD
 
 - The mobile app's export and rendered checks and `playwright install` (CI's: they passed in the run of record above).
 - Any provider, HDE, Stream, Railway or other external call; `proofs/stream-chat` (its CI job ran unchanged).
+
+## Manager verification of C1
+
+App Manager 11, 12 November 2026 (finished at 03:46 UTC). Not a code review: the exact-head review follows.
+
+- **The branch:** `claude/glow-correction-c1-1jzjgr`, code head `b44e6f7`, records head `cbeb050`, starting at `823be0b` (the live manager head, so integrated by fast-forward). Its 26 paths are all in C1's owned paths. Outside `glow_discovery`, every changed line is a lock's mode or a docstring that states it (K5); `media.py` changes only its module docstring.
+- **The code:** `keys.tie_break`, `sql_pads` and the pads' parameters are gone, and `predicates.TIE_BREAK` is `gen_random_uuid()`; the cursor's MAC is unchanged. ADULT's ceiling is in `MEMBER`'s one `adult` column, with `AGE_CEILING` imported; a null date still fails closed.
+- **The run of record,** 43147201199 on `b44e6f7` (push), read from GitHub: all eight jobs `success`, every retry step skipped, and the gate printed `Application checks passed`. The database job's log: ordering 56/56, 115/115 and 62/62, with every control failing as intended (`inverted_lock_order` still deadlocks); identity 49/49 (31 s); profile 69/69 (58 s); discovery 38/38 in 60.5 s (phase 61 s), its seven new cases among them; every suite's secret scan clean; each second run refused with its row counts unchanged.
+- **Re-run here,** at `cbeb050`, in fresh venvs from the hash-locked requirements: the API's `manage.py check`, 585 tests OK, smoke PASS, Ruff, format and mypy clean, the static check; the proof's 253 offline tests OK, Ruff and mypy clean. The contracts and the mobile app have no change in C1; CI's jobs passed.
+- **Two reversals of my own,** each restored: `contact._lock` back to `select_for_update()` makes the lock scan report `not FOR NO KEY UPDATE: 1` and exit 1 (a first attempt's `sed` matched nothing, so it was redone with a checked replacement); ADULT's ceiling removed from `MEMBER` fails `AgeCeilingTests.test_adult_bounds_the_age_its_date_gives_for_every_reader`.
+- **The photo read's wait** (the session's first deviation): `media.delivery_reference` runs each card's read in its own transaction (`run(body)`), holding one `FOR SHARE` lock, so it can wait for a writer but holds nothing another waits for: no cycle. The session's statement holds.
+- **Two sentences C1's item 4 missed,** found by a search across line breaks: the data model's `AccountAgeState` row ("takes the account row `FOR UPDATE` before the age state's row") and its `RecommendationBatch` row ("after the owner's account row lock (`FOR UPDATE`)"). With `glow_chat/reads.py`'s module docstring (the session's second deviation), three texts still state the old mode.
+- **Disposition:** the first deviation departs from DM-61's words for check 5, and the three texts need a home, so both go to the Dev Manager as [DM-63](../../ephemeral/2026-11-12-dm-63-sv3-stage-a-c1-verification.md) before the review prompt's revision 2.
