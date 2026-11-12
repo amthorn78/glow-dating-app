@@ -51,8 +51,8 @@ class OrmIdentityVerification:
     def _locked(account_id: UUID) -> Any:
         if not connection.in_atomic_block:
             raise RuntimeError("transaction_required")
-        # DM-13 4.1: the account row first (already held by the staff operation).
-        AppAccount.objects.select_for_update().filter(pk=account_id).exists()
+        # DM-13 4.1: the account row first, FOR NO KEY UPDATE (DM-61; held by the staff operation).
+        AppAccount.objects.select_for_update(no_key=True).filter(pk=account_id).exists()
         return (
             IdentityVerification.objects.select_for_update().filter(account_id=account_id).first()
         )

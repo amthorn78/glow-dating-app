@@ -2,8 +2,8 @@
 
 Each command is one transaction (``tx.run``) that:
 
-1. locks the actor's account row ``FOR UPDATE`` first (DM-13 4.1), then the settings it reads,
-   under their pointers' ``FOR SHARE`` locks, then its own rows ``FOR UPDATE``;
+1. locks the actor's account row ``FOR NO KEY UPDATE`` first (DM-13 4.1; DM-61), then the
+   settings it reads, under their pointers' ``FOR SHARE`` locks, then its own rows ``FOR UPDATE``;
 2. reads the time from ``clock_timestamp()`` after the locks;
 3. authorizes, then deduplicates (P06.DB 5.4): the same key with the same intent replays its
    receipt with a current projection, and with another intent is ``idempotency_conflict``;

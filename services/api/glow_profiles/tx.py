@@ -5,8 +5,11 @@
   ``glow_chat``'s writers, which SV2 calls on purpose, nest inside it as savepoints; any result of
   theirs other than ``applied`` or ``no_change`` is a refusal that rolls the whole transaction
   back.
-- **The account row first:** every writer locks the actor's ``AppAccount`` row ``FOR UPDATE``
-  before anything else, so a requirement's writer and a completion check cannot interleave.
+- **The account row first:** every writer locks the actor's ``AppAccount`` row ``FOR NO KEY
+  UPDATE`` before anything else, so a requirement's writer and a completion check cannot
+  interleave. The mode excludes every other writer and every ``FOR SHARE`` reader, but not the
+  ``FOR KEY SHARE`` a foreign-key check takes, so a write elsewhere that references the account
+  never waits on it (the SV3 brief's D2; DM-61).
   ``lock_account`` refuses an account that is not ``active``; only F05's purge and the store's
   deletion acknowledgment take the row in any state (``lock_account_any_state``; DM-58 item 9).
 - **The time** is ``clock_timestamp()`` read after the locks.
@@ -160,9 +163,10 @@ def run(body: Callable[[Tx], Result], probe: TransactionProbe | None = None) -> 
 
 
 def lock_account(tx: Tx, account_id: UUID) -> Any:
-    """The actor's account row, ``FOR UPDATE``, before anything else (DM-13 4.1). An absent row
-    is a refusal; the actor class has already refused an account that is not ``active``."""
-    account = AppAccount.objects.select_for_update().filter(pk=account_id).first()
+    """The actor's account row, ``FOR NO KEY UPDATE``, before anything else (DM-13 4.1; DM-61).
+    An absent row is a refusal; the actor class has already refused an account that is not
+    ``active``."""
+    account = AppAccount.objects.select_for_update(no_key=True).filter(pk=account_id).first()
     if account is None:
         raise Refused(NOT_FOUND, "account_missing")
     signal(tx.probe, "after_first_lock")
@@ -172,13 +176,13 @@ def lock_account(tx: Tx, account_id: UUID) -> Any:
 
 
 def lock_account_any_state(tx: Tx, account_id: UUID) -> Any:
-    """The photo owner's account row, ``FOR UPDATE``, first, in any account state: only for F05's
-    purge and the store's deletion acknowledgment, which only reduce what Glow holds (D10;
+    """The photo owner's account row, ``FOR NO KEY UPDATE``, first, in any account state: only for
+    F05's purge and the store's deletion acknowledgment, which only reduce what Glow holds (D10;
     DM-58 item 9), so a photo removed before its owner is suspended or asks for deletion is
     still purged. An absent row is a refusal, as for ``lock_account``; ``glow_chat``'s account
-    revocation takes the same row ``FOR UPDATE``, so the two still serialize. Every other step
-    keeps ``lock_account`` or ``read_account_shared``."""
-    account = AppAccount.objects.select_for_update().filter(pk=account_id).first()
+    revocation takes the same row ``FOR NO KEY UPDATE``, so the two still serialize. Every other
+    step keeps ``lock_account`` or ``read_account_shared``."""
+    account = AppAccount.objects.select_for_update(no_key=True).filter(pk=account_id).first()
     if account is None:
         raise Refused(NOT_FOUND, "account_missing")
     signal(tx.probe, "after_first_lock")
@@ -187,7 +191,8 @@ def lock_account_any_state(tx: Tx, account_id: UUID) -> Any:
 
 def read_account_shared(tx: Tx, account_id: UUID) -> None:
     """A read's consistent view: the account row ``FOR SHARE``, so the read waits for a writer
-    of the account in flight (every writer takes it ``FOR UPDATE`` first) and reads its result."""
+    of the account in flight (every writer takes it ``FOR NO KEY UPDATE`` first) and reads its
+    result."""
     tx.cursor.execute(
         "SELECT state FROM glow_persistence_appaccount WHERE id = %s FOR SHARE", [account_id]
     )
