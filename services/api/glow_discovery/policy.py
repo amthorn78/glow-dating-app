@@ -132,7 +132,7 @@ def compatibility_port() -> FixtureCompatibilityProvider | None:
 
 
 # The port's permitted output is a band, never a score (PF01 section 5). The fixture's result
-# carries none of its own, so every ready pair is in one band and the keyed tie-break orders it.
+# carries none of its own, so every ready pair is in one band and the random tie-break orders it.
 FIXTURE_BAND = 0
 
 

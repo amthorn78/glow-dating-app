@@ -1,7 +1,8 @@
 """SV3 Stage A, the parts that need no database (its brief's D2, D3, D6, D7, D13, D17 and D19).
 
-The page route the discovery URL configuration serves, and no action route; the keyed tie-break and
-its SQL construction (Q2); the cursor's binding (Q4); the selection's settings and policy version
+The page route the discovery URL configuration serves, and no action route; the random tie-break,
+with no key in any statement or parameter (D6; DM-61 K2); ADULT's age ceiling pinned to the
+production schema (DM-62); the cursor's binding (Q4); the selection's settings and policy version
 (Q3); the ranking's port states and bands (D6); the request check and the card's projection (D13);
 no log line carrying a value; the account row first in each page's transaction; and every pointer
 taken through ``settings_store`` in one call (D19).
@@ -62,34 +63,47 @@ class DiscoveryRouteTests(unittest.TestCase):
 
 
 class KeyTests(unittest.TestCase):
-    def test_the_tie_break_is_salted_hmac_and_its_sql_construction_agrees(self) -> None:
+    def test_the_tie_break_is_drawn_in_the_selection_with_no_key(self) -> None:
+        # D6 (DM-61 K2): a random value PostgreSQL draws for each candidate inside the selection;
+        # no key, pad or value derived from SECRET_KEY is a statement parameter, and the keyed
+        # tie-break (``keys.tie_break``, ``keys.sql_pads``, the pads' parameters) is gone.
         seen = last_json(
             under_discovery_settings(
                 """
-import hashlib, json
+import json
+from datetime import date
 from uuid import uuid4
-from django.utils.crypto import salted_hmac
-from glow_discovery import keys
-batch, profile = uuid4(), uuid4()
-message = f"{batch}:{profile}".encode()
-ipad, opad = keys.sql_pads()
-inner = hashlib.sha256(ipad + message).digest()
-sql_like = hashlib.sha256(opad + inner).digest()
-expected = salted_hmac(keys.TIE_BREAK_SALT, f"{batch}:{profile}", algorithm="sha256").digest()
-unkeyed = hashlib.sha256(message).digest()
+from glow_discovery import eligibility, keys, policy, predicates
+selection = policy.Selection(
+    version="discovery.1.1.1.1.1", onboarding_consent="consent.onboarding.v1",
+    narrowable={}, both_ways=True, distance_miles={"anywhere": None}, today=date(2026, 11, 12),
+)
+values = eligibility.parameters(selection, uuid4())
 print(json.dumps({
-    "python": keys.tie_break(batch, profile) == expected,
-    "sql": sql_like == expected,
-    "unkeyed": unkeyed == expected,
-    "pads": [len(ipad), len(opad)],
+    "tie_break": predicates.TIE_BREAK,
+    "in_selection": predicates.TIE_BREAK + " AS tie_break" in predicates.SELECTION,
+    "ordered": "ORDER BY tie_break" in predicates.SELECTION,
+    "names": sorted(values),
+    "bytes": [k for k, v in values.items() if isinstance(v, (bytes, bytearray, memoryview))],
+    "keys": sorted(n for n in vars(keys) if not n.startswith("__")),
+    "pads": any(w in s for s in (predicates.SELECTION, predicates.RECHECK, predicates.PAIR,
+                                  predicates.VIEWER) for w in ("ipad", "opad", "sha256", "hmac")),
 }))
 """
             )
         )
-        self.assertTrue(seen["python"])
-        self.assertTrue(seen["sql"])
-        self.assertFalse(seen["unkeyed"])
-        self.assertEqual(seen["pads"], [64, 64])
+        self.assertEqual(seen["tie_break"], "gen_random_uuid()")
+        self.assertTrue(seen["in_selection"])
+        self.assertTrue(seen["ordered"])
+        self.assertEqual(
+            seen["names"],
+            ["adult_states", "both_ways", "choices", "consent", "today", "viewer"],
+        )
+        self.assertEqual(seen["bytes"], [])
+        for gone in ("tie_break", "sql_pads", "TIE_BREAK_SALT", "BLOCK", "hashlib", "settings"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, seen["keys"])
+        self.assertFalse(seen["pads"])
 
     def test_a_cursor_is_bound_to_its_viewer_collection_batch_and_offset(self) -> None:
         seen = last_json(
@@ -202,12 +216,16 @@ print(json.dumps(found))
 RANKING = """
 import json
 from unittest import mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 from glow_discovery import pages, policy
 from glow_domain.compatibility import FixtureCase
 
 def row(tie):
-    return {"account_id": uuid4(), "chart": ("resolved", "fixture:ref", 1, 1), "tie_break": tie}
+    return {
+        "account_id": uuid4(),
+        "chart": ("resolved", "fixture:ref", 1, 1),
+        "tie_break": UUID(int=tie),
+    }
 
 viewer = pages.Viewer(True, (1, 1, 1), ("resolved", "fixture:viewer", 1, 1))
 selection = mock.Mock(version="discovery.1.1.1.1.1")
@@ -227,15 +245,15 @@ with mock.patch.object(policy, "compatibility_port", lambda: Port("explicitly-sy
     found["empty"] = pages._recommend(uuid4(), viewer, [], selection)[0]
     found["empty_calls"] = len(calls)
 with mock.patch.object(policy, "compatibility_port", lambda: None):
-    found["none"] = pages._recommend(uuid4(), viewer, [row(b"a")], selection)[0]
+    found["none"] = pages._recommend(uuid4(), viewer, [row(1)], selection)[0]
 for case in ("pending-chart", "engine-unavailable", "unsupported-contract"):
     with mock.patch.object(policy, "compatibility_port", lambda case=case: Port(case)):
-        state, entries = pages._recommend(uuid4(), viewer, [row(b"a"), row(b"b")], selection)
+        state, entries = pages._recommend(uuid4(), viewer, [row(1), row(2)], selection)
         found[case] = [state, len(entries)]
-rows = [row(bytes([n])) for n in (5, 1, 4, 2, 3)]
+rows = [row(n) for n in (5, 1, 4, 2, 3)]
 with mock.patch.object(policy, "compatibility_port", lambda: Port("explicitly-synthetic-ready")):
     state, entries = pages._recommend(uuid4(), viewer, rows, selection)
-    found["one_band"] = [e["tie_break"][0] for e in entries]
+    found["one_band"] = [e["tie_break"].int for e in entries]
     with mock.patch.object(policy, "band", lambda result: None):
         found["no_band"] = pages._recommend(uuid4(), viewer, rows, selection)[0]
 def banded(result):
@@ -244,7 +262,7 @@ banded.values = iter([0, 1, 0, 1, 0])
 with mock.patch.object(policy, "compatibility_port", lambda: Port("explicitly-synthetic-ready")):
     with mock.patch.object(policy, "band", banded):
         state, entries = pages._recommend(uuid4(), viewer, rows, selection)
-        found["two_bands"] = [e["tie_break"][0] for e in entries]
+        found["two_bands"] = [e["tie_break"].int for e in entries]
 print(json.dumps(found))
 """
 
@@ -399,6 +417,58 @@ class ContractTests(unittest.TestCase):
         )
         # Whole seconds, a fraction dropped (never rounded up).
         self.assertEqual(seen["expires_at"], "2026-11-11T20:00:01Z")
+
+
+class AgeCeilingTests(unittest.TestCase):
+    """ADULT's age ceiling (the SV3 brief's D3; DM-62 Y1 and Y3; Codex's CX3)."""
+
+    def test_the_ceiling_is_candidate_profile_ages_maximum_in_the_production_schema(self) -> None:
+        # A later change to either side is seen here: the card's age is bounded by ADULT's
+        # ceiling, and the contract's maximum must be that same number.
+        import json
+
+        from glow_domain import profile_settings as ps
+
+        schema = json.loads(
+            (
+                API_ROOT.parents[1] / "packages/contracts/production/gapp-api-v1.schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        age = schema["$defs"]["CandidateProfile"]["properties"]["age"]
+        self.assertEqual(age["type"], "integer")
+        self.assertEqual(age["maximum"], ps.AGE_CEILING)
+        self.assertEqual(ps.AGE_CEILING, 150)
+
+    def test_adult_bounds_the_age_its_date_gives_for_every_reader(self) -> None:
+        # The ceiling is inside ADULT, in ``MEMBER``'s one ``adult`` column, which the selection,
+        # every page's recheck, the viewer's read and the trusted adapter's pair read all share;
+        # it is imported, not written again.
+        seen = last_json(
+            under_discovery_settings(
+                """
+import json
+from glow_discovery import predicates
+from glow_domain import profile_settings as ps
+member = predicates.MEMBER
+start = member.index("(s.state = ANY(%(adult_states)s)")
+adult = member[start:member.index(" AS adult,", start)]
+age = predicates.AGE.format(birth="s.birth_date")
+print(json.dumps({
+    "ceiling": f"AND {age} <= {ps.AGE_CEILING})" in adult,
+    "readers": [s.count("SELECT a.id AS account_id") for s in (
+        predicates.SELECTION, predicates.RECHECK, predicates.PAIR, predicates.VIEWER)],
+    "member_states": "adult IS TRUE" in predicates.member_states("x"),
+    "pair_reads_adult": "v.adult" in predicates.PAIR and "c.adult" in predicates.PAIR,
+    "imported": "profile_settings as ps" in open(predicates.__file__).read(),
+}))
+"""
+            )
+        )
+        self.assertTrue(seen["ceiling"])
+        self.assertEqual(seen["readers"], [2, 2, 2, 1])
+        self.assertTrue(seen["member_states"])
+        self.assertTrue(seen["pair_reads_adult"])
+        self.assertTrue(seen["imported"])
 
 
 class StructureTests(unittest.TestCase):

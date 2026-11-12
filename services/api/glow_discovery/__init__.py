@@ -3,7 +3,7 @@ SV3 brief, revision 2, D1 to D8, D13 for Stage A's parts, D15 to D19; DM-60).
 
 - ``policy``: what the selection reads (the settings, under their pointers' locks in name order,
   D19), the batch's policy version (Q3), the accepted age states (D3), and the bounds (D7);
-- ``keys``: the keyed tie-break (D6, Q2) and the cursor's binding to the viewer (D7);
+- ``keys``: the cursor's binding to the viewer (D7); the tie-break has no key (D6; DM-61 K2);
 - ``predicates``: the eligibility predicates of D3 to D5 and D7's consumption, as SQL, each for the
   viewer and for the candidate, the one source of every statement below;
 - ``eligibility``: the trusted adapter behind ``glow_domain.trusted_eligibility``'s

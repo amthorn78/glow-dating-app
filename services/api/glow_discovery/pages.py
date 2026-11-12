@@ -4,8 +4,11 @@ transaction.
 **A page with no cursor** creates the viewer's batch for the collection (``create``), in one
 transaction that:
 
-1. locks the viewer's account row ``FOR UPDATE`` first (DM-13 4.1; an account that is not ``active``
-   is refused), so two of the viewer's pages, and every writer of a fact of the viewer's, serialize;
+1. locks the viewer's account row ``FOR NO KEY UPDATE`` first (DM-13 4.1; DM-61; an account that is
+   not ``active`` is refused), so two of the viewer's pages, and every writer of a fact of the
+   viewer's, serialize; the mode does not block the ``FOR KEY SHARE`` that another member's
+   entries' foreign-key checks take on this row, so two pages, or a page and a pair writer, never
+   wait on each other through a candidate's account (Codex's CX1);
 2. takes the settings the selection reads (``policy.SELECTION_SETTINGS``) under their pointers'
    ``FOR SHARE`` locks, all in its first ``read_shared`` call, in name order (D19), then reads the
    time from ``clock_timestamp()`` (the server's UTC date, D4);
@@ -13,7 +16,8 @@ transaction that:
    recommendation is computed for them (D3; UST-41, USF-11);
 4. selects up to 100 candidates in **one statement** (``predicates.SELECTION``: every predicate of
    D3 to D5, consumption, and for broader discovery the viewer's current recommendations batch's
-   candidates left out), ordered by the keyed tie-break (D6, Q2), so it reads one snapshot (D2);
+   candidates left out), ordered by the random tie-break each candidate draws in it (D6; DM-61
+   K2), so it reads one snapshot (D2);
 5. for recommendations, asks the compatibility port for each selected pair (none when nothing was
    selected: F07's "no eligible candidates returns empty and no provider call"): a ready pair is
    ranked by its band, then the tie-break; an ``unsupported`` pair is left out of recommendations
@@ -130,7 +134,7 @@ def _recommend(
         return "unavailable", []
     viewer_map = _mapping(viewer_id, viewer.chart)
     statuses: set[CompatibilityStatus] = set()
-    ranked: list[tuple[int, bytes, dict[str, Any]]] = []
+    ranked: list[tuple[int, UUID, dict[str, Any]]] = []
     for row in rows:
         candidate_map = _mapping(row["account_id"], row["chart"])
         if viewer_map is None or candidate_map is None:
@@ -142,7 +146,7 @@ def _recommend(
         statuses.add(result.status)
         rank = policy.band(result)
         if rank is not None:
-            ranked.append((rank, bytes(row["tie_break"]), row))
+            ranked.append((rank, row["tie_break"], row))
     if CompatibilityStatus.UNAVAILABLE in statuses:
         return "unavailable", []
     if CompatibilityStatus.PENDING in statuses:
@@ -217,7 +221,7 @@ def create(
             else None
         )
         values = parameters(selection, account_id)
-        values.update(batch=str(batch_id), exclude_batch=exclude, limit=policy.BATCH_LIMIT)
+        values.update(exclude_batch=exclude, limit=policy.BATCH_LIMIT)
         signal(tx.probe, "before_selection")
         rows = _rows(
             tx,

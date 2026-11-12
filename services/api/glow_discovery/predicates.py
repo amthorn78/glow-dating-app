@@ -8,7 +8,11 @@ Each predicate is written for a member alias (``v``, the viewer; ``c``, the cand
 - **SELF:** the candidate is not the viewer.
 - **ACTIVE:** the account is ``active``.
 - **ADULT** (G-01): the age state is one of the accepted states (``policy.ACCEPTED_AGE_STATES``),
-  with its date; read directly, because ``visible`` can lag it.
+  with its date, and the age that date gives (``AGE``: whole years on the server's UTC date) is at
+  most ``glow_domain.profile_settings.AGE_CEILING`` (150, ``CandidateProfile.age``'s maximum;
+  DM-62, Codex's CX3), so a member whose date gives 151 or more is treated as a state outside the
+  set: no page, no batch entry, no card above the contract's maximum. Read directly, because
+  ``visible`` can lag it.
 - **CONSENT** (DM-54): the account's latest ``onboarding`` decision, by purpose, is ``accepted`` at
   the current version; a ``sensitive_profile`` decision never satisfies it, and a newer onboarding
   version fails every older acceptance at once. Read directly, because ``visible`` can lag it.
@@ -44,6 +48,7 @@ Every predicate fails closed: a missing row reads as NULL or as no row, and a NU
 from __future__ import annotations
 
 from glow_domain import profile_fields as pf
+from glow_domain import profile_settings as ps
 from glow_profiles import areas
 
 # D4: whole years from ``{birth}`` to the server's UTC date, ``whole_years``' rule. The proof pins
@@ -62,7 +67,8 @@ SELECT a.id AS account_id, a.state AS account_state, a.eligibility_version,
        p.display_name, p.bio, ar.name AS area_name,
        ar.latitude::float8 AS lat, ar.longitude::float8 AS lon,
        {AGE.format(birth="s.birth_date")} AS age,
-       (s.state = ANY(%(adult_states)s) AND s.birth_date IS NOT NULL) AS adult,
+       (s.state = ANY(%(adult_states)s) AND s.birth_date IS NOT NULL
+        AND {AGE.format(birth="s.birth_date")} <= {int(ps.AGE_CEILING)}) AS adult,
        EXISTS (
          SELECT 1 FROM glow_persistence_consentdecision d
          WHERE d.account_id = a.id AND d.purpose = 'onboarding' AND d.state = 'accepted'
@@ -216,12 +222,12 @@ LEFT JOIN LATERAL (
 """
 CHART_COLUMNS = "{name}.state, {name}.engine_reference, {name}.version, {name}.birth_version"
 
-# D6 (Q2): the keyed tie-break, HMAC-SHA-256 over PostgreSQL's core sha256 with the pads from
-# ``keys.sql_pads``; equal to ``keys.tie_break`` for the same batch and profile.
-TIE_BREAK = (
-    "sha256(%(opad)s::bytea || sha256(%(ipad)s::bytea"
-    " || convert_to(%(batch)s::text || ':' || c.profile_id::text, 'UTF8')))"
-)
+# D6 (DM-61 K2, replacing DM-60 Q2's keyed hash): the tie-break is a random value PostgreSQL draws
+# for each candidate inside the selection (``gen_random_uuid()``, core since PostgreSQL 13, from
+# its ``pg_strong_random``). No key exists, so none travels in a statement or reaches a log, and
+# nothing computable from the batch's and the profiles' IDs orders a batch. It is stored nowhere:
+# the entries' positions record the order it gives, and a new batch draws new values.
+TIE_BREAK = "gen_random_uuid()"
 
 # -- the statements --------------------------------------------------------------------------
 
@@ -233,7 +239,7 @@ FROM v {CHART.format(alias="v", name="chart")}
 """
 
 # The batch's selection (D2, D6, D7): one statement, so one snapshot, holding every predicate and
-# consumption, ordered by the keyed tie-break and bounded by the batch's limit. For broader
+# consumption, ordered by the random tie-break and bounded by the batch's limit. For broader
 # discovery it also leaves out the viewer's current recommendations batch's candidates.
 SELECTION = f"""
 WITH v AS ({MEMBER} WHERE a.id = %(viewer)s),

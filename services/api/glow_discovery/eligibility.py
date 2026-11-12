@@ -27,7 +27,7 @@ from uuid import UUID
 
 from django.db import connection
 
-from glow_discovery import keys, policy, predicates
+from glow_discovery import policy, predicates
 from glow_domain.eligibility import (
     BlockState,
     EligibilitySnapshot,
@@ -53,9 +53,8 @@ def outcome(value: object) -> PredicateOutcome:
 
 
 def parameters(selection: policy.Selection, viewer: UUID) -> dict[str, Any]:
-    """The statements' parameters for one viewer under one selection. The pads are secrets: they
-    travel only here, as statement parameters, and are never logged."""
-    ipad, opad = keys.sql_pads()
+    """The statements' parameters for one viewer under one selection. None is a key or is derived
+    from one (D6; DM-61 K2): the tie-break is drawn inside the selection."""
     found: dict[str, Any] = {
         "viewer": viewer,
         "today": selection.today,
@@ -63,8 +62,6 @@ def parameters(selection: policy.Selection, viewer: UUID) -> dict[str, Any]:
         "consent": selection.onboarding_consent,
         "both_ways": selection.both_ways,
         "choices": json.dumps(dict(selection.distance_miles), sort_keys=True),
-        "ipad": ipad,
-        "opad": opad,
     }
     for field, narrowable in selection.narrowable.items():
         found[f"narrow_{field}"] = narrowable
