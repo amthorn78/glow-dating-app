@@ -168,6 +168,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-07 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `b09cbf3` gave 23:41 UTC, written before the clock was read (it read 23:40): AM11-03 repeated within the hour. The time now comes from the clock inside the same command that writes it | App Manager 11, reading the commit's clock line |
 | AM11-08 | 12 Nov 2026 | follow-through | The Notion sync for `1ffff7d` changed Implementation Control's "Branches" bullet from three branches to four and left its next sentence, "All three are kept by the cleanup's keep-list"; the edit replaced the list, not the bullet. AM11-02's mechanism, repeated | App Manager 11, reading the bullet back |
 | AM11-09 | 12 Nov 2026 | accuracy | C1's prompt, revision 1, named the tie-break's files as `predicates.py`, `pages.py` and `keys.py` "and what they need", without `eligibility.py`, whose `parameters` passes the pads it told the session to remove. Corrected in revision 2 before it was given | App Manager 11, checking Codex's CX2 against the prompt |
+| AM11-10 | 12 Nov 2026 | process | Held DM-62's relay message for a Codex pass on its own commit, a wait the workflow sets only for review and correction prompts; Codex had already passed the same code at `c3fb5bb` with nothing new. Nathan had nothing to run until he asked what the manager was doing | Nathan: "what are you even doing?" |
+| AM11-11 | 12 Nov 2026 | follow-through | Brief revision 3's sync left Implementation Control's "Next items" saying "its brief, revision 2"; the sweep searched the repository, not Notion's standing lines, for the previous revision number. AM5-22's mechanism, repeated | Dev Manager 4, DM-62 section 7 |
 
 ## App Manager 2
 
@@ -1116,6 +1118,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-11 — The brief's old revision number left in Notion (follow-through)
+
+- **What happened:** the sync for the brief's revision 3 (`1ffff7d`) updated Implementation Control's status, "Branches" and "Mistakes log" lines, and left "Next items" saying "its brief, revision 2, approved by the Dev Manager in DM-60". The supersession sweep searched the repository only.
+- **Caught by:** Dev Manager 4, DM-62 section 7.
+- **Effect:** Notion named the wrong revision for about 90 minutes; no session read it.
+- **Correction:** the bullet names revision 4 at this batch, read back.
+- **Prevention:** AM5-22's, repeated, so now in the checklist: the manager workflow's supersession sweep also searches Notion's standing lines, and searches for a brief's previous revision number.
+
+### AM11-10 — A consultation held for a wait the workflow does not set (process)
+
+- **What happened:** DM-62 was committed at `c3fb5bb` (00:49 UTC), and the manager chose to wait for Codex's pass on that commit before giving its relay message. Codex finished at 00:52 with nothing new, but the stop hook's push of a one-line handoff change (`3cdddd3`) restarted the wait, and the manager told Nathan "NOTHING NEEDED" twice. The workflow's wait for Codex (step 6) covers review and correction prompts, not consultations.
+- **Caught by:** Nathan: "what are you even doing? I feel like you have not been very task oriented".
+- **Effect:** DM-62 reached Nathan only when he asked; Codex never started on `3cdddd3`, so the wait would not have ended on its own.
+- **Correction:** the message was given at once, and the watch kept running alongside it.
+- **Prevention:** a consultation goes to Nathan as soon as its commit is pushed. A later Codex finding on the same code goes to the Dev Manager as an addition, without holding the message.
 
 ### AM11-09 — The prompt named the tie-break's files without the one that passes the key (accuracy)
 

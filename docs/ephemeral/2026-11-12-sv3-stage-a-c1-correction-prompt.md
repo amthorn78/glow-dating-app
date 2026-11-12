@@ -1,17 +1,16 @@
-# SV3 Stage A correction C1 prompt — account locks `FOR NO KEY UPDATE`, and a random tie-break (DM-61)
+# SV3 Stage A correction C1 prompt — account locks `FOR NO KEY UPDATE`, a random tie-break, and ADULT's age ceiling (DM-61, DM-62)
 
 - **Owner:** App Manager 11. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 2, 12 November 2026.** Revision 1 (`1ffff7d`) named the tie-break's files without `eligibility.py`, whose `parameters` passes the key's pads to the database. Revision 2 names it and adds Codex's CX2 on `1ffff7d` to "What came before". The work is unchanged.
-- **Held** (12 November, 00:49 UTC): Codex's CX3 on `a919dea` goes to the Dev Manager as DM-62. Revision 3 follows its answer and is the one given to Nathan.
-- **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 3, "Stage A, correction C1 (DM-61)", with D2, D6, D14, check 5, the owned paths and the exclusions as K1 to K7 wrote them.
+- **Revision 3, 12 November 2026.** It adds item 5, ADULT's age ceiling (Codex's CX3 on `a919dea`; DM-62's Y1 to Y4, in the brief's revision 4). Revision 2 (`a919dea`) named `eligibility.py`, after Codex's CX2 on `1ffff7d`; revision 1 was `1ffff7d`. Neither was given to Nathan.
+- **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 4, "Stage A, correction C1 (DM-61)", with D2, D3, D6, D14, checks 3 and 5, the owned paths and the exclusions as K1 to K7 and Y1 to Y4 wrote them.
 - **Where the result goes:**
   - the session's changes in C1's owned paths, and its record, a new section "Stage A, correction C1" in `docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md`, on its own branch;
   - the run of record: the Foundation run on its last code commit;
   - the manager adds its verification and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.21 (confidence 0.79); rung probabilities low 0.00, medium 0.05, high 0.70, extra high 0.24, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.10, Opus 5.5 0.88, Sonnet 5.5 0.02, Haiku 5.5 0.00 (confidence 0.84). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.005, Fable 5.1 at high 0.070, Fable 5.1 at extra high 0.024, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.044, Opus 5.5 at high 0.616, Opus 5.5 at extra high 0.211, Opus 5.5 at max 0.009, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.001, Sonnet 5.5 at high 0.014, Sonnet 5.5 at extra high 0.005, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-12T00:39:06Z, for revision 2. Nathan picks the cell.
-  - **Revision 1's reading,** from the same action text: the same cell, Opus 5.5 at high (score 2.31, confidence 0.75; high 0.64, extra high 0.32; Opus 5.5 0.90), sent 2026-11-12T00:34:16Z.
-- **The Dev Manager's read:** none before it runs. The brief's revision 3 applies DM-61's K1 to K7 as written, and DM-61 says they need no read before this prompt (DM-61, section 2). This prompt authorizes no credential use and no live provider action.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.30 (confidence 0.75); rung probabilities low 0.00, medium 0.03, high 0.64, extra high 0.32, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.06, Opus 5.5 0.93, Sonnet 5.5 0.01, Haiku 5.5 0.00 (confidence 0.91). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.002, Fable 5.1 at high 0.038, Fable 5.1 at extra high 0.019, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.028, Opus 5.5 at high 0.595, Opus 5.5 at extra high 0.298, Opus 5.5 at max 0.009, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.006, Sonnet 5.5 at extra high 0.003, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-12T02:21:08Z, for revision 3, from an action text that adds the age ceiling and a fifth item. Nathan picks the cell.
+  - **Earlier readings,** the same cell each time: revision 2's, 2.21 (sent 00:39:06Z), and revision 1's, 2.31 (sent 00:34:16Z), from the four-item action text.
+- **The Dev Manager's read:** none before it runs. The brief's revision 4 applies DM-61's K1 to K7 and DM-62's Y1 to Y4 as written, and each says they need no read before this prompt (DM-61 section 2; DM-62 section 2). This prompt authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29). Then, in order:
   - the manager's verification;
@@ -24,17 +23,19 @@
 
 ---
 
-You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 2, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 3, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **Stage A** built eligibility and discovery in `services/api/glow_discovery`, sealed until P11, with a discovery suite on a fourth disposable database. Its code head is `ad9ff08`, integrated by fast-forward into PR45. Its run of record, PR45's run 43113579295, passed every job, with the discovery suite at 32/32. The evidence record's "Stage A" and "Manager verification of Stage A" describe it.
 - **Codex's review of PR45** found CX1, a lock cycle in page creation. `pages.create` locks the viewer's account `FOR UPDATE`, then inserts entries that reference the candidates' accounts. PostgreSQL's foreign-key check takes `FOR KEY SHARE` on each referenced row, and `FOR UPDATE` blocks it. So two mutually eligible viewers creating pages at once can deadlock, and so can a page and a `glow_chat` pair writer (`block`, for one) whose lower account is the candidate.
 - **The manager's verification** raised V1. The keyed tie-break computed HMAC in SQL with the key's pads as statement parameters, so a log that records statements or parameters records the key.
 - **Codex's review of `1ffff7d`** (the commit that held this prompt's revision 1) found CX2, which is V1 with one more fact. Django 5.2's psycopg 3 backend binds parameters on the client by default, so the pads are written into the statement's text, and PostgreSQL logs the text of a failing or cancelled statement by default. K2 takes the key out of SQL, so it closes CX2 too.
-- **The Dev Manager ruled** (DM-61: `docs/continuity/dev-manager/reviews/2026-11-12-dm-61-sv3-stage-a-lock-cycle.md`):
+- **Codex's review of `a919dea`** (revision 2's commit) found CX3. Nothing bounds an accepted birth date from above: `adult_outcome` refuses only a future date and an age under 18, the default age range has no maximum, and discovery adds none. So a member whose date gives more than 150 years gets a card above `CandidateProfile.age`'s maximum of 150, and the app's validator rejects every page that carries it.
+- **The Dev Manager ruled** (DM-61: `docs/continuity/dev-manager/reviews/2026-11-12-dm-61-sv3-stage-a-lock-cycle.md`; DM-62: `docs/continuity/dev-manager/reviews/2026-11-12-dm-62-sv3-stage-a-age-bound.md`):
   - **CX1:** every explicit lock of an `AppAccount` row becomes `FOR NO KEY UPDATE`, in the app and in the ordering proof's reference design (K1, K5);
-  - **V1:** the tie-break becomes a random value drawn inside the selection, with no key at all (K2, replacing DM-60's Q2).
-- **The brief's revision 3 applies them,** in D2, D6, D14, check 5, the owned paths and the exclusions, and lists your four items in "Stage A, correction C1 (DM-61)". **It is your specification;** where this prompt summarizes it, the brief wins.
+  - **V1:** the tie-break becomes a random value drawn inside the selection, with no key at all (K2, replacing DM-60's Q2);
+  - **CX3:** ADULT also requires the age its date gives to be at most `AGE_CEILING` (150), for both members, in the selection, every page's recheck and the pair read (Y1 to Y4). SV2's adult check stays as it is; its ceiling at entry is carried to P09.2 (Y6).
+- **The brief's revision 4 applies them,** in D2, D3, D6, D14, checks 3 and 5, the owned paths and the exclusions, and lists your five items in "Stage A, correction C1 (DM-61)". **It is your specification;** where this prompt summarizes it, the brief wins.
 
 **How you work:**
 - Nathan started you and will relay your report to the manager, App Manager 11. You are neither the manager nor a reviewer.
@@ -50,10 +51,11 @@ You are **correction C1 of SV3's Stage A**, for the Glow dating app, in the publ
       - the module docstrings of `services/api/glow_profiles/operations.py` and `media.py`;
       - the reference design's account locks in `proofs/postgres-ordering/glow_ordering_proof/reference.py`;
     - **the tie-break:** `services/api/glow_discovery/**`, the brief's own path for Stage A: above all `predicates.py`, `pages.py`, `keys.py` and `eligibility.py`, whose `parameters` passes the pads;
-    - **the tests:** `services/api/tests/` (the discovery tests, and the pin of the two lock functions' bodies in `test_profiles_offline.py`);
+    - **the age ceiling:** ADULT in `services/api/glow_discovery/predicates.py` (`MEMBER`'s `adult`, which the selection, the recheck and the pair read share);
+    - **the tests:** `services/api/tests/` (the discovery tests, a test that pins `AGE_CEILING` to the production schema, and the pin of the two lock functions' bodies in `test_profiles_offline.py`);
     - **the proof:** `proofs/postgres-ordering/**`, that is, the discovery suite's cases and support, the scan of account locks, the offline tests and the README;
     - **the records:**
-      - `docs/architecture/data-model.md`, where it states the account lock's mode or the keyed tie-break;
+      - `docs/architecture/data-model.md`, where it states the account lock's mode, the keyed tie-break or ADULT's rule;
       - `docs/architecture/production-contracts.md`, F07's server section;
       - `docs/testing/p11-deferred-acceptance.md`: the revocation lock-wait line, and DB11's "stable keyed order";
       - the record's new section "Stage A, correction C1";
@@ -114,11 +116,13 @@ If a check fails, stop and report. The prompt is stale if:
 
 **Then read, completely:**
 - root `AGENTS.md` and `CLAUDE.md`; `services/api/README.md`; `proofs/postgres-ordering/README.md`;
-- the brief, revision 3: D2, D6, D14, check 5, the owned paths, the exclusions, "Review plan" and "Stage A, correction C1 (DM-61)";
+- the brief, revision 4: D2, D3, D6, D14, checks 3 and 5, the owned paths, the exclusions, "Review plan" and "Stage A, correction C1 (DM-61)";
 - DM-61's report, whole, above all section 3.4 and section 4.2, which give the proof's cases and reversals;
-- the evidence record's "Stage A", "Manager verification of Stage A" and "Codex on `7e4d826`";
+- DM-62's report, whole, above all section 3.3, which places the ceiling inside ADULT and gives its tests;
+- the evidence record's "Stage A", "Manager verification of Stage A", "Codex on `7e4d826`", "Codex on `1ffff7d`" and "Codex on `a919dea`";
 - the P06.DB brief's D5 (the reference design) and the data model's "unit of work" table;
 - every file in the owned paths that you change, whole, and `glow_discovery/pages.py`, `predicates.py`, `keys.py`, `eligibility.py`, the discovery suite (`discovery_cases.py`, `discovery_support.py`, `discovery_suite.py`) and its probes;
+- read only: `glow_domain/identity.py` (`whole_years`, `adult_outcome`), `glow_domain/profile_settings.py` (`AGE_CEILING`) and `CandidateProfile` in `packages/contracts/production/gapp-api-v1.schema.json`;
 - PostgreSQL 17's manual on row-level locks ("Explicit Locking", Table 13.3), if you can reach it; if not, say so.
 
 ## 3. What to do
@@ -144,13 +148,19 @@ If a check fails, stop and report. The prompt is stale if:
      - a planted `FOR UPDATE` lock fails the scan;
      - an order computable from the batch's and the profiles' IDs (an unkeyed hash, or the profile ID) fails the tie-break check.
    - **Unchanged:** the ordering suite on both subjects, with every control failing as designed; the identity and profile suites passing; and the discovery phase within the job's 30 minutes.
-4. **The records** (item 4): the data model, the contract document's F07 server section, and the P11 plan's two lines, where they state the account lock's mode or the keyed tie-break. Rewrite only those sentences.
-5. **The local checks:**
+4. **The records** (item 4): the data model, the contract document's F07 server section, and the P11 plan's two lines, where they state the account lock's mode or the keyed tie-break, and the data model where it states ADULT's rule (item 5). Rewrite only those sentences.
+5. **The age ceiling** (item 5; Y1 to Y3; DM-62 section 3.3):
+   - ADULT also requires the age its date gives, by D4's whole-years rule on the server's date (`predicates.AGE`), to be at most `AGE_CEILING`, imported from `glow_domain.profile_settings`, not written again. It is part of ADULT, not a predicate of its own, so it applies to the viewer and to the candidate, in the selection, in every page's recheck and in the trusted adapter's pair read.
+   - **The tests** (check 3): 150 whole years shown and 151 excluded, at today's date and at the leap-day cases `age.leap_days_and_age_state` uses; as a candidate, in the selection and in a page's recheck; as a viewer, a 403 with no batch; and in the pair read.
+   - **The pin:** a test that pins `AGE_CEILING` to `CandidateProfile.age`'s `maximum` in the production schema.
+   - **The reversal,** run and recorded with its failing output: with the ceiling removed, a card carries 151 and the page fails the production schema's validator.
+   - No DTO, contract, registry entry or SV2 code changes; SV2's adult check stays as it is.
+6. **The local checks:**
    - **API,** in `services/api`: `python3.12 -m venv .venv`, then `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock`. Then, with `GLOW_ENV=test`: `manage.py check`, `manage.py test tests --verbosity 2`, `smoke.py`, `ruff check .`, `ruff format --check .`, `mypy` and `python -m glow_persistence.static_check`;
    - **the proof,** in `proofs/postgres-ordering`: its venv and hash-locked install, its offline tests under `env -i`, Ruff and mypy;
    - **the contracts and the mobile app:** their checks, to show nothing there changed (`npm ci --ignore-scripts` in `apps/mobile` before `npm run check` in `packages/contracts`, since its corpus test loads the mobile app's generated validators);
    - **a local database run,** if Docker allows it under D4's conditions: the ordering, identity, profile and discovery suites, as iteration, not evidence.
-6. **The run of record.**
+7. **The run of record.**
    - Commit and push your code. Wait for the Foundation run on your last code commit to finish (the push rule).
    - Read it with your GitHub tools: every job's conclusion; the gate's line (`Application checks passed`); the ordering, identity, profile and discovery suites' results; the discovery phase's duration; whether a retry fired; and that no secret appears in the job's log.
    - If it fails, stop and report the failing job and its log lines. Do not re-run it, and push no fix without saying so in the report.
@@ -161,11 +171,13 @@ Add a section "Stage A, correction C1" to `docs/testing/evidence/2026-11-11-sv3-
 - the start gate's results, the environment check (names only) and the toolchain versions;
 - every explicit `AppAccount` lock found, its file and line, before and after;
 - the tie-break's change, and what was removed;
+- ADULT's ceiling: where it is, its tests, and the reversal's failing output;
 - each new case and each reversal, with its failing output;
 - **the threat model's inputs,** updated:
   - each writer's locks and their modes;
   - the cycles that can no longer form, and why;
   - where the tie-break's randomness comes from, and that no key exists;
+  - ADULT's rule with its ceiling, for both members;
 - every command you ran, with its result line, with local database runs listed as iteration, not evidence;
 - the run of record: its ID, each job's result, the four suites' counts, the discovery phase's duration, and whether a retry fired;
 - what you could not run, and why.
@@ -175,9 +187,9 @@ Commit each logical step with a clear message ending in the session's attributio
 ## 5. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 2, from `<START_SHA>`), your branch, your code head and records head;
+- the prompt revision (revision 3, from `<START_SHA>`), your branch, your code head and records head;
 - the start gate's and the environment check's results;
-- for each of the four items: what changed, its tests, and each reversal's result;
+- for each of the five items: what changed, its tests, and each reversal's result;
 - every explicit `AppAccount` lock, before and after;
 - each local check's result, and whether a local database run was used;
 - the run of record: its ID, every job, the gate's line, the four suites' counts, the discovery phase's duration and whether a retry fired;
