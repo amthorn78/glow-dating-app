@@ -12,8 +12,8 @@ On top of SV1's fragment (``glow_identity.conf``) and SV2's (``glow_profiles.con
 (``glow_ordering_proof.discovery_urls``: SV1's identity routes, through which the suite signs in,
 SV2's member routes, through which it builds the cases' own members, and SV3's page route). Its two
 keys, the JWT signing key and its own ``SECRET_KEY`` (which keys SV2's stored digests and SV3's
-tie-break and cursors, D6 and D7), are generated for the run and each read from a file named by its
-variable (``identity_environment``; the job names the discovery suite's own files).
+cursors, D7, not its tie-break, D6), are generated for the run and each read from a file named by
+its variable (``identity_environment``; the job names the discovery suite's own files).
 ``ATOMIC_REQUESTS`` is off: each page is the whole of its transaction.
 
 **The compatibility port** (D6): these settings alone select the fixture adapter, with its synthetic

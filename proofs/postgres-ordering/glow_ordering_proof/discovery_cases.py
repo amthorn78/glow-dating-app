@@ -56,7 +56,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests.
-CASE_COUNT = 38
+CASE_COUNT = 40
 
 
 def case(
@@ -858,6 +858,44 @@ def distance_cases(ctx: DiscoveryContext) -> str:
     return "one area is zero; the boundary includes at its ceiling and excludes below; viewer only"
 
 
+@case("distance.choice_no_longer_offered", "4", "D5", "C2")
+def choice_no_longer_offered(ctx: DiscoveryContext) -> str:
+    """D5's choice the setting does not offer (the exact-head review's F2): a viewer whose distance
+    choice the location setting stops offering gets an empty page, in the same area and beyond,
+    and the trusted adapter agrees; the choice is never read as no limit."""
+    from glow_domain import profile_settings as ps
+
+    original = ctx.current(ps.LOCATION)
+    choice = "fixture-within-withdrawn"
+    offered = ctx.current(ps.LOCATION)
+    offered["distance_choices"] = [c for c in offered["distance_choices"] if c["id"] != choice] + [
+        {"id": choice, "label": "Fixture 3000 miles", "miles": 3000}
+    ]
+    ctx.publish(ps.LOCATION, offered)
+    try:
+        viewer = ctx.visible()
+        same = ctx.visible()
+        near = ctx.visible(area=PHILADELPHIA)
+        ctx.set_filters(viewer, distance=choice)
+        expect(_sees(ctx, viewer, same), "within an offered choice: the same area is shown")
+        expect(_sees(ctx, viewer, near), "within an offered choice: another area is shown")
+        withdrawn = ctx.current(ps.LOCATION)
+        withdrawn["distance_choices"] = [
+            c for c in withdrawn["distance_choices"] if c["id"] != choice
+        ]
+        ctx.publish(ps.LOCATION, withdrawn)
+        held = {c["id"] for c in ctx.current(ps.LOCATION)["distance_choices"]}
+        expect(choice not in held, "the choice is no longer offered")
+        expect(not _sees(ctx, viewer, same), "a choice no longer offered fails: the same area")
+        expect(not _sees(ctx, viewer, near), "a choice no longer offered fails: another area")
+        page = ctx.page(viewer)
+        expect(page["state"] == "empty" and page["items"] == [], "the viewer's page is empty")
+        expect(ctx.profile_id(viewer) in ctx.sees(same), "the other direction is unaffected")
+    finally:
+        ctx.publish(ps.LOCATION, original)
+    return "a distance choice the location setting no longer offers fails D5 for every candidate"
+
+
 def _numbers(value: Any) -> list[Any]:
     if isinstance(value, dict):
         return [n for item in value.values() for n in _numbers(item)]
@@ -999,10 +1037,46 @@ def stale_cursors(ctx: DiscoveryContext) -> str:
     cursor = fresh()
     ctx.publish(ps.LOCATION, ctx.current(ps.LOCATION))
     replies.append(ctx.stale(viewer, "recommendations", cursor, "a profile setting published"))
+    # C2 (the exact-head review's F2): each of the viewer's other two versions moved alone, and a
+    # batch that is not ready.
+
+    def versions() -> tuple[int, int, int]:
+        account = _account(viewer.account_id)
+        return (
+            int(account.eligibility_version),
+            int(account.preferences_version),
+            int(account.blocks_version),
+        )
+
+    cursor = fresh()
+    before = versions()
+    edited = _summary(ctx, viewer, "A synthetic summary, edited after the batch.")
+    expect(edited == "visible", "the viewer stays visible after the edit")
+    after = versions()
+    expect(
+        after[0] > before[0] and after[1:] == before[1:],
+        "the profile edit moves the viewer's eligibility_version alone",
+    )
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "the eligibility_version moved"))
+    cursor = fresh()
+    before = versions()
+    ctx.block(viewer.account_id, other.account_id)
+    after = versions()
+    expect(
+        after[2] > before[2] and after[:2] == before[:2],
+        "the viewer's block moves the viewer's blocks_version alone",
+    )
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "the blocks_version moved"))
+    cursor = fresh()
+    # Stage B's consumption marks a batch stale; Stage A has no writer of it (test data).
+    RecommendationBatch.objects.filter(pk=UUID(hex=cursor.split(".")[0])).update(state="stale")
+    replies.append(ctx.stale(viewer, "recommendations", cursor, "a batch that is not ready"))
+    ctx.unblock(viewer.account_id, other.account_id)
     shapes = {json.dumps(_stale_shape(reply), sort_keys=True) for reply in replies}
     expect(len(shapes) == 1, "every stale cursor gets the same generic response")
     return (
         f"{len(replies)} stale cursors refused alike: forged, another's, expired, deleted, outdated"
+        " (the viewer's three versions, a setting), and a batch not ready"
     )
 
 
@@ -1091,6 +1165,161 @@ def recheck_is_one_snapshot(ctx: DiscoveryContext) -> str:
         ctx.profile_id(candidate) not in shown, "never visible-and-matching at one moment: dropped"
     )
     return "a page's recheck reads one snapshot: no mix of two moments shows a paused profile"
+
+
+# The writes a statement can make, and the row locks a writer takes (C2, item 1).
+WRITE = re.compile(
+    r"\b(INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\"?glow_|MERGE\s+INTO|TRUNCATE|COPY\s)"
+    r"|\bFOR\s+(NO\s+KEY\s+)?UPDATE\b",
+    re.IGNORECASE,
+)
+
+
+class _Statements:
+    """A transaction probe that marks a page's transaction's phases: from its start
+    (``on_begin``), from its candidate read's probe point (``before_selection`` or
+    ``before_recheck``), and from its commit (``before_commit``); with the connection's execute
+    wrapper (``record``) it keeps each statement's text and parameters in its phase. It only
+    signals (DM-13 2.1); nothing recorded is logged or kept beyond the case."""
+
+    after_first_lock = None
+    after_locks = None
+
+    def __init__(self) -> None:
+        self.phase = "outside"
+        self.points: list[str] = []
+        self.committed = False
+        self.seen: dict[str, list[tuple[str, Any]]] = {
+            "outside": [],
+            "transaction": [],
+            "candidates": [],
+            "committed": [],
+        }
+
+    def on_begin(self, pid: int) -> None:
+        self.phase = "transaction"
+
+    def before_selection(self) -> None:
+        self.points.append("before_selection")
+        self.phase = "candidates"
+
+    def before_recheck(self) -> None:
+        self.points.append("before_recheck")
+        self.phase = "candidates"
+
+    def before_commit(self) -> None:
+        self.committed = True
+        self.phase = "committed"
+
+    def record(
+        self, execute: Callable[..., Any], sql: str, params: Any, many: bool, ctx: Any
+    ) -> Any:
+        self.seen[self.phase].append((str(sql), params))
+        return execute(sql, params, many, ctx)
+
+    def in_transaction(self) -> list[tuple[str, Any]]:
+        return self.seen["transaction"] + self.seen["candidates"]
+
+
+def _member_tables() -> frozenset[str]:
+    """The tables that hold members' rows: every table the selection and the recheck read, but
+    the batch's own two."""
+    from glow_discovery import predicates
+
+    named = set(re.findall(r"glow_persistence_[a-z_]+", predicates.SELECTION + predicates.RECHECK))
+    return frozenset(named - {"glow_persistence_recommendationentry"})
+
+
+def _reads_members(sql: str, tables: frozenset[str]) -> bool:
+    return any(table in sql for table in tables)
+
+
+def _parameters(params: Any) -> list[str]:
+    if params is None:
+        return []
+    values = params.values() if isinstance(params, dict) else params
+    return [str(value) for value in values]
+
+
+@case("pages.one_snapshot_statements", "5", "D2", "DM-60 4", "C2")
+def one_snapshot_statements(ctx: DiscoveryContext) -> str:
+    """One snapshot, counted (D2; DM-60 Q1; the exact-head review's F1): in each page's
+    transaction, the statements that read candidates' rows are exactly one selection
+    (``predicates.SELECTION``) in a page with no cursor, and exactly one recheck
+    (``predicates.RECHECK``) in a page with a cursor; from the probe point before it to the commit,
+    no other statement reads a member's row; before it, only the viewer's own rows are read; and a
+    page with a cursor writes nothing (no insert, update or delete, and no writer's row lock)."""
+    from django.db import connection
+    from glow_discovery import pages, predicates
+
+    viewer = ctx.visible()
+    others = [ctx.visible() for _ in range(3)]
+    ids = {ctx.profile_id(m) for m in others}
+    tables = _member_tables()
+    expect({"glow_persistence_profile", "glow_persistence_block"} <= tables, "the member tables")
+    viewer_id = str(viewer.account_id)
+    counted: list[str] = []
+
+    def recorded(work: Callable[[_Statements], Any]) -> tuple[Any, _Statements]:
+        probe = _Statements()
+        with connection.execute_wrapper(probe.record):
+            result = work(probe)
+        expect(result.ok and result.data is not None, "the page reads")
+        return result, probe
+
+    def check(probe: _Statements, statement: str, other: str, what: str) -> None:
+        inside = probe.in_transaction()
+        expect(bool(inside) and probe.committed, f"{what}: its transaction recorded to the commit")
+        expect(
+            sum(sql == statement for sql, _ in inside) == 1
+            and not any(sql == other for sql, _ in inside),
+            f"{what}: exactly one candidate statement in the transaction",
+        )
+        after = [sql for sql, _ in probe.seen["candidates"] if _reads_members(sql, tables)]
+        expect(
+            after == [statement],
+            f"{what}: from the probe point to the commit, one statement reads members"
+            f" ({len(after)} did)",
+        )
+        for sql, params in probe.seen["transaction"]:
+            if not _reads_members(sql, tables):
+                continue
+            own = sql == predicates.VIEWER or (
+                set(re.findall(r"glow_persistence_[a-z_]+", sql)) <= {"glow_persistence_appaccount"}
+                and viewer_id in _parameters(params)
+            )
+            expect(own, f"{what}: before the probe point, only the viewer's own rows are read")
+        counted.append(f"{what} {len(inside)}")
+
+    created, probe = recorded(
+        lambda probe: pages.create(viewer.account_id, "recommendations", 1, probe=probe)
+    )
+    assert created.data is not None
+    expect(probe.points == ["before_selection"], "the selection's probe point")
+    check(probe, predicates.SELECTION, predicates.RECHECK, "a page with no cursor")
+    writes = [sql for sql, _ in probe.seen["candidates"] if WRITE.search(sql)]
+    expect(bool(writes), "a page with no cursor writes its batch (the write check sees writes)")
+    cursor = created.data["next_cursor"]
+    expect(cursor is not None, "a cursor: the viewer has more than one candidate")
+    shown = [str(card["profile_id"]) for card in created.data["items"]]
+    following, probe = recorded(
+        lambda probe: pages.continue_page(
+            viewer.account_id, "recommendations", str(cursor), 50, probe=probe
+        )
+    )
+    assert following.data is not None
+    expect(probe.points == ["before_recheck"], "the recheck's probe point")
+    check(probe, predicates.RECHECK, predicates.SELECTION, "a page with a cursor")
+    written = [sql for sql, _ in probe.in_transaction() if WRITE.search(sql)]
+    expect(not written, f"a page with a cursor writes nothing ({len(written)} writes)")
+    shown += [str(card["profile_id"]) for card in following.data["items"]]
+    expect(set(shown) == ids and len(shown) == len(ids), "the two pages hold every candidate once")
+    _, probe = recorded(lambda probe: pages.create(viewer.account_id, "discovery", 50, probe=probe))
+    check(probe, predicates.SELECTION, predicates.RECHECK, "a broader page with no cursor")
+    return (
+        "one selection, or one recheck, is the only statement reading members after its probe"
+        f" point; a cursor page writes nothing (statements per transaction: {', '.join(counted)})"
+    )
 
 
 @case("pages.empty_and_no_provider_call", "5", "6", "D7", "D8")
@@ -1500,7 +1729,11 @@ def account_locks_no_key_update(ctx: DiscoveryContext) -> str:
     )
     found = account_lock_scan.sites(locks)
     expect(found == account_lock_scan.EXPECTED_SITES, "the scan finds the seven account locks")
-    return f"{len(locks)} explicit account locks, in services/api and the reference, all no-key"
+    total, joined = account_lock_scan.calls()
+    return (
+        f"{len(locks)} explicit account locks, in services/api and the reference, all no-key;"
+        f" {total} select_for_update calls read, {joined} locking a queryset that joins (C2)"
+    )
 
 
 # -- 6. disclosure (acceptance check 6; D8) ---------------------------------------------------
@@ -1743,30 +1976,39 @@ def pointer_order(ctx: DiscoveryContext) -> str:
 
     viewer = ctx.visible()
     ctx.visible()
-    calls: list[tuple[int, tuple[str, ...], tuple[str, ...]]] = []
+    ctx.visible()
+    # Each call is grouped by the identity its transaction is given at its start (C2; the
+    # exact-head review's F4): the backend's PID and the transaction's start time, which ``run``
+    # reads first (its ``Trace``), not ``id(tx)``, which CPython reuses once a Tx is freed.
+    Identity = tuple[int, str]
+    calls: list[tuple[Identity, tuple[str, ...], tuple[str, ...]]] = []
     real = settings_store.read_shared
 
     def recording(tx: Any, names: Any) -> Any:
         listed = tuple(names)
         found = real(tx, listed)
-        calls.append((id(tx), listed, tuple(tx.pointers)))
+        identity = (int(tx.trace.backend_pid), tx.trace.started_at.isoformat())
+        calls.append((identity, listed, tuple(tx.pointers)))
         return found
 
     with mock.patch.object(settings_store, "read_shared", recording):
         first = ctx.page(viewer, limit=1)
-        if first["next_cursor"] is not None:
-            ctx.page(viewer, "recommendations", first["next_cursor"], 1)
+        expect(first["next_cursor"] is not None, "a cursor: the viewer has two candidates")
+        ctx.page(viewer, "recommendations", first["next_cursor"], 1)
         ctx.page(viewer, "discovery")
-    transactions: dict[int, list[tuple[tuple[str, ...], tuple[str, ...]]]] = {}
-    for tx, names, held in calls:
-        transactions.setdefault(tx, []).append((names, held))
-    expect(len(transactions) >= 2, "each page's transaction read its settings")
+    transactions: dict[Identity, list[tuple[tuple[str, ...], tuple[str, ...]]]] = {}
+    for identity, names, held in calls:
+        transactions.setdefault(identity, []).append((names, held))
+    expect(len(transactions) == 3, "each of the three pages' transactions read its settings")
     for seen in transactions.values():
         expect(len(seen) == 1, "all the pointers in the transaction's first read_shared call")
         names, held = seen[0]
         expect(tuple(sorted(names)) == policy.SELECTION_SETTINGS, "the selection's settings")
         expect(list(held) == sorted(held), "held in name order")
-    return f"{len(transactions)} transactions, each taking its pointers once, in name order"
+    return (
+        f"{len(transactions)} transactions (two pages with no cursor, one by cursor), each taking"
+        " its pointers once, in name order"
+    )
 
 
 # -- 13. no private value in a log (acceptance check 13) ----------------------------------------

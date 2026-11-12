@@ -26,7 +26,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from glow_ordering_proof.profile_suite import CaseRecord, used_database_reasons
+from glow_ordering_proof.profile_suite import (
+    CaseRecord,
+    duration,
+    output_texts,
+    used_database_reasons,
+)
 
 SCAN_CLEAN = "discovery secret scan: clean"
 SCAN_FOUND = "discovery secret scan: FOUND"
@@ -127,7 +132,11 @@ def run(results_path: Path | None) -> int:
             case_started = time.monotonic()
             passed, detail = discovery_cases.run_case(ctx, entry)
             record = CaseRecord(
-                entry.case_id, list(entry.checks), passed, time.monotonic() - case_started, detail
+                entry.case_id,
+                list(entry.checks),
+                passed,
+                duration(time.monotonic() - case_started),
+                detail,
             )
             report.cases.append(record)
             verdict = "PASS" if passed else "FAIL"
@@ -140,19 +149,20 @@ def run(results_path: Path | None) -> int:
         report.statements_per_page = dict(ctx.statements)
         report.disclosure = dict(ctx.disclosure)
     finally:
-        report.seconds = time.monotonic() - started
+        report.seconds = duration(time.monotonic() - started)
         capture.uninstall()
         # Everything the process wrote and logged, and every response header the routes sent.
-        headers = ctx.profiles.headers if ctx is not None else []
-        text = capture.text() + "\n" + "\n".join(headers)
+        headers = "\n".join(ctx.profiles.headers if ctx is not None else [])
+        text = capture.text() + "\n" + headers
         report.secrets_held = ledger.count()
         report.secrets_found = ledger.found_in(text)
         report.values_held = values.count()
-        report.values_found = values.found_in(text)
+        # DM-64 T4: a match inside a timing PostgreSQL wrote into a plan is not counted.
+        report.values_found = values.found_in(text, plan_timings=True)
     body = report.to_json()
     scanned = results_text(body)
     secrets_in_results = ledger.found_in(scanned)
-    values_in_results = values.found_in(scanned)
+    values_in_results = values.found_in(scanned, plan_timings=True)
     report.secrets_found += secrets_in_results
     report.values_found += values_in_results
     passed_cases = sum(c.passed for c in report.cases)
@@ -174,6 +184,10 @@ def run(results_path: Path | None) -> int:
         f" {report.values_found} found in the same output)",
         flush=True,
     )
+    texts = output_texts(capture, headers, scanned)
+    for where in values.where(texts, plan_timings=True) if report.values_found else []:
+        # DM-64 T7: the kind of value and the text it was found in, never the value.
+        print(f"{VALUES_FOUND}: {where}", flush=True)
     for name, number in sorted(report.statements_per_page.items()):
         print(f"[discovery] statements per page request: {name}: {number}", flush=True)
     for name, plan in sorted((report.plans.get("queries") or {}).items()):

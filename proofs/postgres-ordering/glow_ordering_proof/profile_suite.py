@@ -18,8 +18,12 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
 USED_DATABASE = "refusing a used database"
+# DM-64 T4 (SV3 Stage A, correction C2): every duration in a results JSON is written to two
+# decimals, so that no duration prints a form of a held coordinate (three decimals or more).
+DURATION_DECIMALS = 2
 SCAN_CLEAN = "profile secret scan: clean"
 SCAN_FOUND = "profile secret scan: FOUND"
 VALUES_CLEAN = "profile value scan: clean"
@@ -128,7 +132,11 @@ def run(results_path: Path | None) -> int:
             case_started = time.monotonic()
             passed, detail = profile_cases.run_case(ctx, entry)
             record = CaseRecord(
-                entry.case_id, list(entry.checks), passed, time.monotonic() - case_started, detail
+                entry.case_id,
+                list(entry.checks),
+                passed,
+                duration(time.monotonic() - case_started),
+                detail,
             )
             report.cases.append(record)
             verdict = "PASS" if passed else "FAIL"
@@ -138,10 +146,11 @@ def run(results_path: Path | None) -> int:
                 flush=True,
             )
     finally:
-        report.seconds = time.monotonic() - started
+        report.seconds = duration(time.monotonic() - started)
         capture.uninstall()
         # Everything the process wrote and logged, and every response header the routes sent.
-        text = capture.text() + "\n" + "\n".join(ctx.headers if ctx is not None else [])
+        headers = "\n".join(ctx.headers if ctx is not None else [])
+        text = capture.text() + "\n" + headers
         report.secrets_held = ledger.count()
         report.secrets_found = ledger.found_in(text)
         report.values_held = values.count()
@@ -173,6 +182,10 @@ def run(results_path: Path | None) -> int:
         f" own words, sensitive values; {report.values_found} found in the same output)",
         flush=True,
     )
+    texts = output_texts(capture, headers, scanned)
+    for where in values.where(texts) if report.values_found else []:
+        # DM-64 T7: the kind of value and the text it was found in, never the value.
+        print(f"{VALUES_FOUND}: {where}", flush=True)
     print(f"PROFILE VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
     if results_path is not None and (secrets_in_results or values_in_results):
         print("results withheld: the results JSON held a secret or a member value")
@@ -181,6 +194,21 @@ def run(results_path: Path | None) -> int:
         results_path.write_text(body, encoding="utf-8")
         print(f"results written: {results_path}")
     return 0 if report.passed() else 1
+
+
+def duration(seconds: float) -> float:
+    """A duration as a results JSON writes it (DM-64 T4): to two decimals."""
+    return round(seconds, DURATION_DECIMALS)
+
+
+def output_texts(capture: Any, headers: str, results: str) -> dict[str, str]:
+    """Each text the value scan reads, by name, for its messages (DM-64 T7)."""
+    return {
+        "the log records": "\n".join(capture.records),
+        "the process's writes": "".join(capture.written),
+        "the response headers": headers,
+        "the results JSON": results,
+    }
 
 
 def plan() -> tuple[str, ...]:

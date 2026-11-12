@@ -277,7 +277,7 @@ jobs:
       # SV3 Stage A (eligibility and discovery; its brief's D14): a fourth database in the same
       # PostgreSQL, glow_discovery_proof, with its own marker and the same role, for the discovery
       # suite after the profile suite. Its own two keys, a JWT signing key and a SECRET_KEY (which
-      # also keys the stored digests and the discovery's tie-break and cursors, D6 and D7), are
+      # also keys the stored digests and the discovery's cursors, D7, not its tie-break, D6), are
       # generated the same way.
       - name: Generate the disposable database's credentials (masked before anything prints)
         id: credentials

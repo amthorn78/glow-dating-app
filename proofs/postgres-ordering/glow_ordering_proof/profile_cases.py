@@ -42,13 +42,13 @@ from glow_ordering_proof.profile_support import (
     VISIBILITY,
     CaseFailed,
     DecidingCheck,
+    Matcher,
     ProfileContext,
     RecordingDetector,
     RecordingHold,
     RecordingProcessing,
     db_today,
     expect,
-    forms,
     grant_key,
     seed_chart,
     seed_verified,
@@ -640,12 +640,15 @@ def _remember_coordinates(ctx: ProfileContext) -> None:
 
 
 def _found_in_database(texts: tuple[str, ...]) -> list[str]:
-    """Which tables hold any of ``texts`` in any row (every column, as JSON text), in any form
-    the code could store it in (``profile_support.forms``: a date in prose or as Python prints
-    it, a coordinate at a lower precision, down to three decimals)."""
+    """Which tables and columns hold any of ``texts`` in any row (every column, as the JSON text
+    ``row_to_json`` gives it), in any form the code could store it in (``profile_support.forms``:
+    a date in prose or as Python prints it, a coordinate at a lower precision, down to three
+    decimals), each form counted where its kind's rule counts it (``Matcher``; SV3 Stage A,
+    correction C2; DM-64 T1 to T3), so that a timestamp the run's own clock wrote is not a hit.
+    It names each ``table.column`` it finds a value in (T7), never the value."""
     from django.db import connection
 
-    texts = tuple(sorted({form for text in texts for form in forms(text)}))
+    matchers = [Matcher.of(text) for text in texts]
     found: list[str] = []
     with connection.cursor() as cursor:
         cursor.execute(
@@ -653,12 +656,22 @@ def _found_in_database(texts: tuple[str, ...]) -> list[str]:
         )
         tables = [row[0] for row in cursor.fetchall()]
         for table in tables:
-            cursor.execute(f'SELECT row_to_json(t)::text FROM "{table}" AS t')
-            for (row,) in cursor.fetchall():
-                if any(text in row for text in texts):
-                    found.append(table)
-                    break
+            # Each column's value as row_to_json writes it (json_each keeps the JSON's text).
+            cursor.execute(
+                f'SELECT j.key, j.value::text FROM "{table}" AS t, json_each(row_to_json(t)) AS j'
+            )
+            columns = {
+                str(column)
+                for column, value in cursor.fetchall()
+                if value is not None and any(m.occurs(str(value)) for m in matchers)
+            }
+            found += [f"{table}.{column}" for column in sorted(columns)]
     return found
+
+
+def _named(found: list[str]) -> str:
+    """The tables and columns a database search found a value in (T7), for a failure line."""
+    return f" (found in {', '.join(found)})" if found else ""
 
 
 @case("area.chosen_by_id", "5", "D5")
@@ -747,7 +760,10 @@ def area_coordinates(ctx: ProfileContext) -> str:
     for header_text in ctx.headers:
         expect(not any(t in header_text for t in COORDINATE_TEXT), "no response header holds them")
     found = _found_in_database(COORDINATE_TEXT)
-    expect(not found, "no table holds the coordinates (outbox and idempotency records included)")
+    expect(
+        not found,
+        f"no table holds the coordinates (outbox and idempotency records included){_named(found)}",
+    )
     return (
         "never stored, returned (in a body or a header), echoed, read from a URL or a header,"
         " or in an exception"
@@ -2052,7 +2068,8 @@ def birth_failing_date(ctx: ProfileContext) -> str:
             and not rows.filter(local_time="02:47:19").exists(),
             "no row holds its date, time or place",
         )
-        expect(_found_in_database((place, failing)) == [], "no table holds its place or date")
+        stored = _found_in_database((place, failing))
+        expect(stored == [], f"no table holds its place or date{_named(stored)}")
         expect(
             IdempotencyRecord.objects.filter(actor_id=account).count() == before["records"],
             "no idempotency record is stored",

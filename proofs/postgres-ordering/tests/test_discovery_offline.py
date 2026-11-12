@@ -382,8 +382,11 @@ class DiscoveryPlanTests(unittest.TestCase):
             self.assertNotIn(check, covered)
 
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(discovery_cases.CASE_COUNT, 38)
+        self.assertEqual(discovery_cases.CASE_COUNT, 40)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
+        # C2's two new cases (the exact-head review's F1 and F2).
+        for case_id in ("pages.one_snapshot_statements", "distance.choice_no_longer_offered"):
+            self.assertIn(case_id, discovery_cases.plan())
 
     def test_the_page_route_is_the_apis(self) -> None:
         tree = ast.parse((API_ROOT / "glow_discovery" / "urls.py").read_text(encoding="utf-8"))
@@ -490,6 +493,144 @@ ACCEPTED = {
         'def lock():\n    """Takes glow_persistence_appaccount FOR UPDATE, in words only."""\n'
     ),
 }
+# C2 (DM-65; the exact-head review's F3): a lock of another model's queryset that joins a table
+# locks the joined rows FOR UPDATE too, a joined account included, unless it takes no_key=True or
+# names in of= no path to AppAccount.
+PLANTED_JOINS = {
+    "select_related_account": (
+        "from glow_persistence.models import Profile\n\n\n"
+        "def lock(account_id):\n"
+        "    return (\n"
+        "        Profile.objects.select_related('account')\n"
+        "        .select_for_update()\n"
+        "        .filter(account_id=account_id)\n"
+        "        .first()\n"
+        "    )\n"
+    ),
+    "lookup_through_candidate": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(batch_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update()\n"
+        "        .filter(batch_id=batch_id, candidate__state='active')\n"
+        "    )\n"
+    ),
+    "lookup_through_another_model": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(account_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update()\n"
+        "        .filter(batch__account__state='active', batch__account_id=account_id)\n"
+        "    )\n"
+    ),
+}
+# Further joins the rule covers: a Q, an F, an order_by and a values path, a queryset held in a
+# variable, a generic lock with a join, and a path the scan cannot read.
+PLANTED_JOINS_MORE = {
+    "q": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import Block\n\n\n"
+        "def lock(pk):\n"
+        "    return Block.objects.select_for_update().filter(Q(target__state='active')).first()\n"
+    ),
+    "f": (
+        "from django.db.models import F\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    return rows.filter(pk=pk, state=F('account_low__state')).first()\n"
+    ),
+    "order_by": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock():\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    return rows.order_by('-account_high__created_at').first()\n"
+    ),
+    "values": (
+        "from glow_persistence.models import DirectionalInteraction\n\n\n"
+        "def lock(pk):\n"
+        "    return list(\n"
+        "        DirectionalInteraction.objects.select_for_update()\n"
+        "        .filter(pk=pk)\n"
+        "        .values('actor__state')\n"
+        "    )\n"
+    ),
+    "held_in_a_variable": (
+        "from glow_persistence.models import ChatIdentity\n\n\n"
+        "def lock(pk):\n"
+        "    rows = ChatIdentity.objects.select_for_update()\n"
+        "    return rows.filter(binding__match__account_low__state='active').first()\n"
+    ),
+    "generic_with_a_join": (
+        "from glow_persistence.models import AppAccount\n\n\n"
+        "def _lock(model, pk):\n"
+        "    rows = model.objects.select_for_update(no_key=model is AppAccount)\n"
+        "    return rows.select_related('account').filter(pk=pk).first()\n"
+    ),
+    "unreadable_path": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(name, value):\n"
+        "    return Match.objects.select_for_update().filter(**{name: value}).first()\n"
+    ),
+}
+ACCEPTED_JOINS = {
+    "of_self": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(account_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update(of=('self',))\n"
+        "        .filter(batch__account__state='active', candidate__state='active')\n"
+        "    )\n"
+    ),
+    "no_key": (
+        "from glow_persistence.models import Profile\n\n\n"
+        "def lock(account_id):\n"
+        "    return (\n"
+        "        Profile.objects.select_related('account')\n"
+        "        .select_for_update(no_key=True)\n"
+        "        .filter(account_id=account_id)\n"
+        "        .first()\n"
+        "    )\n"
+    ),
+    "of_another_model": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(account_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update(of=('self', 'batch'))\n"
+        "        .filter(batch__account_id=account_id, batch__state='ready')\n"
+        "    )\n"
+    ),
+    "lookups_only": (
+        "from glow_persistence.models import MediaObject\n\n\n"
+        "def lock(asset_id):\n"
+        "    return (\n"
+        "        MediaObject.objects.select_for_update()\n"
+        "        .filter(asset_id=asset_id, adopted_at__isnull=False, role__in=['original'])\n"
+        "        .order_by('-created_at')\n"
+        "        .first()\n"
+        "    )\n"
+    ),
+}
+# Each of these names a path to AppAccount in of=, so the joined account is still locked FOR
+# UPDATE.
+PLANTED_OF = {
+    "of_the_candidate": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(batch_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update(of=('self', 'candidate'))\n"
+        "        .filter(batch_id=batch_id, candidate__state='active')\n"
+        "    )\n"
+    ),
+    "of_the_batch_account": (
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def lock(batch_id):\n"
+        "    return list(\n"
+        "        RecommendationEntry.objects.select_for_update(of=('batch__account',))\n"
+        "        .filter(batch__account__state='active')\n"
+        "    )\n"
+    ),
+}
 
 
 class AccountLockScanTests(unittest.TestCase):
@@ -507,6 +648,66 @@ class AccountLockScanTests(unittest.TestCase):
         self.assertEqual(account_lock_scan.violations(locks), [])
         self.assertEqual(account_lock_scan.sites(locks), account_lock_scan.EXPECTED_SITES)
         self.assertEqual(len(locks), 7)
+        # C2 (DM-65): services/api's 47 select_for_update calls and the reference design's 5; none
+        # locks a queryset that joins another table.
+        self.assertEqual(account_lock_scan.calls([API_ROOT]), (47, 0))
+        self.assertEqual(account_lock_scan.calls([account_lock_scan.REFERENCE]), (5, 0))
+
+    def test_the_account_foreign_keys_are_read_from_the_models(self) -> None:
+        model = account_lock_scan.read_models()
+        self.assertEqual(
+            model.account_fields,
+            {
+                "account",
+                "actor",
+                "target",
+                "candidate",
+                "viewer",
+                "account_low",
+                "account_high",
+                "reporter",
+                "subject",
+                "appellant",
+            },
+        )
+        self.assertLessEqual(model.account_fields | {"batch", "binding", "match"}, model.relations)
+
+    def test_a_lock_of_a_queryset_that_joins_fails_the_scan(self) -> None:
+        # C2's three planted joins (the brief's item 3), with the further forms the rule covers.
+        for name, text in {**PLANTED_JOINS, **PLANTED_JOINS_MORE, **PLANTED_OF}.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(locks), 1)
+                self.assertEqual(
+                    [lock.mode for lock in account_lock_scan.violations(locks)], ["FOR UPDATE"]
+                )
+                self.assertTrue(locks[0].joins)
+
+    def test_a_joining_lock_passes_with_no_key_or_an_of_naming_no_account(self) -> None:
+        for name, text in ACCEPTED_JOINS.items():
+            with self.subTest(accepted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(account_lock_scan.violations(locks), [])
+        self.assertEqual(
+            [lock.mode for lock in self.scan_source(ACCEPTED_JOINS["of_self"])],
+            ["FOR UPDATE OF self"],
+        )
+        self.assertEqual(
+            [lock.mode for lock in self.scan_source(ACCEPTED_JOINS["no_key"])],
+            ["FOR NO KEY UPDATE"],
+        )
+        self.assertEqual(self.scan_source(ACCEPTED_JOINS["lookups_only"]), [])
+
+    def test_the_command_exits_non_zero_on_a_planted_join(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(PLANTED_JOINS["lookup_through_another_model"], encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = account_lock_scan.main([str(path)])
+        self.assertEqual(code, 1)
+        self.assertIn("joins through filter: batch__account__state", out.getvalue())
+        self.assertIn("locking a queryset that joins: 1", out.getvalue())
+        self.assertIn("not FOR NO KEY UPDATE: 1", out.getvalue())
 
     def test_the_scan_reads_services_api_without_its_tests_and_the_reference(self) -> None:
         scanned = {path.resolve() for path in account_lock_scan.sources()}
