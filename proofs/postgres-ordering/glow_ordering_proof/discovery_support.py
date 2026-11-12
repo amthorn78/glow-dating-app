@@ -19,12 +19,17 @@ identity verification SV2's suite writes in setup. Then:
   population (Q13), written directly with every row completion requires;
 - **Counters:** statements per page request (``count_statements``, through the connection's execute
   wrapper, which logs nothing) and compatibility port calls (``counting_port``);
-- **The plans** (D14; DB11): each candidate query's ``EXPLAIN (ANALYZE, BUFFERS)``, run with a
-  throwaway tie-break key, so no secret is in a plan's text.
+- **The plans** (D14; DB11): each candidate query's ``EXPLAIN (ANALYZE, BUFFERS)``. No statement
+  carries a key (the tie-break is drawn in the selection; DM-61 K2), so a plan's text holds none;
+- **Statements as sent** (``record_statements``; DM-61 K2, Codex's CX2): every statement a block
+  runs on this thread's connection, with its parameters and its text as the client-side binding
+  cursor sends it (``mogrify``), checked against every value derived from ``SECRET_KEY``
+  (``derived_from_secret_key``); nothing recorded is logged or kept.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import secrets
@@ -53,6 +58,79 @@ CHICAGO = "16980"
 __all__ = ["CaseFailed", "expect"]
 
 AREA_ID = re.compile(r"\b[0-9]{5}\b")
+# The salt DM-60 Q2's keyed tie-break used, kept only so that the tie-break check looks for the
+# derived key and pads it would have sent (DM-61 K2 removed it; no app code names it).
+REMOVED_TIE_BREAK_SALT = "glow_discovery.tie_break"
+HMAC_BLOCK = 64
+
+
+def derived_from_secret_key() -> list[str]:
+    """Every value derived from the settings' ``SECRET_KEY`` that no statement may carry (DM-61
+    K2; Codex's CX2), as lower-case hexadecimal: the cursors' derived key (``salted_hmac``'s
+    ``sha256(salt + SECRET_KEY)``), and the removed keyed tie-break's derived key and its two
+    HMAC pads (RFC 2104), which the old selection sent as parameters."""
+    from django.conf import settings
+    from glow_discovery import keys
+
+    secret = str(settings.SECRET_KEY)
+    found = [
+        hashlib.sha256((salt + secret).encode("utf-8")).hexdigest()
+        for salt in (keys.CURSOR_SALT, REMOVED_TIE_BREAK_SALT)
+    ]
+    key = hashlib.sha256((REMOVED_TIE_BREAK_SALT + secret).encode("utf-8")).digest()
+    key = key.ljust(HMAC_BLOCK, b"\x00")
+    found += [bytes(b ^ 0x36 for b in key).hex(), bytes(b ^ 0x5C for b in key).hex()]
+    return found
+
+
+@dataclass
+class Sent:
+    """What ``record_statements`` saw: each statement's text, its parameters' text, and its text
+    as the client-side binding cursor sends it; kept in memory for the check, never logged."""
+
+    texts: list[str] = field(default_factory=list)
+    statements: int = 0
+    as_sent: int = 0
+    client_side: bool = True
+
+    def holds(self, values: list[str]) -> int:
+        """How many of ``values`` (compared without case) appear in anything sent."""
+        haystack = "\n".join(self.texts).lower()
+        return sum(1 for value in values if value and value.lower() in haystack)
+
+
+@contextmanager
+def record_statements() -> Iterator[Sent]:
+    """Every statement this thread's connection runs inside the block: its SQL, each parameter
+    (bytes as hexadecimal) and its text as sent. Django 5.2's psycopg 3 backend binds on the
+    client by default (``psycopg.ClientCursor``), so ``mogrify`` gives the exact text sent."""
+    import psycopg
+    from django.db import connection
+
+    sent = Sent()
+
+    def text(value: Any) -> str:
+        if isinstance(value, bytes | bytearray | memoryview):
+            return bytes(value).hex()
+        return str(value)
+
+    def record(execute: Callable[..., Any], sql: str, params: Any, many: bool, ctx: Any) -> Any:
+        sent.statements += 1
+        sent.texts.append(str(sql))
+        raw = getattr(ctx.get("cursor"), "cursor", None)
+        sent.client_side = sent.client_side and isinstance(raw, psycopg.ClientCursor)
+        for row in (params if many else [params]) or ():
+            if row is None:
+                continue
+            values = row.values() if isinstance(row, dict) else row
+            sent.texts += [text(value) for value in values]
+            if isinstance(raw, psycopg.ClientCursor):
+                sent.texts.append(text(raw.mogrify(sql, row)))
+                sent.as_sent += 1
+        return execute(sql, params, many, ctx)
+
+    with connection.execute_wrapper(record):
+        yield sent
 
 
 @dataclass
@@ -539,14 +617,12 @@ def seed_population(count: int, areas: tuple[str, ...], consent_label: str) -> l
 
 
 def explain(statement: str, values: dict[str, Any]) -> dict[str, Any]:
-    """``EXPLAIN (ANALYZE, BUFFERS)`` of one statement with a throwaway tie-break key (the real
-    pads are secrets); the plan's text, its execution time and the node types it uses."""
+    """``EXPLAIN (ANALYZE, BUFFERS)`` of one statement (no parameter is a key: DM-61 K2); the
+    plan's text, its execution time and the node types it uses."""
     from django.db import connection
 
-    throwaway = dict(values)
-    throwaway["ipad"], throwaway["opad"] = secrets.token_bytes(64), secrets.token_bytes(64)
     with connection.cursor() as cursor:
-        cursor.execute("EXPLAIN (ANALYZE, BUFFERS) " + statement, throwaway)
+        cursor.execute("EXPLAIN (ANALYZE, BUFFERS) " + statement, values)
         lines = [str(row[0]) for row in cursor.fetchall()]
     timing = [line for line in lines if line.startswith("Execution Time")]
     nodes = sorted(

@@ -1,9 +1,9 @@
 """The discovery suite's offline checks (SV3 Stage A; its brief's D14 and acceptance check 13).
 
 No database: the discovery settings' refusals and values; the job's secret check of the suite's
-output and the upload gate; the workflow's SV3 steps; the case plan; and the commands' refusals of
-each other's settings. The cases themselves run in the Database proof checks job, on the fourth
-disposable database.
+output and the upload gate; the workflow's SV3 steps; the case plan; the commands' refusals of
+each other's settings; and the scan of account locks (C1; DM-61 K3), with its planted reversals.
+The cases themselves run in the Database proof checks job, on the fourth disposable database.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from unittest import mock
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from glow_ordering_proof import __main__ as commands
-from glow_ordering_proof import discovery_cases, discovery_scan, environment
+from glow_ordering_proof import account_lock_scan, discovery_cases, discovery_scan, environment
 from tests.test_identity_offline import KeyFiles, pem, workflow_step
 from tests.test_profile_offline import unquoted_step
 
@@ -382,7 +382,7 @@ class DiscoveryPlanTests(unittest.TestCase):
             self.assertNotIn(check, covered)
 
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(discovery_cases.CASE_COUNT, 32)
+        self.assertEqual(discovery_cases.CASE_COUNT, 38)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
 
     def test_the_page_route_is_the_apis(self) -> None:
@@ -437,3 +437,104 @@ class DiscoveryCommandTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+PLANTED = {
+    "orm": (
+        "from glow_persistence.models import AppAccount\n\n\n"
+        "def lock(account_id):\n"
+        "    return AppAccount.objects.select_for_update().filter(pk=account_id).first()\n"
+    ),
+    "generic": (
+        "def _lock(model, pk):\n"
+        "    return model.objects.select_for_update().filter(pk=pk).first()\n"
+    ),
+    "sql": (
+        "def lock(cursor, account_id):\n"
+        "    cursor.execute(\n"
+        "        'SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR UPDATE',\n"
+        "        [account_id],\n"
+        "    )\n"
+    ),
+    "sql_table_placeholder": (
+        "def lock(cursor, table, pk):\n"
+        "    cursor.execute(f'SELECT id FROM {table} WHERE id = %s FOR UPDATE', [pk])\n"
+    ),
+}
+ACCEPTED = {
+    "orm": (
+        "from glow_persistence.models import AppAccount\n\n\n"
+        "def lock(account_id):\n"
+        "    rows = AppAccount.objects.select_for_update(no_key=True)\n"
+        "    return rows.filter(pk=account_id).first()\n"
+    ),
+    "generic": (
+        "from glow_persistence.models import AppAccount\n\n\n"
+        "def _lock(model, pk):\n"
+        "    rows = model.objects.select_for_update(no_key=model is AppAccount)\n"
+        "    return rows.filter(pk=pk).first()\n"
+    ),
+    "other_model": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    return Match.objects.select_for_update().filter(pk=pk).first()\n"
+    ),
+    "shared_read": (
+        "def read(cursor, account_id):\n"
+        "    cursor.execute(\n"
+        "        'SELECT state FROM glow_persistence_appaccount WHERE id = %s FOR SHARE',\n"
+        "        [account_id],\n"
+        "    )\n"
+    ),
+    "docstring": (
+        'def lock():\n    """Takes glow_persistence_appaccount FOR UPDATE, in words only."""\n'
+    ),
+}
+
+
+class AccountLockScanTests(unittest.TestCase):
+    """C1's scan (DM-61 K1, K3): every explicit lock of an ``AppAccount`` row in ``services/api``
+    and the reference design is ``FOR NO KEY UPDATE``; a planted ``FOR UPDATE`` lock fails it."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def test_the_tree_has_only_no_key_account_locks_at_the_seven_sites(self) -> None:
+        locks = account_lock_scan.scan()
+        self.assertEqual(account_lock_scan.violations(locks), [])
+        self.assertEqual(account_lock_scan.sites(locks), account_lock_scan.EXPECTED_SITES)
+        self.assertEqual(len(locks), 7)
+
+    def test_the_scan_reads_services_api_without_its_tests_and_the_reference(self) -> None:
+        scanned = {path.resolve() for path in account_lock_scan.sources()}
+        self.assertIn((API_ROOT / "glow_profiles" / "tx.py").resolve(), scanned)
+        self.assertIn(account_lock_scan.REFERENCE.resolve(), scanned)
+        self.assertFalse(any("tests" in path.relative_to(REPO_ROOT).parts for path in scanned))
+        self.assertFalse(any(".venv" in path.parts for path in scanned))
+
+    def test_a_planted_for_update_lock_fails_the_scan(self) -> None:
+        # The reversal (DM-61 K3): each planted lock is found and refused.
+        for name, text in PLANTED.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(locks), 1)
+                self.assertEqual(
+                    [lock.mode for lock in account_lock_scan.violations(locks)], ["FOR UPDATE"]
+                )
+
+    def test_no_key_locks_reads_and_other_models_pass(self) -> None:
+        for name, text in ACCEPTED.items():
+            with self.subTest(accepted=name):
+                self.assertEqual(account_lock_scan.violations(self.scan_source(text)), [])
+
+    def test_the_command_exits_non_zero_on_a_planted_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(PLANTED["orm"], encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = account_lock_scan.main([str(path)])
+        self.assertEqual(code, 1)
+        self.assertIn("not FOR NO KEY UPDATE: 1", out.getvalue())

@@ -18,7 +18,8 @@ import re
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
+from functools import partial
 from typing import Any
 from unittest import mock
 from uuid import UUID, uuid4
@@ -55,7 +56,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests.
-CASE_COUNT = 32
+CASE_COUNT = 38
 
 
 def case(
@@ -678,6 +679,123 @@ def leap_days_and_age_state(ctx: DiscoveryContext) -> str:
     return f"{pairs} leap-day pairs agree; the age state's date is used, never the birth input's"
 
 
+def _set_birth(member: Member, born: date) -> None:
+    """The age state's date, written in setup (test data, as ``predicates.adult_state`` seeds a
+    lagging age state). SV2's adult check refuses no old date; a direct write keeps it brief."""
+    from glow_persistence.models import AccountAgeState
+
+    updated = AccountAgeState.objects.filter(account_id=member.account_id).update(birth_date=born)
+    expect(updated == 1, "the member's age state is set")
+
+
+def _years_back(today: date, years: int, days: int = 0) -> date:
+    """The date ``years`` whole years before ``today`` (its birthday today), moved by ``days``. On
+    29 February the birthday is 28 February, so the age is still exactly ``years``."""
+    try:
+        then = today.replace(year=today.year - years)
+    except ValueError:
+        then = today.replace(year=today.year - years, day=28)
+    return then + timedelta(days=days)
+
+
+@case("age.ceiling_150_shown_151_excluded", "1", "3", "D3", "DM-62")
+def ceiling_150_shown_151_excluded(ctx: DiscoveryContext) -> str:
+    """ADULT's age ceiling (the brief's D3, Y1; check 3, Y2; Codex's CX3) at the server's date: 150
+    whole years is shown and 151 is excluded, as a candidate in the selection and in a page's
+    recheck, as a viewer (a 403 with no batch), and in the trusted adapter's pair read. Every page
+    is checked against the production schema, whose ``CandidateProfile.age`` maximum is 150."""
+    from glow_domain import profile_settings as ps
+
+    today = db_today()
+    viewer = ctx.visible()
+    at_150, turning, at_151 = ctx.visible(), ctx.visible(), ctx.visible()
+    _set_birth(at_150, _years_back(today, ps.AGE_CEILING))
+    _set_birth(turning, _years_back(today, ps.AGE_CEILING + 1, days=1))
+    _set_birth(at_151, _years_back(today, ps.AGE_CEILING + 1))
+    # The selection, and the pair read beside it (``_sees`` compares the two).
+    expect(_sees(ctx, viewer, at_150), "150 whole years is shown")
+    expect(_sees(ctx, viewer, turning), "151 tomorrow is 150 today, and shown")
+    expect(not _sees(ctx, viewer, at_151), "151 whole years is excluded")
+    expect(("candidate", "adult") in _rules(viewer, at_151), "the pair read excludes 151 by ADULT")
+    expect(("candidate", "adult") not in _rules(viewer, at_150), "and passes 150")
+    ages = [
+        card["profile"]["age"]
+        for card in ctx.pages[-1]["items"]
+        if card["profile_id"] in {ctx.profile_id(at_150), ctx.profile_id(turning)}
+    ]
+    expect(ages == [ps.AGE_CEILING] * 2, "the cards carry 150, the contract's maximum")
+    # Every page's recheck: a candidate who passes 150 during a batch is dropped at the next page.
+    first = ctx.page(viewer, limit=1)
+    shown = ctx.ids(first)
+    expect(len(shown) == 1 and first["next_cursor"] is not None, "a first page and a cursor")
+    later = at_150 if ctx.profile_id(at_150) not in shown else turning
+    _set_birth(later, _years_back(today, ps.AGE_CEILING + 1))
+    rest = [first]
+    while rest[-1]["next_cursor"] is not None:
+        rest.append(ctx.page(viewer, "recommendations", rest[-1]["next_cursor"], 1))
+    expect(ctx.profile_id(later) not in ctx.all_ids(rest[1:]), "passing 150, dropped at recheck")
+    _set_birth(later, _years_back(today, ps.AGE_CEILING))
+    # The viewer: at 151, a 403 and no batch; the pair read refuses them too.
+    before = _batches(viewer.account_id)
+    _set_birth(viewer, _years_back(today, ps.AGE_CEILING + 1))
+    _refused_page(ctx, viewer, 403, "forbidden", "a viewer at 151 whole years")
+    expect(_batches(viewer.account_id) == before, "no batch is computed for them")
+    expect(("viewer", "adult") in _rules(viewer, at_150), "the pair read refuses a viewer at 151")
+    _set_birth(viewer, _years_back(today, ps.AGE_CEILING))
+    expect(_sees(ctx, viewer, at_150), "a viewer at 150 pages, and sees 150")
+    return (
+        "150 shown and 151 excluded at the server's date, in the selection, the recheck and the"
+        " pair read; a viewer at 151 refused with no batch; every card at most 150"
+    )
+
+
+# The leap-day cases ``age.leap_days_and_age_state`` uses, 132 years earlier (1876 and 1868 are
+# leap years, as 2008 and 2000 are), so that the same days put the ages at 149 to 152.
+CEILING_BIRTHS = tuple(f"{int(born[:4]) - 132}{born[4:]}" for born in LEAP_BIRTHS)
+
+
+@case("age.ceiling_at_leap_days", "3", "D3", "D4", "DM-62")
+def ceiling_at_leap_days(ctx: DiscoveryContext) -> str:
+    """ADULT's ceiling at the leap-day cases (Y2): for each date, ``MEMBER``'s ``adult`` (which the
+    selection, the recheck, the viewer's read and the pair read share) is ``whole_years`` at most
+    150, as the viewer (``VIEWER``) and as the candidate (``PAIR``)."""
+    from django.db import connection
+    from glow_discovery import predicates
+    from glow_discovery.eligibility import parameters
+    from glow_domain import profile_settings as ps
+    from glow_domain.identity import whole_years
+
+    viewer, member = ctx.visible(), ctx.visible()
+    selection = _selection()
+    own = f"WITH v AS ({predicates.MEMBER} WHERE a.id = %(viewer)s) SELECT v.adult, v.age FROM v"
+    pairs = 0
+    reached: set[int] = set()
+    with connection.cursor() as cursor:
+        for born in CEILING_BIRTHS:
+            _set_birth(member, date.fromisoformat(born))
+            for today in LEAP_TODAYS:
+                years = whole_years(date.fromisoformat(born), date.fromisoformat(today))
+                wanted = years <= ps.AGE_CEILING
+                values = parameters(selection, member.account_id)
+                values["today"] = today
+                cursor.execute(own, values)
+                adult, age = cursor.fetchone()
+                expect(age == years, "the SQL rule is whole_years' at a leap-day case")
+                expect(adult is wanted, "ADULT's ceiling is whole_years at most 150")
+                cursor.execute(predicates.VIEWER, values)
+                expect(cursor.fetchone()[0] is wanted, "as the viewer: their own read")
+                pair = parameters(selection, viewer.account_id)
+                pair.update(candidate=member.account_id, today=today)
+                cursor.execute(predicates.PAIR, pair)
+                expect(cursor.fetchone()[16] is wanted, "as the candidate: the pair read")
+                if years in (ps.AGE_CEILING, ps.AGE_CEILING + 1):
+                    reached.add(years)
+                pairs += 1
+    expect(reached == {150, 151}, "both sides of the ceiling fall on the leap-day cases")
+    _set_birth(member, _years_back(db_today(), 30))
+    return f"{pairs} leap-day pairs: ADULT is whole_years at most 150, as viewer and as candidate"
+
+
 # -- 4. distance (acceptance check 4; D5) -----------------------------------------------------
 
 
@@ -773,40 +891,68 @@ def recommended_then_broader(ctx: DiscoveryContext) -> str:
     return "recommended first; broader serves the eligible not in the current recommendations"
 
 
-@case("pages.keyed_stable_order", "5", "D6")
-def keyed_stable_order(ctx: DiscoveryContext) -> str:
-    from django.db import connection
-    from glow_discovery import keys, predicates
+@case("pages.random_stable_order", "5", "D6", "DM-61")
+def random_stable_order(ctx: DiscoveryContext) -> str:
+    """The random tie-break (D6; DM-61 K2; check 5, K4): the order is stable within a batch, across
+    its pages, as the entries' positions keep it; two batches over the same 12 candidates in one
+    band are ordered differently; neither is an order computable from the batch's and the
+    profiles' IDs; and no executed statement or parameter, nor any statement's text as the
+    client-side binding cursor sends it, carries a value derived from ``SECRET_KEY`` (Codex's CX2).
+    """
+    from django.conf import settings
+    from glow_discovery import predicates
+    from glow_persistence.models import RecommendationEntry
+
+    from glow_ordering_proof.discovery_support import derived_from_secret_key, record_statements
 
     viewer = ctx.visible()
-    for _ in range(8):
-        ctx.visible()
-    pages = ctx.pages_of(viewer, limit=3)
-    batch = UUID(pages[0]["batch_id"])
-    served = ctx.all_ids(pages)
-    expect(len(served) == 8 and len(set(served)) == 8, "every candidate once")
-    keyed = sorted(served, key=lambda p: (keys.tie_break(batch, UUID(p)), p))
-    expect(served == keyed, "one band: the order is the keyed tie-break's")
-    unkeyed = sorted(served, key=lambda p: hashlib.sha256(f"{batch}:{p}".encode()).digest())
-    ipad, opad = keys.sql_pads()
-    with connection.cursor() as cursor:
-        for profile in served[:3]:
-            cursor.execute(
-                "SELECT " + predicates.TIE_BREAK.replace("c.profile_id", "%(profile)s::uuid"),
-                {"ipad": ipad, "opad": opad, "batch": str(batch), "profile": profile},
-            )
-            found = bytes(cursor.fetchone()[0])
-            expect(found == keys.tie_break(batch, UUID(profile)), "SQL's key is salted_hmac's")
-    again = ctx.page(viewer, "recommendations", pages[0]["next_cursor"], 3)
-    expect(ctx.ids(again) == ctx.ids(pages[1]), "the same cursor gives the same page")
-    fresh = ctx.pages_of(viewer, limit=3)
-    batch2 = UUID(fresh[0]["batch_id"])
+    members = [ctx.visible() for _ in range(12)]
+    everyone = {ctx.profile_id(m) for m in members}
+
+    def positions(batch: str) -> list[str]:
+        return [
+            str(p)
+            for p in RecommendationEntry.objects.filter(batch_id=UUID(batch))
+            .order_by("position")
+            .values_list("candidate__profile__id", flat=True)
+        ]
+
+    # Each batch's positions are read before the next batch replaces it (one per collection).
+    with record_statements() as sent:
+        batches = [ctx.pages_of(viewer, limit=3)]
+        kept = [positions(batches[0][0]["batch_id"])]
+        again = ctx.page(viewer, "recommendations", batches[0][0]["next_cursor"], 3)
+        batches.append(ctx.pages_of(viewer, limit=3))
+        kept.append(positions(batches[1][0]["batch_id"]))
+    orders: list[list[str]] = []
+    issued: list[str] = []
+    for pages, stored_order in zip(batches, kept, strict=True):
+        served = ctx.all_ids(pages)
+        expect(len(served) == 12 and set(served) == everyone, "every candidate once, in one band")
+        batch = pages[0]["batch_id"]
+        expect(served == stored_order, "stable within a batch: the pages follow the positions")
+        expect(served != sorted(served), "not the profile IDs' order")
+        unkeyed = sorted(served, key=lambda p: hashlib.sha256(f"{batch}:{p}".encode()).digest())
+        expect(served != unkeyed, "not an order computable from the batch's and profiles' IDs")
+        orders.append(served)
+        issued += [str(page["next_cursor"]) for page in pages if page["next_cursor"]]
+    expect(ctx.ids(again) == ctx.ids(batches[0][1]), "the same cursor gives the same page")
+    expect(batches[0][0]["batch_id"] != batches[1][0]["batch_id"], "a new batch")
+    expect(orders[0] != orders[1], "two batches over the same candidates are ordered differently")
+    stored = [f.name for f in RecommendationEntry._meta.get_fields() if "tie" in f.name]
+    expect(stored == [], "the tie-break is stored nowhere")
+    ledger = [str(settings.SECRET_KEY), *derived_from_secret_key()]
+    ledger += [cursor.split(".")[2] for cursor in issued]
+    expect(sent.client_side and sent.as_sent > 0, "the statements were read as they were sent")
+    expect(predicates.TIE_BREAK + " AS tie_break" in "\n".join(sent.texts), "the draw was sent")
     expect(
-        ctx.all_ids(fresh) == sorted(served, key=lambda p: (keys.tie_break(batch2, UUID(p)), p)),
-        "a new batch follows its own key",
+        sent.holds(ledger) == 0, "no statement or parameter carries a value derived from the key"
     )
-    differs = "differs" if unkeyed != served else "coincides"
-    return f"stable within a batch, keyed by batch and profile; an unkeyed order {differs}"
+    return (
+        f"12 candidates in one band: stable within each of two batches, ordered differently; no"
+        f" value derived from SECRET_KEY in {sent.statements} statements ({sent.as_sent} read as"
+        f" sent, client-side binding)"
+    )
 
 
 @case("pages.stale_cursors", "5", "12", "D7", "D8")
@@ -1053,6 +1199,308 @@ def one_batch_per_collection(ctx: DiscoveryContext) -> str:
         reply = ctx.page_reply(viewer, limit=limit)
         ctx.profiles.refused(reply, 400, "invalid_request", f"a page of {limit}")
     return "creating a batch deletes the collection's earlier one; a page is 1 to 50"
+
+
+# -- page creation under concurrency, and the account locks' mode (D2, D14; DM-61) -------------
+
+# How long a case waits for a transaction to reach a point it reaches without waiting on a lock;
+# a held transaction is released at the latest after HOLD_SECONDS.
+REACH_SECONDS = 10.0
+HOLD_SECONDS = 60.0
+
+
+class _Held:
+    """A transaction probe that holds its transaction at named points (``after_first_lock``,
+    ``before_commit``) until the case releases each; it records its backend's pid. It only
+    signals and waits (DM-13 2.1)."""
+
+    after_locks = None
+
+    def __init__(self, *points: str) -> None:
+        self.pid: int | None = None
+        self.reached = {name: threading.Event() for name in points}
+        self.release = {name: threading.Event() for name in points}
+        for name in ("after_first_lock", "before_commit"):
+            setattr(self, name, self._hold(name) if name in points else None)
+
+    def on_begin(self, pid: int) -> None:
+        self.pid = pid
+
+    def _hold(self, name: str) -> Callable[[], None]:
+        def hold() -> None:
+            self.reached[name].set()
+            self.release[name].wait(HOLD_SECONDS)
+
+        return hold
+
+    def free(self) -> None:
+        for event in self.release.values():
+            event.set()
+
+
+class _Worker:
+    """One transaction on its own thread and its own connection (D14: separate connections)."""
+
+    def __init__(self, work: Callable[[], Any]) -> None:
+        self.result: Any = None
+        self.error: str | None = None
+        self.thread = threading.Thread(target=self._run, args=(work,), daemon=True)
+
+    def _run(self, work: Callable[[], Any]) -> None:
+        from django.db import connection
+
+        try:
+            self.result = work()
+        except BaseException as exc:  # noqa: BLE001 - recorded by type only
+            self.error = type(exc).__name__
+        finally:
+            connection.close()
+
+    def start(self) -> _Worker:
+        self.thread.start()
+        return self
+
+    def ended(self) -> bool:
+        return not self.thread.is_alive()
+
+    def done(self, timeout: float) -> bool:
+        self.thread.join(timeout)
+        return not self.thread.is_alive()
+
+    def outcome(self) -> str:
+        """The result by its codes only (``applied``, or ``error:provider_unavailable:...``)."""
+        if self.error is not None:
+            return f"raised:{self.error}"
+        if self.result is None:
+            return "none"
+        parts = (self.result.outcome, getattr(self.result, "code", ""), self.result.reason)
+        return ":".join(str(part) for part in parts if part)
+
+    def ok(self) -> bool:
+        return self.error is None and self.result is not None and self.result.outcome == "applied"
+
+
+def _finish(probes: list[_Held], workers: list[_Worker]) -> None:
+    for probe in probes:
+        probe.free()
+    for worker in workers:
+        expect(worker.done(HOLD_SECONDS + 30), "the concurrent transactions finished")
+
+
+def _has_entry(result: Any, candidate: Member) -> bool:
+    from glow_persistence.models import RecommendationEntry
+
+    batch = UUID(str(result.data["batch_id"]))
+    return bool(
+        RecommendationEntry.objects.filter(
+            batch_id=batch, candidate_id=candidate.account_id
+        ).exists()
+    )
+
+
+@case("concurrency.two_viewers_create_at_once", "5", "D2", "D14", "DM-61")
+def two_viewers_create_at_once(ctx: DiscoveryContext) -> str:
+    """Codex's CX1: two mutually eligible viewers create batches at once, from separate
+    connections, each holding its own account lock before either writes its entries (each entry's
+    foreign-key check takes ``FOR KEY SHARE`` on the other's account), in both orders. Both pages
+    succeed: ``FOR NO KEY UPDATE`` does not block ``FOR KEY SHARE``."""
+    from glow_discovery import pages
+
+    one, two = ctx.visible(), ctx.visible()
+    expect(_both(ctx, one, two) == (True, True), "two mutually eligible viewers")
+    for leader, follower in ((one, two), (two, one)):
+        probes = {m.account_id: _Held("after_first_lock", "before_commit") for m in (one, two)}
+        workers = {
+            m.account_id: _Worker(
+                partial(
+                    pages.create, m.account_id, "recommendations", 50, probe=probes[m.account_id]
+                )
+            )
+            for m in (one, two)
+        }
+        lead, follow = probes[leader.account_id], probes[follower.account_id]
+        try:
+            for worker in workers.values():
+                worker.start()
+            holding = all(
+                p.reached["after_first_lock"].wait(REACH_SECONDS) for p in probes.values()
+            )
+            lead.release["after_first_lock"].set()
+            led = lead.reached["before_commit"].wait(REACH_SECONDS)
+            follow.release["after_first_lock"].set()
+            followed = follow.reached["before_commit"].wait(REACH_SECONDS)
+        finally:
+            _finish(list(probes.values()), list(workers.values()))
+        outcomes = ", ".join(w.outcome() for w in workers.values())
+        expect(holding, "each viewer held its own account lock before either wrote its entries")
+        expect(all(w.ok() for w in workers.values()), f"both pages succeed ({outcomes})")
+        expect(led and followed, "each wrote its entries while the other held its account lock")
+        expect(
+            _has_entry(workers[one.account_id].result, two)
+            and _has_entry(workers[two.account_id].result, one),
+            "each batch holds an entry referencing the other's account",
+        )
+    return "both orders: each held its own account, wrote entries referencing the other's; both ok"
+
+
+@case("concurrency.block_races_page_creation", "5", "D2", "D14", "DM-61")
+def block_races_page_creation(ctx: DiscoveryContext) -> str:
+    """The second cycle (DM-61 3.1): ``glow_chat``'s ``block`` by a candidate of the viewer, the
+    candidate's account below the viewer's, so the block locks the candidate first and then the
+    viewer, races the viewer's page creation, which locks the viewer and then writes an entry
+    referencing the candidate. Both interleavings, from separate connections; both succeed."""
+    from glow_discovery import pages
+    from glow_profiles import operations
+
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    candidate, viewer = sorted((ctx.visible(), ctx.visible()), key=lambda m: m.account_id)
+    expect(candidate.account_id < viewer.account_id, "the candidate's account is the lower")
+    expect(_sees(ctx, viewer, candidate), "the candidate is eligible for the viewer")
+    seen: list[str] = []
+    for page_first in (True, False):
+        page_probe = _Held("after_first_lock", "before_commit")
+        block_probe = _Held("after_first_lock", "before_commit")
+        page = _Worker(
+            partial(pages.create, viewer.account_id, "recommendations", 50, probe=page_probe)
+        )
+        block = _Worker(
+            partial(
+                operations.chat().block, candidate.account_id, viewer.account_id, probe=block_probe
+            )
+        )
+        waited = None
+        try:
+            block.start()
+            blocking = block_probe.reached["after_first_lock"].wait(REACH_SECONDS)
+            page.start()
+            paging = page_probe.reached["after_first_lock"].wait(REACH_SECONDS)
+            if page_first:
+                page_probe.release["after_first_lock"].set()
+                wrote = page_probe.reached["before_commit"].wait(REACH_SECONDS)
+                page_probe.release["before_commit"].set()
+                block_probe.release["after_first_lock"].set()
+            else:
+                block_probe.release["after_first_lock"].set()
+                assert block_probe.pid is not None and page_probe.pid is not None
+                waited = observe_lock_wait(
+                    block_probe.pid,
+                    holder_pid=page_probe.pid,
+                    finished=block.ended,
+                    timeout=REACH_SECONDS,
+                )
+                page_probe.release["after_first_lock"].set()
+                wrote = page_probe.reached["before_commit"].wait(REACH_SECONDS)
+        finally:
+            _finish([page_probe, block_probe], [page, block])
+        order = "page first" if page_first else "block first"
+        outcomes = f"page {page.outcome()}, block {block.outcome()}"
+        expect(blocking and paging, f"{order}: each held its first account lock")
+        expect(page.ok() and block.ok(), f"{order}: both succeed ({outcomes})")
+        expect(wrote, f"{order}: the page wrote its entries while the block held the candidate")
+        expect(_has_entry(page.result, candidate), f"{order}: the batch references the candidate")
+        if waited is not None:
+            expect(waited.observed, f"{order}: the block waited on the viewer's account lock")
+        seen.append(order)
+        ctx.unblock(candidate.account_id, viewer.account_id)
+    return f"{' and '.join(seen)}: the block and the page both succeed; no cycle through the FK"
+
+
+@case("concurrency.page_does_not_wait_on_a_candidates_writer", "5", "D2", "D14", "DM-61")
+def page_does_not_wait_on_a_candidates_writer(ctx: DiscoveryContext) -> str:
+    """The rule itself (DM-61 K3): while a writer of the candidate's (SV2's profile edit) holds
+    the candidate's account lock, the page's transaction, which holds the viewer's account and
+    writes an entry referencing the candidate's, commits without waiting on it. After that commit,
+    the page reads each card's photo through SV2's ``delivery_reference``, its own transaction,
+    which takes the photo owner's account ``FOR SHARE`` and so waits for the writer in flight, as
+    SV2 designed every read to (``read_account_shared``); it holds none of the page's locks, so no
+    cycle can form through it. The case records that wait and the page's result after it."""
+    import time
+
+    from glow_discovery import pages
+    from glow_persistence.models import RecommendationEntry
+    from glow_profiles import operations
+
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    expect(_sees(ctx, viewer, candidate), "the candidate is eligible for the viewer")
+    current = ctx.profiles.get(candidate, "/api/v1/profile", "own_profile")
+    intent = {
+        "operation": "profile",
+        "meta": {"idempotency_key": f"c1-{uuid4().hex}", "expected_version": current["version"]},
+        "display_name": "Synthetic Member",
+        "summary": "A synthetic member, edited while a page is made.",
+    }
+    earlier = {UUID(b) for b in _batches(viewer.account_id)}
+
+    def committed() -> bool:
+        return bool(
+            RecommendationEntry.objects.filter(
+                batch__account_id=viewer.account_id, candidate_id=candidate.account_id
+            )
+            .exclude(batch_id__in=earlier)
+            .exists()
+        )
+
+    held = _Held("after_first_lock")
+    page_probe = _Held()
+    writer = _Worker(partial(operations.save_profile, candidate.account_id, intent, probe=held))
+    page = _Worker(
+        partial(pages.create, viewer.account_id, "recommendations", 50, probe=page_probe)
+    )
+    in_insert = photo_read = ""
+    written = still_held = False
+    try:
+        writer.start()
+        holding = held.reached["after_first_lock"].wait(REACH_SECONDS)
+        page.start()
+        deadline = time.monotonic() + REACH_SECONDS
+        while not (written := committed()) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        if page_probe.pid is not None and held.pid is not None:
+            observed = observe_lock_wait(
+                page_probe.pid, holder_pid=held.pid, finished=page.ended, timeout=REACH_SECONDS
+            )
+            if written:
+                photo_read = observed.summary() if observed.observed else ""
+            else:
+                in_insert = observed.summary()
+        still_held = writer.thread.is_alive() and not held.release["after_first_lock"].is_set()
+    finally:
+        _finish([held, page_probe], [writer, page])
+    expect(holding, "the candidate's writer held the candidate's account lock")
+    expect(
+        written and still_held,
+        f"the page's transaction committed its entry while the writer held the candidate's"
+        f" account ({in_insert or 'no wait observed'})",
+    )
+    expect(bool(photo_read), "after its commit, the page's photo read (FOR SHARE) waited for it")
+    expect(page.ok() and writer.ok(), f"both succeed (page {page.outcome()}, {writer.outcome()})")
+    expect(_has_entry(page.result, candidate), "the batch references the held account")
+    return (
+        "the page's transaction committed its entry referencing the held account without waiting;"
+        " its photo read after the commit then waited for the writer (SV2's FOR SHARE read)"
+    )
+
+
+@case("locks.account_locks_no_key_update", "5", "D2", "D14", "DM-61")
+def account_locks_no_key_update(ctx: DiscoveryContext) -> str:
+    """The scan (DM-61 K3): no explicit lock of an ``AppAccount`` row in ``services/api`` or the
+    reference design is anything but ``FOR NO KEY UPDATE`` (``account_lock_scan``), and the scan
+    finds each of the locks C1 changed."""
+    from glow_ordering_proof import account_lock_scan
+
+    locks = account_lock_scan.scan()
+    bad = account_lock_scan.violations(locks)
+    expect(
+        not bad,
+        "every account lock is FOR NO KEY UPDATE: "
+        + "; ".join(f"{lock.where()} {lock.mode}" for lock in bad),
+    )
+    found = account_lock_scan.sites(locks)
+    expect(found == account_lock_scan.EXPECTED_SITES, "the scan finds the seven account locks")
+    return f"{len(locks)} explicit account locks, in services/api and the reference, all no-key"
 
 
 # -- 6. disclosure (acceptance check 6; D8) ---------------------------------------------------

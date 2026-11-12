@@ -3,8 +3,9 @@
 On the fourth disposable database, after ``migrate`` and ``makemigrations --check --dry-run``: it
 refuses a database an earlier run used, records the server and the migration ledger, runs every
 case in ``discovery_cases`` in order, then checks that no secret the run handled (the identity
-suite's ``SecretLedger``: passwords, codes, tokens, session keys, the run's keys, and the keyed
-tie-break's derived keys and pads) and no member value it sent (``ValueLedger``: coordinates, the
+suite's ``SecretLedger``: passwords, codes, tokens, session keys, the run's keys, the cursors'
+derived key, and the derived keys and pads the keyed tie-break DM-61 removed would have used) and
+no member value it sent (``ValueLedger``: coordinates, the
 areas' internal points, distances, birth dates, times and places, own words, sensitive field
 values, the photos' keys and references) appears in any log record (captured at DEBUG), in anything
 the process wrote, or in the results JSON it would write (acceptance check 13). A results JSON that
@@ -19,7 +20,6 @@ population-of-one record.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import time
 from dataclasses import asdict, dataclass, field
@@ -65,20 +65,19 @@ class DiscoveryReport:
 
 
 def _file_secrets() -> list[str]:
-    """The run's keys, and the keyed tie-break's and cursors' derived keys and pads (D6, D7)."""
+    """The run's keys, the cursors' derived key (D7), and every value derived from ``SECRET_KEY``
+    the tie-break check looks for (``discovery_support.derived_from_secret_key``: the keyed
+    tie-break's derived key and pads DM-61 removed, which no statement may carry)."""
     from django.conf import settings
-    from glow_discovery import keys
 
     from glow_ordering_proof import identity_environment
+    from glow_ordering_proof.discovery_support import derived_from_secret_key
 
     values = [
         settings.SECRET_KEY,
         *identity_environment.pem_body_lines(settings.HEADLESS_JWT_PRIVATE_KEY),
+        *derived_from_secret_key(),
     ]
-    for salt in (keys.TIE_BREAK_SALT, keys.CURSOR_SALT):
-        values.append(hashlib.sha256((salt + str(settings.SECRET_KEY)).encode()).hexdigest())
-    ipad, opad = keys.sql_pads()
-    values += [ipad.hex(), opad.hex()]
     return [value for value in values if isinstance(value, str)]
 
 
