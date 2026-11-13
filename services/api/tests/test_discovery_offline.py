@@ -278,7 +278,7 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(seen["pending-chart"], ["pending", 0])
         self.assertEqual(seen["engine-unavailable"], ["unavailable", 0])
         self.assertEqual(seen["unsupported-contract"], ["empty", 0])
-        # One band: the keyed tie-break orders it.
+        # One band: the tie-break orders it.
         self.assertEqual(seen["one_band"], [1, 2, 3, 4, 5])
         self.assertEqual(seen["no_band"], "empty")
         # Bands first, then the tie-break within each (rows 5, 1, 4, 2, 3 in bands 0, 1, 0, 1, 0).

@@ -121,6 +121,80 @@ def forms(value: str) -> tuple[str, ...]:
     return tuple(sorted(form for form in found if len(form) >= 5))
 
 
+# Where a form counts (SV3 Stage A, correction C2; DM-64 T1 to T4). The run's own clock prints
+# timestamps, HTTP dates, durations and plan timings into the texts the scans read; a form inside
+# one of them is the clock's print, not a member value's. Every other occurrence of every form
+# still counts. ``forms`` and what a ledger holds do not change.
+# T2: a coordinate's form counts only where it is not preceded by a digit, nor by a digit and a
+# colon: a timestamp's seconds (``…:40.712345``) and the end of a longer number no longer match.
+COORDINATE_BEFORE = r"(?<![0-9])(?<![0-9]:)"
+# T3: a time's form counts only where it is not preceded by an HTTP or email date
+# (``Thu, 12 Nov 2026 ``, its day in two digits or one) and not followed by a fraction of a second
+# (``.`` or ``,`` and a digit): the ``Expires`` header Django adds to every response, a timestamp
+# with its fraction and a logging time no longer match a held birth time.
+TIME_BEFORE = (
+    r"(?<![A-Z][a-z]{2}, [0-9]{2} [A-Z][a-z]{2} [0-9]{4} )"
+    r"(?<![A-Z][a-z]{2}, [0-9] [A-Z][a-z]{2} [0-9]{4} )"
+)
+TIME_AFTER = r"(?![.,][0-9])"
+# T4: the timings PostgreSQL writes into an ``EXPLAIN (ANALYZE)`` plan. Only the discovery suite's
+# value scan, whose results JSON carries the plans, leaves a match inside one uncounted.
+PLAN_TIMING = re.compile(
+    r"actual time=[0-9]+\.[0-9]+\.\.[0-9]+\.[0-9]+|(?:Planning|Execution) Time: [0-9]+\.[0-9]+ ms"
+)
+KINDS = {
+    "date": "a date",
+    "time": "a time",
+    "decimal": "a decimal (a coordinate, an internal point or a distance)",
+    "text": "a text value (own words, a place, a sensitive value, a photo's key or reference)",
+}
+
+
+def kind(value: str) -> str:
+    """The kind of value ``forms`` sees, which decides the rule its forms are counted by."""
+    if ISO_DATE.fullmatch(value):
+        return "date"
+    if ISO_TIME.fullmatch(value):
+        return "time"
+    if DECIMAL.fullmatch(value):
+        return "decimal"
+    return "text"
+
+
+@dataclass(frozen=True)
+class Matcher:
+    """Every form of one value (``forms``), and where each counts by its kind's rule (DM-64 T2,
+    T3): a zero-width search at every position, so that overlapping occurrences are all seen."""
+
+    kind: str
+    forms: tuple[str, ...]
+    pattern: re.Pattern[str]
+
+    @classmethod
+    def of(cls, value: str) -> Matcher:
+        found = forms(value)
+        alternatives = "|".join(re.escape(f) for f in sorted(found, key=len, reverse=True))
+        held = kind(value)
+        before, after = "", ""
+        if held == "decimal":
+            before = COORDINATE_BEFORE
+        elif held == "time":
+            before, after = TIME_BEFORE, TIME_AFTER
+        return cls(held, found, re.compile(f"{before}(?=((?:{alternatives}){after}))"))
+
+    def occurs(self, text: str, *, plan_timings: bool = False) -> bool:
+        """Whether a form occurs in ``text`` where its rule counts it (and, with
+        ``plan_timings``, outside every timing PostgreSQL wrote into a plan, T4)."""
+        if not any(form in text for form in self.forms):
+            return False
+        spans = [m.span() for m in PLAN_TIMING.finditer(text)] if plan_timings else []
+        for match in self.pattern.finditer(text):
+            start, end = match.start(1), match.end(1)
+            if not any(low <= start and end <= high for low, high in spans):
+                return True
+        return False
+
+
 MONTHS = (
     "January",
     "February",
@@ -141,7 +215,7 @@ class ValueLedger:
     """Member values the run handles that must appear in no output, in any of their forms."""
 
     def __init__(self) -> None:
-        self._values: dict[str, tuple[str, ...]] = {}
+        self._values: dict[str, Matcher] = {}
         self._lock = threading.Lock()
 
     def add(self, value: object) -> None:
@@ -151,7 +225,7 @@ class ValueLedger:
             return
         with self._lock:
             if value not in self._values:
-                self._values[value] = forms(value)
+                self._values[value] = Matcher.of(value)
 
     def add_bytes(self, data: bytes) -> None:
         """SV2 Stage B, correction C2 (the exact-head review's F4): an object's bytes in each form
@@ -170,14 +244,28 @@ class ValueLedger:
         with self._lock:
             return len(self._values)
 
-    def found_in(self, text: str) -> int:
+    def found_in(self, text: str, *, plan_timings: bool = False) -> int:
         """How many distinct values appear in ``text`` in any of their forms (``forms``): as
         sent, as JSON escapes them (a non-ASCII value in a JSON body), as Python prints a date or
-        a time, a date in prose, a coordinate at a lower precision. The values are never
-        returned."""
+        a time, a date in prose, a coordinate at a lower precision; each form counted where its
+        kind's rule counts it (``Matcher``; DM-64 T2, T3), and with ``plan_timings`` outside a
+        plan's timings (T4). The values are never returned."""
         with self._lock:
             held = tuple(self._values.values())
-        return sum(1 for found in held if any(form in text for form in found))
+        return sum(1 for found in held if found.occurs(text, plan_timings=plan_timings))
+
+    def where(self, texts: dict[str, str], *, plan_timings: bool = False) -> list[str]:
+        """For each value found, the kind of value and the text it was found in (DM-64 T7), as
+        ``"a time in the response headers"``; never the value."""
+        with self._lock:
+            held = tuple(self._values.values())
+        found = {
+            f"{KINDS[matcher.kind]} in {name}"
+            for name, text in texts.items()
+            for matcher in held
+            if matcher.occurs(text, plan_timings=plan_timings)
+        }
+        return sorted(found)
 
 
 class ObservedObjects(dict[str, bytes]):

@@ -4,8 +4,9 @@
 the batch and the offset, ``salted_hmac`` under the settings' ``SECRET_KEY`` with a salt of its own
 and SHA-256, as ``glow_profiles/idempotency.py`` keys SV2's stored digests: a cursor the server did
 not issue to this viewer, for this collection, is refused (with the generic stale response) before
-any row is read. It grants nothing: the page still checks the batch's owner, collection, state,
-expiry and versions. The MAC is computed here, in Python, and never enters a statement.
+any batch or other member's row is read. It grants nothing: the page still checks the batch's
+owner, collection, state, expiry and versions. The MAC is computed here, in Python, and never
+enters a statement.
 
 **The tie-break** has no key (D6; DM-61 K2, replacing DM-60 Q2's keyed hash): the selection draws a
 random value for each candidate (``predicates.TIE_BREAK``), so nothing here orders a batch.

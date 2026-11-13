@@ -32,6 +32,7 @@ from glow_ordering_proof import (
     identity_environment,
     profile_cases,
     profile_scan,
+    profile_support,
     schema_check,
 )
 from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
@@ -583,6 +584,10 @@ LABEL_NAMES = {
     "when",
     "word",
     "writer",
+    # SV3 Stage A, correction C2 (DM-64 T7): the database search's failure line names the tables
+    # and columns it found a value in (``profile_cases._named``), never the value.
+    "_named(found)",
+    "_named(stored)",
 }
 # The label's position in each checking call: ``expect(ok, what)``, ``ctx.refused(reply, status,
 # code, what)`` and ``ctx.data(reply, kind, what)``.
@@ -1033,6 +1038,216 @@ class ValueLedgerTests(unittest.TestCase):
         self.assertEqual(ledger.found_in(f"key {'0' * 31}a"), 1)
         self.assertEqual(ledger.found_in(f"bytes {synthetic_png(2, 3)!r}"), 1)
         self.assertEqual(dict(objects), held)
+
+
+# SV3 Stage A, correction C2 (DM-64 T1 to T7; PR45's run 43150501532): the run's own clock.
+COORDINATE = "40.7123457"  # profile_cases.COORDINATE_TEXT's latitude
+LONGITUDE = "-74.0067891"
+HELD_TIME = "04:13:27"  # the suites' default birth time (profile_support.birth_body)
+NEW_YORK_POINT = "40.735425"  # New York's stored internal point, which the discovery suite holds
+# DM-64 section 4.2: what the run's clock prints, each a hit under the old matcher and not under
+# the rules (T2, T3).
+CLOCK_TEXTS = {
+    "a timestamptz in row_to_json": (
+        COORDINATE,
+        '{"id":7,"created_at":"2026-11-12T03:54:40.712345+00:00"}',
+    ),
+    "a timestamp with a space": (COORDINATE, "2026-11-12 03:54:40.712345+00"),
+    "Django's JSON encoder's milliseconds": (
+        COORDINATE,
+        '{"occurred_at": "2026-11-12T03:54:40.712Z"}',
+    ),
+    "an interval's text": (COORDINATE, '{"elapsed":"00:00:40.712345"}'),
+    "a migration's applied time": (
+        COORDINATE,
+        '["glow_persistence", "0001_event_infrastructure", "2026-11-12T03:54:40.712345+00:00"]',
+    ),
+    "an epoch number ending 40.712": (COORDINATE, '{"iat": 1762919640.712}'),
+    "the longer number 140.7123": (COORDINATE, "a reading of 140.7123"),
+    "the Expires header at a held time": (HELD_TIME, "Expires: Thu, 12 Nov 2026 04:13:27 GMT"),
+    "an email date at a held time": (HELD_TIME, "Date: Thu, 12 Nov 2026 04:13:27 +0000"),
+    "a timestamp with a fraction at a held time": (
+        HELD_TIME,
+        '"updated_at":"2026-11-12T04:13:27.512345+00:00"',
+    ),
+    "a logging time": (HELD_TIME, "2026-11-12 04:13:27,512 INFO glow_profiles a record"),
+}
+# DM-64 section 4.2: real prints, each still a hit under the rules.
+REAL_PRINTS = {
+    "a coordinate in a numeric column (compact JSON)": (COORDINATE, '{"lat":40.7123457}'),
+    "in a JSON payload with a space after the colon": (COORDINATE, '{"lat": 40.7123457}'),
+    "in a text column at three decimals": (COORDINATE, '{"note":"40.712"}'),
+    "at the start of a text": (COORDINATE, "40.712345 north"),
+    "in an array": (COORDINATE, "[40.7123457,-74.0067891]"),
+    "in a query string": (COORDINATE, "/api/v1/area/nearest?latitude=40.7123457"),
+    "followed by further digits (a 32-bit float's print)": (COORDINATE, "lat=40.71234512329102"),
+    "the longitude signed": (LONGITUDE, '{"lon":-74.0067891}'),
+    "the longitude unsigned after a minus": (LONGITUDE, "lon -74.0067891 west, 74.0067891"),
+    "the longitude truncated": (LONGITUDE, "lon -74.006"),
+    "a birth time as entered": (HELD_TIME, '{"local_time": "04:13:27"}'),
+    "a birth time in compact JSON": (HELD_TIME, '{"local_time":"04:13:27"}'),
+    "a birth time alone": (HELD_TIME, "04:13:27"),
+    "a birth time with its date": (HELD_TIME, "1990-06-15T04:13:27+00:00"),
+    "a birth time with today's date": (HELD_TIME, "2026-11-12T04:13:27+00:00"),
+    "a birth time as Python's repr": (HELD_TIME, "datetime.time(4, 13, 27)"),
+}
+PLAN_LINES = (
+    "  ->  Index Scan using area_pkey on glow_persistence_area ar"
+    "  (cost=0.29..40.74 rows=1 width=40) (actual time=0.015..40.735 rows=1 loops=1)",
+    "Planning Time: 40.735 ms",
+    "Execution Time: 40.735 ms",
+)
+
+
+def old_found(value: str, text: str) -> bool:
+    """The matcher before C2 (the reversal): any form as a plain substring."""
+    return any(form in text for form in profile_support.forms(value))
+
+
+class RunClockTests(unittest.TestCase):
+    """DM-64 T1 to T7: no value scan and no database search counts what the run's clock printed;
+    every real print still counts (T1)."""
+
+    def ledger(self, *values: str) -> ValueLedger:
+        held = ValueLedger()
+        for value in values:
+            held.add(value)
+        return held
+
+    def test_each_clock_text_is_not_a_hit_and_was_one_under_the_old_matcher(self) -> None:
+        for name, (value, text) in CLOCK_TEXTS.items():
+            with self.subTest(clock=name):
+                self.assertEqual(self.ledger(value).found_in(text), 0)
+                # The reversal: the old matcher counts it.
+                self.assertTrue(old_found(value, text))
+
+    def test_each_real_print_is_still_a_hit(self) -> None:
+        for name, (value, text) in REAL_PRINTS.items():
+            with self.subTest(real=name):
+                self.assertEqual(self.ledger(value).found_in(text), 1)
+                self.assertTrue(old_found(value, text))
+
+    def test_the_rules_follow_the_kind_of_value(self) -> None:
+        self.assertEqual(profile_support.kind(COORDINATE), "decimal")
+        self.assertEqual(profile_support.kind(HELD_TIME), "time")
+        self.assertEqual(profile_support.kind("1990-06-15"), "date")
+        self.assertEqual(profile_support.kind("7123457"), "text")
+        # A date and a text value keep the plain substring: COORDINATE_TEXT's bare fractions are
+        # counted anywhere, as before (T8's unchanged limit).
+        self.assertEqual(self.ledger("7123457").found_in("abc17123457def"), 1)
+        self.assertEqual(self.ledger("1990-06-15").found_in("x1990-06-15y"), 1)
+        # A time inside a date that is not an HTTP or email date still counts.
+        self.assertEqual(self.ledger(HELD_TIME).found_in("born 15 Jun 1990 04:13:27"), 1)
+
+    def test_forms_and_what_the_ledger_holds_do_not_change(self) -> None:
+        # T8: forms is as it was; the ledger holds the same values.
+        self.assertIn("40.712", profile_support.forms(COORDINATE))
+        self.assertIn("time(4, 13, 27)", profile_support.forms(HELD_TIME))
+        held = self.ledger(COORDINATE, LONGITUDE, HELD_TIME, "abcd")
+        self.assertEqual(held.count(), 3)
+        self.assertEqual(
+            profile_cases.COORDINATE_TEXT, ("40.7123457", "-74.0067891", "7123457", "0067891")
+        )
+
+    def test_durations_are_written_to_two_decimals(self) -> None:
+        # T4: 40.71283 s is a hit; written to two decimals, it is not.
+        from glow_ordering_proof import profile_suite
+
+        held = self.ledger(COORDINATE)
+        self.assertEqual(held.found_in(json.dumps({"seconds": 40.71283})), 1)
+        self.assertEqual(profile_suite.duration(40.71283), 40.71)
+        record = profile_suite.CaseRecord(
+            "a.case", ["5"], True, profile_suite.duration(40.71283), ""
+        )
+        report = profile_suite.ProfileReport({}, [], [record], profile_suite.duration(40.712345))
+        body = report.to_json()
+        self.assertEqual(held.found_in(body), 0)
+        self.assertTrue(old_found(COORDINATE, json.dumps({"seconds": 40.712345})))
+
+    def test_a_migration_time_is_written_with_a_six_digit_fraction(self) -> None:
+        # DM-66: a migration applied at a held birth time whose microsecond is 0. Plain
+        # isoformat() leaves the fraction out, so T3 would count it (the reversal); the suites
+        # write it with six digits, so it is the clock's.
+        from datetime import UTC, datetime
+
+        from glow_ordering_proof import discovery_suite, profile_suite
+
+        applied = datetime(2026, 11, 12, 4, 13, 27, tzinfo=UTC)
+        held = self.ledger(HELD_TIME)
+        plain = json.dumps([["glow_persistence", "0001_event_infrastructure", applied.isoformat()]])
+        self.assertEqual(applied.isoformat(), "2026-11-12T04:13:27+00:00")
+        self.assertEqual(held.found_in(plain), 1)
+        self.assertTrue(old_found(HELD_TIME, plain))
+        ledger = [("glow_persistence", "0001_event_infrastructure", applied.isoformat())]
+        written = profile_suite.migration_times(ledger)
+        self.assertEqual(held.found_in(json.dumps(written)), 0)
+        self.assertEqual(written[0][2], "2026-11-12T04:13:27.000000+00:00")
+        report = profile_suite.ProfileReport({}, written)
+        self.assertEqual(held.found_in(report.to_json()), 0)
+        # A time with its own fraction keeps it; both suites write the ledger the same way.
+        self.assertEqual(
+            profile_suite.migration_time("2026-11-12T03:54:40.712345+00:00"),
+            "2026-11-12T03:54:40.712345+00:00",
+        )
+        for module in (profile_suite, discovery_suite):
+            assert module.__file__ is not None
+            source = Path(module.__file__).read_text(encoding="utf-8")
+            with self.subTest(suite=module.__name__):
+                self.assertIn("migration_times(migration_ledger())", source)
+
+    def test_a_plans_timings_are_not_counted_by_the_discovery_scan(self) -> None:
+        # T4: T2 alone still counts a plan's timing against New York's stored point; the
+        # discovery suite's value scan does not. A cost has two decimals and cannot match.
+        held = self.ledger(NEW_YORK_POINT)
+        for line in PLAN_LINES:
+            with self.subTest(line=line[-30:]):
+                self.assertEqual(held.found_in(line), 1)
+                self.assertEqual(held.found_in(line, plan_timings=True), 0)
+                self.assertEqual(held.found_in(json.dumps({"plan": [line]}), plan_timings=True), 0)
+        self.assertEqual(held.found_in("(cost=0.29..40.74 rows=1 width=40)"), 0)
+        # A real print elsewhere in a plan, or beside a timing, still counts.
+        for printed in (
+            "Filter: (ar.latitude = 40.735425)",
+            "Execution Time: 0.015 ms, then 40.735425",
+            "(actual time=0.015..0.020 rows=1 loops=1) lat 40.735",
+        ):
+            with self.subTest(printed=printed):
+                self.assertEqual(held.found_in(printed, plan_timings=True), 1)
+
+    def test_a_value_scan_names_the_kind_and_the_text_never_the_value(self) -> None:
+        # T7.
+        held = self.ledger(COORDINATE, HELD_TIME)
+        texts = {
+            "the log records": "INFO x lat 40.712",
+            "the response headers": "Expires: Thu, 12 Nov 2026 04:13:27 GMT\nX-Time: 04:13:27",
+            "the results JSON": '{"applied": "2026-11-12T03:54:40.712345+00:00"}',
+        }
+        where = held.where(texts)
+        self.assertEqual(
+            where,
+            [
+                "a decimal (a coordinate, an internal point or a distance) in the log records",
+                "a time in the response headers",
+            ],
+        )
+        self.assertFalse(any(COORDINATE[:6] in line or HELD_TIME in line for line in where))
+
+    def test_the_rules_cannot_see_what_the_readme_names(self) -> None:
+        # T8's limits, as the README states them: these are not hits.
+        self.assertEqual(self.ledger(COORDINATE).found_in("q=%2040.712"), 0)
+        self.assertEqual(self.ledger(COORDINATE).found_in("x:9:40.712345"), 0)
+        self.assertEqual(self.ledger(HELD_TIME).found_in("born 04:13:27.000"), 0)
+        self.assertEqual(self.ledger(HELD_TIME).found_in("Mon, 15 Jun 1990 04:13:27 GMT"), 0)
+
+    def test_the_database_search_names_the_table_and_the_column(self) -> None:
+        # T7: the case's failure line names table.column only.
+        self.assertEqual(
+            profile_cases._named(["glow_persistence_outboxevent.payload"]),
+            " (found in glow_persistence_outboxevent.payload)",
+        )
+        self.assertEqual(profile_cases._named([]), "")
+        source = Path(profile_cases.__file__).read_text(encoding="utf-8")
+        self.assertIn("json_each(row_to_json(t))", source)
 
 
 class ProfileCommandTests(unittest.TestCase):
