@@ -10,28 +10,28 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): [the brief](../planning/sv2-profiles-media.md), revision 8; PR43 at `4dc2061` and PR44 at `3240ef0`, with their receipts in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 9 (with DM-60 to DM-67). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); C2 (with DM-66) is built, verified and integrated (`8bd983f`); its delta re-review asked for changes, narrowly; DM-67 approved correction C3. F7 is decided (OD-64), carried to before P11. With C2's code, the three recorded failure signatures lapse (DM-64 T9). Stage B follows after Stage A merges.
-- **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror. DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 9 (with DM-60 to DM-67). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); C2 (with DM-66) is built, verified and integrated (`8bd983f`); its delta re-review asked for changes; C3 (DM-67) is built, verified and integrated (`f9a8621`). F7 is decided (OD-64), carried to before P11. With C2's code, the three recorded failure signatures lapse (DM-64 T9). Stage B follows after Stage A merges.
+- **CI note:** a repeat of 11 November's Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-67, with "Deferred conditions"; DM-67 confirms LM5, T1 to T9, RV1 to RV10 and CK1 to CK7 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (13 November 2026, 04:20 UTC, App Manager 11)
+## Waiting checkpoint (13 November 2026, 07:55 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub, then Nathan | Codex on C3's prompt commit, then C3's report | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
+| App Manager 11 | GitHub, then Nathan | PR45's run and Codex on C3's integrated head, then C3's delta re-review | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): correction C3 and its delta re-review; the pre-merge read; the merge. Then Stage B.
+1. **SV3** (OD-49): C3's delta re-review; the pre-merge read; the merge. Then Stage B.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (13 November 2026, 04:40 UTC)
+## Branches and PRs (13 November 2026, 07:55 UTC)
 
 - **Open PRs:** [PR45](https://github.com/amthorn78/glow-dating-app/pull/45), SV3 Stage A, from the manager branch. `main` is at `3240ef0` (PR44).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`7fc47e6`, Dev Manager 5's start note, merged at `6cf247c`); Stage A's and C1's session branches, `claude/loving-maxwell-cqu7eq` (`4dee875`) and `claude/glow-correction-c1-1jzjgr` (`cbeb050`), fully merged into the manager branch; C2's, `claude/practical-cray-h7t08x` (`c79bfb6`), merged at `8bd983f`. The cleanup deletes the session branches once Stage A's PR merges.
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`7fc47e6`, Dev Manager 5's start note, merged at `6cf247c`); Stage A's and C1's session branches, `claude/loving-maxwell-cqu7eq` (`4dee875`) and `claude/glow-correction-c1-1jzjgr` (`cbeb050`), fully merged into the manager branch; C2's, `claude/practical-cray-h7t08x` (`c79bfb6`), merged at `8bd983f`; C3's, `claude/glow-discovery-c3-ir9mnd` (`8189b31`), merged at `f9a8621`. The cleanup deletes the session branches once Stage A's PR merges.
