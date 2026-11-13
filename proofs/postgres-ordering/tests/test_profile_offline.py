@@ -1164,6 +1164,37 @@ class RunClockTests(unittest.TestCase):
         self.assertEqual(held.found_in(body), 0)
         self.assertTrue(old_found(COORDINATE, json.dumps({"seconds": 40.712345})))
 
+    def test_a_migration_time_is_written_with_a_six_digit_fraction(self) -> None:
+        # DM-66: a migration applied at a held birth time whose microsecond is 0. Plain
+        # isoformat() leaves the fraction out, so T3 would count it (the reversal); the suites
+        # write it with six digits, so it is the clock's.
+        from datetime import UTC, datetime
+
+        from glow_ordering_proof import discovery_suite, profile_suite
+
+        applied = datetime(2026, 11, 12, 4, 13, 27, tzinfo=UTC)
+        held = self.ledger(HELD_TIME)
+        plain = json.dumps([["glow_persistence", "0001_event_infrastructure", applied.isoformat()]])
+        self.assertEqual(applied.isoformat(), "2026-11-12T04:13:27+00:00")
+        self.assertEqual(held.found_in(plain), 1)
+        self.assertTrue(old_found(HELD_TIME, plain))
+        ledger = [("glow_persistence", "0001_event_infrastructure", applied.isoformat())]
+        written = profile_suite.migration_times(ledger)
+        self.assertEqual(held.found_in(json.dumps(written)), 0)
+        self.assertEqual(written[0][2], "2026-11-12T04:13:27.000000+00:00")
+        report = profile_suite.ProfileReport({}, written)
+        self.assertEqual(held.found_in(report.to_json()), 0)
+        # A time with its own fraction keeps it; both suites write the ledger the same way.
+        self.assertEqual(
+            profile_suite.migration_time("2026-11-12T03:54:40.712345+00:00"),
+            "2026-11-12T03:54:40.712345+00:00",
+        )
+        for module in (profile_suite, discovery_suite):
+            assert module.__file__ is not None
+            source = Path(module.__file__).read_text(encoding="utf-8")
+            with self.subTest(suite=module.__name__):
+                self.assertIn("migration_times(migration_ledger())", source)
+
     def test_a_plans_timings_are_not_counted_by_the_discovery_scan(self) -> None:
         # T4: T2 alone still counts a plan's timing against New York's stored point; the
         # discovery suite's value scan does not. A cost has two decimals and cannot match.

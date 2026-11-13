@@ -29,6 +29,7 @@ from typing import Any
 from glow_ordering_proof.profile_suite import (
     CaseRecord,
     duration,
+    migration_times,
     output_texts,
     used_database_reasons,
 )
@@ -120,7 +121,7 @@ def run(results_path: Path | None) -> int:
     values = ValueLedger()
     capture = OutputCapture()
     capture.install()
-    report = DiscoveryReport(server_facts(), migration_ledger())
+    report = DiscoveryReport(server_facts(), migration_times(migration_ledger()))
     ctx: DiscoveryContext | None = None
     started = time.monotonic()
     try:

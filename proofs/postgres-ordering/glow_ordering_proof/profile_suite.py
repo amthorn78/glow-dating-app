@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,10 @@ USED_DATABASE = "refusing a used database"
 # DM-64 T4 (SV3 Stage A, correction C2): every duration in a results JSON is written to two
 # decimals, so that no duration prints a form of a held coordinate (three decimals or more).
 DURATION_DECIMALS = 2
+# DM-66 (C2): every migration time in a results JSON is written with a six-digit fraction, so that
+# T3's rule (a time followed by a fraction is the clock's) covers it even when its microsecond is
+# 0, which plain isoformat() leaves out.
+MIGRATION_TIMESPEC = "microseconds"
 SCAN_CLEAN = "profile secret scan: clean"
 SCAN_FOUND = "profile secret scan: FOUND"
 VALUES_CLEAN = "profile value scan: clean"
@@ -120,7 +125,7 @@ def run(results_path: Path | None) -> int:
     values = ValueLedger()
     capture = OutputCapture()
     capture.install()
-    report = ProfileReport(server_facts(), migration_ledger())
+    report = ProfileReport(server_facts(), migration_times(migration_ledger()))
     ctx: ProfileContext | None = None
     started = time.monotonic()
     try:
@@ -199,6 +204,18 @@ def run(results_path: Path | None) -> int:
 def duration(seconds: float) -> float:
     """A duration as a results JSON writes it (DM-64 T4): to two decimals."""
     return round(seconds, DURATION_DECIMALS)
+
+
+def migration_time(applied: str) -> str:
+    """A migration's ``applied`` time as a results JSON writes it (DM-66): with a six-digit
+    fraction, ``isoformat(timespec="microseconds")``. ``observe.migration_ledger`` is as it was."""
+    return datetime.fromisoformat(applied).isoformat(timespec=MIGRATION_TIMESPEC)
+
+
+def migration_times(ledger: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    """The migration ledger as a results JSON writes it: each ``applied`` time by
+    ``migration_time``."""
+    return [(app, name, migration_time(applied)) for app, name, applied in ledger]
 
 
 def output_texts(capture: Any, headers: str, results: str) -> dict[str, str]:
