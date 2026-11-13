@@ -1,14 +1,15 @@
 # SV3 Stage A correction C4 prompt — the lock scan's last forms and the write check (C3's delta re-review; DM-68)
 
 - **Owner:** App Manager 11. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 13 November 2026.**
+- **Revision 2, 13 November 2026.** Revision 1, from `0fbc130`, stopped at its start gate and changed nothing: the manager had appended a line to the evidence record, one of C4's owned paths, after that commit (`3bbc06f`; AM11-21). Revision 2 changes only its start commit and these notes.
 - **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 10, "Stage A, correction C4 (C3's delta re-review; DM-68)", with C4's owned paths as DM-68's SC1 and SC2 wrote them.
 - **Where the result goes:**
   - the session's changes in C4's owned paths, and its record, a new section "Stage A, correction C4" in `docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md`, on its own branch;
   - the run of record: the Foundation run on its last code commit;
   - the manager adds its verification and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.21 (confidence 0.81); rung probabilities low 0.00, medium 0.03, high 0.73, extra high 0.23, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.99). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.007, Fable 5.1 at extra high 0.002, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.030, Opus 5.5 at high 0.723, Opus 5.5 at extra high 0.228, Opus 5.5 at max 0.010, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-13T09:46:01Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.22 (confidence 0.82); rung probabilities low 0.00, medium 0.02, high 0.74, extra high 0.23, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.01, Opus 5.5 0.99, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.99). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.007, Fable 5.1 at extra high 0.002, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.020, Opus 5.5 at high 0.733, Opus 5.5 at extra high 0.228, Opus 5.5 at max 0.010, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-13T18:18:03Z. Nathan picks the cell.
+  - Revision 1's reading (Opus 5.5 at high, score 2.21, sent 2026-11-13T09:46:01Z) is superseded; revision 1 stopped at its start gate.
 - **The Dev Manager's read:** none before it runs. The brief's revision 10 applies DM-68's SC1 to SC7 as written, and DM-68 says they need no further read before this prompt (DM-68 section 2). This prompt authorizes no credential use and no live provider action.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29). Then, in order:
@@ -22,7 +23,7 @@
 
 ---
 
-You are **correction C4 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 1, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are **correction C4 of SV3's Stage A**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 2, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **Stage A** built eligibility and discovery in `services/api/glow_discovery`, sealed until P11. Correction C1 made every explicit lock of an `AppAccount` row `FOR NO KEY UPDATE`; C2 and C3 built and tightened two proof checks: a static scan of those locks (`account_lock_scan.py`) and `pages.one_snapshot_statements`.
@@ -33,6 +34,7 @@ You are **correction C4 of SV3's Stage A**, for the Glow dating app, in the publ
   - **F6:** the write check misses a write to a table not named `glow_…`;
   - **F7, N1, N5:** limits to state; **N2:** two tests the pre-probe matcher lacks.
 - **Dev Manager 5 ruled** (DM-68, in `docs/continuity/dev-manager/reviews/`). It approved each fix and widened two: F2 to `^` and to an account lock whose receiver is a combination, a conditional, an `or` or a `:=` expression (which C3's scan does not see as a lock at all), and F5 to require the lock's own variable on the left. It chose how the scan's line ends: after C4, the scan is a static check of the forms it names, its rules freeze, and a further unseen form is a stated limit, while a real account lock stays blocking; D14's check of the row locks the suites send comes in Stage B.
+- **Revision 1 of this prompt** (from `0fbc130`) stopped at its start gate, with no change: the manager had added one line to the evidence record after its commit (Codex's review of `0fbc130`, which found F1 to F6 and nothing new). This revision starts after that line.
 - **The brief's revision 10 lists your eight items** in "Stage A, correction C4". **It is your specification;** where this prompt summarizes it, the brief wins. **Your given words are DM-68's SC8 to SC11** (section 9 of its report).
 
 **How you work:**
@@ -159,7 +161,7 @@ Commit each logical step with a clear message ending in the session's attributio
 ## 5. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<START_SHA>`), your branch, your code head and records head;
+- the prompt revision (revision 2, from `<START_SHA>`), your branch, your code head and records head;
 - the start gate's and the environment check's results;
 - for each of the eight items: what changed, its tests, and each reversal's result;
 - the corrected scan's findings, and how the write check reads a page by cursor's statements;

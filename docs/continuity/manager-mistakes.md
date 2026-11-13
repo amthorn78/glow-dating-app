@@ -179,6 +179,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-18 | 13 Nov 2026 | communication | After giving F7's decision message on 12 November, named it to Nathan in later status lines only as "your F7 decision", a review label he had no reason to keep in mind, without saying what it was; he asked "what 'F7' decision?" | Nathan |
 | AM11-19 | 13 Nov 2026 | records | Two standing lines left stale after their facts changed: the handoff's title ("C2 continues after DM-66") through two later commits (`6b376cf`, `3000014`), and the brief's D8 ("Whether to bound the probing is put to Nathan … it is decided before then") after OD-64 was recorded beneath it (`058829c`) | Dev Manager 4 (DM-67 section 7; GD13, GD14) |
 | AM11-20 | 13 Nov 2026 | records | Two standing lines left stale again: `claude/dev-manager`'s head (`a53bdb0`) in the handoff's branch list and Notion's Branches bullet after DM-67's report (`e7786bb`) was merged at `2d04951` (AM11-12's pattern); Notion's "Next items" kept the brief's revision 8 after revision 9 (AM11-11's pattern) | Dev Manager 5 (start note, section 4) |
+| AM11-21 | 13 Nov 2026 | process | After C4's prompt was committed at `0fbc130`, the manager appended Codex's review of that commit to the evidence record, one of C4's owned paths (`3bbc06f`), then gave Nathan revision 1. Its start gate found the owned path changed and the session stopped, with no change | The C4 session, at its start gate |
 
 ## App Manager 2
 
@@ -1127,6 +1128,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-21 — A records commit into the owned paths of a prompt about to run (process)
+
+- **What happened:** C4's prompt, revision 1, was committed at `0fbc130`; its start gate requires that the live manager branch has not changed C4's owned paths since that commit. While waiting for Codex's pass on `0fbc130`, the manager recorded that pass by appending a line to the evidence record, an owned path, and pushed it at `3bbc06f`. It then gave Nathan revision 1 without running the prompt's start gate against the live branch.
+- **Caught by:** the C4 session, at its start gate.
+- **Effect:** one session start lost; no change made and nothing pushed. The gate worked as designed.
+- **Correction:** revision 2, from the commit that holds it; the manager ran its start gate against the live branch before giving it.
+- **Prevention:** from a prompt's commit until its session's branch is integrated, the manager writes nothing to that prompt's owned paths; a Codex pass or other fact seen meanwhile goes to the handoff, and into the session's owned records only at integration. Before giving any implementation or correction prompt, the manager runs the prompt's own start-gate commands against the live branch.
 
 ### AM11-20 — AM11-11's and AM11-12's patterns again (records)
 
