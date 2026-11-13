@@ -1167,12 +1167,18 @@ def recheck_is_one_snapshot(ctx: DiscoveryContext) -> str:
     return "a page's recheck reads one snapshot: no mix of two moments shows a paused profile"
 
 
-# The writes a statement can make, and the row locks a writer takes (C2, item 1).
-WRITE = re.compile(
-    r"\b(INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\"?glow_|MERGE\s+INTO|TRUNCATE|COPY\s)"
-    r"|\bFOR\s+(NO\s+KEY\s+)?UPDATE\b",
-    re.IGNORECASE,
-)
+# C4 (F6; DM-68): a write is anything but a read. A statement is a read only if, with its leading
+# whitespace removed and its case ignored, it begins with the word SELECT or WITH and holds none
+# of the words INSERT, UPDATE, DELETE, MERGE, INTO, TRUNCATE or COPY; any other statement is a
+# write. So a writer's row lock (FOR UPDATE, FOR NO KEY UPDATE) is a write, and FOR SHARE is not.
+READ_START = re.compile(r"(SELECT|WITH)\b", re.IGNORECASE)
+WRITE_WORDS = re.compile(r"\b(INSERT|UPDATE|DELETE|MERGE|INTO|TRUNCATE|COPY)\b", re.IGNORECASE)
+
+
+def is_write(sql: str) -> bool:
+    """Whether a statement counts as a write (C4; F6): anything that is not a read."""
+    text = str(sql).lstrip()
+    return READ_START.match(text) is None or WRITE_WORDS.search(text) is not None
 
 
 class _Statements:
@@ -1277,8 +1283,10 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     no other statement reads a member's row; before it, before the transaction begins and in it,
     a statement that reads a member table passes only if it is on C3's list (``listed``: S1;
     DM-67); and a page with a cursor writes nothing, in any phase the probe records, the photo
-    reads after its commit included (no insert, update or delete, and no writer's row lock; C3's
-    S2)."""
+    reads after its commit included (C3's S2): every statement it sends is a read, one that begins
+    with ``SELECT`` or ``WITH`` and holds none of the words ``INSERT``, ``UPDATE``, ``DELETE``,
+    ``MERGE``, ``INTO``, ``TRUNCATE`` or ``COPY``, so no writer's row lock either (``is_write``;
+    C4's F6)."""
     from django.db import connection
     from glow_discovery import pages, predicates
 
@@ -1332,7 +1340,7 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     assert created.data is not None
     expect(probe.points == ["before_selection"], "the selection's probe point")
     check(probe, predicates.SELECTION, predicates.RECHECK, "a page with no cursor")
-    writes = [sql for sql, _ in probe.seen["candidates"] if WRITE.search(sql)]
+    writes = [sql for sql, _ in probe.seen["candidates"] if is_write(sql)]
     expect(bool(writes), "a page with no cursor writes its batch (the write check sees writes)")
     cursor = created.data["next_cursor"]
     expect(cursor is not None, "a cursor: the viewer has more than one candidate")
@@ -1347,7 +1355,7 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     check(probe, predicates.RECHECK, predicates.SELECTION, "a page with a cursor")
     # C3 (S2): every phase, the photo reads after the commit included.
     expect(bool(probe.seen["committed"]), "a page with a cursor: its photo reads recorded")
-    written = [sql for phase in probe.seen.values() for sql, _ in phase if WRITE.search(sql)]
+    written = [sql for phase in probe.seen.values() for sql, _ in phase if is_write(sql)]
     expect(not written, f"a page with a cursor writes nothing ({len(written)} writes)")
     shown += [str(card["profile_id"]) for card in following.data["items"]]
     expect(set(shown) == ids and len(shown) == len(ids), "the two pages hold every candidate once")
