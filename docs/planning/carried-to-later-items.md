@@ -93,6 +93,10 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From SV2's brief (DM-52):** a "show me" set that keeps all is a marker that includes values the console adds later and "not stated", and a narrowed set never includes "not stated"; a member with "not stated" in orientation or relationship status is seen only by viewers who keep all of that field. The age comes from the age state's date through a function that returns whole years, never from the birth input. A distance choice counts areas whose internal points are within it, and two members in one area are at distance zero. Every reader of consent filters by purpose.
 - **From SV2 Stage A (DM-54):** a profile can stay `visible` after a new onboarding consent version is published, until the member's next requirement write runs D9's recompute. Discovery reads the accepted version against the current one, and `policy_published` for `consent.onboarding` is its invalidation signal.
 
+## Carried to SV3 Stage B (DM-66)
+
+- **T7's lines in CI** (DM-66): when a scan fails, the Database proof checks job shows counts only, so the value scan's T7 lines (the kind of value and the text it was found in) are read from a local run. Stage B, which changes the discovery suite, may let the job's check print those lines alone, matched against their closed vocabulary (the kinds and texts `ValueLedger.where` names), so that no member value can pass; the rest of the output stays withheld (acceptance check 12).
+
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.3):
