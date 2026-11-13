@@ -97,6 +97,13 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 - **T7's lines in CI** (DM-66): when a scan fails, the Database proof checks job shows counts only, so the value scan's T7 lines (the kind of value and the text it was found in) are read from a local run. Stage B, which changes the discovery suite, may let the job's check print those lines alone, matched against their closed vocabulary (the kinds and texts `ValueLedger.where` names), so that no member value can pass; the rest of the output stays withheld (acceptance check 12).
 
+## Carried from OD-64 (the two-way rule's probing; before P11)
+
+- **The limits** (OD-64; SV3's F7, the brief's D8): the birth date locked to the ID's once the member is identity-verified, with one self-service correction before and changes through support after; at most 2 changes per field in any rolling 30 days to gender, orientation and relationship status, a console setting, lifted by support on a member's request; no limit on looking for. They apply at every writer of those values: SV2's field writers, and the birth input and the eligibility step, through the age port.
+- **The notice** (OD-64 (a)): the "show me" screens say in plain words that people a member is shown can tell that their profile fits the member's choices.
+- **The abuse signal** (OD-64): a repeated change-and-revert pattern goes to trust and safety review (P07); a single gender change is never treated as suspicious in itself.
+- **How it runs:** its own brief, with the fixed limits the console cannot cross, read by the Dev Manager before it is built (it changes SV2's writers, the age port and the settings); placed by the Work Register after SV3, one item at a time, and in place before discovery serves a real member (P11). The birth date's lock waits on the identity verification company (OD-61's decision message). The P11 plan names it as a precondition at SV3 Stage A's integration of C2, whose correction changes that plan's SV3 entry.
+
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.3):

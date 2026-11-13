@@ -3,6 +3,7 @@
 - **Owner:** App Manager 11, to Nathan. **Revision 1, 12 November 2026.**
 - **Why:** SV3 Stage A's exact-head review found F7, a disclosure built into the two-way rule Nathan set (OD-60). The Dev Manager approved naming it in D8 and putting the choice of whether to bound it to Nathan, in its own words (DM-65, section 4.3 and RV10). It does not hold Stage A's merge; it is decided before P11, since nothing is served to a member before then.
 - **Where the answer goes:** a new owner direction in `docs/continuity/owner-directions.md` and its Notion copy; the brief's D8; the carried-items file or SV2's and SV3's next items, if (b) or (c) is chosen.
+- **Result:** given to Nathan on 12 November. On 13 November he asked for a business and member case discussion, then chose (c) by field, plus (a), as the manager recommended: [OD-64](../continuity/owner-directions.md).
 - **Deletion condition:** prune after the answer is recorded as an owner direction.
 
 ---

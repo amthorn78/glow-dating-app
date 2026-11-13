@@ -10,7 +10,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 4** (`session_01Q789u2u6fuC4fQPtHzP9gN`; OD-59) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): [the brief](../planning/sv2-profiles-media.md), revision 8; PR43 at `4dc2061` and PR44 at `3240ef0`, with their receipts in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 8 (the Dev Manager's DM-60 to DM-66). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); C2 stopped at its stop rule (a clock text no rule covers) and pushed `c1fac35`; DM-66 answered, and C2 continues. F7's decision is with Nathan (not holding the merge). Until C2, three failure signatures are recorded, not re-run. Stage B follows after Stage A merges.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 8 (the Dev Manager's DM-60 to DM-66). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Correction C1 (CX1, V1 with CX2, CX3) is built, verified and integrated (`cbeb050`); C2 stopped at its stop rule (a clock text no rule covers) and pushed `c1fac35`; DM-66 answered, and C2 continues. F7 is decided (OD-64), carried to before P11. Until C2, three failure signatures are recorded, not re-run. Stage B follows after Stage A merges.
 - **CI note:** on 11 November, three PR runs failed only at Mobile checks' Chromium install on the runners' package mirror (15:03 to 15:53 UTC). DM-59 section 7 is the rule for a repeat; the step's retry is carried to the next workflow change.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
@@ -21,7 +21,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | Nathan and C2's session; Nathan | C2's report after DM-66's relay; F7's decision | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
+| App Manager 11 | Nathan and C2's session | C2's report after DM-66's relay | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
 
 ## Next actions (App Manager 11)
 
