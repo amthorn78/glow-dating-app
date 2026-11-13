@@ -17,11 +17,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-68, with "Deferred conditions"; DM-68 confirms GD1 to GD13 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (13 November 2026, 09:50 UTC, App Manager 11)
+## Waiting checkpoint (13 November 2026, 09:52 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub, then Nathan | Codex on C4's prompt commit, then C4's report | No other prompt goes to Nathan (OD-29); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
+| App Manager 11 | Nathan | C4's report. Codex on the prompt commit `0fbc130` is done: six P2s, one per F1 to F6, nothing new; threads resolve after C4 merges | No other prompt goes to Nathan (OD-29) |
 
 ## Next actions (App Manager 11)
 
@@ -31,7 +31,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (13 November 2026, 09:50 UTC)
+## Branches and PRs (13 November 2026, 09:52 UTC)
 
 - **Open PRs:** [PR45](https://github.com/amthorn78/glow-dating-app/pull/45), SV3 Stage A, from the manager branch. `main` is at `3240ef0` (PR44).
 - **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`9105d11`, DM-68's report, merged at `f3bed97`); Stage A's and C1's session branches, `claude/loving-maxwell-cqu7eq` (`4dee875`) and `claude/glow-correction-c1-1jzjgr` (`cbeb050`), fully merged into the manager branch; C2's, `claude/practical-cray-h7t08x` (`c79bfb6`), merged at `8bd983f`; C3's, `claude/glow-discovery-c3-ir9mnd` (`8189b31`), merged at `f9a8621`. The cleanup deletes the session branches once Stage A's PR merges.
