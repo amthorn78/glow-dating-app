@@ -1241,14 +1241,44 @@ def _parameters(params: Any) -> list[str]:
     return [str(value) for value in values]
 
 
+# C3 (S1; DM-67): the one shape of a read of the viewer's own account row before the probe point:
+# one SELECT with no subquery, whose only table is the account table, whose only condition is its
+# primary key equal to one parameter; it may order by the key, take LIMIT 1, and end in FOR NO KEY
+# UPDATE or FOR SHARE. A column may carry an alias (``values_list``'s). Its only parameter must be
+# the viewer's ID (``listed``).
+_ACCOUNT = r'"?glow_persistence_appaccount"?'
+_NAME = r'"?[a-z_][a-z0-9_]*"?'
+_COLUMN = rf"(?:{_ACCOUNT}\.)?{_NAME}(?: AS {_NAME})?"
+_KEY = rf'(?:{_ACCOUNT}\.)?"?id"?'
+OWN_ACCOUNT_READ = re.compile(
+    rf"SELECT {_COLUMN}(?:, {_COLUMN})* FROM {_ACCOUNT} WHERE {_KEY} = %s"
+    rf"(?: ORDER BY {_KEY}(?: ASC)?)?(?: LIMIT 1)?(?: FOR (?:NO KEY UPDATE|SHARE))?"
+)
+
+
+def listed(sql: str, params: Any, viewer_id: str, viewer_statement: str) -> bool:
+    """Whether a statement that reads a member table before the probe point is on C3's list (S1;
+    DM-67): ``predicates.VIEWER`` exactly (``viewer_statement``), with the viewer's ID as its
+    ``viewer`` parameter; or a read of the viewer's own account row in ``OWN_ACCOUNT_READ``'s
+    shape, whose only parameter is the viewer's ID."""
+    if sql == viewer_statement:
+        return isinstance(params, dict) and str(params.get("viewer")) == viewer_id
+    if OWN_ACCOUNT_READ.fullmatch(" ".join(sql.split())) is None:
+        return False
+    return isinstance(params, list | tuple) and _parameters(params) == [viewer_id]
+
+
 @case("pages.one_snapshot_statements", "5", "D2", "DM-60 4", "C2")
 def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     """One snapshot, counted (D2; DM-60 Q1; the exact-head review's F1): in each page's
     transaction, the statements that read candidates' rows are exactly one selection
     (``predicates.SELECTION``) in a page with no cursor, and exactly one recheck
     (``predicates.RECHECK``) in a page with a cursor; from the probe point before it to the commit,
-    no other statement reads a member's row; before it, only the viewer's own rows are read; and a
-    page with a cursor writes nothing (no insert, update or delete, and no writer's row lock)."""
+    no other statement reads a member's row; before it, before the transaction begins and in it,
+    a statement that reads a member table passes only if it is on C3's list (``listed``: S1;
+    DM-67); and a page with a cursor writes nothing, in any phase the probe records, the photo
+    reads after its commit included (no insert, update or delete, and no writer's row lock; C3's
+    S2)."""
     from django.db import connection
     from glow_discovery import pages, predicates
 
@@ -1259,6 +1289,7 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     expect({"glow_persistence_profile", "glow_persistence_block"} <= tables, "the member tables")
     viewer_id = str(viewer.account_id)
     counted: list[str] = []
+    listed_reads: list[str] = []
 
     def recorded(work: Callable[[_Statements], Any]) -> tuple[Any, _Statements]:
         probe = _Statements()
@@ -1281,15 +1312,19 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
             f"{what}: from the probe point to the commit, one statement reads members"
             f" ({len(after)} did)",
         )
-        for sql, params in probe.seen["transaction"]:
-            if not _reads_members(sql, tables):
-                continue
-            own = sql == predicates.VIEWER or (
-                set(re.findall(r"glow_persistence_[a-z_]+", sql)) <= {"glow_persistence_appaccount"}
-                and viewer_id in _parameters(params)
+        before = [
+            (sql, params)
+            for phase in ("outside", "transaction")
+            for sql, params in probe.seen[phase]
+            if _reads_members(sql, tables)
+        ]
+        for sql, params in before:
+            expect(
+                listed(sql, params, viewer_id, predicates.VIEWER),
+                f"{what}: before the probe point, only the statements on the list read members",
             )
-            expect(own, f"{what}: before the probe point, only the viewer's own rows are read")
         counted.append(f"{what} {len(inside)}")
+        listed_reads.append(str(len(before)))
 
     created, probe = recorded(
         lambda probe: pages.create(viewer.account_id, "recommendations", 1, probe=probe)
@@ -1310,7 +1345,9 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     assert following.data is not None
     expect(probe.points == ["before_recheck"], "the recheck's probe point")
     check(probe, predicates.RECHECK, predicates.SELECTION, "a page with a cursor")
-    written = [sql for sql, _ in probe.in_transaction() if WRITE.search(sql)]
+    # C3 (S2): every phase, the photo reads after the commit included.
+    expect(bool(probe.seen["committed"]), "a page with a cursor: its photo reads recorded")
+    written = [sql for phase in probe.seen.values() for sql, _ in phase if WRITE.search(sql)]
     expect(not written, f"a page with a cursor writes nothing ({len(written)} writes)")
     shown += [str(card["profile_id"]) for card in following.data["items"]]
     expect(set(shown) == ids and len(shown) == len(ids), "the two pages hold every candidate once")
@@ -1318,7 +1355,8 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     check(probe, predicates.SELECTION, predicates.RECHECK, "a broader page with no cursor")
     return (
         "one selection, or one recheck, is the only statement reading members after its probe"
-        f" point; a cursor page writes nothing (statements per transaction: {', '.join(counted)})"
+        f" point; a cursor page writes nothing (statements per transaction: {', '.join(counted)};"
+        f" listed reads of members before the probe point: {', '.join(listed_reads)})"
     )
 
 

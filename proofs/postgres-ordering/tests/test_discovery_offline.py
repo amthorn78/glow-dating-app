@@ -22,6 +22,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 from unittest import mock
+from uuid import UUID, uuid4
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -633,6 +634,192 @@ PLANTED_OF = {
 }
 
 
+# C3 (DM-67; C2's delta re-review's L1): a generic lock with a join passes only with no_key=True;
+# an of= does not make it pass, since the model can be AppAccount. The review's helper.
+L1_HELPER = (
+    "def _lock(model, pk):\n"
+    "    return (\n"
+    "        model.objects.select_related('account')\n"
+    "        .select_for_update({mode})\n"
+    "        .filter(pk=pk)\n"
+    "        .first()\n"
+    "    )\n"
+)
+# C3 (L2): the joins C2's scan did not see; each locks a joined account row FOR UPDATE.
+PLANTED_L2 = {
+    "q_in_a_variable": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import Block\n\n\n"
+        "def lock(pk):\n"
+        "    condition = Q(target__state='active')\n"
+        "    return Block.objects.select_for_update().filter(condition).first()\n"
+    ),
+    "f_in_a_variable": (
+        "from django.db.models import F\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    state = F('account_low__state')\n"
+        "    return Match.objects.select_for_update().filter(pk=pk, state=state).first()\n"
+    ),
+    "q_from_a_helper": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import RecommendationEntry\n\n\n"
+        "def _active():\n"
+        "    return Q(candidate__state='active')\n\n\n"
+        "def lock(batch_id):\n"
+        "    rows = RecommendationEntry.objects.select_for_update()\n"
+        "    return list(rows.filter(_active(), batch_id=batch_id))\n"
+    ),
+    "latest_through_the_account": (
+        "from glow_persistence.models import Profile\n\n\n"
+        "def lock():\n"
+        "    return (\n"
+        "        Profile.objects.select_for_update()\n"
+        "        .filter(state='visible')\n"
+        "        .latest('account__created_at')\n"
+        "    )\n"
+    ),
+    "extra_tables": (
+        "from glow_persistence.models import Profile\n\n\n"
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Profile.objects.select_for_update()\n"
+        "        .extra(tables=['glow_persistence_appaccount'])\n"
+        "        .filter(pk=pk)\n"
+        "        .first()\n"
+        "    )\n"
+    ),
+    "a_join_two_variables_after_the_lock": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    narrowed = rows.filter(pk=pk)\n"
+        "    ordered = narrowed.order_by('account_low__created_at')\n"
+        "    return ordered.first()\n"
+    ),
+    "a_reverse_path_to_the_account": (
+        "from django.contrib.auth.models import User\n\n\n"
+        "def lock(account_id):\n"
+        "    return User.objects.select_for_update().filter(appaccount=account_id).first()\n"
+    ),
+    "sql_join_placeholder": (
+        "def lock(cursor, table, pk):\n"
+        "    cursor.execute(\n"
+        "        f'SELECT m.id FROM glow_persistence_match m JOIN {table} a'\n"
+        "        ' ON a.id = m.account_low_id WHERE m.id = %s FOR UPDATE',\n"
+        "        [pk],\n"
+        "    )\n"
+    ),
+    "sql_named_format_field": (
+        "def lock(cursor, table, pk):\n"
+        "    cursor.execute(\n"
+        "        'SELECT id FROM {table} WHERE id = %s FOR UPDATE'.format(table=table), [pk]\n"
+        "    )\n"
+    ),
+    "sql_a_clause_of_its_own": (
+        "LOCK = ' FOR UPDATE'\n\n\n"
+        "def lock(cursor, table, pk):\n"
+        "    cursor.execute('SELECT id FROM ' + table + ' WHERE id = %s' + LOCK, [pk])\n"
+    ),
+}
+# Further forms C3's rules refuse: a path method's argument that is not a string literal, an
+# expression method's argument, * arguments, a Q combined with another given positionally, a
+# chain followed back through the variables it was assigned from, and SQL formatted with % or
+# joined to another string.
+PLANTED_L2_MORE = {
+    "a_path_held_in_a_variable": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(field):\n"
+        "    return Match.objects.select_for_update().order_by(field).first()\n"
+    ),
+    "annotate": (
+        "from django.db.models import Count\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    rows = Match.objects.select_for_update().annotate(n=Count('pk'))\n"
+        "    return rows.filter(pk=pk).first()\n"
+    ),
+    "starred": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(conditions):\n"
+        "    return Match.objects.select_for_update().filter(*conditions).first()\n"
+    ),
+    "combined_qs": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    return rows.filter(Q(pk=pk) | Q(state='active')).first()\n"
+    ),
+    "assigned_before_the_lock": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    first = Match.objects.filter(account_high__state='active')\n"
+        "    second = first.filter(pk=pk)\n"
+        "    return second.select_for_update().first()\n"
+    ),
+    "a_q_in_a_q_in_a_variable": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    inner = Q(account_low__state='active')\n"
+        "    outer = Q(inner, pk=pk)\n"
+        "    return Match.objects.select_for_update().filter(outer).first()\n"
+    ),
+    "sql_percent": (
+        "def lock(cursor, table, pk):\n"
+        "    cursor.execute('SELECT id FROM %s WHERE id = 1 FOR UPDATE' % table)\n"
+    ),
+    "sql_joined": (
+        "def lock(cursor, more, pk):\n"
+        "    cursor.execute(\n"
+        "        'SELECT id FROM glow_persistence_match WHERE id = %s FOR UPDATE' + more, [pk]\n"
+        "    )\n"
+    ),
+    "sql_a_subquery_after_from": (
+        "def lock(cursor, pk):\n"
+        "    cursor.execute(\n"
+        "        'SELECT id FROM (SELECT id FROM glow_persistence_match) m'\n"
+        "        ' WHERE id = %s FOR UPDATE',\n"
+        "        [pk],\n"
+        "    )\n"
+    ),
+}
+# What C3's rules still pass: a keyword's value that is a value, a Q held in a variable that
+# follows no relation, string paths that follow none, and complete SQL naming its own tables.
+ACCEPTED_L2 = {
+    "a_keyword_value": (
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk, state):\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    found = rows.filter(pk=pk, state=state)\n"
+        "    return found.order_by('-created_at').first()\n"
+    ),
+    "a_q_in_a_variable_with_no_join": (
+        "from django.db.models import Q\n"
+        "from glow_persistence.models import Match\n\n\n"
+        "def lock(pk):\n"
+        "    condition = Q(pk=pk, state__in=['active'])\n"
+        "    return Match.objects.select_for_update().filter(condition).latest('created_at')\n"
+    ),
+    "complete_sql": (
+        "def lock(cursor, pk):\n"
+        "    cursor.execute(\n"
+        "        'SELECT m.id FROM glow_persistence_match m'\n"
+        "        ' JOIN glow_persistence_chatbinding b ON b.match_id = m.id'\n"
+        "        ' WHERE m.id = %s FOR UPDATE',\n"
+        "        [pk],\n"
+        "    )\n"
+    ),
+    "no_key_with_a_reverse_path": (
+        "from django.contrib.auth.models import User\n\n\n"
+        "def lock(account_id):\n"
+        "    rows = User.objects.select_for_update(no_key=True)\n"
+        "    return rows.filter(appaccount=account_id).first()\n"
+    ),
+}
+
+
 class AccountLockScanTests(unittest.TestCase):
     """C1's scan (DM-61 K1, K3): every explicit lock of an ``AppAccount`` row in ``services/api``
     and the reference design is ``FOR NO KEY UPDATE``; a planted ``FOR UPDATE`` lock fails it."""
@@ -739,3 +926,151 @@ class AccountLockScanTests(unittest.TestCase):
                 code = account_lock_scan.main([str(path)])
         self.assertEqual(code, 1)
         self.assertIn("not FOR NO KEY UPDATE: 1", out.getvalue())
+
+    def test_the_reverse_names_of_the_accounts_own_relations_are_read(self) -> None:
+        # C3 (L2): AppAccount's one relation field, auth_user, has no related name.
+        self.assertEqual(account_lock_scan.read_models().reverse, {"appaccount"})
+
+    def test_a_generic_lock_with_a_join_passes_only_with_no_key(self) -> None:
+        # C3 (L1): the review's helper, refused with of=('self',), passes with no_key=True.
+        refused = self.scan_source(L1_HELPER.format(mode="of=('self',)"))
+        self.assertEqual([(lock.kind, lock.mode) for lock in refused], [("generic", "FOR UPDATE")])
+        self.assertEqual(len(account_lock_scan.violations(refused)), 1)
+        self.assertTrue(refused[0].joins)
+        passed = self.scan_source(L1_HELPER.format(mode="no_key=True"))
+        self.assertEqual([lock.mode for lock in passed], ["FOR NO KEY UPDATE"])
+        self.assertEqual(account_lock_scan.violations(passed), [])
+
+    def test_the_joins_c2_did_not_see_fail_the_scan(self) -> None:
+        # C3 (L2): each form the delta re-review planted, and the further forms the rules cover.
+        for name, text in {**PLANTED_L2, **PLANTED_L2_MORE}.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(locks), 1)
+                self.assertEqual(
+                    [lock.mode for lock in account_lock_scan.violations(locks)], ["FOR UPDATE"]
+                )
+                if locks[0].kind != "sql":
+                    self.assertTrue(locks[0].joins)
+
+    def test_values_paths_with_no_join_and_complete_sql_still_pass(self) -> None:
+        for name, text in ACCEPTED_L2.items():
+            with self.subTest(accepted=name):
+                self.assertEqual(account_lock_scan.violations(self.scan_source(text)), [])
+        self.assertEqual(self.scan_source(ACCEPTED_L2["a_keyword_value"]), [])
+        self.assertEqual(self.scan_source(ACCEPTED_L2["complete_sql"]), [])
+
+    def test_the_sql_rule_reads_each_from_and_join(self) -> None:
+        names = account_lock_scan.names_its_tables
+        self.assertTrue(names("SELECT id FROM glow_persistence_match WHERE id = %s FOR UPDATE"))
+        self.assertTrue(names('SELECT 1 FROM "glow_persistence_match" m JOIN x.y ON true'))
+        for text in (
+            "SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR UPDATE",
+            "SELECT 1 FROM glow_persistence_match m JOIN {} a ON true FOR UPDATE",
+            "SELECT 1 FROM {table} FOR UPDATE",
+            "SELECT 1 FROM t JOIN {0} a ON true FOR UPDATE",
+            " FOR UPDATE",
+            "SELECT 1 FROM %s FOR UPDATE",
+            "SELECT 1 FROM fn (1) FOR UPDATE",
+            "SELECT 1 FROM t JOIN (SELECT 1) s ON true FOR UPDATE",
+        ):
+            with self.subTest(text=text):
+                self.assertFalse(names(text))
+
+
+# C3 (S1; DM-67): the three reads of the viewer's own account row the pages make before the probe
+# point, as Django and ``tx.read_account_shared`` send them (seen in a local run).
+_COLUMNS = ", ".join(
+    f'"glow_persistence_appaccount"."{name}"'
+    for name in (
+        "id",
+        "created_at",
+        "updated_at",
+        "version",
+        "auth_user_id",
+        "state",
+        "eligibility_version",
+        "preferences_version",
+        "blocks_version",
+        "session_epoch",
+    )
+)
+_BY_KEY = (
+    ' FROM "glow_persistence_appaccount" WHERE "glow_persistence_appaccount"."id" = %s'
+    ' ORDER BY "glow_persistence_appaccount"."id" ASC LIMIT 1'
+)
+OWN_ACCOUNT_READS = {
+    "the_lock": f"SELECT {_COLUMNS}{_BY_KEY} FOR NO KEY UPDATE",
+    "the_shared_read": "SELECT state FROM glow_persistence_appaccount WHERE id = %s FOR SHARE",
+    "the_versions": (
+        'SELECT "glow_persistence_appaccount"."eligibility_version" AS "eligibility_version",'
+        ' "glow_persistence_appaccount"."preferences_version" AS "preferences_version",'
+        ' "glow_persistence_appaccount"."blocks_version" AS "blocks_version"' + _BY_KEY
+    ),
+}
+VIEWER_STATEMENT = "WITH v AS (SELECT ... WHERE a.id = %(viewer)s) SELECT ..."
+
+
+class PreProbeListTests(unittest.TestCase):
+    """C3's list (S1; DM-67): before the probe point, a statement that reads a member table passes
+    only as ``VIEWER`` bound to the viewer, or as one read of the viewer's own account row."""
+
+    def setUp(self) -> None:
+        self.viewer = str(uuid4())
+        self.other = str(uuid4())
+
+    def listed(self, sql: str, params: Any) -> bool:
+        return discovery_cases.listed(sql, params, self.viewer, VIEWER_STATEMENT)
+
+    def test_the_three_account_reads_pass(self) -> None:
+        for name, sql in OWN_ACCOUNT_READS.items():
+            with self.subTest(read=name):
+                self.assertTrue(self.listed(sql, (UUID(self.viewer),)))
+                self.assertTrue(self.listed(sql, [UUID(self.viewer)]))
+
+    def test_viewer_passes_only_for_the_viewer(self) -> None:
+        self.assertTrue(self.listed(VIEWER_STATEMENT, {"viewer": UUID(self.viewer), "today": 1}))
+        self.assertFalse(self.listed(VIEWER_STATEMENT, {"viewer": UUID(self.other), "today": 1}))
+        self.assertFalse(self.listed(VIEWER_STATEMENT, [UUID(self.viewer)]))
+
+    def test_other_reads_fail(self) -> None:
+        shared = OWN_ACCOUNT_READS["the_shared_read"]
+        cases: dict[str, tuple[str, Any]] = {
+            "another_id": (shared, [UUID(self.other)]),
+            "the_viewer_and_another": (shared, [UUID(self.viewer), UUID(self.other)]),
+            "an_in_list": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id IN (%s, %s)",
+                [UUID(self.viewer), UUID(self.other)],
+            ),
+            "a_join": (
+                "SELECT a.state FROM glow_persistence_appaccount a"
+                " JOIN glow_persistence_profile p ON p.account_id = a.id WHERE a.id = %s",
+                [UUID(self.viewer)],
+            ),
+            "a_subquery": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %s"
+                " OR id IN (SELECT candidate_id FROM glow_persistence_recommendationentry)",
+                [UUID(self.viewer)],
+            ),
+            "a_subquery_in_the_columns": (
+                "SELECT (SELECT count(*) FROM glow_persistence_appaccount) FROM"
+                " glow_persistence_appaccount WHERE id = %s",
+                [UUID(self.viewer)],
+            ),
+            "every_other_account": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id <> %s",
+                [UUID(self.viewer)],
+            ),
+            "another_condition": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %s AND state = 'active'",
+                [UUID(self.viewer)],
+            ),
+            "another_lock": (shared.replace("FOR SHARE", "FOR UPDATE"), [UUID(self.viewer)]),
+            "a_named_parameter": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %(viewer)s",
+                {"viewer": UUID(self.viewer)},
+            ),
+        }
+        for name, (sql, params) in cases.items():
+            with self.subTest(read=name):
+                self.assertFalse(self.listed(sql, params))
