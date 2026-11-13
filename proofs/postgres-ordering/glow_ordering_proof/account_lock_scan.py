@@ -1,5 +1,13 @@
-"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C3; its brief's D2 and
-D14; DM-61 K1, K3; DM-65, the exact-head review's F3; DM-67, C2's delta re-review's L1 and L2).
+"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C4; its brief's D2 and
+D14; DM-61 K1, K3; DM-65, the exact-head review's F3; DM-67, C2's delta re-review's L1 and L2;
+DM-68, C3's delta re-review's F1 to F5).
+
+What the scan is (DM-68): a static check of the forms this docstring names. It reads the source and
+never runs it, so it cannot be complete: a queryset can be built, and a lock taken, in ways a
+reading of the source does not see. It refuses the forms named here; any other form is a stated
+limit (the proof README's "Limits"), not a defect of the scan, unless code uses it to lock an
+account row. From SV3's Stage B, the suites also check every row lock they send, whatever its form
+(the brief's D14).
 
 Every explicit lock of an ``AppAccount`` row, in ``services/api`` (its tests and virtual
 environment left out) and in the ordering proof's reference design (``reference.py``), must be
@@ -11,17 +19,24 @@ It reads the source, never imports it, and finds four kinds of lock:
 
 - **an ORM lock of the account:** a ``select_for_update(...)`` call whose receiver names
   ``AppAccount``; it must pass ``no_key=True``;
-- **a generic ORM lock:** a ``select_for_update(...)`` call on a model held in a variable (a
-  helper such as ``glow_chat``'s ``_lock`` or the reference design's), which can lock an account;
-  it must pass a ``no_key`` that names ``AppAccount`` (``no_key=model is AppAccount``) or is
-  ``True``;
+- **a generic ORM lock:** a ``select_for_update(...)`` call on a model held in a variable (any
+  name that is not capitalised, ``_model`` included; C4) (a helper such as ``glow_chat``'s
+  ``_lock`` or the reference design's), which can lock an account;
+  it must pass ``no_key`` as the literal ``True``, or, where its queryset joins no other table,
+  as exactly ``<variable> is AppAccount``: one comparison with the one operator ``is``, its left
+  side the variable the lock's receiver starts from (``model`` in
+  ``model.objects.select_for_update(...)``) and its right side the name ``AppAccount``. Anything
+  else fails: ``is not``, ``not (... is AppAccount)``, a comparison inside ``and`` or ``or``,
+  another variable, a reversed comparison, or a name assigned the comparison (C4; F5);
 - **a lock of a queryset that joins another table** (C2; DM-65): a ``select_for_update(...)``
   call whose queryset follows a relation. Without ``OF``, PostgreSQL locks every joined row
   ``FOR UPDATE``, a joined account row included, so such a lock passes only with ``no_key=True``,
-  or, on a named model, with ``of=`` naming no path to ``AppAccount`` (no entry ending in a
-  foreign key to it, read from ``glow_persistence/models.py``, or in a reverse name of one of its
-  own relation fields). A generic lock with a join passes only with ``no_key=True``: an ``of=``
-  does not make it pass, since the model can be ``AppAccount`` (C3; L1);
+  or, on a named model, with ``of=`` naming no path to ``AppAccount``: a tuple or list written in
+  the call whose every entry is a plain string literal (C4; F4) and none ends in a foreign key to
+  it, read from ``glow_persistence/models.py``, or in a reverse name of one of its own relation
+  fields; an f-string, a name, a call, a starred entry or any other value fails closed, as naming
+  one. A generic lock with a join passes only with ``no_key=True``: an ``of=`` does not make it
+  pass, since the model can be ``AppAccount`` (C3; L1);
 - **a lock in SQL:** a string (or f-string) outside a docstring that takes ``FOR UPDATE`` (or
   ``FOR NO KEY UPDATE``, ``FOR SHARE``, ``FOR KEY SHARE``). A ``FOR UPDATE`` string passes only if
   it is complete literal text (no f-string field and no ``{...}`` format field anywhere in it, not
@@ -29,7 +44,16 @@ It reads the source, never imports it, and finds four kinds of lock:
   ``FROM`` and after every ``JOIN`` itself, none of them the account table; any other such string
   counts as a lock of the account table and is refused (C3; L2).
 
-**What joins** (C2, and C3's L2), in the function that holds the lock:
+**A receiver that is not a plain chain** (C4; F2): where a lock's receiver is a combination
+(``&``, ``|`` or ``^``), a conditional expression, a boolean expression (``and``, ``or``) or an
+assignment expression (``:=``), wherever one stands in it, or starts from a name that holds one
+in the function (assigned to it, or a combination assigned in place, ``rows |= ...``), each chain
+it holds is judged as the receiver, with the joins of them all, and the lock passes only if it
+passes for each:
+``(AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)).select_for_update()`` is an
+account lock, and needs ``no_key=True``.
+
+**What joins** (C2, C3's L2 and C4), in the function that holds the lock:
 
 - a ``select_related`` or an ``extra()`` call, with any argument;
 - a lookup or field path that follows a relation: a keyword's name in a lookup method
@@ -43,20 +67,43 @@ It reads the source, never imports it, and finds four kinds of lock:
 - what the scan cannot read, which counts as a join: a positional argument of a lookup method,
   or any argument of an expression method (``annotate``, ``alias``, ``aggregate``), unless it is
   a literal ``Q(...)`` or ``F(...)``, or a name assigned one in the function, whose paths the scan
-  then judges; a path method's argument that is not a string literal; and ``*`` or ``**``
-  anywhere in the chain. A keyword's value is judged as a ``Q`` or an ``F`` where it is one or
-  names one, and is otherwise a value, not a path.
+  then judges; any argument of ``complex_filter``, a lookup method that takes one condition,
+  unless it is a literal ``Q(...)`` or a name assigned one, whose paths the scan then judges (a
+  dict counts as a join; C4, F3); a path method's argument that is not a string literal; and
+  ``*`` or ``**`` anywhere in the chain;
+- in a keyword's value (C4; F1): the paths of every ``Q`` or ``F`` in it, and every call to a
+  capitalised name other than ``Q`` and ``F`` (a class, as Django's expressions and functions
+  are: ``Lower``, ``Coalesce``, ``Cast``, ``Concat``, ``OuterRef``, ``RawSQL``, ``Value``, ...)
+  that takes a string literal or an f-string as an argument, positional or keyword (or a ``*`` or
+  ``**`` argument), which counts as a path the scan cannot read, so a join: written in the value
+  itself, or in a value assigned in the function to a name the value uses, through that name's
+  assignments. Any other call in a keyword's value is a value: one to a lower-case function or
+  method returns what another function made.
 
 A queryset is followed along its chain of calls and through every plain assignment in the
 function, before and after the lock, transitively (``a = M.objects.filter(...)``,
 ``b = a.select_for_update()``, ``b.order_by(...)``), and so is every assignment of a name an
-argument uses. So it cannot see: the joins of a queryset, or of a ``Q``, an ``F`` or another
-expression, that reaches the lock from another function (a lock on such a queryset is judged as a
-generic lock); an expression given as a keyword's value from outside the function; a model's
-``Meta.ordering`` (none exists today); a model imported under another name (C1's rule, unchanged);
-and a lock clause built at run time (such as ``FOR {mode}``). A select_for_update whose receiver
-names another model (``Match``, ``Profile``, ...) and joins nothing is not an account lock and is
-not judged. It prints counts and locations only.
+argument uses. A queryset written as a combination (``&``, ``|`` or ``^``, a combination assigned
+in place, ``a &= ...``, included), a conditional expression, a boolean expression or an assignment
+expression is read through to every chain it holds, inline or held in a name assigned in the
+function, before and after the lock, whichever part holds the lock (the right side of a
+combination assigned in place included) and whether the lock is taken on a part or on the whole;
+the joins of every part count (C4; F2).
+
+So the scan cannot see: the joins of a queryset, or of a ``Q``, an ``F`` or another expression,
+that reaches the lock from another function (a lock on such a queryset is judged as a generic
+lock); an expression given as a keyword's value from outside the function; a field path given to
+an expression through a name (``Lower(path)``), or to an expression class called by a lower-case
+name; a model's ``Meta.ordering`` (none exists today); a model imported under another name (C1's
+rule, unchanged), or a queryset of ``AppAccount`` held in a capitalised variable; a lock clause
+built at run time (such as ``FOR {mode}``); and, in SQL, a view or other relation over the account
+table, named after ``FROM``, ``JOIN`` or a comma (no migration creates one), a string joined or
+formatted after it is assigned to a name, and a ``bytes`` string. It does not read ``dates()``,
+``datetimes()`` or ``in_bulk(field_name=...)``, which need no rule: PostgreSQL refuses a row lock
+with the ``DISTINCT`` the first two add, and ``in_bulk``'s field is the model's own. A
+select_for_update whose receiver names another model (``Match``, ``Profile``, ...) and joins
+nothing is not an account lock and is not judged. C4's own probes found further forms it does not
+see, each a stated limit (the proof README's "Limits"). It prints counts and locations only.
 """
 
 from __future__ import annotations
@@ -114,7 +161,12 @@ PATH_METHODS = frozenset(
 )
 EXPRESSION_METHODS = frozenset({"annotate", "alias", "aggregate"})
 JOIN_METHODS = frozenset({"select_related", "extra"})
+# C4 (F3): a lookup method that takes one condition, a literal ``Q`` or a name assigned one;
+# a dict, or any other argument, counts as a join.
+CONDITION_METHODS = frozenset({"complex_filter"})
 EXPRESSIONS = frozenset({"Q", "F"})
+# C4 (F2): the operators that combine two querysets.
+COMBINATIONS = (ast.BitAnd, ast.BitOr, ast.BitXor)
 NOT_PATHS = frozenset({"defaults", "create_defaults", "flat", "named"})
 # Every explicit account lock C1 found and changed (DM-61's list, with the two helpers), by file
 # and enclosing function: a lock added, lost or moved changes this list and fails the scan.
@@ -280,24 +332,72 @@ def _owners(tree: ast.AST) -> dict[int, int]:
     return owners
 
 
-def _receiver_names(node: ast.AST) -> tuple[list[str], bool]:
-    """The names in a call's receiver chain, and whether the chain starts from a lower-case
-    variable (a model held in a variable) rather than a model class."""
-    names: list[str] = []
-    current = node
-    while True:
-        if isinstance(current, ast.Attribute):
-            names.append(current.attr)
-            current = current.value
-        elif isinstance(current, ast.Call):
-            current = current.func
-        elif isinstance(current, ast.Subscript):
-            current = current.value
-        elif isinstance(current, ast.Name):
-            names.append(current.id)
-            return names, current.id[:1].islower()
-        else:
-            return names, False
+def _combination(node: ast.AST | None) -> bool:
+    """Whether an expression combines two querysets (``&``, ``|`` or ``^``; C4, F2)."""
+    return isinstance(node, ast.BinOp) and isinstance(node.op, COMBINATIONS)
+
+
+def _composite(node: ast.AST | None) -> bool:
+    """Whether an expression is a combination, a conditional expression, a boolean expression or
+    an assignment expression, which the scan reads through to every chain it holds (C4; F2)."""
+    return _combination(node) or isinstance(node, ast.IfExp | ast.BoolOp | ast.NamedExpr)
+
+
+def _parts(node: ast.AST) -> list[ast.AST]:
+    """The expressions a queryset expression is made of: itself, or, through a combination, both
+    branches of a conditional expression, every operand of a boolean one and the value of an
+    assignment expression, each of their parts (C4; F2)."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, COMBINATIONS):
+        return [*_parts(node.left), *_parts(node.right)]
+    if isinstance(node, ast.IfExp):
+        return [*_parts(node.body), *_parts(node.orelse)]
+    if isinstance(node, ast.BoolOp):
+        return [part for value in node.values for part in _parts(value)]
+    if isinstance(node, ast.NamedExpr):
+        return _parts(node.value)
+    return [node]
+
+
+@dataclass(frozen=True)
+class _Head:
+    """One chain a lock's receiver holds (C4; F2): the names down it, whether it starts from a
+    variable whose name is not capitalised (a model held in a variable, ``_model`` included)
+    rather than a model class, and that variable."""
+
+    names: tuple[str, ...]
+    variable: bool
+    base: str | None
+
+
+def _heads(node: ast.AST) -> list[_Head]:
+    """Every chain in a call's receiver, read through a combination, a conditional, a boolean or
+    an assignment expression wherever one stands in it (C4; F2): a plain chain has one."""
+    heads: list[_Head] = []
+    for part in _parts(node):
+        names: list[str] = []
+        current = part
+        while True:
+            if isinstance(current, ast.Attribute):
+                names.append(current.attr)
+                current = current.value
+            elif isinstance(current, ast.Call):
+                current = current.func
+            elif isinstance(current, ast.Subscript):
+                current = current.value
+            elif isinstance(current, ast.Name):
+                names.append(current.id)
+                heads.append(_Head(tuple(names), not current.id[:1].isupper(), current.id))
+                break
+            elif _composite(current):
+                heads += [
+                    _Head((*names, *head.names), head.variable, head.base)
+                    for head in _heads(current)
+                ]
+                break
+            else:
+                heads.append(_Head(tuple(names), False, None))
+                break
+    return heads
 
 
 def _text(node: ast.AST) -> str | None:
@@ -322,81 +422,108 @@ def _parents(tree: ast.AST) -> dict[int, ast.AST]:
 
 
 def _receiver_calls(node: ast.AST) -> list[ast.Call]:
-    """The calls down an expression's receiver chain, the expression itself included, through
-    both branches of a conditional expression and every operand of a boolean one."""
-    if isinstance(node, ast.IfExp):
-        return [*_receiver_calls(node.body), *_receiver_calls(node.orelse)]
-    if isinstance(node, ast.BoolOp):
-        return [call for value in node.values for call in _receiver_calls(value)]
+    """The calls down an expression's receiver chain, the expression itself included, read
+    through a combination, both branches of a conditional expression, every operand of a boolean
+    one and an assignment expression's value, wherever one stands in the chain (C4; F2)."""
     calls: list[ast.Call] = []
-    current = node
-    while True:
-        if isinstance(current, ast.Attribute):
-            current = current.value
-        elif isinstance(current, ast.Call):
-            calls.append(current)
-            current = current.func
-        elif isinstance(current, ast.Subscript):
-            current = current.value
-        else:
-            return calls
-
-
-def _chain(call: ast.Call, parents: dict[int, ast.AST]) -> tuple[list[ast.Call], ast.AST]:
-    """Every call in ``call``'s queryset chain, down its receiver and up through the calls made on
-    its result, and the chain's outermost expression."""
-    calls = _receiver_calls(call.func)
-    top: ast.AST = call
-    while True:
-        attribute = parents.get(id(top))
-        caller = parents.get(id(attribute)) if attribute is not None else None
-        if (
-            isinstance(attribute, ast.Attribute)
-            and attribute.value is top
-            and isinstance(caller, ast.Call)
-            and caller.func is attribute
-        ):
-            calls.append(caller)
-            top = caller
-        else:
-            break
-    return [call, *calls], top
-
-
-def _base_name(node: ast.AST) -> str | None:
-    """The variable a chain of calls starts from, if it starts from one."""
-    current = node
-    while True:
-        if isinstance(current, ast.Attribute):
-            current = current.value
-        elif isinstance(current, ast.Call):
-            current = current.func
-        elif isinstance(current, ast.Subscript):
-            current = current.value
-        elif isinstance(current, ast.Name):
-            return current.id
-        else:
-            return None
+    for part in _parts(node):
+        current = part
+        while True:
+            if isinstance(current, ast.Attribute):
+                current = current.value
+            elif isinstance(current, ast.Call):
+                calls.append(current)
+                current = current.func
+            elif isinstance(current, ast.Subscript):
+                current = current.value
+            elif _composite(current):
+                calls += _receiver_calls(current)
+                break
+            else:
+                break
+    return calls
 
 
 def _base_names(node: ast.AST) -> list[str]:
-    """The variables an assigned value's chains start from, through a conditional or boolean
-    expression's branches."""
-    if isinstance(node, ast.IfExp):
-        return [*_base_names(node.body), *_base_names(node.orelse)]
-    if isinstance(node, ast.BoolOp):
-        return [name for value in node.values for name in _base_names(value)]
-    name = _base_name(node)
-    return [] if name is None else [name]
+    """The variables an expression's chains start from, read through a combination, a
+    conditional, a boolean or an assignment expression wherever one stands in them (C4; F2)."""
+    names: list[str] = []
+    for part in _parts(node):
+        current = part
+        while True:
+            if isinstance(current, ast.Attribute):
+                current = current.value
+            elif isinstance(current, ast.Call):
+                current = current.func
+            elif isinstance(current, ast.Subscript):
+                current = current.value
+            elif isinstance(current, ast.Name):
+                names.append(current.id)
+                break
+            elif _composite(current):
+                names += _base_names(current)
+                break
+            else:
+                break
+    return names
 
 
-def _assigned_to(node: ast.AST, parents: dict[int, ast.AST]) -> list[str]:
-    """The names a chain's outermost expression is plainly assigned to, through a conditional or
-    boolean expression that holds it (``query = (... if lock else ...)``)."""
-    child, parent = node, parents.get(id(node))
-    while isinstance(parent, ast.IfExp | ast.BoolOp) and child is not getattr(parent, "test", None):
-        child, parent = parent, parents.get(id(parent))
-    return _targets(parent)
+@dataclass
+class _Climb:
+    """What a queryset expression reaches upwards in its function (C4; F2): the calls made on it
+    and on the other parts of every combination, conditional or boolean expression it stands in,
+    the names it is assigned to (an assignment expression's included), and the variables the
+    other parts start from."""
+
+    calls: list[ast.Call]
+    assigned: list[str]
+    others: list[str]
+
+
+def _climb(node: ast.AST, parents: dict[int, ast.AST]) -> _Climb:
+    calls: list[ast.Call] = []
+    assigned: list[str] = []
+    others: list[ast.AST] = []
+    into: list[str] = []
+    top = node
+    while True:
+        parent = parents.get(id(top))
+        if isinstance(parent, ast.Attribute) and parent.value is top:
+            top = parent
+        elif isinstance(parent, ast.Call) and parent.func is top:
+            calls.append(parent)
+            top = parent
+        elif isinstance(parent, ast.Subscript) and parent.value is top:
+            top = parent
+        elif isinstance(parent, ast.BinOp) and isinstance(parent.op, COMBINATIONS):
+            others.append(parent.right if parent.left is top else parent.left)
+            top = parent
+        elif isinstance(parent, ast.IfExp) and top is not parent.test:
+            others.append(parent.orelse if parent.body is top else parent.body)
+            top = parent
+        elif isinstance(parent, ast.BoolOp):
+            others += [value for value in parent.values if value is not top]
+            top = parent
+        elif isinstance(parent, ast.NamedExpr) and parent.value is top:
+            assigned.append(parent.target.id)
+            top = parent
+        elif (
+            isinstance(parent, ast.AugAssign)
+            and parent.value is top
+            and isinstance(parent.op, COMBINATIONS)
+            and isinstance(parent.target, ast.Name)
+        ):
+            # A combination assigned in place, the queryset on its right (``rows |= ...``): the
+            # name's other values are its other parts, and the name holds the result.
+            assigned.append(parent.target.id)
+            into.append(parent.target.id)
+            break
+        else:
+            break
+    for other in others:
+        calls += _receiver_calls(other)
+    names = [name for other in others for name in _base_names(other)]
+    return _Climb(calls, [*assigned, *_targets(parents.get(id(top)))], [*names, *into])
 
 
 def _targets(node: ast.AST | None) -> list[str]:
@@ -409,19 +536,19 @@ def _targets(node: ast.AST | None) -> list[str]:
 
 @dataclass
 class _Function:
-    """One file's plain assignments and calls, by enclosing function (C3; L2): each name's
-    assigned values, the calls made on a chain that starts from each name, and the names assigned
-    from such a chain."""
+    """One file's assignments and uses of names, by enclosing function (C3; L2; C4): each name's
+    assigned values (a combination assigned in place, ``rows &= ...``, included), those combined
+    in place alone, and every place the name is read."""
 
     assigned: dict[tuple[int, str], list[ast.expr]]
-    calls_on: dict[tuple[int, str], list[ast.Call]]
-    derived: dict[tuple[int, str], list[str]]
+    combined: dict[tuple[int, str], list[ast.expr]]
+    uses: dict[tuple[int, str], list[ast.Name]]
 
 
 def _read_functions(tree: ast.AST, owners: dict[int, int]) -> _Function:
     assigned: dict[tuple[int, str], list[ast.expr]] = {}
-    calls_on: dict[tuple[int, str], list[ast.Call]] = {}
-    derived: dict[tuple[int, str], list[str]] = {}
+    combined: dict[tuple[int, str], list[ast.expr]] = {}
+    uses: dict[tuple[int, str], list[ast.Name]] = {}
     for node in ast.walk(tree):
         owner = owners.get(id(node), 0)
         value = getattr(node, "value", None)
@@ -429,42 +556,58 @@ def _read_functions(tree: ast.AST, owners: dict[int, int]) -> _Function:
         if targets and isinstance(value, ast.expr):
             for name in targets:
                 assigned.setdefault((owner, name), []).append(value)
-            for base in _base_names(value):
-                derived.setdefault((owner, base), []).extend(targets)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            receiver = _base_name(node.func.value)
-            if receiver is not None:
-                calls_on.setdefault((owner, receiver), []).append(node)
-    return _Function(assigned, calls_on, derived)
+        if (
+            isinstance(node, ast.AugAssign)
+            and isinstance(node.target, ast.Name)
+            and isinstance(node.op, COMBINATIONS)
+        ):
+            assigned.setdefault((owner, node.target.id), []).append(node.value)
+            combined.setdefault((owner, node.target.id), []).append(node.value)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            uses.setdefault((owner, node.id), []).append(node)
+    return _Function(assigned, combined, uses)
 
 
 def _group(
     lock: ast.Call, owner: int, parents: dict[int, ast.AST], functions: _Function
 ) -> list[ast.Call]:
-    """Every call on the lock's queryset in its function: its chain, then, transitively, the
-    chains of every variable its receiver was assigned from and of every variable assigned from
-    it, before and after the lock."""
-    chain, top = _chain(lock, parents)
-    found = list(chain)
+    """Every call on the lock's queryset in its function: its chain, down its receiver and up
+    through the calls made on it, then, transitively, the chains of every variable it was
+    assigned from and of every variable assigned from it, before and after the lock, each read
+    through every combination, conditional, boolean or assignment expression it stands in, with
+    every chain those hold (C4; F2)."""
+    found: list[ast.Call] = [lock, *_receiver_calls(lock.func)]
     backward: set[str] = set()
-    pending = _base_names(lock.func)
-    while pending:
-        name = pending.pop()
-        if name in backward:
-            continue
-        backward.add(name)
-        for value in functions.assigned.get((owner, name), []):
-            found += _receiver_calls(value)
-            pending += _base_names(value)
     forward: set[str] = set()
-    pending = _assigned_to(top, parents)
-    while pending:
-        name = pending.pop()
+    back: list[str] = _base_names(lock.func)
+    ahead: list[str] = []
+
+    def climb(node: ast.AST) -> None:
+        reached = _climb(node, parents)
+        found.extend(reached.calls)
+        ahead.extend(reached.assigned)
+        back.extend(reached.others)
+
+    climb(lock)
+    while back or ahead:
+        if back:
+            name = back.pop()
+            if name in backward:
+                continue
+            backward.add(name)
+            for value in functions.assigned.get((owner, name), []):
+                found.extend(_receiver_calls(value))
+                back.extend(_base_names(value))
+            continue
+        name = ahead.pop()
         if name in forward:
             continue
         forward.add(name)
-        found += functions.calls_on.get((owner, name), [])
-        pending += functions.derived.get((owner, name), [])
+        for use in functions.uses.get((owner, name), []):
+            climb(use)
+        for value in functions.combined.get((owner, name), []):
+            found.extend(_receiver_calls(value))
+            back.extend(_base_names(value))
     return list({id(call): call for call in found}.values())
 
 
@@ -486,6 +629,23 @@ def _expression_name(node: ast.AST) -> str:
     return _field_kind(node) if isinstance(node, ast.Call) else ""
 
 
+def _given_a_path(call: ast.Call) -> bool:
+    """Whether a call is to a capitalised name other than ``Q`` and ``F`` (a class, as Django's
+    expressions and functions are: ``Lower``, ``Coalesce``, ``Cast``, ...) and takes a string
+    literal or an f-string as an argument, positional or keyword (C4; F1). Such a call names a
+    field path the scan cannot read; a ``*`` or ``**`` argument to one counts the same, since the
+    scan cannot read what it holds."""
+    name = _expression_name(call)
+    if not name[:1].isupper() or name in EXPRESSIONS:
+        return False
+    arguments = [*call.args, *(keyword.value for keyword in call.keywords)]
+    return (
+        any(_text(argument) is not None for argument in arguments)
+        or any(isinstance(argument, ast.Starred) for argument in call.args)
+        or any(keyword.arg is None for keyword in call.keywords)
+    )
+
+
 class _Paths:
     """The paths a ``Q`` or an ``F`` names, read in the lock's function (C3; L2): ``None`` stands
     for one the scan cannot read, which counts as a join."""
@@ -493,16 +653,22 @@ class _Paths:
     def __init__(self, assigned: Callable[[str], list[ast.expr]]) -> None:
         self.assigned = assigned
 
-    def expression(self, node: ast.AST, seen: frozenset[str] = frozenset()) -> list[str | None]:
-        """An argument that must be a literal ``Q(...)`` or ``F(...)``, or a name assigned one in
-        the function: its paths, or ``[None]`` for anything else."""
-        if isinstance(node, ast.Call) and _expression_name(node) in EXPRESSIONS:
+    def expression(
+        self,
+        node: ast.AST,
+        seen: frozenset[str] = frozenset(),
+        allowed: frozenset[str] = EXPRESSIONS,
+    ) -> list[str | None]:
+        """An argument that must be a literal ``Q(...)`` or ``F(...)`` (only a ``Q`` where
+        ``allowed`` says so: C4, F3), or a name assigned one in the function: its paths, or
+        ``[None]`` for anything else."""
+        if isinstance(node, ast.Call) and _expression_name(node) in allowed:
             return self.literal(node, seen)
         if isinstance(node, ast.Name) and node.id not in seen:
             values = self.assigned(node.id)
             held = [v for v in values if isinstance(v, ast.Call)]
             if values and len(held) == len(values):
-                if all(_expression_name(v) in EXPRESSIONS for v in held):
+                if all(_expression_name(v) in allowed for v in held):
                     return [path for v in held for path in self.literal(v, seen | {node.id})]
         return [None]
 
@@ -531,11 +697,15 @@ class _Paths:
 
     def values(self, node: ast.AST, seen: frozenset[str] = frozenset()) -> list[str | None]:
         """A keyword's value: a value, but for the paths of every ``Q`` or ``F`` in it or in a
-        name it uses, through that name's assignments in the function."""
+        name it uses, through that name's assignments in the function, and for every call to a
+        capitalised name that takes a string literal or an f-string (C4; F1), a path the scan
+        cannot read."""
         found: list[str | None] = []
         for inner in ast.walk(node):
             if isinstance(inner, ast.Call) and _expression_name(inner) in EXPRESSIONS:
                 found += self.literal(inner, seen)
+            elif isinstance(inner, ast.Call) and _given_a_path(inner):
+                found.append(None)
             elif isinstance(inner, ast.Name) and inner.id not in seen:
                 for value in self.assigned(inner.id):
                     found += self.values(value, seen | {inner.id})
@@ -556,7 +726,11 @@ def _joins(calls: Iterable[ast.Call], model: Model, paths: _Paths) -> list[str]:
             found.append(method)
             continue
         judged: list[str | None] = []
-        if method in LOOKUP_METHODS:
+        if method in CONDITION_METHODS:
+            # C4 (F3): only a literal Q, or a name assigned one, is read; anything else joins.
+            for value in [*args, *(k.value for k in keywords)]:
+                judged += paths.expression(value, allowed=frozenset({"Q"}))
+        elif method in LOOKUP_METHODS:
             for keyword in keywords:
                 if keyword.arg not in NOT_PATHS:
                     judged.append(keyword.arg)
@@ -578,12 +752,13 @@ def _joins(calls: Iterable[ast.Call], model: Model, paths: _Paths) -> list[str]:
 
 
 def _of(call: ast.Call, model: Model) -> tuple[str, ...] | None:
-    """``of=``'s entries if every one is a constant naming no path to ``AppAccount``; else
-    ``None``."""
+    """``of=``'s entries if it is a tuple or list written in the call whose every entry is a plain
+    string literal naming no path to ``AppAccount``; else ``None``, as naming one: an f-string, a
+    name, a call, a starred entry or any other value fails closed (C4; F4)."""
     value = next((k.value for k in call.keywords if k.arg == "of"), None)
     if not isinstance(value, ast.Tuple | ast.List) or not value.elts:
         return None
-    entries = [_text(element) for element in value.elts]
+    entries = [_literal(element) for element in value.elts]
     if any(entry is None for entry in entries):
         return None
     named = tuple(str(entry) for entry in entries)
@@ -627,6 +802,83 @@ def names_its_tables(text: str) -> bool:
     return all(TABLE_AFTER.match(text, match.end()) is not None for match in keywords)
 
 
+def _holds_a_composite(value: ast.AST) -> bool:
+    """Whether an assigned value is, or its chain starts from, a combination, a conditional, a
+    boolean or an assignment expression (C4; F2)."""
+    current = value
+    while isinstance(current, ast.Attribute | ast.Call | ast.Subscript):
+        current = current.func if isinstance(current, ast.Call) else current.value
+    return _composite(current)
+
+
+def _receiver_heads(
+    node: ast.AST, owner: int, functions: _Function, seen: frozenset[str] = frozenset()
+) -> list[_Head]:
+    """Every chain a lock's receiver holds (C4; F2): its own, and, where it starts from a name
+    that holds such an expression in the function (one assigned to it, or a combination assigned
+    in place), every chain each of that name's values holds, transitively."""
+    heads = _heads(node)
+    more: list[_Head] = []
+    for head in heads:
+        if head.base is None or head.base in seen:
+            continue
+        values = functions.assigned.get((owner, head.base), [])
+        combined = bool(functions.combined.get((owner, head.base)))
+        if not (combined or any(_holds_a_composite(value) for value in values)):
+            continue
+        prefix = head.names[:-1]
+        for value in values:
+            for inner in _receiver_heads(value, owner, functions, seen | {head.base}):
+                more.append(_Head((*prefix, *inner.names), inner.variable, inner.base))
+    return [*heads, *more]
+
+
+def _passes(mode: str) -> bool:
+    return mode == "FOR NO KEY UPDATE" or mode.startswith("FOR UPDATE OF ")
+
+
+def _literal_true(node: ast.AST | None) -> bool:
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _own_variable_is_account(node: ast.AST | None, base: str | None) -> bool:
+    """Whether ``no_key`` is exactly ``<the lock's own variable> is AppAccount``: one comparison
+    with the one operator ``is``, its left side the variable the lock's receiver starts from and
+    its right side the name ``AppAccount`` (C4; F5)."""
+    return (
+        isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.Is)
+        and isinstance(node.left, ast.Name)
+        and base is not None
+        and node.left.id == base
+        and len(node.comparators) == 1
+        and isinstance(node.comparators[0], ast.Name)
+        and node.comparators[0].id == ACCOUNT_MODEL
+    )
+
+
+def _judge(
+    head: _Head, no_key: ast.AST | None, joins: tuple[str, ...], of: tuple[str, ...] | None
+) -> tuple[str, str] | None:
+    """One chain of a lock's receiver, judged as the receiver: its kind and mode, or ``None`` for
+    a lock of another model that joins nothing, which is not judged."""
+    no_key_true = _literal_true(no_key)
+    if ACCOUNT_MODEL in head.names:
+        return "orm", "FOR NO KEY UPDATE" if no_key_true else "FOR UPDATE"
+    if head.variable and not any(name[:1].isupper() for name in head.names):
+        # C3 (L1): with a join, only no_key=True passes; an of= does not. C4 (F5): without one,
+        # no_key may also be exactly `<the lock's own variable> is AppAccount`.
+        generic = no_key_true or (not joins and _own_variable_is_account(no_key, head.base))
+        return "generic", "FOR NO KEY UPDATE" if generic else "FOR UPDATE"
+    if joins:
+        mode = "FOR NO KEY UPDATE" if no_key_true else "FOR UPDATE"
+        if mode == "FOR UPDATE" and of is not None:
+            mode = "FOR UPDATE OF " + ", ".join(of)
+        return "join", mode
+    return None
+
+
 def scan_file(path: Path, model: Model | None = None) -> list[Lock]:
     model = model if model is not None else read_models()
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -643,30 +895,25 @@ def scan_file(path: Path, model: Model | None = None) -> list[Lock]:
             and isinstance(node.func, ast.Attribute)
             and node.func.attr == "select_for_update"
         ):
-            names, variable = _receiver_names(node.func.value)
             no_key = next((k.value for k in node.keywords if k.arg == "no_key"), None)
-            expression = ast.unparse(no_key) if no_key is not None else ""
             function = _enclosing(functions, node.lineno)
             owner = owners.get(id(node), 0)
             paths = _Paths(partial(_assigned_in, read, owner))
             calls = _group(node, owner, parents, read)
             joins = tuple(dict.fromkeys(_joins(calls, model, paths)))
             of = _of(node, model)
-            if ACCOUNT_MODEL in names:
-                mode = "FOR NO KEY UPDATE" if expression == "True" else "FOR UPDATE"
-                found.append(Lock(relative, node.lineno, function, "orm", mode, joins))
-            elif variable and not any(name[:1].isupper() for name in names):
-                # C3 (L1): with a join, only no_key=True passes; an of= does not.
-                generic = expression == "True" or (
-                    not joins and ACCOUNT_MODEL in expression and " is " in expression
+            # C4 (F2): each chain the receiver holds is judged as the receiver, with the joins of
+            # them all; the lock passes only if it passes for each.
+            judged = [
+                verdict
+                for head in _receiver_heads(node.func.value, owner, read)
+                if (verdict := _judge(head, no_key, joins, of)) is not None
+            ]
+            if judged:
+                kind, mode = next(
+                    (verdict for verdict in judged if not _passes(verdict[1])), judged[0]
                 )
-                mode = "FOR NO KEY UPDATE" if generic else "FOR UPDATE"
-                found.append(Lock(relative, node.lineno, function, "generic", mode, joins))
-            elif joins:
-                mode = "FOR NO KEY UPDATE" if expression == "True" else "FOR UPDATE"
-                if mode == "FOR UPDATE" and of is not None:
-                    mode = "FOR UPDATE OF " + ", ".join(of)
-                found.append(Lock(relative, node.lineno, function, "join", mode, joins))
+                found.append(Lock(relative, node.lineno, function, kind, mode, joins))
         if id(node) in docstrings or isinstance(parents.get(id(node)), ast.JoinedStr):
             continue
         text = _text(node)
