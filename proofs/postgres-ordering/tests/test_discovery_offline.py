@@ -22,6 +22,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 from unittest import mock
+from uuid import UUID, uuid4
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -976,3 +977,100 @@ class AccountLockScanTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(names(text))
 
+
+# C3 (S1; DM-67): the three reads of the viewer's own account row the pages make before the probe
+# point, as Django and ``tx.read_account_shared`` send them (seen in a local run).
+_COLUMNS = ", ".join(
+    f'"glow_persistence_appaccount"."{name}"'
+    for name in (
+        "id",
+        "created_at",
+        "updated_at",
+        "version",
+        "auth_user_id",
+        "state",
+        "eligibility_version",
+        "preferences_version",
+        "blocks_version",
+        "session_epoch",
+    )
+)
+_BY_KEY = (
+    ' FROM "glow_persistence_appaccount" WHERE "glow_persistence_appaccount"."id" = %s'
+    ' ORDER BY "glow_persistence_appaccount"."id" ASC LIMIT 1'
+)
+OWN_ACCOUNT_READS = {
+    "the_lock": f"SELECT {_COLUMNS}{_BY_KEY} FOR NO KEY UPDATE",
+    "the_shared_read": "SELECT state FROM glow_persistence_appaccount WHERE id = %s FOR SHARE",
+    "the_versions": (
+        'SELECT "glow_persistence_appaccount"."eligibility_version" AS "eligibility_version",'
+        ' "glow_persistence_appaccount"."preferences_version" AS "preferences_version",'
+        ' "glow_persistence_appaccount"."blocks_version" AS "blocks_version"' + _BY_KEY
+    ),
+}
+VIEWER_STATEMENT = "WITH v AS (SELECT ... WHERE a.id = %(viewer)s) SELECT ..."
+
+
+class PreProbeListTests(unittest.TestCase):
+    """C3's list (S1; DM-67): before the probe point, a statement that reads a member table passes
+    only as ``VIEWER`` bound to the viewer, or as one read of the viewer's own account row."""
+
+    def setUp(self) -> None:
+        self.viewer = str(uuid4())
+        self.other = str(uuid4())
+
+    def listed(self, sql: str, params: Any) -> bool:
+        return discovery_cases.listed(sql, params, self.viewer, VIEWER_STATEMENT)
+
+    def test_the_three_account_reads_pass(self) -> None:
+        for name, sql in OWN_ACCOUNT_READS.items():
+            with self.subTest(read=name):
+                self.assertTrue(self.listed(sql, (UUID(self.viewer),)))
+                self.assertTrue(self.listed(sql, [UUID(self.viewer)]))
+
+    def test_viewer_passes_only_for_the_viewer(self) -> None:
+        self.assertTrue(self.listed(VIEWER_STATEMENT, {"viewer": UUID(self.viewer), "today": 1}))
+        self.assertFalse(self.listed(VIEWER_STATEMENT, {"viewer": UUID(self.other), "today": 1}))
+        self.assertFalse(self.listed(VIEWER_STATEMENT, [UUID(self.viewer)]))
+
+    def test_other_reads_fail(self) -> None:
+        shared = OWN_ACCOUNT_READS["the_shared_read"]
+        cases: dict[str, tuple[str, Any]] = {
+            "another_id": (shared, [UUID(self.other)]),
+            "the_viewer_and_another": (shared, [UUID(self.viewer), UUID(self.other)]),
+            "an_in_list": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id IN (%s, %s)",
+                [UUID(self.viewer), UUID(self.other)],
+            ),
+            "a_join": (
+                "SELECT a.state FROM glow_persistence_appaccount a"
+                " JOIN glow_persistence_profile p ON p.account_id = a.id WHERE a.id = %s",
+                [UUID(self.viewer)],
+            ),
+            "a_subquery": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %s"
+                " OR id IN (SELECT candidate_id FROM glow_persistence_recommendationentry)",
+                [UUID(self.viewer)],
+            ),
+            "a_subquery_in_the_columns": (
+                "SELECT (SELECT count(*) FROM glow_persistence_appaccount) FROM"
+                " glow_persistence_appaccount WHERE id = %s",
+                [UUID(self.viewer)],
+            ),
+            "every_other_account": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id <> %s",
+                [UUID(self.viewer)],
+            ),
+            "another_condition": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %s AND state = 'active'",
+                [UUID(self.viewer)],
+            ),
+            "another_lock": (shared.replace("FOR SHARE", "FOR UPDATE"), [UUID(self.viewer)]),
+            "a_named_parameter": (
+                "SELECT state FROM glow_persistence_appaccount WHERE id = %(viewer)s",
+                {"viewer": UUID(self.viewer)},
+            ),
+        }
+        for name, (sql, params) in cases.items():
+            with self.subTest(read=name):
+                self.assertFalse(self.listed(sql, params))
