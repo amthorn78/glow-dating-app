@@ -176,6 +176,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-15 | 12 Nov 2026 | follow-through | Recording PR45's run of record for Stage A (`b09cbf3`), and later C1's, the manager left the P11 plan's SV3 entry saying "Run of record: none yet" and concurrency "not claimed" | The exact-head review, F6 |
 | AM11-16 | 12 Nov 2026 | accuracy | The evidence record's "PR45's run on `4b771e0`" said "Every other job passed"; the gate job also failed, as designed | The exact-head review, N6; corrected at the next batch |
 | AM11-17 | 12 Nov 2026 | follow-through | Gave DM-65 at `c661dce` without a watch on Codex's pass, then wrote C2's prompt at `2475d7b` without reading PR45's comments; Codex's P2 on `c661dce` (17:39 UTC) was found only at 18:47, after the pass on the prompt's commit. Both of its findings were already C2's items, so the prompt stood | App Manager 11, reading PR45's comments before giving C2's prompt |
+| AM11-18 | 13 Nov 2026 | communication | After giving F7's decision message on 12 November, named it to Nathan in later status lines only as "your F7 decision", a review label he had no reason to keep in mind, without saying what it was; he asked "what 'F7' decision?" | Nathan |
 
 ## App Manager 2
 
@@ -1124,6 +1125,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-18 — A pending decision named only by its review label (communication)
+
+- **What happened:** F7's decision message (`docs/ephemeral/2026-11-12-f7-two-way-disclosure-decision.md`) went to Nathan on 12 November. In the messages after it, the manager reminded him of it only as "your F7 decision", a finding label from the exact-head review, never with what it was about.
+- **Caught by:** Nathan, asking "what 'F7' decision?"
+- **Effect:** the decision stayed unanswered longer than it needed to; it holds no merge.
+- **Correction:** the manager restated the decision in plain words, with its options, in the reply.
+- **Prevention:** a reminder to Nathan of a pending decision says in plain words what the decision is about, every time, not only its label (OD-32).
 
 ### AM11-17 — A Codex pass on a consultation's commit left unread (follow-through)
 
