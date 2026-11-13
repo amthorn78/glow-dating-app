@@ -1204,6 +1204,78 @@ PLANTED_F2_MORE = {
         "    )\n"
     ),
 }
+# Found by C4's own probes (forms item 2's and item 5's words name, which C3's scan and C4's first
+# commit passed): a combination assigned in place with the lock on its right; a lock on a name
+# that holds an account combination, conditional or in-place combination; and a model held in a
+# variable whose name begins with an underscore.
+PLANTED_C4_PROBES = {
+    "combined_in_place_the_lock_on_the_right": (
+        "join",
+        "def lock(pk):\n"
+        "    rows = Match.objects.filter(account_low__state='active')\n"
+        "    rows |= Match.objects.select_for_update().filter(pk=pk)\n"
+        "    return rows.first()\n",
+    ),
+    "combined_in_place_the_lock_on_the_right_a_join_after": (
+        "join",
+        "def lock(pk):\n"
+        "    rows = Match.objects.none()\n"
+        "    rows |= Match.objects.select_for_update().filter(pk=pk)\n"
+        "    return rows.filter(account_low__state='active').first()\n",
+    ),
+    "a_name_holding_an_account_combination": (
+        "orm",
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)\n"
+        "    return rows.select_for_update(no_key=rows is AppAccount).first()\n",
+    ),
+    "a_name_holding_an_account_conditional": (
+        "orm",
+        "def lock(a, b, flag):\n"
+        "    rows = AppAccount.objects.filter(pk=a) if flag else AppAccount.objects.filter(pk=b)\n"
+        "    return rows.select_for_update(no_key=rows is AppAccount).first()\n",
+    ),
+    "a_name_holding_an_account_combination_in_place": (
+        "orm",
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a)\n"
+        "    rows |= AppAccount.objects.filter(pk=b)\n"
+        "    return rows.select_for_update(no_key=rows is AppAccount).first()\n",
+    ),
+    "an_underscore_variable_is_not": (
+        "generic",
+        "def _lock(_model, pk):\n"
+        "    rows = _model.objects.select_for_update(no_key=_model is not AppAccount)\n"
+        "    return rows.filter(pk=pk).first()\n",
+    ),
+    "an_underscore_variable_with_no_no_key": (
+        "generic",
+        "def _lock(_model, pk):\n"
+        "    return _model.objects.select_for_update().filter(pk=pk).first()\n",
+    ),
+    "an_underscore_variable_with_a_join_and_of": (
+        "generic",
+        "def _lock(_model, pk):\n"
+        "    return (\n"
+        "        _model.objects.select_related('account')\n"
+        "        .select_for_update(of=('self',))\n"
+        "        .filter(pk=pk)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+}
+ACCEPTED_C4_PROBES = {
+    "an_underscore_helper": (
+        "def _lock(_model, pk):\n"
+        "    rows = _model.objects.select_for_update(no_key=_model is AppAccount)\n"
+        "    return rows.filter(pk=pk).first()\n"
+    ),
+    "a_name_holding_an_account_combination_with_no_key": (
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)\n"
+        "    return rows.select_for_update(no_key=True).first()\n"
+    ),
+}
 # Item 3 (F3): complex_filter.
 PLANTED_F3 = (
     "def lock(pk):\n"
@@ -1302,6 +1374,21 @@ class LockScanC4Tests(unittest.TestCase):
         locks = self.scan_source(text)
         self.assertEqual([(lock.kind, lock.mode) for lock in locks], [("orm", "FOR NO KEY UPDATE")])
         self.assertEqual(account_lock_scan.violations(locks), [])
+
+    def test_the_forms_c4s_probes_found_are_refused(self) -> None:
+        # Item 2 (in place, the lock on the right; a receiver held in a name) and item 5 (a
+        # variable whose name begins with an underscore).
+        for name, (kind, text) in PLANTED_C4_PROBES.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(locks), 1)
+                self.assertEqual((locks[0].kind, locks[0].mode), (kind, "FOR UPDATE"))
+                self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+        for name, text in ACCEPTED_C4_PROBES.items():
+            with self.subTest(accepted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(locks), 1)
+                self.assertEqual(account_lock_scan.violations(locks), [])
 
     def test_complex_filter_takes_only_a_q(self) -> None:
         # Item 3 (F3).

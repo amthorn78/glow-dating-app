@@ -19,8 +19,9 @@ It reads the source, never imports it, and finds four kinds of lock:
 
 - **an ORM lock of the account:** a ``select_for_update(...)`` call whose receiver names
   ``AppAccount``; it must pass ``no_key=True``;
-- **a generic ORM lock:** a ``select_for_update(...)`` call on a model held in a variable (a
-  helper such as ``glow_chat``'s ``_lock`` or the reference design's), which can lock an account;
+- **a generic ORM lock:** a ``select_for_update(...)`` call on a model held in a variable (any
+  name that is not capitalised, ``_model`` included; C4) (a helper such as ``glow_chat``'s
+  ``_lock`` or the reference design's), which can lock an account;
   it must pass ``no_key`` as the literal ``True``, or, where its queryset joins no other table,
   as exactly ``<variable> is AppAccount``: one comparison with the one operator ``is``, its left
   side the variable the lock's receiver starts from (``model`` in
@@ -45,8 +46,10 @@ It reads the source, never imports it, and finds four kinds of lock:
 
 **A receiver that is not a plain chain** (C4; F2): where a lock's receiver is a combination
 (``&``, ``|`` or ``^``), a conditional expression, a boolean expression (``and``, ``or``) or an
-assignment expression (``:=``), wherever one stands in it, each chain it holds is judged as the
-receiver, with the joins of them all, and the lock passes only if it passes for each:
+assignment expression (``:=``), wherever one stands in it, or starts from a name that holds one
+in the function (assigned to it, or a combination assigned in place, ``rows |= ...``), each chain
+it holds is judged as the receiver, with the joins of them all, and the lock passes only if it
+passes for each:
 ``(AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)).select_for_update()`` is an
 account lock, and needs ``no_key=True``.
 
@@ -83,8 +86,9 @@ function, before and after the lock, transitively (``a = M.objects.filter(...)``
 argument uses. A queryset written as a combination (``&``, ``|`` or ``^``, a combination assigned
 in place, ``a &= ...``, included), a conditional expression, a boolean expression or an assignment
 expression is read through to every chain it holds, inline or held in a name assigned in the
-function, before and after the lock, whichever part holds the lock and whether the lock is taken
-on a part or on the whole; the joins of every part count (C4; F2).
+function, before and after the lock, whichever part holds the lock (the right side of a
+combination assigned in place included) and whether the lock is taken on a part or on the whole;
+the joins of every part count (C4; F2).
 
 So the scan cannot see: the joins of a queryset, or of a ``Q``, an ``F`` or another expression,
 that reaches the lock from another function (a lock on such a queryset is judged as a generic
@@ -98,7 +102,8 @@ formatted after it is assigned to a name, and a ``bytes`` string. It does not re
 ``datetimes()`` or ``in_bulk(field_name=...)``, which need no rule: PostgreSQL refuses a row lock
 with the ``DISTINCT`` the first two add, and ``in_bulk``'s field is the model's own. A
 select_for_update whose receiver names another model (``Match``, ``Profile``, ...) and joins
-nothing is not an account lock and is not judged. It prints counts and locations only.
+nothing is not an account lock and is not judged. C4's own probes found further forms it does not
+see, each a stated limit (the proof README's "Limits"). It prints counts and locations only.
 """
 
 from __future__ import annotations
@@ -356,8 +361,8 @@ def _parts(node: ast.AST) -> list[ast.AST]:
 @dataclass(frozen=True)
 class _Head:
     """One chain a lock's receiver holds (C4; F2): the names down it, whether it starts from a
-    lower-case variable (a model held in a variable) rather than a model class, and that
-    variable."""
+    variable whose name is not capitalised (a model held in a variable, ``_model`` included)
+    rather than a model class, and that variable."""
 
     names: tuple[str, ...]
     variable: bool
@@ -381,7 +386,7 @@ def _heads(node: ast.AST) -> list[_Head]:
                 current = current.value
             elif isinstance(current, ast.Name):
                 names.append(current.id)
-                heads.append(_Head(tuple(names), current.id[:1].islower(), current.id))
+                heads.append(_Head(tuple(names), not current.id[:1].isupper(), current.id))
                 break
             elif _composite(current):
                 heads += [
@@ -479,6 +484,7 @@ def _climb(node: ast.AST, parents: dict[int, ast.AST]) -> _Climb:
     calls: list[ast.Call] = []
     assigned: list[str] = []
     others: list[ast.AST] = []
+    into: list[str] = []
     top = node
     while True:
         parent = parents.get(id(top))
@@ -501,12 +507,23 @@ def _climb(node: ast.AST, parents: dict[int, ast.AST]) -> _Climb:
         elif isinstance(parent, ast.NamedExpr) and parent.value is top:
             assigned.append(parent.target.id)
             top = parent
+        elif (
+            isinstance(parent, ast.AugAssign)
+            and parent.value is top
+            and isinstance(parent.op, COMBINATIONS)
+            and isinstance(parent.target, ast.Name)
+        ):
+            # A combination assigned in place, the queryset on its right (``rows |= ...``): the
+            # name's other values are its other parts, and the name holds the result.
+            assigned.append(parent.target.id)
+            into.append(parent.target.id)
+            break
         else:
             break
     for other in others:
         calls += _receiver_calls(other)
     names = [name for other in others for name in _base_names(other)]
-    return _Climb(calls, [*assigned, *_targets(parents.get(id(top)))], names)
+    return _Climb(calls, [*assigned, *_targets(parents.get(id(top)))], [*names, *into])
 
 
 def _targets(node: ast.AST | None) -> list[str]:
@@ -785,6 +802,37 @@ def names_its_tables(text: str) -> bool:
     return all(TABLE_AFTER.match(text, match.end()) is not None for match in keywords)
 
 
+def _holds_a_composite(value: ast.AST) -> bool:
+    """Whether an assigned value is, or its chain starts from, a combination, a conditional, a
+    boolean or an assignment expression (C4; F2)."""
+    current = value
+    while isinstance(current, ast.Attribute | ast.Call | ast.Subscript):
+        current = current.func if isinstance(current, ast.Call) else current.value
+    return _composite(current)
+
+
+def _receiver_heads(
+    node: ast.AST, owner: int, functions: _Function, seen: frozenset[str] = frozenset()
+) -> list[_Head]:
+    """Every chain a lock's receiver holds (C4; F2): its own, and, where it starts from a name
+    that holds such an expression in the function (one assigned to it, or a combination assigned
+    in place), every chain each of that name's values holds, transitively."""
+    heads = _heads(node)
+    more: list[_Head] = []
+    for head in heads:
+        if head.base is None or head.base in seen:
+            continue
+        values = functions.assigned.get((owner, head.base), [])
+        combined = bool(functions.combined.get((owner, head.base)))
+        if not (combined or any(_holds_a_composite(value) for value in values)):
+            continue
+        prefix = head.names[:-1]
+        for value in values:
+            for inner in _receiver_heads(value, owner, functions, seen | {head.base}):
+                more.append(_Head((*prefix, *inner.names), inner.variable, inner.base))
+    return [*heads, *more]
+
+
 def _passes(mode: str) -> bool:
     return mode == "FOR NO KEY UPDATE" or mode.startswith("FOR UPDATE OF ")
 
@@ -858,7 +906,7 @@ def scan_file(path: Path, model: Model | None = None) -> list[Lock]:
             # them all; the lock passes only if it passes for each.
             judged = [
                 verdict
-                for head in _heads(node.func.value)
+                for head in _receiver_heads(node.func.value, owner, read)
                 if (verdict := _judge(head, no_key, joins, of)) is not None
             ]
             if judged:
