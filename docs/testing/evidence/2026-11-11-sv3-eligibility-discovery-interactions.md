@@ -1279,7 +1279,7 @@ App Manager 11, 14 November 2026, from the pushed branch `claude/keen-cannon-p0i
 
   It kept `main`, the manager branch and `claude/dev-manager` by the keep-list. The review sessions pushed no branch.
 - **`git ls-remote`** after it (21:41 UTC): `main` at `8d83474`, the manager branch at `7b79a35`, `claude/dev-manager` at `a03e8c8`, and nothing else. No PR is open.
-- **`main`'s push run** 43644047738 on `8d83474`: started at 21:40:23 UTC and was still running when this receipt's first commit was written; the line below completes it.
+- **`main`'s push run** 43644047738 on `8d83474` passed all eight jobs (21:40:23 to 21:52:41 UTC), every DM-41 retry step skipped, and the gate printed `Application checks passed`. The Database proof checks job's log: `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 16.8 s`, every verdict `PASS`; identity 49 cases passed, phase 43 s; profile 69, phase 98 s; discovery 40, phase 114 s, with `locks.account_locks_no_key_update` at 7 account locks, 52 calls, 0 joining; no `::error`, no traceback. The receipt's first commit, `829f90c`, recorded the run as still running; this line completes it.
 - **The manager branch holds `main`:** fast-forwarded to `8d83474`, since no commit followed PR45's head, so the next PR's merge base is `8d83474` (DM-57 item 5).
 - **Pruned:** Stage A's twenty-three prompts and consultations in `docs/ephemeral/`:
   - DM-60's (it consulted on the whole brief) to DM-70's, and the F7 decision message (answered as OD-64);
