@@ -1492,3 +1492,688 @@ class WriteCheckTests(unittest.TestCase):
             discovery_cases.is_write('SELECT "t"."updated_at", "t"."into_x" FROM "t" WHERE id = %s')
         )
         self.assertTrue(discovery_cases.is_write("SELECTED FROM t"))
+
+
+# C5 (DM-69; C4's delta re-review's F1): a lock's receiver name, followed through every plain
+# assignment. Each form locks account rows FOR UPDATE at run time: its name holds a queryset, so
+# `x is AppAccount` is false.
+_C5_IMPORTS = _C4_IMPORTS.replace("import Q, Value", "import F, Q, Value")
+_C5_COMBINATION = "    c = AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)\n"
+_C5_LOCK = "    return {name}.select_for_update(no_key={name} is AppAccount).first()\n"
+PLANTED_C5_RECEIVERS = {
+    "d_is_c": "def lock(a, b):\n" + _C5_COMBINATION + "    d = c\n" + _C5_LOCK.format(name="d"),
+    "d_is_c_filtered": (
+        "def lock(a, b):\n"
+        + _C5_COMBINATION
+        + "    d = c.filter(pk=a)\n"
+        + _C5_LOCK.format(name="d")
+    ),
+    "d_is_c_sliced": (
+        "def lock(a, b):\n" + _C5_COMBINATION + "    d = c[:5]\n" + _C5_LOCK.format(name="d")
+    ),
+    "d_is_rows_all_after_rows_combined_in_place": (
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a)\n"
+        "    rows |= AppAccount.objects.filter(pk=b)\n"
+        "    d = rows.all()\n" + _C5_LOCK.format(name="d")
+    ),
+    "three_hops": (
+        "def lock(a, b):\n"
+        + _C5_COMBINATION
+        + "    d = c\n    e = d\n    f = e\n"
+        + _C5_LOCK.format(name="f")
+    ),
+    "two_hops_from_an_account_conditional": (
+        "def lock(a, b, flag):\n"
+        "    c = AppAccount.objects.filter(pk=a) if flag else AppAccount.objects.filter(pk=b)\n"
+        "    d = c\n" + _C5_LOCK.format(name="d")
+    ),
+    "two_hops_from_an_assignment_expression": (
+        "def lock(a):\n"
+        "    c = (rows := AppAccount.objects.filter(pk=a))\n"
+        "    d = c\n" + _C5_LOCK.format(name="d")
+    ),
+}
+# Forms beyond the brief's examples that item 1's words name: an annotated assignment and a `:=`
+# as the plain assignment that passes the name on, and a hop through a combination in place.
+PLANTED_C5_RECEIVERS_MORE = {
+    "an_annotated_assignment": (
+        "def lock(a, b):\n" + _C5_COMBINATION + "    d: object = c\n" + _C5_LOCK.format(name="d")
+    ),
+    "an_assignment_expression_passes_it_on": (
+        "def lock(a, b):\n"
+        + _C5_COMBINATION
+        + "    if (d := c) is None:\n        return None\n"
+        + _C5_LOCK.format(name="d")
+    ),
+    "a_name_combined_in_place_two_hops_back": (
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a)\n"
+        "    rows &= AppAccount.objects.filter(pk=b)\n"
+        "    d = rows\n    e = d.order_by('pk')\n" + _C5_LOCK.format(name="e")
+    ),
+    "a_chain_starting_from_a_combination": (
+        "def lock(a, b):\n"
+        "    c = (AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)).filter(pk=a)\n"
+        "    d = c\n" + _C5_LOCK.format(name="d")
+    ),
+    "the_combination_in_a_later_assignment": (
+        "def lock(a, b, flag):\n"
+        "    c = Match.objects.none()\n"
+        "    if flag:\n"
+        "        c = AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)\n"
+        "    d = c\n" + _C5_LOCK.format(name="d")
+    ),
+    "a_name_re_assigned_from_itself": (
+        "def lock(a, b):\n"
+        + _C5_COMBINATION
+        + "    c = c.filter(pk=a)\n    d = c\n"
+        + _C5_LOCK.format(name="d")
+    ),
+    "a_composite_receiver_whose_later_part_holds_one": (
+        "def lock(a, b, flag):\n"
+        + _C5_COMBINATION
+        + "    return (Match.objects.all() if flag else c).select_for_update(\n"
+        "        no_key=c is AppAccount\n"
+        "    ).first()\n"
+    ),
+}
+
+
+class LockScanC5Tests(unittest.TestCase):
+    """C5's rule (DM-69; the brief's "Stage A, correction C5", item 1): a lock's receiver name is
+    followed through every plain assignment, transitively, to an account combination,
+    conditional, boolean or assignment expression; each chain it holds is judged as the
+    receiver."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(_C5_IMPORTS + text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def test_a_receiver_name_is_followed_through_every_plain_assignment(self) -> None:
+        for name, text in {**PLANTED_C5_RECEIVERS, **PLANTED_C5_RECEIVERS_MORE}.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(
+                    [(lock.kind, lock.mode) for lock in locks], [("orm", "FOR UPDATE")]
+                )
+                self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+
+    def test_a_variable_models_combination_held_in_a_name_is_a_generic_lock(self) -> None:
+        # The model can be AppAccount, and no_key names another variable, so the lock fails.
+        text = (
+            "def lock(model, a, b):\n"
+            "    c = model.objects.filter(pk=a) | model.objects.filter(pk=b)\n"
+            "    d = c\n" + _C5_LOCK.format(name="d")
+        )
+        locks = self.scan_source(text)
+        self.assertEqual([(lock.kind, lock.mode) for lock in locks], [("generic", "FOR UPDATE")])
+
+    def test_the_receivers_own_chain_is_reported_first(self) -> None:
+        # Where the receiver's own chain fails too (no no_key), it is the chain reported.
+        text = PLANTED_C5_RECEIVERS["d_is_c"].replace("no_key=d is AppAccount", "")
+        locks = self.scan_source(text)
+        self.assertEqual([(lock.kind, lock.mode) for lock in locks], [("generic", "FOR UPDATE")])
+
+    def test_chains_are_kept_once_by_what_judges_them(self) -> None:
+        # _distinct keeps one chain per (AppAccount among its names, a capitalised name, a
+        # variable, that variable), in written order; each of these must stay apart or in order.
+        cases = {
+            "a_capitalised_attribute_beside_a_variable_model": (
+                "def lock(model, a, b):\n"
+                "    return (\n"
+                "        (model.Foo.objects.filter(pk=a) | model.objects.filter(pk=b))\n"
+                "        .select_for_update()\n"
+                "        .first()\n"
+                "    )\n",
+                ("generic", "FOR UPDATE"),
+            ),
+            "the_account_beside_another_model_on_one_variable": (
+                "def lock(models, a, b):\n"
+                "    return (\n"
+                "        (\n"
+                "            models.Match.objects.filter(pk=a)\n"
+                "            | models.AppAccount.objects.filter(pk=b)\n"
+                "        )\n"
+                "        .select_for_update(no_key=models is AppAccount)\n"
+                "        .first()\n"
+                "    )\n",
+                ("orm", "FOR UPDATE"),
+            ),
+            "the_first_failing_chain_in_written_order": (
+                "def lock(model, other, a, b, c):\n"
+                "    return (\n"
+                "        (\n"
+                "            AppAccount.objects.filter(pk=a)\n"
+                "            | model.objects.filter(pk=b)\n"
+                "            | AppAccount.objects.filter(pk=c)\n"
+                "        )\n"
+                "        .select_for_update(no_key=other is AppAccount)\n"
+                "        .first()\n"
+                "    )\n",
+                ("orm", "FOR UPDATE"),
+            ),
+            "a_capitalised_name_holding_a_variable_models_combination": (
+                "def lock(model, a, b):\n"
+                "    Rows = model.objects.filter(pk=a) | model.objects.filter(pk=b)\n"
+                "    return Rows.select_for_update().first()\n",
+                ("generic", "FOR UPDATE"),
+            ),
+        }
+        for name, (text, verdict) in cases.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual([(lock.kind, lock.mode) for lock in locks], [verdict])
+
+    def test_a_followed_receiver_passes_with_no_key_true(self) -> None:
+        text = PLANTED_C5_RECEIVERS["d_is_c"].replace("no_key=d is AppAccount", "no_key=True")
+        locks = self.scan_source(text)
+        self.assertEqual(len(locks), 1)
+        self.assertEqual(account_lock_scan.violations(locks), [])
+
+    def test_a_plain_chain_held_in_a_name_stays_a_generic_lock(self) -> None:
+        # The stated limit (the README's further forms): no combination, conditional, boolean or
+        # assignment expression is reached, so the lock is judged as before, as a generic lock.
+        for hops in ("", "    d = c\n"):
+            with self.subTest(hops=hops or "none"):
+                name = "d" if hops else "c"
+                text = (
+                    "def lock(a):\n    c = AppAccount.objects.filter(pk=a)\n"
+                    + hops
+                    + _C5_LOCK.format(name=name)
+                )
+                locks = self.scan_source(text)
+                self.assertEqual(
+                    [(lock.kind, lock.mode) for lock in locks], [("generic", "FOR NO KEY UPDATE")]
+                )
+
+
+# C5 (N3; DM-69): tests that pin C4's branches, each failing against a mutant of C4's code that
+# C4's tests left passing (C4's delta re-review's N3; the evidence record lists each mutant).
+PINNED_C4_ITEM_1 = {
+    "an_f_string": (
+        "def lock(pk, name):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(f'account__{name}')).first()\n"
+    ),
+    "an_f_string_of_fields_only": (
+        "def lock(pk, name):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(f'{name}')).first()\n"
+    ),
+    "a_keyword_argument": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(expression='account__state')).first()\n"
+    ),
+    "an_f_string_starting_with_a_field": (
+        "def lock(pk, name):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(f'{name}__state')).first()\n"
+    ),
+    "an_f_string_by_keyword": (
+        "def lock(pk, name):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(expression=f'account__{name}')).first()\n"
+    ),
+    "a_literal_of_one_segment": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower('account')).first()\n"
+    ),
+    "a_class_with_an_inner_capital": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=OuterRef('account__state')).first()\n"
+    ),
+    "raw_sql": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=RawSQL('select 1', [])).first()\n"
+    ),
+    "two_keywords": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    value = Lower(expression='account__state', output_field=None)\n"
+        "    return rows.filter(display_name=value).first()\n"
+    ),
+    "a_path_second": (
+        "def lock(pk):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Coalesce(None, 'account__state')).first()\n"
+    ),
+    "a_star_second": (
+        "def lock(pk, parts):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Coalesce(None, *parts)).first()\n"
+    ),
+    "a_double_star_after_a_keyword": (
+        "def lock(pk, parts):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Coalesce(output_field=None, **parts)).first()\n"
+    ),
+    "a_double_star_after_a_positional": (
+        "def lock(pk, parts):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Coalesce(None, **parts)).first()\n"
+    ),
+    "a_starred_argument": (
+        "def lock(pk, parts):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Lower(*parts)).first()\n"
+    ),
+    "a_double_starred_argument": (
+        "def lock(pk, parts):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    return rows.filter(display_name=Coalesce(**parts)).first()\n"
+    ),
+}
+PINNED_C4_ITEM_2 = {
+    "the_lock_in_a_conditional": (
+        "join",
+        "def lock(pk, flag):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk)\n"
+        "        if flag\n"
+        "        else Profile.objects.filter(account__state='active')\n"
+        "    ).first()\n",
+    ),
+    "the_lock_in_an_or": (
+        "join",
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk)\n"
+        "        or Profile.objects.filter(account__state='active')\n"
+        "    ).first()\n",
+    ),
+    "a_combination_inside_the_receivers_chain": (
+        "orm",
+        "def lock(a, b):\n"
+        "    return (\n"
+        "        (AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b))\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_lock_in_the_else_branch": (
+        "join",
+        "def lock(pk, flag):\n"
+        "    return (\n"
+        "        Profile.objects.filter(account__state='active')\n"
+        "        if flag\n"
+        "        else Match.objects.select_for_update().filter(pk=pk)\n"
+        "    ).first()\n",
+    ),
+    "a_join_after_the_conditional": (
+        "join",
+        "def lock(pk, flag):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk)\n"
+        "        if flag\n"
+        "        else Match.objects.none()\n"
+        "    ).filter(account_low__state='active').first()\n",
+    ),
+    "a_join_after_the_conditional_held_in_a_name": (
+        "join",
+        "def lock(pk, flag):\n"
+        "    rows = Match.objects.select_for_update() if flag else Match.objects.none()\n"
+        "    return rows.filter(account_low__state='active').first()\n",
+    ),
+    "the_lock_in_a_later_operand": (
+        "join",
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Profile.objects.filter(account__state='active')\n"
+        "        or Match.objects.select_for_update().filter(pk=pk)\n"
+        "    ).first()\n",
+    ),
+    "a_join_after_the_or": (
+        "join",
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk) or Match.objects.none()\n"
+        "    ).filter(account_low__state='active').first()\n",
+    ),
+    "a_conditional_inside_the_receivers_chain": (
+        "orm",
+        "def lock(a, flag):\n"
+        "    return (\n"
+        "        (AppAccount.objects.filter(pk=a) if flag else AppAccount.objects.none())\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "an_or_inside_the_receivers_chain": (
+        "orm",
+        "def lock(a):\n"
+        "    return (\n"
+        "        (AppAccount.objects.filter(pk=a) or AppAccount.objects.none())\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "an_assignment_expression_inside_the_receivers_chain": (
+        "orm",
+        "def lock(a):\n"
+        "    return (\n"
+        "        (rows := AppAccount.objects.filter(pk=a))\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_second_in_a_combination_inside_the_chain": (
+        "orm",
+        "def lock(a, b, model):\n"
+        "    return (\n"
+        "        (model.objects.filter(pk=a) | AppAccount.objects.filter(pk=b))\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update(no_key=model is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_first_in_a_combination_inside_the_chain": (
+        "orm",
+        "def lock(a, b, model):\n"
+        "    return (\n"
+        "        (AppAccount.objects.filter(pk=a) | model.objects.filter(pk=b))\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update(no_key=model is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "a_join_in_a_conditional_receivers_else_branch": (
+        "join",
+        "def lock(flag):\n"
+        "    return (\n"
+        "        (Match.objects.all() if flag else Match.objects.filter(account_low__state='x'))\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_in_a_conditional_receivers_else_branch": (
+        "orm",
+        "def lock(model, flag):\n"
+        "    return (\n"
+        "        (model.objects.all() if flag else AppAccount.objects.all())\n"
+        "        .select_for_update(no_key=model is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "a_join_in_an_or_receivers_later_operand": (
+        "join",
+        "def lock():\n"
+        "    return (\n"
+        "        (Match.objects.all() or Match.objects.filter(account_low__state='x'))\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "a_join_in_an_or_receivers_first_operand": (
+        "join",
+        "def lock():\n"
+        "    return (\n"
+        "        (Match.objects.filter(account_low__state='x') or Match.objects.all())\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_in_an_or_receivers_later_operand": (
+        "orm",
+        "def lock(model):\n"
+        "    return (\n"
+        "        (model.objects.all() or AppAccount.objects.all())\n"
+        "        .select_for_update(no_key=model is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_in_an_or_receivers_first_operand": (
+        "orm",
+        "def lock(model):\n"
+        "    return (\n"
+        "        (AppAccount.objects.all() or model.objects.all())\n"
+        "        .select_for_update(no_key=model is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_lock_in_an_and": (
+        "join",
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk)\n"
+        "        and Profile.objects.filter(account__state='active')\n"
+        "    ).first()\n",
+    ),
+    "the_lock_in_an_or_of_three": (
+        "join",
+        "def lock(pk):\n"
+        "    return (\n"
+        "        Match.objects.select_for_update().filter(pk=pk)\n"
+        "        or Match.objects.none()\n"
+        "        or Profile.objects.filter(account__state='active')\n"
+        "    ).first()\n",
+    ),
+    "a_variable_models_combination_inside_the_chain": (
+        "generic",
+        "def lock(model, a, b):\n"
+        "    return (\n"
+        "        (model.objects.filter(pk=a) | model.objects.filter(pk=b))\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update()\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "the_account_through_an_attribute_inside_a_combination_in_the_chain": (
+        "orm",
+        "def lock(models, a):\n"
+        "    return (\n"
+        "        (models.AppAccount.objects.filter(pk=a) | Match.objects.all())\n"
+        "        .filter(pk=a)\n"
+        "        .select_for_update(no_key=models is AppAccount)\n"
+        "        .first()\n"
+        "    )\n",
+    ),
+    "and_in_place_the_lock_on_the_right": (
+        "join",
+        "def lock(pk):\n"
+        "    rows = Match.objects.filter(account_low__state='active')\n"
+        "    rows &= Match.objects.select_for_update().filter(pk=pk)\n"
+        "    return rows.first()\n",
+    ),
+    "xor_in_place_the_lock_on_the_right": (
+        "join",
+        "def lock(pk):\n"
+        "    rows = Match.objects.filter(account_low__state='active')\n"
+        "    rows ^= Match.objects.select_for_update().filter(pk=pk)\n"
+        "    return rows.first()\n",
+    ),
+    "an_account_name_xor_in_place": (
+        "orm",
+        "def lock(a, b):\n"
+        "    rows = AppAccount.objects.filter(pk=a)\n"
+        "    rows ^= AppAccount.objects.filter(pk=b)\n"
+        "    return rows.select_for_update(no_key=rows is AppAccount).first()\n",
+    ),
+    "combined_in_place_the_lock_on_the_right_read_after": (
+        "join",
+        "def lock(pk):\n"
+        "    rows = Match.objects.none()\n"
+        "    rows |= Match.objects.select_for_update().filter(pk=pk)\n"
+        "    later = rows\n"
+        "    return later.filter(account_low__state='active').first()\n",
+    ),
+    "combined_in_place_read_back_through_the_other_part": (
+        "join",
+        "def lock(pk):\n"
+        "    locked = Match.objects.select_for_update().filter(pk=pk)\n"
+        "    rows = Match.objects.filter(pk=pk)\n"
+        "    rows |= Profile.objects.filter(account__state='active')\n"
+        "    return (locked & rows).first()\n",
+    ),
+}
+PINNED_C4_ITEM_3 = {
+    "an_f": (
+        "def lock(pk):\n"
+        "    return Match.objects.select_for_update().complex_filter(F('pk')).first()\n"
+    ),
+    "an_f_by_keyword": (
+        "def lock(pk):\n"
+        "    return Match.objects.select_for_update().complex_filter(filter_obj=F('pk')).first()\n"
+    ),
+    "a_name_assigned_an_f": (
+        "def lock(pk):\n"
+        "    cond = F('pk')\n"
+        "    return Match.objects.select_for_update().complex_filter(cond).first()\n"
+    ),
+    "a_name_assigned_a_q_and_a_dict": (
+        "def lock(pk, flag):\n"
+        "    cond = Q(pk=pk)\n"
+        "    if flag:\n"
+        "        cond = {'account_low__state': 'active'}\n"
+        "    return Match.objects.select_for_update().complex_filter(cond).first()\n"
+    ),
+    "a_name_assigned_a_q_and_an_f": (
+        "def lock(pk, flag):\n"
+        "    cond = Q(pk=pk)\n"
+        "    if flag:\n"
+        "        cond = F('pk')\n"
+        "    return Match.objects.select_for_update().complex_filter(cond).first()\n"
+    ),
+    "a_keyword_dict": (
+        "def lock(pk):\n"
+        "    rows = Match.objects.select_for_update()\n"
+        "    return rows.complex_filter(filter_obj={'account_low__state': 'active'}).first()\n"
+    ),
+}
+PINNED_C4_ITEM_4 = {
+    "a_name_as_an_entry": "of=('self', name)",
+    "a_name_as_the_whole_of": "of=names",
+    "a_name_first": "of=(name, 'self')",
+    "a_list_with_a_name": "of=['self', name]",
+    "a_constant": "of=('self', OF_PATH)",
+    "a_constant_as_the_whole_of": "of=LOCKED",
+    "a_call_wrapping_a_name": "of=tuple(names)",
+}
+_PINNED_OF = (
+    "def lock(batch_id, name, names):\n"
+    "    return list(\n"
+    "        RecommendationEntry.objects.select_for_update({of})\n"
+    "        .filter(batch_id=batch_id, candidate__state='active')\n"
+    "    )\n"
+)
+# Item 6: each of the seven words alone after a read's start (a text a page could send, read as
+# the words say, whether or not PostgreSQL would accept it), a statement that holds a SELECT but
+# does not begin with one, and the words in lower case.
+PINNED_C4_ITEM_6 = {
+    "insert_alone": (
+        "WITH t AS (INSERT glow_persistence_block DEFAULT VALUES RETURNING id) SELECT id FROM t"
+    ),
+    "update_alone": "WITH t AS (UPDATE glow_persistence_match SET state = state) SELECT 1",
+    "delete_alone": (
+        "WITH t AS (DELETE FROM glow_persistence_block WHERE id = %s RETURNING id) SELECT id FROM t"
+    ),
+    "merge_alone": (
+        "WITH t AS (SELECT 1 AS id) MERGE glow_persistence_match m USING t ON true"
+        " WHEN MATCHED THEN DO NOTHING"
+    ),
+    "into_alone": "SELECT * INTO scratch FROM glow_persistence_match",
+    "truncate_alone": "SELECT 1; TRUNCATE glow_persistence_block",
+    "copy_alone": "SELECT 1; COPY glow_persistence_match TO STDOUT",
+    "a_select_not_at_the_start": "PREPARE p AS SELECT id FROM glow_persistence_match",
+    "explain": "EXPLAIN SELECT id FROM glow_persistence_match",
+    "a_lower_case_delete": (
+        "with t as (delete from glow_persistence_block returning id) select id from t"
+    ),
+    "a_lower_case_into": "select * into scratch from glow_persistence_match",
+    "a_mixed_case_delete": (
+        "With t AS (Delete FROM glow_persistence_block RETURNING id) SELECT id FROM t"
+    ),
+    "a_lower_case_truncate": "select 1; truncate glow_persistence_block",
+    "a_lower_case_copy": "select 1; copy glow_persistence_match to stdout",
+    "a_lower_case_merge": (
+        "with t as (select 1 as id) merge glow_persistence_match m using t on true"
+        " when matched then do nothing"
+    ),
+    "a_lower_case_insert": (
+        "with t as (insert glow_persistence_block default values returning id) select id from t"
+    ),
+    "table": "TABLE glow_persistence_match",
+    "values": "VALUES (1)",
+    "prepare_on_two_lines": "PREPARE p AS\nSELECT id FROM glow_persistence_match",
+    "explain_on_two_lines": "EXPLAIN\nSELECT id FROM glow_persistence_match",
+    "a_write_after_quoted_text": (
+        "SELECT E'it\\'s', 1; DELETE FROM glow_persistence_block; SELECT 'x'"
+    ),
+    "a_lower_case_write_with_a_non_ascii_value": (
+        "with t as (delete from glow_persistence_block where name = '\u00e9' returning id)"
+        " select id from t"
+    ),
+    "on_several_lines": (
+        "WITH t AS (\n"
+        "  UPDATE glow_persistence_match SET state = state RETURNING id\n"
+        ")\nSELECT * FROM t"
+    ),
+}
+
+
+PINNED_C4_ITEM_6_READS = {
+    "a_lower_case_with": "with t as (select 1 as id) select id from t",
+    "a_word_with_a_prefix": 'SELECT "t"."last_update", "t"."auto_insert" FROM "t"',
+    "a_word_with_a_non_ascii_prefix": "SELECT \u00e9into FROM glow_persistence_match",
+}
+
+
+class PinnedC4BranchTests(unittest.TestCase):
+    """C5 (N3; DM-69): C4's items 1 to 4 and 6, pinned branch by branch. No rule changes."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(_C5_IMPORTS + text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def assert_refused(self, text: str, kind: str) -> None:
+        locks = self.scan_source(text)
+        self.assertEqual([(lock.kind, lock.mode) for lock in locks], [(kind, "FOR UPDATE")])
+        self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+
+    def test_item_1_each_argument_form_given_a_path_is_a_join(self) -> None:
+        for name, text in PINNED_C4_ITEM_1.items():
+            with self.subTest(planted=name):
+                self.assert_refused(text, "join")
+                self.assertIn(
+                    "filter: an argument the scan cannot read", self.scan_source(text)[0].joins
+                )
+
+    def test_item_2_each_composite_branch_is_read(self) -> None:
+        for name, (kind, text) in PINNED_C4_ITEM_2.items():
+            with self.subTest(planted=name):
+                self.assert_refused(text, kind)
+
+    def test_item_3_complex_filter_reads_only_a_q_given_either_way(self) -> None:
+        for name, text in PINNED_C4_ITEM_3.items():
+            with self.subTest(planted=name):
+                self.assert_refused(text, "join")
+                self.assertIn(
+                    "complex_filter: an argument the scan cannot read",
+                    self.scan_source(text)[0].joins,
+                )
+
+    def test_item_4_a_name_in_of_fails_closed(self) -> None:
+        for name, of in PINNED_C4_ITEM_4.items():
+            with self.subTest(planted=name):
+                self.assert_refused(_PINNED_OF.format(of=of), "join")
+
+    def test_item_6_each_write_word_and_the_reads_start(self) -> None:
+        for name, sql in PINNED_C4_ITEM_6.items():
+            with self.subTest(write=name):
+                self.assertTrue(discovery_cases.is_write(sql))
+        # The words are whole words with their case ignored, so these stay reads.
+        for name, sql in PINNED_C4_ITEM_6_READS.items():
+            with self.subTest(read=name):
+                self.assertFalse(discovery_cases.is_write(sql))
