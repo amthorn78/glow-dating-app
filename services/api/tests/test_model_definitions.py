@@ -315,9 +315,10 @@ for name, previous in (('0006_area_table', '0005_profiles_settings'),
     assert data.dependencies == [('glow_persistence', previous)], name
     assert [type(op) for op in data.operations] == [RunPython], name
     assert data.operations[0].reversible, name
-# SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007).
+# SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007), and SV3
+# Stage A's 0010 follows 0009 (test_sv3_stage_a_migration_follows_0009).
 leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0009_media_policy_seed')], leaves
+assert leaves == [('glow_persistence', '0010_batch_collection')], leaves
 migrations = Path.cwd() / 'glow_persistence' / 'migrations'
 for name in ('0005_profiles_settings', '0006_area_table', '0007_settings_launch_defaults'):
     source = (migrations / f'{name}.py').read_text()
@@ -395,6 +396,41 @@ assert seed.SEED == ps.LAUNCH_DEFAULTS[ps.MEDIA_POLICY]
 assert seed.REASON == ps.LAUNCH_REASONS[ps.MEDIA_POLICY] == 'development-media-1'
 assert seed.LAUNCH_SUBJECT == ps.LAUNCH_SUBJECT
 assert 'OutboxEvent' not in (migrations / '0009_media_policy_seed.py').read_text()
+""")
+
+    def test_sv3_stage_a_migration_follows_0009(self):
+        # SV3 Stage A (its brief's D7): 0010 adds the batch's collection, its check and one batch
+        # per viewer and collection, and nothing else; 0001 to 0009 are unchanged (above). It is
+        # pinned as written.
+        import hashlib
+
+        migration = API_ROOT / "glow_persistence" / "migrations" / "0010_batch_collection.py"
+        self.assertEqual(
+            hashlib.sha256(migration.read_bytes()).hexdigest(),
+            "8489c1e2a9b241bb3d03e357ae7e20da0c96df434b82c68467d0340a4987c7cc",
+        )
+        self.check_script("""
+loader = MigrationLoader(None)
+added = loader.disk_migrations[('glow_persistence', '0010_batch_collection')]
+assert added.dependencies == [('glow_persistence', '0009_media_policy_seed')]
+assert [type(op).__name__ for op in added.operations] == [
+    'AddField', 'AddConstraint', 'AddConstraint']
+field = added.operations[0]
+assert (field.model_name, field.name, field.preserve_default) == (
+    'recommendationbatch', 'collection', False)
+assert sorted(op.constraint.name for op in added.operations[1:]) == [
+    'batch_collection', 'batch_one_per_collection']
+batch = m.RecommendationBatch._meta
+assert batch.get_field('collection').choices == [
+    ('recommendations', 'recommendations'), ('discovery', 'discovery')]
+assert not batch.get_field('collection').has_default()
+assert {c.name for c in batch.constraints} >= {'batch_collection', 'batch_one_per_collection',
+    'batch_bound', 'batch_elig_revision'}
+unique = next(c for c in batch.constraints if c.name == 'batch_one_per_collection')
+assert tuple(unique.fields) == ('account', 'collection')
+source = migration_source = (Path.cwd() / 'glow_persistence' / 'migrations' /
+    '0010_batch_collection.py').read_text()
+assert 'RunSQL' not in source and 'RunPython' not in source
 """)
 
     def test_sv2_stage_b_models_hold_only_what_d10_needs(self):

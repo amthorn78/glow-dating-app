@@ -323,3 +323,7 @@ provider/native access; A05 launch/operator policies; A08 chat enforcement. A06
 stays disabled. Fixtures complete none of those proofs. They change neither the
 database placement, now the app's own logical database on HDE's service (ADR
 0004), nor any protected HDE/shared-resource boundary.
+
+## The server (SV3 Stage A, sealed until P11)
+
+The server's reciprocal eligibility now exists, sealed: `services/api/glow_discovery` (the [SV3 brief](../planning/sv3-eligibility-discovery-interactions.md), revision 2, D2 to D5; the [SV3 evidence record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Stage A"). Its predicates read authoritative rows in one statement (the [data model](data-model.md), "The eligibility read as built"), on a disposable PostgreSQL only; the served runtime imports none of it. This fixture's raw-fact corpus and evaluator are unchanged and remain the development reference; the server applies OD-60's four two-way fields, the age range and the distance, which this corpus predates.

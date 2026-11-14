@@ -685,3 +685,40 @@ class SV2StageATransitionTests(unittest.TestCase):
                     Context(None, "public", None),
                 ):
                     self.assertEqual(read_projection(flow, definition, context), "not_found")
+
+    def test_sv3_card_page_is_the_viewers_own(self):
+        # SV3 Stage A (its brief's D13 (a); DM-60 Q12): F07's new response, CandidateCardPage, is
+        # projected to the viewer, its owner, only, as CandidatePage is. The allowed example is the
+        # viewer with a valid session; the forbidden ones are another member, a revoked session,
+        # staff, the system, a provider and the public.
+        self.assertEqual(read_projection("F07", "CandidateCardPage", OWNER), "allowed")
+        for context in (
+            replace(OWNER, actor_id="other-viewer"),
+            replace(OWNER, session_state="revoked"),
+            STAFF,
+            SYSTEM,
+            Context(None, "provider", None),
+            Context(None, "public", None),
+        ):
+            with self.subTest(context=context):
+                self.assertEqual(
+                    read_projection("F07", "CandidateCardPage", context), "not_found"
+                )
+        # No existing entry changes: F07's request, its first response, its transitions and the
+        # existing page's projection stay as they were.
+        flow = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}["F07"]
+        self.assertEqual(flow["request_contracts"], ["PageRequest"])
+        self.assertEqual(flow["response_contracts"], ["CandidatePage", "CandidateCardPage"])
+        self.assertEqual(flow["projection_roles"]["CandidatePage"], ["owner"])
+        found = [(r["event"], r["from"], r["to"], r["role"]) for r in flow["transitions"]]
+        self.assertEqual(
+            found,
+            [
+                ("request", "none", "pending", "owner"),
+                ("eligible_results", "pending", "ready", "system"),
+                ("no_results", "pending", "empty", "system"),
+                ("outage", "pending", "unavailable", "system"),
+                ("invalidate", "ready", "stale", "system"),
+                ("refresh", "stale", "pending", "owner"),
+            ],
+        )

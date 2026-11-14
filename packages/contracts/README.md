@@ -212,3 +212,43 @@ map stays empty, and the sealed server routes are `services/api/glow_profiles`'s
   `MediaLifecycle`, `MediaUploadGrant` and `MediaCollection` unchanged, and `MediaUploadGrant`
   carries no credential (DM-57 U3). Regeneration changes no generated output, and the corpus is
   unchanged.
+
+## SV3 Stage A: the discovery page's contract
+
+SV3's Stage A ([brief](../../docs/planning/sv3-eligibility-discovery-interactions.md), revision 2,
+D13 (a); DM-60 Q12) adds three closed DTOs to the unpublished design catalog for F07's page, as
+SV2's did. Every existing DTO is unchanged, `CandidatePage` and `CandidateProfile` included, and no
+existing registry entry changes. The new response joins `AppResponse`, so older validators reject its
+discriminator and a deployed transport negotiates support before returning it. No route is activated:
+the production catalog's paths map stays empty, and the sealed server route is
+`services/api/glow_discovery`'s.
+
+- **`CandidateCardPage`** (`kind: candidate_card_page`): `CandidatePage`'s fields and state rules
+  (non-ready pages hold no items or cursor; a ready page holds at least one), with the collection
+  named by its own `collection` field and `CandidateCard` items, at most 50.
+- **`CandidateCard`:** the existing `CandidateProfile`, unchanged, with `CandidateDetails`. Its
+  `profile_id` is the profile's own, repeated at the card's top level, so that the contract's
+  unique-key rule over a page's `items` (`runtime.py`'s `unique_keys` and the app's
+  `validation.ts`, both unchanged) applies to cards as it does to `CandidatePage`'s profiles.
+- **`CandidateDetails`:** what a card shows beyond `CandidateProfile` (OD-60): the candidate's
+  "looking for" values, always; gender, orientation and relationship status only while the
+  candidate's display flag for that field is on, with their own words for gender and orientation
+  (display only; relationship status has none); and the name of the area they chose (the second
+  A05 message's location (a), "reveals only the area the member chose"). It never carries a "show
+  me" set, a filter, an area ID, an internal point, a distance, a birth date, a count or a reason.
+- **The registry** (`flows-v1.json`): F07 gains `CandidateCardPage` as a response contract,
+  projected to its `owner` (the viewer) only, with an allowed and a forbidden example in
+  `tests/test_transition_contract.py` (`test_sv3_card_page_is_the_viewers_own`), which also pins
+  F07's request, its first response, its six transitions and `CandidatePage`'s projection as they
+  were. No transition is added: a page with no cursor makes F07's `request` and then
+  `eligible_results`, `no_results` or `outage` in one transaction.
+- **The shared corpus** gains 54 cases: each new DTO's valid forms, each non-ready state with and
+  without items, the bounds (51 items, a 101-character cursor, a cursor ending in a newline), a
+  ready compatibility status, an age under 18, duplicate card IDs, every private field (a "show me"
+  set, a filter, an area ID, a coordinate, a distance, a birth date, a count, a reason, a viewer
+  ID), the old page's discriminator, and the new discriminator in `AppResponse`, through Python and
+  the generated validators.
+- **Regeneration** rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`;
+  `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing. A card's
+  `value_ids` rule for gender and orientation (at least one value unless own words are given) is an
+  `if`/`then`, which the generated types do not show.

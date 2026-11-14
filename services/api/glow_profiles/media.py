@@ -1,12 +1,12 @@
 """Photos: the F05 writers and reads (the SV2 brief's D9, D10, D17 and D19; OD-61; OD-62).
 
-Each is one transaction (``tx.run``) that locks the photo owner's account row ``FOR UPDATE`` first
-(DM-13 4.1), so a photo writer, a completion check and a withdrawal cannot interleave; then, when
-it ends with D9's recompute, ``consent.onboarding`` with the media policy's pointer in one
-``read_shared`` call (D19); then its own rows ``FOR UPDATE``. Every state change goes through
-``transition``, which allows only F05's registry transitions (``glow_domain.media.TRANSITIONS``),
-bumps the asset's version, withholds delivery in every state but ``approved`` and emits the
-change's outbox event (references only).
+Each is one transaction (``tx.run``) that locks the photo owner's account row ``FOR NO KEY UPDATE``
+first (DM-13 4.1; DM-61), so a photo writer, a completion check and a withdrawal cannot
+interleave; then, when it ends with D9's recompute, ``consent.onboarding`` with the media
+policy's pointer in one ``read_shared`` call (D19); then its own rows ``FOR UPDATE``. Every state
+change goes through ``transition``, which allows only F05's registry transitions
+(``glow_domain.media.TRANSITIONS``), bumps the asset's version, withholds delivery in every state
+but ``approved`` and emits the change's outbox event (references only).
 
 **The member's commands** (``MediaIntent``; F05 ``owner``): ``request_upload`` issues a grant
 within the media policy's limits (a new asset ``upload_pending``); ``remove`` withholds delivery at

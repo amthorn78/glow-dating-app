@@ -156,6 +156,30 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM10-17 | 10 Nov 2026 | follow-through | The handoff's waiting checkpoint after PR43's receipt gave 23:57 UTC, written before the clock was read; the clock read 23:55 (AM9-04 repeated) | App Manager 10, when the commit's own clock line printed |
 | AM10-16 | 10 Nov 2026 | accuracy | Pruning SV2 Stage A's prompts, App Manager 10's link-pinning script matched link targets by file name. The Dev Manager's reports in `reviews/` share their names with the consultations, so it also pointed 16 links to the reports at the pruned consultations | App Manager 10, reading the script's word diff before the commit |
 | AM10-15 | 10 Nov 2026 | accuracy | DM-55's consultation (`496c39e`), item 1.4, proposed erasing the date, time, place and time zone of every birth input revision after a date under 18. It did not read what that breaks: `OwnBirthInput` requires a full `BirthInput`, so the owner's reads would fail on an erased revision; the next save compares its expected version with the erased row's; and `birth_time_uncertainty` ties the time to its precision | Dev Manager 4, DM-55 section 3 |
+| AM10-20 | 11 Nov 2026 | follow-through | Implementation Control's "Mistakes log" bullet left listing AM10-01 as the last entry, at `0e890dc`, through AM10-02 to AM10-19 and App Manager 10's last sync at `8130439`. A repeat of AM8-22's mechanism. Recorded by App Manager 11 | App Manager 11, reading the whole page at its start |
+| AM10-21 | 11 Nov 2026 | follow-through | Implementation Control's "Standing directions" line left saying the register copy holds OD-01 to OD-62 after OD-63 was added to the copy at `8130439`. A repeat of AM9-07. Recorded by App Manager 11 | App Manager 11, reading the whole page at its start |
+| AM10-22 | 11 Nov 2026 | follow-through | Implementation Control's "Phase" bullet left ending "Now: P06.2-F, the mobile hardening, in PR40" after PR40 to PR44 merged, and its "Next items" bullet left saying "now SV2 … Stage B next" after PR44 merged. A repeat of AM8-22's mechanism, as AM10-20 is. Recorded by App Manager 11 | App Manager 11, reading the status section's standing bullets in its first sync |
+| AM11-01 | 11 Nov 2026 | accuracy | The first report told Nathan that the next message would carry a prompt for the matrix recheck; the recheck is the manager's own records reading (the OD-60 and P06.3 recheck records), not a session | App Manager 11, reading the earlier recheck records before writing the prompt |
+| AM11-02 | 11 Nov 2026 | follow-through | Correcting Implementation Control's "Next items" bullet, replaced only its opening and left "P06.2-F (now, PR40)" further on in the same bullet; the readback searched for the edited strings only. A repeat of AM8-11's mechanism | Dev Manager 4, DM-60 section 18 |
+| AM11-03 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `fe1b6ba` gave 19:14 UTC, written before the clock was read; the clock read 19:12 (AM10-17's mechanism) | App Manager 11, when the commit's own clock line printed |
+| AM11-04 | 11 Nov 2026 | follow-through | The batch at `d35b0ba` pushed the handoff at 5,198 bytes, over its 5 KB limit, with its "Branches and PRs" section still at App Manager 10's handover (17:09 UTC); both corrected in the next commit, before Stage A's PR was opened, which cancelled the push run on `d35b0ba` (not a run of record) | App Manager 11, reading the commit's byte count |
+| AM11-05 | 11 Nov 2026 | follow-through | After opening PR45 at 22:39 UTC, told Nathan "NOTHING NEEDED" and set nothing to wake the manager when the run and Codex finished (22:47 and 22:42); the review prompt waited until Nathan asked at 23:37. A repeat of AM7-09 | Nathan: "still waiting?" |
+| AM11-06 | 11 Nov 2026 | accuracy | The review prompt's first TypeSafe action text counted its numbered items as sixteen; there are twenty. Caught before the reading was used; re-sent with the true count, the same cell, both readings recorded | App Manager 11, comparing the text with the prompt |
+| AM11-07 | 11 Nov 2026 | follow-through | The handoff's checkpoint at `b09cbf3` gave 23:41 UTC, written before the clock was read (it read 23:40): AM11-03 repeated within the hour. The time now comes from the clock inside the same command that writes it | App Manager 11, reading the commit's clock line |
+| AM11-08 | 12 Nov 2026 | follow-through | The Notion sync for `1ffff7d` changed Implementation Control's "Branches" bullet from three branches to four and left its next sentence, "All three are kept by the cleanup's keep-list"; the edit replaced the list, not the bullet. AM11-02's mechanism, repeated | App Manager 11, reading the bullet back |
+| AM11-09 | 12 Nov 2026 | accuracy | C1's prompt, revision 1, named the tie-break's files as `predicates.py`, `pages.py` and `keys.py` "and what they need", without `eligibility.py`, whose `parameters` passes the pads it told the session to remove. Corrected in revision 2 before it was given | App Manager 11, checking Codex's CX2 against the prompt |
+| AM11-10 | 12 Nov 2026 | process | Held DM-62's relay message for a Codex pass on its own commit, a wait the workflow sets only for review and correction prompts; Codex had already passed the same code at `c3fb5bb` with nothing new. Nathan had nothing to run until he asked what the manager was doing | Nathan: "what are you even doing?" |
+| AM11-11 | 12 Nov 2026 | follow-through | Brief revision 3's sync left Implementation Control's "Next items" saying "its brief, revision 2"; the sweep searched the repository, not Notion's standing lines, for the previous revision number. AM5-22's mechanism, repeated | Dev Manager 4, DM-62 section 7 |
+| AM11-12 | 12 Nov 2026 | follow-through | The batch at `b67bae2`, which merged DM-62's report, left the handoff's branch list giving `claude/dev-manager` at DM-61's head (`133a715`); AM11-11's new sweep was run for the brief's revision number only. Corrected in the next commit, before any session read it | App Manager 11, listing the branches for Notion's "Branches" bullet |
+| AM11-13 | 12 Nov 2026 | accuracy | The exact-head review prompt's revision 2 said "Four offline reversals, at least" over a list of five; seen before it was given, and given as written rather than revised and re-reviewed by Codex | App Manager 11, reading the filled prompt |
+| AM11-14 | 12 Nov 2026 | follow-through | The CI policy's discovery sentence, written by the manager at `d35b0ba`, still said the suite's key keys "its keyed tie-break" after DM-61's K2 removed the key; the sweep for K2 did not search for "keyed" outside the brief, and C1's prompt did not list the CI policy or the fixtures note among its records | The exact-head review, F5 |
+| AM11-15 | 12 Nov 2026 | follow-through | Recording PR45's run of record for Stage A (`b09cbf3`), and later C1's, the manager left the P11 plan's SV3 entry saying "Run of record: none yet" and concurrency "not claimed" | The exact-head review, F6 |
+| AM11-16 | 12 Nov 2026 | accuracy | The evidence record's "PR45's run on `4b771e0`" said "Every other job passed"; the gate job also failed, as designed | The exact-head review, N6; corrected at the next batch |
+| AM11-17 | 12 Nov 2026 | follow-through | Gave DM-65 at `c661dce` without a watch on Codex's pass, then wrote C2's prompt at `2475d7b` without reading PR45's comments; Codex's P2 on `c661dce` (17:39 UTC) was found only at 18:47, after the pass on the prompt's commit. Both of its findings were already C2's items, so the prompt stood | App Manager 11, reading PR45's comments before giving C2's prompt |
+| AM11-18 | 13 Nov 2026 | communication | After giving F7's decision message on 12 November, named it to Nathan in later status lines only as "your F7 decision", a review label he had no reason to keep in mind, without saying what it was; he asked "what 'F7' decision?" | Nathan |
+| AM11-19 | 13 Nov 2026 | records | Two standing lines left stale after their facts changed: the handoff's title ("C2 continues after DM-66") through two later commits (`6b376cf`, `3000014`), and the brief's D8 ("Whether to bound the probing is put to Nathan … it is decided before then") after OD-64 was recorded beneath it (`058829c`) | Dev Manager 4 (DM-67 section 7; GD13, GD14) |
+| AM11-20 | 13 Nov 2026 | records | Two standing lines left stale again: `claude/dev-manager`'s head (`a53bdb0`) in the handoff's branch list and Notion's Branches bullet after DM-67's report (`e7786bb`) was merged at `2d04951` (AM11-12's pattern); Notion's "Next items" kept the brief's revision 8 after revision 9 (AM11-11's pattern) | Dev Manager 5 (start note, section 4) |
+| AM11-21 | 13 Nov 2026 | process | After C4's prompt was committed at `0fbc130`, the manager appended Codex's review of that commit to the evidence record, one of C4's owned paths (`3bbc06f`), then gave Nathan revision 1. Its start gate found the owned path changed and the session stopped, with no change | The C4 session, at its start gate |
 
 ## App Manager 2
 
@@ -1102,6 +1126,133 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none acted on; both texts stood from 8 November, 09:37 UTC, until App Manager 10 replaced them.
 - **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
+
+## App Manager 11
+
+### AM11-21 — A records commit into the owned paths of a prompt about to run (process)
+
+- **What happened:** C4's prompt, revision 1, was committed at `0fbc130`; its start gate requires that the live manager branch has not changed C4's owned paths since that commit. While waiting for Codex's pass on `0fbc130`, the manager recorded that pass by appending a line to the evidence record, an owned path, and pushed it at `3bbc06f`. It then gave Nathan revision 1 without running the prompt's start gate against the live branch.
+- **Caught by:** the C4 session, at its start gate.
+- **Effect:** one session start lost; no change made and nothing pushed. The gate worked as designed.
+- **Correction:** revision 2, from the commit that holds it; the manager ran its start gate against the live branch before giving it.
+- **Prevention:** from a prompt's commit until its session's branch is integrated, the manager writes nothing to that prompt's owned paths; a Codex pass or other fact seen meanwhile goes to the handoff, and into the session's owned records only at integration. Before giving any implementation or correction prompt, the manager runs the prompt's own start-gate commands against the live branch.
+
+### AM11-20 — AM11-11's and AM11-12's patterns again (records)
+
+- **What happened:** the batch at `2e3ef0f` merged DM-67's report and moved the brief to revision 9. It did not update `claude/dev-manager`'s head where the handoff's branch list and Notion's Branches bullet name it (still `a53bdb0`), and it left Notion's "Next items" at "its brief, revision 8".
+- **Caught by:** Dev Manager 5, in its start note (section 4).
+- **Effect:** none on the work; neither misled the next step.
+- **Correction:** both fixed at the records commit after `6cf247c`, with the succession.
+- **Prevention:** the manager workflow's supersession sweep already names both (a brief's previous revision number; every record that names a branch's head). Before each records batch is pushed, the manager now greps the handoff and Notion's standing lines for the previous revision number and for every branch head the batch moved.
+
+### AM11-19 — A title and a sentence left behind by their own updates (records)
+
+- **What happened:** the handoff's body moved on at `6b376cf` and `3000014`, but its title still said "C2 continues after DM-66". In D8, OD-64's answer went in as a sub-bullet beneath "Whether to bound the probing is put to Nathan … it is decided before then", and that sentence was left as it was.
+- **Caught by:** Dev Manager 4, reading Notion and the repository for DM-67 (section 7), which gave the words (GD13, GD14).
+- **Effect:** none on the work; neither misled a reader of the current state, as the Dev Manager notes.
+- **Correction:** both applied in DM-67's words, at its merge's records commit.
+- **Prevention:** the supersession sweep also reads the file's title when a handoff's state changes, and the sentence a new sub-bullet answers when an answer is recorded under it.
+
+### AM11-18 — A pending decision named only by its review label (communication)
+
+- **What happened:** F7's decision message (`docs/ephemeral/2026-11-12-f7-two-way-disclosure-decision.md`) went to Nathan on 12 November. In the messages after it, the manager reminded him of it only as "your F7 decision", a finding label from the exact-head review, never with what it was about.
+- **Caught by:** Nathan, asking "what 'F7' decision?"
+- **Effect:** the decision stayed unanswered longer than it needed to; it holds no merge.
+- **Correction:** the manager restated the decision in plain words, with its options, in the reply.
+- **Prevention:** a reminder to Nathan of a pending decision says in plain words what the decision is about, every time, not only its label (OD-32).
+
+### AM11-17 — A Codex pass on a consultation's commit left unread (follow-through)
+
+- **What happened:** after AM11-10, consultations go to Nathan without waiting for Codex. The manager gave DM-65 at `c661dce` and set no watch for that pass, so its P2 (17:39 UTC, `pointers.name_order`'s `id(tx)`) went unread. C2's prompt was then written at `2475d7b` without reading PR45's comments; the finding surfaced only when the watch on the prompt's commit ended at 18:47.
+- **Caught by:** App Manager 11, listing PR45's review comments before giving the prompt.
+- **Effect:** none on the work: both new findings were the review's F4 and DM-64's item, already C2's items 4 and 10. The prompt went as written.
+- **Correction:** both recorded (the brief's "Sessions"; the evidence record with C2's verification).
+- **Prevention:** not waiting for Codex before a consultation still means reading its result: before writing any prompt, list PR45's review comments since the last one read, and set a watch on every pass whose result is not yet read.
+
+### AM11-13 to AM11-16 — Four slips the exact-head review and the manager found
+
+- **What happened:**
+  - **AM11-13:** the review prompt's revision 2 (`3b36969`) headed its reversal list "Four offline reversals, at least" over five items. The manager saw it before giving the prompt and gave it as written, to avoid another commit and Codex pass, saying so to Nathan.
+  - **AM11-14:** the CI policy's discovery sentence, the manager's own (`d35b0ba`), kept "its keyed tie-break" after DM-61's K2. The sweep at `1ffff7d` searched the brief, not every text, for "keyed", and C1's prompt listed neither the CI policy nor `discovery-fixtures.md`.
+  - **AM11-15:** the P11 plan's SV3 entry kept "Run of record: none yet" after the manager recorded PR45's run of record (`b09cbf3`), and "concurrency … not claimed" after C1's.
+  - **AM11-16:** the evidence record said "Every other job passed" of a run whose gate job also failed.
+- **Caught by:** the manager (AM11-13); the exact-head review, F5, F6 and N6 (AM11-14 to AM11-16).
+- **Effect:** none on code. Three records claimed more than the runs and code show, until C2; AM11-16's line is corrected at this batch.
+- **Correction:** AM11-16 now; AM11-14 and AM11-15 in C2, as the review's F5 and F6 (DM-65).
+- **Prevention:** AM11-11's sweep, applied to a replaced design as well as a revision number: when a decision replaces a design, search every text (`docs`, `.github`, code comments) for the old design's own words (here "keyed"), and when a run of record lands, search for "none yet" and "not claimed" in each record that names the item.
+
+### AM11-12 — The branch list left at the Dev Manager's previous head (follow-through)
+
+- **What happened:** the batch at `b67bae2` merged DM-62's report (`f5c69fa`) and left the handoff's "Branches and PRs" giving `claude/dev-manager` at `133a715`, DM-61's head. The sweep the same batch added (AM11-11) was run for the brief's revision number only.
+- **Caught by:** App Manager 11, listing the branches for Notion's "Branches" bullet.
+- **Effect:** the handoff was wrong at `b67bae2` for a few minutes; no session read it. Corrected at `823be0b`, with the summary row; this section follows at the next batch.
+- **Correction:** the branch list gives `880635d`, merged at `f5c69fa`.
+- **Prevention:** the supersession sweep for a batch that merges a branch includes that branch's head wherever a record names it (the handoff's "Branches and PRs", Notion's "Branches").
+
+### AM11-11 — The brief's old revision number left in Notion (follow-through)
+
+- **What happened:** the sync for the brief's revision 3 (`1ffff7d`) updated Implementation Control's status, "Branches" and "Mistakes log" lines, and left "Next items" saying "its brief, revision 2, approved by the Dev Manager in DM-60". The supersession sweep searched the repository only.
+- **Caught by:** Dev Manager 4, DM-62 section 7.
+- **Effect:** Notion named the wrong revision for about 90 minutes; no session read it.
+- **Correction:** the bullet names revision 4 at this batch, read back.
+- **Prevention:** AM5-22's, repeated, so now in the checklist: the manager workflow's supersession sweep also searches Notion's standing lines, and searches for a brief's previous revision number.
+
+### AM11-10 — A consultation held for a wait the workflow does not set (process)
+
+- **What happened:** DM-62 was committed at `c3fb5bb` (00:49 UTC), and the manager chose to wait for Codex's pass on that commit before giving its relay message. Codex finished at 00:52 with nothing new, but the stop hook's push of a one-line handoff change (`3cdddd3`) restarted the wait, and the manager told Nathan "NOTHING NEEDED" twice. The workflow's wait for Codex (step 6) covers review and correction prompts, not consultations.
+- **Caught by:** Nathan: "what are you even doing? I feel like you have not been very task oriented".
+- **Effect:** DM-62 reached Nathan only when he asked; Codex never started on `3cdddd3`, so the wait would not have ended on its own.
+- **Correction:** the message was given at once, and the watch kept running alongside it.
+- **Prevention:** a consultation goes to Nathan as soon as its commit is pushed. A later Codex finding on the same code goes to the Dev Manager as an addition, without holding the message.
+
+### AM11-09 — The prompt named the tie-break's files without the one that passes the key (accuracy)
+
+- **What happened:** C1's prompt, revision 1 (`1ffff7d`), gave the tie-break's owned files as `predicates.py`, `pages.py` and `keys.py` "and what they need", and listed the same three to read whole. It told the session to remove `keys.sql_pads` "and their parameters", which are set in `eligibility.parameters`, a file it never named. The brief's own path, `services/api/glow_discovery/**`, does include it.
+- **Caught by:** App Manager 11, checking Codex's CX2 (`eligibility.py:67`) against the prompt.
+- **Effect:** the prompt had not been given. A session reading the parenthesis as a limit could have stopped, or left the pads' parameters behind. One more revision, TypeSafe reading and Codex pass.
+- **Correction:** revision 2 names `eligibility.py` in the owned paths, the reading list and item 2.
+- **Prevention:** when a prompt removes a function or a value, find every caller and every place that sets it with a scan, and name each file in the owned paths and the reading list.
+
+### AM11-08 — The branch count changed and the sentence after it did not (follow-through)
+
+- **What happened:** the sync for `1ffff7d` replaced the list in Implementation Control's "Branches" bullet, from three branches to four, and left the bullet's next sentence, "All three are kept by the cleanup's keep-list", unchanged. Stage A's session branch is the fourth, and it is not on the keep-list.
+- **Caught by:** App Manager 11, reading the bullet back.
+- **Effect:** Notion's bullet read wrongly for about ten minutes; no decision rested on it.
+- **Correction:** the sentence now says the first three are on the keep-list, read back in the next sync.
+- **Prevention:** AM11-02's, repeated, so now a checklist item: the manager workflow's claims checklist reads back every whole bullet an edit touches, and checks each count and status word in it against the edit.
+
+### AM11-05 — A wait with nothing set to end it (follow-through)
+
+- **What happened:** after opening PR45 at 22:39 UTC, the manager told Nathan "NOTHING NEEDED" and that it was waiting for the run and Codex. It set no wake-up, background watch or check-in. The run passed at 22:47 and Codex finished at 22:42, but nothing happened until Nathan asked "still waiting?" at 23:37.
+- **Caught by:** Nathan.
+- **Effect:** the exact-head review prompt reached Nathan about 50 minutes later than it could have.
+- **Correction:** the run and Codex were read at once, and the prompt written.
+- **Prevention:** AM7-09's, now a checklist step: a wait on CI or Codex ends the turn only after a background watch or a scheduled wake-up is set for it. The message to Nathan names that watch and the time it fires.
+
+### AM11-02 — A stale phrase left in the bullet being corrected (follow-through)
+
+- **What happened:** App Manager 11's first sync corrected the opening of Implementation Control's "Next items" bullet ("now SV2 …") and left, in the same bullet, "P06.2-F (now, PR40)". Its readback counted the new strings and the old opening only.
+- **Caught by:** Dev Manager 4, DM-60 section 18.
+- **Effect:** Notion called a merged item current for about an hour; no decision rested on it.
+- **Correction:** "P06.2-F (**done**, PR40)" at the next sync, read back.
+- **Prevention:** AM8-11's, which this repeats: when a sync corrects a standing line, read the whole line after the edit and search it for every status word ("now", "next", "in flight", "pending"), not only for the edited strings.
+
+### AM11-01 — A session promised for the manager's own work (accuracy)
+
+- **What happened:** the first report to Nathan said that the next message would carry one prompt, for the matrix recheck for SV3. The two earlier rechecks (8 and 10 November) were App Manager 10's own records readings of public pages, each recorded as "not an implementation or review session", and DM-37 5.1 has the brief recheck its rows on the day it is written.
+- **Caught by:** App Manager 11, reading the OD-60 recheck record to write that prompt, before any prompt was given.
+- **Effect:** Nathan was told to expect a session that was not needed. No prompt was written or given. The next message corrected it.
+- **Correction:** the recheck was done by the manager and recorded (`docs/testing/evidence/2026-11-11-sv3-matrix-recheck.md`), and the next message to Nathan said the earlier statement was wrong.
+- **Prevention:** before naming a session's prompt for a step, read how the step was done last time, in its evidence record.
+
+### AM10-22, AM10-21 and AM10-20 (recorded by App Manager 11)
+
+- **What happened:** App Manager 10's last Notion sync, at `8130439`, moved Implementation Control's status section, but two standing lines stayed old. The "Mistakes log" bullet still listed AM10-01 as the last entry, at `0e890dc`, although the log held AM10-02 to AM10-19. The "Standing directions" line still said the register copy held OD-01 to OD-62, although OD-63 had been added to the copy.
+- **Caught by:** App Manager 11, reading the whole page at its start.
+- **Also (AM10-22):** the "Phase" bullet still ended "Now: P06.2-F, the mobile hardening, in PR40", stale since PR40 merged, and the "Next items" bullet still said "now SV2 … Stage B next", stale since PR44 merged.
+- **Effect:** Notion understated the mistakes log by 18 entries and the register by one row, and named items already merged as current; no decision rested on any of them.
+- **Correction:** all four lines corrected in App Manager 11's first sync, with readbacks.
+- **Prevention:** AM8-22's and AM9-07's: the readback of a sync covers every standing line of the page, not only the status paragraph.
 
 ## App Manager 10
 

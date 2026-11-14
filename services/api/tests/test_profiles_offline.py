@@ -698,8 +698,9 @@ class LockOrderTests(unittest.TestCase):
         self.assertEqual(imported, [media_py])
 
     def test_the_any_state_lock_is_lock_account_without_its_state_check(self) -> None:
-        # C1 (DM-58 item 9): the same row ``FOR UPDATE``, the same refusal of an absent row and
-        # the same signal, and no state check; ``lock_account`` keeps its refusal.
+        # C1 (DM-58 item 9): the same row lock, the same refusal of an absent row and the same
+        # signal, and no state check; ``lock_account`` keeps its refusal. Since SV3 Stage A's C1
+        # (DM-61), the lock is ``FOR NO KEY UPDATE`` (``no_key=True``) in both.
         tree = ast.parse((PROFILES / "tx.py").read_text(encoding="utf-8"))
         bodies = {
             node.name: [ast.unparse(statement) for statement in node.body[1:]]
@@ -710,7 +711,8 @@ class LockOrderTests(unittest.TestCase):
         self.assertEqual(
             any_state,
             [
-                "account = AppAccount.objects.select_for_update().filter(pk=account_id).first()",
+                "account = AppAccount.objects.select_for_update(no_key=True)"
+                ".filter(pk=account_id).first()",
                 "if account is None:\n    raise Refused(NOT_FOUND, 'account_missing')",
                 "signal(tx.probe, 'after_first_lock')",
                 "return account",

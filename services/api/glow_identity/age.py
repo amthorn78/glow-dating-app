@@ -9,11 +9,11 @@ overwrite a row.
 
 SV2 (its brief's D7; DM-52) adds that write as one transition beside ``record``, which stays as
 SV1 built it: ``transition`` runs only inside the caller's transaction, takes the account row
-``FOR UPDATE`` first (DM-13 4.1; already held by an SV2 operation, which takes it first), then
-the age state's row, and changes ``unknown`` to ``self_declared_adult`` with the date and the
-rule's version, a ``self_declared_adult`` state to a new date, or ``self_declared_adult`` back to
-``unknown``; it refuses anything else, and bumps the account's ``eligibility_version``. The date
-is never logged, and ``age_years`` returns whole years, never the date.
+``FOR NO KEY UPDATE`` first (DM-13 4.1; DM-61; already held by an SV2 operation, which takes it
+first), then the age state's row, and changes ``unknown`` to ``self_declared_adult`` with the date
+and the rule's version, a ``self_declared_adult`` state to a new date, or ``self_declared_adult``
+back to ``unknown``; it refuses anything else, and bumps the account's ``eligibility_version``. The
+date is never logged, and ``age_years`` returns whole years, never the date.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ class OrmAgeAssurance:
             raise AgeTransitionRefused("transaction_required")
         account_id = UUID(change.account_id.value)
         # DM-13 4.1: the account row first, then the age state's row.
-        if not AppAccount.objects.select_for_update().filter(pk=account_id).exists():
+        if not AppAccount.objects.select_for_update(no_key=True).filter(pk=account_id).exists():
             raise AgeTransitionRefused("account_missing")
         row = AccountAgeState.objects.select_for_update().filter(account_id=account_id).first()
         if row is None:

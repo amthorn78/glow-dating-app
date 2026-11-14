@@ -237,3 +237,7 @@ invalidation and provider enforcement. The dummy database, readiness 503,
 development-only runtime, rejected writes and empty production paths remain.
 No SQL, migration application, HDE/provider call, Railway/Cloudflare change,
 deployment, paid resource, chat dependency or legacy import is introduced.
+
+## The server (SV3 Stage A, sealed until P11)
+
+The server's bounded discovery now exists, sealed: `services/api/glow_discovery` (the [SV3 brief](../planning/sv3-eligibility-discovery-interactions.md), revision 2, D6 and D7; the [SV3 evidence record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Stage A"). It runs only under the disposable-PostgreSQL proof's discovery settings; the served runtime imports none of it, and this fixture composition is unchanged and remains the development and mobile reference. The server keeps this note's rules (one eligibility for both modes, consumption excluding acted-on and matched pairs in both modes, stale continuations refused alike, an empty market with no provider call) and differs in its bounds and order as built: batches of at most 100 and pages of at most 50, one batch per viewer and collection, a 30-minute batch, and recommendations ordered by the compatibility port's band then a random tie-break drawn for each batch (DM-61 K2), broader by the same tie-break (no synthetic priority).

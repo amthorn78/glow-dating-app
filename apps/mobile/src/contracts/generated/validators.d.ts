@@ -95,3 +95,6 @@ export function validateSensitiveConsentIntent(value: unknown): boolean;
 export function validateOwnSensitiveConsent(value: unknown): boolean;
 export function validateAdultCheckIntent(value: unknown): boolean;
 export function validateOwnAgeState(value: unknown): boolean;
+export function validateCandidateDetails(value: unknown): boolean;
+export function validateCandidateCard(value: unknown): boolean;
+export function validateCandidateCardPage(value: unknown): boolean;

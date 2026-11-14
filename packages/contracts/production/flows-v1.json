@@ -900,7 +900,8 @@
         "PageRequest"
       ],
       "response_contracts": [
-        "CandidatePage"
+        "CandidatePage",
+        "CandidateCardPage"
       ],
       "private_projection": "Version/cursor tied to authenticated viewer; exclusion reasons private",
       "public_projection": "Eligible CandidateProfile only",
@@ -970,6 +971,9 @@
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
       "projection_roles": {
         "CandidatePage": [
+          "owner"
+        ],
+        "CandidateCardPage": [
           "owner"
         ]
       }

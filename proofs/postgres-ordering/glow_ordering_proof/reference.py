@@ -1,8 +1,9 @@
 """The reference design under proof (D5): READ COMMITTED with row locks.
 
 Every writer runs in one ``transaction.atomic()`` at READ COMMITTED and locks rows by
-primary key with ``SELECT ... FOR UPDATE`` in the canonical order: the lower account,
-the higher account, the match, then the sending session's ``AccountSession`` row.
+primary key with ``SELECT ... FOR UPDATE`` (an ``AppAccount`` row ``FOR NO KEY UPDATE``,
+SV3 Stage A's C1; DM-61) in the canonical order: the lower account, the higher account,
+the match, then the sending session's ``AccountSession`` row.
 State is checked in code after the locks (5.5); time is read after the locks (5.2);
 the send authorizes first and deduplicates second (5.4); an empty locked read is a
 refusal (5.5); deletion is the lifecycle transition (5.6). Each writer records one
@@ -114,9 +115,12 @@ class ReferenceSubject:
         return value
 
     def _lock(self, model: Any, pk: UUID, *, lock: bool = True, state: str | None = None) -> Any:
-        """A row by primary key, ``FOR UPDATE`` when ``lock``. With the 5.5 control the
-        state filter joins the locked read and an absent row is returned as None."""
-        query = model.objects.select_for_update() if lock else model.objects
+        """A row by primary key, ``FOR UPDATE`` when ``lock`` (``FOR NO KEY UPDATE`` for an
+        ``AppAccount`` row, DM-61). With the 5.5 control the state filter joins the locked
+        read and an absent row is returned as None."""
+        query = (
+            model.objects.select_for_update(no_key=model is AppAccount) if lock else model.objects
+        )
         if self.design.filter_state_in_lock and state is not None:
             return query.filter(pk=pk, state=state).first()
         row = query.filter(pk=pk).first()

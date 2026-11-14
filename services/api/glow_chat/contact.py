@@ -3,9 +3,10 @@
 It carries P06.DB's reference design (its brief, D5) into the app, as written:
 
 - every writer runs in one ``transaction.atomic()`` at READ COMMITTED (the connection's
-  isolation level) and locks rows by primary key with ``SELECT ... FOR UPDATE`` in one
-  canonical order: the lower account, the higher account, the match, then the sending
-  session's ``AccountSession`` row (5.3; sign-out and expiry lock that row, 5.1);
+  isolation level) and locks rows by primary key with ``SELECT ... FOR UPDATE`` (an
+  ``AppAccount`` row ``FOR NO KEY UPDATE``, DM-61) in one canonical order: the lower
+  account, the higher account, the match, then the sending session's ``AccountSession``
+  row (5.3; sign-out and expiry lock that row, 5.1);
 - every check runs in code on the rows as locked, and every value a check uses is read
   after the locks, inside the same transaction (5.5); a locked read that finds no row
   is a refusal, never "absent, so create";
@@ -160,9 +161,10 @@ class OrmContactPersistence:
 
     @staticmethod
     def _lock(model: Any, pk: UUID) -> Any:
-        """A row by primary key, ``FOR UPDATE``. No state filter joins the locked read:
-        an absent row is a refusal (5.5)."""
-        row = model.objects.select_for_update().filter(pk=pk).first()
+        """A row by primary key, ``FOR UPDATE``, or ``FOR NO KEY UPDATE`` for an ``AppAccount``
+        row (DM-61), so a write that references an account never waits on its writers. No
+        state filter joins the locked read: an absent row is a refusal (5.5)."""
+        row = model.objects.select_for_update(no_key=model is AppAccount).filter(pk=pk).first()
         if row is None:
             raise _Refused(f"{model.__name__.lower()}_missing")
         return row
@@ -303,7 +305,8 @@ class OrmContactPersistence:
     @staticmethod
     def _lock_shared(table: str, pk: UUID, columns: tuple[str, ...], cursor: Any) -> Any:
         """A row by primary key, ``FOR SHARE``: the grant reads what a bump or a sign-out
-        writes ``FOR UPDATE``, so it waits for a writer in flight and reads its result; it
+        writes under its lock (``FOR NO KEY UPDATE`` on the account, DM-61; ``FOR UPDATE``
+        on the session), so it waits for a writer in flight and reads its result; it
         excludes no other reader. An absent row is a refusal (5.5)."""
         cursor.execute(
             f"SELECT {', '.join(columns)} FROM {table} WHERE id = %s FOR SHARE",

@@ -14209,6 +14209,3258 @@
         }
       },
       "valid": false
+    },
+    {
+      "name": "valid-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-all-shown-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "non-binary"
+          ],
+          "own_words": "Synthetic words"
+        },
+        "orientation": {
+          "value_ids": [],
+          "own_words": "Synthetic words"
+        },
+        "relationship_status": {
+          "value_ids": [
+            "single"
+          ]
+        },
+        "area_name": null
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-empty-looking-for-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-shown-field-empty-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-relationship-own-words-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": {
+          "value_ids": [
+            "single"
+          ],
+          "own_words": "Synthetic words"
+        },
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-duplicate-value-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "casual",
+          "casual"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-own-words-too-long-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-blank-area-name-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": " "
+      },
+      "valid": false
+    },
+    {
+      "name": "private-show_me-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "show_me": {
+          "gender": [
+            "all"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "private-accepted_option_ids-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "accepted_option_ids": [
+          "man"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "private-minimum_age-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "minimum_age": 18
+      },
+      "valid": false
+    },
+    {
+      "name": "private-distance_choice-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "distance_choice": "anywhere"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-area_id-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "area_id": "35620"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-latitude-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "latitude": 40.75
+      },
+      "valid": false
+    },
+    {
+      "name": "private-longitude-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "longitude": -73.98
+      },
+      "valid": false
+    },
+    {
+      "name": "private-distance_miles-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "distance_miles": 3
+      },
+      "valid": false
+    },
+    {
+      "name": "private-birth_date-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "birth_date": "1996-01-01"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-count-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "count": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "private-reason-CandidateDetails",
+      "scope": "production",
+      "definition": "CandidateDetails",
+      "value": {
+        "looking_for": [
+          "long-term"
+        ],
+        "gender": {
+          "value_ids": [
+            "woman"
+          ],
+          "own_words": null
+        },
+        "orientation": null,
+        "relationship_status": null,
+        "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area",
+        "reason": "blocked"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          }
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-missing-details-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "private-extra-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          }
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        },
+        "area_id": "35620"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-extra-profile-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          },
+          "area_name": "x"
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-uppercase-id-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "AAAAAAAA-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          }
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-ready-compatibility-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 30,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "ready"
+          }
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-under-18-CandidateCard",
+      "scope": "production",
+      "definition": "CandidateCard",
+      "value": {
+        "profile_id": "11111111-1111-4111-8111-111111111111",
+        "profile": {
+          "profile_id": "11111111-1111-4111-8111-111111111111",
+          "display_name": "Synthetic Member",
+          "age": 17,
+          "summary": "A synthetic member.",
+          "media_delivery_refs": [
+            "delivery-0123456789abcdef0123456789abcdef"
+          ],
+          "compatibility": {
+            "status": "pending"
+          }
+        },
+        "details": {
+          "looking_for": [
+            "long-term"
+          ],
+          "gender": {
+            "value_ids": [
+              "woman"
+            ],
+            "own_words": null
+          },
+          "orientation": null,
+          "relationship_status": null,
+          "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-two-cards-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "22222222-2222-4222-8222-222222222222",
+            "profile": {
+              "profile_id": "22222222-2222-4222-8222-222222222222",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": "33333333333343338333333333333333.01.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-pending-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "pending",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-pending-with-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "pending",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-empty-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "empty",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-empty-with-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "empty",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-stale-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "stale",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-stale-with-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "stale",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-unavailable-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "unavailable",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-unavailable-with-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "unavailable",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-empty-with-cursor-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "empty",
+        "items": [],
+        "next_cursor": "abc",
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-ready-without-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-discovery-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "discovery",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-collection-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "everyone",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-old-kind-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "recommendations",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-cursor-too-long-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-cursor-newline-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": "abc\n",
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-51-items-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "00000000-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000000-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000001-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000001-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000002-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000002-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000003-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000003-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000004-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000004-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000005-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000005-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000006-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000006-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000007-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000007-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000008-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000008-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000009-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000009-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000a-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000a-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000b-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000b-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000c-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000c-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000d-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000d-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000e-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000e-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000000f-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000000f-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000010-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000010-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000011-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000011-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000012-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000012-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000013-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000013-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000014-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000014-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000015-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000015-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000016-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000016-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000017-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000017-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000018-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000018-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000019-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000019-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001a-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001a-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001b-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001b-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001c-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001c-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001d-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001d-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001e-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001e-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000001f-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000001f-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000020-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000020-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000021-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000021-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000022-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000022-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000023-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000023-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000024-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000024-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000025-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000025-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000026-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000026-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000027-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000027-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000028-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000028-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000029-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000029-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002a-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002a-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002b-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002b-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002c-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002c-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002d-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002d-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002e-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002e-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "0000002f-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "0000002f-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000030-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000030-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000031-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000031-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "00000032-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "00000032-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "production-duplicate-card-id",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
+    },
+    {
+      "name": "production-distinct-card-id",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          },
+          {
+            "profile_id": "22222222-2222-4222-8222-222222222222",
+            "profile": {
+              "profile_id": "22222222-2222-4222-8222-222222222222",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": true
+    },
+    {
+      "name": "private-count-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z",
+        "count": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "private-total-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z",
+        "total": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "private-reason-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z",
+        "reason": "empty_market"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-viewer_id-CandidateCardPage",
+      "scope": "production",
+      "definition": "CandidateCardPage",
+      "value": {
+        "kind": "candidate_card_page",
+        "collection": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z",
+        "viewer_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppResponse-CandidateCardPage",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "candidate_card_page",
+          "collection": "recommendations",
+          "batch_id": "33333333-3333-4333-8333-333333333333",
+          "version": 1,
+          "state": "ready",
+          "items": [
+            {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "profile": {
+                "profile_id": "11111111-1111-4111-8111-111111111111",
+                "display_name": "Synthetic Member",
+                "age": 30,
+                "summary": "A synthetic member.",
+                "media_delivery_refs": [
+                  "delivery-0123456789abcdef0123456789abcdef"
+                ],
+                "compatibility": {
+                  "status": "pending"
+                }
+              },
+              "details": {
+                "looking_for": [
+                  "long-term"
+                ],
+                "gender": {
+                  "value_ids": [
+                    "woman"
+                  ],
+                  "own_words": null
+                },
+                "orientation": null,
+                "relationship_status": null,
+                "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+              }
+            }
+          ],
+          "next_cursor": null,
+          "expires_at": "2026-11-11T20:00:00Z"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-AppResponse-empty-CandidateCardPage",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "candidate_card_page",
+          "collection": "recommendations",
+          "batch_id": "33333333-3333-4333-8333-333333333333",
+          "version": 1,
+          "state": "empty",
+          "items": [],
+          "next_cursor": null,
+          "expires_at": "2026-11-11T20:00:00Z"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-AppResponse-CandidateCardPage-old-items",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "candidate_card_page",
+          "collection": "recommendations",
+          "batch_id": "33333333-3333-4333-8333-333333333333",
+          "version": 1,
+          "state": "ready",
+          "items": [
+            {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            }
+          ],
+          "next_cursor": null,
+          "expires_at": "2026-11-11T20:00:00Z"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-CandidatePage-holds-cards",
+      "scope": "production",
+      "definition": "CandidatePage",
+      "value": {
+        "kind": "recommendations",
+        "batch_id": "33333333-3333-4333-8333-333333333333",
+        "version": 1,
+        "state": "ready",
+        "items": [
+          {
+            "profile_id": "11111111-1111-4111-8111-111111111111",
+            "profile": {
+              "profile_id": "11111111-1111-4111-8111-111111111111",
+              "display_name": "Synthetic Member",
+              "age": 30,
+              "summary": "A synthetic member.",
+              "media_delivery_refs": [
+                "delivery-0123456789abcdef0123456789abcdef"
+              ],
+              "compatibility": {
+                "status": "pending"
+              }
+            },
+            "details": {
+              "looking_for": [
+                "long-term"
+              ],
+              "gender": {
+                "value_ids": [
+                  "woman"
+                ],
+                "own_words": null
+              },
+              "orientation": null,
+              "relationship_status": null,
+              "area_name": "New York-Newark-Jersey City, NY-NJ Metro Area"
+            }
+          }
+        ],
+        "next_cursor": null,
+        "expires_at": "2026-11-11T20:00:00Z"
+      },
+      "valid": false
     }
   ]
 }

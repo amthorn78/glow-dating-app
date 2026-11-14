@@ -31,3 +31,8 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["glow_profiles", "glow_profiles.*"]
 ignore_missing_imports = true
+
+# SV3 Stage A: the discovery suite drives glow_discovery, imported from services/api the same way.
+[[tool.mypy.overrides]]
+module = ["glow_discovery", "glow_discovery.*"]
+ignore_missing_imports = true

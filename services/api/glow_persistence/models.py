@@ -821,8 +821,17 @@ class CompatibilitySnapshot(Record):
         indexes = [models.Index(fields=["viewer", "expires_at"], name="snapshot_expiry_lookup")]
 
 
+COLLECTIONS = ("recommendations", "discovery")
+
+
 class RecommendationBatch(Record):
+    """A viewer's bounded batch of candidates for one collection (SV3 Stage A, migration 0010;
+    its brief's D7). ``collection`` is ``PageRequest.collection``; a viewer holds at most one
+    batch per collection (``batch_one_per_collection``): creating one deletes the viewer's earlier
+    batch of that collection, with its entries, in the same transaction."""
+
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
+    collection = models.CharField(max_length=16, choices=choices(*COLLECTIONS))
     eligibility_version = models.PositiveBigIntegerField()
     preferences_version = models.PositiveBigIntegerField()
     blocks_version = models.PositiveBigIntegerField()
@@ -844,6 +853,13 @@ class RecommendationBatch(Record):
                     eligibility_version__gte=1, preferences_version__gte=1, blocks_version__gte=1
                 ),
                 name="batch_elig_revision",
+            ),
+            # SV3 Stage A (D7): the two collections, and one batch per viewer and collection.
+            models.CheckConstraint(
+                condition=Q(collection__in=COLLECTIONS), name="batch_collection"
+            ),
+            models.UniqueConstraint(
+                fields=["account", "collection"], name="batch_one_per_collection"
             ),
         ]
         indexes = [models.Index(fields=["account", "created_at", "id"], name="batch_owner_cursor")]

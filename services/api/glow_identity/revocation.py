@@ -86,13 +86,13 @@ def _checked(result: ContactResult) -> ContactResult:
 
 
 def mark_verified(account_id: UUID) -> Outcome:
-    """D6 (DM-45 6.1): its own transaction; the account row locked ``FOR UPDATE`` before
-    anything else; a refusal unless the state is ``unverified`` (an ``active`` account is no
-    change); ``version`` and ``eligibility_version`` bumped. It runs after allauth marks the
-    address verified, and again at the next sign-in if it did not commit."""
+    """D6 (DM-45 6.1): its own transaction; the account row locked ``FOR NO KEY UPDATE``
+    (DM-61) before anything else; a refusal unless the state is ``unverified`` (an ``active``
+    account is no change); ``version`` and ``eligibility_version`` bumped. It runs after allauth
+    marks the address verified, and again at the next sign-in if it did not commit."""
     require_no_transaction()
     with transaction.atomic():
-        account = AppAccount.objects.select_for_update().filter(pk=account_id).first()
+        account = AppAccount.objects.select_for_update(no_key=True).filter(pk=account_id).first()
         if account is None:
             return Outcome("refused", "account_missing")
         if account.state == "active":
