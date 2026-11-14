@@ -1,4 +1,4 @@
-# Current handoff — App Manager 11 (14 November 2026; SV3 Stage A, C1 to C5 in PR45; DM-70, the pre-merge read)
+# Current handoff — App Manager 11 (14 November 2026; SV3 Stage A, C1 to C5 in PR45; cleared to merge after DM-70)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -9,29 +9,29 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Manager: App Manager 11**, created by App Manager 10 at Nathan's direction ([OD-63](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list). [PR45](https://github.com/amthorn78/glow-dating-app/pull/45), SV3 Stage A, is open from this branch. App Manager 10 pushed nothing after its handover commit `8130439`.
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
-- **SV2 is done** (OD-49): [the brief](../planning/sv2-profiles-media.md), revision 8; PR43 at `4dc2061` and PR44 at `3240ef0`, with their receipts in the [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 11 (with DM-60 to DM-69). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Corrections C1 (`cbeb050`), C2 (`8bd983f`), C3 (`f9a8621`) and C4 (`aa68813`) are built, verified and integrated; DM-68 ends the lock scan's line after C4. C4's review asked for changes (F1 to F3); C5 is built, verified and integrated (`d579e34`); its review approved with nits: DM-70. F7 is decided (OD-64), carried to before P11. With C2's code, the three recorded failure signatures lapse (DM-64 T9). Stage B follows after Stage A merges.
-- **CI note:** a repeat of 11 November's Chromium-install failure at Mobile checks follows DM-59 section 7.
+- **SV2 is done** (OD-49): PR43, PR44 (`3240ef0`), receipts in its [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 12 (with DM-60 to DM-70). Stage A is in PR45 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md)). Corrections C1 (`cbeb050`), C2 (`8bd983f`), C3 (`f9a8621`) and C4 (`aa68813`) are built, verified and integrated; DM-68 ends the lock scan's line after C4. C4's review asked for changes (F1 to F3); C5 is built, verified and integrated (`d579e34`); its review approved with nits; DM-70's pre-merge read is clear. F7 is decided (OD-64), carried to before P11. With C2's code, the three recorded failure signatures lapse (DM-64 T9). Stage B follows after Stage A merges.
+- **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
-- **Review log:** DM-01 to DM-70, with "Deferred conditions"; DM-69 confirms SC1 to SC11 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
+- **Review log:** DM-01 to DM-70, with "Deferred conditions"; DM-70 confirms AA1 to AA13 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (14 November 2026, 20:51 UTC, App Manager 11)
+## Waiting checkpoint (14 November 2026, 21:28 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | Nathan, then Dev Manager 5 | DM-70's answer: C5's review's open points and the pre-merge read | PR45 does not merge; the manager asks Nathan whether Dev Manager 5's session is still available |
+| App Manager 11 | GitHub | PR45's pull-request run (all eight jobs) and Codex on the final head, its non-Markdown tree identical to `43986ba`; then the merge of PR45 by the manager | No second push before the run finishes (AM5-04); a Codex pass with no result after 60 minutes gets one `@codex review` (OD-53) |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): DM-70 (the pre-merge read); any records batch; the merge of PR45. Then Stage B.
+1. **SV3** (OD-49): the merge of PR45 and its receipt; the cleanup. Then Stage B, with the carried items.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (14 November 2026, 20:51 UTC)
+## Branches and PRs (14 November 2026, 21:28 UTC)
 
 - **Open PRs:** [PR45](https://github.com/amthorn78/glow-dating-app/pull/45), SV3 Stage A, from the manager branch. `main` is at `3240ef0` (PR44).
-- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`ccd7336`, DM-69's report, merged at `66979b0`); the session branches of Stage A and C1 to C5 (`claude/loving-maxwell-cqu7eq`, `claude/glow-correction-c1-1jzjgr`, `claude/practical-cray-h7t08x`, `claude/glow-discovery-c3-ir9mnd`, `claude/fervent-gates-q8ohlu`, `claude/keen-cannon-p0ic1b`), each merged into the manager branch (heads and merges: the evidence record). The cleanup deletes the session branches once Stage A's PR merges.
+- **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`a03e8c8`, DM-70's report, merged at `366e457`); the session branches of Stage A and C1 to C5 (`claude/loving-maxwell-cqu7eq`, `claude/glow-correction-c1-1jzjgr`, `claude/practical-cray-h7t08x`, `claude/glow-discovery-c3-ir9mnd`, `claude/fervent-gates-q8ohlu`, `claude/keen-cannon-p0ic1b`), each merged into the manager branch (heads and merges: the evidence record). The cleanup deletes the session branches once Stage A's PR merges.
