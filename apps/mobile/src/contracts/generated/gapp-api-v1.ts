@@ -191,6 +191,25 @@ export type OwnAgeState = {
   birth_date: string | null;
 };
 /**
+ * A page of a recommendations or broader-discovery batch, as cards (SV3 Stage A, D7 and D13 (a)): CandidatePage's fields and state rules, the collection named by its own field, and CandidateCard items. Additive: CandidatePage is unchanged, and this discriminator joins AppResponse as earlier additions did.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CandidateCardPage".
+ */
+export type CandidateCardPage = {
+  kind: 'candidate_card_page';
+  collection: 'recommendations' | 'discovery';
+  batch_id: string;
+  version: number;
+  state: 'pending' | 'ready' | 'empty' | 'stale' | 'unavailable';
+  /**
+   * @maxItems 50
+   */
+  items: CandidateCard[];
+  next_cursor: string | null;
+  expires_at: Instant;
+};
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "Text80".
  */
@@ -323,7 +342,8 @@ export interface AppResponse {
     | ProfileCatalog
     | OwnCompletion
     | OwnSensitiveConsent
-    | OwnAgeState;
+    | OwnAgeState
+    | CandidateCardPage;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -723,6 +743,54 @@ export interface OwnCompletion {
   missing: ('consent' | 'adult_check' | 'profile_fields' | 'area' | 'photo' | 'chart' | 'identity_verification')[];
 }
 /**
+ * One card of a CandidateCardPage (SV3 Stage A, D13 (a)): the existing CandidateProfile, unchanged, with CandidateDetails. profile_id is the profile's own, repeated at the card's top level so that the page's items keep the contract's unique-key rule.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CandidateCard".
+ */
+export interface CandidateCard {
+  profile_id: Identifier;
+  profile: CandidateProfile;
+  details: CandidateDetails;
+}
+/**
+ * What a candidate's card shows beyond CandidateProfile (SV3 Stage A, D13 (a); OD-60; DM-60 Q12): the candidate's "looking for" values, always; gender, orientation and relationship status only while the candidate's display flag for that field is on, with their own words for gender and orientation (display only); and the name of the area they chose. Never a "show me" set, a filter, an area ID, an internal point, a distance, a birth date, a count or a reason.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "CandidateDetails".
+ */
+export interface CandidateDetails {
+  /**
+   * @minItems 1
+   * @maxItems 50
+   */
+  looking_for: [string, ...string[]];
+  gender: {
+    /**
+     * @minItems 0
+     * @maxItems 50
+     */
+    value_ids: string[];
+    own_words: OwnWords | null;
+  } | null;
+  orientation: {
+    /**
+     * @minItems 0
+     * @maxItems 50
+     */
+    value_ids: string[];
+    own_words: OwnWords | null;
+  } | null;
+  relationship_status: {
+    /**
+     * @minItems 1
+     * @maxItems 50
+     */
+    value_ids: [string, ...string[]];
+  } | null;
+  area_name: Text80 | null;
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "CommandMeta".
  */
@@ -1064,7 +1132,8 @@ export interface AppResponse1 {
     | ProfileCatalog
     | OwnCompletion
     | OwnSensitiveConsent
-    | OwnAgeState;
+    | OwnAgeState
+    | CandidateCardPage;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.

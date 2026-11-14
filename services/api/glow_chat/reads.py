@@ -5,8 +5,9 @@ It carries the send's protocol to the reads, as B1's grant does:
 
 - every transaction runs at READ COMMITTED and takes the send's row locks in the send's
   canonical order (the lower account, the higher account, the match, the session), but
-  ``FOR SHARE``: a read waits for a revocation in flight, which holds those rows ``FOR
-  UPDATE``, and then reads its result; a revocation waits for a read in flight; no reader
+  ``FOR SHARE``: a read waits for a revocation in flight, which holds one of those rows under
+  its writer's lock (an account ``FOR NO KEY UPDATE``, any other row ``FOR UPDATE``; DM-61),
+  and then reads its result; a revocation waits for a read in flight; no reader
   excludes another;
 - every check is the send's, in the send's order, on the rows as locked, with the time
   read from ``clock_timestamp()`` after the locks (``OrmContactPersistence``'s own lock,
