@@ -1,6 +1,6 @@
-"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C4; its brief's D2 and
+"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C5; its brief's D2 and
 D14; DM-61 K1, K3; DM-65, the exact-head review's F3; DM-67, C2's delta re-review's L1 and L2;
-DM-68, C3's delta re-review's F1 to F5).
+DM-68, C3's delta re-review's F1 to F5; DM-69, C4's delta re-review's F1).
 
 What the scan is (DM-68): a static check of the forms this docstring names. It reads the source and
 never runs it, so it cannot be complete: a queryset can be built, and a lock taken, in ways a
@@ -52,6 +52,21 @@ it holds is judged as the receiver, with the joins of them all, and the lock pas
 passes for each:
 ``(AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)).select_for_update()`` is an
 account lock, and needs ``no_key=True``.
+
+**A lock's receiver name, followed through every plain assignment** (C5; F1): where a lock's
+receiver starts from a name, the scan follows that name through its plain assignments in the
+function (``=``, an annotated assignment, ``:=``, and a combination assigned in place),
+transitively, as it follows a queryset for its joins: through each value that is a name, or a
+chain of calls, attributes or subscripts starting from one (``d = c``, ``d = c.filter(...)``,
+``d = c[:5]``, ``d = rows.all()``). Where a value it reaches holds a combination, a conditional, a
+boolean or an assignment expression, or a name it reaches is combined in place (``rows |= ...``),
+each chain that value holds is judged as the receiver, as above, and the lock passes only if it
+passes for each: after ``c = AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)``
+and ``d = c``, ``d.select_for_update(no_key=d is AppAccount)`` is an account lock, ``FOR UPDATE``.
+A value that holds no such expression is judged as before: a plain chain held in a name stays a
+generic lock (C1), with its stated limit (a generic lock's ``no_key=<variable> is AppAccount``
+where the variable holds a queryset). Where several chains fail, the one reported is a chain such
+a value holds, before a name that only passes it on.
 
 **What joins** (C2, C3's L2 and C4), in the function that holds the lock:
 
@@ -811,26 +826,108 @@ def _holds_a_composite(value: ast.AST) -> bool:
     return _composite(current)
 
 
+def _chain_base(value: ast.AST) -> str | None:
+    """The name a value is, or its chain of calls, attributes or subscripts starts from (``c`` in
+    ``c``, ``c.filter(...)``, ``c[:5]`` and ``c.all()``); ``None`` for anything else (C5; F1)."""
+    current = value
+    while isinstance(current, ast.Attribute | ast.Call | ast.Subscript):
+        current = current.func if isinstance(current, ast.Call) else current.value
+    return current.id if isinstance(current, ast.Name) else None
+
+
+def _reaches_a_composite(name: str, owner: int, functions: _Function, seen: frozenset[str]) -> bool:
+    """Whether a name, followed through its plain assignments in the function transitively (each
+    value that is a name, or a chain starting from one), reaches a value that holds a
+    combination, a conditional, a boolean or an assignment expression, or a name combined in
+    place (C5; F1)."""
+    pending = [name]
+    visited = set(seen)
+    while pending:
+        current = pending.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+        if functions.combined.get((owner, current)):
+            return True
+        for value in functions.assigned.get((owner, current), []):
+            if _holds_a_composite(value):
+                return True
+            base = _chain_base(value)
+            if base is not None:
+                pending.append(base)
+    return False
+
+
+def _judged_alike(head: _Head) -> tuple[bool, bool, bool, str | None]:
+    """What ``_judge`` reads of a chain: whether ``AppAccount`` is among its names, whether any of
+    its names is capitalised, whether it starts from a variable, and that variable. Two chains
+    alike in these are judged alike, and stay alike under any prefix of names."""
+    return (
+        ACCOUNT_MODEL in head.names,
+        any(name[:1].isupper() for name in head.names),
+        head.variable,
+        head.base,
+    )
+
+
+def _distinct(heads: Iterable[_Head]) -> list[_Head]:
+    """The chains, each kept once among those judged alike, in their first order (C5): a name
+    re-assigned many times is followed once per name, not once per path."""
+    kept: dict[tuple[bool, bool, bool, str | None], _Head] = {}
+    for head in heads:
+        kept.setdefault(_judged_alike(head), head)
+    return list(kept.values())
+
+
+_Reached = dict[tuple[str, frozenset[str]], list[_Head]]
+
+
 def _receiver_heads(
-    node: ast.AST, owner: int, functions: _Function, seen: frozenset[str] = frozenset()
+    node: ast.AST,
+    owner: int,
+    functions: _Function,
+    seen: frozenset[str] = frozenset(),
+    passed_on: bool = False,
+    reached: _Reached | None = None,
 ) -> list[_Head]:
-    """Every chain a lock's receiver holds (C4; F2): its own, and, where it starts from a name
-    that holds such an expression in the function (one assigned to it, or a combination assigned
-    in place), every chain each of that name's values holds, transitively."""
+    """Every chain a lock's receiver holds (C4; F2; C5, F1): its own, and, where it starts from a
+    name that holds such an expression in the function (one assigned to it, or a combination
+    assigned in place), or reaches one through its plain assignments, transitively (C5), every
+    chain each of that name's values holds, transitively. ``passed_on`` marks a value that only
+    passes a name on (``d = c``, ``d = c.filter(...)``): the chains its name reaches come before
+    its own, so a failing chain the expression holds is the one reported. ``reached`` keeps what
+    each name reaches, so each is followed once."""
+    reached = {} if reached is None else reached
     heads = _heads(node)
     more: list[_Head] = []
     for head in heads:
         if head.base is None or head.base in seen:
             continue
-        values = functions.assigned.get((owner, head.base), [])
-        combined = bool(functions.combined.get((owner, head.base)))
-        if not (combined or any(_holds_a_composite(value) for value in values)):
-            continue
         prefix = head.names[:-1]
-        for value in values:
-            for inner in _receiver_heads(value, owner, functions, seen | {head.base}):
-                more.append(_Head((*prefix, *inner.names), inner.variable, inner.base))
-    return [*heads, *more]
+        for inner in _name_heads(head.base, owner, functions, seen, reached):
+            more.append(_Head((*prefix, *inner.names), inner.variable, inner.base))
+    return _distinct([*more, *heads] if passed_on else [*heads, *more])
+
+
+def _name_heads(
+    name: str, owner: int, functions: _Function, seen: frozenset[str], reached: _Reached
+) -> list[_Head]:
+    """The chains a name's values hold, where the name reaches such an expression (C5; F1)."""
+    key = (name, seen)
+    if key not in reached:
+        found: list[_Head] = []
+        if _reaches_a_composite(name, owner, functions, seen):
+            for value in functions.assigned.get((owner, name), []):
+                found += _receiver_heads(
+                    value,
+                    owner,
+                    functions,
+                    seen | {name},
+                    not _holds_a_composite(value),
+                    reached,
+                )
+        reached[key] = _distinct(found)
+    return reached[key]
 
 
 def _passes(mode: str) -> bool:
