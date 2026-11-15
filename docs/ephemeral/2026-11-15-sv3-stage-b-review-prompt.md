@@ -20,7 +20,7 @@ You are the **exact-head code and security review of SV3's Stage B**: who may co
 **What came before.**
 - **SV1 and SV2 merged** (PR42 to PR44): sign-in, the profile, its settings, consent, the adult check, the birth input, visibility and photos, all sealed until P11.
 - **SV3's Stage A merged** (PR45, `8d83474`, with corrections C1 to C5): who may see whom. Pair eligibility, the two-way rule, age and distance, recommended then broader pages with batches and cursors, the page route, the discovery suite on a fourth disposable database, every explicit account lock `FOR NO KEY UPDATE` (DM-61), and a static scan of account locks whose rules are frozen (DM-68). **B0** (PR46, `947576d`) changed only the proof's tooling.
-- **The brief,** `docs/planning/sv3-eligibility-discovery-interactions.md`, revision 15, applies the Dev Manager's conditions word for word, DM-60 to DM-73 (their reports are in `docs/continuity/dev-manager/reviews/`). It rests on Nathan's directions OD-12, OD-55, OD-60 (its R: resurfacing, undo and rematch) and OD-61.
+- **The brief,** `docs/planning/sv3-eligibility-discovery-interactions.md`, revision 16, applies the Dev Manager's conditions word for word, DM-60 to DM-74 (their reports are in `docs/continuity/dev-manager/reviews/`). It rests on Nathan's directions OD-12, OD-55, OD-60 (its R: resurfacing, undo and rematch) and OD-61.
 - **Stage B decides who may contact whom.** It builds:
   - like and pass: idempotent directional actions, rechecked under both accounts' locks at commit (D9);
   - the mutual match: reciprocal likes make one match and one `match_activated` event through one new writer in `glow_chat`, `activate_reciprocal` (D10, option (a));
@@ -247,7 +247,7 @@ Expected: `"full": true`. Anything else: stop and report.
 - the brief, revision 16, and the Dev Manager's DM-60 (its sections on D9 to D12 and the match's serialization), DM-68, DM-70, DM-71, DM-72, DM-73 and DM-74 reports;
 - OD-12, OD-55, OD-60 and OD-61 in the owner-direction register;
 - the evidence record's sections from "Stage B, B0" to the end;
-- F08 to F10 and F13 in `packages/contracts/production/flows-v1.json`, and `InteractionIntent`, `InteractionOutcome`, `InteractionCommandResult`, `CommandReceipt`, `MatchProjection`, `UnmatchIntent`, `BlockIntent`, `BlockOutcome` undo's four new DTOs and B-C1's `OwnInteractionVersions` in `gapp-api-v1.schema.json`;
+- F08 to F10 and F13 in `packages/contracts/production/flows-v1.json`, and `InteractionIntent`, `InteractionOutcome`, `InteractionCommandResult`, `CommandReceipt`, `MatchProjection`, `UnmatchIntent`, `BlockIntent`, `BlockOutcome`, undo's four new DTOs and B-C1's `OwnInteractionVersions` in `gapp-api-v1.schema.json`;
 - the contract document's "Pagination, idempotency and stale state", "Policy boundaries and deliberately unavailable operations", "P05.3 internal interaction result and identity bridge" and "Compound actions and model projections";
 - P05's notes and code: `docs/architecture/interactions-fixtures.md` and `reciprocal-eligibility-fixtures.md`; `services/api/glow_domain/interactions.py`, `eligibility.py` and `trusted_eligibility.py`;
 - the code Stage B builds beside (read only): `glow_chat/contact.py` whole (`_run`, `_lock`, `_contact_state_checks`, `activate_match`, `block`, `unblock`, `unmatch`); `glow_profiles/tx.py` (`lock_account`), `settings_store.py` (`read_shared`, D19) and `idempotency.py`; `glow_identity/authentication.py`;
