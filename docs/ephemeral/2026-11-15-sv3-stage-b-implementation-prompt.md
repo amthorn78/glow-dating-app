@@ -62,7 +62,7 @@ Much of its text is the Dev Manager's words (DM-60, DM-68, DM-70, DM-71, DM-72),
     - the contract's files, for D13's additions only, and the generated outputs only as `npm run generate --prefix packages/contracts` writes them;
     - `proofs/postgres-ordering/**`: the discovery suite, its settings, tests and locks; the four suites' runners, for D14's record of the row locks they send and for the guards DM-71 allows only; and `tests/test_profile_offline.py`, for the two subtests of B0's delta re-review's F5 only (DD2);
     - `.github/workflows/foundation.yml`: the Database proof checks job's steps only;
-    - the records the brief names (item 6 below), and the evidence record;
+    - the records the brief names (item 7 below), and the evidence record;
   - **the lock scan's rules and B0's bound are not yours** (DM-68's freeze): no change to a rule of `account_lock_scan.py`. D14's record is a separate check, not a scan rule;
   - push only your own session branch, with `git push -u origin <branch>`. Never push `main`, the manager branch or `claude/dev-manager`, and never delete a branch;
   - on GitHub, read only: no pull request, comment, review, re-run, workflow dispatch or setting. Change nothing in Notion.
