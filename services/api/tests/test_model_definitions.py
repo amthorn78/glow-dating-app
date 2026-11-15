@@ -315,10 +315,11 @@ for name, previous in (('0006_area_table', '0005_profiles_settings'),
     assert data.dependencies == [('glow_persistence', previous)], name
     assert [type(op) for op in data.operations] == [RunPython], name
     assert data.operations[0].reversible, name
-# SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007), and SV3
-# Stage A's 0010 follows 0009 (test_sv3_stage_a_migration_follows_0009).
+# SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007), SV3
+# Stage A's 0010 follows 0009 (test_sv3_stage_a_migration_follows_0009), and SV3 Stage B's 0011,
+# for D12's undo, follows 0010 (test_sv3_stage_b_migration_follows_0010), each pinned as written.
 leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0010_batch_collection')], leaves
+assert leaves == [('glow_persistence', '0011_interaction_undo')], leaves
 migrations = Path.cwd() / 'glow_persistence' / 'migrations'
 for name in ('0005_profiles_settings', '0006_area_table', '0007_settings_launch_defaults'):
     source = (migrations / f'{name}.py').read_text()
@@ -430,6 +431,48 @@ unique = next(c for c in batch.constraints if c.name == 'batch_one_per_collectio
 assert tuple(unique.fields) == ('account', 'collection')
 source = migration_source = (Path.cwd() / 'glow_persistence' / 'migrations' /
     '0010_batch_collection.py').read_text()
+assert 'RunSQL' not in source and 'RunPython' not in source
+""")
+
+    def test_sv3_stage_b_migration_follows_0010(self):
+        # SV3 Stage B (its brief's D9 and D12): 0011 adds a directional interaction's
+        # ``withdrawn`` state (D12's undo keeps the row and advances its version), its
+        # ``decided_at`` (from which resurfacing's and undo's waiting periods count) and the
+        # idempotency record's ``withdrawn`` receipt code, and nothing else; 0001 to 0010 are
+        # unchanged (above). It is pinned as written.
+        import hashlib
+
+        migration = API_ROOT / "glow_persistence" / "migrations" / "0011_interaction_undo.py"
+        self.assertEqual(
+            hashlib.sha256(migration.read_bytes()).hexdigest(),
+            "ae986a4b4f3a6d2c1f78f1a2a4a4ce1f09d3398827292af29093b98561f312a7",
+        )
+        self.check_script("""
+loader = MigrationLoader(None)
+added = loader.disk_migrations[('glow_persistence', '0011_interaction_undo')]
+assert added.dependencies == [('glow_persistence', '0010_batch_collection')]
+assert [type(op).__name__ for op in added.operations] == [
+    'RemoveConstraint', 'RemoveConstraint', 'AddField', 'AlterField', 'AlterField',
+    'AddConstraint', 'AddConstraint'], [type(op).__name__ for op in added.operations]
+assert [(op.model_name, op.name) for op in added.operations[:2]] == [
+    ('directionalinteraction', 'glow_persistence_directionalinteraction_state'),
+    ('idempotencyrecord', 'intent_result')]
+assert [(op.model_name, op.name) for op in added.operations[2:5]] == [
+    ('directionalinteraction', 'decided_at'), ('directionalinteraction', 'state'),
+    ('idempotencyrecord', 'outcome_code')]
+assert sorted(op.constraint.name for op in added.operations[5:]) == [
+    'glow_persistence_directionalinteraction_state', 'intent_result']
+interaction = m.DirectionalInteraction._meta
+assert interaction.get_field('state').choices == [
+    ('liked', 'liked'), ('passed', 'passed'), ('withdrawn', 'withdrawn')]
+assert interaction.get_field('decided_at').has_default()
+assert not interaction.get_field('decided_at').null
+unique = next(c for c in interaction.constraints if c.name == 'directional_interaction_pair')
+assert tuple(unique.fields) == ('actor', 'target')
+record = m.IdempotencyRecord._meta
+assert [c[0] for c in record.get_field('outcome_code').choices] == [
+    'committed', 'liked', 'passed', 'unmatched', 'blocked', 'unblocked', 'withdrawn']
+source = (Path.cwd() / 'glow_persistence' / 'migrations' / '0011_interaction_undo.py').read_text()
 assert 'RunSQL' not in source and 'RunPython' not in source
 """)
 
