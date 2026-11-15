@@ -11,7 +11,12 @@ the body or another header:
   ``InteractionUndoOutcome`` (D12's undo);
 - ``POST api/v1/matches/unmatch``: ``UnmatchIntent``, answering ``MatchProjection`` (F10; D11);
 - ``POST api/v1/blocks``: ``BlockIntent``, answering ``BlockOutcome`` (F13; D11);
-- ``GET api/v1/matches/<match_id>``: ``MatchProjection``, for a participant (F09).
+- ``GET api/v1/matches/<match_id>``: ``MatchProjection``, for a participant (F09);
+- ``GET api/v1/interactions/<profile_id>``: D13's ``OwnInteractionVersions``, the actor's own
+  directional row and own block toward that profile, each state and version (F08, F13; DM-74;
+  correction B-C1): the same 200 answer, ``none`` and ``0``, wherever the actor has no row, whether
+  the profile exists or not and whatever its state, never ``not_found`` for a profile, and never
+  the other member's rows. A body is ``invalid_request``, as a query string is.
 
 A body that is not its DTO, any query string, another content type or another method is
 ``invalid_request`` (400; 405 for the method, as SV2's and Stage A's routes answer). Another
@@ -154,3 +159,20 @@ class MatchView(_Route):
     def get(self, request: Any, match_id: UUID) -> Response:
         actor = self._actor(request)
         return self._answer(interactions.read_match(actor.account_id, match_id))
+
+
+class OwnVersionsView(_Route):
+    """The actor's own versions toward a profile (D13; DM-74; correction B-C1), for the actor
+    only: the same answer whatever the profile's state, never ``not_found`` for a profile."""
+
+    http_method_names = ["get"]
+
+    def get(self, request: Any, profile_id: UUID) -> Response:
+        actor = self._actor(request)
+        try:
+            sent = request._request.body
+        except RequestDataTooBig:
+            raise _BadRequest() from None
+        if sent:
+            raise _BadRequest()
+        return self._answer(interactions.read_own_versions(actor.account_id, profile_id))

@@ -21,6 +21,8 @@ STAGE_B_ROUTES = (
     "api/v1/matches/unmatch",
     "api/v1/matches/<uuid:match_id>",
     "api/v1/blocks",
+    # Correction B-C1 (DM-74): the own-versions read.
+    "api/v1/interactions/<uuid:profile_id>",
 )
 STAGE_B_PATHS = (
     "/api/v1/discovery/interaction",
@@ -28,6 +30,7 @@ STAGE_B_PATHS = (
     "/api/v1/matches/unmatch",
     "/api/v1/matches/2b3c4d5e-6f70-4182-93a4-b5c6d7e8f901",
     "/api/v1/blocks",
+    "/api/v1/interactions/6f1c2a3e-8b4d-4c5e-9f60-7a8b9c0d1e2f",
 )
 
 RUNTIME = """
@@ -92,7 +95,12 @@ class InteractionsSealedRuntimeTests(unittest.TestCase):
         for route in STAGE_B_ROUTES:
             with self.subTest(route=route):
                 self.assertNotIn(route, routes)
-        for prefix in ("api/v1/discovery", "api/v1/matches", "api/v1/blocks"):
+        for prefix in (
+            "api/v1/discovery",
+            "api/v1/matches",
+            "api/v1/blocks",
+            "api/v1/interactions",
+        ):
             with self.subTest(prefix=prefix):
                 self.assertFalse(any(str(route).startswith(prefix) for route in routes))
         # And no request path of Stage B's resolves to a view.

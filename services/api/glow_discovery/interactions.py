@@ -45,6 +45,17 @@ row is kept and its version advanced (``withdrawn``), never deleted and created 
 never grants rematch; block works after an unmatch and while paused; unblock restores no match and
 no send. Another member's match is ``not_found``.
 
+**The actor's own versions** (D13; DM-74; correction B-C1): ``read_own_versions`` answers, for a
+target profile ID, the actor's own directional row toward that profile's account and the actor's
+own block of it, each state and version (``none`` and ``0`` where the actor has no row), so a
+client that has lost its own command answers, or a second device, can learn the version each
+command compares ``CommandMeta.expected_version`` with. It is one transaction holding the actor's
+account row ``FOR SHARE`` first (``read_account_shared``), as the match read does, so it waits for
+a command of the actor's in flight. Its answer depends only on the actor's own rows: it reads the
+profile's account ID and nothing else of the profile, never answers ``not_found`` for a profile
+(missing, not visible, paused, restricted, removed, excluded or blocking the actor alike), and
+never reads a row whose actor is the other member, so their like, pass or block is never shown.
+
 Nothing here logs or returns another member's private value, a count, a reason or a block's
 direction (D8, D17); a refusal names a code and an internal reason, never a value.
 """
@@ -563,3 +574,35 @@ def read_match(account_id: UUID, match_id: UUID) -> Result:
         return Result("read", data=projection)
 
     return run(body)
+
+
+# -- the actor's own versions (D13; DM-74; correction B-C1) -----------------------------------
+
+
+def read_own_versions(
+    account_id: UUID, profile_id: UUID, *, probe: TransactionProbe | None = None
+) -> Result:
+    """The actor's own directional row toward the profile's account and the actor's own block of
+    it, each state and version (``none`` and ``0`` where the actor has none): the same answer
+    whatever the profile's state, or whether it exists, and never the other member's rows."""
+
+    def body(tx: Tx) -> Result:
+        read_account_shared(tx, account_id)
+        target_id = _account_of_profile(str(profile_id))
+        row = (
+            DirectionalInteraction.objects.filter(actor_id=account_id, target_id=target_id)
+            .values_list("state", "version")
+            .first()
+            if target_id is not None
+            else None
+        )
+        own_block = (
+            Block.objects.filter(actor_id=account_id, target_id=target_id)
+            .values_list("state", "version")
+            .first()
+            if target_id is not None
+            else None
+        )
+        return Result("read", data=contract.own_versions(str(profile_id), row, own_block))
+
+    return run(body, probe)

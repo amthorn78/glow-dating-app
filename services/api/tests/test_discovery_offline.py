@@ -54,7 +54,8 @@ class DiscoveryRouteTests(unittest.TestCase):
     def test_the_page_route_and_stage_bs_action_routes_are_served_and_no_other(self) -> None:
         # Stage A's page route and Stage B's action routes (D13; F07 to F10, F13), each with its
         # methods, and no other: no route takes a match intent (F09), and no other module of the
-        # slice declares a route.
+        # slice declares a route. Rewritten by Stage B's correction B-C1 (DM-74): the exact set
+        # gains the own-versions read, its view and its one method, GET, and still no other.
         seen = last_json(
             under_discovery_settings(
                 "import json\nfrom glow_discovery import interaction_urls, urls\n"
@@ -72,6 +73,7 @@ class DiscoveryRouteTests(unittest.TestCase):
                 ["api/v1/matches/unmatch", "UnmatchView", ["post"]],
                 ["api/v1/matches/<uuid:match_id>", "MatchView", ["get"]],
                 ["api/v1/blocks", "BlockView", ["post"]],
+                ["api/v1/interactions/<uuid:profile_id>", "OwnVersionsView", ["get"]],
             ],
         )
         declaring = sorted(

@@ -28,6 +28,13 @@ D13's new ``InteractionUndoCommandResult``), which the operations return beside 
 neither joins the served envelope (the contract's "P05.3 internal interaction result and identity
 bridge"). No projection carries another member's private value, a count, a reason or a block's
 direction (D8).
+
+**The actor's own versions** (D13; DM-74; correction B-C1) are D13's new ``OwnInteractionVersions``
+(an added DTO; no existing DTO changes; no request DTO, since the read takes the profile ID in its
+path): the profile ID as asked, the actor's own directional row's state (``none``, ``liked``,
+``passed`` or ``withdrawn``) and version, and the actor's own block's state (``none``, ``active`` or
+``removed``) and version, each ``none`` and ``0`` where the actor has no row. It never carries the
+other member's row, a count or a reason (D8).
 """
 
 from __future__ import annotations
@@ -263,6 +270,29 @@ def block_outcome(target_profile_id: str, version: int, state: str) -> dict[str,
         "target_profile_id": target_profile_id,
         "version": int(version),
         "state": state,
+    }
+
+
+OWN_VERSIONS = "own_interaction_versions"
+
+
+def own_versions(
+    target_profile_id: str,
+    interaction: tuple[str, int] | None,
+    block: tuple[str, int] | None,
+) -> dict[str, Any]:
+    """D13's ``OwnInteractionVersions``: the actor's own directional row and own block toward the
+    profile, each ``(state, version)``, or ``None`` where the actor has no row (``none`` and
+    ``0``). Built from the actor's own rows only (DM-74)."""
+    interaction_state, interaction_version = interaction or ("none", 0)
+    block_state, block_version = block or ("none", 0)
+    return {
+        "kind": OWN_VERSIONS,
+        "target_profile_id": target_profile_id,
+        "interaction_state": str(interaction_state),
+        "interaction_version": int(interaction_version),
+        "block_state": str(block_state),
+        "block_version": int(block_version),
     }
 
 
