@@ -33,6 +33,7 @@ from tests.test_profile_offline import unquoted_step
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 API_ROOT = REPO_ROOT / "services" / "api"
+PROOF = Path(__file__).resolve().parents[1] / "glow_ordering_proof"
 DISCOVERY_SETTINGS = "glow_ordering_proof.discovery_settings"
 
 GOOD = {
@@ -368,7 +369,9 @@ class DiscoveryWorkflowTests(unittest.TestCase):
 
 
 class DiscoveryPlanTests(unittest.TestCase):
-    def test_the_plan_covers_stage_as_acceptance_checks(self) -> None:
+    def test_the_plan_covers_stage_as_and_stage_bs_acceptance_checks(self) -> None:
+        # Rewritten by SV3 Stage B's item 6 (DM-73): Stage B's checks 7 to 11 are now covered by
+        # its cases, and Stage A's still are.
         plan = discovery_cases.plan()
         self.assertEqual(len(plan), len(set(plan)))
         covered = {check for entry in discovery_cases.CASES for check in entry.checks}
@@ -378,31 +381,115 @@ class DiscoveryPlanTests(unittest.TestCase):
         for decision in ("D2", "D3", "D4", "D5", "D6", "D7", "D8", "D13", "D14", "D19", "DB04"):
             with self.subTest(decision=decision):
                 self.assertIn(decision, covered)
-        # Stage B's checks (7 to 11) are not Stage A's.
+        stage_b = {
+            check
+            for entry in discovery_cases.CASES
+            if entry.case_id in STAGE_B_CASES
+            for check in entry.checks
+        }
+        for check in ("7", "8", "9", "10", "11", "12", "13", "14", "15"):
+            with self.subTest(stage_b_check=check):
+                self.assertIn(check, stage_b)
+        for decision in ("D9", "D10", "D11", "D12", "D13", "D14", "D19", "DB05", "DB10"):
+            with self.subTest(stage_b_decision=decision):
+                self.assertIn(decision, stage_b)
+        # Stage A's cases cover none of Stage B's checks 7 to 11.
+        stage_a = {
+            check
+            for entry in discovery_cases.CASES
+            if entry.case_id not in STAGE_B_CASES
+            for check in entry.checks
+        }
         for check in ("7", "8", "9", "10", "11"):
-            self.assertNotIn(check, covered)
+            self.assertNotIn(check, stage_a)
 
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(discovery_cases.CASE_COUNT, 40)
+        # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 18 named below.
+        self.assertEqual(discovery_cases.CASE_COUNT, 58)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
         # C2's two new cases (the exact-head review's F1 and F2).
         for case_id in ("pages.one_snapshot_statements", "distance.choice_no_longer_offered"):
             self.assertIn(case_id, discovery_cases.plan())
+        self.assertEqual(discovery_cases.plan()[40:], STAGE_B_CASES)
 
-    def test_the_page_route_is_the_apis(self) -> None:
-        tree = ast.parse((API_ROOT / "glow_discovery" / "urls.py").read_text(encoding="utf-8"))
-        declared = {
-            node.args[0].value
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "path"
-            and isinstance(node.args[0], ast.Constant)
-        }
-        self.assertEqual(declared, {"api/v1/discovery/page"})
-        from glow_ordering_proof import discovery_support
+    def test_the_routes_are_the_apis(self) -> None:
+        # Rewritten by SV3 Stage B's item 6 (DM-73): the exact routes Stage A's and Stage B's URL
+        # modules declare, and the suite's URL configuration serves both.
+        declared: dict[str, set[str]] = {}
+        for module in ("urls.py", "interaction_urls.py"):
+            tree = ast.parse((API_ROOT / "glow_discovery" / module).read_text(encoding="utf-8"))
+            declared[module] = {
+                str(node.args[0].value)
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "path"
+                and isinstance(node.args[0], ast.Constant)
+            }
+        self.assertEqual(
+            declared,
+            {
+                "urls.py": {"api/v1/discovery/page"},
+                "interaction_urls.py": {
+                    "api/v1/discovery/interaction",
+                    "api/v1/discovery/interaction/undo",
+                    "api/v1/matches/unmatch",
+                    "api/v1/matches/<uuid:match_id>",
+                    "api/v1/blocks",
+                },
+            },
+        )
+        from glow_ordering_proof import discovery_support, interaction_cases
 
         self.assertEqual(discovery_support.PAGE, "/api/v1/discovery/page")
+        self.assertEqual(
+            (
+                interaction_cases.INTERACTION,
+                interaction_cases.UNDO,
+                interaction_cases.UNMATCH,
+                interaction_cases.BLOCKS,
+                interaction_cases.MATCHES,
+            ),
+            (
+                "/api/v1/discovery/interaction",
+                "/api/v1/discovery/interaction/undo",
+                "/api/v1/matches/unmatch",
+                "/api/v1/blocks",
+                "/api/v1/matches",
+            ),
+        )
+        served = ast.parse((PROOF / "discovery_urls.py").read_text(encoding="utf-8"))
+        names = {
+            node.value.id
+            for node in ast.walk(served)
+            if isinstance(node, ast.Starred) and isinstance(node.value, ast.Name)
+        }
+        self.assertEqual(
+            names, {"identity_routes", "profile_routes", "discovery_routes", "interaction_routes"}
+        )
+
+
+# SV3 Stage B's cases, in the order the suite runs them, after Stage A's 40.
+STAGE_B_CASES = (
+    "row_locks.driver_forms_are_seen",
+    "interactions.like_and_pass_are_idempotent",
+    "interactions.stale_and_ineligible_are_refused",
+    "interactions.unreciprocated_like_is_hidden",
+    "interactions.pass_over_like_is_refused",
+    "match.reciprocal_likes_make_one_match",
+    "match.no_route_creates_a_match",
+    "match.activate_reciprocal_refuses_what_activate_match_refuses",
+    "concurrency.reciprocal_likes_at_once",
+    "concurrency.changes_during_a_like_are_seen",
+    "unmatch.revokes_contact_and_never_rematches",
+    "block.works_after_unmatch_and_while_paused",
+    "settings.resurfacing_off_and_on",
+    "settings.undo_off_and_on",
+    "settings.rematch_cannot_be_switched_on",
+    "routes.interaction_refusals_and_ownership",
+    "interactions.logs_no_private_value",
+    "interactions.pointer_order",
+)
 
 
 class DiscoveryCommandTests(unittest.TestCase):
@@ -2343,6 +2430,18 @@ PINNED_C5_REVIEW = {
         "    X = Y\n"
         "    X = AppAccount.objects.filter(pk=a)\n"
         "    return (Y | X).select_for_update().first()\n",
+        "orm",
+    ),
+    # SV3 Stage B, item 4 (DM-72; B0's delta re-review's F6): the memo key's seen, not its size.
+    # Keyed on (name, len(seen)), x is first followed under {y} (where it reaches nothing), and
+    # that answer is reused under {z}, another seen of the same size, so the account is lost.
+    "the_memo_keys_seen_not_its_size": (
+        "def lock(a, b):\n"
+        "    Y = X | Match.objects.filter(pk=b)\n"
+        "    Z = X | Match.objects.filter(pk=b)\n"
+        "    X = Y\n"
+        "    X = AppAccount.objects.filter(pk=a)\n"
+        "    return (Y | Z).select_for_update().first()\n",
         "orm",
     ),
     # F12: _climb's NamedExpr branch, climbing through an assignment expression to the calls made

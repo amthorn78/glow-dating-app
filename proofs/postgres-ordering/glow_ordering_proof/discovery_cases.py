@@ -55,8 +55,9 @@ class Case:
 
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
-# any case runs, and the offline tests.
-CASE_COUNT = 40
+# any case runs, and the offline tests. Stage A's 40, D14's reach (SV3 Stage B's item 2) and Stage
+# B's 17 interaction cases (``interaction_cases``, registered after the rest).
+CASE_COUNT = 58
 
 
 def case(
@@ -1227,6 +1228,15 @@ class _Statements:
         return self.seen["transaction"] + self.seen["candidates"]
 
 
+def _phases(probe: _Statements) -> list[list[str]]:
+    """The probe's statements, phase by phase in the order a page passes through them, so in the
+    order it sent them."""
+    return [
+        [sql for sql, _ in probe.seen[phase]]
+        for phase in ("outside", "transaction", "candidates", "committed")
+    ]
+
+
 def _member_tables() -> frozenset[str]:
     """The tables that hold members' rows: every table the selection and the recheck read, but
     the batch's own two."""
@@ -1287,10 +1297,21 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     ``executemany`` on the default connection, in the case's own thread) is a read, one that
     begins with ``SELECT`` or ``WITH`` and holds none of the words ``INSERT``, ``UPDATE``,
     ``DELETE``, ``MERGE``, ``INTO``, ``TRUNCATE`` or ``COPY``, so no writer's row lock either
-    (``is_write``; C4's F6)."""
-    from django.db import connection
+    (``is_write``; C4's F6). With D14's record (SV3 Stage B's items 1 and 2; DM-69, DM-70), no
+    statement goes out while a page runs on another connection, from another thread or through
+    the driver itself (a psycopg cursor method Django's cursor passes through unwrapped,
+    ``callproc``, or the driver's own connection), and the record's statements on the page's own
+    connection are the probe's, one for one."""
+    from django.db import connection, connections
     from glow_discovery import pages, predicates
 
+    from glow_ordering_proof import row_locks
+
+    record = row_locks.active()
+    expect(record is not None, "D14's record of the statements the suite sends is installed")
+    assert record is not None
+    own_connection = id(connections["default"])
+    reach: list[str] = []
     viewer = ctx.visible()
     others = [ctx.visible() for _ in range(3)]
     ids = {ctx.profile_id(m) for m in others}
@@ -1302,9 +1323,31 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
 
     def recorded(work: Callable[[_Statements], Any]) -> tuple[Any, _Statements]:
         probe = _Statements()
-        with connection.execute_wrapper(probe.record):
+        assert record is not None
+        with record.window() as seen, connection.execute_wrapper(probe.record):
             result = work(probe)
         expect(result.ok and result.data is not None, "the page reads")
+        # Stage B's items 1 and 2 (DM-69, DM-70): everything the record saw while the page ran.
+        own = [
+            item
+            for item in seen
+            if item.source == row_locks.DJANGO
+            and item.thread == threading.get_ident()
+            and item.connection == own_connection
+        ]
+        elsewhere = len(seen) - len(own)
+        expect(
+            elsewhere == 0,
+            "while the page ran, no statement went out on another connection, from another"
+            f" thread or through the driver itself ({elsewhere} did)",
+        )
+        probed = sum(len(items) for items in probe.seen.values())
+        expect(
+            [item.text for item in own] == [str(sql) for phase in _phases(probe) for sql in phase],
+            f"the record's statements on the page's connection are the probe's ({len(own)} and"
+            f" {probed})",
+        )
+        reach.append(str(len(seen)))
         return result, probe
 
     def check(probe: _Statements, statement: str, other: str, what: str) -> None:
@@ -1365,7 +1408,9 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     return (
         "one selection, or one recheck, is the only statement reading members after its probe"
         f" point; a cursor page writes nothing (statements per transaction: {', '.join(counted)};"
-        f" listed reads of members before the probe point: {', '.join(listed_reads)})"
+        f" listed reads of members before the probe point: {', '.join(listed_reads)}); D14's"
+        f" record saw no statement elsewhere while each page ran (statements seen:"
+        f" {', '.join(reach)})"
     )
 
 
@@ -2311,3 +2356,8 @@ def run_case(ctx: DiscoveryContext, entry: Case) -> tuple[bool, str]:
 
 def plan() -> tuple[str, ...]:
     return tuple(entry.case_id for entry in CASES)
+
+
+# SV3 Stage B: the interaction cases register after Stage A's (acceptance checks 7 to 12, with 13
+# and 14 for Stage B's code). Imported last, so that every name they take from here is defined.
+from glow_ordering_proof import interaction_cases  # noqa: E402, F401
