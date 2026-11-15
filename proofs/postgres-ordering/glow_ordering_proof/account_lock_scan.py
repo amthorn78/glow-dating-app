@@ -1,13 +1,14 @@
-"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C5; its brief's D2 and
-D14; DM-61 K1, K3; DM-65, the exact-head review's F3; DM-67, C2's delta re-review's L1 and L2;
-DM-68, C3's delta re-review's F1 to F5; DM-69, C4's delta re-review's F1).
+"""The scan of explicit account row locks (SV3 Stage A, corrections C1 to C5, and Stage B's B0;
+its brief's D2 and D14; DM-61 K1, K3; DM-65, the exact-head review's F3; DM-67, C2's delta
+re-review's L1 and L2; DM-68, C3's delta re-review's F1 to F5; DM-69, C4's delta re-review's F1;
+DM-70 and DM-71, the bound on the receiver rule's work and C5's delta re-review's F1, F2 and F8).
 
 What the scan is (DM-68): a static check of the forms this docstring names. It reads the source and
 never runs it, so it cannot be complete: a queryset can be built, and a lock taken, in ways a
 reading of the source does not see. It refuses the forms named here; any other form is a stated
 limit (the proof README's "Limits"), not a defect of the scan, unless code uses it to lock an
-account row. From SV3's Stage B, the suites also check every row lock they send, whatever its form
-(the brief's D14).
+account row. From SV3's Stage B, the suites also check every row lock they send through Django's
+``execute`` and ``executemany``, whatever its form, within the reach the brief's D14 states.
 
 Every explicit lock of an ``AppAccount`` row, in ``services/api`` (its tests and virtual
 environment left out) and in the ordering proof's reference design (``reference.py``), must be
@@ -65,8 +66,30 @@ passes for each: after ``c = AppAccount.objects.filter(pk=a) | AppAccount.object
 and ``d = c``, ``d.select_for_update(no_key=d is AppAccount)`` is an account lock, ``FOR UPDATE``.
 A value that holds no such expression is judged as before: a plain chain held in a name stays a
 generic lock (C1), with its stated limit (a generic lock's ``no_key=<variable> is AppAccount``
-where the variable holds a queryset). Where several chains fail, the one reported is a chain such
-a value holds, before a name that only passes it on.
+where the variable holds a queryset). Where several chains fail, the one reported is the first in
+order: the receiver's own chain, then each followed name's values in the order they are assigned,
+where a value that only passes a name on puts the chains that name reaches before its own. So
+with ``no_key=<the receiver> is AppAccount`` an account chain the value holds is reported
+(``orm``); otherwise the receiver's own chain may be (``generic``). Only the kind reported
+differs; the lock fails either way. Where it follows a name to such an expression, each value on
+the way that only passes a name on (``d = c``, ``d = c.filter(...)``) is judged too, by its own
+chain, as a generic lock whose variable is that name, as C4 judges a name that holds one: after
+``c = Match.objects.filter(pk=a) | Match.objects.filter(pk=b)`` and ``d = c``,
+``d.select_for_update(no_key=d is AppAccount)`` is refused (``generic``, ``FOR UPDATE``), though
+it locks no account row. It fails closed; ``no_key=True`` passes.
+
+**A bound on the receiver rule's work** (B0; DM-70, the design DM-71 read): for each lock, the
+receiver rule follows at most ``MAX_NAMES_FOLLOWED`` (100) names along one chain, and visits at
+most ``MAX_STATES`` (1,000) states in all, a state being a name it follows under a distinct set of
+names already followed on its way (``seen``). A name is followed when it reaches such an
+expression and its values are read; a name with no assignment in the function (a model's name) is
+not followed, and counts toward neither limit. Beyond either limit, the lock is refused and never
+passes: it is recorded as a lock that is not ``FOR NO KEY UPDATE``, and its line names the limit,
+the function and the lock's line (``BAD <path>:<line> (<function>, bound: more than 1000
+states): FOR UPDATE``, or ``bound: more than 100 names followed``). The bound covers the receiver
+rule alone: a combination of 1,000 parts still exceeds Python's recursion limit in the reading of
+combinations (``_parts``), so the scan stops with ``RecursionError`` and exits 1, failing closed
+(a stated limit, the proof README's "Limits").
 
 **What joins** (C2, C3's L2 and C4), in the function that holds the lock:
 
@@ -127,7 +150,7 @@ import ast
 import re
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 
@@ -183,6 +206,10 @@ EXPRESSIONS = frozenset({"Q", "F"})
 # C4 (F2): the operators that combine two querysets.
 COMBINATIONS = (ast.BitAnd, ast.BitOr, ast.BitXor)
 NOT_PATHS = frozenset({"defaults", "create_defaults", "flat", "named"})
+# B0 (DM-70; the design DM-71 read): the bound on the receiver rule's work for each lock. Beyond
+# either, the lock is refused (``BoundExceeded``).
+MAX_NAMES_FOLLOWED = 100  # names followed along one chain
+MAX_STATES = 1000  # states visited in all, a state being a name followed under a distinct seen
 # Every explicit account lock C1 found and changed (DM-61's list, with the two helpers), by file
 # and enclosing function: a lock added, lost or moved changes this list and fails the scan.
 EXPECTED_SITES: tuple[tuple[str, str], ...] = (
@@ -201,7 +228,7 @@ class Lock:
     path: str
     line: int
     function: str
-    kind: str  # "orm", "generic", "join" or "sql"
+    kind: str  # "orm", "generic", "join", "sql", or "bound: ..." for a lock refused by B0's bound
     mode: str  # "FOR NO KEY UPDATE", "FOR UPDATE", "FOR UPDATE OF <entries>", ...
     joins: tuple[str, ...] = ()  # what joins another table, for a lock that does
 
@@ -879,7 +906,19 @@ def _distinct(heads: Iterable[_Head]) -> list[_Head]:
     return list(kept.values())
 
 
-_Reached = dict[tuple[str, frozenset[str]], list[_Head]]
+class BoundExceeded(Exception):
+    """The receiver rule's work for one lock went beyond a bound (B0; ``MAX_NAMES_FOLLOWED``,
+    ``MAX_STATES``): the lock is refused, and its line names the limit."""
+
+
+@dataclass
+class _Work:
+    """The receiver rule's work for one lock (B0): what each name reaches under each ``seen``
+    (so each is followed once per distinct ``seen``), and how many states it has visited, a
+    state being a name it follows under a distinct ``seen``."""
+
+    reached: dict[tuple[str, frozenset[str]], list[_Head]] = field(default_factory=dict)
+    states: int = 0
 
 
 def _receiver_heads(
@@ -888,35 +927,45 @@ def _receiver_heads(
     functions: _Function,
     seen: frozenset[str] = frozenset(),
     passed_on: bool = False,
-    reached: _Reached | None = None,
+    work: _Work | None = None,
 ) -> list[_Head]:
     """Every chain a lock's receiver holds (C4; F2; C5, F1): its own, and, where it starts from a
     name that holds such an expression in the function (one assigned to it, or a combination
     assigned in place), or reaches one through its plain assignments, transitively (C5), every
     chain each of that name's values holds, transitively. ``passed_on`` marks a value that only
     passes a name on (``d = c``, ``d = c.filter(...)``): the chains its name reaches come before
-    its own, so a failing chain the expression holds is the one reported. ``reached`` keeps what
-    each name reaches, so each is followed once."""
-    reached = {} if reached is None else reached
+    its own, so a failing chain the expression holds is the one reported. ``work`` keeps what
+    each name reaches under each ``seen``, so each is followed once per distinct ``seen``, and
+    counts the states toward ``MAX_STATES`` (B0)."""
+    work = _Work() if work is None else work
     heads = _heads(node)
     more: list[_Head] = []
     for head in heads:
         if head.base is None or head.base in seen:
             continue
         prefix = head.names[:-1]
-        for inner in _name_heads(head.base, owner, functions, seen, reached):
+        for inner in _name_heads(head.base, owner, functions, seen, work):
             more.append(_Head((*prefix, *inner.names), inner.variable, inner.base))
     return _distinct([*more, *heads] if passed_on else [*heads, *more])
 
 
 def _name_heads(
-    name: str, owner: int, functions: _Function, seen: frozenset[str], reached: _Reached
+    name: str, owner: int, functions: _Function, seen: frozenset[str], work: _Work
 ) -> list[_Head]:
-    """The chains a name's values hold, where the name reaches such an expression (C5; F1)."""
+    """The chains a name's values hold, where the name reaches such an expression (C5; F1).
+    Following it is a state; beyond ``MAX_NAMES_FOLLOWED`` names along one chain, or
+    ``MAX_STATES`` states for the lock, it raises ``BoundExceeded`` (B0). A name that reaches no
+    such expression (a model's name, with no assignment in the function) is not followed and
+    counts toward neither."""
     key = (name, seen)
-    if key not in reached:
+    if key not in work.reached:
         found: list[_Head] = []
         if _reaches_a_composite(name, owner, functions, seen):
+            work.states += 1
+            if work.states > MAX_STATES:
+                raise BoundExceeded(f"more than {MAX_STATES} states")
+            if len(seen) + 1 > MAX_NAMES_FOLLOWED:
+                raise BoundExceeded(f"more than {MAX_NAMES_FOLLOWED} names followed")
             for value in functions.assigned.get((owner, name), []):
                 found += _receiver_heads(
                     value,
@@ -924,10 +973,10 @@ def _name_heads(
                     functions,
                     seen | {name},
                     not _holds_a_composite(value),
-                    reached,
+                    work,
                 )
-        reached[key] = _distinct(found)
-    return reached[key]
+        work.reached[key] = _distinct(found)
+    return work.reached[key]
 
 
 def _passes(mode: str) -> bool:
@@ -1000,10 +1049,17 @@ def scan_file(path: Path, model: Model | None = None) -> list[Lock]:
             joins = tuple(dict.fromkeys(_joins(calls, model, paths)))
             of = _of(node, model)
             # C4 (F2): each chain the receiver holds is judged as the receiver, with the joins of
-            # them all; the lock passes only if it passes for each.
+            # them all; the lock passes only if it passes for each. B0: beyond a bound on the
+            # receiver rule's work, the lock is refused, its line naming the limit.
+            try:
+                heads = _receiver_heads(node.func.value, owner, read)
+            except BoundExceeded as bound:
+                kind = f"bound: {bound}"
+                found.append(Lock(relative, node.lineno, function, kind, "FOR UPDATE", joins))
+                heads = []
             judged = [
                 verdict
-                for head in _receiver_heads(node.func.value, owner, read)
+                for head in heads
                 if (verdict := _judge(head, no_key, joins, of)) is not None
             ]
             if judged:
@@ -1046,7 +1102,8 @@ def calls(roots: Iterable[Path] | None = None) -> tuple[int, int]:
 
 
 def scan(roots: Iterable[Path] | None = None) -> list[Lock]:
-    """Every explicit account lock (and generic lock that can take one) in the scanned files."""
+    """The explicit account locks, and generic locks that can take one, of the forms this module's
+    docstring names, in the scanned files."""
     model = read_models()
     found: list[Lock] = []
     for path in sources(roots):

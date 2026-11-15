@@ -159,7 +159,7 @@ def run(results_path: Path | None) -> int:
         report.secrets_found = ledger.found_in(text)
         report.values_held = values.count()
         # DM-64 T4: a match inside a timing PostgreSQL wrote into a plan is not counted.
-        report.values_found = values.found_in(text, plan_timings=True)
+        report.values_found = values.found_in(capture.text(), plan_timings=True, headers=headers)
     body = report.to_json()
     scanned = results_text(body)
     secrets_in_results = ledger.found_in(scanned)
@@ -186,7 +186,11 @@ def run(results_path: Path | None) -> int:
         flush=True,
     )
     texts = output_texts(capture, headers, scanned)
-    for where in values.where(texts, plan_timings=True) if report.values_found else []:
+    for where in (
+        values.where(texts, plan_timings=True, headers="the response headers")
+        if report.values_found
+        else []
+    ):
         # DM-64 T7: the kind of value and the text it was found in, never the value.
         print(f"{VALUES_FOUND}: {where}", flush=True)
     for name, number in sorted(report.statements_per_page.items()):

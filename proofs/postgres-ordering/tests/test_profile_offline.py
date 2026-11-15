@@ -15,6 +15,7 @@ import importlib
 import io
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -36,6 +37,7 @@ from glow_ordering_proof import (
     schema_check,
 )
 from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
+from tests.fakes import FakeConnection
 from tests.test_identity_offline import KeyFiles, pem, workflow_step
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -1064,13 +1066,17 @@ CLOCK_TEXTS = {
     ),
     "an epoch number ending 40.712": (COORDINATE, '{"iat": 1762919640.712}'),
     "the longer number 140.7123": (COORDINATE, "a reading of 140.7123"),
-    "the Expires header at a held time": (HELD_TIME, "Expires: Thu, 12 Nov 2026 04:13:27 GMT"),
-    "an email date at a held time": (HELD_TIME, "Date: Thu, 12 Nov 2026 04:13:27 +0000"),
     "a timestamp with a fraction at a held time": (
         HELD_TIME,
         '"updated_at":"2026-11-12T04:13:27.512345+00:00"',
     ),
     "a logging time": (HELD_TIME, "2026-11-12 04:13:27,512 INFO glow_profiles a record"),
+}
+# The clock texts T3 leaves uncounted in the response headers' text alone (B0, DM-67: narrowed to
+# the Expires header's own shape there). DM-64's "an email date at a held time" now counts, as
+# B0's tests below show (NARROWED_HITS).
+HEADER_CLOCK_TEXTS = {
+    "the Expires header at a held time": (HELD_TIME, "Expires: Thu, 12 Nov 2026 04:13:27 GMT"),
 }
 # DM-64 section 4.2: real prints, each still a hit under the rules.
 REAL_PRINTS = {
@@ -1120,6 +1126,11 @@ class RunClockTests(unittest.TestCase):
                 self.assertEqual(self.ledger(value).found_in(text), 0)
                 # The reversal: the old matcher counts it.
                 self.assertTrue(old_found(value, text))
+        # B0: the Expires header's time, in the response headers' text.
+        for name, (value, text) in HEADER_CLOCK_TEXTS.items():
+            with self.subTest(clock=name):
+                self.assertEqual(self.ledger(value).found_in("", headers=text), 0)
+                self.assertTrue(old_found(value, text))
 
     def test_each_real_print_is_still_a_hit(self) -> None:
         for name, (value, text) in REAL_PRINTS.items():
@@ -1140,7 +1151,8 @@ class RunClockTests(unittest.TestCase):
         self.assertEqual(self.ledger(HELD_TIME).found_in("born 15 Jun 1990 04:13:27"), 1)
 
     def test_forms_and_what_the_ledger_holds_do_not_change(self) -> None:
-        # T8: forms is as it was; the ledger holds the same values.
+        # T8: forms keeps every form it had (B0 adds a date's HTTP and email shape, below); the
+        # ledger holds the same values.
         self.assertIn("40.712", profile_support.forms(COORDINATE))
         self.assertIn("time(4, 13, 27)", profile_support.forms(HELD_TIME))
         held = self.ledger(COORDINATE, LONGITUDE, HELD_TIME, "abcd")
@@ -1237,7 +1249,7 @@ class RunClockTests(unittest.TestCase):
         self.assertEqual(self.ledger(COORDINATE).found_in("q=%2040.712"), 0)
         self.assertEqual(self.ledger(COORDINATE).found_in("x:9:40.712345"), 0)
         self.assertEqual(self.ledger(HELD_TIME).found_in("born 04:13:27.000"), 0)
-        self.assertEqual(self.ledger(HELD_TIME).found_in("Mon, 15 Jun 1990 04:13:27 GMT"), 0)
+        # B0 drops the limit of a held time after an HTTP or email date (NARROWED_HITS).
 
     def test_the_database_search_names_the_table_and_the_column(self) -> None:
         # T7: the case's failure line names table.column only.
@@ -1248,6 +1260,257 @@ class RunClockTests(unittest.TestCase):
         self.assertEqual(profile_cases._named([]), "")
         source = Path(profile_cases.__file__).read_text(encoding="utf-8")
         self.assertIn("json_each(row_to_json(t))", source)
+
+
+# SV3 Stage B, B0 (DM-67, C2's delta re-review's N1 and N3; DM-71): T3's date rule narrowed to the
+# Expires header's own shape in the response headers' text alone, a date's HTTP and email shape in
+# forms, and the database search's rules.
+EXPIRES_LINE = "Expires: Thu, 12 Nov 2026 04:13:27 GMT"
+HEADERS = "Content-Type: application/json\n" + EXPIRES_LINE + "\nCache-Control: max-age=0"
+# The rule as at 8d83474 (the reversal): a held time not counted after any HTTP or email date, its
+# day in two digits or one, in every text.
+WIDER_TIME_BEFORE = (
+    r"(?<![A-Z][a-z]{2}, [0-9]{2} [A-Z][a-z]{2} [0-9]{4} )"
+    r"(?<![A-Z][a-z]{2}, [0-9] [A-Z][a-z]{2} [0-9]{4} )"
+)
+# A held time after another date, or in another text: each a hit under the narrowed rule, and
+# none under the wider one. "headers" marks the response headers' text.
+NARROWED_HITS = {
+    "an email Date header": ("headers", "Date: Thu, 12 Nov 2026 04:13:27 +0000"),
+    "a Last-Modified header": ("headers", "Last-Modified: Thu, 12 Nov 2026 04:13:27 GMT"),
+    "an Expires header with a one-digit day": ("headers", "Expires: Mon, 2 Nov 2026 04:13:27 GMT"),
+    "an Expires header without GMT": ("headers", "Expires: Thu, 12 Nov 2026 04:13:27 +0000"),
+    "the Expires shape inside another header": (
+        "headers",
+        "X-Note: Expires: Thu, 12 Nov 2026 04:13:27 GMT",
+    ),
+    "an Expires header with more after GMT": ("headers", EXPIRES_LINE + "; more"),
+    "the Expires shape in a log record": ("text", "INFO glow_profiles " + EXPIRES_LINE),
+    "the Expires shape alone in the results JSON": ("text", json.dumps({"note": EXPIRES_LINE})),
+    "an email date in a body": ("text", "Date: Thu, 12 Nov 2026 04:13:27 +0000"),
+    "an HTTP date at the held date and time": ("text", "Mon, 15 Jun 1990 04:13:27 GMT"),
+    "an email date with a one-digit day": ("text", "Tue, 5 Jun 1990 04:13:27 +0000"),
+}
+
+
+def wider_found(value: str, text: str) -> bool:
+    """A time counted by T3's rule as at 8d83474 (the reversal), in any text."""
+    alternatives = "|".join(
+        re.escape(form) for form in sorted(profile_support.forms(value), key=len, reverse=True)
+    )
+    after = profile_support.TIME_AFTER
+    return re.search(f"{WIDER_TIME_BEFORE}(?=((?:{alternatives}){after}))", text) is not None
+
+
+def forms_before_b0(value: str) -> tuple[str, ...]:
+    """``forms`` as at 8d83474 (the reversal): without a date's HTTP or email shape."""
+    from datetime import date
+
+    day = date.fromisoformat(value)
+    month = profile_support.MONTHS[day.month - 1]
+    added = {f"{day.day:02d} {month[:3]} {day.year}", f"{day.day} {month[:3]} {day.year}"}
+    prose = {f"{day.day} {month} {day.year}", f"{day.day:02d} {month} {day.year}"}
+    return tuple(form for form in profile_support.forms(value) if form not in added - prose)
+
+
+class NarrowedClockRuleTests(unittest.TestCase):
+    """B0's item 5 (T6's tests): the Expires header's time is not a hit; a held time after another
+    date, or in another text, is; a held date in the HTTP shape is; with reversals against the
+    wider rule and against forms without the new shape."""
+
+    def ledger(self, *values: str) -> ValueLedger:
+        held = ValueLedger()
+        for value in values:
+            held.add(value)
+        return held
+
+    def test_the_expires_headers_time_is_not_a_hit(self) -> None:
+        held = self.ledger(HELD_TIME)
+        self.assertEqual(held.found_in("", headers=EXPIRES_LINE), 0)
+        self.assertEqual(held.found_in("", headers=HEADERS), 0)
+        self.assertEqual(held.found_in("", headers=HEADERS + "\n" + HEADERS), 0)
+        self.assertEqual(
+            held.where({"the response headers": HEADERS}, headers="the response headers"), []
+        )
+        # The same text read as another text is a hit (the headers are named, never guessed).
+        self.assertEqual(held.found_in(HEADERS), 1)
+        self.assertEqual(
+            held.where({"the response headers": HEADERS}), ["a time in the response headers"]
+        )
+
+    def test_a_held_time_after_another_date_or_in_another_text_is_a_hit(self) -> None:
+        held = self.ledger(HELD_TIME)
+        for name, (where, text) in NARROWED_HITS.items():
+            with self.subTest(printed=name):
+                if where == "headers":
+                    self.assertEqual(held.found_in("", headers=text), 1)
+                    named = held.where(
+                        {"the response headers": text}, headers="the response headers"
+                    )
+                    self.assertEqual(named, ["a time in the response headers"])
+                else:
+                    self.assertEqual(held.found_in(text), 1)
+                # The reversal: the wider rule counts none of them.
+                self.assertFalse(wider_found(HELD_TIME, text))
+        # A hit in the other text is counted once, as a value, beside an uncounted header.
+        self.assertEqual(held.found_in("born 04:13:27", headers=HEADERS), 1)
+        # The fraction rule is unchanged in the headers' text.
+        self.assertEqual(held.found_in("", headers="X-Time: 04:13:27.5"), 0)
+
+    def test_a_held_date_in_the_http_and_email_shape_is_a_hit(self) -> None:
+        for value, printed in (
+            ("1990-06-15", "Fri, 15 Jun 1990 04:13:27 GMT"),
+            ("1990-06-15", "born 15 Jun 1990"),
+            ("1990-06-05", "Tue, 05 Jun 1990 00:00:00 GMT"),
+            ("1990-06-05", "Tue, 5 Jun 1990 00:00:00 +0000"),
+            ("2008-02-29", "29 Feb 2008"),
+            ("1990-09-01", "1 Sep 1990"),
+        ):
+            with self.subTest(value=value, printed=printed):
+                self.assertEqual(self.ledger(value).found_in(printed), 1)
+                self.assertEqual(self.ledger(value).found_in("", headers=printed), 1)
+                # The reversal: forms without the new shape do not find it.
+                self.assertFalse(any(form in printed for form in forms_before_b0(value)))
+        self.assertIn("15 Jun 1990", profile_support.forms("1990-06-15"))
+        self.assertIn("5 Jun 1990", profile_support.forms("1990-06-05"))
+        self.assertIn("05 Jun 1990", profile_support.forms("1990-06-05"))
+        # Another date is not a hit.
+        self.assertEqual(self.ledger("1990-06-15").found_in("16 Jun 1990, 15 Jul 1990"), 0)
+
+    def test_the_clocks_date_matches_only_a_held_date_in_the_runs_month(self) -> None:
+        # The stop rule's clause: the Expires header prints the run's date, so a held date of 2008
+        # is no hit there; a one-digit day's form sits inside a two-digit day's, so a held date in
+        # the run's month and year would be (no case holds one; the evidence record lists them).
+        self.assertEqual(self.ledger("2008-02-29").found_in("", headers=EXPIRES_LINE), 0)
+        self.assertEqual(self.ledger("2026-11-02").found_in("", headers=EXPIRES_LINE), 1)
+
+    def test_the_suites_name_the_response_headers_text(self) -> None:
+        from glow_ordering_proof import discovery_suite, profile_suite
+
+        for module, plan in ((profile_suite, ""), (discovery_suite, "plan_timings=True, ")):
+            assert module.__file__ is not None
+            source = Path(module.__file__).read_text(encoding="utf-8")
+            with self.subTest(suite=module.__name__):
+                self.assertIn(f"values.found_in(capture.text(), {plan}headers=headers)", source)
+                self.assertIn(f'values.where(texts, {plan}headers="the response headers")', source)
+        # Both suites name their texts by profile_suite.output_texts.
+        texts = profile_suite.output_texts(mock.Mock(records=[], written=[]), "h", "r")
+        self.assertEqual(texts["the response headers"], "h")
+
+
+# B0's item 6 (DM-67; C2's delta re-review's N3): profile_cases._found_in_database, read with a fake
+# cursor. Each table's columns are given as row_to_json writes them (json_each's text).
+DATABASE: dict[str, list[tuple[str, str | None]]] = {
+    "glow_persistence_area": [("longitude", "-74.006"), ("name", '"Synthetic Area"')],
+    "glow_persistence_birthinput": [
+        ("birth_date", '"2009-07-15"'),
+        ("created_at", '"2026-11-12T03:54:40.712+00:00"'),
+        ("place_label", '"Synthetic Failing Place 1a2b3c4d"'),
+    ],
+    "glow_persistence_eventlog": [("detail", '"born Wed, 15 Jul 2009"')],
+    "glow_persistence_outboxevent": [
+        ("created_at", '"2026-11-12T03:54:40.712345+00:00"'),
+        ("payload", '{"note": "born 15 July 2009"}'),
+        ("summary", None),
+    ],
+    "glow_persistence_profile": [
+        ("latitude", "40.7123457"),
+        ("updated_at", '"2026-11-12T04:13:27.512345+00:00"'),
+    ],
+}
+PLACE_AND_DATE = ("Synthetic Failing Place 1a2b3c4d", "2009-07-15")
+
+
+class CatalogCursor:
+    """Answers the database search's two statements: the public tables, then each table's columns
+    as ``json_each(row_to_json(t))`` gives them."""
+
+    def __init__(self, tables: dict[str, list[tuple[str, str | None]]]) -> None:
+        self.tables = tables
+        self.executed: list[str] = []
+        self._rows: list[tuple[Any, ...]] = []
+
+    def execute(self, sql: str, params: object = None) -> None:
+        self.executed.append(sql)
+        if "pg_catalog.pg_tables" in sql:
+            self._rows = [(table,) for table in sorted(self.tables)]
+            return
+        match = re.search(r'FROM "([^"]+)" AS t, json_each\(row_to_json\(t\)\) AS j', sql)
+        assert match is not None, sql
+        self._rows = list(self.tables[match.group(1)])
+
+    def fetchall(self) -> list[tuple[Any, ...]]:
+        return list(self._rows)
+
+
+class OldMatcher:
+    """The matcher before C2 (the reversal): any form as a plain substring, in any text."""
+
+    def __init__(self, value: str) -> None:
+        self.forms = profile_support.forms(value)
+
+    @classmethod
+    def of(cls, value: str) -> OldMatcher:
+        return cls(value)
+
+    def occurs(self, text: str) -> bool:
+        return any(form in text for form in self.forms)
+
+
+class DatabaseSearchTests(unittest.TestCase):
+    """B0's item 6: a timestamp column's text is not a hit; a held coordinate, place and date still
+    are; each label names ``table.column`` without the value; a reversal against the old matcher."""
+
+    def search(self, texts: tuple[str, ...], tables: Any = None) -> tuple[list[str], list[str]]:
+        cursor = CatalogCursor(DATABASE if tables is None else tables)
+        with mock.patch("django.db.connection", FakeConnection(cursor)):
+            found = profile_cases._found_in_database(texts)
+        return found, cursor.executed
+
+    def test_a_timestamp_columns_text_is_not_a_hit_and_held_values_are(self) -> None:
+        found, executed = self.search(profile_cases.COORDINATE_TEXT)
+        self.assertEqual(
+            found, ["glow_persistence_area.longitude", "glow_persistence_profile.latitude"]
+        )
+        found, _ = self.search(PLACE_AND_DATE)
+        self.assertEqual(
+            found,
+            [
+                "glow_persistence_birthinput.birth_date",
+                "glow_persistence_birthinput.place_label",
+                "glow_persistence_eventlog.detail",
+                "glow_persistence_outboxevent.payload",
+            ],
+        )
+        # Every public table is read, each as row_to_json gives its columns.
+        self.assertIn("pg_catalog.pg_tables", executed[0])
+        self.assertEqual(len(executed), 1 + len(DATABASE))
+        for table, sql in zip(sorted(DATABASE), executed[1:], strict=True):
+            self.assertIn(f'FROM "{table}" AS t, json_each(row_to_json(t))', sql)
+
+    def test_each_label_names_the_table_and_column_never_the_value(self) -> None:
+        for texts in (profile_cases.COORDINATE_TEXT, PLACE_AND_DATE):
+            found, _ = self.search(texts)
+            with self.subTest(texts=len(texts)):
+                self.assertTrue(found)
+                for label in found:
+                    table, column = label.split(".")
+                    self.assertIn((column,), [(c,) for c, _ in DATABASE[table]])
+                    self.assertFalse(
+                        any(form in label for text in texts for form in profile_support.forms(text))
+                    )
+                named = profile_cases._named(found)
+                self.assertFalse(any(text in named for text in texts))
+
+    def test_nothing_held_is_no_hit(self) -> None:
+        found, _ = self.search(("Synthetic Other Place 9z9z", "1971-01-02"))
+        self.assertEqual(found, [])
+
+    def test_the_old_matcher_counts_the_timestamps_the_reversal(self) -> None:
+        with mock.patch.object(profile_cases, "Matcher", OldMatcher):
+            found, _ = self.search(profile_cases.COORDINATE_TEXT)
+        self.assertIn("glow_persistence_outboxevent.created_at", found)
+        self.assertIn("glow_persistence_birthinput.created_at", found)
 
 
 class ProfileCommandTests(unittest.TestCase):

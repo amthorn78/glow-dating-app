@@ -85,10 +85,11 @@ COARSEST_DECIMALS = 3
 
 def forms(value: str) -> tuple[str, ...]:
     """Every form the code could print ``value`` in (C2, finding 5): as sent and as JSON escapes
-    it; a date also as Python's ``repr``, compact, numeric and in prose ("29 February 2008"); a
-    time as Python's ``repr``; a coordinate also without its sign, and rounded and truncated to
-    every lower precision down to three decimals. Forms shorter than five characters are not
-    searched."""
+    it; a date also as Python's ``repr``, compact, numeric, in prose ("29 February 2008") and in
+    an HTTP or email date's shape, with a three-letter month, its day in two digits and in one
+    ("29 Feb 2008", "5 Jun 1990"; SV3 Stage B, B0: DM-67, DM-71); a time as Python's ``repr``; a
+    coordinate also without its sign, and rounded and truncated to every lower precision down to
+    three decimals. Forms shorter than five characters are not searched."""
     found = {value, json.dumps(value)[1:-1]}
     if ISO_DATE.fullmatch(value):
         try:
@@ -106,6 +107,9 @@ def forms(value: str) -> tuple[str, ...]:
                 f"{day.day:02d}/{day.month:02d}/{day.year}",
                 f"{day.month:02d}/{day.day:02d}/{day.year}",
                 f"{day.day}.{day.month}.{day.year}",
+                # B0 (DM-67, DM-71): an HTTP or email date's shape, the month in three letters.
+                f"{day.day:02d} {month[:3]} {day.year}",
+                f"{day.day} {month[:3]} {day.year}",
             }
     elif ISO_TIME.fullmatch(value):
         hour, minute, second = (int(part) for part in value.split(":"))
@@ -128,15 +132,20 @@ def forms(value: str) -> tuple[str, ...]:
 # T2: a coordinate's form counts only where it is not preceded by a digit, nor by a digit and a
 # colon: a timestamp's seconds (``…:40.712345``) and the end of a longer number no longer match.
 COORDINATE_BEFORE = r"(?<![0-9])(?<![0-9]:)"
-# T3: a time's form counts only where it is not preceded by an HTTP or email date
-# (``Thu, 12 Nov 2026 ``, its day in two digits or one) and not followed by a fraction of a second
-# (``.`` or ``,`` and a digit): the ``Expires`` header Django adds to every response, a timestamp
-# with its fraction and a logging time no longer match a held birth time.
-TIME_BEFORE = (
-    r"(?<![A-Z][a-z]{2}, [0-9]{2} [A-Z][a-z]{2} [0-9]{4} )"
-    r"(?<![A-Z][a-z]{2}, [0-9] [A-Z][a-z]{2} [0-9]{4} )"
-)
+# T3: a time's form counts only where it is not followed by a fraction of a second (``.`` or ``,``
+# and a digit), so a timestamp with its fraction and a logging time no longer match a held birth
+# time; and, in the response headers' text alone, not where it is the time of an ``Expires``
+# header in that header's own shape, the one Django adds to every response: a line holding only
+# the header's name, an HTTP date with a two-digit day, the time and `` GMT``
+# (``Expires: Thu, 12 Nov 2026 04:13:27 GMT``). A held time after any other date, and in every
+# other text, counts (SV3 Stage B, B0: DM-67, C2's delta re-review's N1; DM-71).
 TIME_AFTER = r"(?![.,][0-9])"
+EXPIRES = re.compile(
+    r"^Expires: (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2}"
+    r" (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [0-9]{4}"
+    r" ([0-9]{2}:[0-9]{2}:[0-9]{2}) GMT$",
+    re.MULTILINE,
+)
 # T4: the timings PostgreSQL writes into an ``EXPLAIN (ANALYZE)`` plan. Only the discovery suite's
 # value scan, whose results JSON carries the plans, leaves a match inside one uncounted.
 PLAN_TIMING = re.compile(
@@ -179,15 +188,19 @@ class Matcher:
         if held == "decimal":
             before = COORDINATE_BEFORE
         elif held == "time":
-            before, after = TIME_BEFORE, TIME_AFTER
+            after = TIME_AFTER
         return cls(held, found, re.compile(f"{before}(?=((?:{alternatives}){after}))"))
 
-    def occurs(self, text: str, *, plan_timings: bool = False) -> bool:
+    def occurs(self, text: str, *, plan_timings: bool = False, headers: bool = False) -> bool:
         """Whether a form occurs in ``text`` where its rule counts it (and, with
-        ``plan_timings``, outside every timing PostgreSQL wrote into a plan, T4)."""
+        ``plan_timings``, outside every timing PostgreSQL wrote into a plan, T4). ``headers``
+        says ``text`` is the response headers' text, where a time is not counted as an
+        ``Expires`` header's own time (T3)."""
         if not any(form in text for form in self.forms):
             return False
         spans = [m.span() for m in PLAN_TIMING.finditer(text)] if plan_timings else []
+        if headers and self.kind == "time":
+            spans += [m.span(1) for m in EXPIRES.finditer(text)]
         for match in self.pattern.finditer(text):
             start, end = match.start(1), match.end(1)
             if not any(low <= start and end <= high for low, high in spans):
@@ -244,26 +257,35 @@ class ValueLedger:
         with self._lock:
             return len(self._values)
 
-    def found_in(self, text: str, *, plan_timings: bool = False) -> int:
-        """How many distinct values appear in ``text`` in any of their forms (``forms``): as
-        sent, as JSON escapes them (a non-ASCII value in a JSON body), as Python prints a date or
-        a time, a date in prose, a coordinate at a lower precision; each form counted where its
-        kind's rule counts it (``Matcher``; DM-64 T2, T3), and with ``plan_timings`` outside a
-        plan's timings (T4). The values are never returned."""
+    def found_in(self, text: str, *, plan_timings: bool = False, headers: str = "") -> int:
+        """How many distinct values appear in ``text``, or in ``headers`` (the response headers'
+        text, read by T3's rule for it), in any of their forms (``forms``): as sent, as JSON
+        escapes them (a non-ASCII value in a JSON body), as Python prints a date or a time, a
+        date in prose or in an HTTP date's shape, a coordinate at a lower precision; each form
+        counted where its kind's rule counts it (``Matcher``; DM-64 T2, T3), and with
+        ``plan_timings`` outside a plan's timings (T4). The values are never returned."""
         with self._lock:
             held = tuple(self._values.values())
-        return sum(1 for found in held if found.occurs(text, plan_timings=plan_timings))
+        return sum(
+            1
+            for found in held
+            if found.occurs(text, plan_timings=plan_timings)
+            or found.occurs(headers, plan_timings=plan_timings, headers=True)
+        )
 
-    def where(self, texts: dict[str, str], *, plan_timings: bool = False) -> list[str]:
+    def where(
+        self, texts: dict[str, str], *, plan_timings: bool = False, headers: str | None = None
+    ) -> list[str]:
         """For each value found, the kind of value and the text it was found in (DM-64 T7), as
-        ``"a time in the response headers"``; never the value."""
+        ``"a time in the response headers"``; never the value. ``headers`` names the text that
+        is the response headers', which T3's rule for it reads."""
         with self._lock:
             held = tuple(self._values.values())
         found = {
             f"{KINDS[matcher.kind]} in {name}"
             for name, text in texts.items()
             for matcher in held
-            if matcher.occurs(text, plan_timings=plan_timings)
+            if matcher.occurs(text, plan_timings=plan_timings, headers=name == headers)
         }
         return sorted(found)
 

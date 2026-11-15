@@ -1283,10 +1283,11 @@ def one_snapshot_statements(ctx: DiscoveryContext) -> str:
     no other statement reads a member's row; before it, before the transaction begins and in it,
     a statement that reads a member table passes only if it is on C3's list (``listed``: S1;
     DM-67); and a page with a cursor writes nothing, in any phase the probe records, the photo
-    reads after its commit included (C3's S2): every statement it sends is a read, one that begins
-    with ``SELECT`` or ``WITH`` and holds none of the words ``INSERT``, ``UPDATE``, ``DELETE``,
-    ``MERGE``, ``INTO``, ``TRUNCATE`` or ``COPY``, so no writer's row lock either (``is_write``;
-    C4's F6)."""
+    reads after its commit included (C3's S2): every statement its probe records (``execute`` and
+    ``executemany`` on the default connection, in the case's own thread) is a read, one that
+    begins with ``SELECT`` or ``WITH`` and holds none of the words ``INSERT``, ``UPDATE``,
+    ``DELETE``, ``MERGE``, ``INTO``, ``TRUNCATE`` or ``COPY``, so no writer's row lock either
+    (``is_write``; C4's F6)."""
     from django.db import connection
     from glow_discovery import pages, predicates
 
@@ -2269,7 +2270,7 @@ def plans_population_and_bounds(ctx: DiscoveryContext) -> str:
         expect(number <= 60 + 4 * 50, f"bounded statements: {name}")
     selection = _selection()
     values = parameters(selection, viewer.account_id)
-    values.update(batch=str(uuid4()), exclude_batch=None, limit=policy.BATCH_LIMIT)
+    values.update(exclude_batch=None, limit=policy.BATCH_LIMIT)
     ctx.plans["selection (recommendations)"] = explain(predicates.SELECTION, values)
     values.update(exclude_batch=batch)
     ctx.plans["selection (broader, leaving out the recommendations batch)"] = explain(
