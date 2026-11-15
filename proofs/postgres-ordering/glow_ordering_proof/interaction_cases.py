@@ -1004,7 +1004,8 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     match = _matched(ctx, one, two)
     _unmatch(ctx, one, match)
     first_block = _block(ctx, one, two, "block")[1]
-    expect(first_block.status == 200, f"after an unmatch: {first_block.status} {first_block.body}")
+    code = (first_block.body or {}).get("code")
+    expect(first_block.status == 200, f"after an unmatch: answers {first_block.status} {code}")
     after = ctx.profiles.data(first_block, "block", "after an unmatch")
     expect(after["state"] == "active" and after["version"] == 1, "a block after an unmatch")
     lifted = ctx.profiles.data(_block(ctx, one, two, "unblock")[1], "block", "the unblock")
