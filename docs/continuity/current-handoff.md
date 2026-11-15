@@ -10,18 +10,18 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): PR43, PR44 (`3240ef0`), receipts in its [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 14 (with DM-60 to DM-72). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5. **B0 is done:** PR46 merged at `947576d` (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipts). DM-68 froze the lock scan's rules after C4. **Stage B** (items 4 to 7, D14's record of the row locks the suites send, and its section's four items) is next, from `947576d`; its prompt follows `main`'s push run on it. F7 is decided (OD-64), carried to before P11.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 14 (with DM-60 to DM-72). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5. **B0 is done:** PR46 merged at `947576d` (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipts). DM-68 froze the lock scan's rules after C4. **Stage B** (items 4 to 7, D14's record of the row locks the suites send, and its section's four items) is with Nathan, from `947576d`. F7 is decided (OD-64), carried to before P11.
 - **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 and SV2 ([matrix](../planning/store-legal-safety-requirements.md); OD-55).
 - **Review log:** DM-01 to DM-72, with "Deferred conditions"; DM-72 confirms CC1 to CC4 as applied. **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (15 November 2026, 03:55 UTC, App Manager 11)
+## Waiting checkpoint (15 November 2026, 04:00 UTC, App Manager 11)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub | `main`'s push run 43673382167 on `947576d` | Then the receipt's run line and Stage B's prompt, in one commit (AM11-21); a failed run is diagnosed first |
+| App Manager 11 | Nathan | Stage B's report | No other prompt goes to Nathan (OD-29); until Stage B is integrated, no manager commit touches its owned paths (AM11-21) |
 
 ## Next actions (App Manager 11)
 
