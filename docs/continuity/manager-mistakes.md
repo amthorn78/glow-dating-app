@@ -183,6 +183,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-22 | 15 Nov 2026 | prompt | B0's prompt passed the brief's stop clause "if a test of C1's to C5's sections no longer passes" unqualified, though item 5 (T3 narrowed) necessarily changes C2's three assertions that pin the wider rule. The session converted them rather than stopping, and flagged it | The manager, when the B0 session reported its plan mid-run; the session flagged it too |
 | AM11-23 | 15 Nov 2026 | prompt | Stage B's prompt (revision 1, `e2fd265`) said no earlier test was expected to change (DD5), and named no pre-Stage B statement D14's check would fail. The session found six earlier tests that pin what Stage B extends (the selection's parameter names, the migration leaf, two route tests, the plan's coverage and its case count) and two statements in the ordering suite's harness that take `FOR UPDATE` on the account table; it stopped at the stop rule | The Stage B session |
 | AM11-24 | 15 Nov 2026 | prompt | Stage B's prompt gave undo's reversal as "on with a waiting period, working before it ends", the words for resurfacing; D12 lets undo withdraw a pass within `waiting_days`, so its reversal is working after the window ends | The Stage B session |
+| AM11-25 | 15 Nov 2026 | follow-through | Three times in Notion's Implementation Control Branches bullet, a time was written before the clock was read (05:20 for 05:16; 13:33 for 13:31; 14:16 for 14:15): AM11-03 and AM11-07's mechanism again, here with the clock read in a call sent in parallel with the write | App Manager 11, at each read-back, before the message reported the sync |
 
 ## App Manager 2
 
@@ -1147,6 +1148,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; the brief wins over the prompt, and the session read it so.
 - **Correction:** revision 2 words each reversal by its own rule.
 - **Prevention:** a reversal shared by two items is written once per item, from each item's own words.
+
+### AM11-25 — Times written before the clock, three times in one day (follow-through)
+
+- **What happened:** at three Notion syncs on 15 November, the Implementation Control's Branches bullet was given a listing time before the clock was read: 05:20 (the clock read 05:16), 13:33 (13:31) and 14:16 (14:15). At the third, the clock and `git ls-remote` ran in a call sent in parallel with the Notion write, so the write could not use them.
+- **Caught by:** App Manager 11, at each sync's read-back, before the message to Nathan reported it.
+- **Effect:** none; each was corrected within the same sync, and none was relied on.
+- **Correction:** each corrected in Notion at once.
+- **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
 
 ### AM11-22 — A stop clause that the prompt's own item triggers (prompt)
 
