@@ -591,37 +591,63 @@ def reciprocal_likes_make_one_match(ctx: DiscoveryContext) -> str:
 
 @case("match.no_route_creates_a_match", "8", "D10", "F09")
 def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
-    """No route takes a match intent (F09): the routes' request DTOs are the page request and the
-    four commands, an interaction's action is only like or pass, and no path makes a match."""
+    """No route takes a match intent (F09): the suite serves exactly SV1's identity routes, SV2's
+    member routes, Stage A's page route and Stage B's five action routes, each with its view, and
+    no other (so no route at any path can create a match); Stage B's request DTOs are the four
+    commands; an interaction's action is only like or pass; and no path makes a match."""
     from django.urls import get_resolver
+    from glow_identity.urls import urlpatterns as identity_routes
     from glow_persistence.models import Match
+    from glow_profiles.urls import urlpatterns as profile_routes
+
+    def served(patterns: Any, prefix: str = "") -> set[tuple[str, str]]:
+        found: set[tuple[str, str]] = set()
+        for pattern in patterns:
+            if hasattr(pattern, "url_patterns"):
+                found |= served(pattern.url_patterns, prefix + str(pattern.pattern))
+                continue
+            callback = getattr(pattern, "callback", None)
+            view = getattr(callback, "view_class", None) or callback
+            found.add((prefix + str(pattern.pattern), str(getattr(view, "__qualname__", view))))
+        return found
 
     one, two = ctx.visible(), ctx.visible()
     before = Match.objects.count()
-    definitions: set[str] = set()
+    stage_b = {
+        ("api/v1/discovery/page", "PageView"),
+        ("api/v1/discovery/interaction", "InteractionView"),
+        ("api/v1/discovery/interaction/undo", "UndoView"),
+        ("api/v1/matches/unmatch", "UnmatchView"),
+        ("api/v1/matches/<uuid:match_id>", "MatchView"),
+        ("api/v1/blocks", "BlockView"),
+    }
+    everything = served(get_resolver().url_patterns)
+    expected = served(identity_routes) | served(profile_routes) | stage_b
+    expect(
+        everything == expected,
+        f"exactly the routes the suite serves ({len(everything - expected)} unexpected,"
+        f" {len(expected - everything)} missing)",
+    )
+    definitions = set()
     for pattern in get_resolver().url_patterns:
         view = getattr(getattr(pattern, "callback", None), "view_class", None)
-        prefixes = ("api/v1/discovery", "api/v1/matches", "api/v1/blocks")
-        if view is not None and str(pattern.pattern).startswith(prefixes):
-            definitions.add(str(getattr(view, "definition", None) or view.__name__))
+        if view is not None and getattr(view, "definition", None):
+            definitions.add(str(view.definition))
     expect(
         definitions
-        == {
-            "PageView",
-            "InteractionIntent",
-            "InteractionUndoIntent",
-            "UnmatchIntent",
-            "BlockIntent",
-            "MatchView",
-        },
-        f"the routes' requests ({', '.join(sorted(definitions))})",
+        >= {"InteractionIntent", "InteractionUndoIntent", "UnmatchIntent", "BlockIntent"}
+        and not any("match" in name.lower() and name != "UnmatchIntent" for name in definitions),
+        f"the commands' requests ({', '.join(sorted(definitions))})",
     )
     body = dict(_intent(ctx, one, two, "like", ctx.page(one)), action="match")
     ctx.profiles.refused(ctx.profiles.command(one, INTERACTION, body), 400, "invalid_request", "m")
     reply = ctx.profiles.call(one, "POST", MATCHES, {"pair": [_pid(ctx, one), _pid(ctx, two)]})
     expect(reply.status == 404, "no route at the matches path")
     expect(Match.objects.count() == before, "no match written")
-    return "no route takes a match intent; matches come only from reciprocal likes"
+    return (
+        f"exactly {len(expected)} routes served ({len(stage_b)} of SV3's), none taking a match"
+        " intent; matches come only from reciprocal likes"
+    )
 
 
 @case("match.activate_reciprocal_refuses_what_activate_match_refuses", "8", "D10")
