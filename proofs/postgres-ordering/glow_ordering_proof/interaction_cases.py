@@ -989,6 +989,20 @@ def unmatch_revokes_contact(ctx: DiscoveryContext) -> str:
         (Match.objects.count(), current.version) == held and current.state == "unmatched",
         "no second match, and the first stays unmatched",
     )
+    # The unmatched match row excludes the pair by itself (D7's consumption; D12): with the pair's
+    # directional rows taken out (test data; no writer removes a like), neither is shown again.
+    from glow_persistence.models import DirectionalInteraction
+
+    DirectionalInteraction.objects.filter(
+        actor_id__in=(one.account_id, two.account_id),
+        target_id__in=(one.account_id, two.account_id),
+    ).delete()
+    for viewer, other in ((one, two), (two, one)):
+        for collection in ("recommendations", "discovery"):
+            expect(
+                _pid(ctx, other) not in _shown(ctx, viewer, collection),
+                "the unmatched match alone keeps the pair apart",
+            )
     return "the unmatch revokes the send; final: not shown, no rematch; others refused"
 
 
