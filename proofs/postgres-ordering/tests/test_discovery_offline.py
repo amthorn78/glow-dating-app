@@ -439,10 +439,6 @@ class DiscoveryCommandTests(unittest.TestCase):
                 self.assertIn("refusing:", printed)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 PLANTED = {
     "orm": (
         "from glow_persistence.models import AppAccount\n\n\n"
@@ -2177,3 +2173,219 @@ class PinnedC4BranchTests(unittest.TestCase):
         for name, sql in PINNED_C4_ITEM_6_READS.items():
             with self.subTest(read=name):
                 self.assertFalse(discovery_cases.is_write(sql))
+
+
+# SV3 Stage B, B0 (DM-70; the design DM-71 read; the brief's "Stage B, B0", items 1, 4 and 8).
+_B0_IMPORTS = "from glow_persistence.models import AppAccount, Match, Profile\n\n\n"
+_B0_COMBINATION = "AppAccount.objects.filter(pk=a) | AppAccount.objects.filter(pk=b)"
+
+
+def names_each_assigned_from_every_other(count: int, no_key: str = "True") -> str:
+    """``count`` names, the first assigned an account combination, then each assigned from every
+    other (``count * (count - 1)`` assignments); the last name locked."""
+    lines = ["def lock(a, b):", f"    n0 = {_B0_COMBINATION}"]
+    lines += [f"    n{i} = n{j}" for i in range(count) for j in range(count) if i != j]
+    lines.append(f"    return n{count - 1}.select_for_update(no_key={no_key}).first()")
+    return _B0_IMPORTS + "\n".join(lines) + "\n"
+
+
+def plain_hops(hops: int, no_key: str = "True") -> str:
+    """An account combination, then ``hops`` plain assignments (``x1 = x0``, ...), the last name
+    locked: ``hops + 1`` names followed (``AppAccount``, a model's name, counts toward neither)."""
+    lines = ["def lock(a, b):", f"    x0 = {_B0_COMBINATION}"]
+    lines += [f"    x{i} = x{i - 1}" for i in range(1, hops + 1)]
+    lines.append(f"    return x{hops}.select_for_update(no_key={no_key}).first()")
+    return _B0_IMPORTS + "\n".join(lines) + "\n"
+
+
+def combination_of_parts(parts: int) -> str:
+    """One account lock whose receiver is a combination of ``parts`` querysets."""
+    body = " | ".join(f"AppAccount.objects.filter(pk={i})" for i in range(parts))
+    return (
+        _B0_IMPORTS + f"def lock():\n    return ({body}).select_for_update(no_key=True).first()\n"
+    )
+
+
+class LockScanBoundTests(unittest.TestCase):
+    """B0's item 1: for each lock, the receiver rule follows at most 100 names along one chain and
+    visits at most 1,000 states; beyond either the lock is refused, its line naming the limit, the
+    function and the lock's line. No test asserts a time (the evidence record states each)."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def printed(self, text: str) -> tuple[int, str]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(text, encoding="utf-8")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                status = account_lock_scan.main([str(path)])
+            return status, out.getvalue()
+
+    def test_the_limits_are_module_constants(self) -> None:
+        self.assertEqual(account_lock_scan.MAX_NAMES_FOLLOWED, 100)
+        self.assertEqual(account_lock_scan.MAX_STATES, 1000)
+
+    def test_fourteen_names_each_assigned_from_every_other_are_refused_by_the_states_limit(
+        self,
+    ) -> None:
+        text = names_each_assigned_from_every_other(14)
+        locks = self.scan_source(text)
+        self.assertEqual(
+            [(lock.kind, lock.mode) for lock in locks],
+            [("bound: more than 1000 states", "FOR UPDATE")],
+        )
+        self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+        status, printed = self.printed(text)
+        self.assertEqual(status, 1)
+        line = f"planted.py:{locks[0].line} (lock, bound: more than 1000 states): FOR UPDATE"
+        self.assertIn(line, printed)
+        self.assertTrue(printed.startswith("BAD "))
+        self.assertIn("account locks found: 1; not FOR NO KEY UPDATE: 1", printed)
+
+    def test_five_hundred_plain_hops_are_refused_by_the_names_limit_not_a_recursion_error(
+        self,
+    ) -> None:
+        text = plain_hops(500)
+        locks = self.scan_source(text)  # raises RecursionError as at 8d83474 (the reversal)
+        self.assertEqual(
+            [(lock.kind, lock.mode) for lock in locks],
+            [("bound: more than 100 names followed", "FOR UPDATE")],
+        )
+        status, printed = self.printed(text)
+        self.assertEqual(status, 1)
+        self.assertIn(
+            "(lock, bound: more than 100 names followed): FOR UPDATE", printed.splitlines()[0]
+        )
+
+    def test_just_inside_each_limit_the_lock_passes_as_before(self) -> None:
+        # With no_key=True: 8 names each assigned from every other (257 states), and 99 hops (100
+        # names followed; AppAccount is not counted), each judged as at 8d83474.
+        for name, text in {
+            "eight names": names_each_assigned_from_every_other(8),
+            "99 hops": plain_hops(99),
+        }.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(
+                    [(lock.kind, lock.mode) for lock in locks], [("generic", "FOR NO KEY UPDATE")]
+                )
+                self.assertEqual(account_lock_scan.violations(locks), [])
+
+    def test_just_beyond_each_limit_the_lock_is_refused(self) -> None:
+        # 100 hops: 101 names followed. Eight names visit 257 states: at a limit of 257 they pass,
+        # at 256 they are refused.
+        locks = self.scan_source(plain_hops(100))
+        self.assertEqual(
+            [(lock.kind, lock.mode) for lock in locks],
+            [("bound: more than 100 names followed", "FOR UPDATE")],
+        )
+        eight = names_each_assigned_from_every_other(8)
+        with mock.patch.object(account_lock_scan, "MAX_STATES", 257):
+            locks = self.scan_source(eight)
+        self.assertEqual(account_lock_scan.violations(locks), [])
+        with mock.patch.object(account_lock_scan, "MAX_STATES", 256):
+            locks = self.scan_source(eight)
+        self.assertEqual(
+            [(lock.kind, lock.mode) for lock in locks],
+            [("bound: more than 256 states", "FOR UPDATE")],
+        )
+
+    def test_beyond_a_limit_a_lock_never_passes_whatever_its_no_key_or_model(self) -> None:
+        # The lock is refused even with no_key=True, and on a model other than AppAccount.
+        other = plain_hops(500).replace("AppAccount.objects", "Match.objects")
+        for name, text in {"no_key=True": plain_hops(500), "Match": other}.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+                self.assertTrue(locks[0].kind.startswith("bound: "))
+
+    def test_the_tree_is_unchanged(self) -> None:
+        # 52 calls, 0 joining, 7 account locks, none refused by the bound (the output is compared
+        # byte for byte with 8d83474's in the evidence record).
+        locks = account_lock_scan.scan()
+        self.assertEqual(len(locks), 7)
+        self.assertEqual(account_lock_scan.violations(locks), [])
+        self.assertFalse(any(lock.kind.startswith("bound") for lock in locks))
+        self.assertEqual(account_lock_scan.calls(), (52, 0))
+
+
+class LockScanStatedLimitB0Tests(unittest.TestCase):
+    """B0's item 8, a stated limit (DM-71): a combination of 1,000 parts exceeds Python's recursion
+    limit in the reading of combinations (``_parts``), so the scan stops and exits 1, failing
+    closed; one of 300 parts does not."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def test_a_combination_of_1000_parts_raises_and_300_parts_do_not(self) -> None:
+        with self.assertRaises(RecursionError):
+            self.scan_source(combination_of_parts(1000))
+        locks = self.scan_source(combination_of_parts(300))
+        self.assertEqual([(lock.kind, lock.mode) for lock in locks], [("orm", "FOR NO KEY UPDATE")])
+
+
+# B0's item 4 (DM-70; C5's delta re-review's F3 and F12): tests that pin C5's memo key and two of
+# C4's branches, each failing against its mutant (the evidence record lists each).
+PINNED_C5_REVIEW = {
+    # F3: the memo key's seen. Keyed on the name alone, x is first followed under {y} (where it
+    # reaches nothing), and that answer is reused for x's own chain, so the account is lost.
+    "the_memo_keys_seen": (
+        "def lock(a, b):\n"
+        "    Y = X | Match.objects.filter(pk=b)\n"
+        "    X = Y\n"
+        "    X = AppAccount.objects.filter(pk=a)\n"
+        "    return (Y | X).select_for_update().first()\n",
+        "orm",
+    ),
+    # F12: _climb's NamedExpr branch, climbing through an assignment expression to the calls made
+    # on it, and the name it assigns.
+    "a_call_on_an_assignment_expression": (
+        "def lock(pk, state):\n"
+        "    return (rows := Profile.objects.select_for_update()).filter(account__state=state)\n",
+        "join",
+    ),
+    "a_use_of_the_name_an_assignment_expression_assigns": (
+        "def lock(pk, state):\n"
+        "    if (rows := Profile.objects.select_for_update()) is None:\n"
+        "        return None\n"
+        "    return rows.filter(account__state=state).first()\n",
+        "join",
+    ),
+    # F12: a field path in a later keyword argument of a capitalised call.
+    "a_path_in_a_later_keyword_argument": (
+        "def lock(pk, field):\n"
+        "    rows = Profile.objects.select_for_update()\n"
+        "    expression = Lower(output_field=field, expression='account__state')\n"
+        "    return rows.filter(display_name=expression).first()\n",
+        "join",
+    ),
+}
+
+
+class PinnedC5ReviewTests(unittest.TestCase):
+    """B0's item 4: F3's and F12's forms, each refused; no rule changes."""
+
+    def scan_source(self, text: str) -> list[account_lock_scan.Lock]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "planted.py"
+            path.write_text(_C5_IMPORTS + text, encoding="utf-8")
+            return account_lock_scan.scan([path])
+
+    def test_each_form_is_refused(self) -> None:
+        for name, (text, kind) in PINNED_C5_REVIEW.items():
+            with self.subTest(planted=name):
+                locks = self.scan_source(text)
+                self.assertEqual([(lock.kind, lock.mode) for lock in locks], [(kind, "FOR UPDATE")])
+                self.assertEqual(len(account_lock_scan.violations(locks)), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

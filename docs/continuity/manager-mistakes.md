@@ -180,6 +180,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-19 | 13 Nov 2026 | records | Two standing lines left stale after their facts changed: the handoff's title ("C2 continues after DM-66") through two later commits (`6b376cf`, `3000014`), and the brief's D8 ("Whether to bound the probing is put to Nathan … it is decided before then") after OD-64 was recorded beneath it (`058829c`) | Dev Manager 4 (DM-67 section 7; GD13, GD14) |
 | AM11-20 | 13 Nov 2026 | records | Two standing lines left stale again: `claude/dev-manager`'s head (`a53bdb0`) in the handoff's branch list and Notion's Branches bullet after DM-67's report (`e7786bb`) was merged at `2d04951` (AM11-12's pattern); Notion's "Next items" kept the brief's revision 8 after revision 9 (AM11-11's pattern) | Dev Manager 5 (start note, section 4) |
 | AM11-21 | 13 Nov 2026 | process | After C4's prompt was committed at `0fbc130`, the manager appended Codex's review of that commit to the evidence record, one of C4's owned paths (`3bbc06f`), then gave Nathan revision 1. Its start gate found the owned path changed and the session stopped, with no change | The C4 session, at its start gate |
+| AM11-22 | 15 Nov 2026 | prompt | B0's prompt passed the brief's stop clause "if a test of C1's to C5's sections no longer passes" unqualified, though item 5 (T3 narrowed) necessarily changes C2's three assertions that pin the wider rule. The session converted them rather than stopping, and flagged it | The manager, when the B0 session reported its plan mid-run; the session flagged it too |
 
 ## App Manager 2
 
@@ -1128,6 +1129,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-22 — A stop clause that the prompt's own item triggers (prompt)
+
+- **What happened:** B0's prompt (revision 1, `c89fe2d`) carried the brief's stop clause "if a test of C1's to C5's sections no longer passes" as written (DM-71's CC3). Item 5 of the same prompt narrows T3's date rule and drops the README's limit for it, so C2's three assertions that pin the wider rule (the email date, the `Expires` text read in any text, and the README limit's planted date) cannot pass after it. The manager did not reconcile the two before giving the prompt.
+- **Caught by:** the manager, reading the session's progress message mid-run; the session also flagged it in its report and asked for the reading to be confirmed.
+- **Effect:** none on the work. The session converted the three assertions under the narrowed rule, each with a reversal against the wider rule, rather than stopping; the manager's verification confirmed nothing else changed. The literal stop clause was met, so the reading goes to Dev Manager 5 with the pre-merge read.
+- **Correction:** recorded in the evidence record ("Manager verification of B0"); the reading goes to Dev Manager 5.
+- **Prevention:** before giving a prompt, the manager checks each stop clause against each item that changes a rule some earlier test pins, and names those tests in the item as expected to change (with what they become), so the clause stops only on unexpected failures.
 
 ### AM11-21 — A records commit into the owned paths of a prompt about to run (process)
 

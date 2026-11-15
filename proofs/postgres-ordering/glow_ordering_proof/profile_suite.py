@@ -159,7 +159,7 @@ def run(results_path: Path | None) -> int:
         report.secrets_held = ledger.count()
         report.secrets_found = ledger.found_in(text)
         report.values_held = values.count()
-        report.values_found = values.found_in(text)
+        report.values_found = values.found_in(capture.text(), headers=headers)
     # The results JSON is output too: a secret or a member value in it fails the run, and the
     # file is not written. It is searched as written and as its decoded strings, because JSON
     # escapes a non-ASCII value (the own words' case sends one).
@@ -188,7 +188,7 @@ def run(results_path: Path | None) -> int:
         flush=True,
     )
     texts = output_texts(capture, headers, scanned)
-    for where in values.where(texts) if report.values_found else []:
+    for where in values.where(texts, headers="the response headers") if report.values_found else []:
         # DM-64 T7: the kind of value and the text it was found in, never the value.
         print(f"{VALUES_FOUND}: {where}", flush=True)
     print(f"PROFILE VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
