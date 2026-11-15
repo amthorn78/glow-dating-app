@@ -10,12 +10,25 @@ operations from separate threads on separate connections, held at their probes, 
 page-creation cases do. Settings are global: a case that publishes one restores what later cases
 rely on. Rows written only in setup (an earlier ``decided_at``, a seeded ``liked`` row) are test
 data, never an application writer. No detail line holds a member's value.
+
+**The cases take their versions as a client does** (correction B-C1, item 2; DM-74): every expected
+version a case sends comes from a command's own answer or from a read a client has, the actor's
+own versions (``GET api/v1/interactions/<profile_id>``, ``_version`` and ``_block_version``) or the
+match read (``_match_version``), never from the database. ``_Ledger`` asserts it for every case:
+it records each version served to each device (and to each direct call's actor), and fails the
+case if a command was sent with a version that was never served and the command was not refused
+before its version was judged (401, 400, 403, 404, 405, ``idempotency_conflict``) or as stale
+(``stale_version``, the deliberate stale probes). B-C1's own cases (``own_versions.*``) follow
+Stage B's.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import functools
 import logging
 import re
+import threading
 import time
 from collections.abc import Callable
 from datetime import timedelta
@@ -25,10 +38,13 @@ from unittest import mock
 from uuid import UUID, uuid4
 
 from glow_ordering_proof.discovery_cases import (
+    CASES,
     REACH_SECONDS,
     _finish,
     _Held,
+    _profile_state,
     _stale_shape,
+    _summary,
     _visibility,
     _Worker,
     case,
@@ -41,6 +57,8 @@ UNDO = "/api/v1/discovery/interaction/undo"
 UNMATCH = "/api/v1/matches/unmatch"
 BLOCKS = "/api/v1/blocks"
 MATCHES = "/api/v1/matches"
+# Correction B-C1 (DM-74): the actor's own versions toward a profile.
+INTERACTIONS = "/api/v1/interactions"
 OPERATIONS = ("interaction", "interaction_undo", "unmatch", "block")
 TEXT = "A synthetic message for the proof."
 
@@ -60,9 +78,17 @@ def _row(actor: Member, target: Member) -> Any:
     ).first()
 
 
-def _version(actor: Member, target: Member) -> int:
-    row = _row(actor, target)
-    return 0 if row is None else int(row.version)
+def _own(ctx: DiscoveryContext, actor: Member, target_profile_id: str) -> dict[str, Any]:
+    """The actor's own versions toward a profile, through the read a client has (B-C1)."""
+    reply = ctx.profiles.call(actor, "GET", f"{INTERACTIONS}/{target_profile_id}")
+    data = ctx.profiles.data(reply, "own_interaction_versions", "the own-versions read")
+    expect(data["target_profile_id"] == target_profile_id, "the read names the profile as asked")
+    return data
+
+
+def _version(ctx: DiscoveryContext, actor: Member, target: Member) -> int:
+    """The actor's directional row's version, as a client learns it: from the read (B-C1)."""
+    return int(_own(ctx, actor, _pid(ctx, target))["interaction_version"])
 
 
 def _intent(
@@ -79,7 +105,7 @@ def _intent(
         "operation": "interaction",
         "meta": {
             "idempotency_key": key or ctx.profiles.key(),
-            "expected_version": _version(actor, target) if expected is None else expected,
+            "expected_version": _version(ctx, actor, target) if expected is None else expected,
         },
         "target_profile_id": _pid(ctx, target),
         "batch_id": page["batch_id"],
@@ -125,35 +151,41 @@ def _undo(
         "operation": "interaction_undo",
         "meta": {
             "idempotency_key": ctx.profiles.key(),
-            "expected_version": _version(actor, target) if expected is None else expected,
+            "expected_version": _version(ctx, actor, target) if expected is None else expected,
         },
         "target_profile_id": _pid(ctx, target),
     }
     return body, ctx.profiles.command(actor, UNDO, body)
 
 
+def _match_version(ctx: DiscoveryContext, actor: Member, match_id: Any) -> int:
+    """The match's version, as a participant learns it: from the match read. Another member reads
+    none (``not_found``), so sends 0, which its unmatch refuses (``not_found``) before the version
+    is judged."""
+    reply = _read_match(ctx, actor, match_id)
+    if reply.status != 200:
+        return 0
+    return int(ctx.profiles.data(reply, "match", "the match read")["version"])
+
+
 def _unmatch(
     ctx: DiscoveryContext, actor: Member, match: Any, *, expected: int | None = None
 ) -> tuple[dict[str, Any], Any]:
-    from glow_persistence.models import Match
-
-    current = Match.objects.get(pk=match.id)
+    version = _match_version(ctx, actor, match.id) if expected is None else expected
     body = {
         "operation": "unmatch",
         "meta": {
             "idempotency_key": ctx.profiles.key(),
-            "expected_version": int(current.version) if expected is None else expected,
+            "expected_version": version,
         },
         "match_id": str(match.id),
     }
     return body, ctx.profiles.command(actor, UNMATCH, body)
 
 
-def _block_version(actor: Member, target: Member) -> int:
-    from glow_persistence.models import Block
-
-    row = Block.objects.filter(actor_id=actor.account_id, target_id=target.account_id).first()
-    return 0 if row is None else int(row.version)
+def _block_version(ctx: DiscoveryContext, actor: Member, target: Member) -> int:
+    """The actor's own block's version, as a client learns it: from the read (B-C1)."""
+    return int(_own(ctx, actor, _pid(ctx, target))["block_version"])
 
 
 def _block(
@@ -168,7 +200,9 @@ def _block(
         "operation": "block",
         "meta": {
             "idempotency_key": ctx.profiles.key(),
-            "expected_version": _block_version(actor, target) if expected is None else expected,
+            "expected_version": (
+                _block_version(ctx, actor, target) if expected is None else expected
+            ),
         },
         "target_profile_id": _pid(ctx, target),
         "action": action,
@@ -592,9 +626,10 @@ def reciprocal_likes_make_one_match(ctx: DiscoveryContext) -> str:
 @case("match.no_route_creates_a_match", "8", "D10", "F09")
 def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
     """No route takes a match intent (F09): the suite serves exactly SV1's identity routes, SV2's
-    member routes, Stage A's page route and Stage B's five action routes, each with its view, and
-    no other (so no route at any path can create a match); Stage B's request DTOs are the four
-    commands; an interaction's action is only like or pass; and no path makes a match."""
+    member routes, Stage A's page route, Stage B's five action routes and correction B-C1's
+    own-versions read (DM-74), each with its view, and no other (so no route at any path can
+    create a match); Stage B's request DTOs are the four commands; an interaction's action is only
+    like or pass; and no path makes a match."""
     from django.urls import get_resolver
     from glow_identity.urls import urlpatterns as identity_routes
     from glow_persistence.models import Match
@@ -620,6 +655,8 @@ def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
         ("api/v1/matches/unmatch", "UnmatchView"),
         ("api/v1/matches/<uuid:match_id>", "MatchView"),
         ("api/v1/blocks", "BlockView"),
+        # Correction B-C1 (DM-74): the actor's own versions, a read.
+        ("api/v1/interactions/<uuid:profile_id>", "OwnVersionsView"),
     }
     everything = served(get_resolver().url_patterns)
     expected = served(identity_routes) | served(profile_routes) | stage_b
@@ -955,7 +992,7 @@ def unmatch_revokes_contact(ctx: DiscoveryContext) -> str:
     expect(sent.outcome == "authorized", f"a send before the unmatch applies ({sent.reason})")
     _, foreign = _unmatch(ctx, third, match)
     ctx.profiles.refused(foreign, 404, "not_found", "another member's match")
-    _, stale = _unmatch(ctx, one, match, expected=match.version + 5)
+    _, stale = _unmatch(ctx, one, match, expected=_match_version(ctx, one, match.id) + 5)
     ctx.profiles.refused(stale, 409, "stale_version", "a stale version")
     body, reply = _unmatch(ctx, one, match)
     out = ctx.profiles.data(reply, "match", "the unmatch")
@@ -1301,7 +1338,7 @@ def _block_body(ctx: DiscoveryContext, target: Member) -> dict[str, Any]:
 def _undo_body(ctx: DiscoveryContext, actor: Member, target: Member) -> dict[str, Any]:
     return {
         "operation": "interaction_undo",
-        "meta": ctx.profiles.meta(_version(actor, target)),
+        "meta": ctx.profiles.meta(_version(ctx, actor, target)),
         "target_profile_id": _pid(ctx, target),
     }
 
@@ -1552,3 +1589,466 @@ def interactions_pointer_order(ctx: DiscoveryContext) -> str:
         expect(tuple(sorted(names)) == expected_names, "the transaction's settings")
         expect(list(held) == sorted(held), "held in name order")
     return "the pass and the undo each take their pointers once, in name order"
+
+
+# -- B-C1: the actor's own versions (its section's items 1 and 2; D13; DM-74) -----------------
+
+# What the alike cases compare: the status, these headers and the body, with only the request's
+# own identifier and the profile ID as asked taken out.
+ALIKE_HEADERS = ("Content-Type", "Cache-Control", "Content-Length")
+
+
+def _raw_own(ctx: DiscoveryContext, actor: Member, profile_id: str) -> tuple[int, bytes, bytes]:
+    """The read's response as bytes, the request's ``request_id`` and the profile ID as asked
+    replaced by fixed text, with its status and ``ALIKE_HEADERS``."""
+    import json
+
+    response = actor.device.client.generic(
+        "GET",
+        f"{INTERACTIONS}/{profile_id}",
+        data=b"",
+        content_type="application/json",
+        headers={"Authorization": f"Bearer {actor.device.access}"},
+    )
+    content = bytes(response.content)
+    request_id = str(json.loads(content.decode("utf-8")).get("request_id", ""))
+    expect(len(request_id) == 36, "the answer names its request")
+    normalised = content.replace(request_id.encode(), b"<request>").replace(
+        profile_id.encode(), b"<profile>"
+    )
+    headers = "\n".join(f"{name}: {response.get(name)}" for name in ALIKE_HEADERS).encode()
+    return response.status_code, headers, normalised
+
+
+def _state(data: dict[str, Any]) -> tuple[str, int, str, int]:
+    return (
+        str(data["interaction_state"]),
+        int(data["interaction_version"]),
+        str(data["block_state"]),
+        int(data["block_version"]),
+    )
+
+
+NONE = ("none", 0, "none", 0)
+
+
+def _second_device(ctx: DiscoveryContext, member: Member) -> Member:
+    """The same member signed in on a new device, which holds none of the first's answers."""
+    return dataclasses.replace(member, device=ctx.profiles.identity.sign_in(member))
+
+
+@case("own_versions.each_state_and_version", "B-C1", "D13", "F08", "F13")
+def own_versions_each_state_and_version(ctx: DiscoveryContext) -> str:
+    """The read gives the actor's own directional row's state and version, and own block's, after
+    each command: a like, a pass, an undo (undo on), a resurfaced like (resurfacing on), a block
+    and an unblock, each equal to the command's own answer; ``none`` and ``0`` before any."""
+    from glow_domain import profile_settings as ps
+
+    viewer, liked, passed, resurfaced = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
+    steps: list[str] = []
+
+    def reads(target: Member, wanted: tuple[str, int, str, int], what: str) -> None:
+        expect(_state(_own(ctx, viewer, _pid(ctx, target))) == wanted, f"after {what}")
+        steps.append(what)
+
+    reads(liked, NONE, "no command")
+    out = _act(ctx, viewer, liked, "like")
+    reads(liked, ("liked", out["version"], "none", 0), "a like")
+    out = _act(ctx, viewer, passed, "pass")
+    reads(passed, ("passed", out["version"], "none", 0), "a pass")
+    try:
+        _publish(ctx, ps.UNDO, {"enabled": True, "waiting_days": 1})
+        out = ctx.profiles.data(_undo(ctx, viewer, passed)[1], "interaction_undo", "the undo")
+        reads(passed, ("withdrawn", out["version"], "none", 0), "an undo")
+    finally:
+        _publish(ctx, ps.UNDO, {"enabled": False, "waiting_days": None})
+    _act(ctx, viewer, resurfaced, "pass")
+    _decided(viewer, resurfaced, 8)
+    try:
+        _publish(ctx, ps.RESURFACING, {"enabled": True, "waiting_days": 7})
+        out = _act(ctx, viewer, resurfaced, "like")
+        expect(out["version"] == 2, "the resurfaced like advances the row")
+        reads(resurfaced, ("liked", 2, "none", 0), "a resurfaced like")
+    finally:
+        _publish(ctx, ps.RESURFACING, {"enabled": False, "waiting_days": None})
+    blocked = ctx.profiles.data(_block(ctx, viewer, liked, "block")[1], "block", "the block")
+    reads(liked, ("liked", 1, "active", blocked["version"]), "a block")
+    lifted = ctx.profiles.data(_block(ctx, viewer, liked, "unblock")[1], "block", "the unblock")
+    reads(liked, ("liked", 1, "removed", lifted["version"]), "an unblock")
+    return f"{len(steps)} reads, each the actor's own state and version: {', '.join(steps)}"
+
+
+@case("own_versions.alike_wherever_the_actor_has_no_row", "B-C1", "D8", "D13")
+def own_versions_alike_without_a_row(ctx: DiscoveryContext) -> str:
+    """Where the actor has no row, the read gives the same 200 answer, ``none`` and ``0`` twice,
+    byte for byte (but the request's own identifier and the profile ID as asked), whether the
+    profile exists or not and whatever its state: no row, a missing profile ID, not visible,
+    paused, restricted, removed, excluded, and blocking the actor. Never a 404."""
+    from glow_profiles import staff
+
+    actor = ctx.visible()
+    targets: dict[str, str] = {}
+    plain = ctx.visible()
+    targets["a visible profile with no row"] = _pid(ctx, plain)
+    targets["a missing profile ID"] = str(uuid4())
+    hidden = ctx.visible()
+    expect(_summary(ctx, hidden, "") == "incomplete", "a cleared summary: not visible")
+    targets["not visible"] = _pid(ctx, hidden)
+    paused = ctx.visible()
+    _visibility(ctx, paused, "pause")
+    targets["paused"] = _pid(ctx, paused)
+    restricted = ctx.visible()
+    outcome = staff.restrict_profile(
+        restricted.account_id,
+        staff_subject="staff:discovery-proof",
+        reason="SV3-proof",
+        request_id=uuid4(),
+    )
+    expect(outcome.outcome == "applied", "staff restrict the profile")
+    targets["restricted"] = _pid(ctx, restricted)
+    removed = ctx.visible()
+    targets["removed"] = _pid(ctx, removed)
+    _profile_state(removed.account_id, "removed")
+    excluded = ctx.visible()
+    ctx.set_sets(excluded, {"gender": ["man"]})
+    expect(_pid(ctx, excluded) not in _shown(ctx, actor), "excluded from the actor's pages")
+    targets["excluded"] = _pid(ctx, excluded)
+    blocking = ctx.visible()
+    ctx.block(blocking.account_id, actor.account_id)
+    targets["blocking the actor"] = _pid(ctx, blocking)
+    answers = {name: _raw_own(ctx, actor, profile_id) for name, profile_id in targets.items()}
+    first = answers["a visible profile with no row"]
+    expect(first[0] == 200, "the read answers 200")
+    for name, answer in answers.items():
+        expect(answer == first, f"{name}: the same status, headers and bytes")
+    for profile_id in targets.values():
+        expect(_state(_own(ctx, actor, profile_id)) == NONE, "none and 0, twice")
+    return (
+        f"{len(answers)} profiles with no row of the actor's ({', '.join(answers)}): one 200"
+        " answer, byte for byte"
+    )
+
+
+@case("own_versions.never_the_other_members_rows", "B-C1", "D8", "F08", "F13")
+def own_versions_never_the_other_members_rows(ctx: DiscoveryContext) -> str:
+    """The read never shows a row whose actor is the other member: their like, pass or block of
+    the actor reads ``none`` and ``0``; with the actor's own row, the read shows that row only."""
+    actor, liker, passer, blocker = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
+    expect(_act(ctx, liker, actor, "like")["state"] == "liked", "their like")
+    expect(_act(ctx, passer, actor, "pass")["state"] == "passed", "their pass")
+    ctx.profiles.data(_block(ctx, blocker, actor, "block")[1], "block", "their block")
+    for other in (liker, passer, blocker):
+        expect(_state(_own(ctx, actor, _pid(ctx, other))) == NONE, "their row is not shown")
+    own = _act(ctx, actor, liker, "pass")
+    expect(_state(_own(ctx, actor, _pid(ctx, liker))) == ("passed", own["version"], "none", 0), "p")
+    mine = ctx.profiles.data(_block(ctx, actor, blocker, "block")[1], "block", "the own block")
+    expect(
+        _state(_own(ctx, actor, _pid(ctx, blocker))) == ("none", 0, "active", mine["version"]),
+        "the actor's own block, and not their block's direction",
+    )
+    for other in (liker, passer, blocker):
+        theirs = _state(_own(ctx, other, _pid(ctx, actor)))
+        expect(theirs[0] != "none" or theirs[2] != "none", "each other member reads their own")
+    return "the other member's like, pass and block read none and 0; the actor's own rows only"
+
+
+@case("own_versions.owner_only_and_held_for_share", "B-C1", "12", "D2", "D13", "D14")
+def own_versions_owner_only(ctx: DiscoveryContext) -> str:
+    """The read is the signed-in actor's only: no token is ``unauthenticated`` (401), another
+    method ``invalid_request`` (405), a query or a body ``invalid_request`` (400), each
+    ``no-store``; the answer is ``no-store``; another member reads their own rows. It holds the
+    actor's account row ``FOR SHARE``: while the actor's like holds that row at its commit, from a
+    separate connection, the read waits, then reads the like."""
+    from glow_discovery import interactions
+
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    actor, target, other = ctx.visible(), ctx.visible(), ctx.visible()
+    path = f"{INTERACTIONS}/{_pid(ctx, target)}"
+    refusals = (
+        (ctx.profiles.call(actor, "GET", path, bearer=False), 401, "unauthenticated", "no token"),
+        (ctx.profiles.call(actor, "POST", path, {}), 405, "invalid_request", "POST"),
+        (ctx.profiles.call(actor, "DELETE", path), 405, "invalid_request", "DELETE"),
+        (ctx.profiles.call(actor, "GET", f"{path}?x=1"), 400, "invalid_request", "a query"),
+        (ctx.profiles.call(actor, "GET", path, {"x": 1}), 400, "invalid_request", "a body"),
+    )
+    headers = ctx.profiles.headers[-len(refusals) :]
+    for (reply, status, code, what), text in zip(refusals, headers, strict=True):
+        ctx.profiles.refused(reply, status, code, what)
+        expect("Cache-Control: no-store" in text, f"{what}: no-store")
+    _own(ctx, actor, _pid(ctx, target))
+    expect("Cache-Control: no-store" in ctx.profiles.headers[-1], "the answer: no-store")
+    page = ctx.page(actor)
+    body = _intent(ctx, actor, target, "like", page)
+    held, read_probe = _Held("before_commit"), _Held()
+    like = _Worker(partial(interactions.interact, actor.account_id, body, probe=held))
+    read = _Worker(
+        partial(
+            interactions.read_own_versions,
+            actor.account_id,
+            UUID(_pid(ctx, target)),
+            probe=read_probe,
+        )
+    )
+    waited = None
+    try:
+        like.start()
+        holding = held.reached["before_commit"].wait(REACH_SECONDS)
+        read.start()
+        pid = _wait_pid(read_probe)
+        assert held.pid is not None
+        waited = observe_lock_wait(pid, holder_pid=held.pid, finished=read.ended, timeout=10.0)
+    finally:
+        _finish([held, read_probe], [like, read])
+    expect(holding and like.ok(), "the like held the actor's account at its commit, and applied")
+    expect(waited is not None and waited.observed, "the read waited on the actor's account")
+    answered = read.result is not None and read.error is None and read.result.outcome == "read"
+    expect(answered, f"the read answered ({read.outcome()})")
+    expect(_state(read.result.data)[:2] == ("liked", 1), "then it read the like")
+    expect(_state(_own(ctx, other, _pid(ctx, target))) == NONE, "another member reads their own")
+    return (
+        f"{len(refusals)} refusals, each no-store; the answer no-store; the read waits on the"
+        " actor's account held by its like, then reads it"
+    )
+
+
+@case("own_versions.recovery_resurfaced_like", "B-C1", "D12", "D13", "F08")
+def own_versions_recovery_resurfaced_like(ctx: DiscoveryContext) -> str:
+    """Recovery from no state, with resurfacing on: a second device, holding none of the first's
+    answers, likes a passed candidate who resurfaces with the version the read gives; with ``0``
+    in its place the like is refused ``stale_version`` and writes nothing."""
+    from glow_domain import profile_settings as ps
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    _act(ctx, viewer, candidate, "pass")
+    _decided(viewer, candidate, 8)
+    second = _second_device(ctx, viewer)
+    try:
+        _publish(ctx, ps.RESURFACING, {"enabled": True, "waiting_days": 7})
+        page = ctx.page(second)
+        expect(_pid(ctx, candidate) in ctx.ids(page), "the passed candidate resurfaces")
+        given = _state(_own(ctx, second, _pid(ctx, candidate)))
+        expect(given == ("passed", 1, "none", 0), "the read gives the pass and its version")
+        before = _counts()
+        zero = _intent(ctx, second, candidate, "like", page, expected=0)
+        ctx.profiles.refused(
+            ctx.profiles.command(second, INTERACTION, zero), 409, "stale_version", "with 0"
+        )
+        expect(_counts() == before, "the refused like writes nothing")
+        body = _intent(ctx, second, candidate, "like", page, expected=given[1])
+        out = ctx.profiles.data(
+            ctx.profiles.command(second, INTERACTION, body), "interaction", "the like"
+        )
+        expect((out["state"], out["version"]) == ("liked", 2), "the like over the pass applies")
+    finally:
+        _publish(ctx, ps.RESURFACING, {"enabled": False, "waiting_days": None})
+    return "a second device likes a resurfaced pass with the read's version; 0 is stale"
+
+
+@case("own_versions.recovery_like_after_undo", "B-C1", "D12", "D13", "F08")
+def own_versions_recovery_like_after_undo(ctx: DiscoveryContext) -> str:
+    """Recovery from no state, with undo on: a second device likes a candidate whose pass the
+    first withdrew, with the version the read gives; with ``0`` the like is refused
+    ``stale_version`` and writes nothing."""
+    from glow_domain import profile_settings as ps
+
+    viewer, candidate = ctx.visible(), ctx.visible()
+    try:
+        _publish(ctx, ps.UNDO, {"enabled": True, "waiting_days": 1})
+        _act(ctx, viewer, candidate, "pass")
+        withdrawn = ctx.profiles.data(_undo(ctx, viewer, candidate)[1], "interaction_undo", "u")
+        expect(withdrawn["version"] == 2, "the pass withdrawn, version 2")
+    finally:
+        _publish(ctx, ps.UNDO, {"enabled": False, "waiting_days": None})
+    second = _second_device(ctx, viewer)
+    page = ctx.page(second)
+    expect(_pid(ctx, candidate) in ctx.ids(page), "a withdrawn pass excludes nothing")
+    given = _state(_own(ctx, second, _pid(ctx, candidate)))
+    expect(given == ("withdrawn", 2, "none", 0), "the read gives the withdrawn pass")
+    before = _counts()
+    zero = _intent(ctx, second, candidate, "like", page, expected=0)
+    ctx.profiles.refused(
+        ctx.profiles.command(second, INTERACTION, zero), 409, "stale_version", "with 0"
+    )
+    expect(_counts() == before, "the refused like writes nothing")
+    body = _intent(ctx, second, candidate, "like", page, expected=given[1])
+    out = ctx.profiles.data(
+        ctx.profiles.command(second, INTERACTION, body), "interaction", "the like"
+    )
+    expect((out["state"], out["version"]) == ("liked", 3), "the like after the undo applies")
+    return "a second device likes after a withdrawn pass with the read's version; 0 is stale"
+
+
+@case("own_versions.recovery_block_after_unblock", "B-C1", "D11", "D13", "F13")
+def own_versions_recovery_block_after_unblock(ctx: DiscoveryContext) -> str:
+    """Recovery from no state, at launch (no setting): a second device blocks a member the first
+    blocked and unblocked, with the version the read gives; with ``0`` the block is refused
+    ``stale_version`` and writes nothing."""
+    from glow_persistence.models import Block
+
+    actor, target = ctx.visible(), ctx.visible()
+    ctx.profiles.data(_block(ctx, actor, target, "block")[1], "block", "the block")
+    lifted = ctx.profiles.data(_block(ctx, actor, target, "unblock")[1], "block", "the unblock")
+    expect((lifted["state"], lifted["version"]) == ("removed", 2), "removed, version 2")
+    second = _second_device(ctx, actor)
+    given = _state(_own(ctx, second, _pid(ctx, target)))
+    expect(given == ("none", 0, "removed", 2), "the read gives the removed block")
+    rows = list(Block.objects.filter(actor_id=actor.account_id).values_list("state", "version"))
+    _, zero = _block(ctx, second, target, "block", expected=0)
+    ctx.profiles.refused(zero, 409, "stale_version", "with 0")
+    expect(
+        list(Block.objects.filter(actor_id=actor.account_id).values_list("state", "version"))
+        == rows,
+        "the refused block writes nothing",
+    )
+    _, reply = _block(ctx, second, target, "block", expected=given[3])
+    out = ctx.profiles.data(reply, "block", "the block again")
+    expect((out["state"], out["version"]) == ("active", 3), "the block after the unblock applies")
+    return "a second device blocks after an unblock with the read's version; 0 is stale"
+
+
+# -- the ledger: every expected version sent comes from an answer or a read (B-C1, item 2) -----
+
+# A refusal made before a command's version is judged: no token, another method, a body that is
+# not its DTO (400, 401, 405), a setting off or an actor not eligible (403), another member's
+# match (404), or the same key with another intent (``idempotency_conflict``).
+BEFORE_THE_VERSION = {"unauthenticated", "invalid_request", "forbidden", "not_found"}
+STALE_CODE = "stale_version"
+COMMAND_PATHS = {INTERACTION: "interaction", UNDO: "interaction", BLOCKS: "block", UNMATCH: "match"}
+
+
+class _Ledger:
+    """What each device (and each direct call's actor) was served, and every command's expected
+    version checked against it (B-C1, item 2)."""
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.served: dict[tuple[str, str, str, str], set[int]] = {}
+        self.sent = 0
+        self.unserved_refused = 0
+        self.failures: list[str] = []
+
+    def serve(self, holder: str, actor: str, family: str, key: str, version: Any) -> None:
+        if isinstance(version, int) and not isinstance(version, bool):
+            with self.lock:
+                self.served.setdefault((holder, actor, family, key), set()).add(version)
+
+    def served_from(self, data: Any, holder: str, actor: str) -> None:
+        if not isinstance(data, dict):
+            return
+        kind = data.get("kind")
+        if kind == "own_interaction_versions":
+            key = str(data.get("target_profile_id"))
+            self.serve(holder, actor, "interaction", key, data.get("interaction_version"))
+            self.serve(holder, actor, "block", key, data.get("block_version"))
+        elif kind in ("interaction", "interaction_undo"):
+            key = str(data.get("target_profile_id"))
+            self.serve(holder, actor, "interaction", key, data.get("version"))
+        elif kind == "block":
+            self.serve(
+                holder, actor, "block", str(data.get("target_profile_id")), data.get("version")
+            )
+        elif kind == "match":
+            self.serve(holder, actor, "match", str(data.get("match_id")), data.get("version"))
+
+    def check(
+        self, holder: str | None, actor: str, family: str, body: Any, ok: bool, code: str
+    ) -> None:
+        if not isinstance(body, dict):
+            return
+        meta = body.get("meta")
+        expected = meta.get("expected_version") if isinstance(meta, dict) else None
+        if not isinstance(expected, int) or isinstance(expected, bool):
+            return
+        key = str(body.get("match_id" if family == "match" else "target_profile_id"))
+        with self.lock:
+            self.sent += 1
+            given = {
+                version
+                for (who, by, kind, name), versions in self.served.items()
+                if by == actor
+                and kind == family
+                and name == key
+                and (holder is None or who == holder)
+                for version in versions
+            }
+            if expected in given:
+                return
+            if not ok and (
+                code == STALE_CODE or code in BEFORE_THE_VERSION or code == "idempotency_conflict"
+            ):
+                self.unserved_refused += 1
+                return
+            self.failures.append(
+                f"{family}: a command sent a version no answer or read gave"
+                f" ({'applied' if ok else code})"
+            )
+
+
+def _as_a_client(run: Callable[[DiscoveryContext], str]) -> Callable[[DiscoveryContext], str]:
+    """A Stage B or B-C1 case, with ``_Ledger`` watching every command it sends: through the
+    routes (``ctx.profiles.call``) and directly (``glow_discovery.interactions``' four commands,
+    which the cases call from their threads; the routes keep their own references)."""
+
+    def wrapped(ctx: DiscoveryContext) -> str:
+        from glow_discovery import interactions
+
+        ledger = _Ledger()
+        real_call = ctx.profiles.call
+
+        def call(member: Member, method: str, path: str, body: Any = None, **kwargs: Any) -> Any:
+            reply = real_call(member, method, path, body, **kwargs)
+            holder, actor = f"device:{id(member.device)}", str(member.account_id)
+            data = (reply.body or {}).get("data") if reply.status == 200 else None
+            ledger.served_from(data, holder, actor)
+            family = COMMAND_PATHS.get(path) if method == "POST" else None
+            if family is not None:
+                code = str((reply.body or {}).get("code") or "")
+                ledger.check(holder, actor, family, body, reply.status == 200, code)
+            return reply
+
+        def direct(function: Callable[..., Any], family: str) -> Callable[..., Any]:
+            def call_directly(account_id: Any, intent: Any, **kwargs: Any) -> Any:
+                result = function(account_id, intent, **kwargs)
+                actor = str(account_id)
+                ledger.served_from(result.data, f"direct:{actor}", actor)
+                ledger.check(None, actor, family, intent, bool(result.ok), str(result.code or ""))
+                return result
+
+            return call_directly
+
+        patches = [
+            mock.patch.object(ctx.profiles, "call", call),
+            mock.patch.object(
+                interactions, "interact", direct(interactions.interact, "interaction")
+            ),
+            mock.patch.object(interactions, "undo", direct(interactions.undo, "interaction")),
+            mock.patch.object(interactions, "block", direct(interactions.block, "block")),
+            mock.patch.object(interactions, "unmatch", direct(interactions.unmatch, "match")),
+        ]
+        for patch in patches:
+            patch.start()
+        try:
+            detail = run(ctx)
+        finally:
+            for patch in reversed(patches):
+                patch.stop()
+        expect(
+            not ledger.failures,
+            f"every expected version sent came from an answer or a read"
+            f" ({len(ledger.failures)} did not: {'; '.join(sorted(set(ledger.failures)))})",
+        )
+        if ledger.sent:
+            detail += (
+                f" [{ledger.sent} expected versions sent, each from an answer or a read, or"
+                f" refused first or as stale ({ledger.unserved_refused})]"
+            )
+        return detail
+
+    return functools.update_wrapper(wrapped, run)
+
+
+# Every case this module registers runs under the ledger.
+for _index, _entry in enumerate(CASES):
+    if getattr(_entry.run, "__module__", None) == __name__:
+        CASES[_index] = dataclasses.replace(_entry, run=_as_a_client(_entry.run))

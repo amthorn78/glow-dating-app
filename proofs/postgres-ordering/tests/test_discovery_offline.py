@@ -405,12 +405,14 @@ class DiscoveryPlanTests(unittest.TestCase):
 
     def test_the_case_count_is_pinned(self) -> None:
         # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 19 named below.
-        self.assertEqual(discovery_cases.CASE_COUNT, 59)
+        # Re-pinned by Stage B's correction B-C1 (DM-74): B-C1's 7, named below, after Stage B's.
+        self.assertEqual(discovery_cases.CASE_COUNT, 66)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
         # C2's two new cases (the exact-head review's F1 and F2).
         for case_id in ("pages.one_snapshot_statements", "distance.choice_no_longer_offered"):
             self.assertIn(case_id, discovery_cases.plan())
-        self.assertEqual(discovery_cases.plan()[40:], STAGE_B_CASES)
+        self.assertEqual(discovery_cases.plan()[40:59], STAGE_B_CASES)
+        self.assertEqual(discovery_cases.plan()[59:], B_C1_CASES)
 
     def test_the_routes_are_the_apis(self) -> None:
         # Rewritten by SV3 Stage B's item 6 (DM-73): the exact routes Stage A's and Stage B's URL
@@ -436,6 +438,8 @@ class DiscoveryPlanTests(unittest.TestCase):
                     "api/v1/matches/unmatch",
                     "api/v1/matches/<uuid:match_id>",
                     "api/v1/blocks",
+                    # Rewritten by Stage B's correction B-C1 (DM-74): the own-versions read.
+                    "api/v1/interactions/<uuid:profile_id>",
                 },
             },
         )
@@ -449,6 +453,7 @@ class DiscoveryPlanTests(unittest.TestCase):
                 interaction_cases.UNMATCH,
                 interaction_cases.BLOCKS,
                 interaction_cases.MATCHES,
+                interaction_cases.INTERACTIONS,
             ),
             (
                 "/api/v1/discovery/interaction",
@@ -456,6 +461,7 @@ class DiscoveryPlanTests(unittest.TestCase):
                 "/api/v1/matches/unmatch",
                 "/api/v1/blocks",
                 "/api/v1/matches",
+                "/api/v1/interactions",
             ),
         )
         served = ast.parse((PROOF / "discovery_urls.py").read_text(encoding="utf-8"))
@@ -491,6 +497,156 @@ STAGE_B_CASES = (
     "interactions.logs_no_private_value",
     "interactions.pointer_order",
 )
+# Correction B-C1's cases (DM-74), registered after Stage B's, in this order.
+B_C1_CASES = (
+    "own_versions.each_state_and_version",
+    "own_versions.alike_wherever_the_actor_has_no_row",
+    "own_versions.never_the_other_members_rows",
+    "own_versions.owner_only_and_held_for_share",
+    "own_versions.recovery_resurfaced_like",
+    "own_versions.recovery_like_after_undo",
+    "own_versions.recovery_block_after_unblock",
+)
+
+
+class ClientVersionTests(unittest.TestCase):
+    """Correction B-C1's item 2 (DM-74): the interaction cases take their versions as a client
+    does. ``_version`` and ``_block_version`` read the actor's own versions through the route, and
+    ``_match_version`` the match read, never the database; no version a case sends is built from a
+    row it read; and every case of the module runs under ``_Ledger``, which fails a case that sends
+    a version no answer or read gave (unless the command was refused first, or as stale)."""
+
+    def setUp(self) -> None:
+        self.tree = ast.parse((PROOF / "interaction_cases.py").read_text(encoding="utf-8"))
+        self.functions = {
+            node.name: node for node in self.tree.body if isinstance(node, ast.FunctionDef)
+        }
+
+    def test_the_versions_come_from_the_reads_not_the_database(self) -> None:
+        for name, read in (
+            ("_version", "_own"),
+            ("_block_version", "_own"),
+            ("_match_version", "_read_match"),
+        ):
+            with self.subTest(helper=name):
+                text = ast.unparse(self.functions[name])
+                self.assertIn(f"{read}(ctx, actor", text)
+                for word in (".objects", "_row(", "glow_persistence", "Block", "Match."):
+                    self.assertNotIn(word, text)
+        own = ast.unparse(self.functions["_own"])
+        self.assertIn("ctx.profiles.call(actor, 'GET', f'{INTERACTIONS}/{target_profile_id}')", own)
+        self.assertIn("'own_interaction_versions'", own)
+        self.assertNotIn(".objects", own)
+
+    def test_no_sent_version_is_built_from_a_row(self) -> None:
+        # Every expected version the module builds (a meta's ``expected_version``, an
+        # ``expected=`` argument, or ``ctx.profiles.meta(...)``'s) is a literal, a parameter, an
+        # answer's field or a read helper's result, never a row's ``.version`` or a query.
+        # A name in such an expression is followed through its assignments in its function.
+        sent: list[ast.expr] = []
+        for function in ast.walk(self.tree):
+            if not isinstance(function, ast.FunctionDef):
+                continue
+            assigned: dict[str, list[ast.expr]] = {}
+            for node in ast.walk(function):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            assigned.setdefault(target.id, []).append(node.value)
+            found: list[ast.expr] = []
+            for node in ast.walk(function):
+                if isinstance(node, ast.Dict):
+                    for key, value in zip(node.keys, node.values, strict=True):
+                        if isinstance(key, ast.Constant) and key.value == "expected_version":
+                            found.append(value)
+                if isinstance(node, ast.Call):
+                    found.extend(k.value for k in node.keywords if k.arg == "expected")
+                    if ast.unparse(node.func) == "ctx.profiles.meta":
+                        found.extend(node.args)
+            followed: set[str] = set()
+            while found:
+                value = found.pop()
+                sent.append(value)
+                for name in ast.walk(value):
+                    if isinstance(name, ast.Name) and name.id not in followed:
+                        followed.add(name.id)
+                        found.extend(assigned.get(name.id, []))
+        self.assertGreaterEqual(len(sent), 20)
+        for value in sent:
+            with self.subTest(sent=ast.unparse(value)):
+                for part in ast.walk(value):
+                    if isinstance(part, ast.Attribute):
+                        self.assertNotIn(part.attr, ("version", "objects"))
+                    if isinstance(part, ast.Call):
+                        self.assertNotIn(ast.unparse(part.func), ("_row", "_counts"))
+
+    def test_every_case_of_the_module_runs_under_the_ledger(self) -> None:
+        from glow_ordering_proof import interaction_cases
+
+        mine = [e for e in discovery_cases.CASES if e.case_id in STAGE_B_CASES + B_C1_CASES]
+        self.assertEqual(len(mine), len(STAGE_B_CASES) + len(B_C1_CASES))
+        for entry in mine:
+            with self.subTest(case=entry.case_id):
+                self.assertEqual(entry.run.__code__.co_qualname, "_as_a_client.<locals>.wrapped")
+                inner = entry.run.__wrapped__  # type: ignore[attr-defined]
+                self.assertEqual(inner.__module__, interaction_cases.__name__)
+                self.assertTrue(inner.__doc__)
+
+    def test_the_ledger_passes_only_a_served_version_or_a_refusal_first(self) -> None:
+        from glow_ordering_proof.interaction_cases import _Ledger
+
+        profile, other = str(uuid4()), str(uuid4())
+
+        def body(version: object, target: str = profile) -> dict[str, Any]:
+            return {
+                "meta": {"idempotency_key": "k1", "expected_version": version},
+                "target_profile_id": target,
+            }
+
+        ledger = _Ledger()
+        ledger.served_from(
+            {
+                "kind": "own_interaction_versions",
+                "target_profile_id": profile,
+                "interaction_state": "passed",
+                "interaction_version": 1,
+                "block_state": "removed",
+                "block_version": 2,
+            },
+            "device:a",
+            "actor",
+        )
+        ledger.served_from(
+            {"kind": "interaction", "target_profile_id": profile, "version": 3},
+            "device:a",
+            "actor",
+        )
+        # Served to this device: an answer's or the read's version passes.
+        for family, version in (("interaction", 1), ("interaction", 3), ("block", 2)):
+            ledger.check("device:a", "actor", family, body(version), True, "")
+        self.assertEqual(ledger.failures, [])
+        # Never served: refused as stale, or before the version is judged, passes; applied fails.
+        for code in ("stale_version", "unauthenticated", "not_found", "idempotency_conflict"):
+            ledger.check("device:a", "actor", "interaction", body(0), False, code)
+        self.assertEqual((ledger.failures, ledger.unserved_refused), ([], 4))
+        cases = (
+            ("device:a", "actor", "interaction", body(0), True, ""),  # 0 was never served
+            ("device:a", "actor", "block", body(1), True, ""),  # the other family's version
+            ("device:a", "actor", "interaction", body(1, other), True, ""),  # another profile
+            ("device:b", "actor", "interaction", body(1), True, ""),  # another device
+            ("device:a", "other", "interaction", body(1), True, ""),  # another actor
+            ("device:a", "actor", "interaction", body(5), False, "state_conflict"),  # judged
+        )
+        for number, (holder, actor, family, sent, ok, code) in enumerate(cases, start=1):
+            ledger.check(holder, actor, family, sent, ok, code)
+            self.assertEqual(len(ledger.failures), number)
+        # A direct call (no device) may use what any of the actor's devices was served.
+        ledger.check(None, "actor", "interaction", body(3), True, "")
+        self.assertEqual(len(ledger.failures), len(cases))
+        # A body with no integer expected version is not a command to check.
+        ledger.check("device:a", "actor", "interaction", {"meta": {}}, True, "")
+        ledger.check("device:a", "actor", "interaction", body(True), True, "")
+        self.assertEqual(len(ledger.failures), len(cases))
 
 
 class DiscoveryCommandTests(unittest.TestCase):
