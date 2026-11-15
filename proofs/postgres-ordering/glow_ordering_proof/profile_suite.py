@@ -54,6 +54,9 @@ class ProfileReport:
     secrets_found: int = -1
     values_held: int = 0
     values_found: int = -1
+    # D14 (SV3 Stage B): the row locks the suite sent, checked before its verdict.
+    row_locks: dict[str, Any] = field(default_factory=dict)
+    row_lock_failures: int = 0
 
     def passed(self) -> bool:
         return (
@@ -61,6 +64,7 @@ class ProfileReport:
             and all(c.passed for c in self.cases)
             and self.secrets_found == 0
             and self.values_found == 0
+            and self.row_lock_failures == 0
         )
 
     def to_json(self) -> str:
@@ -107,6 +111,11 @@ def run(results_path: Path | None) -> int:
     if settings.ROOT_URLCONF != "glow_ordering_proof.profile_urls":
         print("refusing: the profile suite runs only under glow_ordering_proof.profile_settings")
         return 1
+    # D14 (SV3 Stage B): the record of every row lock the suite sends, before its first
+    # statement (``row_locks``).
+    from glow_ordering_proof import row_locks
+
+    lock_record = row_locks.install()
     if len(profile_cases.CASES) != profile_cases.CASE_COUNT:
         print(
             f"refusing: the suite holds {len(profile_cases.CASES)} cases, not the"
@@ -160,6 +169,11 @@ def run(results_path: Path | None) -> int:
         report.secrets_found = ledger.found_in(text)
         report.values_held = values.count()
         report.values_found = values.found_in(capture.text(), headers=headers)
+    # D14 (SV3 Stage B; acceptance check 15): checked before the verdict, and before the
+    # results JSON is written; counts, and each refused statement's text, never a parameter.
+    summary = lock_record.check()
+    report.row_locks = summary.as_dict()
+    report.row_lock_failures = summary.failures()
     # The results JSON is output too: a secret or a member value in it fails the run, and the
     # file is not written. It is searched as written and as its decoded strings, because JSON
     # escapes a non-ASCII value (the own words' case sends one).
@@ -191,6 +205,8 @@ def run(results_path: Path | None) -> int:
     for where in values.where(texts, headers="the response headers") if report.values_found else []:
         # DM-64 T7: the kind of value and the text it was found in, never the value.
         print(f"{VALUES_FOUND}: {where}", flush=True)
+    for line in summary.lines("profile"):
+        print(line, flush=True)
     print(f"PROFILE VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
     if results_path is not None and (secrets_in_results or values_in_results):
         print("results withheld: the results JSON held a secret or a member value")

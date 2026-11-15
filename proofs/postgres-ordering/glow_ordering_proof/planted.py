@@ -210,7 +210,7 @@ def _end_session(session: UUID) -> Any:
 
 def _suspend(account: UUID) -> Any:
     m = _models()
-    row = m.AppAccount.objects.select_for_update().get(pk=account)
+    row = m.AppAccount.objects.select_for_update(no_key=True).get(pk=account)
     row.state = "suspended"
     row.session_epoch += 1
     row.version += 1

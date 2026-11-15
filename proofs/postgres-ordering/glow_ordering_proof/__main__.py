@@ -136,6 +136,18 @@ def run_subject(ctx: Any, seed: int, report: Any, *, reference: bool) -> None:
 
 
 def run(seed: int, results_path: Path | None) -> int:
+    from glow_ordering_proof import row_locks
+
+    # D14 (SV3 Stage B): the record of every row lock the suite sends, before its first statement;
+    # checked inside ``run_suite``, before the verdict, and taken out when the run ends.
+    row_locks.install()
+    try:
+        return _run(seed, results_path)
+    finally:
+        row_locks.uninstall()
+
+
+def _run(seed: int, results_path: Path | None) -> int:
     from django.db import connection, transaction
 
     from glow_ordering_proof.observe import migration_ledger, server_facts
@@ -230,6 +242,8 @@ def run_suite(
     finally:
         for worker in workers:
             worker.close()
+    # D14 (SV3 Stage B): the row locks the suite sent, checked before its verdict.
+    print_row_locks(run_report)
     print(render_run(run_report))
     if results_path is not None:
         results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -237,6 +251,22 @@ def run_suite(
         print(f"results written: {results_path}")
     ok, _ = run_report.verdict()
     return 0 if ok else 1
+
+
+def print_row_locks(run_report: Any) -> None:
+    """D14's check (SV3 Stage B; acceptance check 15): its counts and each refused statement's
+    text are printed, and a failure is one of the run's problems, so its verdict is FAIL."""
+    from glow_ordering_proof import row_locks
+
+    record = row_locks.active()
+    summary = record.check() if record is not None else row_locks.Summary()
+    for line in summary.lines("ordering"):
+        print(line, flush=True)
+    if not summary.passed():
+        run_report.problems.append(
+            f"D14's row-lock record: {summary.failures()} failures (refused statements, the"
+            " database's own functions, views or rules, or a record that saw nothing)"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
