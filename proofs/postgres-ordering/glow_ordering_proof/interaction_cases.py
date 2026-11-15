@@ -1265,6 +1265,171 @@ def _undo_body(ctx: DiscoveryContext, actor: Member, target: Member) -> dict[str
     }
 
 
+# -- DB04 for Stage B's tables --------------------------------------------------------------------
+
+INTERACTION_TABLES = (
+    "glow_persistence_directionalinteraction",
+    "glow_persistence_match",
+    "glow_persistence_idempotencyrecord",
+)
+LOWEST = UUID("00000000-0000-4000-8000-000000000000")
+HIGHEST = UUID("ffffffff-ffff-4fff-bfff-ffffffffffff")
+
+
+@case("constraints.interaction_writes_are_refused", "DB04", "D9", "D10", "D12", "D18")
+def interaction_writes_are_refused(ctx: DiscoveryContext) -> str:
+    """A direct write no SV3 code makes, against each constraint the directional interaction,
+    match and idempotency record tables declare (migration 0011's included: the interaction's
+    ``withdrawn`` state and the receipt's ``withdrawn`` code), and their foreign keys, is refused by
+    PostgreSQL itself, naming that constraint, and leaves nothing behind; a completed receipt with
+    the ``withdrawn`` code is accepted. Harness writes only; the error's text is read for the
+    constraint's name and never kept."""
+    from django.db import IntegrityError, connection, transaction
+    from django.utils import timezone
+    from glow_persistence.models import DirectionalInteraction, IdempotencyRecord, Match
+
+    one, two, three = ctx.profiles.member(), ctx.profiles.member(), ctx.profiles.member()
+    low, high = sorted((one.account_id, two.account_id))
+    other_low, other_high = sorted((one.account_id, three.account_id))
+    now = timezone.now()
+
+    def interaction(**changes: Any) -> Any:
+        values: dict[str, Any] = {
+            "actor_id": one.account_id,
+            "target_id": two.account_id,
+            "state": "liked",
+            "policy_version": "fixture:sv3-db04",
+        }
+        values.update(changes)
+        return DirectionalInteraction.objects.create(**values)
+
+    def match(**changes: Any) -> Any:
+        values: dict[str, Any] = {"account_low_id": low, "account_high_id": high}
+        values.update(changes)
+        return Match.objects.create(**values)
+
+    def record(**changes: Any) -> Any:
+        values: dict[str, Any] = {
+            "actor_id": one.account_id,
+            "operation": "interaction_undo",
+            "key": "k-db04",
+            "request_digest": "0" * 64,
+            "result_ref": uuid4(),
+            "result_version": 2,
+            "outcome_code": "withdrawn",
+            "state": "completed",
+            "expires_at": now,
+        }
+        values.update(changes)
+        return IdempotencyRecord.objects.create(**values)
+
+    held = (interaction(), match(), record())
+    expect(held[2].outcome_code == "withdrawn", "a completed receipt with withdrawn is accepted")
+
+    def snapshot() -> tuple[int, int, int]:
+        return (
+            DirectionalInteraction.objects.count(),
+            Match.objects.count(),
+            IdempotencyRecord.objects.count(),
+        )
+
+    keys: dict[tuple[str, str], str] = {}
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT t.relname, a.attname, c.conname FROM pg_catalog.pg_constraint c"
+            " JOIN pg_catalog.pg_class t ON c.conrelid = t.oid"
+            " JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)"
+            " WHERE c.contype = 'f' AND t.relname = ANY(%s)",
+            [list(INTERACTION_TABLES)],
+        )
+        for table, column, name in cursor.fetchall():
+            keys[(str(table), str(column))] = str(name)
+    swapped = {"actor_id": two.account_id, "target_id": one.account_id}
+    writes: list[tuple[str, Callable[[], Any]]] = [
+        (
+            "glow_persistence_directionalinteraction_state",
+            lambda: interaction(**swapped, state="undone"),
+        ),
+        (
+            "glow_persistence_directionalinteraction_no_self",
+            lambda: interaction(target_id=one.account_id),
+        ),
+        ("directional_interaction_pair", lambda: interaction()),
+        (
+            "glow_persistence_directionalinteraction_version",
+            lambda: interaction(**swapped, version=0),
+        ),
+        (
+            keys[(INTERACTION_TABLES[0], "actor_id")],
+            lambda: interaction(actor_id=uuid4(), target_id=three.account_id),
+        ),
+        (
+            keys[(INTERACTION_TABLES[0], "target_id")],
+            lambda: interaction(actor_id=three.account_id, target_id=uuid4()),
+        ),
+        (
+            "glow_persistence_match_state",
+            lambda: match(account_low_id=other_low, account_high_id=other_high, state="open"),
+        ),
+        ("match_order", lambda: match(account_low_id=other_high, account_high_id=other_low)),
+        ("match_pair", lambda: match()),
+        (
+            "match_contact_revision",
+            lambda: match(account_low_id=other_low, account_high_id=other_high, contact_version=0),
+        ),
+        (
+            "glow_persistence_match_version",
+            lambda: match(account_low_id=other_low, account_high_id=other_high, version=0),
+        ),
+        (
+            keys[(INTERACTION_TABLES[1], "account_low_id")],
+            lambda: match(account_low_id=LOWEST, account_high_id=high),
+        ),
+        (
+            keys[(INTERACTION_TABLES[1], "account_high_id")],
+            lambda: match(account_low_id=low, account_high_id=HIGHEST),
+        ),
+        ("intent_dedup", lambda: record()),
+        ("intent_result", lambda: record(key="k-db04-code", outcome_code="undone")),
+        (
+            "intent_result",
+            lambda: record(key="k-db04-pending", state="pending"),
+        ),
+        (
+            "glow_persistence_idempotencyrecord_version",
+            lambda: record(key="k-db04-version", version=0),
+        ),
+        (
+            "glow_persistence_idempotencyrecord_state",
+            lambda: record(key="k-db04-state", state="done"),
+        ),
+    ]
+    declared = {
+        str(constraint.name)
+        for model in (DirectionalInteraction, Match, IdempotencyRecord)
+        for constraint in model._meta.constraints
+    }
+    covered = {constraint for constraint, _ in writes}
+    expect(declared <= covered, f"a write for every constraint ({sorted(declared - covered)})")
+    before = snapshot()
+    for constraint, write in writes:
+        named = False
+        try:
+            with transaction.atomic():
+                write()
+        except IntegrityError as error:
+            named = constraint in str(error)
+        expect(named, f"PostgreSQL refuses the write by {constraint}")
+    expect(snapshot() == before, "the refused writes leave nothing behind")
+    for row in held:
+        type(row).objects.filter(pk=row.pk).delete()
+    return (
+        f"{len(writes)} malformed direct writes refused by PostgreSQL, each by its constraint: all"
+        f" {len(declared)} the three tables declare (0011's included) and four foreign keys; a"
+        " completed withdrawn receipt accepted"
+    )
+
+
 # -- 13 and 14 for Stage B's code ---------------------------------------------------------------
 
 

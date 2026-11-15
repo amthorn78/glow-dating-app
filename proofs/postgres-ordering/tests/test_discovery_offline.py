@@ -390,7 +390,7 @@ class DiscoveryPlanTests(unittest.TestCase):
         for check in ("7", "8", "9", "10", "11", "12", "13", "14", "15"):
             with self.subTest(stage_b_check=check):
                 self.assertIn(check, stage_b)
-        for decision in ("D9", "D10", "D11", "D12", "D13", "D14", "D19", "DB05", "DB10"):
+        for decision in ("D9", "D10", "D11", "D12", "D13", "D14", "D19", "DB04", "DB05", "DB10"):
             with self.subTest(stage_b_decision=decision):
                 self.assertIn(decision, stage_b)
         # Stage A's cases cover none of Stage B's checks 7 to 11.
@@ -404,8 +404,8 @@ class DiscoveryPlanTests(unittest.TestCase):
             self.assertNotIn(check, stage_a)
 
     def test_the_case_count_is_pinned(self) -> None:
-        # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 18 named below.
-        self.assertEqual(discovery_cases.CASE_COUNT, 58)
+        # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 19 named below.
+        self.assertEqual(discovery_cases.CASE_COUNT, 59)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
         # C2's two new cases (the exact-head review's F1 and F2).
         for case_id in ("pages.one_snapshot_statements", "distance.choice_no_longer_offered"):
@@ -487,6 +487,7 @@ STAGE_B_CASES = (
     "settings.undo_off_and_on",
     "settings.rematch_cannot_be_switched_on",
     "routes.interaction_refusals_and_ownership",
+    "constraints.interaction_writes_are_refused",
     "interactions.logs_no_private_value",
     "interactions.pointer_order",
 )
