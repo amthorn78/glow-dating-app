@@ -128,6 +128,9 @@ LIST_LIVE_VALUES = "list_live_values_over_50"
 AGE_FLOOR_18 = "age_floor_18"
 NO_COORDINATES_OR_DISTANCE = "no_exact_coordinates_or_distance"
 REMATCH_NEVER_AFTER_BLOCK_OR_REPORT = "rematch_never_after_block_or_report"
+# SV3's D12 (DM-60): rematch is not built, so ``discovery.rematch`` cannot be switched on until the
+# item that builds it lifts this limit (keeping ``rematch_never_after_block_or_report``).
+REMATCH_NOT_BUILT = "rematch_not_built"
 UNMATCH_BLOCK_HIDDEN = "unmatch_and_block_stay_hidden"
 DELETION_AS_UNMATCH = "deletion_works_as_unmatch"
 SHOW_ME_NEVER_SHOWN = "show_me_never_shown"
@@ -157,6 +160,7 @@ FIXED_LIMITS: dict[str, str] = {
     AGE_FLOOR_18: "the age floor is 18",
     NO_COORDINATES_OR_DISTANCE: "never exact coordinates or an exact distance",
     REMATCH_NEVER_AFTER_BLOCK_OR_REPORT: "rematch never after a block or a report",
+    REMATCH_NOT_BUILT: "rematch cannot be switched on until it is built (SV3's D12)",
     UNMATCH_BLOCK_HIDDEN: "unmatch and block stay hidden",
     DELETION_AS_UNMATCH: "a deletion works as an unmatch",
     SHOW_ME_NEVER_SHOWN: '"show me" is never shown',
@@ -447,8 +451,12 @@ def _discovery_refusals(content: Any, rematch: bool) -> list[str]:
     if rematch:
         if not (_bool(content["after_block"]) and _bool(content["after_report"])):
             return [SCHEMA]
+        refusals = []
         if content["after_block"] or content["after_report"]:
-            return [REMATCH_NEVER_AFTER_BLOCK_OR_REPORT]
+            refusals.append(REMATCH_NEVER_AFTER_BLOCK_OR_REPORT)
+        if content["enabled"]:
+            refusals.append(REMATCH_NOT_BUILT)
+        return refusals
     return []
 
 

@@ -86,9 +86,11 @@ class Viewer:
 
 
 def _selection(tx: Tx) -> policy.Selection:
-    # D19: every pointer the selection reads, in this transaction's first read_shared call.
+    # D19: every pointer the selection reads, in this transaction's first read_shared call. The
+    # clock, read after the locks, gives D4's date and D12's resurfacing cutoff.
     found = settings_store.read_shared(tx, policy.SELECTION_SETTINGS)
-    return policy.selection(found, utc_date(clock(tx)))
+    now = clock(tx)
+    return policy.selection(found, utc_date(now), now)
 
 
 def _viewer(tx: Tx, account_id: UUID, selection: policy.Selection) -> Viewer:
@@ -96,7 +98,7 @@ def _viewer(tx: Tx, account_id: UUID, selection: policy.Selection) -> Viewer:
     row = tx.cursor.fetchone()
     if row is None:
         return Viewer(False, (0, 0, 0), (None, None, None, None))
-    return Viewer(row[0] is True, (int(row[1]), int(row[2]), int(row[3])), tuple(row[5:9]))
+    return Viewer(row[0] is True, (int(row[1]), int(row[2]), int(row[3])), tuple(row[4:8]))
 
 
 def _rows(

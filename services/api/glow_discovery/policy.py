@@ -2,12 +2,15 @@
 
 - **The settings the selection reads** (``SELECTION_SETTINGS``), each pointer locked ``FOR SHARE``
   in the transaction's first ``read_shared`` call, in name order (D19): ``consent.onboarding`` (its
-  current version is CONSENT's, D3), ``discovery.resurfacing`` (D7's consumption: Stage A builds no
-  resurfacing, so a pass excludes for good, as with the setting off at launch; Stage B applies its
-  content), ``profile.age_range`` (the direction, D4), ``profile.location`` (the distance choices,
-  D5) and ``profile.narrowing`` (a field members may not narrow reads as keeping all, D4).
+  current version is CONSENT's, D3), ``discovery.resurfacing`` (D7's consumption and D12: off, a
+  pass excludes for good; on, a pass decided at least ``waiting_days`` before the transaction's
+  clock excludes no longer, so its candidate is selected again; Stage B), ``profile.age_range``
+  (the direction, D4), ``profile.location`` (the distance choices, D5) and ``profile.narrowing``
+  (a field members may not narrow reads as keeping all, D4).
 - **The batch's policy version** (Q3) is their version numbers, in that order: a publication of any
   of them changes it, so every batch built under the earlier version is stale.
+- **Undo** (D12; Stage B) reads ``discovery.undo`` alone (``UNDO_SETTINGS``): off, a pass cannot
+  be withdrawn; on, the actor's most recent pass can be, within ``waiting_days`` of it.
 - **The accepted age states** (D3, ADULT) are code, not a setting: ``self_declared_adult`` only.
   P09.2 adds the store-signal states here (and to SV2's completion, Q18).
 - **The bounds** (D7): at most 100 candidates per batch, 50 per page, and a batch's lifetime of 30
@@ -22,7 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from glow_domain import profile_fields as pf
@@ -47,6 +50,8 @@ SELECTION_SETTINGS: tuple[str, ...] = (
     ps.NARROWING,
 )
 assert list(SELECTION_SETTINGS) == sorted(SELECTION_SETTINGS)
+# D12 (Stage B): what undo reads.
+UNDO_SETTINGS: tuple[str, ...] = (ps.UNDO,)
 
 RECOMMENDATIONS = "recommendations"
 DISCOVERY = "discovery"
@@ -77,7 +82,7 @@ def policy_version(numbers: Mapping[str, int]) -> str:
 @dataclass(frozen=True)
 class Selection:
     """The policy one transaction's selection applies, read from its settings as locked, with the
-    server's UTC date (D4) read after the locks."""
+    server's UTC date (D4) and clock read after the locks."""
 
     version: str
     onboarding_consent: str
@@ -86,10 +91,22 @@ class Selection:
     # D5: each distance choice the location setting offers, and its miles (None: anywhere).
     distance_miles: Mapping[str, int | None]
     today: date
+    # D12 (Stage B): with resurfacing on, the instant at or before which a pass was decided for it
+    # to exclude no longer (the transaction's clock less ``waiting_days``); ``None`` while off, so
+    # every pass excludes.
+    resurfaced_before: datetime | None = None
 
 
-def selection(settings: Mapping[str, Any], today: date) -> Selection:
-    """The ``Selection`` from the ``settings_store.Setting`` of each of ``SELECTION_SETTINGS``."""
+def resurfaced_before(content: Mapping[str, Any], now: datetime | None) -> datetime | None:
+    """D12: ``discovery.resurfacing``'s cutoff, or ``None`` while it is off (or with no clock)."""
+    if now is None or content.get("enabled") is not True:
+        return None
+    return now - timedelta(days=int(content["waiting_days"]))
+
+
+def selection(settings: Mapping[str, Any], today: date, now: datetime | None = None) -> Selection:
+    """The ``Selection`` from the ``settings_store.Setting`` of each of ``SELECTION_SETTINGS``,
+    with the server's UTC date and, for resurfacing (D12), the transaction's clock."""
     narrowing = settings[ps.NARROWING].content["narrowable"]
     location = settings[ps.LOCATION].content
     return Selection(
@@ -102,7 +119,16 @@ def selection(settings: Mapping[str, Any], today: date) -> Selection:
             for choice in location["distance_choices"]
         },
         today=today,
+        resurfaced_before=resurfaced_before(settings[ps.RESURFACING].content, now),
     )
+
+
+def undo_window(content: Mapping[str, Any]) -> timedelta | None:
+    """D12: how long after a pass ``discovery.undo`` lets it be withdrawn, or ``None`` while it is
+    off."""
+    if content.get("enabled") is not True:
+        return None
+    return timedelta(days=int(content["waiting_days"]))
 
 
 # -- the compatibility port (D6) ------------------------------------------------------------

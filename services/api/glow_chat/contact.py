@@ -300,6 +300,93 @@ class OrmContactPersistence:
 
         return self._run(body, probe)
 
+    def activate_reciprocal(
+        self, first: UUID, second: UUID, *, probe: TransactionProbe | None = None
+    ) -> ContactResult:
+        """F09's activation (SV3's D10 (a); DM-60): ``activate_match``'s body with one check
+        added under its account locks, the two ``liked`` rows, one from each member to the other.
+        It refuses everything ``activate_match`` refuses, and a missing ``liked`` row in either
+        direction (``not_reciprocal``); it writes the same rows and events (the identity events
+        for members without an identity, and the one ``match_activated``), with the same lock
+        order (the lower account, then the higher) and probe points.
+
+        Its documented precondition: it is called only from SV3's like, inside the like's
+        transaction, after the like has rechecked current two-person eligibility (the SV3 brief's
+        D3 to D5) for the pair under the same account locks (D9). So this module imports nothing
+        from ``glow_discovery``. Nested in the like's transaction, its block is a savepoint, and
+        any result but ``applied`` is the like's refusal."""
+        # Imported here so that the change to this module stays inside this one writer (D10 (a)).
+        from glow_persistence.models import DirectionalInteraction
+
+        def body(tx: _Tx) -> ContactResult:
+            if first == second:
+                raise _Refused(chat.NOT_A_MEMBER)
+            low_id, high_id = sorted((first, second))
+            low = self._lock(AppAccount, low_id)
+            self._signal(tx.probe, "after_first_lock")
+            high = self._lock(AppAccount, high_id)
+            self._signal(tx.probe, "after_locks")
+            now = self._clock(tx.cursor)
+            if low.state != "active" or high.state != "active":
+                raise _Refused(chat.ACCOUNT_NOT_ACTIVE)
+            if (
+                Block.objects.filter(state="active")
+                .filter(
+                    Q(actor_id=low_id, target_id=high_id) | Q(actor_id=high_id, target_id=low_id)
+                )
+                .exists()
+            ):
+                raise _Refused(chat.BLOCKED)
+            if Match.objects.filter(account_low_id=low_id, account_high_id=high_id).exists():
+                # One pair record; rematch is not built (SV3's D12).
+                raise _Refused(chat.MATCH_EXISTS)
+            # D10 (a): the one added check, on rows read under both account locks, which every
+            # writer of a directional row takes (SV3's like, pass and undo).
+            for actor_id, target_id in ((low_id, high_id), (high_id, low_id)):
+                if not DirectionalInteraction.objects.filter(
+                    actor_id=actor_id, target_id=target_id, state="liked"
+                ).exists():
+                    raise _Refused("not_reciprocal")
+            # CX5: the send's profile and consent checks, on the rows read under the
+            # account locks that every writer of them takes (DM-13 4.1).
+            self._contact_state_checks(low_id, high_id)
+            match = Match.objects.create(
+                account_low_id=low_id, account_high_id=high_id, state="active"
+            )
+            for account in (low, high):
+                if not ChatIdentity.objects.filter(
+                    account_id=account.id, provider=self.provider
+                ).exists():
+                    identity = ChatIdentity.objects.create(
+                        account=account,
+                        provider=self.provider,
+                        user_ref=new_provider_ref(),
+                        state="pending",
+                    )
+                    # Before the channel's event: delivered as the user's provisioning.
+                    self._event(
+                        tx,
+                        events.IDENTITY_CREATED,
+                        aggregate_id=identity.id,
+                        aggregate_version=1,
+                        available_at=now,
+                        payload_ref=identity.id,
+                    )
+            binding = ChatBinding.objects.create(
+                match=match, provider=self.provider, channel_ref=new_provider_ref(), state="pending"
+            )
+            self._event(
+                tx,
+                events.MATCH_ACTIVATED,
+                aggregate_id=match.id,
+                aggregate_version=1,
+                available_at=now,
+                payload_ref=binding.id,
+            )
+            return ContactResult("applied", match_id=match.id)
+
+        return self._run(body, probe)
+
     # -- the token grant (P06.2 B1; F1, DM-14 item 3) -------------------------------------
 
     @staticmethod

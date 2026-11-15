@@ -12,6 +12,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 from glow_persistence.fields import SequenceField
 
@@ -693,17 +694,25 @@ class MediaUploadGrant(Record):
 
 
 class DirectionalInteraction(Record):
+    """One actor's like or pass toward one target (SV3 Stage B, migration 0011; its brief's D9 and
+    D12). ``withdrawn`` is a pass the actor undid: the row is kept and its version advanced, never
+    deleted and created again, and it excludes nothing. ``decided_at`` is the transaction's
+    ``clock_timestamp()`` at the row's last like, pass or undo, which resurfacing's and undo's
+    waiting periods count from; the field's default (the application's clock) fills a row written
+    otherwise, as the proofs' seeded rows are."""
+
     actor = models.ForeignKey(AppAccount, on_delete=models.CASCADE, related_name="outgoing_actions")
     target = models.ForeignKey(
         AppAccount, on_delete=models.CASCADE, related_name="incoming_actions"
     )
-    state = models.CharField(max_length=16, choices=choices("liked", "passed"))
+    state = models.CharField(max_length=16, choices=choices("liked", "passed", "withdrawn"))
     policy_version = models.CharField(max_length=100)
+    decided_at = models.DateTimeField(default=timezone.now)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
             nonself_check(),
-            state_check("liked", "passed"),
+            state_check("liked", "passed", "withdrawn"),
             models.UniqueConstraint(
                 fields=["actor", "target"], name="directional_interaction_pair"
             ),
@@ -1221,7 +1230,9 @@ class IdempotencyRecord(Record):
         max_length=16,
         null=True,
         blank=True,
-        choices=choices("committed", "liked", "passed", "unmatched", "blocked", "unblocked"),
+        choices=choices(
+            "committed", "liked", "passed", "unmatched", "blocked", "unblocked", "withdrawn"
+        ),
     )
     state = models.CharField(
         max_length=16, choices=choices("pending", "completed"), default="pending"
@@ -1246,6 +1257,7 @@ class IdempotencyRecord(Record):
                         "unmatched",
                         "blocked",
                         "unblocked",
+                        "withdrawn",
                     ),
                     outcome_code__isnull=False,
                 )

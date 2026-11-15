@@ -62,6 +62,8 @@ def parameters(selection: policy.Selection, viewer: UUID) -> dict[str, Any]:
         "consent": selection.onboarding_consent,
         "both_ways": selection.both_ways,
         "choices": json.dumps(dict(selection.distance_miles), sort_keys=True),
+        # D12 (Stage B): resurfacing's cutoff for D7's consumption; NULL while it is off.
+        "resurfaced_before": selection.resurfaced_before,
     }
     for field, narrowable in selection.narrowable.items():
         found[f"narrow_{field}"] = narrowable
