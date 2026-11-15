@@ -181,6 +181,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-20 | 13 Nov 2026 | records | Two standing lines left stale again: `claude/dev-manager`'s head (`a53bdb0`) in the handoff's branch list and Notion's Branches bullet after DM-67's report (`e7786bb`) was merged at `2d04951` (AM11-12's pattern); Notion's "Next items" kept the brief's revision 8 after revision 9 (AM11-11's pattern) | Dev Manager 5 (start note, section 4) |
 | AM11-21 | 13 Nov 2026 | process | After C4's prompt was committed at `0fbc130`, the manager appended Codex's review of that commit to the evidence record, one of C4's owned paths (`3bbc06f`), then gave Nathan revision 1. Its start gate found the owned path changed and the session stopped, with no change | The C4 session, at its start gate |
 | AM11-22 | 15 Nov 2026 | prompt | B0's prompt passed the brief's stop clause "if a test of C1's to C5's sections no longer passes" unqualified, though item 5 (T3 narrowed) necessarily changes C2's three assertions that pin the wider rule. The session converted them rather than stopping, and flagged it | The manager, when the B0 session reported its plan mid-run; the session flagged it too |
+| AM11-23 | 15 Nov 2026 | prompt | Stage B's prompt (revision 1, `e2fd265`) said no earlier test was expected to change (DD5), and named no pre-Stage B statement D14's check would fail. The session found six earlier tests that pin what Stage B extends (the selection's parameter names, the migration leaf, two route tests, the plan's coverage and its case count) and two statements in the ordering suite's harness that take `FOR UPDATE` on the account table; it stopped at the stop rule | The Stage B session |
+| AM11-24 | 15 Nov 2026 | prompt | Stage B's prompt gave undo's reversal as "on with a waiting period, working before it ends", the words for resurfacing; D12 lets undo withdraw a pass within `waiting_days`, so its reversal is working after the window ends | The Stage B session |
 
 ## App Manager 2
 
@@ -1129,6 +1131,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 11
+
+### AM11-23 — A stage's predictable stops not swept before its prompt (prompt)
+
+- **What happened:** Stage B's prompt, revision 1 (`e2fd265`), carried DD5's sentence and the manager's reading that no earlier test was expected to change. That reading came from a sweep of SV2's settings tests, the proof's references to `predicates.VIEWER` and F08's contract test. It did not read Stage A's own tests, which pin what Stage B extends: the selection's parameter names (`KeyTests` in `services/api/tests/test_discovery_offline.py`), the migration graph's leaf (`test_model_definitions.py`), "the page route ... and no action route" (the API's and the proof's route tests), the plan's coverage of checks 7 to 11 and its case count (40). Nor did it grep the proof's own harness for statements D14's new check would fail; the ordering suite sends two that take `FOR UPDATE` on the account table (`planted.py`'s `_suspend`, `cases.py`'s `_harness_holder`), and D14 makes such a statement a stop.
+- **Caught by:** the Stage B session, which stopped at the stop rule with app code built and nothing else; its branch's run (43676976494) failed the API job on the two tests, as it said it would.
+- **Effect:** a session stopped part-way; a consultation (DM-73) and a revision 2 before Stage B continues. Nothing merged, nothing lost.
+- **Correction:** DM-73 to Dev Manager 5; revision 2 names each earlier test with its reason and settles the harness statements.
+- **Prevention:** before a stage's prompt, the manager lists every test that pins what the stage extends (a module's routes, a plan's coverage or count, the migration leaf, a parameter set or signature its items change) by reading the earlier stage's tests whole, and greps every suite's source, harness included, for the statements the stage's new checks refuse; each finding is named in the prompt, or settled before it.
+
+### AM11-24 — Undo's reversal worded as resurfacing's (prompt)
+
+- **What happened:** Stage B's prompt listed "each on with a waiting period, working before it ends" as D12's reversal for resurfacing and undo alike. For undo, D12 withdraws a pass within `waiting_days`; the reversal is undo working after the window ends.
+- **Caught by:** the Stage B session, in its stop report.
+- **Effect:** none; the brief wins over the prompt, and the session read it so.
+- **Correction:** revision 2 words each reversal by its own rule.
+- **Prevention:** a reversal shared by two items is written once per item, from each item's own words.
 
 ### AM11-22 — A stop clause that the prompt's own item triggers (prompt)
 
