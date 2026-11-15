@@ -1,4 +1,4 @@
-# Current handoff — App Manager 11 (15 November 2026; Stage B built, verified and integrated; its PR next)
+# Current handoff — App Manager 11 (15 November 2026; Stage B integrated, PR47 open; DM-74 on Codex's finding)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -10,7 +10,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): PR43, PR44 (`3240ef0`), receipts in its [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 15 (with DM-60 to DM-73). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5. **B0 is done:** PR46 merged at `947576d` (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipts). DM-68 froze the lock scan's rules after C4. **Stage B** (items 4 to 7, D14's record, its section's six items) stopped at its stop rule (branch `claude/brave-brown-o90q6i`, `29fad40`, app code only; AM11-23, AM11-24); DM-73 ruled on the stop (harness locks `FOR NO KEY UPDATE`, the six earlier tests named, `callproc` planted and the README corrected), and Stage B's prompt, revision 2, continued it on the same branch. **Stage B is built, verified and integrated** (code head `5d58993`; run of record 43686623299, all eight jobs; the record, "Manager verification of Stage B"); its PR, Codex, the exact-head review and Dev Manager 5's pre-merge read follow. F7 is decided (OD-64), carried to before P11.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 15 (with DM-60 to DM-73). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5. **B0 is done:** PR46 merged at `947576d` (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipts). DM-68 froze the lock scan's rules after C4. **Stage B** (items 4 to 7, D14's record, its section's six items) stopped at its stop rule (branch `claude/brave-brown-o90q6i`, `29fad40`, app code only; AM11-23, AM11-24); DM-73 ruled on the stop (harness locks `FOR NO KEY UPDATE`, the six earlier tests named, `callproc` planted and the README corrected), and Stage B's prompt, revision 2, continued it on the same branch. **Stage B is built, verified and integrated** (code head `5d58993`; run of record 43686623299, all eight jobs; the record, "Manager verification of Stage B"); PR47 is open; Codex's one finding on it (no read gives a client the directional version) goes to Dev Manager 5 as DM-74 before the exact-head review, whose prompt is drafted and held. F7 is decided (OD-64), carried to before P11.
 - **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
@@ -21,11 +21,11 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub | Stage B's PR from the manager branch: its pull-request run and Codex's review of its head | The exact-head review prompt goes to Nathan once both are in (OD-29: one prompt at a time); until Stage B merges, its exact-head review reads the PR's final head |
+| App Manager 11 | Nathan | DM-74's answer from Dev Manager 5 | No other prompt goes to Nathan (OD-29); the exact-head review prompt is held (drafted in the scratchpad) until the answer settles the code head it reads |
 
 ## Next actions (App Manager 11)
 
-1. **SV3** (OD-49): Stage B's PR, its run and Codex; then the exact-head code and security review with its threat model (which confirms that no Stage B writer relies on `decided_at`'s default, DM-73 6.2, and judges D14's reach closed by recording); Dev Manager 5's pre-merge read (the CI policy's paragraph, the data model's and the contract's rewritten texts); the merge.
+1. **SV3** (OD-49): DM-74's answer; then, under (a), the brief's revision 16 and correction B-C1, or, under (b) or (c), the records; then the exact-head code and security review with its threat model (which confirms that no Stage B writer relies on `decided_at`'s default, DM-73 6.2, and judges D14's reach closed by recording); Dev Manager 5's pre-merge read (the CI policy's paragraph, the data model's and the contract's rewritten texts); the merge.
 2. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 3. **Then SV4.**
 
@@ -33,5 +33,5 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches and PRs (15 November 2026, 13:15 UTC)
 
-- **Open PRs:** none. `main` is at `947576d` (PR46).
+- **Open PRs:** [PR47](https://github.com/amthorn78/glow-dating-app/pull/47), SV3 Stage B, from the manager branch. `main` is at `947576d` (PR46).
 - **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`7d219d0`, DM-73's report, merged at `b28e322`); Stage B's session branch `claude/brave-brown-o90q6i` (`291edef`, integrated into the manager branch by fast-forward). The cleanup run 43673382231 deleted B0's session branch `claude/focused-ride-q5itu1`.
