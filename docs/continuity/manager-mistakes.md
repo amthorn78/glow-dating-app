@@ -186,6 +186,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-25 | 15 Nov 2026 | follow-through | Three times in Notion's Implementation Control Branches bullet, a time was written before the clock was read (05:20 for 05:16; 13:33 for 13:31; 14:16 for 14:15): AM11-03 and AM11-07's mechanism again, here with the clock read in a call sent in parallel with the write | App Manager 11, at each read-back, before the message reported the sync |
 | AM11-26 | 15 Nov 2026 | follow-through | Integrating B-C1, which added seven discovery cases (59 to 66), the manager left its own CI policy sentence for Stage B at "59 cases in all"; the verification of B-C1 read the proof README's paragraph and the contract document, not the manager's own governing sentence. AM11-14's mechanism | The exact-head review of Stage B, #9 |
 | AM11-27 | 15 Nov 2026 | records | The handoff, kept under 5 KB by the documentation map, went over it at `2d8f28a` (5,049 bytes) and grew through six more commits to 6,152 bytes at `e75649d`; no commit checked its size. AM11-04's mechanism | App Manager 11, reading its size before the DM-75 commit |
+| AM11-28 | 15 Nov 2026 | follow-through | Gave DM-75 at `c9bca52` without a watch on Codex's pass, then wrote B-C2's prompt at `f39bd0d` without reading PR47's comments; Codex's two P2s on `c9bca52` (17:23 UTC) were read only at 23:18, after its pass on the prompt's commit. All four of Codex's findings since were already the review's (#1, #2, #4, #5), so the prompt stood. AM11-17 repeated | App Manager 11, reading PR47's comments before giving B-C2's prompt |
 
 ## App Manager 2
 
@@ -1158,6 +1159,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-28 — Codex's review of a consultation's commit not read before the next prompt (follow-through)
+
+- **What happened:** DM-75 was given at `c9bca52` with no watch on Codex's review of that commit. Codex reviewed it at 17:23 UTC with two P2 findings: a `restricted` match shows the blocked member the block's direction, and D14's rule reads a quoted `--` as a comment. B-C2's prompt was written at `f39bd0d` without reading PR47's comments. The two findings were read only at 23:18, when the wait on Codex's pass over `f39bd0d` showed findings.
+- **Caught by:** App Manager 11, reading PR47's comments before giving B-C2's prompt.
+- **Effect:** none on the work. Both findings were the exact-head review's #1 and #4, already disposed by DM-75 (#1 carried to SV4; #4 B-C2's item 4); Codex's two findings on `f39bd0d` are #2 and #5, B-C2's items 2 and 5. The prompt stood.
+- **Correction:** the four findings recorded in the brief's "Sessions"; B-C2's verification records them in the evidence record and resolves the threads it answers.
+- **Prevention:** AM11-17's rule, applied to consultations too: after any push to PR47's head, the manager waits for Codex's pass on it and reads PR47's comments before writing or giving the next prompt or consultation.
 
 ### AM11-27 — The handoff over its size limit for seven commits (records)
 
