@@ -158,6 +158,206 @@ class RuleTests(unittest.TestCase):
         self.assertIsNone(self.refused(ORM_ACCOUNT.format(lock="FOR UPDATED_AT")))
 
 
+ACCOUNT = "glow_persistence_appaccount"
+# Correction B-C2's item 4 (the exact-head review of Stage B, #4; DM-75): texts of the review's
+# kinds (a literal, a dollar-quoted string, an ``E''`` string, a quoted alias, a nested comment, a
+# ``U&`` identifier and a ``DO`` block with dynamic SQL), with DM-75 section 2's forms. Each passed
+# 470d97a's rule though PostgreSQL takes ``FOR UPDATE`` on account rows (the evidence record's
+# table, "Stage B, correction B-C2"); each is refused now, and passes with ``FOR NO KEY UPDATE``.
+MASKED_FORMS = (
+    f"SELECT id, '--' FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, '/*' FROM {ACCOUNT} WHERE id = %s FOR UPDATE /* a comment */",
+    f"SELECT id, 'it''s -- a note' FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, $$--$$ FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, $tag$--$tag$ FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, E'\\'--' FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, U&'--' FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f'SELECT id AS "--" FROM {ACCOUNT} WHERE id = %s FOR UPDATE',
+    f"SELECT id FROM {ACCOUNT} WHERE id = %s /* a /* nested */ comment -- */ FOR UPDATE",
+    'SELECT id FROM U&"glow\\005fpersistence\\005fappaccount" WHERE id = %s FOR UPDATE',
+)
+# Statements that fail by rule, whatever their lock: a ``DO`` statement (its body runs as code;
+# the plain one was refused at 470d97a too, the dynamic one passed) and an unterminated span.
+BY_RULE = (
+    "DO $$BEGIN EXECUTE 'SELECT id FROM glow_persistence_' || 'appaccount LIMIT 1 FOR UPDATE';"
+    " END$$",
+    f"DO $$BEGIN PERFORM id FROM {ACCOUNT} LIMIT 1 FOR UPDATE; END$$",
+    "do $body$ BEGIN PERFORM 1; END $body$",
+    "SELECT 1; DO $$BEGIN PERFORM 1; END$$",
+    f"SELECT id, '-- FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f'SELECT id AS "-- FROM {ACCOUNT} WHERE id = %s FOR UPDATE',
+    f"SELECT id FROM {ACCOUNT} WHERE id = %s /* a /* b */ -- FOR UPDATE",
+    f"SELECT id, E'\\' -- FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    f"SELECT id, $q$ -- FROM {ACCOUNT} WHERE id = %s FOR UPDATE",
+    'SELECT id FROM U&"unterminated',
+)
+# Correction B-C2's item 5 (the exact-head review of Stage B, #5; DM-75): one planted example of
+# each form an ``OF`` name or the account table may not take, and the review's scope example.
+SCOPE_FORMS = (
+    # The review's scope example: a comma item whose alias an EXISTS sub-query binds again.
+    f"SELECT x.id FROM glow_persistence_match m, {ACCOUNT} x WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match x WHERE x.id = m.id) FOR UPDATE OF x",
+    # A name bound twice.
+    f"SELECT x.id FROM {ACCOUNT} a JOIN glow_persistence_match x ON x.account_low_id = a.id"
+    " WHERE EXISTS (SELECT 1 FROM glow_persistence_block x) FOR UPDATE OF x",
+    # A sub-query's alias bound twice.
+    f"SELECT s.id FROM (SELECT id FROM {ACCOUNT}) s JOIN glow_persistence_match m"
+    " ON m.account_low_id = s.id WHERE EXISTS (SELECT 1 FROM glow_persistence_match s)"
+    " FOR UPDATE OF s",
+    # A comma item.
+    f"SELECT m.id FROM glow_persistence_match m, {ACCOUNT} a WHERE a.id = m.account_low_id"
+    " FOR UPDATE OF m",
+    # A comma item as the OF target, the first of its list, the account table only a column's
+    # qualifier (only the comma rule refuses it).
+    f"SELECT m.id FROM glow_persistence_match m, glow_persistence_block b WHERE {ACCOUNT}.id"
+    " = m.account_low_id FOR UPDATE OF m",
+    # A schema-qualified name: the account table, and the OF target.
+    f"SELECT x.id FROM public.{ACCOUNT} x WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match x) FOR UPDATE OF x",
+    f"SELECT m.id FROM public.glow_persistence_match m JOIN {ACCOUNT} a"
+    " ON a.id = m.account_low_id FOR UPDATE OF m",
+    # ONLY: the account table, and the OF target.
+    f"SELECT x.id FROM ONLY ({ACCOUNT}) x WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match x) FOR UPDATE OF x",
+    f"SELECT m.id FROM ONLY glow_persistence_match m JOIN {ACCOUNT} a"
+    " ON a.id = m.account_low_id FOR UPDATE OF m",
+    # *: the account table, and the OF target.
+    f"SELECT x.id FROM {ACCOUNT} * x WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match x) FOR UPDATE OF x",
+    f"SELECT m.id FROM glow_persistence_match * m JOIN {ACCOUNT} a"
+    " ON a.id = m.account_low_id FOR UPDATE OF m",
+    # A sub-query's alias.
+    f"SELECT s.id FROM (SELECT id FROM {ACCOUNT}) s FOR UPDATE OF s",
+    # A function's alias, alone and bound again in a sub-query.
+    f"SELECT f.n FROM {ACCOUNT} a JOIN generate_series(1, 2) f(n) ON f.n = 1 FOR UPDATE OF f",
+    f"SELECT f.n FROM {ACCOUNT} a JOIN generate_series(1, 2) f ON true WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match f) FOR UPDATE OF f",
+    # The account table inside a sub-query.
+    f"SELECT m.id FROM glow_persistence_match m WHERE m.account_low_id IN"
+    f" (SELECT a.id FROM {ACCOUNT} a) FOR UPDATE OF m",
+    # A WITH query's name bound to a plain item's alias too.
+    f"WITH acc AS (SELECT 1) SELECT m.id FROM glow_persistence_match m JOIN {ACCOUNT} a"
+    " ON a.id = m.account_low_id JOIN glow_persistence_block acc ON true FOR UPDATE OF acc",
+)
+
+
+class PostgresReadingTests(unittest.TestCase):
+    """Correction B-C2's item 4: the rule reads a statement as PostgreSQL does. Every comment and
+    every string constant is masked before it judges; a quoted identifier stays a name; an
+    unterminated span and a ``DO`` statement fail, and a ``U&`` quoted identifier fails with
+    ``FOR UPDATE``."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_masked_form_is_refused_and_passes_with_no_key(self) -> None:
+        for statement in MASKED_FORMS:
+            with self.subTest(statement=statement):
+                self.assertIsNotNone(self.refused(statement))
+                self.assertIsNone(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE"))
+                )
+
+    def test_a_do_statement_and_an_unterminated_span_fail_whatever_their_lock(self) -> None:
+        for statement in BY_RULE:
+            with self.subTest(statement=statement):
+                self.assertIsNotNone(self.refused(statement))
+                self.assertIsNotNone(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE"))
+                )
+        self.assertEqual(self.refused(BY_RULE[0]), row_locks.DO_STATEMENT)
+        self.assertEqual(self.refused(BY_RULE[-1]), row_locks.UNTERMINATED)
+
+    def test_a_quoted_identifier_stays_a_name(self) -> None:
+        self.assertIsNotNone(
+            self.refused(f'SELECT "id" FROM "{ACCOUNT}" WHERE "id" = %s FOR UPDATE')
+        )
+        # Comment markers inside a quoted identifier are not comments.
+        self.assertIsNotNone(
+            self.refused(f'SELECT "a--b", "c/*d" FROM "{ACCOUNT}" WHERE "id" = %s FOR UPDATE')
+        )
+        # A doubled quote inside one does not end it.
+        self.assertIsNotNone(
+            self.refused(f'SELECT "x"" -- y" FROM "{ACCOUNT}" WHERE "id" = %s FOR UPDATE')
+        )
+
+    def test_what_a_constant_or_a_comment_holds_is_not_read(self) -> None:
+        for statement in (
+            # The account table named only in a constant or a comment.
+            f"SELECT id, '{ACCOUNT}' FROM glow_persistence_match FOR UPDATE",
+            f"SELECT id, $${ACCOUNT}$$ FROM glow_persistence_match FOR UPDATE",
+            f"SELECT id FROM glow_persistence_match /* {ACCOUNT} */ FOR UPDATE",
+            f"SELECT id FROM glow_persistence_match -- {ACCOUNT}\n FOR UPDATE",
+            # A lock named only in a constant.
+            f"SELECT id, 'FOR UPDATE' FROM {ACCOUNT} WHERE id = %s FOR NO KEY UPDATE",
+            f"SELECT id, E'\\' FOR UPDATE' FROM {ACCOUNT} WHERE id = %s",
+            # ON CONFLICT DO is not a DO statement.
+            f"INSERT INTO {ACCOUNT} (id) VALUES (%s) ON CONFLICT DO NOTHING",
+            # A plain backslash in a standard string ends nothing.
+            "SELECT id FROM glow_persistence_match WHERE id LIKE 'pg\\_%' FOR UPDATE",
+        ):
+            with self.subTest(statement=statement):
+                self.assertIsNone(self.refused(statement))
+
+    def test_a_u_and_identifier_fails_only_with_for_update(self) -> None:
+        name = 'U&"glow\\005fpersistence\\005fmatch"'
+        self.assertEqual(
+            self.refused(f"SELECT id FROM {name} FOR UPDATE OF {name}"), row_locks.U_AND_NAME
+        )
+        self.assertIsNone(self.refused(f"SELECT id FROM {name} FOR NO KEY UPDATE"))
+        self.assertIsNone(self.refused(f"SELECT id FROM {name}"))
+
+    def test_the_fast_path_and_the_full_reading_agree(self) -> None:
+        # A statement with no constant, comment or dollar sign is judged without being read; the
+        # same statement with an empty comment added is read in full, and its verdict is the same.
+        statements = [
+            ORM_ACCOUNT.format(lock=lock)
+            for lock in ("FOR UPDATE", "FOR NO KEY UPDATE", "FOR SHARE", "", "For Update")
+        ] + [
+            JOINED.format(alias="T2 ", ref="T2", lock=lock)
+            for lock in ('FOR UPDATE OF "glow_persistence_match"', "FOR UPDATE OF T2", "")
+        ]
+        for statement in statements:
+            with self.subTest(statement=statement):
+                fast = row_locks.judge(statement, TABLES)
+                full = row_locks.judge(statement + " /* */", TABLES)
+                self.assertEqual(
+                    (fast.reason is None, fast.writer, fast.for_update),
+                    (full.reason is None, full.writer, full.for_update),
+                )
+
+
+class ResolutionTests(unittest.TestCase):
+    """Correction B-C2's item 5: an ``OF`` name counts only where the statement binds it once, in
+    any scope, as a plain ``FROM`` or ``JOIN`` item's table or alias, and the account table
+    appears only as such an item's table or a column's qualifier; any other form fails."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_form_and_the_reviews_scope_example_are_refused(self) -> None:
+        for statement in SCOPE_FORMS:
+            with self.subTest(statement=statement):
+                self.assertIsNotNone(self.refused(statement))
+                self.assertIsNone(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE"))
+                )
+
+    def test_a_qualifier_and_a_reference_in_a_lock_clause_are_read_as_references(self) -> None:
+        for statement in (
+            # The account table plainly joined, its alias a qualifier in a sub-query.
+            f"SELECT m.id FROM glow_persistence_match m JOIN {ACCOUNT} a"
+            " ON a.id = m.account_low_id WHERE EXISTS (SELECT 1 FROM glow_persistence_block b"
+            " WHERE b.blocker_id = a.id) FOR UPDATE OF m",
+            # The account table's own name as a qualifier, and in another clause's OF list.
+            f'SELECT "glow_persistence_match"."id" FROM "glow_persistence_match" INNER JOIN'
+            f' "{ACCOUNT}" ON ("glow_persistence_match"."account_low_id" = "{ACCOUNT}"."id")'
+            f' FOR UPDATE OF "glow_persistence_match" FOR SHARE OF "{ACCOUNT}"',
+        ):
+            with self.subTest(statement=statement):
+                self.assertIsNone(self.refused(statement))
+
+
 class QueryTextTests(unittest.TestCase):
     def test_a_composed_statement_keeps_no_parameter(self) -> None:
         # What Django's psycopg 3 cursor class sends for ``callproc("planted", [<a value>])``.
