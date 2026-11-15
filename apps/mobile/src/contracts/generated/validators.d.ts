@@ -102,3 +102,4 @@ export function validateInteractionUndoIntent(value: unknown): boolean;
 export function validateInteractionUndoOutcome(value: unknown): boolean;
 export function validateInteractionUndoReceipt(value: unknown): boolean;
 export function validateInteractionUndoCommandResult(value: unknown): boolean;
+export function validateOwnInteractionVersions(value: unknown): boolean;

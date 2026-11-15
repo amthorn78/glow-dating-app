@@ -215,6 +215,20 @@ export type CandidateCardPage = {
  */
 export type Text80 = string;
 /**
+ * The actor's own versions toward a profile (SV3 Stage B, correction B-C1, D13; DM-74): the profile ID as asked, the actor's own directional row's state and version (F08) and the actor's own block's state and version (F13), each none and 0 where the actor has no row, so a client that has lost its own command answers, or a second device, can learn the version CommandMeta's expected_version addresses. Built from the actor's own rows only: the same answer whatever the profile's state, or whether it exists, and never the other member's like, pass or block, a count or a reason. Additive: every existing DTO is unchanged, and this discriminator joins AppResponse as earlier additions did.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnInteractionVersions".
+ */
+export type OwnInteractionVersions = {
+  kind: 'own_interaction_versions';
+  target_profile_id: string;
+  interaction_state: 'none' | 'liked' | 'passed' | 'withdrawn';
+  interaction_version: number;
+  block_state: 'none' | 'active' | 'removed';
+  block_version: number;
+};
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "MediaIntent".
  */
@@ -345,7 +359,8 @@ export interface AppResponse {
     | OwnSensitiveConsent
     | OwnAgeState
     | CandidateCardPage
-    | InteractionUndoOutcome;
+    | InteractionUndoOutcome
+    | OwnInteractionVersions;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -1159,7 +1174,8 @@ export interface AppResponse1 {
     | OwnSensitiveConsent
     | OwnAgeState
     | CandidateCardPage
-    | InteractionUndoOutcome;
+    | InteractionUndoOutcome
+    | OwnInteractionVersions;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.

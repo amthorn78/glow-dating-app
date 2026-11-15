@@ -795,7 +795,10 @@ class SV2StageATransitionTests(unittest.TestCase):
                 )
         # Additive: F08's first five transitions, its first request and response contracts and
         # InteractionOutcome's projection are as before, the three new entries follow them, and
-        # F07, F09, F10 and F13 are unchanged.
+        # F07, F09, F10 and F13 are unchanged. Rewritten by SV3 Stage B's correction B-C1 (DM-74):
+        # F08's and F13's response lists and projection roles gain the own-versions read's
+        # OwnInteractionVersions, projected to the owner; no transition of either changes, and
+        # F07, F09 and F10 stay exactly as they were.
         flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
 
         def entries(flow_id):
@@ -815,11 +818,16 @@ class SV2StageATransitionTests(unittest.TestCase):
         f08 = flows["F08"]
         self.assertEqual(f08["request_contracts"], ["InteractionIntent", "InteractionUndoIntent"])
         self.assertEqual(
-            f08["response_contracts"], ["InteractionOutcome", "InteractionUndoOutcome"]
+            f08["response_contracts"],
+            ["InteractionOutcome", "InteractionUndoOutcome", "OwnInteractionVersions"],
         )
         self.assertEqual(
             f08["projection_roles"],
-            {"InteractionOutcome": ["owner"], "InteractionUndoOutcome": ["owner"]},
+            {
+                "InteractionOutcome": ["owner"],
+                "InteractionUndoOutcome": ["owner"],
+                "OwnInteractionVersions": ["owner"],
+            },
         )
         self.assertEqual(
             entries("F08"),
@@ -869,8 +877,8 @@ class SV2StageATransitionTests(unittest.TestCase):
             ),
             "F13": (
                 ["BlockIntent"],
-                ["BlockOutcome"],
-                {"BlockOutcome": ["owner"]},
+                ["BlockOutcome", "OwnInteractionVersions"],
+                {"BlockOutcome": ["owner"], "OwnInteractionVersions": ["owner"]},
                 [
                     ("block", "none", "active", "owner", False, (), False),
                     ("block", "active", "active", "owner", False, (), False),
@@ -891,3 +899,44 @@ class SV2StageATransitionTests(unittest.TestCase):
                     ),
                     (requests, responses, roles, transitions),
                 )
+
+    def test_sv3_own_versions_are_the_actors_own_and_additive(self):
+        # SV3 Stage B's correction B-C1 (its brief's D13, "The actor's own versions"; DM-74): the
+        # own-versions read's OwnInteractionVersions joins F08's and F13's responses, projected to
+        # the actor, its owner, only. The allowed example is the owner with a valid session; the
+        # forbidden ones are the other member (who never sees the actor's like, pass or block), a
+        # participant of the pair's match, a revoked session, staff, the system, a provider and
+        # the public. It adds a response only: no request contract and no transition.
+        for flow_id in ("F08", "F13"):
+            with self.subTest(flow=flow_id):
+                self.assertEqual(
+                    read_projection(flow_id, "OwnInteractionVersions", OWNER), "allowed"
+                )
+                for context in (
+                    replace(OWNER, actor_id="other-member"),
+                    replace(OWNER, session_state="revoked"),
+                    PARTICIPANT,
+                    STAFF,
+                    SYSTEM,
+                    Context(None, "provider", None),
+                    Context(None, "public", None),
+                ):
+                    with self.subTest(context=context):
+                        self.assertEqual(
+                            read_projection(flow_id, "OwnInteractionVersions", context),
+                            "not_found",
+                        )
+        flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
+        self.assertEqual(
+            [
+                flow_id
+                for flow_id, flow in flows.items()
+                if "OwnInteractionVersions" in flow["response_contracts"]
+            ],
+            ["F08", "F13"],
+        )
+        for flow in flows.values():
+            with self.subTest(flow=flow["id"]):
+                self.assertNotIn("OwnInteractionVersions", flow["request_contracts"])
+                for rule in flow["transitions"]:
+                    self.assertNotIn("own_versions", rule["event"])

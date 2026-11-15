@@ -315,3 +315,47 @@ four as `components.schemas` references only), and the sealed server routes are
   Python and the generated validators.
 - **Regeneration** rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`;
   `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing.
+
+## SV3 Stage B, correction B-C1: the actor's own versions
+
+Correction B-C1 ([brief](../../docs/planning/sv3-eligibility-discovery-interactions.md), revision
+16, D13's "The actor's own versions" and its section "Stage B, correction B-C1"; DM-74, on Codex's
+finding on PR47) adds one closed DTO to the unpublished design catalog, for the one owner-only read
+of the actor's own versions: F08's like, pass and undo and F13's block and unblock compare
+`CommandMeta.expected_version` with the actor's own row (zero for its absence), and a client that
+has lost its own command answers, or a second device, had no read that returned that version. The
+only touch to an existing definition is one union addition, appended at the end:
+**`OwnInteractionVersions` joins `AppResponse.data`'s `oneOf`**, as `InteractionUndoOutcome` did.
+Every other existing DTO is unchanged, its properties and enums included; no request DTO is added
+(the read takes the profile ID in its path), and no `ApiError` code. No route is activated: the
+production catalog's paths map stays empty (`openapi.json` gains the DTO as a `components.schemas`
+reference only), and the sealed server route is `services/api/glow_discovery`'s
+`GET api/v1/interactions/<profile_id>` (`contract.py`'s `own_versions`).
+
+- **`OwnInteractionVersions`** (`kind: own_interaction_versions`): the profile ID as asked
+  (`target_profile_id`), the actor's own directional row's `interaction_state` (`none`, `liked`,
+  `passed` or `withdrawn`) and `interaction_version`, and the actor's own block's `block_state`
+  (`none`, `active` or `removed`) and `block_version`. Each version is 0 to 9007199254740991, and
+  two `if`/`then`/`else` rules tie it to its state: `none` is exactly 0, any other state 1 or more.
+  The generated types do not show those rules.
+- **No other member's data:** it carries no other member's like, pass or block, no match, no
+  actor or account ID, no profile state, count, reason or direction. It is closed, and the corpus
+  rejects each such field.
+- **The registry** (`flows-v1.json`): F08's and F13's response contracts each gain
+  `OwnInteractionVersions`, projected to its `owner` only, after their existing ones; no request
+  contract and no transition changes. `tests/test_transition_contract.py`'s
+  `test_sv3_own_versions_are_the_actors_own_and_additive` gives the allowed example (the owner with
+  a valid session) and the forbidden ones (the other member, a participant, a revoked session,
+  staff, the system, a provider and the public: `not_found`), and checks that only F08 and F13
+  carry it, as a response only. `test_sv3_undo_is_the_actors_own_and_additive` pins F08's and
+  F13's lists with the new DTO and every transition of F07 to F10 and F13 as it was.
+- **The shared corpus** gains 66 cases (9 valid, 57 invalid): the DTO's valid forms (no rows, each
+  state, the maximum versions); `none` with a version above 0 and a row's state with version 0;
+  each state field with another field's or an unknown state; each version negative, overflowing,
+  fractional, a string, a boolean or null; each field missing; another `kind`; an uppercase,
+  development or newline-ended ID; twelve fields for the other member's rows, a match, an actor or
+  account, the profile's state, a count, a reason or a direction; the union addition, valid and
+  invalid; and the existing `InteractionOutcome` and `BlockOutcome` with state `none` or version 0,
+  each still invalid; through Python and the generated validators.
+- **Regeneration** rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`;
+  `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing.

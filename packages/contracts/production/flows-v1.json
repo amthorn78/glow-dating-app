@@ -988,7 +988,8 @@
       ],
       "response_contracts": [
         "InteractionOutcome",
-        "InteractionUndoOutcome"
+        "InteractionUndoOutcome",
+        "OwnInteractionVersions"
       ],
       "private_projection": "Actor outcome; unreciprocated other action hidden",
       "public_projection": "None",
@@ -1081,6 +1082,9 @@
           "owner"
         ],
         "InteractionUndoOutcome": [
+          "owner"
+        ],
+        "OwnInteractionVersions": [
           "owner"
         ]
       }
@@ -1378,7 +1382,8 @@
         "BlockIntent"
       ],
       "response_contracts": [
-        "BlockOutcome"
+        "BlockOutcome",
+        "OwnInteractionVersions"
       ],
       "private_projection": "Actor receipt; block direction hidden from other user",
       "public_projection": "None",
@@ -1428,6 +1433,9 @@
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
       "projection_roles": {
         "BlockOutcome": [
+          "owner"
+        ],
+        "OwnInteractionVersions": [
           "owner"
         ]
       }

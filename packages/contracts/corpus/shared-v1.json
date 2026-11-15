@@ -18543,6 +18543,947 @@
         "batch_id": "30000000-0000-4000-8000-000000000001"
       },
       "valid": false
+    },
+    {
+      "name": "valid-no-rows-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-liked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-passed-blocked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "passed",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-withdrawn-unblocked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "withdrawn",
+        "interaction_version": 2,
+        "block_state": "removed",
+        "block_version": 2
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-resurfaced-like-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 2,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-block-only-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "removed",
+        "block_version": 2
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-max-versions-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 9007199254740991,
+        "block_state": "active",
+        "block_version": 9007199254740991
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-none-with-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-none-with-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-liked-version-zero-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-active-version-zero-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "active",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-matched-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "matched",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-active-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "active",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-removed-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "removed",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-blocked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "blocked",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-unknown-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "unknown",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-interaction-state-empty-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "",
+        "interaction_version": 1,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-state-liked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "liked",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-state-passed-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "passed",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-state-withdrawn-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "withdrawn",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-state-blocked-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "blocked",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-state-empty-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-negative-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": -1,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-overflow-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 9007199254740992,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-fractional-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1.5,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-string-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": "1",
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-boolean-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": true,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-null-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": null,
+        "block_state": "active",
+        "block_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-negative-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": -1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-overflow-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": 9007199254740992
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-fractional-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": 1.5
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-string-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": "1"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-boolean-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": true
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-null-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "liked",
+        "interaction_version": 1,
+        "block_state": "active",
+        "block_version": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-kind-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-target-profile-id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-interaction-state-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-interaction-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-block-state-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-block-version-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-kind-interaction-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-kind-block-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "block",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-kind-own_versions-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-uppercase-id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "AAAAAAAA-2000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-development-identity-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "profile-jules",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-newline-id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001\n",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "private-other_interaction_state-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "other_interaction_state": "liked"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-other_block_state-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "other_block_state": "active"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-liked_by_target-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "liked_by_target": true
+      },
+      "valid": false
+    },
+    {
+      "name": "private-blocked_by_target-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "blocked_by_target": true
+      },
+      "valid": false
+    },
+    {
+      "name": "private-match_id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "match_id": "30000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-actor_id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "actor_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-account_id-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "account_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-profile_state-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "profile_state": "paused"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-visible-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "visible": false
+      },
+      "valid": false
+    },
+    {
+      "name": "private-count-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "count": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "private-reason-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "reason": "blocked"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-direction-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "OwnInteractionVersions",
+      "value": {
+        "kind": "own_interaction_versions",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "interaction_state": "none",
+        "interaction_version": 0,
+        "block_state": "none",
+        "block_version": 0,
+        "direction": "incoming"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppResponse-OwnInteractionVersions",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "own_interaction_versions",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "interaction_state": "passed",
+          "interaction_version": 1,
+          "block_state": "removed",
+          "block_version": 2
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-AppResponse-OwnInteractionVersions-no-rows",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "own_interaction_versions",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "interaction_state": "none",
+          "interaction_version": 0,
+          "block_state": "none",
+          "block_version": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-AppResponse-OwnInteractionVersions-other_block_state",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "own_interaction_versions",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "interaction_state": "none",
+          "interaction_version": 0,
+          "block_state": "none",
+          "block_version": 0,
+          "other_block_state": "active"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-AppResponse-OwnInteractionVersions-none-with-version",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "own_interaction_versions",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "interaction_state": "none",
+          "interaction_version": 3,
+          "block_state": "none",
+          "block_version": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-state-none-InteractionOutcome",
+      "scope": "production",
+      "definition": "InteractionOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 1,
+        "state": "none",
+        "match_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-version-zero-InteractionOutcome-own-versions",
+      "scope": "production",
+      "definition": "InteractionOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 0,
+        "state": "liked",
+        "match_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-state-none-BlockOutcome",
+      "scope": "production",
+      "definition": "BlockOutcome",
+      "value": {
+        "kind": "block",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 1,
+        "state": "none"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-version-zero-BlockOutcome",
+      "scope": "production",
+      "definition": "BlockOutcome",
+      "value": {
+        "kind": "block",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 0,
+        "state": "active"
+      },
+      "valid": false
     }
   ]
 }

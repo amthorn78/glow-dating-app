@@ -292,6 +292,9 @@
       },
       "InteractionUndoCommandResult": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionUndoCommandResult"
+      },
+      "OwnInteractionVersions": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/OwnInteractionVersions"
       }
     }
   },
