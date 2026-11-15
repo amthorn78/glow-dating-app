@@ -184,6 +184,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-23 | 15 Nov 2026 | prompt | Stage B's prompt (revision 1, `e2fd265`) said no earlier test was expected to change (DD5), and named no pre-Stage B statement D14's check would fail. The session found six earlier tests that pin what Stage B extends (the selection's parameter names, the migration leaf, two route tests, the plan's coverage and its case count) and two statements in the ordering suite's harness that take `FOR UPDATE` on the account table; it stopped at the stop rule | The Stage B session |
 | AM11-24 | 15 Nov 2026 | prompt | Stage B's prompt gave undo's reversal as "on with a waiting period, working before it ends", the words for resurfacing; D12 lets undo withdraw a pass within `waiting_days`, so its reversal is working after the window ends | The Stage B session |
 | AM11-25 | 15 Nov 2026 | follow-through | Three times in Notion's Implementation Control Branches bullet, a time was written before the clock was read (05:20 for 05:16; 13:33 for 13:31; 14:16 for 14:15): AM11-03 and AM11-07's mechanism again, here with the clock read in a call sent in parallel with the write | App Manager 11, at each read-back, before the message reported the sync |
+| AM11-26 | 15 Nov 2026 | follow-through | Integrating B-C1, which added seven discovery cases (59 to 66), the manager left its own CI policy sentence for Stage B at "59 cases in all"; the verification of B-C1 read the proof README's paragraph and the contract document, not the manager's own governing sentence. AM11-14's mechanism | The exact-head review of Stage B, #9 |
+| AM11-27 | 15 Nov 2026 | records | The handoff, kept under 5 KB by the documentation map, went over it at `2d8f28a` (5,049 bytes) and grew through six more commits to 6,152 bytes at `e75649d`; no commit checked its size. AM11-04's mechanism | App Manager 11, reading its size before the DM-75 commit |
 
 ## App Manager 2
 
@@ -1156,6 +1158,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-27 — The handoff over its size limit for seven commits (records)
+
+- **What happened:** the documentation map keeps the handoff under 5 KB. It reached 5,049 bytes at `2d8f28a` (05:14 UTC on 15 November) and grew with each routing update to 6,152 bytes at `e75649d`. Each commit added a sentence to the SV3 bullet, and none checked the size; AM11-04's byte count was no longer run.
+- **Caught by:** App Manager 11, reading the file's size before the DM-75 commit.
+- **Effect:** none on the work; the handoff routed correctly but carried history that lives in the brief and the record.
+- **Correction:** cut to 4,476 bytes in the DM-75 commit; the SV3 bullet now points to the brief's status line and "Sessions" for the history.
+- **Prevention:** every commit that changes the handoff prints its byte count (`wc -c`) before the commit, and a count of 5,000 or more is cut in that commit.
+
+### AM11-26 — A count in the manager's governing sentence left stale by a correction (follow-through)
+
+- **What happened:** the CI policy's Database proof checks paragraph gained the manager's sentence for Stage B ("DB04, DB05 and DB10; 59 cases in all"). B-C1 then added seven cases, 66 in all. Integrating B-C1, the manager updated nothing in the CI policy; its verification checked the proof README and the contract document, which B-C1 owned, and not the governing sentence the manager owns.
+- **Caught by:** the exact-head review of Stage B, #9.
+- **Effect:** none on the code or the runs; the policy understated the suite's cases at PR47's head for one review.
+- **Correction:** the sentence is corrected with the brief's revision 17 (DM-75 item 6), and Dev Manager 5 reads it at the pre-merge read.
+- **Prevention:** when a correction changes a count, a route list or a case list, the manager's verification greps every record for the old figure, the manager's own governing sentences included (the CI policy, the P11 plan's entry, the handoff), and corrects them before the integration commit.
 
 ### AM11-22 — A stop clause that the prompt's own item triggers (prompt)
 
