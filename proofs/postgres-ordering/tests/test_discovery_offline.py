@@ -370,38 +370,49 @@ class DiscoveryWorkflowTests(unittest.TestCase):
 
 class DiscoveryPlanTests(unittest.TestCase):
     def test_the_plan_covers_stage_as_and_stage_bs_acceptance_checks(self) -> None:
-        # Rewritten by SV3 Stage B's item 6 (DM-73): Stage B's checks 7 to 11 are now covered by
-        # its cases, and Stage A's still are.
+        # Rewritten by SV3 Stage B's item 6 (DM-73), and by correction B-C2's item 3 (the exact-head
+        # review of Stage B's #3; DM-75): each stage's checks and decisions are computed over that
+        # stage's own cases, so a later stage's cases never stand in for an earlier stage's.
         plan = discovery_cases.plan()
         self.assertEqual(len(plan), len(set(plan)))
-        covered = {check for entry in discovery_cases.CASES for check in entry.checks}
+
+        def covered(inside: bool, cases: tuple[str, ...]) -> set[str]:
+            """The checks of the cases in ``cases`` (``inside``), or of every other case."""
+            return {
+                check
+                for entry in discovery_cases.CASES
+                if (entry.case_id in cases) == inside
+                for check in entry.checks
+            }
+
+        # Stage A's own cases: those in neither Stage B's list nor B-C1's.
+        stage_a = covered(False, STAGE_B_CASES + B_C1_CASES)
         for check in ("1", "2", "3", "4", "5", "6", "12", "13", "14"):
             with self.subTest(check=check):
-                self.assertIn(check, covered)
+                self.assertIn(check, stage_a)
         for decision in ("D2", "D3", "D4", "D5", "D6", "D7", "D8", "D13", "D14", "D19", "DB04"):
             with self.subTest(decision=decision):
-                self.assertIn(decision, covered)
-        stage_b = {
-            check
-            for entry in discovery_cases.CASES
-            if entry.case_id in STAGE_B_CASES
-            for check in entry.checks
-        }
+                self.assertIn(decision, stage_a)
+        # Stage A's cases cover none of Stage B's checks 7 to 11, and none is B-C1's.
+        for check in ("7", "8", "9", "10", "11", "B-C1"):
+            with self.subTest(not_stage_a=check):
+                self.assertNotIn(check, stage_a)
+        stage_b = covered(True, STAGE_B_CASES)
         for check in ("7", "8", "9", "10", "11", "12", "13", "14", "15"):
             with self.subTest(stage_b_check=check):
                 self.assertIn(check, stage_b)
         for decision in ("D9", "D10", "D11", "D12", "D13", "D14", "D19", "DB04", "DB05", "DB10"):
             with self.subTest(stage_b_decision=decision):
                 self.assertIn(decision, stage_b)
-        # Stage A's cases cover none of Stage B's checks 7 to 11.
-        stage_a = {
-            check
-            for entry in discovery_cases.CASES
-            if entry.case_id not in STAGE_B_CASES
-            for check in entry.checks
-        }
-        for check in ("7", "8", "9", "10", "11"):
-            self.assertNotIn(check, stage_a)
+        # B-C1's own cases (DM-74): each names B-C1, and together they carry the read's checks.
+        for entry in discovery_cases.CASES:
+            if entry.case_id in B_C1_CASES:
+                with self.subTest(b_c1_case=entry.case_id):
+                    self.assertIn("B-C1", entry.checks)
+        b_c1 = covered(True, B_C1_CASES)
+        for decision in ("12", "D2", "D8", "D11", "D12", "D13", "D14", "F08", "F13"):
+            with self.subTest(b_c1_decision=decision):
+                self.assertIn(decision, b_c1)
 
     def test_the_case_count_is_pinned(self) -> None:
         # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 19 named below.

@@ -1390,6 +1390,12 @@ class ReciprocalWriterTests(unittest.TestCase):
                 self.assertEqual(mine.name, theirs.name)
                 self.assertEqual(ast.dump(mine.args), ast.dump(theirs.args))
                 self.assertEqual(ast.dump(mine.returns), ast.dump(theirs.returns))
+                # The nested body's decorators too (the exact-head review's #14; DM-75): a
+                # decorator on ``body`` could bypass its checks.
+                self.assertEqual(
+                    [ast.dump(d) for d in mine.decorator_list],
+                    [ast.dump(d) for d in theirs.decorator_list],
+                )
             else:
                 self.assertEqual(ast.dump(mine), ast.dump(theirs))
         imports = [

@@ -1113,38 +1113,58 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
 def resurfacing_off_and_on(ctx: DiscoveryContext) -> str:
     """Off (the launch default), a pass excludes the pair from the actor's pages for good; on
     with a waiting period, a pass decided at least ``waiting_days`` ago excludes no longer, and a
-    later one still does; a like over the actor's own resurfaced pass is F08's ``like`` from
-    ``passed`` on the same row, its version advanced."""
+    later one still does, on a fresh page and on a page fetched by cursor (the cursor's recheck;
+    the exact-head review's #16, DM-75); a like over the actor's own resurfaced pass is F08's
+    ``like`` from ``passed`` on the same row, its version advanced."""
     from glow_domain import profile_settings as ps
 
-    viewer, early, recent = ctx.visible(), ctx.visible(), ctx.visible()
+    viewer, early, later, recent = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
     expect(ctx.current(ps.RESURFACING)["enabled"] is False, "off at launch")
     _act(ctx, viewer, early, "pass")
+    _act(ctx, viewer, later, "pass")
     _act(ctx, viewer, recent, "pass")
     _decided(viewer, early, 400)
     expect(_pid(ctx, early) not in _shown(ctx, viewer), "off: a pass 400 days ago still excludes")
     try:
         _publish(ctx, ps.RESURFACING, {"enabled": True, "waiting_days": 7})
         _decided(viewer, early, 8)
+        _decided(viewer, later, 9)
         _decided(viewer, recent, 6)
         shown = _shown(ctx, viewer)
         expect(_pid(ctx, early) in shown, "on: a pass 8 days ago (waiting 7) resurfaces")
         expect(_pid(ctx, recent) not in shown, "on: a pass 6 days ago still excludes")
+        resurfaced = {_pid(ctx, early), _pid(ctx, later)}
+        expect(shown == resurfaced, "on: the two resurfaced candidates, and no other")
+        first = ctx.page(viewer, limit=1)
+        expect(
+            set(ctx.ids(first)) < resurfaced and first["next_cursor"] is not None,
+            "a first page of one resurfaced candidate, with a cursor",
+        )
+        second = ctx.page(viewer, cursor=first["next_cursor"], limit=1)
+        expect(
+            ctx.ids(second) == sorted(resurfaced - set(ctx.ids(first))),
+            "the page fetched by cursor reaches the resurfaced candidate not yet shown",
+        )
         row = _row(viewer, early)
         liked = _act(ctx, viewer, early, "like")
         expect(liked["state"] == "liked" and liked["version"] == 2, "a like over the pass")
         expect(_row(viewer, early).id == row.id, "the same row, its version advanced")
     finally:
         _publish(ctx, ps.RESURFACING, {"enabled": False, "waiting_days": None})
-    return "off: a pass excludes for good; on (7 days): 8 days resurfaces, 6 does not; like over it"
+    return (
+        "off: a pass excludes for good; on (7 days): 8 and 9 days resurface (one reached on a"
+        " page fetched by cursor), 6 does not; like over it"
+    )
 
 
 @case("settings.undo_off_and_on", "11", "D12", "D13")
 def undo_off_and_on(ctx: DiscoveryContext) -> str:
     """Off, undo is ``forbidden`` and writes nothing; on with a waiting period, only the actor's
-    most recent pass, within ``waiting_days`` of it, is withdrawn: the row kept, its version
-    advanced (an expected version from before it no longer matches); a withdrawn pass excludes
-    nothing; a pass past the waiting period, or not the most recent, is ``state_conflict``."""
+    most recent pass, within ``waiting_days`` of it and while it is the actor's latest decision,
+    is withdrawn: the row kept, its version advanced (an expected version from before it no longer
+    matches); a withdrawn pass excludes nothing; a pass past the waiting period, or not the actor's
+    latest decision, is ``state_conflict`` and writes nothing. One step, never a chain (D12;
+    DM-75): after undo B, undo A is refused, and still after a like of B over its withdrawal."""
     from glow_discovery import interactions
     from glow_domain import profile_settings as ps
     from glow_persistence.models import IdempotencyRecord
@@ -1177,6 +1197,12 @@ def undo_off_and_on(ctx: DiscoveryContext) -> str:
             "the withdrawn pass, version 2",
         )
         expect(_row(viewer, second).id == row.id, "the same row, never deleted and recreated")
+        chained = _counts()
+        body_a, after_undo = _undo(ctx, viewer, first)
+        ctx.profiles.refused(after_undo, 409, "state_conflict", "undo A after undo B")
+        direct = interactions.undo(viewer.account_id, dict(body_a, meta=ctx.profiles.meta(1)))
+        expect(direct.reason == "not_the_most_recent_pass", "refused as not the latest decision")
+        expect(_counts() == chained, "the refused undo writes nothing")
         expect(
             IdempotencyRecord.objects.filter(
                 actor_id=viewer.account_id, operation="interaction_undo", outcome_code="withdrawn"
@@ -1200,8 +1226,15 @@ def undo_off_and_on(ctx: DiscoveryContext) -> str:
         )
         liked = _act(ctx, viewer, second, "like", page)
         expect(liked["version"] == 3 and liked["state"] == "liked", "a like over the withdrawal")
+        chained = _counts()
+        _, after_like = _undo(ctx, viewer, first)
+        ctx.profiles.refused(after_like, 409, "state_conflict", "undo A after a like of B")
+        expect(_counts() == chained, "the refused undo writes nothing")
         _act(ctx, viewer, third, "pass")
-        _decided(viewer, first, 3)
+        # Each of the actor's later rows backdated before the third's pass, so that pass stays the
+        # actor's latest decision and is refused for its waiting period only.
+        _decided(viewer, first, 4)
+        _decided(viewer, second, 3)
         _decided(viewer, third, 2)
         body, late = _undo(ctx, viewer, third)
         ctx.profiles.refused(late, 409, "state_conflict", "a pass past the waiting period")
@@ -1210,7 +1243,8 @@ def undo_off_and_on(ctx: DiscoveryContext) -> str:
     finally:
         _publish(ctx, ps.UNDO, {"enabled": False, "waiting_days": None})
     return (
-        "off: forbidden; on (1 day): the most recent pass withdrawn, the row kept; others refused"
+        "off: forbidden; on (1 day): the latest decision's pass withdrawn, the row kept; one step"
+        " (undo A refused after undo B and after a like of B); past the window refused"
     )
 
 
@@ -1256,13 +1290,19 @@ def rematch_cannot_be_switched_on(ctx: DiscoveryContext) -> str:
 
 @case("routes.interaction_refusals_and_ownership", "12", "D13")
 def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
-    """Every Stage B route refuses an unauthenticated request (401), another method (405), a query
-    string, another content type and a body that is not its DTO (400); another member's match is
-    ``not_found`` and another member's batch the generic stale response; a stale version is
-    ``stale_version``. Every answer is the contract's, and nothing is cached."""
-    one, two, third = ctx.visible(), ctx.visible(), ctx.visible()
+    """Every Stage B route refuses an unauthenticated request (401), another method (405) and any
+    query string (400); each ``POST`` route also refuses another content type and a body that is
+    not its DTO (400). ``GET api/v1/matches/<match_id>`` reads no body and no content type, so the
+    case sends it neither (the exact-head review's #7; DM-75); B-C1's read,
+    ``GET api/v1/interactions/<profile_id>``, which refuses a body and reads no content type, is
+    checked by ``own_versions.owner_only_and_held_for_share``. Another member's match is
+    ``not_found``; a like of an entry of another member's batch, naming that batch, is the generic
+    stale response; a stale version is ``stale_version``. Every answer is the contract's, and
+    nothing is cached."""
+    one, two, third, four = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
     match = _matched(ctx, one, two)
     page = ctx.page(third)
+    expect(_pid(ctx, four) in ctx.ids(page), "the fourth member is an entry of the third's batch")
     routes: list[tuple[str, str, dict[str, Any] | None]] = [
         ("POST", INTERACTION, _intent(ctx, third, one, "pass", page)),
         ("POST", UNDO, _undo_body(ctx, third, one)),
@@ -1270,9 +1310,10 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
         ("POST", BLOCKS, _block_body(ctx, one)),
         ("GET", f"{MATCHES}/{match.id}", None),
     ]
-    checked = 0
+    checked: list[str] = []
     before = _counts()
     for method, path, body in routes:
+        done = ["no token", "method", "query"]
         unauthenticated = ctx.profiles.call(third, method, path, body, bearer=False)
         ctx.profiles.refused(unauthenticated, 401, "unauthenticated", f"{path}: no token")
         other = "GET" if method == "POST" else "POST"
@@ -1295,8 +1336,10 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
                 "invalid_request",
                 f"{path}: not its DTO",
             )
+            done += ["content type", "not its DTO"]
         expect("Cache-Control: no-store" in ctx.profiles.headers[-1], f"{path}: no-store")
-        checked += 1
+        route = path.replace(str(match.id), "<match_id>")
+        checked.append(f"{method} {route}: {', '.join(done)}")
     expect(_counts() == before, "no refusal writes")
     ctx.profiles.refused(
         ctx.profiles.command(third, UNMATCH, routes[2][2] or {}), 404, "not_found", "unmatch"
@@ -1304,10 +1347,10 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
     ctx.profiles.refused(_read_match(ctx, third, match.id), 404, "not_found", "another's match")
     ctx.profiles.refused(_read_match(ctx, third, uuid4()), 404, "not_found", "no such match")
     ctx.profiles.refused(
-        ctx.profiles.command(two, INTERACTION, _intent(ctx, two, third, "like", page)),
+        ctx.profiles.command(two, INTERACTION, _intent(ctx, two, four, "like", page)),
         409,
         "stale_version",
-        "another member's batch",
+        "an entry of another member's batch",
     )
     _, stale = _unmatch(ctx, one, match, expected=9)
     ctx.profiles.refused(stale, 409, "stale_version", "an unmatch at a stale version")
@@ -1320,7 +1363,7 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
         "stale_version",
         "an interaction at a stale version",
     )
-    return f"{checked} routes refuse no token, another method, a query, a type, a body; ownership"
+    return f"{len(checked)} routes ({'; '.join(checked)}), each no-store; ownership"
 
 
 def _unmatch_body(ctx: DiscoveryContext, match: Any) -> dict[str, Any]:

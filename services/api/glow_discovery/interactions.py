@@ -418,7 +418,7 @@ def undo(
         if row is None or row.state != "passed":
             raise Refused(STATE_CONFLICT, "no_pass")
         latest = (
-            DirectionalInteraction.objects.filter(actor_id=account_id, state="passed")
+            DirectionalInteraction.objects.filter(actor_id=account_id)
             .order_by("-decided_at", "-id")
             .values_list("id", flat=True)
             .first()
