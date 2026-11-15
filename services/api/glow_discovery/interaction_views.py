@@ -18,8 +18,11 @@ the body or another header:
   the profile exists or not and whatever its state, never ``not_found`` for a profile, and never
   the other member's rows. A body is ``invalid_request``, as a query string is.
 
-A body that is not its DTO, any query string, another content type or another method is
-``invalid_request`` (400; 405 for the method, as SV2's and Stage A's routes answer). Another
+On each ``POST`` route, a body that is not its DTO, any query string or another content type is
+``invalid_request`` (400), and on every route another method is ``invalid_request`` (405), as
+SV2's and Stage A's routes answer. The two ``GET`` routes refuse a query string (400) and read no
+content type; ``GET api/v1/interactions/<profile_id>`` refuses a body (400), and
+``GET api/v1/matches/<match_id>`` reads none. Another
 member's match is ``not_found``. A stale or consumed batch, a target outside it, an ineligible
 target or a consumed candidate is the generic stale response (``stale_version``, 409), the same
 whatever the cause (D8), and an expected version that is not the object's is ``stale_version``

@@ -1046,9 +1046,10 @@ def unmatch_revokes_contact(ctx: DiscoveryContext) -> str:
 @case("block.works_after_unmatch_and_while_paused", "10", "D11", "F13")
 def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     """F13: a block, through ``glow_chat``'s ``block``, works after an unmatch and while the actor
-    is paused; it refuses a send; an unblock restores no match and no send. The blocked member
-    cannot learn the direction: a restricted match reads the same to both participants, and the
-    blocked member's own block answers as any first block does."""
+    is paused; it refuses a send; an unblock restores no match and no send. The blocked member's
+    own block answers as any first block does. A restricted match reads the same to both
+    participants, but only a block restricts a match, so the member who did not block can infer
+    the direction (D8's gap, carried to SV4 before P11; DM-75)."""
     from glow_persistence.models import Match
 
     one, two = ctx.visible(), ctx.visible()
@@ -1087,7 +1088,7 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     expect(
         {r["state"] for r in reads} == {"restricted"}
         and {tuple(sorted(r)) for r in reads} == {tuple(sorted(reads[0]))},
-        "both participants read the same restricted match, with no direction",
+        "both participants read the same restricted match (D8's gap; DM-75)",
     )
     own = ctx.profiles.data(_block(ctx, four, three, "block")[1], "block", "the blocked's block")
     expect(own["state"] == "active" and own["version"] == 1, "the blocked member's own block")
