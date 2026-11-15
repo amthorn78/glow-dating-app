@@ -1,4 +1,4 @@
-# Current handoff — App Manager 11 (15 November 2026; SV3 B0 verified and integrated; B0's PR next)
+# Current handoff — App Manager 11 (15 November 2026; SV3 B0 in PR46; its bounded review next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -10,7 +10,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A CI failure that seems to call for a re-run goes to the Dev Manager first (OD-32), with options that need no action from him.
 - **SV2 is done** (OD-49): PR43, PR44 (`3240ef0`), receipts in its [evidence record](../testing/evidence/2026-11-10-sv2-profiles-media.md).
-- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 13 (with DM-60 to DM-71). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipt). DM-68 froze the lock scan's rules after C4; D14's row-lock check comes in Stage B. **B0** (the proof's tooling: the lock scan's bound and the carried proof items) is built, verified and integrated (the record, "Manager verification of B0"); its own PR, its bounded review and Dev Manager 5's pre-merge read come next, then **Stage B** (items 4 to 7) from B0's merge (DM-71). F7 is decided (OD-64), carried to before P11.
+- **SV3 is the current item** (OD-49): eligibility, discovery and interactions. [The brief](../planning/sv3-eligibility-discovery-interactions.md), revision 13 (with DM-60 to DM-71). **Stage A is done:** PR45 merged at `8d83474` with corrections C1 to C5 (the [record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), its merge receipt). DM-68 froze the lock scan's rules after C4; D14's row-lock check comes in Stage B. **B0** (the proof's tooling: the lock scan's bound and the carried proof items) is built, verified and integrated (the record, "Manager verification of B0"), in its own PR, [PR46](https://github.com/amthorn78/glow-dating-app/pull/46); its bounded review and Dev Manager 5's pre-merge read come next, then **Stage B** (items 4 to 7) from B0's merge (DM-71). F7 is decided (OD-64), carried to before P11.
 - **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
@@ -21,7 +21,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | GitHub | B0's PR run and Codex's pass on its head | Then B0's bounded review prompt goes to Nathan (OD-29); a failed run is diagnosed before any other step |
+| App Manager 11 | Nathan | B0's bounded review report | No other prompt goes to Nathan (OD-29); no push to PR46 while its run on the head is going (AM5-04) |
 
 ## Next actions (App Manager 11)
 
@@ -33,5 +33,5 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Branches and PRs (15 November 2026, 01:55 UTC)
 
-- **Open PRs:** B0's own PR, opened from the manager branch after this commit. `main` is at `8d83474` (PR45).
+- **Open PRs:** [PR46](https://github.com/amthorn78/glow-dating-app/pull/46), B0, from the manager branch. `main` is at `8d83474` (PR45).
 - **Remote branches:** `main`; the manager branch `claude/magical-wozniak-yfmmx2`; `claude/dev-manager` (`fdede63`, DM-71's report, merged at `b05c13f`); B0's session branch `claude/focused-ride-q5itu1` (`0ca2a0e`, integrated by fast-forward). The cleanup run 43644047756 deleted Stage A's six session branches.
