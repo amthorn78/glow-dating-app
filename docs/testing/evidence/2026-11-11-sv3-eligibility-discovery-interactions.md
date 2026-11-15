@@ -1378,3 +1378,42 @@ P06.DB's D4 conditions: a throwaway PostgreSQL from the CI job's pinned image (`
 - **One install command** expanded an unset, misspelt variable name (`AWS_CA_BUNDLE_NOT_USED`, empty) into `PIP_CERT`; no AWS value was read or passed, and the install used the proxy's CA bundle.
 - **The container restart:** the session's machine restarted during the first local sitting; the interrupted profile run is not counted, and the profile and discovery suites ran again on a new container (above).
 - **Not run:** any provider, HDE, Stream or Railway call; `proofs/stream-chat`; the API and mobile checks locally (nothing outside the proof changed; CI's jobs ran them).
+
+## Manager verification of B0
+
+App Manager 11, 15 November 2026, from the pushed branch `claude/focused-ride-q5itu1` (code head `9fed9a5`, records head `0ca2a0e`), with the GitHub tools for the runs. Nothing here was run against a provider, HDE, Stream or Railway.
+
+- **The start:** B0's branch starts at its prompt's commit `c89fe2d`, the manager branch's head when the prompt was given; the manager branch did not move after it.
+- **The diff** (`git diff c89fe2d 0ca2a0e`): ten paths, each within B0's owned paths (the brief's revision 13, CC2). The code commit `9fed9a5` holds seven: `account_lock_scan.py`; in `discovery_cases.py`, `one_snapshot_statements`' docstring and the query plans' `batch` parameter only; in `discovery_suite.py` and `profile_suite.py`, the member-value scans' two calls each only, which now pass the response headers' text by its own argument; `profile_support.py`; and the two offline test files. The records commits `c193e08` and `0ca2a0e` hold only the proof README, this record and the P11 plan's runs-of-record sentence. Nothing in `services`, `.github`, `packages`, `apps` or `scripts`; no mode or symlink.
+- **`profile_support.py`** changes T3's rule and `forms`, and with them the signatures of `Matcher.occurs`, `ValueLedger.found_in` and `ValueLedger.where`, which gain the headers' text (or its name) so that the narrowed rule reads that text alone. I read this as T3's rule itself, since the brief's "in the response headers' text alone" needs the scan to know which text it reads; the review judges it.
+- **The given words:** BB9, BB10, the opening paragraph's Stage B sentence and F2's reported-chain sentence are each in the scan's docstring, compared with whitespace normalized and double backticks read as single; F2's sentence replaces the old one ("Where several chains fail, the one reported is a chain such a value holds, before a name that only passes it on."), which is gone. `one_snapshot_statements`' docstring is narrowed in the brief's words.
+- **C2's three assertions** (the session's question): every line the code commit removes from `tests/test_profile_offline.py` is one of these, and nothing else is removed:
+  - "the Expires header at a held time": moved from the clock texts read in any text to a new `HEADER_CLOCK_TEXTS`, read in the response headers' text, still not a hit and still a hit under the old matcher;
+  - "an email date at a held time": dropped from the clock texts; it is a hit under the narrowed rule, in B0's tests;
+  - T8's README limit, `Mon, 15 Jun 1990 04:13:27 GMT` not a hit: dropped, since the README's "Limits" drops that gap (item 5).
+
+  Each pinned the wider rule item 5 replaces, so the conversion is item 5's own words, not a regression. The stop rule's clause "if a test of C1's to C5's sections no longer passes" did not foresee it (AM11-22). It goes to Dev Manager 5 with the pre-merge read.
+- **The run of record,** [43661629369](https://github.com/amthorn78/glow-dating-app/actions/runs/43661629369) on `9fed9a5` (`push`, attempt 1), read from GitHub: all eight jobs `success`; every DM-41 retry step skipped; the gate printed `Application checks passed` at 01:21:44 UTC. The records commits' run (43663298884, on `0ca2a0e`, `success`) started at 01:29, after it. The Database proof checks job's log: `Ran 314 tests`, `OK`; `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 18.7 s`, every control `failed as intended`, every verdict `PASS`; `[identity] cases: 49/49 passed in 44.5 s`, its secret scan clean; `[profile] cases: 69/69 passed in 102.2 s`, its secret and value scans clean; `[discovery] cases: 40/40 passed in 122.2 s`, its secret and value scans clean; `locks.account_locks_no_key_update`: "7 explicit account locks, in services/api and the reference, all no-key; 52 select_for_update calls read, 0 locking a queryset that joins"; no traceback.
+- **Re-run here,** at `9fed9a5`, in a detached worktree in the scratchpad, with the proof's venv (its locks unchanged since `8d83474`), under `env -i`: `Ran 314 tests`, `OK`; Ruff, `ruff format --check` (67 files) and mypy clean; the lock scan over the tree, exit 0, its output byte-identical (`cmp`) to its output at `8d83474` (52 calls, 0 joining, 7 account locks).
+- **Planted forms** (one file each, through the scan's command line, at B0 and at `8d83474`):
+
+  | Form | At B0 | At `8d83474` |
+  |---|---|---|
+  | 14 names, each assigned from every other, `no_key=<last> is AppAccount` | refused, `bound: more than 1000 states`, 0.66 s | refused, `orm`, 25.4 s |
+  | 8 such names, `no_key=True` | passes, `generic`, 0.21 s | passes, 0.16 s |
+  | 500 plain hops | refused, `bound: more than 100 names followed`, 0.29 s | `RecursionError` |
+  | 99 hops (100 names), `no_key=True` | passes, `generic` | passes |
+  | 100 hops (101 names), `no_key=True` | refused by the names limit | passes |
+  | 99 hops, `no_key=<last> is AppAccount` | refused, `orm` | refused, `orm` |
+
+  Each refusal at B0 is `FOR UPDATE`, failing closed, and names the limit, the function and the lock's line.
+- **Two reversals of my own,** at `9fed9a5`, each restored and the worktree clean afterwards:
+  - the scan as at `8d83474` under B0's tests: `FAILED (failures=2, errors=4)`, all six in `LockScanBoundTests`; the other 61 discovery offline tests pass, C1's to C5's included;
+  - `profile_support.py` as at `8d83474` under B0's tests: `NarrowedClockRuleTests` fails (a held date in the HTTP and email shape not found; a held time after another date not counted; the headers' argument missing), and so does the converted Expires assertion.
+- **For B0's review and the Dev Manager:**
+  - **States as the brief counts them:** 8 names give 257 states by the brief's words (a name followed under a distinct `seen`), where DM-71's table gave 513 from a prototype that also counted the model's memo entries. The limit is 1,000 by the brief's count; the 14 names are still refused, and nothing on the tree comes near it.
+  - **The headers' rule is narrower than the brief's words** (the session's deviation): the line anchored whole and the day and month names listed. It exempts less; anything else counts, failing closed. It matches Django's header as the suites record it: one `Name: value` line per header (`profile_support`, the context's `headers`).
+  - **The install command** expanded an unset, misspelt name, `AWS_CA_BUNDLE_NOT_USED`, as `PIP_CERT`: no AWS value was read or passed (section 1 of the prompt says to pass none to a command). Recorded as the session's own disclosure.
+- **Not re-run here:** the session's local database runs (iteration, its record states them).
+- **Integration:** the manager branch fast-forwarded to `0ca2a0e`; its non-Markdown tree equals `9fed9a5`'s.
+- **Disposition:** B0 verified. Every item of the brief's "Stage B, B0" is in, the given words as written, and no stop condition was met except the C2 clause, which item 5 itself triggers (above). Next: B0's own PR from the manager branch, its run and Codex, then B0's bounded delta re-review, then Dev Manager 5's pre-merge read.
