@@ -259,3 +259,7 @@ no HDE/provider, infrastructure or deployment. P06.DB and P06.2 Stage A ran the
 send-versus-revocation races and the outbox delivery on a disposable database in
 CI; P11A and P11B still rerun DB06 and DB09 on the real target, with the crash,
 redelivery and restore cases.
+
+## The server (SV3 Stage B, sealed until P11)
+
+The server's interactions now exist, sealed: `services/api/glow_discovery` (`interactions`, its views and URL configuration) and `glow_chat`'s `activate_reciprocal` (the [SV3 brief](../planning/sv3-eligibility-discovery-interactions.md), revision 15, D9 to D13; the [SV3 evidence record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Stage B (interactions)"). Like, pass, the match, undo, unmatch and block read and write authoritative rows under both members' account locks (the [data model](data-model.md), its `DirectionalInteraction`, `Block` and `Match` rows), on a disposable PostgreSQL only; the served runtime imports none of it. This fixture's service, receipts and outbox simulation are unchanged and remain the development reference; the server keeps its receipts in SV2's idempotency records and its events in the outbox, and adds D12's undo and resurfacing, which this composition predates.
