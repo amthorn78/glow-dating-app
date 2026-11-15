@@ -722,3 +722,172 @@ class SV2StageATransitionTests(unittest.TestCase):
                 ("refresh", "stale", "pending", "owner"),
             ],
         )
+
+    def test_sv3_undo_is_the_actors_own_and_additive(self):
+        # SV3 Stage B (its brief's D12 and D13; DM-60): F08 gains D12's undo, the owner's
+        # withdrawal of their own pass (`undo` from `passed` to `withdrawn`, with A05 and no
+        # eligibility), and the like and the pass that may follow it (from `withdrawn`, each with
+        # current eligibility), as three new entries after the existing five. Each has an allowed
+        # example and forbidden ones: another member, a revoked session, staff, the system, a
+        # missing A05, a stale version and denied or unknown eligibility.
+        undo = replace(OWNER, policies=frozenset({"A05"}))
+        self.check("F08", "undo", "passed", "withdrawn", undo, "allowed")
+        for context, outcome in (
+            (replace(undo, actor_id="other-member"), "forbidden"),
+            (replace(undo, session_state="revoked"), "forbidden"),
+            (STAFF, "forbidden"),
+            (replace(SYSTEM, policies=frozenset({"A05"})), "forbidden"),
+            (OWNER, "policy_unresolved"),
+            (replace(undo, current_version=2), "stale_version"),
+        ):
+            with self.subTest(event="undo", context=context):
+                self.check("F08", "undo", "passed", "withdrawn", context, outcome)
+        # Only a pass is withdrawn, once, and the row is kept (never back to `none`).
+        for before, after in (
+            ("liked", "withdrawn"),
+            ("withdrawn", "withdrawn"),
+            ("none", "withdrawn"),
+            ("passed", "none"),
+            ("passed", "passed"),
+        ):
+            with self.subTest(event="undo", before=before, after=after):
+                self.check("F08", "undo", before, after, undo, "state_conflict")
+        for event, after in (("like", "liked"), ("pass", "passed")):
+            allowed = replace(OWNER, eligible=True)
+            with self.subTest(event=event):
+                self.check("F08", event, "withdrawn", after, allowed, "allowed")
+                for context, outcome in (
+                    (replace(allowed, actor_id="other-member"), "forbidden"),
+                    (replace(allowed, session_state="revoked"), "forbidden"),
+                    (replace(STAFF, eligible=True), "forbidden"),
+                    (replace(SYSTEM, eligible=True), "forbidden"),
+                    (replace(allowed, current_version=2), "stale_version"),
+                    (replace(OWNER, eligible=None), "forbidden"),
+                    (replace(OWNER, eligible=False), "forbidden"),
+                ):
+                    with self.subTest(context=context):
+                        self.check("F08", event, "withdrawn", after, context, outcome)
+        # A pass over a like stays refused (D9: F08 has no such entry), and unmatch stays final
+        # (D12: rematch is not built), on F09 and on F10.
+        eligible_owner = replace(OWNER, eligible=True)
+        self.check("F08", "pass", "liked", "passed", eligible_owner, "state_conflict")
+        for flow_id, context in (
+            ("F09", replace(SYSTEM, eligible=True, policies=frozenset({"reciprocal_likes"}))),
+            ("F09", replace(PARTICIPANT, eligible=True)),
+            ("F10", PARTICIPANT),
+        ):
+            with self.subTest(event="rematch", flow=flow_id, context=context):
+                self.check(flow_id, "rematch", "unmatched", "active", context, "state_conflict")
+        # The new outcome is the actor's own: projected to the owner only.
+        self.assertEqual(read_projection("F08", "InteractionUndoOutcome", OWNER), "allowed")
+        for context in (
+            replace(OWNER, actor_id="other-member"),
+            replace(OWNER, session_state="revoked"),
+            PARTICIPANT,
+            STAFF,
+            SYSTEM,
+            Context(None, "provider", None),
+            Context(None, "public", None),
+        ):
+            with self.subTest(projection="InteractionUndoOutcome", context=context):
+                self.assertEqual(
+                    read_projection("F08", "InteractionUndoOutcome", context), "not_found"
+                )
+        # Additive: F08's first five transitions, its first request and response contracts and
+        # InteractionOutcome's projection are as before, the three new entries follow them, and
+        # F07, F09, F10 and F13 are unchanged.
+        flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
+
+        def entries(flow_id):
+            return [
+                (
+                    r["event"],
+                    r["from"],
+                    r["to"],
+                    r["role"],
+                    r["eligible"],
+                    tuple(r["policies"]),
+                    r["active_match"],
+                )
+                for r in flows[flow_id]["transitions"]
+            ]
+
+        f08 = flows["F08"]
+        self.assertEqual(f08["request_contracts"], ["InteractionIntent", "InteractionUndoIntent"])
+        self.assertEqual(
+            f08["response_contracts"], ["InteractionOutcome", "InteractionUndoOutcome"]
+        )
+        self.assertEqual(
+            f08["projection_roles"],
+            {"InteractionOutcome": ["owner"], "InteractionUndoOutcome": ["owner"]},
+        )
+        self.assertEqual(
+            entries("F08"),
+            [
+                ("like", "none", "liked", "owner", True, (), False),
+                ("pass", "none", "passed", "owner", True, (), False),
+                ("like", "liked", "liked", "owner", True, (), False),
+                ("pass", "passed", "passed", "owner", True, (), False),
+                ("like", "passed", "liked", "owner", True, ("A05",), False),
+                ("undo", "passed", "withdrawn", "owner", False, ("A05",), False),
+                ("like", "withdrawn", "liked", "owner", True, (), False),
+                ("pass", "withdrawn", "passed", "owner", True, (), False),
+            ],
+        )
+        unchanged = {
+            "F07": (
+                ["PageRequest"],
+                ["CandidatePage", "CandidateCardPage"],
+                {"CandidatePage": ["owner"], "CandidateCardPage": ["owner"]},
+                [
+                    ("request", "none", "pending", "owner", False, (), False),
+                    ("eligible_results", "pending", "ready", "system", True, ("A05",), False),
+                    ("no_results", "pending", "empty", "system", False, (), False),
+                    ("outage", "pending", "unavailable", "system", False, (), False),
+                    ("invalidate", "ready", "stale", "system", False, (), False),
+                    ("refresh", "stale", "pending", "owner", False, (), False),
+                ],
+            ),
+            "F09": (
+                ["InteractionIntent", "OwnedObjectRequest"],
+                ["MatchProjection"],
+                {"MatchProjection": ["participant"]},
+                [
+                    ("reciprocal", "none", "active", "system", True, ("reciprocal_likes",), False),
+                    ("restrict", "active", "restricted", "system", False, (), False),
+                ],
+            ),
+            "F10": (
+                ["UnmatchIntent"],
+                ["MatchProjection"],
+                {"MatchProjection": ["participant"]},
+                [
+                    ("unmatch", "active", "unmatched", "participant", False, (), False),
+                    ("unmatch", "restricted", "unmatched", "participant", False, (), False),
+                    ("unmatch", "unmatched", "unmatched", "participant", False, (), False),
+                ],
+            ),
+            "F13": (
+                ["BlockIntent"],
+                ["BlockOutcome"],
+                {"BlockOutcome": ["owner"]},
+                [
+                    ("block", "none", "active", "owner", False, (), False),
+                    ("block", "active", "active", "owner", False, (), False),
+                    ("unblock", "active", "removed", "owner", False, (), False),
+                    ("block", "removed", "active", "owner", False, (), False),
+                ],
+            ),
+        }
+        for flow_id, (requests, responses, roles, transitions) in unchanged.items():
+            with self.subTest(flow=flow_id):
+                flow = flows[flow_id]
+                self.assertEqual(
+                    (
+                        flow["request_contracts"],
+                        flow["response_contracts"],
+                        flow["projection_roles"],
+                        entries(flow_id),
+                    ),
+                    (requests, responses, roles, transitions),
+                )

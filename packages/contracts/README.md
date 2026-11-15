@@ -252,3 +252,66 @@ the production catalog's paths map stays empty, and the sealed server route is
   `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing. A card's
   `value_ids` rule for gender and orientation (at least one value unless own words are given) is an
   `if`/`then`, which the generated types do not show.
+
+## SV3 Stage B: the interactions' contract
+
+SV3's Stage B ([brief](../../docs/planning/sv3-eligibility-discovery-interactions.md), revision 15,
+D9 to D13; DM-60) adds four closed DTOs to the unpublished design catalog for D12's undo, which had
+none: `InteractionIntent`'s actions are `like` and `pass`, and neither `CommandReceipt`'s outcome
+codes nor `InteractionOutcome`'s states hold a withdrawn pass. Like, pass, unmatch and block use the
+existing `InteractionIntent`, `InteractionOutcome`, `MatchProjection`, `UnmatchIntent`,
+`BlockIntent`, `BlockOutcome`, `CommandReceipt` and `InteractionCommandResult` unchanged. The only
+touch to existing definitions is two union additions, each appended at the end:
+**`InteractionUndoIntent` joins `AppIntent`'s `oneOf`**, as SV2's intents did, and
+**`InteractionUndoOutcome` joins `AppResponse.data`'s `oneOf`**, as Stage A's `CandidateCardPage`
+did, so older validators reject the new discriminators and a deployed transport negotiates support
+before returning them. Every other existing DTO is unchanged, its properties and enums included.
+No route is activated: the production catalog's paths map stays empty (`openapi.json` gains the
+four as `components.schemas` references only), and the sealed server routes are
+`services/api/glow_discovery`'s (`contract.py`'s `UNDO_INTENT`, `undo_outcome`, `receipt` and
+`command_result`).
+
+- **`InteractionUndoIntent`** (`operation: interaction_undo`): `CommandMeta` and the target's
+  `target_profile_id`, nothing else; `expected_version` addresses the actor's directional row. It
+  accepts exactly what the server's `UNDO_INTENT` accepts: no batch, action, actor, account or other
+  member's field.
+- **`InteractionUndoOutcome`** (`kind: interaction_undo`): the target's profile ID, the row's
+  version (1 to 9007199254740991) and `state: withdrawn`: the actor's own pass, withdrawn, with the
+  row kept and its version advanced (D12).
+- **`InteractionUndoReceipt`:** `outcome_code: withdrawn`, `object_ref` and `committed_version`,
+  `CommandReceipt`'s shape, immutable and minimal as it is; `CommandReceipt`'s outcome codes stay as
+  they were.
+- **`InteractionUndoCommandResult`** (`kind: interaction_undo_command_result`): internal, as
+  `InteractionCommandResult` is, and not in `AppResponse`: the original `InteractionUndoReceipt`,
+  `replayed`, and a `current_projection` that is `InteractionUndoOutcome`, `InteractionOutcome` (the
+  actor's later like or pass of the same target) or null.
+- **No other member's data:** the undo's DTOs carry no other member's value, count, reason or a
+  block's direction, and no match. Each is closed, and the corpus rejects each such field.
+- **The registry** (`flows-v1.json`): F08 gains `InteractionUndoIntent` as a request contract and
+  `InteractionUndoOutcome` as a response contract, projected to its `owner` only, and three new
+  transitions after its existing five: `undo` from `passed` to `withdrawn` (`owner`; `A05`; no
+  eligibility), and `like` and `pass` from `withdrawn` (`owner`; current eligibility), the actions
+  that may follow an undo. `tests/test_transition_contract.py`'s
+  `test_sv3_undo_is_the_actors_own_and_additive` gives each an allowed example and forbidden ones
+  (another member, a revoked session, staff and the system: `forbidden`; `A05` missing:
+  `policy_unresolved`; a stale version: `stale_version`; eligibility unknown or denied:
+  `forbidden`; an undo from `liked`, `withdrawn` or `none`: `state_conflict`), keeps a pass over a
+  like and a rematch (F09 and F10) as `state_conflict`, projects the new outcome to the owner only,
+  and pins F08's first five transitions, its first request and response contracts and
+  `InteractionOutcome`'s projection as they were, with F07, F09, F10 and F13 unchanged. `A05` is an
+  existing policy, so `test_sv2_registry_prerequisites_are_pinned` passes unchanged. No existing
+  entry changes; F08's two single-item contract lists gain a comma before their second item.
+- **The shared corpus** gains 73 cases (14 valid, 59 invalid): each new DTO's valid forms; for the
+  intent, extra fields (`batch_id`, `batch_version`, `action`, an account or other profile ID), a
+  wrong operation, a missing `meta` or target, an uppercase, development or newline-ended ID and
+  `expected_version`'s bounds; for the outcome, the states `passed` and `liked`, a `match_id`, an
+  actor or account ID, another member's state, a count, a reason, a block's direction and versions
+  0 and 9007199254740992; the receipt with `liked` or `passed`; the result with each allowed
+  projection and null, refusing a `MatchProjection` or `BlockOutcome` projection and a
+  `CommandReceipt`'s `liked` receipt; the existing `InteractionOutcome` with `withdrawn`,
+  `CommandReceipt` with `withdrawn`, `InteractionCommandResult` holding the undo's receipt or
+  outcome, and `InteractionIntent` with the action `undo`, each still invalid; and both union
+  additions, with the receipt and the internal result still refused by `AppResponse`, through
+  Python and the generated validators.
+- **Regeneration** rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`;
+  `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing.

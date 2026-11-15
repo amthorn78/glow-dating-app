@@ -98,3 +98,7 @@ export function validateOwnAgeState(value: unknown): boolean;
 export function validateCandidateDetails(value: unknown): boolean;
 export function validateCandidateCard(value: unknown): boolean;
 export function validateCandidateCardPage(value: unknown): boolean;
+export function validateInteractionUndoIntent(value: unknown): boolean;
+export function validateInteractionUndoOutcome(value: unknown): boolean;
+export function validateInteractionUndoReceipt(value: unknown): boolean;
+export function validateInteractionUndoCommandResult(value: unknown): boolean;

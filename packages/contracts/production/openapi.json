@@ -280,6 +280,18 @@
       },
       "CandidateCardPage": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/CandidateCardPage"
+      },
+      "InteractionUndoIntent": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionUndoIntent"
+      },
+      "InteractionUndoOutcome": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionUndoOutcome"
+      },
+      "InteractionUndoReceipt": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionUndoReceipt"
+      },
+      "InteractionUndoCommandResult": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/InteractionUndoCommandResult"
       }
     }
   },

@@ -17461,6 +17461,1088 @@
         "expires_at": "2026-11-11T20:00:00Z"
       },
       "valid": false
+    },
+    {
+      "name": "valid-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-zero-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 0
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-max-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 9007199254740991
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-negative-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": -1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-overflow-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 9007199254740992
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-fractional-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1.5
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-string-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": "1"
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-boolean-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": true
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-expected-version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test"
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-meta-extra-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1,
+          "actor_id": "10000000-0000-4000-8000-000000000001"
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-batch_id-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "batch_id": "30000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-batch_version-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "batch_version": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "private-action-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "action": "pass"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-account_id-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "account_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-other_profile_id-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "other_profile_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-operation-interaction-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-operation-undo-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-meta-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-target-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-uppercase-id-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "AAAAAAAA-2000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-development-identity-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "profile-jules"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-newline-id-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "InteractionUndoIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001\n"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn"
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-max-version-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 9007199254740991,
+        "state": "withdrawn"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-state-passed-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "passed"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-state-liked-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "liked"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-state-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-version-zero-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 0,
+        "state": "withdrawn"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-overflow-version-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 9007199254740992,
+        "state": "withdrawn"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-old-kind-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-uppercase-id-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "AAAAAAAA-2000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-match_id-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "match_id": "30000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-null-match_id-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "match_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "private-actor_id-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "actor_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-account_id-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "account_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-other_state-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "other_state": "liked"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-count-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "count": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "private-reason-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "reason": "undo_window_ended"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-blocked_by-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "InteractionUndoOutcome",
+      "value": {
+        "kind": "interaction_undo",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "state": "withdrawn",
+        "blocked_by": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-outcome-liked-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "liked",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-outcome-passed-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "passed",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-zero-version-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-overflow-version-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 9007199254740992
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-development-identity-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "profile-jules",
+        "committed_version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-object_ref-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "committed_version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "private-actor_id-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2,
+        "actor_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "private-state-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "InteractionUndoReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2,
+        "state": "withdrawn"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-replayed-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": true,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-later-like-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": true,
+        "current_projection": {
+          "kind": "interaction",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 3,
+          "state": "liked",
+          "match_id": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-later-pass-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": true,
+        "current_projection": {
+          "kind": "interaction",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 3,
+          "state": "passed",
+          "match_id": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-absent-projection-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": null
+      },
+      "valid": true
+    },
+    {
+      "name": "valid-absent-projection-replayed-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": true,
+        "current_projection": null
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-match-projection-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "match",
+          "match_id": "30000000-0000-4000-8000-000000000001",
+          "version": 1,
+          "other_profile_id": "20000000-0000-4000-8000-000000000001",
+          "state": "active"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-block-projection-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "block",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 1,
+          "state": "active"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-liked-receipt-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "liked",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-old-kind-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-missing-projection-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-truthy-replay-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": 1,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-withdrawn-projection-extra-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn",
+          "match_id": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "private-actor_id-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "InteractionUndoCommandResult",
+      "value": {
+        "kind": "interaction_undo_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        },
+        "actor_id": "10000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-withdrawn-state-InteractionOutcome",
+      "scope": "production",
+      "definition": "InteractionOutcome",
+      "value": {
+        "kind": "interaction",
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "version": 3,
+        "state": "withdrawn",
+        "match_id": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-withdrawn-outcome-CommandReceipt",
+      "scope": "production",
+      "definition": "CommandReceipt",
+      "value": {
+        "outcome_code": "withdrawn",
+        "object_ref": "30000000-0000-4000-8000-000000000001",
+        "committed_version": 2
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-undo-receipt-InteractionCommandResult",
+      "scope": "production",
+      "definition": "InteractionCommandResult",
+      "value": {
+        "kind": "interaction_command_result",
+        "receipt": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        },
+        "replayed": false,
+        "current_projection": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-undo-projection-InteractionCommandResult",
+      "scope": "production",
+      "definition": "InteractionCommandResult",
+      "value": {
+        "kind": "interaction_command_result",
+        "receipt": {
+          "outcome_code": "passed",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 1
+        },
+        "replayed": true,
+        "current_projection": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-undo-action-InteractionIntent",
+      "scope": "production",
+      "definition": "InteractionIntent",
+      "value": {
+        "operation": "interaction",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "batch_id": "30000000-0000-4000-8000-000000000001",
+        "batch_version": 1,
+        "action": "undo"
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppResponse-InteractionUndoOutcome",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-AppResponse-InteractionUndoOutcome-match_id",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "interaction_undo",
+          "target_profile_id": "20000000-0000-4000-8000-000000000001",
+          "version": 2,
+          "state": "withdrawn",
+          "match_id": "30000000-0000-4000-8000-000000000001"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-AppResponse-InteractionUndoReceipt",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "outcome_code": "withdrawn",
+          "object_ref": "30000000-0000-4000-8000-000000000001",
+          "committed_version": 2
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid-AppResponse-InteractionUndoCommandResult",
+      "scope": "production",
+      "definition": "AppResponse",
+      "value": {
+        "contract_version": "gapp-api-v1",
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "data": {
+          "kind": "interaction_undo_command_result",
+          "receipt": {
+            "outcome_code": "withdrawn",
+            "object_ref": "30000000-0000-4000-8000-000000000001",
+            "committed_version": 2
+          },
+          "replayed": false,
+          "current_projection": {
+            "kind": "interaction_undo",
+            "target_profile_id": "20000000-0000-4000-8000-000000000001",
+            "version": 2,
+            "state": "withdrawn"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "valid-AppIntent-InteractionUndoIntent",
+      "scope": "production",
+      "definition": "AppIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001"
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid-AppIntent-InteractionUndoIntent-batch_id",
+      "scope": "production",
+      "definition": "AppIntent",
+      "value": {
+        "operation": "interaction_undo",
+        "meta": {
+          "idempotency_key": "test",
+          "expected_version": 1
+        },
+        "target_profile_id": "20000000-0000-4000-8000-000000000001",
+        "batch_id": "30000000-0000-4000-8000-000000000001"
+      },
+      "valid": false
     }
   ]
 }

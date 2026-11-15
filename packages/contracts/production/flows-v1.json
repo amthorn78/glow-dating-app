@@ -983,10 +983,12 @@
       "domain_owner": "interactions",
       "data_owner": "App",
       "request_contracts": [
-        "InteractionIntent"
+        "InteractionIntent",
+        "InteractionUndoIntent"
       ],
       "response_contracts": [
-        "InteractionOutcome"
+        "InteractionOutcome",
+        "InteractionUndoOutcome"
       ],
       "private_projection": "Actor outcome; unreciprocated other action hidden",
       "public_projection": "None",
@@ -1042,11 +1044,43 @@
             "A05"
           ],
           "active_match": false
+        },
+        {
+          "event": "undo",
+          "from": "passed",
+          "to": "withdrawn",
+          "role": "owner",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "like",
+          "from": "withdrawn",
+          "to": "liked",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
+        },
+        {
+          "event": "pass",
+          "from": "withdrawn",
+          "to": "passed",
+          "role": "owner",
+          "eligible": true,
+          "policies": [],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
       "projection_roles": {
         "InteractionOutcome": [
+          "owner"
+        ],
+        "InteractionUndoOutcome": [
           "owner"
         ]
       }
