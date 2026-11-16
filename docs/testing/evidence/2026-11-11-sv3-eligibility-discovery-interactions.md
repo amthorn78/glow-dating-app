@@ -2353,3 +2353,35 @@ Zero. Its only path there is `services/api/tests/test_interactions_offline.py` (
 - **The first local discovery run's log file** was deleted when the second run's setup recreated its scratch directory; its result lines are quoted above, as read when it ended.
 - **Docker:** the daemon was not running; it was started for the D4 runs and stopped afterwards.
 - **Not run:** the ordering, identity and profile suites locally (the run of record runs them); the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command.
+
+## Manager verification of B-C3
+
+App Manager 11, 16 November 2026 (05:41 UTC).
+
+- **Codex on `b67d9e3`** (B-C3's prompt's commit; posted at 04:43 UTC; [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4582044541), `row_locks.py:480`): one P2, "Reject executable routine definitions before masking their bodies": a function created in `public`, called and dropped before the check runs escapes both the masked text and the own-objects count, even with temporary schemas counted. It is S1 again, answered by B-C3's item 3 creation rule. It went to the session as an addition to the prompt (its three statements planted); the prompt itself was not revised. Codex had not reviewed `6293913`.
+- **The session:** B-C3, from its prompt's revision 1 at `b67d9e3` (TypeSafe v8.2: Opus 5.5 at high; Nathan's pick not recorded), on branch `claude/zealous-dirac-6f5mq2`: docs `a384af5`, code head `edc883e`, records `a89a710` and `a31a79f`, each records commit pushed after the run of record ended. Relayed by Nathan on 16 November.
+- **Integration:** `a31a79f` descends from `b67d9e3`, which was still the manager branch's head; the manager branch was fast-forwarded to it. `a31a79f`'s non-Markdown tree equals `edc883e`'s.
+- **The diff** (`git diff b67d9e3 a31a79f`): 8 paths, each within B-C3's owned paths (the brief's revision 18, II16): `row_locks.py`, `interaction_cases.py`, `tests/test_row_locks_offline.py`, a new `tests/test_ledger_offline.py` (mode `100644`), `services/api/tests/test_interactions_offline.py` (`UndoSelectionTests` only), the proof README, the P11 plan and this record. No other mode change. `services/api` outside `tests/` is byte-identical to `4860b56`, so B-C3's non-test lines there are zero; the lock scan's source is unchanged.
+- **DM-77's texts:** each of the sixteen new texts (II1 to II16) is found exactly once at `a31a79f`, and each old passage that is not a prefix of its new text is gone (script).
+- **Local re-runs at `a31a79f`** (scratch worktree; hash-locked environments; `env -i`; no bytecode written): the proof's offline tests 359 OK, Ruff, `ruff format --check` and mypy clean; the lock scan 52 calls, 0 joining, 7 account locks, none other than `FOR NO KEY UPDATE`; the API's 628 tests OK, Ruff, format and mypy clean.
+- **Planted texts** through `row_locks.refusal` at `a31a79f`: S1's dollar-quoted body (with `FOR UPDATE` and with `FOR NO KEY UPDATE`), a `CREATE OR REPLACE PROCEDURE` with a `'…'` body and Codex's `CREATE FUNCTION public.d14_lock()` are refused as statements that create a function or a procedure; Codex's call and `DROP` pass; F5's two texts are refused as names bound more than once; a `JOIN … USING (id)` no-key lock passes; S2's text and a `$q%sx$` form are refused as glued placeholders; a no-key lock with `= %s`, an `UPDATE` with `%(t)s::timestamptz`, a `LIKE 'a%%s'` no-key lock, F1's `U&` no-key text, F2's `FOR SHARE OF` text and Django's own quoted account lock with `= %s LIMIT 21` pass.
+- **Reversals of the manager's own,** in a scratch copy: both of `_as_a_client`'s wrappers put back in their old order (the answer recorded first, no snapshot) fail 3 of the 4 tests in `tests/test_ledger_offline.py`; the creation rule's `return` disabled fails 8 of the 37 tests in `tests/test_row_locks_offline.py`. Both match the session's counts.
+- **The run of record,** Foundation run 43809849211 on `edc883e` (push), read with the GitHub tools: all eight jobs `success`; the gate printed `Application checks passed`. The Database proof checks job's D14 lines, each `ROW LOCKS (D14): PASS`, 0 refused, and the database's own functions, views and rules 0, 0, 0:
+  - ordering: 570,928 statements; 104,586 take a writer's row lock, 44,841 of them naming the account table, all `FOR NO KEY UPDATE`; cases 56/56, 115/115, delivery 13/13, read 62/62;
+  - identity: 4,412 statements; 141 writer locks, 127 on the account table, all `FOR NO KEY UPDATE`; 49/49;
+  - profile: 78,038 statements; 7,606 writer locks, 2,061 on the account table, all `FOR NO KEY UPDATE`; 69/69;
+  - discovery: 168,565 statements; 14,782 writer locks, 4,256 on the account table, all `FOR NO KEY UPDATE`; 66/66 in 157.7 s, the phase 159 s of the job's 30 minutes; `row_locks.driver_forms_are_seen` passed with 0, 0, 0 under the wider filter.
+
+  No line of the job reports a refused statement. The identity, profile and discovery secret scans, and the profile and discovery value scans, are clean. The account-lock counts equal B-C2's run of record's.
+- **The session's departures,** each in its record and accepted here for the review to judge:
+  - `_Ledger` itself gains `snapshot()`, and `check` an optional `served` argument, beyond "the ledger's two wrappers" in II16's words; item 7 ("against the versions served before the command was sent") needs them, and the two earlier ledger tests pass unchanged;
+  - `OWN_OBJECTS` excludes `pg_catalog`, `information_schema`, `pg_toast` and each `pg_toast_temp_N`, and extension-owned functions as before (views and rules have no extension test, as before);
+  - S4 is stated as it now stands: its `= %sFOR UPDATE` form is refused by item 6's rule, so "Limits" keeps SQL inside a parameter's value;
+  - the README's SV3 paragraph also names DM-77 among its conditions, rewords its own-objects sentence and gains a B-C3 sentence;
+  - one reversal first passed on a stale bytecode cache; every reversal was re-run with caches cleared, each failing;
+  - the first local discovery log was lost when the second run recreated its directory; its result lines are recorded.
+- **For the delta re-review and the Dev Manager:**
+  - the creation rule is read on tokens, and the fast path no longer skips a text that creates a function or a procedure; a body may also be written without a string constant (`BEGIN ATOMIC … END`, `RETURN …`); the manager checked that the rule refuses each, and also a lower-case statement with a comment inside `OR REPLACE`, and a `CREATE FUNCTION` after a `;`;
+  - item 6 reads "the word `UPDATE`" as a whole word in any case, and `%%` as a literal percent sign (the manager's reading, which the session applied);
+  - Codex's four threads that B-C3 answers (r4580718359, the ledger; r4581883081, S2; r4581883085, F3; r4582044541, S1 again) stay unresolved until the review confirms.
+- **Next:** B-C3's bounded delta re-review against `4860b56`, after PR47's run and Codex on the commit that holds its prompt.
