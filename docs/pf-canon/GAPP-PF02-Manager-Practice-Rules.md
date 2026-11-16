@@ -14,7 +14,7 @@
 
 ## 2. How to use it
 
-- A manager reads PF02 at its start, after the current handoff and before the mistakes log.
+- A manager reads PF02 at its start, after the current handoff and before the mistakes log. The pointers that route a manager here (from the next-manager start procedure, the manager workflow and the mistakes log) are added by the manager when it integrates PF02.
 - A prompt, a consultation, a record or a message may cite a rule by its ID, such as PF02-R01.
 - Each rule has a check: the command, field or read-back that shows it was followed.
 
@@ -34,7 +34,7 @@ Each rule gives:
 
 #### PF02-R01 — A time comes from the clock, read before the write
 
-- **Rule:** Every time written into a record, the handoff, a Notion page or a scorer request comes from a clock reading. In a shell command, take it from `date -u` through a variable inside the same command that writes it. In a tool call (a Notion or GitHub write), take it from a clock read in an earlier call whose output the write uses. Never type a time, write it from memory, or read the clock in a call sent in parallel with the write.
+- **Rule:** Every time written into a record, the handoff or a Notion page comes from a clock reading, and every scorer request is sent with the UTC time printed beside it, so that its send time is recorded from that reading. In a shell command, take it from `date -u` through a variable inside the same command that writes it. In a tool call (a Notion or GitHub write), take it from a clock read in an earlier call whose output the write uses. Never type a time, write it from memory, or read the clock in a call sent in parallel with the write.
 - **Check:** the clock's printed line comes before the write and equals the time written; the read-back shows the same time.
 - **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25.
 - **Changed:** AM9-04 had the records script take the time as an argument. AM10-17 and AM10-18 moved the clock into the writing command, with no typed time. AM11-25 extended the rule to tool writes and excluded a clock read sent alongside the write.
@@ -58,14 +58,14 @@ Each rule gives:
 
 #### PF02-R04 — Counts, lists and placeholders follow the change
 
-- **Rule:** When a change alters a count or a list (application jobs, cases, routes, a branch count), grep every record for the old figure and the list's other names, the manager's own governing sentences included (the CI policy, the P11 plan's entry, the handoff, Notion's standing lines), and correct each before the integration commit. When a run of record or a result lands, search each record that names the item for its placeholder ("none yet", "not claimed", "pending").
+- **Rule:** When a change alters a count or a list (application jobs, cases, routes), grep every record for the old figure and the list's other names, the manager's own governing sentences included (the CI policy, the P11 plan's entry, the handoff), and correct each before the integration commit. When a run of record or a result lands, search each record that names the item for its placeholder ("none yet", "not claimed", "pending").
 - **Check:** a grep for the old figure and for each placeholder returns no living document.
 - **Sources:** AM4-07, AM11-15, AM11-26.
 - **Home:** PF02.
 
 #### PF02-R05 — Every listed branch head moves with the batch
 
-- **Rule:** A batch that integrates or merges a branch, or moves a branch's head, lists the remote branches (`git ls-remote origin`) and updates every line that names a head, the handoff's branch list and Notion's Branches bullet, in the same commit as the merge's records. It checks every line of the list, not only the new branch's.
+- **Rule:** A batch that integrates or merges a branch, or moves a branch's head, lists the remote branches (`git ls-remote origin`) and updates every line of the handoff's branch list that names a head in the same commit as the merge's records, and Notion's Branches bullet in that batch's sync, before the batch is pushed. It checks every line of the list, not only the new branch's.
 - **Check:** each head the handoff and Notion name equals `git ls-remote`'s output at the batch's commit.
 - **Sources:** AM3-15, AM7-07, AM11-12, AM11-20.
 - **Home:** PF02.
@@ -155,21 +155,21 @@ Each rule gives:
 
 #### PF02-R17 — Read a Dev Manager report whole when disposing of it
 
-- **Rule:** When disposing of a Dev Manager report, read its approval text as well as its conditions, and carry into the brief every setting, rule or requirement either names; one not carried goes back to the Dev Manager in the disposition. Before accepting a session's reading of a Dev Manager's words, read every place the brief and the code use the term at issue, and put the counter-reading beside it.
+- **Rule:** When disposing of a Dev Manager report, read its approval text as well as its conditions, and carry into the brief every setting, rule or requirement either names; one not carried goes back to the Dev Manager in the disposition and, as an item accepted with changes, to Nathan with the Dev Manager's own text. Before accepting a session's reading of a Dev Manager's words, read every place the brief and the code use the term at issue, and put the counter-reading beside it.
 - **Check:** the disposition lists each named setting or requirement with where it is carried.
 - **Sources:** AM10-06, AM10-14.
-- **Home:** PF02.
+- **Home:** PF02, adding to the Dev Manager charter, "The relay", step 4.
 
 #### PF02-R18 — A disposition and its governing text agree, part by part
 
 - **Rule:** A disposition and the governing text that applies it say the same thing: a rule awaiting Nathan is not written as in force. When a decision has parts with different conditions, record each part's condition separately in every home.
 - **Check:** the review log's disposition and each governing text carry the same state for each part.
 - **Sources:** AM3-06, AM3-07.
-- **Home:** PF02. The Dev Manager's read of governing Markdown checks it (the charter, "Read before it takes effect").
+- **Home:** PF02. The manager checks it before the records commit. A governing change also goes to the Dev Manager's read (the charter, "Read before it takes effect"), which may catch a mismatch but is not defined as this check.
 
 #### PF02-R19 — Consult the Dev Manager before a fix that meets a step-6 trigger
 
-- **Rule (cited):** a review question that the fix-or-carry rule does not decide, and a fix that meets one of its triggers (a security boundary, a contract, a dependency, an interface) without applying a Dev Manager condition in its own words, go to the Dev Manager before Nathan hears of them. A finding that misses an item of the stage's own prompt is weighed as such.
+- **Rule (cited):** a fix goes to the Dev Manager before Nathan hears of it when the fix-or-carry rule does not decide, when the fix's design changes or departs from a Dev Manager condition, when it touches a security boundary, a contract, a dependency or an interface, or when a charter trigger applies. A fix that only makes code do what a condition says, in its words, and changes no design, interface, contract or dependency needs no consultation first, even on a security boundary. A defect that misses an item of the stage's own prompt is fixed before the merge.
 - **Check:** before a correction prompt, read the triggers one by one against the fix, and name in the brief the condition whose words it applies, if any.
 - **Sources:** AM7-12, AM10-04.
 - **Home:** the manager workflow, step 6, "Fix or carry, by rule" (DM-45, section 16), and "Nothing unexplained goes to Nathan" (OD-32).
@@ -199,8 +199,8 @@ Each rule gives:
 
 #### PF02-R23 — Owned paths cover everything the change writes
 
-- **Rule:** When a prompt or brief gives owned paths: for a new dependency, name the component's type-check and lint configuration and its README as well as the dependency files, or say they stay unchanged and why; for a generated or registered artifact, read the generator's output paths, the checks that compare them and the owned paths of the precedent named; for a removed function or value, scan for every caller and every place that sets it and name each file. On adding an owned path, re-read the exclusions.
-- **Check:** the owned paths list each file the scan or generator names, and no exclusion overlaps them.
+- **Rule:** When a prompt or brief gives owned paths: for a new dependency, name the component's type-check and lint configuration and its README as well as the dependency files, or say they stay unchanged and why; for a generated or registered artifact, read the generator's output paths, the checks that compare them and the owned paths of the precedent named; for a removed function or value, scan for every caller and every place that sets it and name each file in the owned paths and in the prompt's reading list. On adding an owned path, re-read the exclusions.
+- **Check:** the owned paths and the reading list name each file the scan or generator names, and no exclusion overlaps them.
 - **Sources:** AM3-08, AM6-03, AM10-12, AM11-09.
 - **Home:** PF02.
 
@@ -263,31 +263,31 @@ Each rule gives:
 
 #### PF02-R32 — Say which credentials a session holds
 
-- **Rule (cited):** a prompt or consultation says which credentials a session holds, not only which it needs: "none added", never "none present".
+- **Rule (cited):** a prompt or consultation says which credentials a session holds, not only which it needs; for a session started while the Stream variables were set, it says "none added", never "none present".
 - **Check:** the prompt's credential line.
 - **Sources:** AM3-17, AM3-19.
 - **Home:** the manager workflow, step 3, "Say which credentials a session holds, not only which it needs".
 
 #### PF02-R33 — Say when a session may push, and whether its branch starts a run
 
-- **Rule (cited):** a prompt whose session pushes code and then records tells it to push nothing more until the code run has finished; a prompt states the push filter rather than promising a run.
+- **Rule:** A prompt whose session pushes code and then records tells it to push nothing more until the code run has finished (cited). Every implementation prompt that names a run of record says so, or tells the session to push code and records together in one push. A prompt states the push filter rather than promising a run (cited).
 - **Check:** the prompt's push line and its run-of-record line.
 - **Sources:** AM5-14, AM7-02, AM8-20.
-- **Changed:** AM8-20 added the alternative of pushing code and records together in one push.
-- **Home:** the manager workflow, step 3, "Say when a session may push again", and step 5, "A session branch outside the push filter".
+- **Changed:** AM8-20 widened the rule to every implementation prompt that names a run of record and added the alternative of one push for code and records.
+- **Home:** PF02, adding to the manager workflow, step 3, "Say when a session may push again", and step 5, "A session branch outside the push filter".
 
 #### PF02-R34 — Name the code head
 
-- **Rule (cited):** a review prompt names the head that carries the code under review, and the text Nathan receives is the prompt at the commit named.
+- **Rule (cited):** a review prompt names the head that carries the code under review, not a later records commit, and the review report states the commit of the prompt text it received.
 - **Check:** the prompt's head line and the review report's stated prompt commit.
 - **Sources:** AM3-05.
-- **Home:** the manager workflow, step 6, "Name the code head", and step 5, "Batching records" (DM-01 P2).
+- **Home:** the manager workflow, step 6, "Name the code head" (DM-01 P2).
 
 ### 4.6 Runs, pushes and commands
 
 #### PF02-R35 — One records batch, one push
 
-- **Rule:** Push a records batch once, when a session needs it or at close-out (cited). A mistake entry found during a sync, or a stop hook's request, waits for the next batch: a second push before the first push's runs finish cancels them.
+- **Rule:** While a code PR is under review, push the manager's records only when a session needs them and at close-out (cited). A mistake entry found during a sync, or a stop hook's request, then waits for the next batch: a second push before the first push's runs finish cancels them.
 - **Check:** one push per batch; no cancelled run on the manager branch's records heads.
 - **Sources:** AM5-04, AM9-02.
 - **Home:** PF02, adding to the manager workflow, step 5, "Batching records" (DM-01 P2).
@@ -301,10 +301,10 @@ Each rule gives:
 
 #### PF02-R37 — Name a run by its event
 
-- **Rule (cited):** a run is named by the `event` field `get_workflow_run` returns, never by which jobs it skipped; the pre-merge checklist names the PR run on the exact head.
+- **Rule:** In every report and record, a run is named by the `event` field `get_workflow_run` returns, never by which jobs it skipped.
 - **Check:** the run's `event` field quoted with its ID.
 - **Sources:** AM8-10.
-- **Home:** the manager workflow, step 7, the pre-merge checklist (DM-30 4.3).
+- **Home:** PF02, adding to the manager workflow, step 7, the pre-merge checklist (DM-30 4.3), which names the PR run by its event on the exact head.
 
 #### PF02-R38 — Run the classifier as written, with full SHAs
 
@@ -333,9 +333,10 @@ Each rule gives:
 
 #### PF02-R41 — Do not hold a consultation for a Codex pass on its own commit
 
-- **Rule:** A consultation goes to Nathan as soon as its commit is pushed. A later Codex finding on the same code goes to the Dev Manager as an addition, without holding the message. PF02-R40's wait applies to the next prompt or consultation after a push, not to the consultation's own commit.
-- **Check:** the consultation's relay message follows its push without a Codex wait.
+- **Rule:** A consultation goes to Nathan as soon as its commit is pushed and PF02-R40's comment listing is read; Codex's pass on the consultation's own commit is not awaited. A later Codex finding on the same code goes to the Dev Manager as an addition, without holding the message.
+- **Check:** the relay message follows the push and the comment listing, without a wait on the consultation's own commit.
 - **Sources:** AM11-10.
+- **Changed:** AM11-28 applied the wait to consultations too; AM11-10's exemption stands for the consultation's own commit only (the M08 record, conflict C2).
 - **Home:** PF02. The manager workflow's wait for Codex (step 6) covers review and correction prompts only.
 
 #### PF02-R42 — End a wait only with a watch set
@@ -364,10 +365,10 @@ Each rule gives:
 
 #### PF02-R45 — Never ask Nathan to perform a GitHub operation
 
-- **Rule (cited):** the manager never asks Nathan to perform a GitHub operation, a re-run included; a CI failure that seems to call for one goes to the Dev Manager first, with options that need no action from him.
+- **Rule (cited):** the manager never asks Nathan to perform a GitHub operation, a re-run included; a CI failure that seems to call for one, or any question about how to verify a head, goes to the Dev Manager first, with options that need no action from him; a written procedure that says otherwise is reported to the Dev Manager as a conflict, not followed.
 - **Check:** no message or PR comment asks him for one.
 - **Sources:** AM9-10.
-- **Home:** the manager workflow, "Branches and pushes", "Actions re-runs" (OD-58).
+- **Home:** the manager workflow, "Branches and pushes", "Actions re-runs"; OD-58; the next-manager start procedure, "Reporting to Nathan".
 
 #### PF02-R46 — Plain words stay true to the record, and each option gets all its lines
 
@@ -402,14 +403,14 @@ Each rule gives:
 - **Rule:** An owner direction about the shape of a record or a scale is applied as given; a documentation fact that seems to contradict it is stated once, in one sentence, and does not change the design. A direction that it is time to create a new manager session is OD-31's case: the outgoing manager creates the successor. When the words leave unclear who acts, ask in one line before recording either path.
 - **Check:** the record of the direction matches its words; any question asked is one line.
 - **Sources:** AM4-04, AM7-14.
-- **Changed:** AM4-04's other preventions (a live reachability test before adopting a scorer request; the manager's strength judgement kept from Nathan) are now carried by the scoring skill and the manager workflow, step 3 (OD-34, OD-42).
-- **Home:** PF02; OD-31 for the successor case.
+- **Changed:** AM4-04's scorer-request prevention (a live reachability test before a request is adopted) is retired: the scoring skill carries the request and its rule (OD-34, OD-42). Its judgement prevention is stated by the manager workflow, step 3: a call the manager records for comparison goes into the uses table before the run and is not put to Nathan (OD-34).
+- **Home:** PF02; OD-31 for the successor case; the manager workflow, step 3, for the manager's own judgement (OD-34).
 
 ### 4.9 Records, claims and verification
 
 #### PF02-R51 — Run the claims checklist
 
-- **Rule (cited):** *every*, *no* or *never* only after tracing each path; a source's qualifiers in its own words; every count in a message checked against its source; what clears a stuck state named.
+- **Rule (cited):** *every*, *no* or *never* only after tracing each path; a source's qualifiers in its own words; every count in a message to Nathan checked against its source; what clears a stuck state named.
 - **Check:** as the checklist states.
 - **Sources:** AM5-08, AM7-06, AM7-08, AM7-10, AM8-03, AM8-04, AM8-06, AM8-08, AM11-16.
 - **Home:** the manager workflow, "Claims: a checklist" (DM-01 P8).
@@ -423,8 +424,8 @@ Each rule gives:
 
 #### PF02-R53 — Take every figure from command output over the whole source
 
-- **Rule:** Every count, diffstat, range or maximum in a record or in text sent to the scorer comes from a command's output over the whole source, quoted as counted: `git diff --numstat` or `--shortstat` pasted; `git diff --name-status … | cut -c1 | sort | uniq -c` for paths; added and removed lines from the diff's `+` and `-` lines. Never take one from a truncated listing (check the line count against the expected total) or from a reading of the file. A verification compares each of its own outputs with the figure the report gives for the same check, and says which job or step a line belongs to only after reading it there.
-- **Check:** the command and its output stand beside the figure in the record.
+- **Rule:** Every count, diffstat, range or maximum in a record or in text sent to the scorer is derived from the whole source, never from a truncated listing (check the line count against the expected total). A diffstat or path count is pasted from command output (`git diff --numstat` or `--shortstat`; `git diff --name-status … | cut -c1 | sort | uniq -c`), and added or removed lines are counted from the diff's `+` and `-` lines, not from a reading of the file. A verification compares each of its own outputs with the figure the report gives for the same check, and says which job or step a line belongs to only after reading it there.
+- **Check:** each figure traces to its whole source; diffstats and path counts are pasted command output.
 - **Sources:** AM4-06, AM5-12, AM6-02, AM8-09, AM8-21, AM10-03, AM11-06.
 - **Home:** PF02, adding to the manager workflow, "Claims: a checklist" ("Check every count").
 
@@ -433,7 +434,7 @@ Each rule gives:
 - **Rule:** Give an implementer's claim (a live result, a completeness claim, a statement about build output) as the session's until a review or the manager's own check confirms it, and name the view or check behind a live result cited as a decision's basis. A verification that meets "any", "every" or "all" tries at least two forms the session did not list, records each with its result, and still attributes the claim. A residual said to be reachable "only through" one route is tested against every input that reaches the check. No test over source proves "through any binding", so the manager never makes such a claim in its own words, and a brief asks for named forms and a stated guarantee with its limits.
 - **Check:** the record attributes the claim and lists the manager's own forms with their results.
 - **Sources:** AM3-13, AM5-06, AM8-21, AM9-03.
-- **Home:** PF02, adding to the manager workflow, "Claims: a checklist" (DM-38 4.1, 4.2).
+- **Home:** PF02, adding to the manager workflow, "Claims: a checklist" (DM-01 P8). The addition is AM9-03's, as DM-38 4.1 and 4.2 strengthen it.
 
 #### PF02-R55 — Follow a stray read to every result
 
@@ -495,9 +496,10 @@ Each rule gives:
 
 #### PF02-R63 — Write next actions from the plan
 
-- **Rule:** Before writing next actions, re-read PF01's sequence, the owner directions in force and the previous handoff's next actions, and quote the governing line in the handoff. Propose; do not dispatch what Nathan has not resumed.
+- **Rule:** Before writing next actions, re-read PF01's sequence, the owner directions in force and the previous handoff's next actions, and quote the governing line in the handoff.
 - **Check:** the handoff's next actions quote their governing line.
 - **Sources:** AM2-08.
+- **Changed:** AM2-08 named the initiation assignment, which M02 completed (the next-manager start procedure, step 3); the owner directions in force take its place (OD-49).
 - **Home:** PF02.
 
 #### PF02-R64 — Build the start procedure from the canon, and read it as the successor will
@@ -544,11 +546,11 @@ These preventions no longer apply. Nothing is deleted from the log; each stays t
 
 | Entries | Prevention | Why retired | Superseding source |
 |---|---|---|---|
-| AM3-02 | Before recording a level, re-read what the manager promised; record a conditional level commitment in the brief's "Reasoning levels" | The manager no longer records a level of its own, makes no conditional commitment, and puts no reading in a brief | The manager workflow, step 3 (DM-01 P8; OD-34, OD-53 D1) |
+| AM3-02 | Before recording a level, re-read what the manager promised; record a conditional level commitment in the brief's "Reasoning levels" | The manager makes no conditional commitment and puts no reading in a brief; a call it records for comparison goes only into the uses table before the run and is never put to Nathan, so there is no level promise to re-read | The manager workflow, step 3 (DM-01 P8; OD-34, OD-53 D1) |
 | AM3-18 | When verifying a fix-reversal run, check each reversal's failure reason, not only the summary, "until the script itself rejects an edit that does not compile" | Its own end condition is met: the script now reports an edit that does not compile or import | P06.1-C3; `proofs/stream-chat/checks/fix_reversals.py` and its test `test_an_edit_that_does_not_compile_or_import_is_reported` |
 | AM4-03 | A scoring request carries researched facts; any change is a new version with a rule saved before its first run; a model claim is written as judgement unless sourced | The manager no longer writes the request: the scoring skill carries the request and its rule, and the manager writes only the description, to the skill's template | OD-34, OD-42; the manager workflow, step 3, "Write the description to the skill's template" |
 
-**Parts retired from entries that keep a rule.** These are stated in the rule's "Changed" line: AM2-06's "both reviews" (OD-41; PF02-R39); AM4-02's model-and-level choice (OD-34, OD-53 D1; PF02-R43); AM4-04's scorer-request and judgement preventions (OD-34, OD-42; PF02-R50); AM5-02's pick column (OD-53 D1; PF02-R08); AM8-14's allowance for Nathan's pick (OD-53 D1; PF02-R67).
+**Parts retired from entries that keep a rule.** These are stated in the rule's "Changed" line: AM2-06's "both reviews" (OD-41; PF02-R39); AM4-02's model-and-level choice (OD-34, OD-53 D1; PF02-R43); AM4-04's scorer-request prevention (OD-34, OD-42; PF02-R50); AM2-08's initiation assignment, completed by M02 (PF02-R63); AM5-02's pick column (OD-53 D1; PF02-R08); AM8-14's allowance for Nathan's pick (OD-53 D1; PF02-R67).
 
 The log holds no entry about Google Drive or the historical App Builder or App Planner roles, so none is retired for them.
 
@@ -563,7 +565,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 | A Notion status left stale in a property, body or row the update did not touch | 6 | AM3-23, AM5-02, AM5-03, AM5-07, AM5-09, AM8-07 | R08 to R10 |
 | A Notion read-back that checked only the edited strings, leaving standing lines stale | 13 | AM3-09, AM8-11, AM8-13, AM8-22, AM9-01, AM9-07, AM10-05, AM10-08, AM10-20, AM10-21, AM10-22, AM11-02, AM11-08 | R11, R12 |
 | An edit that replaced a list or an opening but left the sentence after it | 4 | AM10-07, AM11-02, AM11-08, AM11-19 | R06, R11, R16 |
-| A later push that cancelled a run of record | 5 | AM5-04, AM5-14, AM8-20, AM9-02, AM10-01 | R33, R35 |
+| A later push that cancelled an earlier push's runs, a run of record among them | 6 | AM5-04, AM5-14, AM8-20, AM9-02, AM10-01, AM11-04 | R33, R35; R21 and R07 for the errors that forced a correcting push |
 | A session's or a source's claim repeated without checking | 10 | AM3-13, AM3-16, AM3-18, AM5-06, AM5-12, AM7-01, AM7-08, AM8-21, AM9-03, AM10-14 | R17, R28, R29, R53, R54 |
 | A count or figure not derived from its source | 8 | AM4-06, AM5-08, AM6-02, AM8-09, AM8-21, AM10-03, AM11-06, AM11-16 | R51 to R53 |
 | A summary that said more than, or other than, its source | 9 | AM3-21, AM7-05, AM7-06, AM7-10, AM8-03, AM8-04, AM8-06, AM8-08, AM9-05 | R13, R46, R51, R52 |
@@ -574,7 +576,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 | A question or choice put to Nathan that was not his, or not explained | 6 | AM4-01, AM4-02, AM5-23, AM7-12, AM9-10, AM11-18 | R19, R43, R45, R47 |
 | The handoff over its 5 KB limit | 3 | AM8-12, AM11-04, AM11-27 | R07 |
 | The classifier given a symbolic or short SHA | 3 | AM3-03, AM3-14, AM5-01 | R38 |
-| A logged prevention not run at its next use | 6 | AM8-13, AM8-22, AM10-18, AM11-07, AM11-27, AM11-29 | "Maintenance" below |
+| A logged prevention not run at its next use | 8 | AM8-13, AM8-22, AM10-17, AM10-18, AM11-03, AM11-07, AM11-27, AM11-29 | Each rule's check (section 2): R01, R07, R11, R40 |
 
 ## 7. Events with no standing rule
 
