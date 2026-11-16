@@ -24,30 +24,40 @@ every statement the process sends while the suite runs:
   Django's own use of the driver's connection (creating cursors, the health check's
   ``SELECT 1``, configuring a new connection) is recorded and judged like any other statement.
 
-**How it reads a statement** (``_read``; the exact-head review of Stage B, #4; DM-75): as
-PostgreSQL reads it. Every comment (``--`` to the line's end, and ``/* … */``, nested block comments
-included) and every string constant (``'…'`` with ``''``, ``E'…'`` with backslash escapes,
-``U&'…'``, and dollar-quoted strings, the tag empty or an identifier) is masked before it judges; a
-quoted identifier (``"…"`` with ``""``) is kept as a name, so Django's
-``"glow_persistence_appaccount"`` is still the account table. A statement with an unterminated span
-(a string constant, a quoted identifier or a block comment) fails, and so does a ``DO`` statement,
-whose dollar-quoted body runs as code; a statement holding a ``U&`` quoted identifier, whose escapes
-can spell any name, fails if it takes ``FOR UPDATE``. Only PostgreSQL's whitespace separates
-tokens (a space, a tab, a line end, a form feed, a vertical tab; any other character, and a dollar
-sign after it, continues an identifier); a string constant continued across a line end keeps its
-kind (an ``E'…'`` constant's continuation still takes backslash escapes); and a name is cut to 63
-bytes, as PostgreSQL cuts it. Unquoted words are read without regard to case, and the account
-table's name in any case counts as the account table. A statement with no
-single quote, comment, dollar sign or ampersand, every quoted identifier ended, no ``DO`` and no
-writer's lock in its text passes without being read further (``judge``'s first test).
+**How it reads a statement** (``_read``; the exact-head review of Stage B, #4; DM-75; B-C2's
+delta re-review, F4; DM-77): as PostgreSQL reads the text the record receives, before psycopg writes
+its parameters into it, with ``standard_conforming_strings`` on. Every comment (``--`` to the
+line's end, and ``/* … */``, nested block comments included) and every string constant (``'…'``
+with ``''``, ``E'…'`` with backslash escapes, ``U&'…'``, and dollar-quoted strings, the tag empty
+or an identifier) is masked before it judges; a quoted identifier (``"…"`` with ``""``) is kept as
+a name, so Django's ``"glow_persistence_appaccount"`` is still the account table. An unterminated
+span (a string constant, a quoted identifier or a block comment), a ``DO`` statement and a
+statement that creates a function or a procedure (``CREATE [OR REPLACE] FUNCTION`` or
+``PROCEDURE``, the words read as PostgreSQL reads them; the last two run a string as code) fail
+whatever their lock; a statement holding a ``U&`` quoted identifier, whose escapes can spell any
+name, fails if it takes ``FOR UPDATE``; and a statement whose text holds the word ``UPDATE``
+anywhere (spans and comments included) and a placeholder (``%s``, ``%b``, ``%t``, or a named one
+such as ``%(name)s``; ``%%`` is a literal percent sign) whose neighbour on either side is a name
+character (a letter, digit, underscore, dollar sign or non-ASCII character) fails, whatever the
+reading finds in it, since the value psycopg writes there can complete a dollar-quote tag (B-C2's
+delta re-review, S1 and S2; DM-77). Only PostgreSQL's whitespace separates tokens: a space, a tab,
+a line end, a form feed or a vertical tab. Every non-ASCII character, a non-ASCII space
+included, is an identifier character, and a dollar sign after an identifier character continues
+the identifier rather than opening a dollar quote. A string constant continued across a line end
+keeps its kind (an ``E'…'`` constant's continuation still takes backslash escapes), and a name is
+cut to 63 bytes, as PostgreSQL cuts it. Unquoted words are read without regard to case, and the
+account table's name in any case counts as the account table. After the placeholder test, a
+statement with no single quote, comment, dollar sign or ampersand, every quoted identifier ended,
+no ``DO``, no ``CREATE`` with ``FUNCTION`` or ``PROCEDURE``, and no writer's lock in its text passes
+without being read further (``judge``'s fast path).
 
 **The rule** (``refusal``): a statement fails if it takes a writer's row lock ``FOR UPDATE``, not
 ``FOR NO KEY UPDATE``, and names ``glow_persistence_appaccount``, unless each of its ``FOR UPDATE``
 clauses is ``FOR UPDATE OF`` a list of names none of which is that table or an alias the statement
-gives it. A lock clause it cannot read that way fails too: ``FOR UPDATE`` with no ``OF``; an ``OF``
-name that is not a table the statement names after ``FROM`` or ``JOIN``, or that table's alias
-(a sub-query's alias, a ``WITH`` query's name, a schema-qualified name), or a table that is not one
-of the models' tables (a view); or text after the clause that is not another lock clause.
+gives it. A lock clause it cannot read that way fails too: ``FOR UPDATE`` with no ``OF`` list it
+can read; an ``OF`` name the resolution below does not bind once to a plain ``FROM`` or ``JOIN``
+item, or binds to a table that is not one of the models' tables (a view); or text after the clause
+that is not another lock clause.
 
 **How it resolves ``FOR UPDATE OF``** (``_resolve``; the exact-head review of Stage B, #5; DM-75):
 an ``OF`` name counts only where the statement binds it once, in any scope, as a table named in a
@@ -60,12 +70,16 @@ list. Any other form fails: a name bound twice; a comma item (every item of a
 ``FROM`` list that holds a comma); a schema-qualified name; ``ONLY``; ``*``; a sub-query's or a
 function's alias; or the account table inside a sub-query. The other binding forms it reads (a
 ``WITH`` query's name, an ``UPDATE``, ``INTO`` or ``DELETE FROM`` target, a column alias list,
-``TABLESAMPLE``) count as bindings too, and none of them is plain.
+``TABLESAMPLE``, an item inside a parenthesised join, and an item of a ``DELETE`` or ``MERGE``
+statement's ``USING`` list; B-C2's delta re-review, F5; DM-77) count as bindings too, and none of
+them is plain. A join's ``USING (…)`` is a column list and binds nothing.
 
 **The database's own objects:** a lock taken inside a database function, a view or a rule is not in
-any statement's text, so the check also counts the functions, procedures, views and rules the
-migrated database defines outside the system schemas and extensions; the suite fails unless each is
-zero (no migration defines one).
+any statement's text, so a statement that creates a function or a procedure fails whatever its
+lock (its body, a string constant, runs as code; DM-77), and the check counts the functions,
+procedures, views and rules that exist when it runs outside ``pg_catalog``,
+``information_schema``, the TOAST schemas and extensions, temporary schemas included; the suite
+fails unless each is zero (no migration defines one).
 
 The check runs before the suite's verdict. It prints counts, and each failing statement's text with
 its reason, never a parameter: Django sends parameters apart from the text, and a ``callproc``
@@ -81,11 +95,14 @@ sends through the driver while Django's ``execute`` runs on that thread (the dri
 that thread until ``execute`` returns), and it judges a statement such a wrapper rewrites on the
 text before the rewrite (no case's wrapper sends or rewrites one today); a statement sent below
 psycopg's cursors (libpq's own connection object, ``connection.connection.pgconn.exec_(...)``), or
-through an asynchronous cursor; and a statement a case never runs.
+through an asynchronous cursor; a statement read with ``standard_conforming_strings`` off (S3);
+a placeholder against its lock clause, or SQL inside a parameter's value (S4); and a statement a
+case never runs.
 
 **Its counts** of connections and threads are of distinct identities, which a closed connection's
 or an ended thread's successor may reuse, and it counts a connection's Django wrapper and its
-psycopg connection as two, so its connections are about twice its threads.
+psycopg connection as two. Neither count bounds the other: a thread that opens connections in turn
+adds an identity for each (DM-77).
 """
 
 from __future__ import annotations
@@ -139,13 +156,28 @@ _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrst
 # ``DO`` and no writer's lock in its text cannot fail the rule and takes no writer's lock.
 _SPAN_MARKS = ("'", "$", "--", "/*", "&")
 _MAYBE_DO = re.compile(r"(?:\A|;)\s*DO\b", re.I)
+_MAYBE_CREATE = re.compile(r"\bCREATE\b", re.I)
+_MAYBE_ROUTINE = re.compile(r"\b(?:FUNCTION|PROCEDURE)\b", re.I)
 _TEXT_WRITER = re.compile(r"\bFOR\s+(?:NO\s+KEY\s+)?UPDATE\b", re.I)
 _TEXT_FOR_UPDATE = re.compile(r"\bFOR\s+UPDATE\b", re.I)
 _TEXT_ACCOUNT = re.compile(r"glow_persistence_appaccount", re.I)
+# Correction B-C3's item 6 (B-C2's delta re-review, S2; DM-77): psycopg writes each parameter's
+# value into the text before sending it, so a placeholder glued to a name character or a dollar
+# sign can complete a dollar-quote tag (``$q%s$`` with ``1`` is ``$q1$``). ``%%`` is a literal
+# percent sign, not a placeholder; the word ``UPDATE`` is matched as the other words are (whole
+# word, any case), anywhere in the text, spans and comments included.
+_TEXT_UPDATE = re.compile(r"\bUPDATE\b", re.I)
+_PLACEHOLDER = re.compile(r"%%|%(?:\([^()]*\))?[sbt]")
+_NAME_CHARACTER = re.compile(r"[A-Za-z0-9_$\x80-\U0010ffff]")
 
 UNTERMINATED = "an unterminated string constant, quoted identifier or block comment"
 DO_STATEMENT = "a DO statement, whose body runs as code"
+CREATES_ROUTINE = "a statement that creates a function or a procedure, whose body runs as code"
 U_AND_NAME = "a U& quoted identifier, whose escapes can spell any name, with FOR UPDATE"
+GLUED_PLACEHOLDER = (
+    "a placeholder glued to a name character or a dollar sign, in a statement whose text holds"
+    " UPDATE"
+)
 _SUB_QUERY_STARTS = frozenset({"select", "with", "values", "table"})
 _STRENGTHS = (("update",), ("no", "key", "update"), ("share",), ("key", "share"))
 # Words that end a FROM list at its own depth.
@@ -277,23 +309,30 @@ _KEYWORDS = frozenset(
     }
 )
 
+# The functions and procedures, views and materialized views, and rules that exist when the check
+# runs, outside ``pg_catalog``, ``information_schema``, the TOAST schemas (``pg_toast`` and each
+# ``pg_toast_temp_N``) and extensions: a temporary schema's (``pg_temp_N``) count (correction
+# B-C3's item 3; B-C2's delta re-review, F3; DM-77).
 OWN_OBJECTS = """
 SELECT
   (SELECT count(*) FROM pg_catalog.pg_proc p
      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname <> 'information_schema' AND n.nspname NOT LIKE 'pg\\_%'
+    WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+      AND n.nspname NOT LIKE 'pg\\_toast\\_temp\\_%'
       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend d
                        WHERE d.classid = 'pg_catalog.pg_proc'::regclass
                          AND d.objid = p.oid AND d.deptype = 'e')),
   (SELECT count(*) FROM pg_catalog.pg_class c
      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('v', 'm')
-      AND n.nspname <> 'information_schema' AND n.nspname NOT LIKE 'pg\\_%'),
+      AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+      AND n.nspname NOT LIKE 'pg\\_toast\\_temp\\_%'),
   (SELECT count(*) FROM pg_catalog.pg_rewrite r
      JOIN pg_catalog.pg_class c ON c.oid = r.ev_class
      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE r.rulename <> '_RETURN'
-      AND n.nspname <> 'information_schema' AND n.nspname NOT LIKE 'pg\\_%')
+      AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+      AND n.nspname NOT LIKE 'pg\\_toast\\_temp\\_%')
 """
 
 
@@ -450,16 +489,60 @@ class Verdict:
     for_update: bool
 
 
+def _glued_placeholder(sql: str) -> bool:
+    """Whether ``sql`` holds the word ``UPDATE`` anywhere and a placeholder (``%s``, ``%b``,
+    ``%t`` or a named one such as ``%(name)s``) whose neighbour on either side is a name character
+    (a letter, digit, underscore, dollar sign or non-ASCII character)."""
+    if "%" not in sql or _TEXT_UPDATE.search(sql) is None:
+        return False
+    for match in _PLACEHOLDER.finditer(sql):
+        if match.group() == "%%":
+            continue
+        start, end = match.span()
+        if (start > 0 and _NAME_CHARACTER.match(sql, start - 1)) or (
+            end < len(sql) and _NAME_CHARACTER.match(sql, end)
+        ):
+            return True
+    return False
+
+
+def _creates_routine(tokens: list[_Token]) -> bool:
+    """Whether the statement, as PostgreSQL reads it, creates a function or a procedure
+    (``CREATE [OR REPLACE] FUNCTION`` or ``PROCEDURE``)."""
+    for i, token in enumerate(tokens):
+        if not _word(token, "create"):
+            continue
+        k = i + 1
+        if k + 1 < len(tokens) and _word(tokens[k], "or") and _word(tokens[k + 1], "replace"):
+            k += 2
+        if k < len(tokens) and _word(tokens[k], "function", "procedure"):
+            return True
+    return False
+
+
 def judge(sql: str, tables: frozenset[str] = frozenset()) -> Verdict:
-    """D14's judgement of ``sql`` as PostgreSQL reads it. ``tables`` is the models' tables; when it
-    is given, an ``OF`` name must resolve to one of them."""
+    """D14's judgement of ``sql`` as PostgreSQL reads the text the record receives, before psycopg
+    writes its parameters into it, with ``standard_conforming_strings`` on. ``tables`` is the
+    models' tables; when it is given, an ``OF`` name must resolve to one of them."""
+    if _glued_placeholder(sql):
+        return Verdict(
+            GLUED_PLACEHOLDER,
+            _TEXT_WRITER.search(sql) is not None,
+            _TEXT_ACCOUNT.search(sql) is not None,
+            _TEXT_FOR_UPDATE.search(sql) is not None,
+        )
     if not any(mark in sql for mark in _SPAN_MARKS) and sql.count('"') % 2 == 0:
         lowered = sql.lower()
         no_writer = "update" not in lowered or _TEXT_WRITER.search(sql) is None
         no_do = (";" not in sql and not lowered.lstrip().startswith("do")) or (
             _MAYBE_DO.search(sql) is None
         )
-        if no_writer and no_do:
+        no_create = (
+            "create" not in lowered
+            or _MAYBE_CREATE.search(sql) is None
+            or _MAYBE_ROUTINE.search(sql) is None
+        )
+        if no_writer and no_do and no_create:
             return Verdict(None, False, False, False)
     tokens = _read(sql)
     if isinstance(tokens, str):
@@ -476,6 +559,8 @@ def judge(sql: str, tables: frozenset[str] = frozenset()) -> Verdict:
     starts = [0] + [i + 1 for i, token in enumerate(tokens) if token == _SEMI]
     if any(i < len(tokens) and _word(tokens[i], "do") for i in starts):
         return Verdict(DO_STATEMENT, writer, account, for_update)
+    if _creates_routine(tokens):
+        return Verdict(CREATES_ROUTINE, writer, account, for_update)
     if not for_update:
         return Verdict(None, writer, account, for_update)
     if any(token.kind == "uname" for token in tokens):
@@ -538,10 +623,32 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
     items: list[_Item] = []
     bound: dict[str, set[int]] = {}
     consumed: set[int] = set()  # alias tokens a relation read, which the scan steps over
+    # Correction B-C3's item 5 (B-C2's delta re-review, F5; DM-77): the depths inside a
+    # parenthesised join, where every item is read as a binding, none of them plain, and the
+    # tokens where such a join's first item starts.
+    joined: set[int] = set()
+    item_starts: set[int] = set()
+    # Each depth's open FROM list (the position of the word that opened it), or ``None``.
+    open_list: dict[int, int | None] = {}
+    # The lists none of whose items is plain: a DELETE or MERGE statement's USING list.
+    not_plain_lists: set[int] = set()
 
     def bind(name: str | None, item: int) -> None:
         if name is not None:
             bound.setdefault(name, set()).add(item)
+
+    # The parentheses that directly hold a SELECT, VALUES, TABLE or WITH: sub-queries.
+    queries = {
+        opened
+        for k, opened in enumerate(enclosing)
+        if opened is not None and _word(tokens[k], *_SUB_QUERY_STARTS)
+    }
+
+    def joins_in(opened: int) -> bool:
+        """Whether the parenthesis at ``opened``, where a FROM item stands, holds a joined table
+        rather than a sub-query: no ``SELECT``, ``VALUES``, ``TABLE`` or ``WITH`` at its own
+        depth, and more than one token inside it (``ONLY (name)`` is read apart)."""
+        return partner[opened] != opened + 2 and opened not in queries
 
     def relation(at: int, clause: int | None, plain: bool, aliases: str = "any") -> int:
         """Reads the item at ``at``; returns where the scan goes on (inside a parenthesis it
@@ -552,6 +659,7 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
         resume: int | None = None
         table: str | None = None
         position: int | None = None
+        opened_join: int | None = None
         while at < size and _word(tokens[at], "lateral", "only"):
             plain, at = False, at + 1
         if at < size and tokens[at] == _OPEN:
@@ -559,6 +667,8 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
             if partner[at] == at + 2 and tokens[at + 1].kind in ("word", "name"):
                 position = at + 1  # ``ONLY (name)``
                 table = tokens[position].text
+            elif joins_in(at):
+                opened_join = at
         elif at < size and (
             tokens[at].kind == "name"
             or (tokens[at].kind == "word" and tokens[at].text not in _KEYWORDS)
@@ -601,16 +711,44 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
         items.append(_Item(plain, table, position, clause))
         # As PostgreSQL reads it, an alias hides its table's name: the item binds one name.
         bind(alias if alias is not None else table, len(items) - 1)
+        if opened_join is not None:
+            # A parenthesised join: its items are read as a FROM list's, none of them plain.
+            inner = depth[opened_join] + 1
+            open_list[inner] = clause if clause is not None else opened_join
+            joined.add(inner)
+            item_starts.add(opened_join + 1)
+            return opened_join + 1
         return resume if resume is not None else k
 
     # Every FROM list's items, its JOIN and comma items included, and each other binding form.
-    open_list: dict[int, int | None] = {}
     commas: set[int] = set()
+    # At each depth, where the last DELETE or MERGE and the last JOIN stand: a USING after a JOIN
+    # is the join's column list, which binds nothing; one after a DELETE or MERGE opens a list.
+    last_dml: dict[int, int] = {}
+    last_join: dict[int, int] = {}
     i = 0
     while i < size:
         token, level = tokens[i], depth[i]
+        if i in item_starts:
+            item_starts.discard(i)
+            i = relation(i, open_list.get(level), False)
+            continue
         if i in consumed:
             i += 1
+            continue
+        if _word(token, "delete", "merge"):
+            last_dml[level] = i
+        elif _word(token, "join"):
+            last_join[level] = i
+        elif token == _SEMI:
+            last_dml.clear()
+            last_join.clear()
+        if _word(token, "using") and last_dml.get(level, -1) > last_join.get(level, -1):
+            # A DELETE or MERGE statement's USING list: every item a binding, none plain.
+            open_list[level] = i
+            not_plain_lists.add(i)
+            last_dml.pop(level)
+            i = relation(i + 1, i, False)
             continue
         opener = enclosing[i]
         if _word(token, "from") and (
@@ -632,7 +770,7 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
             i = relation(i + 1, i, not (i > 0 and _word(tokens[i - 1], "delete")))
             continue
         if _word(token, "join") and open_list.get(level) is not None:
-            i = relation(i + 1, open_list[level], True)
+            i = relation(i + 1, open_list[level], level not in joined)
             continue
         if token == _COMMA and open_list.get(level) is not None:
             commas.add(open_list[level] or 0)
@@ -648,11 +786,12 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
             continue
         if token == _CLOSE:
             open_list[level + 1] = None
+            joined.discard(level + 1)
         elif token.kind == "word" and token.text in _ENDS_FROM:
             open_list[level] = None
         i += 1
     for item in items:
-        if item.clause in commas:
+        if item.clause in commas or item.clause in not_plain_lists:
             item.plain = False
     for i, token in enumerate(tokens):
         if (_word(token, "with", "recursive") or token == _COMMA) and i + 1 < size:

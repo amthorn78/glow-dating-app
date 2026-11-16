@@ -1323,6 +1323,21 @@ class UndoSelectionTests(unittest.TestCase):
         text = ast.unparse(body)
         self.assertIn("if row is None or row.state != 'passed':", text)
         self.assertIn("if latest != row.id:", text)
+        # Correction B-C3's item 9 (B-C2's delta re-review, N8): each check refuses, so its
+        # ``raise`` is pinned as well as its ``if``.
+        refusals = {
+            ast.unparse(node.test): [ast.unparse(line) for line in node.body]
+            for node in ast.walk(body)
+            if isinstance(node, ast.If)
+        }
+        self.assertEqual(
+            refusals.get("row is None or row.state != 'passed'"),
+            ["raise Refused(STATE_CONFLICT, 'no_pass')"],
+        )
+        self.assertEqual(
+            refusals.get("latest != row.id"),
+            ["raise Refused(STATE_CONFLICT, 'not_the_most_recent_pass')"],
+        )
 
 
 class ReciprocalWriterTests(unittest.TestCase):

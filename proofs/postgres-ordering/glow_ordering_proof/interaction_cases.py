@@ -1103,7 +1103,10 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     _visibility(ctx, six, "pause")
     target_paused = ctx.profiles.data(_block(ctx, five, six, "block")[1], "block", "paused target")
     expect(target_paused["state"] == "active", "a block of a paused member")
-    return "block after unmatch and while paused; send refused; unblock restores nothing; hidden"
+    return (
+        "block after unmatch and while paused; send refused; unblock restores nothing;"
+        " both read the same restricted match (D8's gap)"
+    )
 
 
 # -- 11. resurfacing, undo and rematch (acceptance check 11; D12; OD-60 R) --------------------
@@ -2017,9 +2020,23 @@ class _Ledger:
         elif kind == "match":
             self.serve(holder, actor, "match", str(data.get("match_id")), data.get("version"))
 
+    def snapshot(self) -> dict[tuple[str, str, str, str], frozenset[int]]:
+        """The versions served so far, taken before a command is sent (B-C3, item 7)."""
+        with self.lock:
+            return {key: frozenset(versions) for key, versions in self.served.items()}
+
     def check(
-        self, holder: str | None, actor: str, family: str, body: Any, ok: bool, code: str
+        self,
+        holder: str | None,
+        actor: str,
+        family: str,
+        body: Any,
+        ok: bool,
+        code: str,
+        served: dict[tuple[str, str, str, str], frozenset[int]] | None = None,
     ) -> None:
+        """Checks a command's expected version against ``served``, the versions served before the
+        command was sent (``snapshot``), or, where it is not given, those served so far."""
         if not isinstance(body, dict):
             return
         meta = body.get("meta")
@@ -2031,7 +2048,9 @@ class _Ledger:
             self.sent += 1
             given = {
                 version
-                for (who, by, kind, name), versions in self.served.items()
+                for (who, by, kind, name), versions in (
+                    self.served if served is None else served
+                ).items()
                 if by == actor
                 and kind == family
                 and name == key
@@ -2054,7 +2073,10 @@ class _Ledger:
 def _as_a_client(run: Callable[[DiscoveryContext], str]) -> Callable[[DiscoveryContext], str]:
     """A Stage B or B-C1 case, with ``_Ledger`` watching every command it sends: through the
     routes (``ctx.profiles.call``) and directly (``glow_discovery.interactions``' four commands,
-    which the cases call from their threads; the routes keep their own references)."""
+    which the cases call from their threads; the routes keep their own references). Each
+    command's expected version is checked against the versions served before it was sent, and
+    only then is its own answer recorded, so an answer that echoes the version sent never vouches
+    for it (B-C3, item 7; B-C2's delta re-review, F6; DM-77)."""
 
     def wrapped(ctx: DiscoveryContext) -> str:
         from glow_discovery import interactions
@@ -2063,22 +2085,25 @@ def _as_a_client(run: Callable[[DiscoveryContext], str]) -> Callable[[DiscoveryC
         real_call = ctx.profiles.call
 
         def call(member: Member, method: str, path: str, body: Any = None, **kwargs: Any) -> Any:
-            reply = real_call(member, method, path, body, **kwargs)
             holder, actor = f"device:{id(member.device)}", str(member.account_id)
-            data = (reply.body or {}).get("data") if reply.status == 200 else None
-            ledger.served_from(data, holder, actor)
             family = COMMAND_PATHS.get(path) if method == "POST" else None
+            before = ledger.snapshot() if family is not None else None
+            reply = real_call(member, method, path, body, **kwargs)
             if family is not None:
                 code = str((reply.body or {}).get("code") or "")
-                ledger.check(holder, actor, family, body, reply.status == 200, code)
+                ledger.check(holder, actor, family, body, reply.status == 200, code, before)
+            data = (reply.body or {}).get("data") if reply.status == 200 else None
+            ledger.served_from(data, holder, actor)
             return reply
 
         def direct(function: Callable[..., Any], family: str) -> Callable[..., Any]:
             def call_directly(account_id: Any, intent: Any, **kwargs: Any) -> Any:
-                result = function(account_id, intent, **kwargs)
                 actor = str(account_id)
+                before = ledger.snapshot()
+                result = function(account_id, intent, **kwargs)
+                ok, code = bool(result.ok), str(result.code or "")
+                ledger.check(None, actor, family, intent, ok, code, before)
                 ledger.served_from(result.data, f"direct:{actor}", actor)
-                ledger.check(None, actor, family, intent, bool(result.ok), str(result.code or ""))
                 return result
 
             return call_directly

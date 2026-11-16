@@ -317,6 +317,9 @@ class PostgresReadingTests(unittest.TestCase):
             JOINED.format(alias="T2 ", ref="T2", lock=lock)
             for lock in ('FOR UPDATE OF "glow_persistence_match"', "FOR UPDATE OF T2", "")
         ]
+        # Correction B-C3's item 9 (B-C2's delta re-review, N7): a ``--`` comment between the
+        # lock's words, which the fast path must not pass unread.
+        statements.append(f"SELECT id FROM {ACCOUNT} WHERE id = %s FOR -- c\nUPDATE")
         for statement in statements:
             with self.subTest(statement=statement):
                 fast = row_locks.judge(statement, TABLES)
@@ -443,6 +446,198 @@ class PostgresLexicalEdgeTests(unittest.TestCase):
                 " FOR UPDATE OF glow_persistence_match"
             )
         )
+
+
+# Correction B-C3's item 3 (B-C2's delta re-review, S1; DM-77): a function's or a procedure's body,
+# a string constant, runs as code, so a statement that creates one fails whatever its lock. Each
+# passed 4860b56's rule (its body masked); each is refused now, with FOR NO KEY UPDATE too.
+ROUTINE_BODIES = (
+    # The review's planted form.
+    "CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS"
+    f" $$ SELECT id FROM {ACCOUNT} FOR UPDATE $$",
+    f"CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS 'SELECT id FROM {ACCOUNT}"
+    " FOR UPDATE'",
+    f"CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS E'SELECT id FROM {ACCOUNT}"
+    " FOR UPDATE'",
+    "CREATE OR REPLACE PROCEDURE pg_temp.p() LANGUAGE sql AS"
+    f" $body$ SELECT id FROM {ACCOUNT} FOR UPDATE $body$",
+    "create /* a comment */ or\nreplace function pg_temp.f() returns setof bigint language sql"
+    f" as $$ SELECT id FROM {ACCOUNT} FOR UPDATE $$",
+    # Codex on b67d9e3 (P2, "Reject executable routine definitions before masking their bodies").
+    "CREATE FUNCTION public.d14_lock() RETURNS void LANGUAGE plpgsql AS"
+    f" $$ BEGIN PERFORM id FROM {ACCOUNT} FOR UPDATE; END $$",
+)
+# Codex's sequence on b67d9e3: the creation fails; the call and the drop are judged as they are.
+CODEX_SEQUENCE = (
+    ROUTINE_BODIES[-1],
+    "SELECT public.d14_lock()",
+    "DROP FUNCTION public.d14_lock()",
+)
+# Correction B-C3's item 5 (B-C2's delta re-review, F5; DM-77): an OF name bound again inside a
+# parenthesised join, or in a DELETE or MERGE statement's USING list. Each passed 4860b56's rule
+# (the binding unread); each is refused now, as bound twice.
+UNREAD_BINDINGS = (
+    # The review's two planted texts.
+    f"SELECT 1 FROM {ACCOUNT} a JOIN (glow_persistence_block x JOIN glow_persistence_block y"
+    " ON true) j ON true JOIN glow_persistence_match x ON true FOR UPDATE OF x",
+    "WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block x WHERE"
+    f" z.id = x.id RETURNING z.id) SELECT 1 FROM {ACCOUNT} a JOIN glow_persistence_match x"
+    " ON true FOR UPDATE OF x",
+    # A MERGE statement's USING list.
+    "WITH q AS (MERGE INTO glow_persistence_block z USING glow_persistence_block x ON"
+    " z.id = x.id WHEN MATCHED THEN DO NOTHING RETURNING z.id) SELECT 1 FROM"
+    f" {ACCOUNT} a JOIN glow_persistence_match x ON true FOR UPDATE OF x",
+    # A later item of a USING list, and a JOIN item in one.
+    "WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block w,"
+    f" glow_persistence_block x RETURNING z.id) SELECT 1 FROM {ACCOUNT} a JOIN"
+    " glow_persistence_match x ON true FOR UPDATE OF x",
+    "WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block w JOIN"
+    f" glow_persistence_block x ON true RETURNING z.id) SELECT 1 FROM {ACCOUNT} a JOIN"
+    " glow_persistence_match x ON true FOR UPDATE OF x",
+    # Nested parenthesised joins, and one whose first item is a sub-query.
+    f"SELECT 1 FROM {ACCOUNT} a JOIN ((glow_persistence_block w JOIN glow_persistence_block x"
+    " ON true) JOIN glow_persistence_block y ON true) ON true JOIN glow_persistence_match x"
+    " ON true FOR UPDATE OF x",
+    f"SELECT 1 FROM {ACCOUNT} a JOIN ((SELECT 1) s JOIN glow_persistence_block x ON true)"
+    " ON true JOIN glow_persistence_match x ON true FOR UPDATE OF x",
+    # The OF target itself inside a parenthesised join: not plain.
+    f"SELECT 1 FROM ({ACCOUNT} a JOIN glow_persistence_match m ON true) FOR UPDATE OF m",
+)
+# Correction B-C3's item 6 (B-C2's delta re-review, S2; DM-77): psycopg writes a value where the
+# placeholder stands, and a number, true, false or NULL can complete a dollar-quote tag.
+GLUED = (
+    # The review's text, and the placeholder inside the tag.
+    f"SELECT id, $q%s$ $q1$ FROM {ACCOUNT} FOR UPDATE --$q1$",
+    f"SELECT id, $q%sx$ $q1x$ FROM {ACCOUNT} FOR UPDATE --$q1x$",
+    # A placeholder glued to a name character on either side, of each kind, the word UPDATE
+    # anywhere (a comment included), with no span at all.
+    "UPDATE glow_persistence_match SET version = version%s",
+    "UPDATE glow_persistence_match SET version = %bversion",
+    "SELECT 1 FROM glow_persistence_match WHERE id = x%t -- update",
+    "SELECT 1 FROM glow_persistence_match WHERE id = x%(name)s /* UPDATE */",
+    "SELECT 1 FROM glow_persistence_match WHERE id = é%s FOR UPDATE",
+)
+
+
+class FunctionBodyTests(unittest.TestCase):
+    """Correction B-C3's item 3: a statement that creates a function or a procedure fails
+    whatever its lock, as a ``DO`` statement does."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_routine_body_is_refused_with_either_lock(self) -> None:
+        for statement in ROUTINE_BODIES:
+            with self.subTest(statement=statement):
+                self.assertEqual(self.refused(statement), row_locks.CREATES_ROUTINE)
+                self.assertEqual(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE")),
+                    row_locks.CREATES_ROUTINE,
+                )
+
+    def test_a_routine_with_no_constant_is_refused_and_not_passed_unread(self) -> None:
+        # A SQL-standard body is no string constant: the fast path must still read it.
+        statement = (
+            "CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql BEGIN ATOMIC"
+            f" SELECT id FROM {ACCOUNT} FOR SHARE; END"
+        )
+        self.assertEqual(self.refused(statement), row_locks.CREATES_ROUTINE)
+
+    def test_codexs_sequence_the_creation_fails_the_call_and_drop_are_judged(self) -> None:
+        verdicts = [self.refused(statement) for statement in CODEX_SEQUENCE]
+        self.assertEqual(verdicts, [row_locks.CREATES_ROUTINE, None, None])
+
+    def test_the_words_are_read_as_postgresql_reads_them(self) -> None:
+        for statement in (
+            "SELECT 'CREATE FUNCTION f() RETURNS int' FROM glow_persistence_match",
+            "SELECT 1 /* CREATE FUNCTION */ FROM glow_persistence_match",
+            'SELECT "create", "function" FROM glow_persistence_match',
+            "CREATE TABLE glow_scratch (procedure int)",
+        ):
+            with self.subTest(statement=statement):
+                self.assertIsNone(self.refused(statement))
+
+
+class OwnObjectsFilterTests(unittest.TestCase):
+    """Correction B-C3's item 3 (F3): ``OWN_OBJECTS`` excludes only ``pg_catalog``,
+    ``information_schema``, the TOAST schemas and extensions, so a temporary schema's functions,
+    procedures, views and rules count."""
+
+    def test_each_count_excludes_only_the_system_and_toast_schemas(self) -> None:
+        query = row_locks.OWN_OBJECTS
+        self.assertEqual(query.count("SELECT count(*)"), 3)
+        self.assertEqual(
+            query.count("n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')"), 3
+        )
+        self.assertEqual(query.count("n.nspname NOT LIKE 'pg\\_toast\\_temp\\_%'"), 3)
+        self.assertEqual(query.count("nspname"), 6)
+        self.assertNotIn("'pg\\_%'", query)
+        # The functions' count leaves out an extension's own.
+        self.assertEqual(query.count("d.deptype = 'e'"), 1)
+
+
+class UnreadBindingTests(unittest.TestCase):
+    """Correction B-C3's item 5: an item inside a parenthesised join, and an item of a ``DELETE``
+    or ``MERGE`` statement's ``USING`` list, are read as bindings, none of them plain; a join's
+    ``USING (…)`` column list binds nothing."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_binding_is_read_and_the_name_bound_twice_or_not_plain_fails(self) -> None:
+        for statement in UNREAD_BINDINGS:
+            with self.subTest(statement=statement):
+                self.assertIsNotNone(self.refused(statement))
+                self.assertIsNone(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE"))
+                )
+
+    def test_a_joins_using_column_list_binds_nothing(self) -> None:
+        statement = (
+            "SELECT m.id FROM glow_persistence_match m JOIN glow_persistence_block b USING (id)"
+            f" JOIN {ACCOUNT} a ON a.id = m.account_low_id FOR UPDATE OF {{of}}"
+        )
+        self.assertIsNone(self.refused(statement.format(of="m")))
+        self.assertIsNotNone(self.refused(statement.format(of="a")))
+        inside = (
+            "WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block w JOIN"
+            " glow_persistence_block v USING (id) RETURNING z.id) SELECT 1 FROM"
+            f" {ACCOUNT} a JOIN glow_persistence_match x ON true FOR UPDATE OF x"
+        )
+        self.assertIsNone(self.refused(inside))
+
+
+class GluedPlaceholderTests(unittest.TestCase):
+    """Correction B-C3's item 6: a statement whose text holds the word ``UPDATE`` anywhere and a
+    placeholder glued to a name character or a dollar sign fails, whatever D14 reads in it."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_glued_placeholder_fails_with_either_lock(self) -> None:
+        for statement in GLUED:
+            with self.subTest(statement=statement):
+                self.assertEqual(self.refused(statement), row_locks.GLUED_PLACEHOLDER)
+                self.assertEqual(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE")),
+                    row_locks.GLUED_PLACEHOLDER,
+                )
+
+    def test_a_placeholder_apart_from_names_a_literal_percent_or_no_update_passes(self) -> None:
+        for statement in (
+            f"SELECT id FROM {ACCOUNT} WHERE id = %s FOR NO KEY UPDATE",
+            "UPDATE glow_persistence_match SET decided_at = %(name)s::timestamptz WHERE id = %s",
+            ORM_ACCOUNT.format(lock="FOR NO KEY UPDATE"),
+            "UPDATE glow_persistence_match SET version = (version + %s) WHERE id IN (%s, %s)",
+            # ``%%`` is a literal percent sign, not a placeholder.
+            "UPDATE glow_persistence_match SET note = 'a%%sb' WHERE id = %s",
+            # No word UPDATE: a placeholder glued to a name does not matter.
+            "SELECT x%s FROM glow_persistence_match FOR SHARE",
+            # UPDATE only as part of a longer word.
+            "SELECT 1 FROM glow_persistence_match WHERE updated_at = x%s",
+        ):
+            with self.subTest(statement=statement):
+                self.assertIsNone(self.refused(statement))
 
 
 class QueryTextTests(unittest.TestCase):
