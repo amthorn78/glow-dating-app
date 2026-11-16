@@ -189,6 +189,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-28 | 15 Nov 2026 | follow-through | Gave DM-75 at `c9bca52` without a watch on Codex's pass, then wrote B-C2's prompt at `f39bd0d` without reading PR47's comments; Codex's two P2s on `c9bca52` (17:23 UTC) were read only at 23:18, after its pass on the prompt's commit. All four of Codex's findings since were already the review's (#1, #2, #4, #5), so the prompt stood. AM11-17 repeated | App Manager 11, reading PR47's comments before giving B-C2's prompt |
 | AM11-29 | 16 Nov 2026 | follow-through | AM11-28's new rule broken at its first use: pushed `e6fa3c1` (records only) and gave B-C2's prompt without waiting for Codex's pass on it; Codex posted a fifth finding there at 23:23 UTC, on B-C1's version ledger. The delta re-review prompt's revision 1 was then written at `b0386f8` without reading PR47's comments, since the wait checked only Codex's state on the new commit. Read at 01:20; revision 2, before revision 1 was given, adds it | App Manager 11, reading PR47's comments before giving the review prompt |
 | AM11-30 | 16 Nov 2026 | records | Created M08's TypeSafe uses row in Notion without the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token fields; completed from the printed row before the read-back. Also, since Stage B's exact-head review row (15 November), new rows were created with *Nathan's pick* "pending" and set to "not recorded" only after the session, where the manager workflow's step 3 sets "not recorded" at creation | App Manager 11, comparing the row with the script's output, and reading step 3 for DM-76 |
+| AM11-31 | 16 Nov 2026 | records | Two Notion standing lines left stale: Implementation Control's procedure summary kept its stamp and links at `854c214` (11 November) through the CI policy's changes at `d35b0ba`, `2475d7b`, `622a4f4` and `f39bd0d` and OD-63 to OD-66; and the Work Register's SV3 row was not updated at `553d9ed` or `e19f731`. AM10-05's mechanism (PF02-R12), and AM11-11's | Dev Manager 5 (DM-76 section 10) |
 
 ## App Manager 2
 
@@ -1161,6 +1162,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-31 — The procedure summary's stamp and the SV3 row left behind (records)
+
+- **What happened:** Implementation Control's operating-procedure summary states the commit its links point to and moves it when a governing text changes (AM10-05). Its stamp stayed at `854c214` (11 November) while the CI policy changed four times (`d35b0ba`, `2475d7b`, `622a4f4`, `f39bd0d`) and the register gained OD-63 to OD-66. Separately, the Work Register's SV3 row was not updated at `553d9ed` (M08's prompt; B-C2's review given) or `e19f731`, so it still said the review was going to Nathan.
+- **Caught by:** Dev Manager 5, DM-76 section 10 (its DM-74 and DM-75 reads had not checked the stamp).
+- **Effect:** none on the work; the summary's substance was still true (no summarized rule had changed), but its links pointed at an old commit, and the SV3 row misstated the review's state for two batches.
+- **Correction:** the stamp and its nine links moved to `b192164`, with the moves listed; "One item at a time" notes OD-66's exception; the SV3 row brought to the handoff's state.
+- **Prevention:** every records batch that changes a governing path (the CI policy, the register, the workflow, the charter, `AGENTS.md`, `CLAUDE.md`, the canon) moves the summary's stamp in the same sync (PF02-R12); and every sync updates the Work Register row of each item the batch touches, not only the item named in the commit.
 
 ### AM11-30 — TypeSafe uses rows created from part of the printed row, and with the pick "pending" (records)
 

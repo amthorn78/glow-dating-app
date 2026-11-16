@@ -20,12 +20,12 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 11 | Nathan | B-C2's delta re-review report (prompt revision 2, from `1f346ce`); DM-76's answer (M08's PF02, from the commit after `553d9ed`) | No other prompt goes to Nathan (OD-29; OD-66's exception covers M08 only); no code change on the manager branch until the review is disposed |
+| App Manager 11 | Nathan | B-C2's delta re-review report (prompt revision 2, from `1f346ce`); then PR47's pre-merge read and merge before M08's integration | No other prompt goes to Nathan (OD-29; OD-66's exception covers M08 only); no code change on the manager branch until the review is disposed |
 
 ## Next actions (App Manager 11)
 
 1. **SV3** (OD-49): PR47's run and Codex on the new head; B-C2's bounded delta re-review; Dev Manager 5's pre-merge read (the CI policy's paragraph, the data model, the contract texts); the merge.
-2. **M08** (OD-66): PF02 built (`claude/beautiful-pascal-7n0o9n`, `9a90bd8`); DM-76, its read, with Dev Manager 5; integrated after PR47.
+2. **M08** (OD-66): PF02 built (`claude/beautiful-pascal-7n0o9n`, `9a90bd8`); DM-76 approved it with HH1 to HH20, applied at integration after PR47.
 3. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16), after the matrix's recheck of the rows they touch; nothing in SV3 waits on it unless its brief says so.
 4. **Then SV4.**
 
@@ -34,4 +34,4 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Branches and PRs (16 November 2026, 02:28 UTC)
 
 - **Open PRs:** PR47, SV3 Stage B, from the manager branch. `main` is at `947576d` (PR46).
-- **Remote branches:** `main`; the manager branch; `claude/dev-manager` (`ab1520b`, DM-75's report, merged at `c0d3afc`); Stage B's session branch `claude/brave-brown-o90q6i` (`291edef`) and B-C1's `claude/sv3-stage-b-correction-tekmc2` (`53d3988`), each integrated by fast-forward; B-C2's `claude/sleepy-newton-1g92x8` (`423f34a`), merged at `4616214`; M08's `claude/beautiful-pascal-7n0o9n` (`9a90bd8`), held until PR47 merges.
+- **Remote branches:** `main`; the manager branch; `claude/dev-manager` (`ccf1e5a`, DM-76's report, merged at `b192164`); Stage B's session branch `claude/brave-brown-o90q6i` (`291edef`) and B-C1's `claude/sv3-stage-b-correction-tekmc2` (`53d3988`), each integrated by fast-forward; B-C2's `claude/sleepy-newton-1g92x8` (`423f34a`), merged at `4616214`; M08's `claude/beautiful-pascal-7n0o9n` (`9a90bd8`), held until PR47 merges.
