@@ -358,6 +358,93 @@ class ResolutionTests(unittest.TestCase):
                 self.assertIsNone(self.refused(statement))
 
 
+LONG = "a" * 63
+# Forms an independent read of B-C2's rule found passing before they were closed: each is one of
+# the forms items 4 and 5 name, read as PostgreSQL reads it (PostgreSQL 17's scanner and grammar).
+LEXICAL_FORMS = (
+    # Only ASCII spaces, tabs, line ends, form feeds and vertical tabs are whitespace; any other
+    # character, and a dollar sign after it, continues an identifier (no dollar quote begins).
+    f"SELECT 1 AS  $a$ FROM {ACCOUNT} FOR UPDATE --$a$",
+    f"SELECT 1 AS  $$ FROM {ACCOUNT} FOR UPDATE --$$",
+    f"SELECT 1 AS \u0085$q$ FROM {ACCOUNT} FOR UPDATE --$q$",
+    f"SELECT 1 AS 　$q$ FROM {ACCOUNT} FOR UPDATE --$q$",
+    f'SELECT "{ACCOUNT}"."id" AS  $x$ FROM "{ACCOUNT}" FOR UPDATE --$x$',
+    # An E'' constant continued across a newline keeps its backslash escapes.
+    f"SELECT 1 FROM {ACCOUNT} WHERE '' = E''\n'\\', ' FOR UPDATE --'",
+    f"SELECT 1 FROM {ACCOUNT} WHERE '' = E''\r'\\', ' FOR UPDATE --'",
+    f"SELECT 1 FROM {ACCOUNT} WHERE '' = E'' -- c\n'\\', ' FOR UPDATE --'",
+    f"SELECT 1 FROM {ACCOUNT} WHERE email IN (E'x'\n'\\', ') FOR UPDATE --'",
+)
+BINDING_FORMS = (
+    # An unreserved keyword is a bare alias, so the name is bound twice.
+    f"SELECT 1 FROM {ACCOUNT} set WHERE EXISTS (SELECT 1 FROM glow_persistence_match AS set)"
+    " FOR UPDATE OF set",
+    f"SELECT 1 FROM {ACCOUNT} update WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match AS update) FOR UPDATE OF update",
+    f"SELECT 1 FROM {ACCOUNT} values WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match AS values) FOR UPDATE OF values",
+    f"SELECT 1 FROM {ACCOUNT} between WHERE EXISTS"
+    " (SELECT 1 FROM glow_persistence_match AS between) FOR UPDATE OF between",
+    f"SELECT 1 FROM glow_persistence_match AS set; SELECT 1 FROM {ACCOUNT} set FOR UPDATE OF set",
+    # IS DISTINCT FROM is no FROM list: it binds nothing and leaves the real list's comma read.
+    f"SELECT NULL IS DISTINCT FROM glow_persistence_match AS set FROM {ACCOUNT} set"
+    " JOIN glow_persistence_match ON true FOR UPDATE OF set",
+    f"SELECT 1 FROM {ACCOUNT} a JOIN glow_persistence_match m ON a.id IS DISTINCT FROM m.id,"
+    " glow_persistence_block b FOR UPDATE OF m",
+    # Names are truncated to 63 bytes, so these two aliases are one name.
+    f"SELECT 1 FROM {ACCOUNT} AS {LONG}1 WHERE EXISTS"
+    f" (SELECT 1 FROM glow_persistence_match AS {LONG}2) FOR UPDATE OF {LONG}2",
+    f"SELECT 1 FROM {ACCOUNT} AS {LONG} WHERE EXISTS"
+    f" (SELECT 1 FROM glow_persistence_match AS {LONG}x) FOR UPDATE OF {LONG}x",
+)
+
+
+class PostgresLexicalEdgeTests(unittest.TestCase):
+    """Correction B-C2's items 4 and 5, at PostgreSQL's lexical and naming edges: its whitespace,
+    a continued string constant's kind, unreserved keywords as aliases, a FROM that opens no list,
+    names truncated to 63 bytes, and an alias hiding its table's name."""
+
+    def refused(self, statement: str) -> str | None:
+        return row_locks.refusal(statement, TABLES)
+
+    def test_each_form_is_refused_and_passes_with_no_key(self) -> None:
+        for statement in LEXICAL_FORMS + BINDING_FORMS:
+            with self.subTest(statement=statement):
+                self.assertIsNotNone(self.refused(statement))
+                self.assertIsNone(
+                    self.refused(statement.replace("FOR UPDATE", "FOR NO KEY UPDATE"))
+                )
+
+    def test_a_hidden_do_statement_is_found(self) -> None:
+        statement = (
+            f"SELECT 1 AS  $a$; DO $$BEGIN PERFORM 1 FROM {ACCOUNT} FOR UPDATE; END$$; --$a$"
+        )
+        self.assertEqual(self.refused(statement), row_locks.DO_STATEMENT)
+
+    def test_an_alias_hides_its_tables_name_and_a_functions_from_opens_no_list(self) -> None:
+        for statement in (
+            # Django's FOR UPDATE OF self on a table joined to itself under an alias.
+            'SELECT "glow_persistence_block"."id" FROM "glow_persistence_block" INNER JOIN'
+            f' "{ACCOUNT}" ON ("glow_persistence_block"."actor_id" = "{ACCOUNT}"."id") INNER JOIN'
+            f' "glow_persistence_block" T3 ON ("{ACCOUNT}"."id" = T3."target_id") WHERE'
+            ' T3."state" = %s ORDER BY "glow_persistence_block"."id" ASC LIMIT 1'
+            ' FOR UPDATE OF "glow_persistence_block"',
+            f"SELECT m.id FROM glow_persistence_match m JOIN {ACCOUNT} a ON a.id = m.account_low_id"
+            " WHERE EXTRACT(YEAR FROM a.created_at) = %s FOR UPDATE OF m",
+            # A plain constant continued across a newline is still masked whole.
+            f"SELECT 'a'\n'FOR UPDATE' FROM {ACCOUNT} WHERE id = %s FOR NO KEY UPDATE",
+        ):
+            with self.subTest(statement=statement):
+                self.assertIsNone(self.refused(statement))
+        # The aliased table's own name binds nothing.
+        self.assertIsNotNone(
+            self.refused(
+                f"SELECT 1 FROM glow_persistence_match m JOIN {ACCOUNT} a ON true"
+                " FOR UPDATE OF glow_persistence_match"
+            )
+        )
+
+
 class QueryTextTests(unittest.TestCase):
     def test_a_composed_statement_keeps_no_parameter(self) -> None:
         # What Django's psycopg 3 cursor class sends for ``callproc("planted", [<a value>])``.

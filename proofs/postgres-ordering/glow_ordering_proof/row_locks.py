@@ -33,8 +33,12 @@ quoted identifier (``"…"`` with ``""``) is kept as a name, so Django's
 ``"glow_persistence_appaccount"`` is still the account table. A statement with an unterminated span
 (a string constant, a quoted identifier or a block comment) fails, and so does a ``DO`` statement,
 whose dollar-quoted body runs as code; a statement holding a ``U&`` quoted identifier, whose escapes
-can spell any name, fails if it takes ``FOR UPDATE``. Unquoted words are read without regard to
-case, and the account table's name in any case counts as the account table. A statement with no
+can spell any name, fails if it takes ``FOR UPDATE``. Only PostgreSQL's whitespace separates
+tokens (a space, a tab, a line end, a form feed, a vertical tab; any other character, and a dollar
+sign after it, continues an identifier); a string constant continued across a line end keeps its
+kind (an ``E'…'`` constant's continuation still takes backslash escapes); and a name is cut to 63
+bytes, as PostgreSQL cuts it. Unquoted words are read without regard to case, and the account
+table's name in any case counts as the account table. A statement with no
 single quote, comment, dollar sign or ampersand, every quoted identifier ended, no ``DO`` and no
 writer's lock in its text passes without being read further (``judge``'s first test).
 
@@ -50,7 +54,10 @@ of the models' tables (a view); or text after the clause that is not another loc
 an ``OF`` name counts only where the statement binds it once, in any scope, as a table named in a
 plain ``FROM`` or ``JOIN`` item or that item's alias, and the account table appears only as such an
 item's table or a column's qualifier (a name in a lock clause's ``OF`` list is read as a reference,
-as a qualifier is). Any other form fails: a name bound twice; a comma item (every item of a
+as a qualifier is). An item binds its alias where it has one (an unreserved keyword such as
+``set`` can be one), and its table's name only where it has none, as PostgreSQL binds them; a
+``FROM`` after ``IS DISTINCT`` or among a function's arguments (``EXTRACT(… FROM …)``) opens no
+list. Any other form fails: a name bound twice; a comma item (every item of a
 ``FROM`` list that holds a comma); a schema-qualified name; ``ONLY``; ``*``; a sub-query's or a
 function's alias; or the account table inside a sub-query. The other binding forms it reads (a
 ``WITH`` query's name, an ``UPDATE``, ``INTO`` or ``DELETE FROM`` target, a column alias list,
@@ -101,7 +108,7 @@ DRIVER = "driver"
 # ``E'…'``.
 _LEX = re.compile(
     r"""
-    (?P<space>\s+)
+    (?P<space>[ \t\n\r\f\v]+)
     | (?P<line>--[^\n\r]*+)
     | (?P<block>/\*)
     | (?P<escape>[eE]'(?:[^'\\]|\\.|'')*+')
@@ -117,6 +124,16 @@ _LEX = re.compile(
     re.S | re.X,
 )
 _BLOCK = re.compile(r"/\*|\*/")
+# A string constant continues across whitespace that holds a newline (``--`` comments allowed,
+# block comments not), keeping its kind: an ``E'…'`` constant's continuation still takes backslash
+# escapes.
+_CONTINUE = re.compile(
+    r"(?:[ \t\f\v]|--[^\n\r]*+)*+[\n\r](?:[ \t\n\r\f\v]++|--[^\n\r]*+[\n\r])*+(?=')"
+)
+_ESCAPE_BODY = re.compile(r"'(?:[^'\\]|\\.|'')*+'", re.S)
+_PLAIN_BODY = re.compile(r"'(?:[^']|'')*+'")
+# PostgreSQL truncates every identifier to NAMEDATALEN - 1 bytes.
+_NAME_BYTES = 63
 _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # The fast path: a statement with no quote mark but double quotes, no comment, dollar sign or
 # ampersand (so no ``U&``), an even count of double quotes (so every quoted identifier ends), no
@@ -153,52 +170,107 @@ _ENDS_FROM = frozenset(
         "window",
     }
 )
-# Words that are never a table's name or an alias after one.
+# PostgreSQL's reserved and type_func_name keywords: never a table's name, and never a bare alias
+# (an unreserved keyword such as ``set`` or ``values`` can be one).
 _KEYWORDS = frozenset(
     {
+        "all",
+        "analyse",
+        "analyze",
         "and",
+        "any",
+        "array",
         "as",
-        "between",
+        "asc",
+        "asymmetric",
+        "authorization",
+        "binary",
+        "both",
+        "case",
+        "cast",
+        "check",
+        "collate",
+        "collation",
+        "column",
+        "concurrently",
+        "constraint",
+        "create",
         "cross",
+        "current_catalog",
+        "current_date",
+        "current_role",
+        "current_schema",
+        "current_time",
+        "current_timestamp",
+        "current_user",
+        "default",
+        "deferrable",
+        "desc",
+        "distinct",
         "do",
         "else",
         "end",
         "except",
+        "false",
         "fetch",
         "for",
+        "foreign",
+        "freeze",
         "from",
         "full",
+        "grant",
         "group",
         "having",
         "ilike",
         "in",
+        "initially",
         "inner",
         "intersect",
         "into",
         "is",
+        "isnull",
         "join",
         "lateral",
+        "leading",
         "left",
         "like",
         "limit",
+        "localtime",
+        "localtimestamp",
         "natural",
         "not",
+        "notnull",
+        "null",
         "offset",
         "on",
         "only",
         "or",
         "order",
         "outer",
+        "overlaps",
+        "placing",
+        "primary",
+        "references",
         "returning",
         "right",
         "select",
-        "set",
+        "session_user",
+        "similar",
+        "some",
+        "symmetric",
+        "system_user",
+        "table",
         "tablesample",
         "then",
+        "to",
+        "trailing",
+        "true",
         "union",
-        "update",
+        "unique",
+        "user",
         "using",
-        "values",
+        "variadic",
+        "verbose",
         "when",
         "where",
         "window",
@@ -273,9 +345,19 @@ def _read(sql: str) -> list[_Token] | str:
             position = close + len(text)
             found.append(_MASKED)
         elif kind in ("escape", "unicode", "string"):
+            body = _ESCAPE_BODY if kind == "escape" else _PLAIN_BODY
+            gap = _CONTINUE.match(sql, position)
+            if gap is not None:
+                matches = None  # the scan moves past the continuation itself: read on by position
+            while gap is not None:
+                part = body.match(sql, gap.end())
+                if part is None:
+                    return UNTERMINATED
+                position = part.end()
+                gap = _CONTINUE.match(sql, position)
             found.append(_MASKED)
         elif kind == "name":
-            found.append(_Token("name", text[1:-1].replace('""', '"')))
+            found.append(_Token("name", _truncated(text[1:-1].replace('""', '"'))))
         elif kind == "uname":
             found.append(_Token("uname", ""))
         elif kind == "word":
@@ -285,12 +367,20 @@ def _read(sql: str) -> list[_Token] | str:
                 return UNTERMINATED
             if text in ("u", "U") and sql.startswith(("&'", '&"'), position):
                 return UNTERMINATED
-            found.append(_Token("word", text.translate(_ASCII_LOWER)))
+            found.append(_Token("word", _truncated(text.translate(_ASCII_LOWER))))
         elif kind == "other" and text in ("'", '"'):
             return UNTERMINATED
         else:
             found.append(_Token(kind, text))
     return found
+
+
+def _truncated(name: str) -> str:
+    """A name as PostgreSQL keeps it: at most 63 bytes, cut on a character's boundary."""
+    data = name.encode("utf-8")
+    if len(data) <= _NAME_BYTES:
+        return name
+    return data[:_NAME_BYTES].decode("utf-8", "ignore")
 
 
 def _word(token: _Token, *words: str) -> bool:
@@ -352,7 +442,8 @@ def _clauses(tokens: list[_Token]) -> list[_Clause]:
 @dataclass(frozen=True)
 class Verdict:
     """D14's judgement of one statement: why it fails (``None`` if it passes), whether it takes a
-    writer's row lock, whether it names the account table, and whether it takes ``FOR UPDATE``."""
+    writer's row lock, whether it names the account table (read only for a statement that takes
+    one, or one read in full), and whether it takes ``FOR UPDATE``."""
 
     reason: str | None
     writer: bool
@@ -423,6 +514,8 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
     # Each token's depth, whether a sub-query encloses it, and each parenthesis's partner.
     depth = [0] * size
     in_sub = [False] * size
+    enclosing: list[int | None] = [None] * size
+    innermost_sub = [False] * size
     partner: dict[int, int] = {}
     stack: list[tuple[int, bool]] = []
     for i, token in enumerate(tokens):
@@ -433,6 +526,8 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
             partner[opened] = i
         depth[i] = len(stack)
         in_sub[i] = any(sub for _, sub in stack)
+        enclosing[i] = stack[-1][0] if stack else None
+        innermost_sub[i] = bool(stack) and stack[-1][1]
         if token == _OPEN:
             k = i + 1
             while k < size and tokens[k] == _OPEN:
@@ -443,14 +538,18 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
 
     items: list[_Item] = []
     bound: dict[str, set[int]] = {}
+    consumed: set[int] = set()  # alias tokens a relation read, which the scan steps over
 
     def bind(name: str | None, item: int) -> None:
         if name is not None:
             bound.setdefault(name, set()).add(item)
 
-    def relation(at: int, clause: int | None, plain: bool) -> int:
+    def relation(at: int, clause: int | None, plain: bool, aliases: str = "any") -> int:
         """Reads the item at ``at``; returns where the scan goes on (inside a parenthesis it
-        opens, so a sub-query's own items are read too)."""
+        opens, so a sub-query's own items are read too). ``aliases`` is how an alias may follow:
+        ``any`` (a FROM item: ``AS`` or a bare name that is not a reserved keyword), ``update``
+        (an ``UPDATE`` target, where a bare ``SET`` is the keyword) or ``as`` (an ``INTO``
+        target: only after ``AS``)."""
         resume: int | None = None
         table: str | None = None
         position: int | None = None
@@ -483,16 +582,26 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
         if k < size and _word(tokens[k], "as"):
             if k + 1 < size and tokens[k + 1].kind in ("word", "name"):
                 alias, k = tokens[k + 1].text, k + 2
-        elif k < size and (
-            tokens[k].kind == "name"
-            or (tokens[k].kind == "word" and tokens[k].text not in _KEYWORDS)
+                consumed.update((k - 2, k - 1))
+        elif (
+            aliases != "as"
+            and k < size
+            and (
+                tokens[k].kind == "name"
+                or (
+                    tokens[k].kind == "word"
+                    and tokens[k].text not in _KEYWORDS
+                    and not (aliases == "update" and tokens[k].text == "set")
+                )
+            )
         ):
             alias, k = tokens[k].text, k + 1
+            consumed.add(k - 1)
         if k < size and (tokens[k] == _OPEN or _word(tokens[k], "tablesample")):
             plain = False  # a column alias list, or a sample
         items.append(_Item(plain, table, position, clause))
-        bind(table, len(items) - 1)
-        bind(alias, len(items) - 1)
+        # As PostgreSQL reads it, an alias hides its table's name: the item binds one name.
+        bind(alias if alias is not None else table, len(items) - 1)
         return resume if resume is not None else k
 
     # Every FROM list's items, its JOIN and comma items included, and each other binding form.
@@ -501,6 +610,24 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
     i = 0
     while i < size:
         token, level = tokens[i], depth[i]
+        if i in consumed:
+            i += 1
+            continue
+        opener = enclosing[i]
+        if _word(token, "from") and (
+            (i > 0 and _word(tokens[i - 1], "distinct"))
+            or (
+                opener is not None
+                and not innermost_sub[i]
+                and opener > 0
+                and tokens[opener - 1].kind in ("word", "name")
+                and not _word(tokens[opener - 1], *_KEYWORDS)
+            )
+        ):
+            # ``IS DISTINCT FROM``, or a FROM among a function's arguments (``EXTRACT(… FROM …)``,
+            # ``SUBSTRING``, ``TRIM``, ``OVERLAY``): no FROM list.
+            i += 1
+            continue
         if _word(token, "from"):
             open_list[level] = i
             i = relation(i + 1, i, not (i > 0 and _word(tokens[i - 1], "delete")))
@@ -512,11 +639,13 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
             commas.add(open_list[level] or 0)
             i = relation(i + 1, open_list[level], False)
             continue
-        if _word(token, "into") or (
-            _word(token, "update")
-            and not (i > 0 and _word(tokens[i - 1], "for", "key", "do", "on"))
+        if _word(token, "into"):
+            i = relation(i + 1, None, False, "as")
+            continue
+        if _word(token, "update") and not (
+            i > 0 and _word(tokens[i - 1], "for", "key", "do", "on")
         ):
-            i = relation(i + 1, None, False)
+            i = relation(i + 1, None, False, "update")
             continue
         if token == _CLOSE:
             open_list[level + 1] = None
