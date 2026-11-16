@@ -187,6 +187,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-26 | 15 Nov 2026 | follow-through | Integrating B-C1, which added seven discovery cases (59 to 66), the manager left its own CI policy sentence for Stage B at "59 cases in all"; the verification of B-C1 read the proof README's paragraph and the contract document, not the manager's own governing sentence. AM11-14's mechanism | The exact-head review of Stage B, #9 |
 | AM11-27 | 15 Nov 2026 | records | The handoff, kept under 5 KB by the documentation map, went over it at `2d8f28a` (5,049 bytes) and grew through six more commits to 6,152 bytes at `e75649d`; no commit checked its size. AM11-04's mechanism | App Manager 11, reading its size before the DM-75 commit |
 | AM11-28 | 15 Nov 2026 | follow-through | Gave DM-75 at `c9bca52` without a watch on Codex's pass, then wrote B-C2's prompt at `f39bd0d` without reading PR47's comments; Codex's two P2s on `c9bca52` (17:23 UTC) were read only at 23:18, after its pass on the prompt's commit. All four of Codex's findings since were already the review's (#1, #2, #4, #5), so the prompt stood. AM11-17 repeated | App Manager 11, reading PR47's comments before giving B-C2's prompt |
+| AM11-29 | 16 Nov 2026 | follow-through | AM11-28's new rule broken at its first use: pushed `e6fa3c1` (records only) and gave B-C2's prompt without waiting for Codex's pass on it; Codex posted a fifth finding there at 23:23 UTC, on B-C1's version ledger. The delta re-review prompt's revision 1 was then written at `b0386f8` without reading PR47's comments, since the wait checked only Codex's state on the new commit. Read at 01:20; revision 2, before revision 1 was given, adds it | App Manager 11, reading PR47's comments before giving the review prompt |
 
 ## App Manager 2
 
@@ -1159,6 +1160,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-29 — AM11-28's rule broken at its first use (follow-through)
+
+- **What happened:** AM11-28's prevention says that after any push to PR47's head the manager waits for Codex's pass on it and reads PR47's comments before writing or giving the next prompt. Minutes after writing it, the manager pushed `e6fa3c1` (records only) and gave B-C2's prompt without that wait. Codex's pass on `e6fa3c1` (23:23 UTC) found a defect in B-C1's version ledger. At `b0386f8` the manager wrote the delta re-review prompt's revision 1 without reading PR47's comments; its wait script read only Codex's state on the new commit, whose "findings" flag counts unresolved findings anywhere on the PR.
+- **Caught by:** App Manager 11, listing PR47's comments before giving the review prompt (01:20).
+- **Effect:** B-C2 could not have fixed it (the ledger was outside its owned paths). The review prompt's revision 1 was not given; revision 2 adds the finding to its scope.
+- **Correction:** the finding recorded in the evidence record and the brief's "Sessions"; the review prompt revised before it was given, with a new TypeSafe reading.
+- **Prevention:** the wait script now lists PR47's review comments created since the last check and prints each, and the manager reads that list before any prompt or consultation goes to Nathan; a records-only push counts as a push to PR47's head.
 
 ### AM11-28 — Codex's review of a consultation's commit not read before the next prompt (follow-through)
 

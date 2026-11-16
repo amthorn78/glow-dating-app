@@ -2233,3 +2233,14 @@ App Manager 11, 16 November 2026 (00:59 UTC), from the pushed branch `claude/sle
   - **the session's other departures:** the README's SV3 paragraph names DM-75 as its last condition and gains a B-C2 sentence; the record's Stage B section gains three "corrected in B-C2" notes.
 - **Integration:** the manager branch merged `423f34a` at `4616214` (it had moved after `f39bd0d`); its non-Markdown tree equals `4860b56`'s.
 - **Disposition:** B-C2 verified. Items 1 to 9 are in, no stop condition was met, and the run of record passed every job. Next: PR47's run and Codex on its new head, then the bounded delta re-review of `4860b56` against `470d97a` (DM-75; the size rule holds), then Dev Manager 5's pre-merge read.
+
+## PR47 at `b0386f8`, and Codex's fifth finding
+
+App Manager 11, 16 November 2026 (01:22 UTC).
+
+- **PR47 at `b0386f8`** (B-C2 merged, its verification and the delta re-review prompt's revision 1): its push run 43783914346 and pull-request run 43784064946 passed. Codex's code review of `b0386f8` completed with no new comment; its state counts the findings still unresolved.
+- **Codex's fifth finding** (P2, on `e6fa3c1`, posted at 23:23 UTC on 15 November; [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4580718359)), on `proofs/postgres-ordering/glow_ordering_proof/interaction_cases.py` line 2073:
+  - B-C1's `_as_a_client` records a command's own answer (`_Ledger.served_from`) before it checks the version the command sent (`_Ledger.check`), in its routes' wrapper (lines 2069 to 2073 at `4860b56`) and its direct one (2080 to 2081);
+  - so a command that answers with the version it was sent (an unmatch of a match already `unmatched`, `no_change`, for one) satisfies the ledger by its own answer, even when the version came from the database.
+- **The manager's check:** confirmed in the code at `4860b56`. It is B-C1's code; B-C2 did not change it (`git diff 470d97a 4860b56` touches neither call). It weakens the proof of FF3's rule that every version a case sends comes from a command's own answer or the read, a test that can pass where it should fail; the app is not affected.
+- **Disposition:** the delta re-review prompt, revised to revision 2 before it was given, adds it to the review's scope (focus 9). Its fix goes into the correction that follows the review, with the review's findings, as Dev Manager 5 rules. The manager read the finding only at 01:20, after writing revision 1 (AM11-29).

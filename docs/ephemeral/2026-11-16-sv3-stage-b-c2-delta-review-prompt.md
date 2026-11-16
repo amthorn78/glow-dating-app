@@ -1,11 +1,11 @@
 # SV3 Stage B, correction B-C2: bounded delta re-review prompt
 
 - **Owner:** App Manager 11. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 16 November 2026.**
+- **Revision 2, 16 November 2026.** Revision 1 (at `b0386f8`) was not given: Codex's review of `e6fa3c1`, posted at 23:23 UTC and read only after it, found a defect in B-C1's version ledger. Revision 2 adds it to the scope ("Codex's finding on the ledger" and focus 9), with a new TypeSafe reading.
 - **Durable brief:** [SV3 — The eligibility, discovery and interactions slice](../planning/sv3-eligibility-discovery-interactions.md), revision 17, "Stage B, correction B-C2 (Stage B's exact-head review; DM-75)" and its paragraph "The review", under the five correction classes of "C4's review, and how the scan's line ends", which hold in every later review of SV3.
 - **Where the result goes:** the report Nathan relays. The manager records it in the evidence record, "Delta re-review of B-C2", with a disposition for each finding (a correction, or a stated limit or record), and in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at extra high.** Effort score 2.64 (confidence 0.69); rung probabilities low 0.00, medium 0.01, high 0.40, extra high 0.55, max 0.04, ultracode 0.00. Model probabilities Fable 5.1 0.03, Opus 5.5 0.97, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.96). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.012, Fable 5.1 at extra high 0.017, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.010, Opus 5.5 at high 0.388, Opus 5.5 at extra high 0.533, Opus 5.5 at max 0.039, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Flags: boundary between high and extra high. Sent 2026-11-16T01:02:11Z. Nathan picks the cell.
+  - **TypeSafe v8.2: Opus 5.5 at extra high.** Effort score 2.65 (confidence 0.72); rung probabilities low 0.00, medium 0.01, high 0.37, extra high 0.59, max 0.03, ultracode 0.00. Model probabilities Fable 5.1 0.02, Opus 5.5 0.98, Sonnet 5.5 0.00, Haiku 5.5 0.00 (confidence 0.97). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.007, Fable 5.1 at extra high 0.012, Fable 5.1 at max 0.001, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.010, Opus 5.5 at high 0.363, Opus 5.5 at extra high 0.578, Opus 5.5 at max 0.029, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.000, Sonnet 5.5 at high 0.000, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-16T01:22:37Z. Nathan picks the cell.
 - **The Dev Manager's read:** none before it runs. The review authorizes no credential use and no live provider action. Dev Manager 5's pre-merge read follows it.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29), after Codex's review of PR47's head, which is this prompt's commit (manager workflow, step 6).
@@ -15,7 +15,7 @@
 
 ---
 
-You are the **bounded delta code and security re-review of correction B-C2, in SV3's Stage B**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one correction against the code head the exact-head review read, within a scope the Dev Manager fixed, under classes that fix what can lead to another correction. This prompt is revision 1, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`, the head of [PR47](https://github.com/amthorn78/glow-dating-app/pull/47).
+You are the **bounded delta code and security re-review of correction B-C2, in SV3's Stage B**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app` (public for now; OD-51). You review one correction against the code head the exact-head review read, within a scope the Dev Manager fixed, under classes that fix what can lead to another correction. This prompt is revision 2, from commit `<PROMPT_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`, the head of [PR47](https://github.com/amthorn78/glow-dating-app/pull/47).
 
 **What came before.**
 - **SV3's Stage A** (PR45, `8d83474`) and **B0** (PR46, `947576d`) are merged.
@@ -38,6 +38,7 @@ You are the **bounded delta code and security re-review of correction B-C2, in S
   - **A `CREATE FUNCTION` or `CREATE PROCEDURE` body** is a dollar-quoted string constant, masked by item 4's words, which except only `DO`. `470d97a` refused such a body that takes `FOR UPDATE` on the account table; `4860b56` passes it. No suite creates a function, and the suites' own-objects check (`row_locks.OWN_OBJECTS`) fails any function, procedure, view or rule that exists when it runs.
   - **The session's own pre-push read:** at `581966e` it found four bypasses of its first reading (non-ASCII spaces before a dollar quote, an `E''` string continued across a line end, unreserved keywords as aliases, names over 63 bytes) and one false refusal (an aliased item's table name bound as well as its alias). It fixed each at `fb201a4` and planted them.
   - **Codex on PR47:** four P2 findings since the review, each the review's own: #1 (carried), #4, #2 and #5 (B-C2's items 4, 2 and 5). Their threads are named in the brief's "Sessions".
+  - **Codex's fifth finding, on B-C1's ledger** (P2, on `e6fa3c1` at 23:23 UTC; [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4580718359)). `interaction_cases.py`'s `_as_a_client` records a command's own answer (`_Ledger.served_from`) before it checks the version the command sent (`_Ledger.check`), in both its wrappers (lines 2069 to 2073 for the routes, 2080 to 2081 for the direct calls, at `4860b56`). So a command that answers with the version it was sent, such as an unmatch of a match already `unmatched` (`no_change`, the version unchanged), satisfies the ledger by its own answer, even when the version came from the database. This is B-C1's code; B-C2 does not change it. The manager confirmed the order in the code.
 
 **The code head under review is `4860b56`.** You work at `<PROMPT_SHA>`, whose non-Markdown paths are byte-identical to `4860b56` (the start gate checks this). The baseline is `470d97a`, the head the exact-head review read; `main` is at `947576d`.
 
@@ -47,10 +48,11 @@ You are the **bounded delta code and security re-review of correction B-C2, in S
 - **Undo** (item 2): the selection, the case and its reversal.
 - **Items 3, 6, 7, 8 and 9:** the plan-coverage test, D14's stated limits and counts, the `GET` routes' texts, the records and the three tests, each with its reversal.
 - **DM-75's eighteen given texts for B-C2** (GG5 to GG11, GG13 to GG15, GG18 to GG25), as written.
+- **Codex's finding on the ledger** (`_Ledger` and the two wrappers of `_as_a_client`), though outside B-C2's diff: confirm it, give its class, find any other path by which a command's own answer, or a replay's, serves the version it sent, and give the words for the fix and its negative test (focus 9).
 - **The runs:** 43780988590, the run of record, and PR47's pull-request run on this prompt's commit or its parent, if one has finished.
 - **Out of scope:**
   - code B-C2 does not change;
-  - Stage B's and B-C1's code outside B-C2's diff, which the exact-head review read;
+  - Stage B's and B-C1's code outside B-C2's diff, which the exact-head review read, except the ledger (below);
   - #1's fix, which is SV4's (the carried-items file, "Carried to SV4");
   - OD-64, and the items carried to later phases.
 
@@ -101,6 +103,11 @@ You are the **bounded delta code and security re-review of correction B-C2, in S
    - The data model's two rows; the P11 plan's DB05 line, migration 0011's note and its run of record.
    - Every claim in the record's "Stage B, correction B-C2", and its three "corrected in B-C2" notes in the Stage B section.
 8. **Nothing else changed:** from the diff, no path outside B-C2's owned paths (GG27), and no workflow, contract package, model, migration, lock file, dependency or `glow_chat` file.
+9. **B-C1's ledger** (Codex's fifth finding). Does recording a command's own answer before checking its sent version let a version the device was never served pass (FF3's "every version a case sends comes from a command's own answer or from the read")?
+   - Check the routes' wrapper and the direct one, a `no_change` answer, a replay, and a refused command.
+   - Is it, under the exact-head review's classes, a test that passes where it should fail?
+   - Does any case in the run send a version only its own answer served? Read the ledger's lines.
+   - Give the fix's words (the check before the answer is recorded) and a negative test at the wrapper's level, with its reversal.
 
 **Re-run, at least,** in a scratch copy of `4860b56`:
 - **The checks:**
@@ -183,6 +190,7 @@ Expected: `"full": true`. Anything else: stop and report.
 - the diff `git diff 470d97acbf1faff6e81f1e8d8c9b9f27d0131765 4860b56c222db719f28010845ae32d15ecbf124a`, and, whole at `HEAD`:
   - `row_locks.py` and `tests/test_row_locks_offline.py`;
   - `services/api/glow_discovery/interactions.py`'s `undo`, and `services/api/tests/test_interactions_offline.py`'s `UndoSelectionTests` and `ReciprocalWriterTests`;
+  - in `interaction_cases.py`, `_Ledger` and `_as_a_client`;
   - in `interaction_cases.py`, the four changed cases, `_account_versions`, and the four other cases that call undo;
   - `tests/test_discovery_offline.py`'s plan-coverage test, and `glow_discovery/pages.py`'s `continue_page` and `_fresh`.
 
@@ -200,13 +208,13 @@ Expected: `"full": true`. Anything else: stop and report.
 ## 4. Report
 
 Your final message is the report Nathan relays:
-- the prompt revision (revision 1, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
+- the prompt revision (revision 2, from `<PROMPT_SHA>`), and the start gate's, the classification's and the environment check's results;
 - the size rule's count, and whether a full review applies instead;
 - **the verdict:** approve, approve with nits, or changes required. Changes are required only for a finding in a correction class;
 - the findings, in a table: number, severity, class or "stated limit", "record nit" or "rule change for the Dev Manager", file and line, what is wrong, and the evidence;
-- the answer to each focus point (1 to 8), a few lines each. Include:
+- the answer to each focus point (1 to 9), a few lines each. Include:
   - your reading of the `U&` rule and of the `CREATE FUNCTION` and `CREATE PROCEDURE` bodies;
   - for each stated limit, its planted example and the words for the README;
-  - whether each of Codex's threads for #2, #4 and #5 is answered at `4860b56`;
+  - whether each of Codex's threads for #2, #4 and #5 is answered at `4860b56`, and your reading of its fifth (the ledger);
 - the reversals you re-ran, with their results;
 - what you ran, and what you could not run or read.
