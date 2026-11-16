@@ -2189,3 +2189,47 @@ Four read-only reviewers (subagents, no repository change, no database) read B-C
 - **The proof README's SV3 paragraph** also names DM-75 where it named DM-73 as the last condition, and gains a sentence on B-C2, beside item 8's counts and revision.
 - **Not run:** the mobile app's checks, the API artifact and Stream jobs and the ordering, identity and profile suites locally (CI's run of record runs them); no provider, HDE or `proofs/stream-chat` command.
 
+
+## Manager verification of B-C2
+
+App Manager 11, 16 November 2026 (00:59 UTC), from the pushed branch `claude/sleepy-newton-1g92x8` (code head `4860b56`, records `423f34a`), with the GitHub tools for the runs. Nothing here was run against a provider, HDE, Stream or Railway.
+
+- **The start:** the branch starts at its prompt's commit `f39bd0d`. The manager branch moved once after it, to `e6fa3c1` (Codex's findings in the brief's "Sessions", AM11-28 and the handoff), touching none of B-C2's owned paths.
+- **The diff** (`git diff f39bd0d 423f34a`): 13 paths, each within B-C2's owned paths (the brief's revision 17, GG27). No dependency, workflow, model, migration, contract-package or `glow_chat` file, and no mode or symlink change. The records commit `423f34a` holds only Markdown (the record and the P11 plan), pushed after the run of record had ended.
+- **The three app files,** by AST against `f39bd0d`, docstrings aside:
+  - in `interactions.py`, 22 of 23 definitions are unchanged; `undo` differs only in its `latest` query, whose `state="passed"` filter is removed;
+  - `contract.py` (15) and `interaction_views.py` (14) are unchanged but for their docstrings (GG9, GG22);
+  - the module-level code is identical in all three.
+
+  `services/api`'s non-test lines: 17 added and 9 removed (the session's count), under the review rule's 60.
+- **The earlier tests,** by AST against `f39bd0d`: the only existing tests changed are those the prompt names.
+  - In the API: `test_the_method_around_the_body_is_activate_matchs_with_one_import`, plus the added `UndoSelectionTests`.
+  - In the proof's `test_discovery_offline.py`: the plan-coverage test.
+  - In `test_row_locks_offline.py`: all 25 earlier definitions are unchanged; three test classes and their planted texts are added.
+  - In `interaction_cases.py`: the four named cases (the block case, resurfacing, undo and routes), and one added helper, `_account_versions`, which the routes case uses to assert the precondition of its batch check.
+  - In `row_locks.py`: `refusal` and the record's `note` change. `note` keeps what it records, from which source, and its counts' form; it takes `writer`, `account` and `for_update` from the new `judge`.
+- **DM-75's pairs,** by the manager's script at `423f34a`: all 27 new texts are found once each (the manager's nine and B-C2's eighteen). Old passages remain only where a pair appends (GG1, GG3, GG4, GG16, GG25, GG27).
+- **The run of record,** [43780988590](https://github.com/amthorn78/glow-dating-app/actions/runs/43780988590) on `4860b56` (`push`), read from GitHub:
+  - all eight jobs `success`, every DM-41 retry step skipped, and the gate printed `Application checks passed`;
+  - API: `Ran 628 tests`, `OK (skipped=1)`; the contract tests `Ran 52 tests`, `OK`;
+  - Database proof checks (11 min 8 s): `Ran 346 tests`; ordering 56/56, 115/115 and read 62/62, every verdict `PASS`; identity 49/49; profile 69/69; discovery 66/66 in 159.7 s, its phase 162 s;
+  - each suite's `ROW LOCKS (D14): PASS` with 0 refused. The account-table writer locks are all `FOR NO KEY UPDATE`: 44,841 (ordering), 127 (identity), 2,061 (profile) and 4,256 (discovery, up from 4,214 with B-C2's longer cases);
+  - every secret and value scan clean.
+
+  The three suites B-C2 does not change count the same account-table writer locks under the new judge as under `470d97a`'s rule in run 43727020292. The ordering suite's statement and writer-lock totals vary from run to run (statements 544,767 to 605,076, writer locks 104,358 to 104,643 across four runs), its account count does not.
+- **Re-run here,** at `4860b56`, in a detached worktree in the scratchpad, with the API's and the proof's venvs (no dependency file changed), under `env -i`:
+  - API: `Found 628 test(s)`, `OK`; Ruff, `ruff format --check` (163 files) and mypy (95 files) clean;
+  - the proof: `Ran 346 tests`, `OK`; Ruff, format (70 files) and mypy clean;
+  - the lock scan's output byte-identical (`cmp`) to `947576d`'s.
+- **The review's and Codex's texts,** against the new `refusal` with the models' tables: Codex's quoted `--` (on `c9bca52`), the review's `state <> '--'`, the review's scope example and Codex's shadowed alias (on `f39bd0d`) are each refused; Django's no-key account lock and a `FOR UPDATE OF` naming only the match pass.
+- **Two reversals of my own,** each restored and the worktree clean afterwards:
+  - undo's `state="passed"` filter restored: `UndoSelectionTests` fails;
+  - the `DO` rule disabled: `test_a_hidden_do_statement_is_found` and `test_a_do_statement_and_an_unterminated_span_fail_whatever_their_lock` fail (`FAILED (failures=6)` over 28 tests).
+- **Codex on PR47 since the review** (the brief's "Sessions", AM11-28): four P2 findings, each the exact-head review's. #1 at `c9bca52` (the block's direction; [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4579396507)) is carried to SV4 by DM-75. #4 at `c9bca52` ([thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4579396514)), and #2 and #5 at `f39bd0d` ([thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4580670729), [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4580670735)), are answered by B-C2's items 4, 2 and 5, their texts refused or their chain refused at `4860b56`. Each thread is resolved after the delta re-review confirms it; #1's stays for the Dev Manager's pre-merge read.
+- **For the delta re-review and the Dev Manager:**
+  - **the `U&` reading:** the brief (GG16) and the README (GG18) say a statement holding a `U&` quoted identifier fails; item 4 requires each planted text to pass with `FOR NO KEY UPDATE`. The code fails such a statement only when it takes `FOR UPDATE`, and its docstring says so; the README keeps GG18's words. Whether those words claim more than the rule refuses (class 5) is for the review;
+  - **a `CREATE FUNCTION` or `CREATE PROCEDURE` body** is a dollar-quoted string constant, masked by item 4's words, which except only `DO`. `470d97a` refused such a body that takes `FOR UPDATE` on the account table; B-C2's head passes it. No suite creates a function, and the own-objects check fails any that exists when it runs. Whether this is class 3 or, under its exception (a form the earlier head refused only through a pattern a later item's words replace and exclude), a stated limit is for the review;
+  - **the session's pre-push read:** it ran four read-only reviewers at `581966e`, which found four bypasses of its first reading (non-ASCII spaces before a dollar quote, an `E''` string continued across a line end, unreserved keywords as aliases, names over 63 bytes) and one false refusal (an aliased item's table name bound as well as its alias); each fixed at `fb201a4` and planted;
+  - **the session's other departures:** the README's SV3 paragraph names DM-75 as its last condition and gains a B-C2 sentence; the record's Stage B section gains three "corrected in B-C2" notes.
+- **Integration:** the manager branch merged `423f34a` at `4616214` (it had moved after `f39bd0d`); its non-Markdown tree equals `4860b56`'s.
+- **Disposition:** B-C2 verified. Items 1 to 9 are in, no stop condition was met, and the run of record passed every job. Next: PR47's run and Codex on its new head, then the bounded delta re-review of `4860b56` against `470d97a` (DM-75; the size rule holds), then Dev Manager 5's pre-merge read.
