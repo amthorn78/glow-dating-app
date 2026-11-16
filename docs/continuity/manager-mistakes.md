@@ -188,6 +188,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-27 | 15 Nov 2026 | records | The handoff, kept under 5 KB by the documentation map, went over it at `2d8f28a` (5,049 bytes) and grew through six more commits to 6,152 bytes at `e75649d`; no commit checked its size. AM11-04's mechanism | App Manager 11, reading its size before the DM-75 commit |
 | AM11-28 | 15 Nov 2026 | follow-through | Gave DM-75 at `c9bca52` without a watch on Codex's pass, then wrote B-C2's prompt at `f39bd0d` without reading PR47's comments; Codex's two P2s on `c9bca52` (17:23 UTC) were read only at 23:18, after its pass on the prompt's commit. All four of Codex's findings since were already the review's (#1, #2, #4, #5), so the prompt stood. AM11-17 repeated | App Manager 11, reading PR47's comments before giving B-C2's prompt |
 | AM11-29 | 16 Nov 2026 | follow-through | AM11-28's new rule broken at its first use: pushed `e6fa3c1` (records only) and gave B-C2's prompt without waiting for Codex's pass on it; Codex posted a fifth finding there at 23:23 UTC, on B-C1's version ledger. The delta re-review prompt's revision 1 was then written at `b0386f8` without reading PR47's comments, since the wait checked only Codex's state on the new commit. Read at 01:20; revision 2, before revision 1 was given, adds it | App Manager 11, reading PR47's comments before giving the review prompt |
+| AM11-30 | 16 Nov 2026 | records | Created M08's TypeSafe uses row in Notion without the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token fields; completed from the printed row before the read-back. Also, since Stage B's exact-head review row (15 November), new rows were created with *Nathan's pick* "pending" and set to "not recorded" only after the session, where the manager workflow's step 3 sets "not recorded" at creation | App Manager 11, comparing the row with the script's output, and reading step 3 for DM-76 |
 
 ## App Manager 2
 
@@ -1160,6 +1161,15 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-30 — TypeSafe uses rows created from part of the printed row, and with the pick "pending" (records)
+
+- **What happened:** M08's row in the Notion uses table was created with the cell, level, model, session, date and PR fields only; the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token counts were left out.
+- **Caught by:** App Manager 11, comparing the created row with the script's printed row before the read-back.
+- **Effect:** none; the row was completed from the printed row and read back, matching it, before the prompt was given.
+- **Correction:** the five fields added verbatim.
+- **Also:** from Stage B's exact-head review row onward, rows were created with *Nathan's pick* "pending" and set to "not recorded" after the session ran; the manager workflow's step 3 sets "not recorded" in place of "pending" at creation. The two rows still "pending" (B-C2's delta re-review, revision 2, and M08) were set to "not recorded" on 16 November.
+- **Prevention:** a uses row is created by pasting the script's printed "Notion row" object whole, with *Nathan's pick* set to "not recorded" (step 3), then adding only PR and PR metrics (the skill's step 4); never by retyping fields.
 
 ### AM11-29 — AM11-28's rule broken at its first use (follow-through)
 
