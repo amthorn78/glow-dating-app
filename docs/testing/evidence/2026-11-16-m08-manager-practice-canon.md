@@ -242,7 +242,13 @@ After the fixes, `coverage.py` and `mech.py` were run again (section 6). The ver
 
 ## 10. Classification
 
-CLASSIFICATION
+The trusted policy from `main` (`947576d98b7c3103455a670c20fdba2734ff5053`), extracted to a temporary directory outside the checkout and run with `python3 -I`, base `553d9ed…` (this prompt's commit, so only this change is classified), head `23ed161be995a1154fb4283059761b12ce68877c` (the commit before this section was written):
+
+```
+{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/README.md", "docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md", "docs/pf-canon/GAPP-PF02-Manager-Practice-Rules.md", "docs/testing/evidence/2026-11-16-m08-manager-practice-canon.md"]}
+```
+
+`git merge-base --all` gives one base, `553d9ed…`. The commit that adds this section changes only this file, so the path set is unchanged; the report gives the classification of the final head. Ordinary documentation: no application CI and no code or security review. The governing parts (PF00 and PF02) go to the Dev Manager's read.
 
 ## 11. Deviations and limits
 
@@ -253,4 +259,4 @@ CLASSIFICATION
 - **Not done, by design:** no change to the mistakes log, the manager workflow, `AGENTS.md`, `CLAUDE.md`, the start procedures, the charter, the CI policy, the register, any brief or Notion; no pull request, comment or other GitHub write.
 - **Limit:** the check of each rule against the governing homes was made at `553d9ed…`. A governing change on the manager branch after that commit is not reflected.
 
-Status: draft (verification findings, coverage output and classification pending)
+Status: complete
