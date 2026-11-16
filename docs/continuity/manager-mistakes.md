@@ -191,6 +191,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-30 | 16 Nov 2026 | records | Created M08's TypeSafe uses row in Notion without the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token fields; completed from the printed row before the read-back. Also, since Stage B's exact-head review row (15 November), new rows were created with *Nathan's pick* "pending" and set to "not recorded" only after the session, where the manager workflow's step 3 sets "not recorded" at creation | App Manager 11, comparing the row with the script's output, and reading step 3 for DM-76 |
 | AM11-31 | 16 Nov 2026 | records | Two Notion standing lines left stale: Implementation Control's procedure summary kept its stamp and links at `854c214` (11 November) through the CI policy's changes at `d35b0ba`, `2475d7b`, `622a4f4` and `f39bd0d`, the manager workflow's at `b67bae2` and `a919dea`, and OD-63 to OD-66; and the Work Register's SV3 row was not updated at `553d9ed` or `e19f731`. AM10-05's mechanism (PF02-R12), and AM11-11's | Dev Manager 5 (DM-76 section 10) |
 | AM11-32 | 16 Nov 2026 | prompt | B-C5's prompt allowed the network "PyPI only" while its run-of-record step asked for the Database job's log lines, which the GitHub tools give, beyond a tail, only as a download link to GitHub's Actions results host; the session downloaded the whole log from that link and recorded the departure | B-C5's session, in its report |
+| AM11-33 | 16 Nov 2026 | follow-through | The Notion sync for `2e669c8` added B-C5's session branch to Implementation Control's "Branches" bullet and left its count, "nine", and its listing time, 18:07 UTC; the read-back checked the edited text, not the whole bullet. AM11-08's mechanism, repeated, though its prevention is a checklist item | Dev Manager 5 (DM-80 section 8) |
 
 ## App Manager 2
 
@@ -1163,6 +1164,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-33 — A branch added to the Branches bullet, its count left (follow-through)
+
+- **What happened:** the Notion sync for `2e669c8` added B-C5's session branch, `claude/brave-gates-1ty8o2`, to Implementation Control's "Branches" bullet, and left the bullet's count, "nine", and its listing time, "18:07 UTC". Ten branches existed. The read-back confirmed the inserted text, not the whole bullet.
+- **Caught by:** Dev Manager 5, DM-80 section 8.
+- **Effect:** the bullet's count read one short from about 22:34 UTC until the correction; no decision rested on it.
+- **Correction:** the count and the listing time corrected from a fresh `git ls-remote` (ten branches, 23:26 UTC), read back as the whole bullet.
+- **Prevention:** AM11-08's prevention is already a checklist item (the manager workflow's claims checklist reads back every whole bullet an edit touches, and checks each count and status word in it), and this sync skipped it. Every read-back of an edit to a counted list now prints the whole bullet and compares its count with the number of items it names, before the read-back is reported.
 
 ### AM11-32 — A network line narrower than the log reading the same prompt asked for (prompt)
 
