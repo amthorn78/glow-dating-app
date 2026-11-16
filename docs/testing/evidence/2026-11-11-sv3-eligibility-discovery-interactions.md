@@ -2664,7 +2664,7 @@ App Manager 11, 16 November 2026 (18:05 UTC).
   - the local discovery runs took about 366 s on a slow machine (`edc883e`'s code there: 387 s).
 - **For the delta re-review (the last of D14 under all five classes):**
   - `%(a'b)s` fails as an unterminated span, not as a placeholder inside a span: it fails closed, by another reason;
-  - the relations check reads the positions JJ4 names; a relation in a position it does not read would escape it (DM-78 section 6);
+  - the relations check reads the positions JJ4 names; a relation in a position it does not read would escape it (DM-78 section 6). B-C4's delta re-review found one: an item after a `set` or `values` that the reading takes as the end of the `FROM` list (F1), a stated limit under the freeze (DM-79);
   - Codex's three threads that B-C4 answers (r4588443647, F5; r4587204267, F4; r4581883081, S2) stay unresolved until the review confirms.
 - **Next:** B-C4's bounded delta re-review against `edc883e`, after PR47's run and Codex on the commit that holds its prompt. From B-C4's head, D14's rules are frozen (the brief's "B-C4's review, and how D14's line ends").
 
@@ -2691,3 +2691,4 @@ App Manager 11, 16 November 2026 (18:05 UTC).
 - **The manager's check,** at `8842176`'s code in the scratchpad's worktree, with `row_locks.refusal` and the models' tables given: F1's two texts return `None` and the alias-`s` control is refused by the relations check; F2's template returns `None`, and also at `edc883e`'s code; F3's text returns `None` at the head and is refused as a glued placeholder at `edc883e`'s code. The record's line 2632 holds the sentence F3 names.
 - **Disposition:** to Dev Manager 5 as DM-79 before PR47's pre-merge read: under the freeze, F1 and F2 are stated limits whose words, and the narrowing of the rules' words, are the Dev Manager's; F3 is a record correction; N1 is for confirmation; and how the words reach the docstring, a code file, before the merge (20:39 UTC).
 - **Codex's threads resolved** by the manager after this review: F5 (r4588443647), F4 (r4587204267) and S2 (r4581883081), each confirmed answered here. Open: #1's (r4579396507), carried to SV4.
+- **Dispositions** ([DM-79](../../continuity/dev-manager/reviews/2026-11-16-dm-79-sv3-b-c4-delta-review-dispositions.md), at `9befc53`, a read of `f3f1c64`; merged at `7d5e843`): F1 and F2 stated limits under the freeze (KK5), the relations check's words narrowed to the positions its reading binds and S4 narrowed; F3 corrected (KK11); N1 confirmed; a records correction B-C5, with a short bounded review under class 5 and class 1. The brief's revision 20 holds KK14 to KK16; KK12 is in "Manager verification of B-C4"; KK1 to KK11 and KK13 go to B-C5.
