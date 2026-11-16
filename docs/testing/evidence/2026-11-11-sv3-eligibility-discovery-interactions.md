@@ -2692,3 +2692,80 @@ App Manager 11, 16 November 2026 (18:05 UTC).
 - **Disposition:** to Dev Manager 5 as DM-79 before PR47's pre-merge read: under the freeze, F1 and F2 are stated limits whose words, and the narrowing of the rules' words, are the Dev Manager's; F3 is a record correction; N1 is for confirmation; and how the words reach the docstring, a code file, before the merge (20:39 UTC).
 - **Codex's threads resolved** by the manager after this review: F5 (r4588443647), F4 (r4587204267) and S2 (r4581883081), each confirmed answered here. Open: #1's (r4579396507), carried to SV4.
 - **Dispositions** ([DM-79](../../continuity/dev-manager/reviews/2026-11-16-dm-79-sv3-b-c4-delta-review-dispositions.md), at `9befc53`, a read of `f3f1c64`; merged at `7d5e843`): F1 and F2 stated limits under the freeze (KK5), the relations check's words narrowed to the positions its reading binds and S4 narrowed; F3 corrected (KK11); N1 confirmed; a records correction B-C5, with a short bounded review under class 5 and class 1. The brief's revision 20 holds KK14 to KK16; KK12 is in "Manager verification of B-C4"; KK1 to KK11 and KK13 go to B-C5.
+
+## Stage B, correction B-C5
+
+- **The session:** B-C5's implementation session, from the prompt's revision 1 at `5d1977e6d1c110b9c59be1f11030bbdbd5d3fb0f` of `claude/magical-wozniak-yfmmx2` (environment `Glow App - No Stream`). Branch `claude/brave-gates-1ty8o2`, started at that commit. Code head `0d784d494fb2046d9d6c3f00ea330a2043933df2`; this section and the P11 plan's run of record are the records commit after it.
+- **Environment (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`; no `STREAM_*` or `PG*` name. Of the AWS names, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_CA_BUNDLE` are present, not read and passed to no command. `GITHUB_TOKEN` and `GH_TOKEN` are present and not read. Toolchain: `python3.12 --version` printed `Python 3.12.14`. Every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus only `HTTPS_PROXY` and `PIP_CERT` for the hash-locked install and `HTTPS_PROXY` and `SSL_CERT_FILE` for `git push`, each passed by reference.
+- **Start gate:** every line held. `git rev-parse HEAD` printed `5d1977e…`; the commit is on the live manager branch (whose head was `5d1977e` itself); `git diff --quiet 07d8de3 HEAD -- . ':!*.md'` printed `B-C4's code`; the live branch changed no owned path since the commit (empty list); the brief's `Status: brief, revision 20,` and its "Stage B, correction B-C5" heading counted 1 each; this record's B-C5 heading counted 0; DM-79's report was present.
+
+### DM-79's twelve pairs
+
+Applied in the order KK1 to KK11, then KK13, by one script (`apply_dm79.py`, in the session's scratchpad, not committed) that reads each pair from DM-79's report's section 11 at the start (the content of each quoted code block, without the `> ` markers; never retyped), checks the old passage once before and the new text once after, and stops at the first miss. It exited 0.
+
+| Pair | Target | Old passage, before | New text, before | New text, after | Old passage, after |
+|---|---|---|---|---|---|
+| KK1 | `proofs/postgres-ordering/README.md` | 1 | 0 | 1 | 0 |
+| KK2 | `proofs/postgres-ordering/README.md` | 1 | 0 | 1 | 0 |
+| KK3 | `proofs/postgres-ordering/README.md` | 1 | 0 | 1 | 0 |
+| KK4 | `proofs/postgres-ordering/README.md` | 1 | 0 | 1 | 0 |
+| KK5 | `proofs/postgres-ordering/README.md` | 1 | 0 | 1 | 1 (the new text keeps the old line and adds the bullet after it, as DM-79 gives it) |
+| KK6 | `proofs/postgres-ordering/glow_ordering_proof/row_locks.py` | 1 | 0 | 1 | 0 |
+| KK7 | `row_locks.py` | 1 | 0 | 1 | 0 |
+| KK8 | `row_locks.py` | 1 | 0 | 1 | 0 |
+| KK9 | `row_locks.py` | 1 | 0 | 1 | 0 |
+| KK10 | this record | 1 | 0 | 1 | 0 |
+| KK11 | this record | 1 | 0 | 1 | 0 |
+| KK13 | `docs/testing/p11-deferred-acceptance.md` | 1 | 0 | 1 | 0 |
+
+KK12 and KK14 to KK16 were already applied by the manager and were not touched. KK2's new text holds B-C5's sentence for the README's SV3 paragraph; no other was written.
+
+### The AST identity
+
+- The prompt's script, against `git show 07d8de3:proofs/postgres-ordering/glow_ordering_proof/row_locks.py` in a temporary directory outside the repository: `identical by AST, docstrings aside: True`.
+- `git diff --stat 07d8de3 HEAD -- . ':!*.md'`: `row_locks.py` alone (`1 file changed, 25 insertions(+), 20 deletions(-)`).
+- The docstrings that differ, compared node by node in walk order (53 nodes at each head, the same names in the same order): the module's, `judge`'s and `_relations`'s, and no other.
+
+### Commands
+
+| Command (from `proofs/postgres-ordering`, under `env -i`) | Result |
+|---|---|
+| `python3.12 -m venv <scratchpad>/venv` | created (outside the repository: `.venv` is not git-ignored here) |
+| `pip install --require-hashes -r requirements-dev.lock` | exit 0 |
+| `pip check` | `No broken requirements found.` |
+| `python -m unittest discover -s tests -t .` | `Ran 376 tests in 29.401s`, `OK` |
+| `ruff check .` | `All checks passed!` |
+| `ruff format --check .` | `71 files already formatted` |
+| `mypy` | `Success: no issues found in 71 source files` |
+| `python -m glow_ordering_proof.account_lock_scan` | `select_for_update calls read: 52; locking a queryset that joins: 0`; `account locks found: 7; not FOR NO KEY UPDATE: 0`; its output byte-identical (`cmp`) to the same command on a `git archive` export of `07d8de3`'s `proofs/postgres-ordering` and `services/api` |
+
+### The run of record
+
+[43960479739](https://github.com/amthorn78/glow-dating-app/actions/runs/43960479739) on `0d784d4` (`push`, attempt 1), read after it ended: the jobs and steps with the GitHub tools, the gate's log with the GitHub tools, and the Database proof checks job's whole log (2,657 lines) downloaded from the download link those tools returned, then searched.
+
+- **All eight jobs `success`:** Change scope (`full: true`), Stream proof checks, Database proof checks (9 min 44 s), API artifact checks, API mobile smoke, API checks, Mobile checks, Foundation gate. The gate printed `Application checks passed`.
+- **No toolchain retry fired:** every DM-41 step (`Wait 60 s before the one retry of the Python install`, `Retry the Python install once`) was `skipped` in the four jobs that have one.
+- **The proof's offline tests:** `Ran 376 tests in 18.090s`, `OK`. PostgreSQL 17.11.
+- **The suites,** each `ROW LOCKS (D14): PASS` with `0 refused` and `the database's own functions 0, views 0, rules 0`. No line of the job's log contains `refused (D14)`, `Traceback` or `##[error]`; `FAIL` appears only in the workflow's echoed script and in test names. Each suite's second run on its used database (steps 17, 20, 24 and 28) succeeded.
+
+| Suite | Cases | D14's line | Account-table writer locks: B-C5 / B-C4 (43919688476) |
+|---|---|---|---|
+| ordering | reference 56/56, adapter 115/115, delivery 13/13, read 62/62; `VERDICT: PASS` | 601,985 statements (9 through the driver itself) on 10 connections in 5 threads; 104,751 writer's row locks | 44,841 / 44,841, all `FOR NO KEY UPDATE` |
+| identity | 49/49 in 30.8 s (phase 31 s) | 4,412 statements; 141 writer's row locks | 127 / 127, all `FOR NO KEY UPDATE` |
+| profile | 69/69 in 63.4 s (phase 64 s) | 78,038 statements; 7,606 writer's row locks | 2,061 / 2,061, all `FOR NO KEY UPDATE` |
+| discovery | **66/66 in 133.7 s; phase 135 s** (B-C4's run: 175 s) | 168,555 statements (68 through the driver itself) on 63 connections in 3 threads; 14,782 writer's row locks | 4,256 / 4,256, all `FOR NO KEY UPDATE` |
+
+- **Against B-C4's run of record:** the case counts, the D14 lines (`PASS`, 0 refused), the own-objects counts (0, 0, 0) and the account-table counts are the same in every suite. The ordering suite's statement and writer-lock totals (601,985 and 104,751, against 561,967 and 104,565) vary from run to run with its stress phase, as B-C4's record notes; its account-table count does not. The discovery suite sent 168,555 statements against 168,556; its writer-lock and account-table counts are the same.
+- **The scans:** identity, profile and discovery secret scans clean (754, 1,447 and 2,495 secrets held; 0 found); profile and discovery value scans clean (813 and 1,336 member values held; 0 found).
+- **`row_locks.driver_forms_are_seen`:** `PASS`, `the database's own functions, views and rules: 0, 0, 0`.
+
+### B-C5's lines in `services/api`
+
+Zero: `git diff --stat 5d1977e HEAD -- services/api` is empty. B-C5's paths are the proof README, `row_locks.py` (three docstrings), this record and the P11 plan.
+
+### Deviations, readings and what could not be run
+
+- **The venv** was created in the session's scratchpad, not as `proofs/postgres-ordering/.venv` as the README shows, since `.venv` is not git-ignored there and would have left the tree unclean.
+- **The Database job's log** was downloaded with `curl` from the signed link the GitHub tools returned (a GitHub Actions results host), outside the prompt's "PyPI only" network line, so that each line above could be searched in the whole log rather than a tail. The link is not recorded. Nothing else outside PyPI and GitHub was reached.
+- **KK5's old-passage count after** is 1, not 0: DM-79's new text begins with the old line, and adds the new bullet after it.
+- **Not run:** the API tests (`services/api` unchanged), the four suites locally (no Docker and no local database run, by the prompt; the run of record runs them), the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command.
