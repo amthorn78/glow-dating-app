@@ -2635,3 +2635,35 @@ From this head (`07d8de3`), D14's rules are frozen ("B-C4's review, and how D14'
 - **F2's and F3's texts** are this session's, built to the review's elided forms (above).
 - **Codex's thread on `cbea3ca`** (r4588443647, the wrapper-level negative control) is answered by `test_a_record_refuses_f5s_text_through_note`, which fails at `edc883e` (`0 != 1`) and under R2; Codex's thread on `4c2f918` (r4587204267) by item 3, and S2's (r4581883081) by item 1. The threads are the manager's to resolve.
 - **Not run:** the ordering, identity and profile suites locally (the run of record runs them); the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command.
+
+## Manager verification of B-C4
+
+App Manager 11, 16 November 2026 (18:05 UTC).
+
+- **Codex on `cbea3ca`** (B-C4's prompt's commit; posted at 16:28 UTC; [thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4588443647), `row_locks.py:505`): one P2, "Reject placeholders inside SQL spans before masking them": F5 again, answered by B-C4's item 2. It went to the session as an addition to the prompt, with a wrapper-level negative control; the prompt itself was not revised.
+- **The session:** B-C4, from its prompt's revision 1 at `cbea3ca` (TypeSafe v8.2: Opus 5.5 at high; Nathan's pick not recorded), on branch `claude/ecstatic-feynman-61wkt0`: README `24dd91d`, code head `07d8de3`, records `8842176`, the records commit pushed after the run of record ended. Relayed by Nathan on 16 November.
+- **Integration:** `8842176` descends from `cbea3ca`, which was still the manager branch's head; the manager branch was fast-forwarded to it. `8842176`'s non-Markdown tree equals `07d8de3`'s.
+- **The diff** (`git diff cbea3ca 8842176`): 5 paths, each within B-C4's owned paths (the brief's revision 19, JJ15): `row_locks.py`, `tests/test_row_locks_offline.py`, the proof README (its D14 entry, SV3 paragraph and "Limits" only), the P11 plan (its SV3 runs-of-record line only) and this record. No mode change; `services/api` is unchanged since `edc883e`.
+- **DM-78's texts:** each of the fifteen new texts (JJ1 to JJ15) is found exactly once at `8842176`, and each old passage that is not a prefix of its new text is gone (script).
+- **Local re-runs at `8842176`** (scratch worktree; hash-locked environment; `env -i`; no bytecode written): the proof's offline tests 376 OK, Ruff, `ruff format --check` and mypy clean; the lock scan 52 calls, 0 joining, 7 account locks, none other than `FOR NO KEY UPDATE`.
+- **Planted texts** through `row_locks.refusal` at `8842176`, with the models' tables given: F1's two texts refused (glued placeholders, the names now read as psycopg reads them); F5's text, the same without its lock clause, `"%s"` and a placeholder in a `--` comment refused as placeholders inside a span; `%(a'b)s` refused as an unterminated span, which also fails closed; `'a%%sb'` and a placeholder glued to a closing quote pass; F4's `CREATE TEMP VIEW` and a `CREATE MATERIALIZED VIEW` refused as views' creation; `SELECT id FROM v FOR UPDATE` and the `PREPARE … FOR UPDATE` refused by the relations check, `DROP VIEW` passing; a schema-qualified model table under `FOR UPDATE` and a `TABLE` command refused; Django's own `FOR UPDATE` on a model table and its no-key account lock pass; F2's and F3's texts refused as names bound more than once; a plain `JOIN … USING (id)` no-key lock passes. Without the models' tables, the lock through `v` passes, as JJ6 states.
+- **Reversals of the manager's own,** in a scratch copy: the span rule's refusal disabled fails 16 tests in `tests/test_row_locks_offline.py`; the relations check returning no refusal fails 21. Both match the session's counts.
+- **The run of record,** Foundation run 43919688476 on `07d8de3` (push), read with the GitHub tools: all eight jobs `success`; the gate printed `Application checks passed`. The Database proof checks job's D14 lines, each `ROW LOCKS (D14): PASS`, 0 refused, own objects 0, 0, 0:
+  - ordering: 561,967 statements; 104,565 take a writer's row lock, 44,841 of them naming the account table, all `FOR NO KEY UPDATE`; cases 56/56, 115/115, read 62/62;
+  - identity: 4,412 statements; 141 writer locks, 127 on the account table; 49/49;
+  - profile: 78,038 statements; 7,606 writer locks, 2,061 on the account table; 69/69;
+  - discovery: 168,556 statements; 14,782 writer locks, 4,256 on the account table; 66/66 in 174.0 s, the phase 175 s of the job's 30 minutes (B-C3's run: 159 s); `row_locks.driver_forms_are_seen` passed with 0, 0, 0.
+
+  No line of the job reports a refused statement; the identity, profile and discovery secret scans and the profile and discovery value scans are clean. The account-table lock counts equal B-C3's run of record's in every suite.
+- **The session's departures,** each in its record and accepted here for the review to judge:
+  - a quoted-name shortcut in the span test (a text whose only spans are quoted identifiers is judged by counting double quotes, not by full lexing), added after full lexing made `judge` about seven times slower; a fuzz of 146,871 texts agrees with the full lexer, and a test pins the two to agree;
+  - `_creates` also reads `LOCAL`, `GLOBAL` and `UNLOGGED` between `CREATE` and `VIEW`, as PostgreSQL's grammar does (only more refusals);
+  - the word `TABLE` is refused anywhere in a statement the relations check reads;
+  - F2's and F3's texts are the session's own, built to the review's forms and checked to pass at `edc883e`;
+  - a test for a `WITH` query's name, added when its reversal (R7) at first passed;
+  - the local discovery runs took about 366 s on a slow machine (`edc883e`'s code there: 387 s).
+- **For the delta re-review (the last of D14 under all five classes):**
+  - `%(a'b)s` fails as an unterminated span, not as a placeholder inside a span: it fails closed, by another reason;
+  - the relations check reads the positions JJ4 names; a relation in a position it does not read would escape it (DM-78 section 6);
+  - Codex's three threads that B-C4 answers (r4588443647, F5; r4587204267, F4; r4581883081, S2) stay unresolved until the review confirms.
+- **Next:** B-C4's bounded delta re-review against `edc883e`, after PR47's run and Codex on the commit that holds its prompt. From B-C4's head, D14's rules are frozen (the brief's "B-C4's review, and how D14's line ends").
