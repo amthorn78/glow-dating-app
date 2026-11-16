@@ -1313,17 +1313,11 @@ class UndoSelectionTests(unittest.TestCase):
             and [ast.unparse(target) for target in node.targets] == ["latest"]
         ]
         self.assertEqual(len(latest), 1)
-        calls = {
-            node.func.attr: node
-            for node in ast.walk(latest[0])
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-        }
+        # The whole expression, so no filter or exclusion chained onto it goes unseen.
         self.assertEqual(
-            ast.unparse(calls["filter"]),
-            "DirectionalInteraction.objects.filter(actor_id=account_id)",
-        )
-        self.assertEqual(
-            [ast.unparse(arg) for arg in calls["order_by"].args], ["'-decided_at'", "'-id'"]
+            ast.unparse(latest[0]),
+            "DirectionalInteraction.objects.filter(actor_id=account_id)"
+            ".order_by('-decided_at', '-id').values_list('id', flat=True).first()",
         )
         # The pass itself must still be ``passed``, and must be that latest decision.
         text = ast.unparse(body)
