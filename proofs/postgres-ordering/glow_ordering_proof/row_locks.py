@@ -21,9 +21,8 @@ every statement the process sends while the suite runs:
   own connection (``connection.connection``: its ``cursor()`` and its ``execute``, which make a
   cursor of Django's cursor class, a subclass of psycopg's ``Cursor``), and through a connection
   opened with ``psycopg.connect``, whose cursors are psycopg's ``Cursor``. Nothing is refused:
-  Django's
-  own use of the driver's connection (creating cursors, the health check's ``SELECT 1``, configuring
-  a new connection) is recorded and judged like any other statement.
+  Django's own use of the driver's connection (creating cursors, the health check's
+  ``SELECT 1``, configuring a new connection) is recorded and judged like any other statement.
 
 **How it reads a statement** (``_read``; the exact-head review of Stage B, #4; DM-75): as
 PostgreSQL reads it. Every comment (``--`` to the line's end, and ``/* … */``, nested block comments

@@ -1113,27 +1113,27 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
 def resurfacing_off_and_on(ctx: DiscoveryContext) -> str:
     """Off (the launch default), a pass excludes the pair from the actor's pages for good; on
     with a waiting period, a pass decided at least ``waiting_days`` ago excludes no longer, and a
-    later one still does, on a fresh page and on a page fetched by cursor (the cursor's recheck;
-    the exact-head review's #16, DM-75); a like over the actor's own resurfaced pass is F08's
-    ``like`` from ``passed`` on the same row, its version advanced."""
+    later one still does; a page fetched by cursor keeps a resurfaced candidate (the cursor's
+    recheck; the exact-head review's #16, DM-75); a like over the actor's own resurfaced pass is
+    F08's ``like`` from ``passed`` on the same row, its version advanced."""
     from glow_domain import profile_settings as ps
 
-    viewer, early, later, recent = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
+    viewer, early, earliest, recent = ctx.visible(), ctx.visible(), ctx.visible(), ctx.visible()
     expect(ctx.current(ps.RESURFACING)["enabled"] is False, "off at launch")
     _act(ctx, viewer, early, "pass")
-    _act(ctx, viewer, later, "pass")
+    _act(ctx, viewer, earliest, "pass")
     _act(ctx, viewer, recent, "pass")
     _decided(viewer, early, 400)
     expect(_pid(ctx, early) not in _shown(ctx, viewer), "off: a pass 400 days ago still excludes")
     try:
         _publish(ctx, ps.RESURFACING, {"enabled": True, "waiting_days": 7})
         _decided(viewer, early, 8)
-        _decided(viewer, later, 9)
+        _decided(viewer, earliest, 9)
         _decided(viewer, recent, 6)
         shown = _shown(ctx, viewer)
         expect(_pid(ctx, early) in shown, "on: a pass 8 days ago (waiting 7) resurfaces")
         expect(_pid(ctx, recent) not in shown, "on: a pass 6 days ago still excludes")
-        resurfaced = {_pid(ctx, early), _pid(ctx, later)}
+        resurfaced = {_pid(ctx, early), _pid(ctx, earliest)}
         expect(shown == resurfaced, "on: the two resurfaced candidates, and no other")
         first = ctx.page(viewer, limit=1)
         expect(
@@ -1179,8 +1179,10 @@ def undo_off_and_on(ctx: DiscoveryContext) -> str:
     try:
         _publish(ctx, ps.UNDO, {"enabled": True, "waiting_days": 1})
         _act(ctx, viewer, second, "pass")
+        unchanged = _counts()
         _, older = _undo(ctx, viewer, first)
         ctx.profiles.refused(older, 409, "state_conflict", "a pass that is not the most recent")
+        expect(_counts() == unchanged, "the refused undo writes nothing")
         _, stale = _undo(ctx, viewer, second, expected=0)
         ctx.profiles.refused(stale, 409, "stale_version", "a stale version")
         row = _row(viewer, second)
@@ -1236,10 +1238,12 @@ def undo_off_and_on(ctx: DiscoveryContext) -> str:
         _decided(viewer, first, 4)
         _decided(viewer, second, 3)
         _decided(viewer, third, 2)
+        unchanged = _counts()
         body, late = _undo(ctx, viewer, third)
         ctx.profiles.refused(late, 409, "state_conflict", "a pass past the waiting period")
         direct = interactions.undo(viewer.account_id, dict(body, meta=ctx.profiles.meta(1)))
         expect(direct.reason == "undo_window_ended", "refused as past its waiting period")
+        expect(_counts() == unchanged, "the refused undo writes nothing")
     finally:
         _publish(ctx, ps.UNDO, {"enabled": False, "waiting_days": None})
     return (
@@ -1346,6 +1350,9 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
     )
     ctx.profiles.refused(_read_match(ctx, third, match.id), 404, "not_found", "another's match")
     ctx.profiles.refused(_read_match(ctx, third, uuid4()), 404, "not_found", "no such match")
+    # Test data: the batch's versions are the third member's, and equal the second member's, so
+    # only the batch-owner comparison can refuse this like (its reversal, #15, lets it apply).
+    expect(_account_versions(two) == _account_versions(third), "the two members' versions agree")
     ctx.profiles.refused(
         ctx.profiles.command(two, INTERACTION, _intent(ctx, two, four, "like", page)),
         409,
@@ -1364,6 +1371,21 @@ def interaction_refusals_and_ownership(ctx: DiscoveryContext) -> str:
         "an interaction at a stale version",
     )
     return f"{len(checked)} routes ({'; '.join(checked)}), each no-store; ownership"
+
+
+def _account_versions(member: Member) -> tuple[int, int, int]:
+    """Test data: the account's eligibility, preferences and blocks versions, which a batch
+    records and a like compares (never a version a command sends)."""
+    from glow_persistence.models import AppAccount
+
+    found = (
+        AppAccount.objects.filter(pk=member.account_id)
+        .values_list("eligibility_version", "preferences_version", "blocks_version")
+        .first()
+    )
+    expect(found is not None, "the member's account exists")
+    assert found is not None
+    return int(found[0]), int(found[1]), int(found[2])
 
 
 def _unmatch_body(ctx: DiscoveryContext, match: Any) -> dict[str, Any]:
