@@ -1295,6 +1295,36 @@ MAIN_DEFINITION_DIGESTS = {
 MAIN_MODULE_DIGEST = "b1d45a7f611487b7caa030b13bfcd26a8dba80882235c8f549482eb1318e97c7"
 
 
+class UndoSelectionTests(unittest.TestCase):
+    """Correction B-C2's item 2 (D12; the exact-head review of Stage B, #2; DM-75), offline: the
+    pass undo withdraws must be the actor's latest decision, so ``latest`` is chosen among all the
+    actor's directional rows, in any state, by ``decided_at`` and then ID; one step, never a chain.
+    The database case is ``settings.undo_off_and_on``."""
+
+    def test_the_latest_decision_is_chosen_over_every_row_of_the_actors(self) -> None:
+        undo = top_function(parsed(DISCOVERY / "interactions.py"), "undo")
+        body = next(
+            node for node in undo.body if isinstance(node, ast.FunctionDef) and node.name == "body"
+        )
+        latest = [
+            node.value
+            for node in ast.walk(body)
+            if isinstance(node, ast.Assign)
+            and [ast.unparse(target) for target in node.targets] == ["latest"]
+        ]
+        self.assertEqual(len(latest), 1)
+        # The whole expression, so no filter or exclusion chained onto it goes unseen.
+        self.assertEqual(
+            ast.unparse(latest[0]),
+            "DirectionalInteraction.objects.filter(actor_id=account_id)"
+            ".order_by('-decided_at', '-id').values_list('id', flat=True).first()",
+        )
+        # The pass itself must still be ``passed``, and must be that latest decision.
+        text = ast.unparse(body)
+        self.assertIn("if row is None or row.state != 'passed':", text)
+        self.assertIn("if latest != row.id:", text)
+
+
 class ReciprocalWriterTests(unittest.TestCase):
     """D10 (a), as the review plan reads it: every existing function and method in
     ``glow_chat/contact.py`` unchanged from main's (by AST), ``activate_reciprocal`` the only new
@@ -1390,6 +1420,12 @@ class ReciprocalWriterTests(unittest.TestCase):
                 self.assertEqual(mine.name, theirs.name)
                 self.assertEqual(ast.dump(mine.args), ast.dump(theirs.args))
                 self.assertEqual(ast.dump(mine.returns), ast.dump(theirs.returns))
+                # The nested body's decorators too (the exact-head review's #14; DM-75): a
+                # decorator on ``body`` could bypass its checks.
+                self.assertEqual(
+                    [ast.dump(d) for d in mine.decorator_list],
+                    [ast.dump(d) for d in theirs.decorator_list],
+                )
             else:
                 self.assertEqual(ast.dump(mine), ast.dump(theirs))
         imports = [

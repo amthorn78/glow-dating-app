@@ -37,8 +37,10 @@ the match in the same transaction, through ``glow_chat``'s ``activate_reciprocal
 whose documented precondition is this recheck.
 
 **Undo** (D12; D13's ``InteractionUndoIntent``) withdraws the actor's most recent pass within
-``discovery.undo``'s ``waiting_days`` of it, while the setting is on (``forbidden`` while off); the
-row is kept and its version advanced (``withdrawn``), never deleted and created again.
+``discovery.undo``'s ``waiting_days`` of it, while the setting is on (``forbidden`` while off), and
+only while that pass is the actor's latest decision (the latest ``decided_at`` of all their rows,
+in any state; DM-75): one step, never a chain. The row is kept and its version advanced
+(``withdrawn``), never deleted and created again.
 
 **Unmatch, block and unblock** (D11; F10, F13) run ``glow_chat``'s ``unmatch``, ``block`` and
 ``unblock`` unchanged, with no eligibility or policy prerequisite: unmatch revokes contact and
@@ -56,8 +58,10 @@ profile's account ID and nothing else of the profile, never answers ``not_found`
 (missing, not visible, paused, restricted, removed, excluded or blocking the actor alike), and
 never reads a row whose actor is the other member, so their like, pass or block is never shown.
 
-Nothing here logs or returns another member's private value, a count, a reason or a block's
-direction (D8, D17); a refusal names a code and an internal reason, never a value.
+Nothing here logs or returns another member's private value, a count or a reason (D8, D17); a
+refusal names a code and an internal reason, never a value. No answer names a block's direction,
+but a match's state (``restricted`` only after a block) lets the member who did not block infer
+it: D8's gap, carried to SV4 before P11 (DM-75).
 """
 
 from __future__ import annotations
@@ -414,7 +418,7 @@ def undo(
         if row is None or row.state != "passed":
             raise Refused(STATE_CONFLICT, "no_pass")
         latest = (
-            DirectionalInteraction.objects.filter(actor_id=account_id, state="passed")
+            DirectionalInteraction.objects.filter(actor_id=account_id)
             .order_by("-decided_at", "-id")
             .values_list("id", flat=True)
             .first()
