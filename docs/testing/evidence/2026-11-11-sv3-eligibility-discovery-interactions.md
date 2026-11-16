@@ -2769,3 +2769,23 @@ Zero: `git diff --stat 5d1977e HEAD -- services/api` is empty. B-C5's paths are 
 - **The Database job's log** was downloaded with `curl` from the signed link the GitHub tools returned (a GitHub Actions results host), outside the prompt's "PyPI only" network line, so that each line above could be searched in the whole log rather than a tail. The link is not recorded. Nothing else outside PyPI and GitHub was reached.
 - **KK5's old-passage count after** is 1, not 0: DM-79's new text begins with the old line, and adds the new bullet after it.
 - **Not run:** the API tests (`services/api` unchanged), the four suites locally (no Docker and no local database run, by the prompt; the run of record runs them), the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command.
+
+## Manager verification of B-C5
+
+App Manager 11, 16 November 2026 (22:33 UTC).
+
+- **Integrated** by fast-forward of the manager branch from `5d1977e` to B-C5's records head `0f01f64` (code head `0d784d4`; branch `claude/brave-gates-1ty8o2`).
+- **The diff** (`git diff 5d1977e 0f01f64`): four paths, 109 lines added and 26 removed: the proof README (line 19, the SV3 paragraph; lines 240 to 242, D14's entry, the further limits and the new bullet for the limits under the freeze), `row_locks.py`, this record and the P11 plan (line 85, its SV3 entry). No line in `services/api`. The trusted classifier (`--base 5d1977e --head 0f01f64 --merge-base`) returns `full: true`.
+- **The AST identity,** by the manager's own script at `0f01f64`: `row_locks.py`'s code equals `07d8de3`'s with docstrings set aside. Of 53 nodes in walk order, with the same names at both heads, three docstrings differ: the module's, `judge`'s and `_relations`'s. The file is byte-identical to the manager's scratch application of the twelve pairs at `5d1977e`.
+- **DM-79's sixteen texts,** read from its report by script: each new text is found once at `0f01f64`. Every old passage is gone, except KK5's, KK15's and KK16's, whose new texts keep them.
+- **The run of record,** 43960479739 on `0d784d4`, read from GitHub:
+  - all eight jobs `success`; every DM-41 retry step skipped;
+  - the Database proof checks job's whole log (2,657 lines), read from the download link the GitHub tools returned: ordering 56/56, 115/115, 13/13 and 62/62; identity 49/49; profile 69/69; discovery 66/66 in 133.7 s, its phase 135 s;
+  - each suite's `ROW LOCKS (D14): PASS` with 0 refused and the database's own functions, views and rules 0, 0, 0;
+  - account-table writer locks 44,841, 127, 2,061 and 4,256, all `FOR NO KEY UPDATE`, equal to B-C4's run of record (43919688476);
+  - no line holds `refused (D14)`, `Traceback` or `##[error]`.
+- **Local re-runs at `0f01f64`** (the proof's hash-locked venv, under `env -i`): the offline tests (`Ran 376 tests`, `OK`), Ruff, `ruff format --check` (71 files) and mypy (71 source files) clean; the lock scan (52 calls, 0 joining, 7 account locks, 0 not `FOR NO KEY UPDATE`), its output byte-identical to the scan at B-C4's head.
+- **The session's two departures,** both accepted:
+  - its venv was made outside the repository, since `.venv` is not ignored in the proof;
+  - it downloaded the Database job's log from the link the GitHub tools returned, outside the prompt's "PyPI only" line. That line was the manager's error: the same prompt asked for log lines the GitHub tools give only as such a link (AM11-32). The review's prompt names that host.
+- **For the short review** (DM-79 section 8; the brief's "B-C5's review"): the AST identity; DM-79's texts as given; each narrowed sentence and each new limit against the code at `07d8de3`, with their planted examples; B-C5's own records; class 1 from the run's D14 lines.

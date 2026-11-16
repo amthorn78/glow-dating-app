@@ -190,6 +190,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-29 | 16 Nov 2026 | follow-through | AM11-28's new rule broken at its first use: pushed `e6fa3c1` (records only) and gave B-C2's prompt without waiting for Codex's pass on it; Codex posted a fifth finding there at 23:23 UTC, on B-C1's version ledger. The delta re-review prompt's revision 1 was then written at `b0386f8` without reading PR47's comments, since the wait checked only Codex's state on the new commit. Read at 01:20; revision 2, before revision 1 was given, adds it | App Manager 11, reading PR47's comments before giving the review prompt |
 | AM11-30 | 16 Nov 2026 | records | Created M08's TypeSafe uses row in Notion without the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token fields; completed from the printed row before the read-back. Also, since Stage B's exact-head review row (15 November), new rows were created with *Nathan's pick* "pending" and set to "not recorded" only after the session, where the manager workflow's step 3 sets "not recorded" at creation | App Manager 11, comparing the row with the script's output, and reading step 3 for DM-76 |
 | AM11-31 | 16 Nov 2026 | records | Two Notion standing lines left stale: Implementation Control's procedure summary kept its stamp and links at `854c214` (11 November) through the CI policy's changes at `d35b0ba`, `2475d7b`, `622a4f4` and `f39bd0d`, the manager workflow's at `b67bae2` and `a919dea`, and OD-63 to OD-66; and the Work Register's SV3 row was not updated at `553d9ed` or `e19f731`. AM10-05's mechanism (PF02-R12), and AM11-11's | Dev Manager 5 (DM-76 section 10) |
+| AM11-32 | 16 Nov 2026 | prompt | B-C5's prompt allowed the network "PyPI only" while its run-of-record step asked for the Database job's log lines, which the GitHub tools give, beyond a tail, only as a download link to GitHub's Actions results host; the session downloaded the whole log from that link and recorded the departure | B-C5's session, in its report |
 
 ## App Manager 2
 
@@ -1162,6 +1163,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none; each was corrected within the same sync, and none was relied on.
 - **Correction:** each corrected in Notion at once.
 - **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-32 — A network line narrower than the log reading the same prompt asked for (prompt)
+
+- **What happened:** B-C5's prompt (revision 1, `5d1977e`) said "**Network:** PyPI only" and, in its run-of-record step, asked the session to read each suite's D14 line, own-objects counts and account-table lock counts "with your GitHub tools". Beyond a tail, the GitHub tools give a job's log only as a signed download link to GitHub's Actions results host. To read the Database job's whole log (2,657 lines), the session downloaded it from that link with `curl`, outside the network line, and recorded it as a departure without recording the link.
+- **Caught by:** B-C5's session, in its report and record.
+- **Effect:** none on the evidence: the host is GitHub's own results store, reached through a link the GitHub tools returned, read-only and with no credential; the counts it gave match the manager's own read of the same log. The prompt's words and the session's work disagreed until the departure was accepted.
+- **Correction:** the departure accepted in "Manager verification of B-C5"; B-C5's review prompt names GitHub's Actions results host, reached only through a download link the GitHub tools return, with no link recorded.
+- **Prevention:** a prompt that asks for counts from a job's log names, in its network line, GitHub's Actions results host through the GitHub tools' download link, or says that a tail is enough; before pushing a prompt, read its network line against every step that reads something remote.
 
 ### AM11-31 — The procedure summary's stamp and the SV3 row left behind (records)
 
