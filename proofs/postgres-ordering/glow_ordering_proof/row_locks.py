@@ -67,13 +67,15 @@ can read; an ``OF`` name the resolution below does not bind once to a plain ``FR
 item, or binds to a table that is not one of the models' tables (a view); or text after the clause
 that is not another lock clause. With the models' tables given (``RowLockRecord`` reads them from
 Django's registry once it is ready), a statement that takes ``FOR UPDATE`` and does not name the
-account table fails too unless every relation name it reads (``_relations``), in any scope (each
-``FROM``, ``JOIN``, ``USING``-list, ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a ``WITH``
-query's name read as one included), is one of those tables, written without a schema; a ``TABLE``
-command, or parentheses it cannot read, fail it as well. So a ``FOR UPDATE`` through a name that
-is not one of the models' tables fails, whatever else the statement names (Codex on ``4c2f918``;
-DM-78). A sub-query's and a function's own relations are read in turn; a function is not a
-relation.
+account table fails too unless every relation name its reading binds (``_relations``), in any
+scope (each ``FROM``, ``JOIN``, ``USING``-list, ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a
+``WITH`` query's name read as one included, but not an item after a ``set`` or ``values`` that
+the reading takes as the end of the ``FROM`` list; the proof README's "Limits"), is one of those
+tables, written without a schema; a ``TABLE`` command, or parentheses it cannot read, fail it as
+well. So a ``FOR UPDATE`` through a name that is not one of the models' tables, in a position its
+reading binds, fails, whatever else the statement names (Codex on ``4c2f918``; DM-78; B-C4's
+delta re-review, F1; DM-79). A sub-query's and a function's own relations are read in turn; a
+function is not a relation.
 
 **How it resolves ``FOR UPDATE OF``** (``_resolve``; the exact-head review of Stage B, #5; DM-75):
 an ``OF`` name counts only where the statement binds it once, in any scope, as a table named in a
@@ -116,13 +118,14 @@ text before the rewrite (no case's wrapper sends or rewrites one today); a state
 psycopg's cursors (libpq's own connection object, ``connection.connection.pgconn.exec_(...)``), or
 through an asynchronous cursor; a statement read with ``standard_conforming_strings`` off (S3);
 a parameter's value where its placeholder stands outside every span and is glued to no name
-character or dollar sign, which psycopg writes as a constant (S4); a lock through a model
-table's name that refers to another relation when the lock runs (a view of that name a path the
-record does not see created, the account table renamed to that name, or a table of that name of
-which the account table was made a child), since it judges each statement on its own text and
-follows no change to the schema; a statement sent before Django's registry is ready, judged
-without the models' tables; the name ``excluded`` as a binding; and a statement a case never
-runs.
+character or dollar sign, which psycopg writes as a constant, and a string constant after such a
+placeholder, which a value holding a backslash can change (S4; the proof README's "Limits"); a
+lock through a model table's name that refers to another relation when the lock runs (a view of
+that name a path the record does not see created, the account table renamed to that name, or a
+table of that name of which the account table was made a child), since it judges each statement
+on its own text and follows no change to the schema; a statement sent before Django's registry
+is ready, judged without the models' tables; the name ``excluded`` as a binding; and a statement
+a case never runs.
 
 **Its counts** of connections and threads are of distinct identities, which a closed connection's
 or an ended thread's successor may reuse, and it counts a connection's Django wrapper and its
@@ -638,7 +641,8 @@ def judge(sql: str, tables: frozenset[str] = frozenset()) -> Verdict:
     """D14's judgement of ``sql`` as PostgreSQL reads the text the record receives, before psycopg
     writes its parameters into it, with ``standard_conforming_strings`` on. ``tables`` is the
     models' tables; when it is given, an ``OF`` name must resolve to one of them, and a statement
-    that takes ``FOR UPDATE`` without naming the account table must read only them."""
+    that takes ``FOR UPDATE`` without naming the account table must read only them, in the
+    positions its reading binds (the module docstring's rule)."""
 
     def by_text(reason: str) -> Verdict:
         return Verdict(
@@ -750,11 +754,12 @@ def _resolve(tokens: list[_Token], clauses: list[_Clause], tables: frozenset[str
 def _relations(tokens: list[_Token], tables: frozenset[str]) -> str | None:
     """The relations check (correction B-C4's item 3; Codex on 4c2f918; DM-78), for a statement
     that takes ``FOR UPDATE`` and does not name the account table, the models' tables given: every
-    relation name it reads, in any scope (each ``FROM``, ``JOIN``, ``USING``-list, ``INTO``,
-    ``UPDATE`` and ``DELETE FROM`` item, a ``WITH`` query's name read as one), is one of
-    ``tables``, written without a schema; a ``TABLE`` command, or parentheses it cannot read, fail
-    it. A sub-query's and a function's own relations are read in turn; a function is not a
-    relation."""
+    relation name its reading binds, in any scope (each ``FROM``, ``JOIN``, ``USING``-list,
+    ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a ``WITH`` query's name read as one; not an
+    item after a ``set`` or ``values`` read as the end of the ``FROM`` list, a stated limit:
+    B-C4's delta re-review, F1; DM-79), is one of ``tables``, written without a schema; a
+    ``TABLE`` command, or parentheses it cannot read, fail it. A sub-query's and a function's
+    own relations are read in turn; a function is not a relation."""
     if any(_word(token, "table") for token in tokens):
         return TABLE_COMMAND
     reading = _bindings(tokens)
