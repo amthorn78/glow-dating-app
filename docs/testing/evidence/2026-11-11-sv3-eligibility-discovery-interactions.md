@@ -2168,3 +2168,188 @@ App Manager 11, 16 November 2026 (01:22 UTC).
 - **The manager's check,** at `4860b56`'s code in the scratchpad's worktree (`1f346ce`, its `proofs` and `services` identical to `4860b56`), with `row_locks.refusal`: F5's two texts each return `None` and the plain control is refused ("binds more than once"); F1's `U&` text returns `None` with `FOR NO KEY UPDATE` and is refused with `FOR UPDATE`; F2's text returns `None`; S1's body and S2's text return `None`; N7's text is refused at the head. F6: `served_from` precedes `check` in both wrappers (`interaction_cases.py:2069` and `:2073`; `:2080` and `:2081`). F3: each of `OWN_OBJECTS`'s three counts excludes `pg\_%` (`row_locks.py:284-296`). N1: lines 1932 and 2130 each hold the table's header mid-sentence. No `CREATE FUNCTION`, `CREATE PROCEDURE`, view, rule, `RunSQL` or dollar-quote is sent by non-test code in `services/api` or the proof (grep), so failing S1's and S2's forms by rule would refuse no statement a suite sends today.
 - **Disposition:** to Dev Manager 5 as DM-77 before correction B-C3's prompt: F1 and F2 are DM-75's own words, F3 and S1 are a choice between correcting the own-objects check and stating its limits, S2 a choice of failing closed, and the next review's form (04:02 UTC).
 - **Codex on `892bd59`** (the commit holding DM-77; its review posted at 04:08 UTC): two P2 findings, each already the review's. Placeholders that can change token boundaries ([thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4581883081), `row_locks.py:875`) is S2, DM-77 item 6; temporary schemas in the own-objects check ([thread](https://github.com/amthorn78/glow-dating-app/pull/47#discussion_r4581883085), `row_locks.py:287`) is F3, DM-77 item 3. Both ask to fail closed. They went to Dev Manager 5 as an addition in DM-77's relay. Codex had not reviewed `3f2f72b` (two Markdown lines); its pass on `892bd59` covers that commit.
+
+## Stage B, correction B-C3
+
+The implementation session for correction B-C3, from its prompt's revision 1 at `b67d9e3` of the manager branch, started by Nathan on 16 November 2026. Branch `claude/zealous-dirac-6f5mq2`; code head `edc883e` (after the docs commit `a384af5`); this records commit follows the run of record. Nothing here was run against a provider, HDE, Stream, Railway or any database but the throwaway one below.
+
+### The start gate, the environment and the toolchain
+
+- **Environment (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`; no `STREAM_*` or `PG*` name; `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` present, never read; `GH_TOKEN` and `GITHUB_TOKEN` present, never read. Every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8` (with `GLOW_ENV=test` for the API).
+- **Toolchain:** Python 3.12.14 (`python3.12`), Node v24.19.0, npm 11.9.0, Docker 29.9.2; both venvs created with `python3.12` and installed with `pip install --require-hashes` from the existing locks (`pip check`: no broken requirements).
+- **Start gate:** `HEAD` at `b67d9e3`; `b67d9e3` is on the live manager branch (its head then and at the push); the start's non-Markdown tree equals `4860b56`'s; no owned path changed on the live branch since `b67d9e3` (re-checked before the push); the brief at revision 18 with "Stage B, correction B-C3" once; this record held no B-C3 section; DM-77's report present. Every check passed.
+
+### DM-77's ten pairs
+
+Each pair was read from DM-77's section 16 by script, its old passage counted at `b67d9e3` (from `git archive`) and in the working tree, then replaced, and its new text counted after.
+
+| Pair | Target | Old passage at `b67d9e3` | New text after |
+|---|---|---|---|
+| II1 | `proofs/postgres-ordering/README.md` (D14's reading) | once | once |
+| II2 | the README (D14's resolution) | once | once |
+| II3 | the README (the planted function) | once | once |
+| II4 | the README (the own-objects limit, `dblink`) | once | once |
+| II5 | the README (the counts, N2) | once | once |
+| II6 | the README (the SV3 paragraph, F4) | once | once |
+| II7 | `docs/testing/p11-deferred-acceptance.md` (B-C2's run line) | once | once |
+| II8 | the P11 plan (migration 0011's note, N3) | once | once |
+| II9 | this record (the own-objects row, formerly line 1552) | once | once |
+| II11 | `row_locks.py` (the docstring's own-objects paragraph) | once | once |
+
+II10 and II12 to II16 are the manager's, already applied, and were left alone.
+
+### D14: the rules, the bindings and the filter (items 1 to 6)
+
+- **Item 1 (F1)** and **item 2 (F2):** words only (II1, II2); the code is unchanged for them. Item 2's reading is added to B-C2's "Deviations, readings and what could not be run" above.
+- **The creation rule (item 3, S1):** `judge` refuses a statement whose tokens, as `_read` gives them (comments dropped, constants masked, quoted identifiers kept as names), hold `CREATE`, then optionally `OR REPLACE`, then `FUNCTION` or `PROCEDURE`, whatever its lock (reason `CREATES_ROUTINE`), checked after the `DO` rule. The fast path no longer passes unread a statement whose text holds the words `CREATE` and `FUNCTION` or `PROCEDURE`, so a SQL-standard body (`BEGIN ATOMIC`), which holds no constant, is read and refused.
+- **The filter (item 3, F3):** each of `OWN_OBJECTS`'s three counts now excludes only the schemas `pg_catalog`, `information_schema` and `pg_toast`, and those matching `pg\_toast\_temp\_%`; the `pg\_%` filter, which excluded every temporary schema (`pg_temp_N`), is gone. The functions' count still leaves out an extension's own functions (`pg_depend`, `deptype = 'e'`), as before; nothing else in the query changed.
+- **The bindings (item 5, F5):** in `_resolve`, a parenthesis that stands where a `FROM` item does and holds no `SELECT`, `VALUES`, `TABLE` or `WITH` directly inside it (and more than one token, so `ONLY (name)` is read as before) is a parenthesised join: its items, nested ones included, are read as a `FROM` list's, every one a binding and none plain. A `USING` after a `DELETE` or `MERGE` at the same depth, with no `JOIN` between them, opens a list whose every item (its `JOIN` items included) is a binding, none plain. A `USING` after a `JOIN` is that join's column list and binds nothing. Which parentheses directly hold a sub-query is computed once per statement, so the resolver's time on deep nesting is as at `4860b56` (5,000 nested levels: 1.01 s at the head, 0.99 s at `4860b56`; N9).
+- **The placeholder rule (item 6, S2):** before everything else, `judge` refuses a statement (reason `GLUED_PLACEHOLDER`) whose text holds the word `UPDATE` (`\bUPDATE\b`, any case, anywhere, spans and comments included) and a placeholder (`%s`, `%b`, `%t`, or `%(name)s`, `%(name)b`, `%(name)t`) with a name character (a letter, digit, underscore, `$` or non-ASCII character) directly before or after it; `%%` is read as a literal percent sign and skipped. The prompt's readings of "the word" and of `%%` are the manager's, applied as given.
+- **The docstring:** F4's qualification (lines 27-28 and `judge`'s docstring, the README's words), the two new rules, N6 (the whitespace sentence, now saying that every non-ASCII character is an identifier character and a `$` after one continues the identifier; and the rule's cannot-read list, now pointing to the resolution instead of its loose list), the resolution's new binding forms, II11, S3 and S4 in "What it does not see", and II5's words on the counts.
+
+Every text items 3, 5 and 6 plant (the tuples in `tests/test_row_locks_offline.py`), with the controls, judged by `4860b56`'s `refusal` and by B-C3's, with the models' tables (generated by script from the test file):
+
+| Item and group | Text | `4860b56` | B-C3's head | `FOR NO KEY UPDATE`: `4860b56` / B-C3's head |
+|---|---|---|---|---|
+| 3: routine bodies (S1) | `CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS $$ SELECT id FROM glow_persistence_appaccount FOR UPDATE $$` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: routine bodies (S1) | `CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS 'SELECT id FROM glow_persistence_appaccount FOR UPDATE'` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: routine bodies (S1) | `CREATE FUNCTION pg_temp.f() RETURNS SETOF bigint LANGUAGE sql AS E'SELECT id FROM glow_persistence_appaccount FOR UPDATE'` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: routine bodies (S1) | `CREATE OR REPLACE PROCEDURE pg_temp.p() LANGUAGE sql AS $body$ SELECT id FROM glow_persistence_appaccount FOR UPDATE $body$` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: routine bodies (S1) | `create /* a comment */ or\nreplace function pg_temp.f() returns setof bigint language sql as $$ SELECT id FROM glow_persistence_appaccount FOR UPDATE $$` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: routine bodies (S1) | `CREATE FUNCTION public.d14_lock() RETURNS void LANGUAGE plpgsql AS $$ BEGIN PERFORM id FROM glow_persistence_appaccount FOR UPDATE; END $$` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: Codex's sequence on `b67d9e3` | `CREATE FUNCTION public.d14_lock() RETURNS void LANGUAGE plpgsql AS $$ BEGIN PERFORM id FROM glow_persistence_appaccount FOR UPDATE; END $$` | passes | refused: a statement that creates a function or a procedure, whose body runs as code | passes / refused |
+| 3: Codex's sequence on `b67d9e3` | `SELECT public.d14_lock()` | passes | passes | (no `FOR UPDATE`) |
+| 3: Codex's sequence on `b67d9e3` | `DROP FUNCTION public.d14_lock()` | passes | passes | (no `FOR UPDATE`) |
+| 5: unread bindings (F5) | `SELECT 1 FROM glow_persistence_appaccount a JOIN (glow_persistence_block x JOIN glow_persistence_block y ON true) j ON true JOIN glow_persistence_match x ON true FOR UPDATE OF x` | passes | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block x WHERE z.id = x.id RETURNING z.id) SELECT 1 FROM glow_persistence_appaccount a JOIN glow_persistence_match x ON true FOR UPDATE OF x` | passes | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `WITH q AS (MERGE INTO glow_persistence_block z USING glow_persistence_block x ON z.id = x.id WHEN MATCHED THEN DO NOTHING RETURNING z.id) SELECT 1 FROM glow_persistence_appaccount a JOIN glow_persistence_match x ON true FOR UPDATE OF x` | passes | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block w, glow_persistence_block x RETURNING z.id) SELECT 1 FROM glow_persistence_appaccount a JOIN glow_persistence_match x ON true FOR UPDATE OF x` | refused: FOR UPDATE OF a name the statement binds more than once | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `WITH q AS (DELETE FROM glow_persistence_block z USING glow_persistence_block w JOIN glow_persistence_block x ON true RETURNING z.id) SELECT 1 FROM glow_persistence_appaccount a JOIN glow_persistence_match x ON true FOR UPDATE OF x` | refused: FOR UPDATE OF a name the statement binds more than once | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `SELECT 1 FROM glow_persistence_appaccount a JOIN ((glow_persistence_block w JOIN glow_persistence_block x ON true) JOIN glow_persistence_block y ON true) ON true JOIN glow_persistence_match x ON true FOR UPDATE OF x` | passes | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `SELECT 1 FROM glow_persistence_appaccount a JOIN ((SELECT 1) s JOIN glow_persistence_block x ON true) ON true JOIN glow_persistence_match x ON true FOR UPDATE OF x` | passes | refused: FOR UPDATE OF a name the statement binds more than once | passes / passes |
+| 5: unread bindings (F5) | `SELECT 1 FROM (glow_persistence_appaccount a JOIN glow_persistence_match m ON true) FOR UPDATE OF m` | refused: the account table appears other than as a plain FROM or JOIN item's table outside any sub-query, or a column's qualifier | refused: the account table appears other than as a plain FROM or JOIN item's table outside any sub-query, or a column's qualifier | passes / passes |
+| 5: a join's `USING (id)` (control) | `SELECT m.id FROM glow_persistence_match m JOIN glow_persistence_block b USING (id) JOIN glow_persistence_appaccount a ON a.id = m.account_low_id FOR UPDATE OF m` | passes | passes | passes / passes |
+| 5: a join's `USING (id)` (control) | `SELECT m.id FROM glow_persistence_match m JOIN glow_persistence_block b USING (id) JOIN glow_persistence_appaccount a ON a.id = m.account_low_id FOR UPDATE OF a` | refused: FOR UPDATE OF the account table or an alias it is given | refused: FOR UPDATE OF the account table or an alias it is given | passes / passes |
+| 6: glued placeholders (S2) | `SELECT id, $q%s$ $q1$ FROM glow_persistence_appaccount FOR UPDATE --$q1$` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | passes / refused |
+| 6: glued placeholders (S2) | `SELECT id, $q%sx$ $q1x$ FROM glow_persistence_appaccount FOR UPDATE --$q1x$` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | passes / refused |
+| 6: glued placeholders (S2) | `UPDATE glow_persistence_match SET version = version%s` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | (no `FOR UPDATE`) |
+| 6: glued placeholders (S2) | `UPDATE glow_persistence_match SET version = %bversion` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | (no `FOR UPDATE`) |
+| 6: glued placeholders (S2) | `SELECT 1 FROM glow_persistence_match WHERE id = x%t -- update` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | (no `FOR UPDATE`) |
+| 6: glued placeholders (S2) | `SELECT 1 FROM glow_persistence_match WHERE id = x%(name)s /* UPDATE */` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | (no `FOR UPDATE`) |
+| 6: glued placeholders (S2) | `SELECT 1 FROM glow_persistence_match WHERE id = é%s FOR UPDATE` | passes | refused: a placeholder glued to a name character or a dollar sign, in a statement whose text holds UPDATE | passes / refused |
+| 6: controls | `SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR NO KEY UPDATE` | passes | passes | (no `FOR UPDATE`) |
+| 6: controls | `UPDATE glow_persistence_match SET decided_at = %(name)s::timestamptz WHERE id = %s` | passes | passes | (no `FOR UPDATE`) |
+| 6: controls | `UPDATE glow_persistence_match SET note = 'a%%sb' WHERE id = %s` | passes | passes | (no `FOR UPDATE`) |
+| 9: N7's statement | `SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR -- c\nUPDATE` | refused: FOR UPDATE with no OF list it can read | refused: FOR UPDATE with no OF list it can read | (no `FOR UPDATE`) |
+
+The review's texts (S1's planted form and the two other body forms, F5's two texts, S2's text and `$q%sx$`) and Codex's `CREATE FUNCTION` each pass at `4860b56` and are refused at the head; S1's bodies and S2's forms are refused with `FOR NO KEY UPDATE` too, by rule, and F5's pass with it. Codex's call and `DROP` pass at both heads: they take no lock D14 reads, and the creation they depend on is refused. Three added variants (a later item of a `USING` list, a `JOIN` item in one, and the `OF` target itself inside a parenthesised join) were already refused at `4860b56` by another rule (a comma item, a `JOIN` read in the open `FROM` list, the account table not plain); they are kept as cases of the new reading. The controls keep their verdicts.
+
+### The ledger (item 7, F6)
+
+- **Before** (`4860b56`): the routes' wrapper called the route, recorded the reply's version (`_Ledger.served_from`), then checked the command (`_Ledger.check`) against everything served so far, its own answer included; the direct wrapper did the same (lines 2069 and 2073; 2080 and 2081).
+- **After:** each wrapper takes `_Ledger.snapshot()` (a copy of the versions served so far) before sending a command, checks the command against that snapshot (`check`'s new optional `served` argument), and only then records the command's answer. So an answer echoing the version sent never vouches for it, and neither does a version another thread is served while the command is in flight (S5's first part). `check` without `served` reads the versions served so far, as before, so the existing ledger test's calls are unchanged. The wrapper is still `_as_a_client.<locals>.wrapped`.
+- **S5's remainder** is stated in the README's "Limits": a `stale_version` refusal caused by the batch or the pair, and a `not_found` made after the version check, each accept an unserved version.
+
+### The tests and their reversals (D18)
+
+Every reversal was a temporary edit applied by script, the named tests run, the file restored and checked byte-equal (with `__pycache__` cleared before and after each, and bytecode writing off, after a first pass in which one reversal passed on a stale cache; by hand it failed, as here). Proof tests run under `env -i` with the proof's venv; the API's with `GLOW_ENV=test`.
+
+| File | Test | Reversal (temporary, undone) | Failing output |
+|---|---|---|---|
+| `test_row_locks_offline.py` | `FunctionBodyTests.test_each_routine_body_is_refused_with_either_lock`, `test_a_routine_with_no_constant_is_refused_and_not_passed_unread`, `test_codexs_sequence_the_creation_fails_the_call_and_drop_are_judged` | the creation rule off (`if _creates_routine(tokens):` → `if False:`) | `FAILED (failures=8)`: `None != 'a statement that creates a function or a procedure, whose body runs as code'`; Codex's sequence `[None, None, None]` |
+| the same | `test_a_routine_with_no_constant_is_refused_and_not_passed_unread` | the fast path's creation test removed | `FAILED (failures=1)`: `None != 'a statement that creates …'` |
+| the same | `FunctionBodyTests.test_the_words_are_read_as_postgresql_reads_them` (control) | the creation rule read on the raw text (`CREATE` and `FUNCTION`/`PROCEDURE` anywhere) | `FAILED (failures=4)`: a constant, a comment, quoted names and a column named `procedure` each refused |
+| the same | `OwnObjectsFilterTests.test_each_count_excludes_only_the_system_and_toast_schemas` | `4860b56`'s `pg\_%` filter restored in the functions' count | `FAILED (failures=1)`: `2 != 3` |
+| the same | `UnreadBindingTests.test_each_binding_is_read_and_the_name_bound_twice_or_not_plain_fails` | a parenthesised join not read (`elif joins_in(at):` → `elif False:`) | `FAILED (failures=3)`: the review's join text and the two nested ones, `unexpectedly None` |
+| the same | the same | a `DELETE` or `MERGE` statement's `USING` list not read | `FAILED (failures=2)`: the review's `DELETE … USING` text and the `MERGE` one, `unexpectedly None` |
+| the same | `UnreadBindingTests.test_a_joins_using_column_list_binds_nothing` (control) | every `USING` opens a list | `FAILED (failures=1)`: the `JOIN … USING (id)` statement refused (the account table not plain) |
+| the same | `GluedPlaceholderTests.test_each_glued_placeholder_fails_with_either_lock` | the placeholder rule off | `FAILED (failures=7)`: each text `None != 'a placeholder glued …'` |
+| the same | `GluedPlaceholderTests.test_a_placeholder_apart_from_names_a_literal_percent_or_no_update_passes` (control) | `%%` read as a placeholder | `FAILED (failures=1)`: `'a%%sb'` refused |
+| the same | `PostgresReadingTests.test_the_fast_path_and_the_full_reading_agree` (N7) | `--` removed from `_SPAN_MARKS` | `FAILED (failures=1)`: `(True, False, False) != (False, True, True)` on `… FOR -- c\nUPDATE` |
+| `test_ledger_offline.py` (new) | `test_a_route_command_answering_with_an_unserved_version_it_sent_fails`, `test_a_direct_command_answering_with_an_unserved_version_it_sent_fails`, `test_the_versions_checked_are_those_served_before_the_send` | `4860b56`'s order in both wrappers (record, then check, against all served) | `FAILED (failures=3)`: `CaseFailed not raised` in each |
+| the same | `test_a_read_then_a_command_with_its_version_passes` (control) | the snapshot empty | `FAILED (failures=1)`: `every expected version sent came from an answer or a read (2 did not: …)` |
+| `services/api/tests/test_interactions_offline.py` | `UndoSelectionTests` (N8) | undo's `raise Refused(STATE_CONFLICT, "not_the_most_recent_pass")` replaced by `pass` | `FAILED (failures=1)`: `['pass'] != ["raise Refused(STATE_CONFLICT, 'not_the_most_recent_pass')"]` |
+
+The ledger file stands in a `glow_discovery` package and its `interactions` module in `sys.modules` for each test, and the routes with a `call` that answers `no_change` with the version sent; it needs no Django and no database. Each planted text was also judged at `4860b56` (the table above).
+
+### The earlier tests (DD5; item 10)
+
+- **`test_the_fast_path_and_the_full_reading_agree`:** before, nine statements, none with `--`; after, the same nine and `SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR -- c` newline `UPDATE`, with the same assertion (fast and full readings agree). Why: N7. Every earlier statement keeps its verdict.
+- **`UndoSelectionTests`:** before, the `latest` expression and the two `if` lines; after, the same three assertions and the body of each `if`, `raise Refused(STATE_CONFLICT, 'no_pass')` and `raise Refused(STATE_CONFLICT, 'not_the_most_recent_pass')`. Why: N8.
+- **`test_the_ledger_passes_only_a_served_version_or_a_refusal_first`:** unchanged; `check`'s new argument is optional and its calls keep every verdict.
+- **`test_every_case_of_the_module_runs_under_the_ledger`:** unchanged and passing; the wrapper is still `_as_a_client.<locals>.wrapped`.
+- **`test_row_locks_offline.py`:** otherwise only added to; every earlier statement and verdict kept, the `LIKE 'pg\_%'` statement among them (it holds `UPDATE` and no placeholder; `%'` is not one). No test pinned `OWN_OBJECTS`'s text. No other earlier test changed or failed: the proof's 346 earlier tests and the API's 627 others pass.
+
+### Commands and results (local; iteration)
+
+At the start (`b67d9e3`), the proof's offline tests: `Ran 346 tests`, `OK`. On the code head's tree (`edc883e`), under `env -i`:
+
+| Where | Command | Result |
+|---|---|---|
+| `services/api` | `python3.12 -m venv .venv`; `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock` | installed |
+| `services/api` | `manage.py check` | `System check identified no issues (0 silenced).` |
+| `services/api` | `manage.py test tests --verbosity 2` | `Ran 628 tests`, `OK` |
+| `services/api` | `smoke.py` | `PASS /api/v1/development/recommendations: HTTP 200` |
+| `services/api` | `ruff check .`; `ruff format --check .`; `mypy` | `All checks passed!`; `163 files already formatted`; `Success: no issues found in 95 source files` |
+| `services/api` | `python -m glow_persistence.static_check` | `Static definitions agree: 42 app models; migrations=0001_… 0011_interaction_undo` |
+| `services/api` | `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v` | `Ran 52 tests`, `OK` (unchanged) |
+| `proofs/postgres-ordering` | venv, `pip install --require-hashes -r requirements-dev.lock`, `pip check` | `No broken requirements found.` |
+| `proofs/postgres-ordering` | `python -m unittest discover -s tests -t .` | `Ran 359 tests`, `OK` (346 and 13 added: 9 in `test_row_locks_offline.py`, 4 in `test_ledger_offline.py`) |
+| `proofs/postgres-ordering` | `ruff check .`; `ruff format --check .`; `mypy` | `All checks passed!`; `71 files already formatted`; `Success: no issues found in 71 source files` |
+| `proofs/postgres-ordering` | `python -m glow_ordering_proof.account_lock_scan` | `select_for_update calls read: 52; locking a queryset that joins: 0`; `account locks found: 7; not FOR NO KEY UPDATE: 0`; byte-identical (`cmp`) to `4860b56`'s output |
+| scratch | the reversal script (13 reversals) | each `FAILED` as in the table above; every file restored |
+| scratch | the planted texts at both heads (`row_locks.refusal`, from `4860b56`'s detached worktree) | the table above |
+| scratch | `_resolve`'s time at 1,000 and 5,000 nested levels, both heads | 0.05 s and 1.01 s at the head; 0.04 s and 0.99 s at `4860b56` |
+
+### Local database runs (iteration, not evidence)
+
+Under P06.DB's D4: a throwaway PostgreSQL 17.11 from the CI job's pinned image (`postgres@sha256:d74eeac9…`), published on `127.0.0.1:5433` only, started with `track_commit_timestamp=on`; a generated superuser password, role password, marker and `SECRET_KEY`, and a generated RSA key, each written to a mode-0600 file in a mode-0700 scratch directory, none printed; the role `glow_proof` `NOSUPERUSER NOCREATEDB NOCREATEROLE`; `glow_discovery_proof` with the run's marker as its comment; none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or any `PG*` name in any process. The Docker daemon was started for these runs and stopped after; the container was removed with its volumes (`docker rm -f -v`; no volume or container left) and the scratch directory deleted.
+
+| Run | Head | Result |
+|---|---|---|
+| `migrate`, `makemigrations --check --dry-run`, then the discovery suite | the working tree of `edc883e` | `66/66 passed in 210.4 s`; `[discovery] row locks sent (D14): 168568 statements (168500 through Django's execute or executemany, 68 through the driver itself) on 64 connections in 3 threads; 14782 take a writer's row lock, 4256 of them naming the account table (4256 FOR NO KEY UPDATE, 0 FOR UPDATE OF other tables only); 0 refused; the database's own functions 0, views 0, rules 0`; `ROW LOCKS (D14): PASS`; `DISCOVERY VERDICT: PASS`; the block case's line ends `both read the same restricted match (D8's gap)` |
+| item 3's direct reversal: one session of `glow_proof` (`rolsuper` false) creates `pg_temp.bc3_planted()`, a temporary view and a rule on a temporary table (schema `pg_temp_59`); `4860b56`'s and the head's `OWN_OBJECTS` before and after | the same | before: `(0, 0, 0)` and `(0, 0, 0)`; after: `4860b56` `(0, 0, 0)`, the head `(1, 1, 1)`. D14 at the head refuses the `CREATE FUNCTION` and passes the other three statements |
+| item 3's planted reversal in a case's session: `row_locks.driver_forms_are_seen` temporarily creates the same three objects on its connection before its own-objects read (the edit undone and the file checked byte-equal; on a new database) | the same, planted | the case's counts `(1, 1, 1)`; the case fails (`no function, view or rule of its own`), `65/66`; the suite's line `… 1 refused; the database's own functions 1, views 1, rules 1`, the refused text `CREATE FUNCTION pg_temp.bc3_planted() RETURNS int LANGUAGE sql AS 'SELECT 1'` as a statement that creates a function; `ROW LOCKS (D14): FAIL`; `DISCOVERY VERDICT: FAIL` |
+| S3 and S4 on a scratch database in the same container (the superuser; the oracle: another session's `FOR KEY SHARE NOWAIT` on the row fails only under a held `FOR UPDATE`; psycopg's `ClientCursor`, as Django's backend binds) | the head's `refusal` | S3's text: D14 passes; with `standard_conforming_strings` on, no `FOR UPDATE` held; off, `FOR UPDATE` held. S4's `WHERE state <> '%s'` with `FOR UPDATE --` (psycopg writes `''FOR UPDATE --''`): D14 passes; `FOR UPDATE` held. S4's `= %sFOR UPDATE`: refused by the placeholder rule; PostgreSQL takes `FOR UPDATE`. S3's and S4's texts also checked at `470d97a` and `4860b56` with their `refusal`: S4's pass at both; S3's is refused at `470d97a` and passes at `4860b56` |
+
+### The run of record
+
+[43809849211](https://github.com/amthorn78/glow-dating-app/actions/runs/43809849211) on `edc883e` (`push`, attempt 1), read from GitHub with the GitHub tools after it ended:
+
+- **All eight jobs `success`:** Change scope, Stream proof checks, Database proof checks (11 min 37 s), API artifact checks, API mobile smoke, API checks, Mobile checks, Foundation gate; the gate printed `Application checks passed`. Every DM-41 retry step (`Wait 60 s before the one retry…`, `Retry the Python install once`) was skipped: no toolchain retry fired.
+- **API:** `Ran 628 tests`, `OK (skipped=1)`; Ruff, format (163 files) and mypy (95 files) clean; the contract tests `Ran 52 tests`, `OK`.
+- **The proof's offline tests:** `Ran 359 tests`, `OK`.
+- **The suites,** each `ROW LOCKS (D14): PASS`, with `0 refused` and `the database's own functions 0, views 0, rules 0`, and no `row lock refused` line in the job's log:
+
+| Suite | Cases | D14's line (counts) |
+|---|---|---|
+| ordering | reference 56/56, adapter 115/115, read 62/62; every verdict `PASS` | 570,928 statements (9 through the driver itself) on 10 connections in 5 threads; 104,586 writer's row locks, 44,841 naming the account table, all `FOR NO KEY UPDATE` |
+| identity | 49/49 in 33.8 s (phase 34 s) | 4,412 statements; 141 writer's row locks, 127 naming the account table, all `FOR NO KEY UPDATE` |
+| profile | 69/69 in 77.5 s (phase 78 s) | 78,038 statements; 7,606 writer's row locks, 2,061 naming the account table, all `FOR NO KEY UPDATE` |
+| discovery | **66/66 in 157.7 s; phase 159 s**, against the job's 30-minute timeout | 168,565 statements (68 through the driver itself) on 64 connections in 3 threads; 14,782 writer's row locks, 4,256 naming the account table, all `FOR NO KEY UPDATE` |
+
+- **The scans:** the identity, profile and discovery secret scans clean (754, 1,447 and 2,495 secrets held; 0 found), the profile and discovery value scans clean (813 and 1,336 member values held; 0 found); each suite's second run on its used database refused before it wrote.
+- **Against B-C2's run of record (43780988590):** the account-table writer locks are the same in each suite (44,841, 127, 2,061 and 4,256), so the new rules refused no statement any suite sends; the stop rule's statement condition did not hold.
+- **The block case's detail line** in the run: `… unblock restores nothing; both read the same restricted match (D8's gap)` (N5).
+- **No case other than those item 10 names changed its verdict:** every case passed, as in B-C2's run.
+
+### B-C3's non-test lines in `services/api`
+
+Zero. Its only path there is `services/api/tests/test_interactions_offline.py` (15 lines added, in `UndoSelectionTests`). Undo's `raise` was edited only for N8's reversal and restored.
+
+### Deviations, readings and what could not be run
+
+- **`_Ledger` itself changed, beside the two wrappers.** Item 7's "against the versions served before the command was sent" needs the check to take a snapshot: `_Ledger` gains `snapshot()` and `check` an optional `served` argument (the prompt's stop-rule list anticipates a change to `check`'s signature). With `served` omitted it behaves as before, so `test_the_ledger_passes_only_a_served_version_or_a_refusal_first` is unchanged. `_as_a_client`'s own docstring says what it now does; `interaction_cases.py`'s module docstring, outside B-C3's owned lines, still says `_Ledger` "asserts it for every case", which remains true of what it asserts.
+- **`OWN_OBJECTS`: only the schema filter.** Views and rules are still counted whatever extension owns them, and functions still leave out an extension's own, as at `4860b56`; the brief's "and extensions" is read as that existing handling, since B-C3's owned item is the schema filter.
+- **The creation rule reads the words anywhere in the token stream,** not only at a statement's start (more refusals, never fewer; `create` is a reserved word, so it is never a bare name), and the fast path sends any text holding `CREATE` with `FUNCTION` or `PROCEDURE` to the full reading.
+- **A parenthesised join** is recognised by what its parenthesis directly holds; a `USING` list's `JOIN` items are read as not plain too (an item of the list, read fail-closed). Both readings refuse more, never less.
+- **S4 stated as it now stands:** its first form, a placeholder against its lock clause (`= %sFOR UPDATE`), is refused since B-C3 by item 6's rule, which the README says; what remains a limit is SQL inside a parameter's value, with a planted example checked on PostgreSQL.
+- **The docstring also takes II5's words** on the counts (the README's words, as B-C2's item 6 asks of the docstring), and states S3 and S4 among what it does not see.
+- **The README's SV3 paragraph:** besides revision 18 and N4, it names DM-77 as its last condition, its Stage B sentence's own-objects words now say what the check counts, and it gains a B-C3 sentence.
+- **N1** was a script's replacement of the word `TABLE` in "`TABLESAMPLE`" by the planted-text table; both sentences were restored by replacing each spliced copy with `TABLE`, and the table is kept once, after the script note in "D14: the reading and the resolution".
+- **N4** in this record is a correction note appended to B-C1's "The assertion" bullet; its earlier words are kept.
+- **Codex's addition on `b67d9e3`** (P2, "Reject executable routine definitions before masking their bodies") is planted as `CODEX_SEQUENCE`: the `CREATE FUNCTION public.d14_lock() … PERFORM id FROM glow_persistence_appaccount FOR UPDATE …` is refused at the head and passes at `4860b56`; its call and `DROP FUNCTION` pass at both. The thread is the manager's to resolve.
+- **A reversal's first pass** passed on a stale bytecode cache (the `%%` control); by hand it failed, and the script was changed to clear caches and write no bytecode before every reversal was run again, each failing.
+- **The first local discovery run's log file** was deleted when the second run's setup recreated its scratch directory; its result lines are quoted above, as read when it ended.
+- **Docker:** the daemon was not running; it was started for the D4 runs and stopped afterwards.
+- **Not run:** the ordering, identity and profile suites locally (the run of record runs them); the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command.
