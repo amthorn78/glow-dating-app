@@ -92,4 +92,4 @@ The change is Markdown only, so no code review applies. The manager verifies: th
 
 ## Sessions
 
-None yet.
+- **The research session** (`claude/a05-v2-glow-card-check-1ucpsx`, head `e23829b`, from `b9534a9`; 17 November 2026): the 43 rows rechecked (GP-17's requirement corrected: the page read names no state; precisions to GP-39, USF-17 and UST-29 to UST-31), two rows added (UST-60 and UST-61, Virginia's free-trial and renewal notices), the three questions answered and the facts table; [its record](../testing/evidence/2026-11-17-a05-v2-card-check-and-paid-trial.md). Stripe's pages place a dating service among the restricted businesses, accepted only after Stripe's review, so RR15's return to Nathan does not apply. Verified by the manager (the record, section 14) and merged into the manager branch at `d046b0f`. The decision message goes to the Dev Manager next (DM-86).
