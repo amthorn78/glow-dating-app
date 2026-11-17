@@ -3,6 +3,7 @@
 - **Owner:** App Manager 12. For Nathan, after Dev Manager 5 reads it (DM-86; OD-32).
 - **Revision 2, 17 November 2026,** with DM-86's SS1 to SS14 applied as given (Dev Manager 5, `5a53db6`, a read of `4d4693d`), and one sentence of the manager's in C3 made to agree with SS10 (option (b)'s fee), for the Dev Manager's read of the message as sent. Revision 1 was the text DM-86 read.
 - **Why:** OD-68 and OD-69 set a paid plan with a free trial at signup, a card given then, and a card check for three purposes. A05-V2's research shows what a card check can do in each place a member can subscribe ([its record](../testing/evidence/2026-11-17-a05-v2-card-check-and-paid-trial.md), section 10; the manager's checks, section 14). DM-85 section 7 adds two questions on staff grants. PF01 §7 "Billing" holds purchase screens off until the billing item's brief, which needs these answers. Row IDs below are the [requirements matrix](../planning/store-legal-safety-requirements.md)'s.
+- **Sent** to Nathan in the manager session on 17 November 2026, as revision 2, as written below. **Answered** the same evening: *"Accepted."*, with a founding-member offer added (OD-70).
 - **Where the answer goes:** a new OD row; the carried-items file's P07 and P08.3 entries; the Work Register's A05 and A06 rows. PF01 does not change: its A06 row already leaves the trial's length to Nathan, and PF01 changes only when a rule does (DM-01 P3).
 - **Deletion condition:** prune after Nathan's answer is in the register and the Dev Manager's next consultation has read this message as sent.
 
