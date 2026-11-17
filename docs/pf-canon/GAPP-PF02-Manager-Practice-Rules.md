@@ -1,6 +1,6 @@
 # Glow Dating App — Manager Practice Rules
 
-**Identity:** GAPP-PF02 · **Revision:** 1.5 · **Recorded:** 17 November 2026
+**Identity:** GAPP-PF02 · **Revision:** 1.6 · **Recorded:** 17 November 2026
 **Scope:** the managers' practice in this application's manual relay. It does not govern the Glow HD engine or its canon.
 **Source:** the [managers' mistakes log](../continuity/manager-mistakes.md) at commit `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, from AM2-01 to AM11-29: 167 entries. Entries added after that commit are folded in under "Maintenance" below.
 
@@ -36,7 +36,7 @@ Each rule gives:
 
 - **Rule:** Every time written into a record, the handoff or a Notion page comes from a clock reading. A scorer request's send time is the one the scoring skill prints in its reading ("Sent …"), never typed. In a shell command, take it from `date -u` through a variable inside the same command that writes it. In a tool call (a Notion or GitHub write), take it from a clock read in an earlier call whose output the write uses. Never type a time, write it from memory, or read the clock in a call sent in parallel with the write.
 - **Check:** the clock's printed line comes before the write and equals the time written; the read-back shows the same time.
-- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04, AM12-11.
+- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04, AM12-11, AM12-19.
 - **Changed:** AM9-04 had the records script take the time as an argument. AM10-17 and AM10-18 moved the clock into the writing command, with no typed time. AM11-25 extended the rule to tool writes and excluded a clock read sent alongside the write. AM2-05's own step, printing the UTC time beside each scorer request, is now done by the scoring skill, which prints the send time in its reading (DM-76).
 - **Home:** PF02.
 
@@ -408,7 +408,7 @@ Each rule gives:
 
 - **Rule:** An owner direction about the shape of a record or a scale is applied as given; a documentation fact that seems to contradict it is stated once, in one sentence, and does not change the design. A direction that it is time to create a new manager session is OD-31's case: the outgoing manager creates the successor. When the words leave unclear who acts, ask in one line before recording either path.
 - **Check:** the record of the direction matches its words; any question asked is one line.
-- **Sources:** AM4-04, AM7-14.
+- **Sources:** AM4-04, AM7-14, AM12-18.
 - **Changed:** AM4-04's scorer-request prevention (a live reachability test before a request is adopted) is retired: the scoring skill carries the request and its rule (OD-34, OD-42). Its judgement prevention is stated by the manager workflow, step 3: a call the manager records for comparison goes into the uses table before the run and is not put to Nathan (OD-34).
 - **Home:** PF02; OD-31 for the successor case; the manager workflow, step 3, for the manager's own judgement (OD-34).
 
@@ -605,7 +605,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - A batch that changes a passage a PF02 rule cites, in a governing home or in the next-manager start procedure, checks that rule's gist and "Home" line in the same batch, and corrects PF02 if they no longer hold; that correction, like any PF02 change, goes to the Dev Manager's read. The start procedure is not governing Markdown under the charter, so a change to a passage PF02 cites there reaches the Dev Manager only this way (DM-76).
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
 - **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
-- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands; AM12-12 into section 7, an event with no standing rule; after PR49's merge, AM12-13 into section 7 too, and AM12-14 into R09, which gains the addition its prevention sets and a check line covering it; after PR50's merge, AM12-15 into R54, a repeat of the rule as it stands; after PR51's merge, AM12-16 into section 7; after DM-86, AM12-17 into R59, a repeat of the rule as it stands. The Dev Manager reads them before the pull request that carries them merges.
+- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands; AM12-12 into section 7, an event with no standing rule; after PR49's merge, AM12-13 into section 7 too, and AM12-14 into R09, which gains the addition its prevention sets and a check line covering it; after PR50's merge, AM12-15 into R54, a repeat of the rule as it stands; after PR51's merge, AM12-16 into section 7; after DM-86, AM12-17 into R59, a repeat of the rule as it stands; after PR52's merge, AM12-18 into R50 and AM12-19 into R01, each a repeat of its rule as it stands. The Dev Manager reads them before the pull request that carries them merges.
 
 ## 9. Revision history
 
@@ -620,3 +620,5 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 1.4 — AM12-16 placed in section 7, an event with no standing rule (App Manager 12, 17 November 2026, after PR51's merge at `a316a3a`). For the Dev Manager's read before its pull request merges.
 
 1.5 — AM12-17 folded into PF02-R59 as a repeat (App Manager 12, 17 November 2026, after DM-86): a decision message's summary of the record put four facts more strongly than the record. For the Dev Manager's read before its pull request merges.
+
+1.6 — AM12-18 folded into PF02-R50 and AM12-19 into R01, each as a repeat (App Manager 12, 17 November 2026, after PR52's merge at `d57da65`): an owner direction's row that went beyond his words, and a listing time not read from a clock. For the Dev Manager's read before its pull request merges.

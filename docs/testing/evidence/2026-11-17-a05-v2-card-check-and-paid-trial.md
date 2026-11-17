@@ -478,3 +478,12 @@ Against the brief's review plan (revision 2), on the session's head `e23829b` (f
 - **Stripe and dating (DM-85, RR15).** Stripe's pages place online dating among the restricted businesses, accepted only after Stripe's review and its written pre-approval; the adult-content exclusion names sexually oriented dating services. Stripe's pages do not exclude a dating service as such, so the return to Nathan before the decision message does not apply. Stripe's approval stays a risk for the decision message.
 - **The counts** (the session's section 13). Section 1's Summary and the Contents still count 331 rows. By script at `e23829b`: 333 rows (US states 61), 84 with no owner (unchanged), and 88 whose State begins "Not applicable" (86 at `b9534a9`). The correction is outside the session's paths; it goes to the Dev Manager in DM-86 as a records correction.
 - **The open questions** (section 13) stand, and the decision message carries them: Apple's payment method for a trial, a verification-only card check outside the stores' billing, Stripe's approval and the stores' free codes.
+
+## 15. PR52's merge receipt (App Manager 12, 17 November 2026, 23:10 UTC)
+
+- **PR52 merged** at `d57da657a3d3a8a0308e271c0b58d9416c0dc09a` (23:08 UTC), after its run (Foundation 44196294310, success; the gate printed "Ordinary documentation: application jobs intentionally skipped") and Codex's summary on the final head `a784bb7` (no findings), and Dev Manager 5's reads (DM-86, DM-87). Its parents are `a316a3a` and `a784bb7`, and its tree equals `a784bb7`'s.
+- **`main`'s push run** 44196705515 passed, the gate printing "Ordinary documentation: application jobs intentionally skipped".
+- **The cleanup** 44196705460 deleted this session's branch `claude/a05-v2-glow-card-check-1ucpsx` (`e23829b`, merged into `main`) and kept `main`, the manager branch and `claude/dev-manager`.
+- **`git ls-remote`** (23:10 UTC): `main` `d57da65`; the manager branch `a784bb7`, fast-forwarded here to `d57da65`; `claude/dev-manager` `b8e289c`. No pull request is open.
+- **Pruned:** the card-check decision message and the DM-86 and DM-87 consultations, each with its deletion condition met; their links are pinned at `d57da65`.
+
