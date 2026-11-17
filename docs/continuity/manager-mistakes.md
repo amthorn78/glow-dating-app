@@ -181,6 +181,23 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-20 | 13 Nov 2026 | records | Two standing lines left stale again: `claude/dev-manager`'s head (`a53bdb0`) in the handoff's branch list and Notion's Branches bullet after DM-67's report (`e7786bb`) was merged at `2d04951` (AM11-12's pattern); Notion's "Next items" kept the brief's revision 8 after revision 9 (AM11-11's pattern) | Dev Manager 5 (start note, section 4) |
 | AM11-21 | 13 Nov 2026 | process | After C4's prompt was committed at `0fbc130`, the manager appended Codex's review of that commit to the evidence record, one of C4's owned paths (`3bbc06f`), then gave Nathan revision 1. Its start gate found the owned path changed and the session stopped, with no change | The C4 session, at its start gate |
 | AM11-22 | 15 Nov 2026 | prompt | B0's prompt passed the brief's stop clause "if a test of C1's to C5's sections no longer passes" unqualified, though item 5 (T3 narrowed) necessarily changes C2's three assertions that pin the wider rule. The session converted them rather than stopping, and flagged it | The manager, when the B0 session reported its plan mid-run; the session flagged it too |
+| AM11-23 | 15 Nov 2026 | prompt | Stage B's prompt (revision 1, `e2fd265`) said no earlier test was expected to change (DD5), and named no pre-Stage B statement D14's check would fail. The session found six earlier tests that pin what Stage B extends (the selection's parameter names, the migration leaf, two route tests, the plan's coverage and its case count) and two statements in the ordering suite's harness that take `FOR UPDATE` on the account table; it stopped at the stop rule | The Stage B session |
+| AM11-24 | 15 Nov 2026 | prompt | Stage B's prompt gave undo's reversal as "on with a waiting period, working before it ends", the words for resurfacing; D12 lets undo withdraw a pass within `waiting_days`, so its reversal is working after the window ends | The Stage B session |
+| AM11-25 | 15 Nov 2026 | follow-through | Three times in Notion's Implementation Control Branches bullet, a time was written before the clock was read (05:20 for 05:16; 13:33 for 13:31; 14:16 for 14:15): AM11-03 and AM11-07's mechanism again, here with the clock read in a call sent in parallel with the write | App Manager 11, at each read-back, before the message reported the sync |
+| AM11-26 | 15 Nov 2026 | follow-through | Integrating B-C1, which added seven discovery cases (59 to 66), the manager left its own CI policy sentence for Stage B at "59 cases in all"; the verification of B-C1 read the proof README's paragraph and the contract document, not the manager's own governing sentence. AM11-14's mechanism | The exact-head review of Stage B, #9 |
+| AM11-27 | 15 Nov 2026 | records | The handoff, kept under 5 KB by the documentation map, went over it at `2d8f28a` (5,049 bytes) and grew through six more commits to 6,152 bytes at `e75649d`; no commit checked its size. AM11-04's mechanism | App Manager 11, reading its size before the DM-75 commit |
+| AM11-28 | 15 Nov 2026 | follow-through | Gave DM-75 at `c9bca52` without a watch on Codex's pass, then wrote B-C2's prompt at `f39bd0d` without reading PR47's comments; Codex's two P2s on `c9bca52` (17:23 UTC) were read only at 23:18, after its pass on the prompt's commit. All four of Codex's findings since were already the review's (#1, #2, #4, #5), so the prompt stood. AM11-17 repeated | App Manager 11, reading PR47's comments before giving B-C2's prompt |
+| AM11-29 | 16 Nov 2026 | follow-through | AM11-28's new rule broken at its first use: pushed `e6fa3c1` (records only) and gave B-C2's prompt without waiting for Codex's pass on it; Codex posted a fifth finding there at 23:23 UTC, on B-C1's version ledger. The delta re-review prompt's revision 1 was then written at `b0386f8` without reading PR47's comments, since the wait checked only Codex's state on the new commit. Read at 01:20; revision 2, before revision 1 was given, adds it | App Manager 11, reading PR47's comments before giving the review prompt |
+| AM11-30 | 16 Nov 2026 | records | Created M08's TypeSafe uses row in Notion without the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token fields; completed from the printed row before the read-back. Also, since Stage B's exact-head review row (15 November), new rows were created with *Nathan's pick* "pending" and set to "not recorded" only after the session, where the manager workflow's step 3 sets "not recorded" at creation | App Manager 11, comparing the row with the script's output, and reading step 3 for DM-76 |
+| AM11-31 | 16 Nov 2026 | records | Two Notion standing lines left stale: Implementation Control's procedure summary kept its stamp and links at `854c214` (11 November) through the CI policy's changes at `d35b0ba`, `2475d7b`, `622a4f4` and `f39bd0d`, the manager workflow's at `b67bae2` and `a919dea`, and OD-63 to OD-66; and the Work Register's SV3 row was not updated at `553d9ed` or `e19f731`. AM10-05's mechanism (PF02-R12), and AM11-11's | Dev Manager 5 (DM-76 section 10) |
+| AM11-32 | 16 Nov 2026 | prompt | B-C5's prompt allowed the network "PyPI only" while its run-of-record step asked for the Database job's log lines, which the GitHub tools give, beyond a tail, only as a download link to GitHub's Actions results host; the session downloaded the whole log from that link and recorded the departure | B-C5's session, in its report |
+| AM11-33 | 16 Nov 2026 | follow-through | The Notion sync for `2e669c8` added B-C5's session branch to Implementation Control's "Branches" bullet and left its count, "nine", and its listing time, 18:07 UTC; the read-back checked the edited text, not the whole bullet. AM11-08's mechanism, repeated, though its prevention is a checklist item | Dev Manager 5 (DM-80 section 8) |
+| AM12-01 | 17 Nov 2026 | execution | Ran the trusted classifier for B-C6 in the session's shallow clone: the merge base came out as `04b89d3`, not `947576d`, and the path list as the whole of PR45 to PR47. Caught before any use; `git fetch --unshallow origin` and the re-run gave one merge base, `947576d`. The review prompt's start gate now says to unshallow first | App Manager 12, reading the path list |
+| AM12-02 | 17 Nov 2026 | execution | Re-ran the proof's offline tests on an export of `proofs/` and `services/api` alone: 31 errors, from tests that read `packages/contracts` and the workflow. Caught before any record; the whole-tree export passed (`Ran 376 tests`, `OK`). The review prompt says to use a whole-tree copy | App Manager 12, reading the errors |
+| AM12-03 | 17 Nov 2026 | accuracy | Implementation Control's status, synced for `adf9a56`, said B-C6's run had "every row-lock count equal to B-C5's run"; the account-table counts are equal, but the ordering suite's statement and writer-lock totals differ from run to run (570,395 and 104,427 against 601,985 and 104,751) | App Manager 12, reading the page back |
+| AM12-04 | 17 Nov 2026 | follow-through | The same sync gave the Branches bullet's recount the time "01:20 UTC", not read from a clock; AM11-25's mechanism | App Manager 12, reading the page back |
+| AM12-05 | 17 Nov 2026 | prompt | B-C6's review prompt asked for "PR47's pull-request run on this prompt's commit or its parent": the parent had no run of its own, and the manager's push of `f30a4f8` cancelled the run on the prompt's commit, so only the child's run finished; the review read it and said so | B-C6's short review, in its report |
+| AM12-06 | 17 Nov 2026 | process | Disposed B-C6's review nit RN3, a Markdown record nit, as carried by the workflow's step 6 (b), in the record and the carried-items file, and recommended it in DM-81; the brief's own rule for SV3's record nits (its correction classes, from C4's section) corrects a Markdown one before the merge | Dev Manager 5, DM-81 section 4 |
 
 ## App Manager 2
 
@@ -1128,7 +1145,130 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
+## App Manager 12
+
+### AM12-06 — A record nit disposed by the general rule, not the brief's narrower one (process)
+
+- **What happened:** recording B-C6's short review, the manager disposed of RN3 (the README's N1 sentence, Markdown) as a recorded follow-up under the manager workflow's step 6 (b), wrote it into the carried-items file, and recommended (b) to the Dev Manager in DM-81. SV3's brief states the correction classes every SV3 review has used since C4, and among them: a record nit is "corrected before the merge where it is Markdown, and at the next change to its file where it is a docstring (DM-70, DM-72)". The narrower rule governs.
+- **Caught by:** Dev Manager 5, DM-81 section 4.
+- **Effect:** none on `main`: RN3 is corrected before PR47's merge in MM1's words; the carried entry was removed in the same batch.
+- **Correction:** MM1 applied in the proof README; the record's note "After DM-81"; the carried-items section narrowed to RN1 and RN2.
+- **Prevention:** before disposing of a review finding, read the brief's own correction classes and its rule for record nits, not only the workflow's step 6, and apply the narrower.
+
+### AM12-05 — A review prompt named runs by kinship (prompt)
+
+- **What happened:** B-C6's review prompt, copied from B-C5's, asked the review to read "PR47's pull-request run on this prompt's commit or its parent, if one has finished". The parent, `a9dea5a`, was pushed together with the prompt's commit `adf9a56` and started no run; the manager then pushed `f30a4f8` before giving the prompt, which cancelled the run on `adf9a56` (43996869910). The only finished run was on the child, `f30a4f8` (43997200785).
+- **Caught by:** B-C6's short review, which read the child's run, checked that its non-Markdown paths are `adf9a56`'s, and reported the departure.
+- **Effect:** none on the evidence; the review's reading of the run was the one the prompt meant. The manager had read both gates' logs.
+- **Correction:** recorded in the evidence record's "Delta re-review of B-C6" and in DM-81 item 5.
+- **Prevention:** a review prompt names the run by what it must hold, not by its commit's place: the PR run on the latest manager-branch head whose non-Markdown paths equal the code head under review. And a records push after a review prompt's commit is made only once that commit's run has finished, or the prompt names the run that will.
+
+### AM12-04 — A listing time not read from a clock (follow-through)
+
+- **What happened:** the Notion sync for `adf9a56` wrote that App Manager 12 recounted the branches at 01:20 UTC. The listing ran earlier in the session, and no clock was read for it.
+- **Caught by:** App Manager 12, reading the page back.
+- **Effect:** the wrong time stood in Notion for about two minutes.
+- **Correction:** the branches listed again with `git ls-remote` (eleven, the manager branch at `adf9a56`), the clock read (01:37 UTC), and the bullet corrected and read back.
+- **Prevention:** AM11-25's, already in force: a time comes from a clock read in an earlier call. A recount is re-run when its time was not taken.
+
+### AM12-03 — "Every row-lock count" for the account-table counts (accuracy)
+
+- **What happened:** Implementation Control's status for `adf9a56` said B-C6's run of record had "every row-lock count equal to B-C5's run". The brief's definition, the record and the manager's verification compare the account-table counts, which are equal; the ordering suite's statement and writer-lock totals vary with its stress phase (570,395 and 104,427 against 601,985 and 104,751).
+- **Caught by:** App Manager 12, reading the page back.
+- **Effect:** the overstatement stood in Notion for about two minutes; no repository record carried it.
+- **Correction:** the sentence now names what is equal: each suite's case count, row-lock verdict and account-table lock count.
+- **Prevention:** the claims checklist's first item: say *every* only after tracing each path. A summary written for Notion names the measure the source compares, in the source's words.
+
 ## App Manager 11
+
+### AM11-23 — A stage's predictable stops not swept before its prompt (prompt)
+
+- **What happened:** Stage B's prompt, revision 1 (`e2fd265`), carried DD5's sentence and the manager's reading that no earlier test was expected to change. That reading came from a sweep of SV2's settings tests, the proof's references to `predicates.VIEWER` and F08's contract test. It did not read Stage A's own tests, which pin what Stage B extends: the selection's parameter names (`KeyTests` in `services/api/tests/test_discovery_offline.py`), the migration graph's leaf (`test_model_definitions.py`), "the page route ... and no action route" (the API's and the proof's route tests), the plan's coverage of checks 7 to 11 and its case count (40). Nor did it grep the proof's own harness for statements D14's new check would fail; the ordering suite sends two that take `FOR UPDATE` on the account table (`planted.py`'s `_suspend`, `cases.py`'s `_harness_holder`), and D14 makes such a statement a stop.
+- **Caught by:** the Stage B session, which stopped at the stop rule with app code built and nothing else; its branch's run (43676976494) failed the API job on the two tests, as it said it would.
+- **Effect:** a session stopped part-way; a consultation (DM-73) and a revision 2 before Stage B continues. Nothing merged, nothing lost.
+- **Correction:** DM-73 to Dev Manager 5; revision 2 names each earlier test with its reason and settles the harness statements.
+- **Prevention:** before a stage's prompt, the manager lists every test that pins what the stage extends (a module's routes, a plan's coverage or count, the migration leaf, a parameter set or signature its items change) by reading the earlier stage's tests whole, and greps every suite's source, harness included, for the statements the stage's new checks refuse; each finding is named in the prompt, or settled before it.
+
+### AM11-24 — Undo's reversal worded as resurfacing's (prompt)
+
+- **What happened:** Stage B's prompt listed "each on with a waiting period, working before it ends" as D12's reversal for resurfacing and undo alike. For undo, D12 withdraws a pass within `waiting_days`; the reversal is undo working after the window ends.
+- **Caught by:** the Stage B session, in its stop report.
+- **Effect:** none; the brief wins over the prompt, and the session read it so.
+- **Correction:** revision 2 words each reversal by its own rule.
+- **Prevention:** a reversal shared by two items is written once per item, from each item's own words.
+
+### AM11-25 — Times written before the clock, three times in one day (follow-through)
+
+- **What happened:** at three Notion syncs on 15 November, the Implementation Control's Branches bullet was given a listing time before the clock was read: 05:20 (the clock read 05:16), 13:33 (13:31) and 14:16 (14:15). At the third, the clock and `git ls-remote` ran in a call sent in parallel with the Notion write, so the write could not use them.
+- **Caught by:** App Manager 11, at each sync's read-back, before the message to Nathan reported it.
+- **Effect:** none; each was corrected within the same sync, and none was relied on.
+- **Correction:** each corrected in Notion at once.
+- **Prevention:** a time in any record comes from a clock read in an earlier call, never typed ahead of it or read in a call sent alongside the write; AM11-07's rule (the time from the clock inside the command that writes it) extends to Notion writes.
+
+### AM11-33 — A branch added to the Branches bullet, its count left (follow-through)
+
+- **What happened:** the Notion sync for `2e669c8` added B-C5's session branch, `claude/brave-gates-1ty8o2`, to Implementation Control's "Branches" bullet, and left the bullet's count, "nine", and its listing time, "18:07 UTC". Ten branches existed. The read-back confirmed the inserted text, not the whole bullet.
+- **Caught by:** Dev Manager 5, DM-80 section 8.
+- **Effect:** the bullet's count read one short from about 22:34 UTC until the correction; no decision rested on it.
+- **Correction:** the count and the listing time corrected from a fresh `git ls-remote` (ten branches, 23:26 UTC), read back as the whole bullet.
+- **Prevention:** AM11-08's prevention is already a checklist item (the manager workflow's claims checklist reads back every whole bullet an edit touches, and checks each count and status word in it), and this sync skipped it. Every read-back of an edit to a counted list now prints the whole bullet and compares its count with the number of items it names, before the read-back is reported.
+
+### AM11-32 — A network line narrower than the log reading the same prompt asked for (prompt)
+
+- **What happened:** B-C5's prompt (revision 1, `5d1977e`) said "**Network:** PyPI only" and, in its run-of-record step, asked the session to read each suite's D14 line, own-objects counts and account-table lock counts "with your GitHub tools". Beyond a tail, the GitHub tools give a job's log only as a signed download link to GitHub's Actions results host. To read the Database job's whole log (2,657 lines), the session downloaded it from that link with `curl`, outside the network line, and recorded it as a departure without recording the link.
+- **Caught by:** B-C5's session, in its report and record.
+- **Effect:** none on the evidence: the host is GitHub's own results store, reached through a link the GitHub tools returned, read-only and with no credential; the counts it gave match the manager's own read of the same log. The prompt's words and the session's work disagreed until the departure was accepted.
+- **Correction:** the departure accepted in "Manager verification of B-C5"; B-C5's review prompt names GitHub's Actions results host, reached only through a download link the GitHub tools return, with no link recorded.
+- **Prevention:** a prompt that asks for counts from a job's log names, in its network line, GitHub's Actions results host through the GitHub tools' download link, or says that a tail is enough; before pushing a prompt, read its network line against every step that reads something remote.
+
+### AM11-31 — The procedure summary's stamp and the SV3 row left behind (records)
+
+- **What happened:** Implementation Control's operating-procedure summary states the commit its links point to and moves it when a governing text changes (AM10-05). Its stamp stayed at `854c214` (11 November) while the CI policy changed four times (`d35b0ba`, `2475d7b`, `622a4f4`, `f39bd0d`), the manager workflow twice (`b67bae2`: the supersession sweep covers Notion's standing lines; `a919dea`: the whole-line read-back), and the register gained OD-63 to OD-66. Dev Manager 5 named the CI policy and the register; the manager found the workflow's two changes when moving the stamp. Separately, the Work Register's SV3 row was not updated at `553d9ed` (M08's prompt; B-C2's review given) or `e19f731`, so it still said the review was going to Nathan.
+- **Caught by:** Dev Manager 5, DM-76 section 10 (its DM-74 and DM-75 reads had not checked the stamp).
+- **Effect:** none on the work; the summary's substance was still true (no summarized rule had changed), but its links pointed at an old commit, and the SV3 row misstated the review's state for two batches.
+- **Correction:** the stamp and its nine links moved to `b192164`, with the moves listed; "One item at a time" notes OD-66's exception; the SV3 row brought to the handoff's state.
+- **Prevention:** every records batch that changes a governing path (the CI policy, the register, the workflow, the charter, `AGENTS.md`, `CLAUDE.md`, the canon) moves the summary's stamp in the same sync (PF02-R12); and every sync updates the Work Register row of each item the batch touches, not only the item named in the commit.
+
+### AM11-30 — TypeSafe uses rows created from part of the printed row, and with the pick "pending" (records)
+
+- **What happened:** M08's row in the Notion uses table was created with the cell, level, model, session, date and PR fields only; the script's Notes, Rung probabilities, Model probabilities, TypeSafe detail and token counts were left out.
+- **Caught by:** App Manager 11, comparing the created row with the script's printed row before the read-back.
+- **Effect:** none; the row was completed from the printed row and read back, matching it, before the prompt was given.
+- **Correction:** the five fields added verbatim.
+- **Also:** from Stage B's exact-head review row onward, rows were created with *Nathan's pick* "pending" and set to "not recorded" after the session ran; the manager workflow's step 3 sets "not recorded" in place of "pending" at creation. The two rows still "pending" (B-C2's delta re-review, revision 2, and M08) were set to "not recorded" on 16 November.
+- **Prevention:** a uses row is created by pasting the script's printed "Notion row" object whole, with *Nathan's pick* set to "not recorded" (step 3), then adding only PR and PR metrics (the skill's step 4); never by retyping fields.
+
+### AM11-29 — AM11-28's rule broken at its first use (follow-through)
+
+- **What happened:** AM11-28's prevention says that after any push to PR47's head the manager waits for Codex's pass on it and reads PR47's comments before writing or giving the next prompt. Minutes after writing it, the manager pushed `e6fa3c1` (records only) and gave B-C2's prompt without that wait. Codex's pass on `e6fa3c1` (23:23 UTC) found a defect in B-C1's version ledger. At `b0386f8` the manager wrote the delta re-review prompt's revision 1 without reading PR47's comments; its wait script read only Codex's state on the new commit, whose "findings" flag counts unresolved findings anywhere on the PR.
+- **Caught by:** App Manager 11, listing PR47's comments before giving the review prompt (01:20).
+- **Effect:** B-C2 could not have fixed it (the ledger was outside its owned paths). The review prompt's revision 1 was not given; revision 2 adds the finding to its scope.
+- **Correction:** the finding recorded in the evidence record and the brief's "Sessions"; the review prompt revised before it was given, with a new TypeSafe reading.
+- **Prevention:** the wait script now lists PR47's review comments created since the last check and prints each, and the manager reads that list before any prompt or consultation goes to Nathan; a records-only push counts as a push to PR47's head.
+
+### AM11-28 — Codex's review of a consultation's commit not read before the next prompt (follow-through)
+
+- **What happened:** DM-75 was given at `c9bca52` with no watch on Codex's review of that commit. Codex reviewed it at 17:23 UTC with two P2 findings: a `restricted` match shows the blocked member the block's direction, and D14's rule reads a quoted `--` as a comment. B-C2's prompt was written at `f39bd0d` without reading PR47's comments. The two findings were read only at 23:18, when the wait on Codex's pass over `f39bd0d` showed findings.
+- **Caught by:** App Manager 11, reading PR47's comments before giving B-C2's prompt.
+- **Effect:** none on the work. Both findings were the exact-head review's #1 and #4, already disposed by DM-75 (#1 carried to SV4; #4 B-C2's item 4); Codex's two findings on `f39bd0d` are #2 and #5, B-C2's items 2 and 5. The prompt stood.
+- **Correction:** the four findings recorded in the brief's "Sessions"; B-C2's verification records them in the evidence record and resolves the threads it answers.
+- **Prevention:** AM11-17's rule, applied to consultations too: after any push to PR47's head, the manager waits for Codex's pass on it and reads PR47's comments before writing or giving the next prompt or consultation.
+
+### AM11-27 — The handoff over its size limit for seven commits (records)
+
+- **What happened:** the documentation map keeps the handoff under 5 KB. It reached 5,049 bytes at `2d8f28a` (05:14 UTC on 15 November) and grew with each routing update to 6,152 bytes at `e75649d`. Each commit added a sentence to the SV3 bullet, and none checked the size; AM11-04's byte count was no longer run.
+- **Caught by:** App Manager 11, reading the file's size before the DM-75 commit.
+- **Effect:** none on the work; the handoff routed correctly but carried history that lives in the brief and the record.
+- **Correction:** cut to 4,476 bytes in the DM-75 commit; the SV3 bullet now points to the brief's status line and "Sessions" for the history.
+- **Prevention:** every commit that changes the handoff prints its byte count (`wc -c`) before the commit, and a count of 5,000 or more is cut in that commit.
+
+### AM11-26 — A count in the manager's governing sentence left stale by a correction (follow-through)
+
+- **What happened:** the CI policy's Database proof checks paragraph gained the manager's sentence for Stage B ("DB04, DB05 and DB10; 59 cases in all"). B-C1 then added seven cases, 66 in all. Integrating B-C1, the manager updated nothing in the CI policy; its verification checked the proof README and the contract document, which B-C1 owned, and not the governing sentence the manager owns.
+- **Caught by:** the exact-head review of Stage B, #9.
+- **Effect:** none on the code or the runs; the policy understated the suite's cases at PR47's head for one review.
+- **Correction:** the sentence is corrected with the brief's revision 17 (DM-75 item 6), and Dev Manager 5 reads it at the pre-merge read.
+- **Prevention:** when a correction changes a count, a route list or a case list, the manager's verification greps every record for the old figure, the manager's own governing sentences included (the CI policy, the P11 plan's entry, the handoff), and corrects them before the integration commit.
 
 ### AM11-22 — A stop clause that the prompt's own item triggers (prompt)
 

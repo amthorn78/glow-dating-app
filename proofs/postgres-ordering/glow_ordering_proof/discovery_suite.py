@@ -57,6 +57,9 @@ class DiscoveryReport:
     plans: dict[str, Any] = field(default_factory=dict)
     statements_per_page: dict[str, int] = field(default_factory=dict)
     disclosure: dict[str, Any] = field(default_factory=dict)
+    # D14 (SV3 Stage B): the row locks the suite sent, checked before its verdict.
+    row_locks: dict[str, Any] = field(default_factory=dict)
+    row_lock_failures: int = 0
 
     def passed(self) -> bool:
         return (
@@ -64,6 +67,7 @@ class DiscoveryReport:
             and all(c.passed for c in self.cases)
             and self.secrets_found == 0
             and self.values_found == 0
+            and self.row_lock_failures == 0
         )
 
     def to_json(self) -> str:
@@ -102,6 +106,11 @@ def run(results_path: Path | None) -> int:
             "refusing: the discovery suite runs only under glow_ordering_proof.discovery_settings"
         )
         return 1
+    # D14 (SV3 Stage B): the record of every row lock the suite sends, before its first
+    # statement (``row_locks``).
+    from glow_ordering_proof import row_locks
+
+    lock_record = row_locks.install()
     if len(discovery_cases.CASES) != discovery_cases.CASE_COUNT:
         print(
             f"refusing: the suite holds {len(discovery_cases.CASES)} cases, not the"
@@ -160,6 +169,11 @@ def run(results_path: Path | None) -> int:
         report.values_held = values.count()
         # DM-64 T4: a match inside a timing PostgreSQL wrote into a plan is not counted.
         report.values_found = values.found_in(capture.text(), plan_timings=True, headers=headers)
+    # D14 (SV3 Stage B; acceptance check 15): checked before the verdict, and before the
+    # results JSON is written; counts, and each refused statement's text, never a parameter.
+    summary = lock_record.check()
+    report.row_locks = summary.as_dict()
+    report.row_lock_failures = summary.failures()
     body = report.to_json()
     scanned = results_text(body)
     secrets_in_results = ledger.found_in(scanned)
@@ -201,6 +215,8 @@ def run(results_path: Path | None) -> int:
             f" nodes {', '.join(plan.get('nodes', []))}",
             flush=True,
         )
+    for line in summary.lines("discovery"):
+        print(line, flush=True)
     print(f"DISCOVERY VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
     if results_path is not None and (secrets_in_results or values_in_results):
         print("results withheld: the results JSON held a secret or a member value")

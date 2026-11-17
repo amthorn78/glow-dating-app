@@ -41,9 +41,17 @@ class IdentityReport:
     seconds: float = 0.0
     secrets_held: int = 0
     secrets_found: int = -1
+    # D14 (SV3 Stage B): the row locks the suite sent, checked before its verdict.
+    row_locks: dict[str, Any] = field(default_factory=dict)
+    row_lock_failures: int = 0
 
     def passed(self) -> bool:
-        return bool(self.cases) and all(c.passed for c in self.cases) and self.secrets_found == 0
+        return (
+            bool(self.cases)
+            and all(c.passed for c in self.cases)
+            and self.secrets_found == 0
+            and self.row_lock_failures == 0
+        )
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), indent=2, sort_keys=True)
@@ -86,6 +94,11 @@ def run(results_path: Path | None) -> int:
     if settings.ROOT_URLCONF != "glow_identity.urls":
         print("refusing: the identity suite runs only under glow_ordering_proof.identity_settings")
         return 1
+    # D14 (SV3 Stage B): the record of every row lock the suite sends, before its first
+    # statement (``row_locks``).
+    from glow_ordering_proof import row_locks
+
+    lock_record = row_locks.install()
     reasons = used_database_reasons()
     if reasons:
         print(
@@ -124,6 +137,11 @@ def run(results_path: Path | None) -> int:
         report.secrets_found = ledger.found_in(capture.text())
     # Correction C1 (DM-47 C1.4): the results JSON is output too. A secret in it fails the run,
     # and the file is not written.
+    # D14 (SV3 Stage B; acceptance check 15): checked before the verdict, and before the
+    # results JSON is written; counts, and each refused statement's text, never a parameter.
+    summary = lock_record.check()
+    report.row_locks = summary.as_dict()
+    report.row_lock_failures = summary.failures()
     body = report.to_json()
     found_in_results = ledger.found_in(body)
     report.secrets_found += found_in_results
@@ -139,6 +157,8 @@ def run(results_path: Path | None) -> int:
         f" JSON)",
         flush=True,
     )
+    for line in summary.lines("identity"):
+        print(line, flush=True)
     print(f"IDENTITY VERDICT: {'PASS' if report.passed() else 'FAIL'}", flush=True)
     if results_path is not None and found_in_results:
         print(f"results withheld: the results JSON held {found_in_results} secrets")

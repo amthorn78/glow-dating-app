@@ -3122,6 +3122,9 @@
         },
         {
           "$ref": "#/$defs/AdultCheckIntent"
+        },
+        {
+          "$ref": "#/$defs/InteractionUndoIntent"
         }
       ]
     },
@@ -3252,6 +3255,12 @@
             },
             {
               "$ref": "#/$defs/CandidateCardPage"
+            },
+            {
+              "$ref": "#/$defs/InteractionUndoOutcome"
+            },
+            {
+              "$ref": "#/$defs/OwnInteractionVersions"
             }
           ]
         }
@@ -4767,6 +4776,244 @@
         }
       ],
       "description": "A page of a recommendations or broader-discovery batch, as cards (SV3 Stage A, D7 and D13 (a)): CandidatePage's fields and state rules, the collection named by its own field, and CandidateCard items. Additive: CandidatePage is unchanged, and this discriminator joins AppResponse as earlier additions did."
+    },
+    "InteractionUndoIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "meta",
+        "target_profile_id"
+      ],
+      "properties": {
+        "operation": {
+          "const": "interaction_undo"
+        },
+        "meta": {
+          "$ref": "#/$defs/CommandMeta"
+        },
+        "target_profile_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        }
+      },
+      "description": "D12's undo (SV3 Stage B, D13): the actor's own most recent pass of the named target, withdrawn within the discovery.undo setting's waiting period. CommandMeta's expected_version addresses the actor's directional row. No batch, action, actor, account or other member's field; the server finds the pass. Additive: InteractionIntent's actions are unchanged, and this discriminator joins AppIntent as earlier additions did."
+    },
+    "InteractionUndoOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target_profile_id",
+        "version",
+        "state"
+      ],
+      "properties": {
+        "kind": {
+          "const": "interaction_undo"
+        },
+        "target_profile_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "const": "withdrawn"
+        }
+      },
+      "description": "D12's undo (SV3 Stage B, D13): the actor's own pass, withdrawn; the directional row is kept and its version advanced. Never another member's value, a count, a reason or a block's direction. Additive: InteractionOutcome's states are unchanged, and this discriminator joins AppResponse as earlier additions did."
+    },
+    "InteractionUndoReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome_code",
+        "object_ref",
+        "committed_version"
+      ],
+      "properties": {
+        "outcome_code": {
+          "const": "withdrawn"
+        },
+        "object_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "committed_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "description": "Immutable minimal receipt of D12's undo (SV3 Stage B, D13). This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained. Additive: CommandReceipt's outcome codes are unchanged."
+    },
+    "InteractionUndoCommandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "receipt",
+        "replayed",
+        "current_projection"
+      ],
+      "properties": {
+        "kind": {
+          "const": "interaction_undo_command_result"
+        },
+        "receipt": {
+          "$ref": "#/$defs/InteractionUndoReceipt"
+        },
+        "replayed": {
+          "type": "boolean"
+        },
+        "current_projection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InteractionUndoOutcome"
+            },
+            {
+              "$ref": "#/$defs/InteractionOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Internal fixture-command result for D12's undo (SV3 Stage B, D13), as InteractionCommandResult is; no HTTP route or deployed contract activation. Receipt is original and immutable; projection is rebuilt under current actor/object access (the withdrawn pass, or the actor's later like or pass of the same target) and may be null. Replay never regrants contact. Existing AppResponse does not silently accept this new discriminator."
+    },
+    "OwnInteractionVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target_profile_id",
+        "interaction_state",
+        "interaction_version",
+        "block_state",
+        "block_version"
+      ],
+      "properties": {
+        "kind": {
+          "const": "own_interaction_versions"
+        },
+        "target_profile_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])",
+          "minLength": 36,
+          "maxLength": 36,
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "interaction_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "liked",
+            "passed",
+            "withdrawn"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "interaction_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "block_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "active",
+            "removed"
+          ],
+          "not": {
+            "pattern": "[\\ud800-\\udfff]"
+          }
+        },
+        "block_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "interaction_state": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "interaction_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "interaction_version": {
+                "const": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "interaction_version": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "block_state": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "block_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "block_version": {
+                "const": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "block_version": {
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ],
+      "description": "The actor's own versions toward a profile (SV3 Stage B, correction B-C1, D13; DM-74): the profile ID as asked, the actor's own directional row's state and version (F08) and the actor's own block's state and version (F13), each none and 0 where the actor has no row, so a client that has lost its own command answers, or a second device, can learn the version CommandMeta's expected_version addresses. Built from the actor's own rows only: the same answer whatever the profile's state, or whether it exists, and never the other member's like, pass or block, a count or a reason. Additive: every existing DTO is unchanged, and this discriminator joins AppResponse as earlier additions did."
     }
   }
 }

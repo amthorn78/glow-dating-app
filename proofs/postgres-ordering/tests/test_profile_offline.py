@@ -1280,6 +1280,10 @@ NARROWED_HITS = {
     "a Last-Modified header": ("headers", "Last-Modified: Thu, 12 Nov 2026 04:13:27 GMT"),
     "an Expires header with a one-digit day": ("headers", "Expires: Mon, 2 Nov 2026 04:13:27 GMT"),
     "an Expires header without GMT": ("headers", "Expires: Thu, 12 Nov 2026 04:13:27 +0000"),
+    # SV3 Stage B, item 4 (DM-72; B0's delta re-review's F5): the rule's trailing GMT and its
+    # name's case, each failing against its mutant ((?: GMT)?$ and re.IGNORECASE).
+    "an Expires header ending at its time": ("headers", "Expires: Thu, 12 Nov 2026 04:13:27"),
+    "an Expires header named in lower case": ("headers", "expires: Thu, 12 Nov 2026 04:13:27 GMT"),
     "the Expires shape inside another header": (
         "headers",
         "X-Note: Expires: Thu, 12 Nov 2026 04:13:27 GMT",

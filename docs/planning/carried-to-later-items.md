@@ -130,6 +130,24 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 - **From SV2's brief (DM-52):** a visible profile that loses a completion requirement becomes `incomplete`, and the send check then refuses. That cause is not among OD-60's H causes; SV4's design says what each member reads then, and until it does, SV4's interim default applies.
 - **From SV2 Stage A (DM-54):** `glow_chat`'s send check reads the latest onboarding decision's state, not its version (`_contact_state_checks`), so a member whose accepted version is no longer current can still send until D9's recompute demotes them. Whether the send check reads the version follows P08's rule for a new version.
 - **From SV3's brief (DM-60): rematch** (OD-60, R). The F09 transition from `unmatched` to `active`, the chat binding after an unmatch, what the pair sees of their old conversation under `chat.history`, and lifting the fixed limit `rematch_not_built` while keeping `rematch_never_after_block_or_report`; the contract's sentence "Rematch is absent from legal transitions until its policy is selected" is rewritten with it. P07's console offers `discovery.rematch` only after it.
+- **From SV3 Stage B's exact-head review (#1; DM-75): a block's direction, before P11.** D8 and F13's private projection say a block's direction is never shown to the blocked member. Today it can be inferred: on the server only `glow_chat`'s block makes a match `restricted` (`contact.py`'s `block`), and SV3's match read and unmatch answer serve the match's state to both participants (`glow_discovery.interactions`, `_match_projection`), so the member who did not block, seeing `restricted`, learns that the other did. SV4's design makes what a participant who has not blocked is served about the match (its state, its version, and the answers to their own commands and reads) the same whether the other member blocked or unmatched them, including after the blocker's later unblock or unmatch; OD-12 already treats the two alike (neither member can send or see the conversation). Its inputs: OD-60 H's one neutral line the same for every cause, and SV2's `incomplete` cause (above); `glow_chat`'s unmatch takes a `restricted` match to `unmatched`, advancing its version, and answers `no_change` for an `unmatched` one; a block changes a match only while it is `active`; P05.3's fixture commands (`glow_domain.interactions`) and P05's mobile fixture adapter (`fixture-adapter.ts`) also restrict a match when the pair loses its eligibility, so there `restricted` has more than one cause; and `MatchProjection`'s states are `main`'s contract. P11 serves no route that returns a match's state to a member (SV3's match read and unmatch, or SV4's own) until the design is reviewed and in place; nothing is served before P11. If the design would change D8's rule, F13's private projection or what either member can do, SV4's brief puts it to Nathan first.
+
+## Carried to the next change to the proof's row-lock record (SV3's D14; B-C6's short review)
+
+D14's rules are frozen from `07d8de3` (DM-78). Two record nits from B-C6's short review (the [SV3 record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Delta re-review of B-C6"), none in a correction class, for the first later change that touches `proofs/postgres-ordering/glow_ordering_proof/row_locks.py` (DM-81 section 4). The third, RN3, a Markdown record nit, was corrected before PR47's merge in DM-81's MM1 words.
+
+- **RN1:** the module docstring's "What it does not see" paragraph names S4 and F2's mechanism but not F1; it can point to the README's F1 limit as the rule paragraph above it does.
+- **RN2:** the comment in `judge` ("a FOR UPDATE that names no account table reads only those tables") gains "in the positions its reading binds", as `judge`'s docstring has.
+
+## Carried to the CI policy's next change (DM-81's MM2)
+
+The CI policy's SV3 Stage B sentence (its Database proof checks paragraph) stands as written at PR47's merge: it understates what D14 refuses and claims nothing D14 does not do (DM-81 section 5). At the policy's next change, its clause is replaced in Dev Manager 5's words, and the Dev Manager reads the policy's final text then (a read covers one commit). Replace:
+
+> and fails before its verdict if a statement takes `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only, or if the migrated database defines a function, view or rule of its own;
+
+with:
+
+> and fails before its verdict if a statement fails D14's rule, which refuses above all a `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only (the proof README's D14 entry states the rule whole), or if a function, procedure, view or rule of the database's own exists when the check runs;
 
 ## Carried to P10 (pre-integration readiness evidence)
 

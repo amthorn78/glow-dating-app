@@ -1647,10 +1647,12 @@ B1_TOKEN_CASES: tuple[Case, ...] = (
 
 
 def _harness_holder(lock_account: UUID, then: Callable[[], None]) -> Writer:
-    """A harness transaction on a worker's connection: it locks one account row FOR
-    UPDATE, holds there, and then, still inside its transaction, makes the change
-    ``then`` writes, which no app writer ever makes (F2): the arriver that waited on the
-    account lock reads the changed key under its own locks."""
+    """A harness transaction on a worker's connection: it locks one account row FOR NO
+    KEY UPDATE (the app's account lock mode, DM-61, which a held no-key lock still
+    blocks; SV3 Stage B's item 5, DM-73), holds there, and then, still inside its
+    transaction, makes the change ``then`` writes, which no app writer ever makes (F2):
+    the arriver that waited on the account lock reads the changed key under its own
+    locks."""
 
     def run(hooks: Hooks | None) -> Result:
         from django.db import connection, transaction
@@ -1661,7 +1663,7 @@ def _harness_holder(lock_account: UUID, then: Callable[[], None]) -> Writer:
             if hooks is not None and hooks.on_begin is not None:
                 hooks.on_begin(pid)
             cursor.execute(
-                "SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR UPDATE",
+                "SELECT id FROM glow_persistence_appaccount WHERE id = %s FOR NO KEY UPDATE",
                 [lock_account],
             )
             if hooks is not None and hooks.after_first_lock is not None:

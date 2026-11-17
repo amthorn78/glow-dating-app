@@ -215,6 +215,20 @@ export type CandidateCardPage = {
  */
 export type Text80 = string;
 /**
+ * The actor's own versions toward a profile (SV3 Stage B, correction B-C1, D13; DM-74): the profile ID as asked, the actor's own directional row's state and version (F08) and the actor's own block's state and version (F13), each none and 0 where the actor has no row, so a client that has lost its own command answers, or a second device, can learn the version CommandMeta's expected_version addresses. Built from the actor's own rows only: the same answer whatever the profile's state, or whether it exists, and never the other member's like, pass or block, a count or a reason. Additive: every existing DTO is unchanged, and this discriminator joins AppResponse as earlier additions did.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "OwnInteractionVersions".
+ */
+export type OwnInteractionVersions = {
+  kind: 'own_interaction_versions';
+  target_profile_id: string;
+  interaction_state: 'none' | 'liked' | 'passed' | 'withdrawn';
+  interaction_version: number;
+  block_state: 'none' | 'active' | 'removed';
+  block_version: number;
+};
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "MediaIntent".
  */
@@ -281,7 +295,8 @@ export type AppIntent =
   | FiltersIntent
   | AreaIntent
   | SensitiveConsentIntent
-  | AdultCheckIntent;
+  | AdultCheckIntent
+  | InteractionUndoIntent;
 /**
  * One of the four two-way list fields, with its own words and display choice, as a new choice (SV2, D3): list value IDs of the current catalog (policy_version), within the field's pick limit, or ["not-stated"] for orientation or relationship status. Orientation, relationship status and orientation's own words need the sensitive-fields consent. Looking for is always shown and has no own words; relationship status has no own words.
  *
@@ -343,7 +358,9 @@ export interface AppResponse {
     | OwnCompletion
     | OwnSensitiveConsent
     | OwnAgeState
-    | CandidateCardPage;
+    | CandidateCardPage
+    | InteractionUndoOutcome
+    | OwnInteractionVersions;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -791,6 +808,18 @@ export interface CandidateDetails {
   area_name: Text80 | null;
 }
 /**
+ * D12's undo (SV3 Stage B, D13): the actor's own pass, withdrawn; the directional row is kept and its version advanced. Never another member's value, a count, a reason or a block's direction. Additive: InteractionOutcome's states are unchanged, and this discriminator joins AppResponse as earlier additions did.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "InteractionUndoOutcome".
+ */
+export interface InteractionUndoOutcome {
+  kind: 'interaction_undo';
+  target_profile_id: string;
+  version: number;
+  state: 'withdrawn';
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "CommandMeta".
  */
@@ -1092,6 +1121,17 @@ export interface AdultCheckIntent {
   birth_date: string;
 }
 /**
+ * D12's undo (SV3 Stage B, D13): the actor's own most recent pass of the named target, withdrawn within the discovery.undo setting's waiting period. CommandMeta's expected_version addresses the actor's directional row. No batch, action, actor, account or other member's field; the server finds the pass. Additive: InteractionIntent's actions are unchanged, and this discriminator joins AppIntent as earlier additions did.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "InteractionUndoIntent".
+ */
+export interface InteractionUndoIntent {
+  operation: 'interaction_undo';
+  meta: CommandMeta;
+  target_profile_id: string;
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "AppResponse".
  */
@@ -1133,7 +1173,9 @@ export interface AppResponse1 {
     | OwnCompletion
     | OwnSensitiveConsent
     | OwnAgeState
-    | CandidateCardPage;
+    | CandidateCardPage
+    | InteractionUndoOutcome
+    | OwnInteractionVersions;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.
@@ -1161,4 +1203,27 @@ export interface InteractionCommandResult {
 export interface AreaQuery {
   latitude: number;
   longitude: number;
+}
+/**
+ * Immutable minimal receipt of D12's undo (SV3 Stage B, D13). This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained. Additive: CommandReceipt's outcome codes are unchanged.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "InteractionUndoReceipt".
+ */
+export interface InteractionUndoReceipt {
+  outcome_code: 'withdrawn';
+  object_ref: string;
+  committed_version: number;
+}
+/**
+ * Internal fixture-command result for D12's undo (SV3 Stage B, D13), as InteractionCommandResult is; no HTTP route or deployed contract activation. Receipt is original and immutable; projection is rebuilt under current actor/object access (the withdrawn pass, or the actor's later like or pass of the same target) and may be null. Replay never regrants contact. Existing AppResponse does not silently accept this new discriminator.
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "InteractionUndoCommandResult".
+ */
+export interface InteractionUndoCommandResult {
+  kind: 'interaction_undo_command_result';
+  receipt: InteractionUndoReceipt;
+  replayed: boolean;
+  current_projection: InteractionUndoOutcome | InteractionOutcome | null;
 }

@@ -16,6 +16,25 @@ while that field's ``shown`` flag is on, with the member's own words for gender 
 internal point, a distance, a birth date, a count or a reason (D8). ``compatibility`` is ``pending``
 for every card: no ready compatibility projection is serializable in this baseline, and a synthetic
 ready result still projects ``pending`` (P05.2's rule).
+
+**Stage B's requests** (D9, D11 and D12) are the existing closed ``InteractionIntent``,
+``UnmatchIntent`` and ``BlockIntent``, and D13's new ``InteractionUndoIntent`` (an added DTO; no
+existing DTO changes), each with ``CommandMeta`` (an idempotency key and the expected version);
+parsed as ``PageRequest`` is. **Their responses** are the current projections: the existing
+``InteractionOutcome``, ``MatchProjection`` and ``BlockOutcome``, and D13's new
+``InteractionUndoOutcome`` for a withdrawn pass. The receipt (``CommandReceipt``, or D13's new
+``InteractionUndoReceipt``) and the replay flag form the internal ``InteractionCommandResult`` (or
+D13's new ``InteractionUndoCommandResult``), which the operations return beside the projection;
+neither joins the served envelope (the contract's "P05.3 internal interaction result and identity
+bridge"). No projection carries another member's private value, a count, a reason or a block's
+direction (D8).
+
+**The actor's own versions** (D13; DM-74; correction B-C1) are D13's new ``OwnInteractionVersions``
+(an added DTO; no existing DTO changes; no request DTO, since the read takes the profile ID in its
+path): the profile ID as asked, the actor's own directional row's state (``none``, ``liked``,
+``passed`` or ``withdrawn``) and version, and the actor's own block's state (``none``, ``active`` or
+``removed``) and version, each ``none`` and ``0`` where the actor has no row. It never carries the
+other member's row, a count or a reason (D8).
 """
 
 from __future__ import annotations
@@ -28,7 +47,20 @@ from typing import Any
 
 from glow_discovery import policy
 from glow_domain import profile_fields as pf
-from glow_profiles.contract import Invalid, closed, enum, instant, integer, nullable, wire_id
+from glow_profiles.contract import (
+    COMMAND_META,
+    MAX_VERSION,
+    Checker,
+    Invalid,
+    closed,
+    const,
+    enum,
+    instant,
+    integer,
+    nullable,
+    uuid_text,
+    wire_id,
+)
 
 PAGE_REQUEST = closed(
     {
@@ -52,17 +84,60 @@ def _number(literal: str) -> Any:
     return value
 
 
-def parse_page_request(body: bytes) -> dict[str, Any]:
-    """The body as a ``PageRequest``, or ``Invalid``; decoded as SV2's ``contract.parse`` does."""
+# Stage B's requests (D9, D11, D12; D13's additions).
+INTERACTION_INTENT = closed(
+    {
+        "operation": const("interaction"),
+        "meta": COMMAND_META,
+        "target_profile_id": uuid_text,
+        "batch_id": uuid_text,
+        "batch_version": integer(1, MAX_VERSION),
+        "action": enum("like", "pass"),
+    }
+)
+UNDO_INTENT = closed(
+    {
+        "operation": const("interaction_undo"),
+        "meta": COMMAND_META,
+        "target_profile_id": uuid_text,
+    }
+)
+UNMATCH_INTENT = closed(
+    {"operation": const("unmatch"), "meta": COMMAND_META, "match_id": uuid_text}
+)
+BLOCK_INTENT = closed(
+    {
+        "operation": const("block"),
+        "meta": COMMAND_META,
+        "target_profile_id": uuid_text,
+        "action": enum("block", "unblock"),
+    }
+)
+REQUESTS: dict[str, Checker] = {
+    "PageRequest": PAGE_REQUEST,
+    "InteractionIntent": INTERACTION_INTENT,
+    "InteractionUndoIntent": UNDO_INTENT,
+    "UnmatchIntent": UNMATCH_INTENT,
+    "BlockIntent": BLOCK_INTENT,
+}
+
+
+def parse(definition: str, body: bytes) -> dict[str, Any]:
+    """The body as its DTO, or ``Invalid``; decoded as SV2's ``contract.parse`` does."""
     try:
         value = json.loads(
             body.decode("utf-8"), parse_constant=_reject_constant, parse_float=_number
         )
     except (UnicodeDecodeError, ValueError, RecursionError):
-        raise Invalid("PageRequest") from None
-    PAGE_REQUEST(value, "PageRequest")
+        raise Invalid(definition) from None
+    REQUESTS[definition](value, definition)
     assert isinstance(value, dict)
     return value
+
+
+def parse_page_request(body: bytes) -> dict[str, Any]:
+    """The body as a ``PageRequest``, or ``Invalid``."""
+    return parse("PageRequest", body)
 
 
 def _fields(raw: object) -> dict[str, pf.FieldState]:
@@ -144,4 +219,117 @@ def page(
         "items": items,
         "next_cursor": next_cursor,
         "expires_at": instant(expires_at),
+    }
+
+
+# -- Stage B's projections and receipts (D9 to D13) ---------------------------------------------
+
+
+def interaction_outcome(
+    target_profile_id: str, version: int, state: str, match_id: str | None
+) -> dict[str, Any]:
+    """``InteractionOutcome``: the actor's own like or pass. ``match_id`` is the pair's match, which
+    only a like can have (the schema holds a pass's to null); an unreciprocated like has none."""
+    return {
+        "kind": "interaction",
+        "target_profile_id": target_profile_id,
+        "version": int(version),
+        "state": state,
+        "match_id": match_id if state == "liked" else None,
+    }
+
+
+def undo_outcome(target_profile_id: str, version: int) -> dict[str, Any]:
+    """D13's ``InteractionUndoOutcome``: the actor's own pass, withdrawn (D12)."""
+    return {
+        "kind": "interaction_undo",
+        "target_profile_id": target_profile_id,
+        "version": int(version),
+        "state": "withdrawn",
+    }
+
+
+def match_projection(
+    match_id: str, version: int, other_profile_id: str, state: str
+) -> dict[str, Any]:
+    """``MatchProjection``, for a participant only: the other member's profile ID and the state.
+    It names no actor and no reason, but only a block makes a match ``restricted``, so the member
+    who did not block can infer its direction (D8's gap, carried to SV4 before P11; DM-75)."""
+    return {
+        "kind": "match",
+        "match_id": match_id,
+        "version": int(version),
+        "other_profile_id": other_profile_id,
+        "state": state,
+    }
+
+
+def block_outcome(target_profile_id: str, version: int, state: str) -> dict[str, Any]:
+    """``BlockOutcome``: the actor's own block, in the actor's direction only (F13)."""
+    return {
+        "kind": "block",
+        "target_profile_id": target_profile_id,
+        "version": int(version),
+        "state": state,
+    }
+
+
+OWN_VERSIONS = "own_interaction_versions"
+
+
+def own_versions(
+    target_profile_id: str,
+    interaction: tuple[str, int] | None,
+    block: tuple[str, int] | None,
+) -> dict[str, Any]:
+    """D13's ``OwnInteractionVersions``: the actor's own directional row and own block toward the
+    profile, each ``(state, version)``, or ``None`` where the actor has no row (``none`` and
+    ``0``). Built from the actor's own rows only (DM-74)."""
+    interaction_state, interaction_version = interaction or ("none", 0)
+    block_state, block_version = block or ("none", 0)
+    return {
+        "kind": OWN_VERSIONS,
+        "target_profile_id": target_profile_id,
+        "interaction_state": str(interaction_state),
+        "interaction_version": int(interaction_version),
+        "block_state": str(block_state),
+        "block_version": int(block_version),
+    }
+
+
+def receipt(outcome_code: str, object_ref: str, committed_version: int) -> dict[str, Any]:
+    """The immutable receipt: ``CommandReceipt``, or D13's ``InteractionUndoReceipt`` for
+    ``withdrawn``."""
+    return {
+        "outcome_code": outcome_code,
+        "object_ref": object_ref,
+        "committed_version": int(committed_version),
+    }
+
+
+def command_result(
+    receipt_value: dict[str, Any], replayed: bool, projection: dict[str, Any] | None
+) -> dict[str, Any]:
+    """The internal ``InteractionCommandResult`` (or, for an undo's receipt, D13's
+    ``InteractionUndoCommandResult``): the original receipt, the replay flag and the current
+    projection where the DTO's rule allows it (null otherwise). Never served."""
+    allowed: tuple[str, ...]
+    if receipt_value["outcome_code"] == "withdrawn":
+        kind = "interaction_undo_command_result"
+        allowed = ("interaction_undo", "interaction")
+    else:
+        kind = "interaction_command_result"
+        allowed = {
+            "liked": ("interaction",),
+            "passed": ("interaction",),
+            "unmatched": ("match",),
+            "blocked": ("block",),
+            "unblocked": ("block",),
+        }[receipt_value["outcome_code"]]
+    current = projection if projection is not None and projection["kind"] in allowed else None
+    return {
+        "kind": kind,
+        "receipt": receipt_value,
+        "replayed": replayed,
+        "current_projection": current,
     }

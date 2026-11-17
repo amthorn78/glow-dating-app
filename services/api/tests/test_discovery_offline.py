@@ -1,6 +1,7 @@
 """SV3 Stage A, the parts that need no database (its brief's D2, D3, D6, D7, D13, D17 and D19).
 
-The page route the discovery URL configuration serves, and no action route; the random tie-break,
+The routes the slice serves, Stage A's page route and Stage B's action routes, and no other (Stage
+B's item 6 rewrote this check); the random tie-break,
 with no key in any statement or parameter (D6; DM-61 K2); ADULT's age ceiling pinned to the
 production schema (DM-62); the cursor's binding (Q4); the selection's settings and policy version
 (Q3); the ranking's port states and bands (D6); the request check and the card's projection (D13);
@@ -50,16 +51,41 @@ def modules() -> dict[str, ast.Module]:
 
 
 class DiscoveryRouteTests(unittest.TestCase):
-    def test_the_page_route_is_served_and_no_action_route(self) -> None:
+    def test_the_page_route_and_stage_bs_action_routes_are_served_and_no_other(self) -> None:
+        # Stage A's page route and Stage B's action routes (D13; F07 to F10, F13), each with its
+        # methods, and no other: no route takes a match intent (F09), and no other module of the
+        # slice declares a route. Rewritten by Stage B's correction B-C1 (DM-74): the exact set
+        # gains the own-versions read, its view and its one method, GET, and still no other.
         seen = last_json(
             under_discovery_settings(
-                "import json\nfrom glow_discovery import urls, views\n"
-                "print(json.dumps({'routes': [str(p.pattern) for p in urls.urlpatterns],"
-                " 'methods': views.PageView.http_method_names}))"
+                "import json\nfrom glow_discovery import interaction_urls, urls\n"
+                "print(json.dumps({'routes': [[str(p.pattern), p.callback.view_class.__name__,"
+                " p.callback.view_class.http_method_names]"
+                " for p in urls.urlpatterns + interaction_urls.urlpatterns]}))"
             )
         )
-        self.assertEqual(seen["routes"], ["api/v1/discovery/page"])
-        self.assertEqual(seen["methods"], ["post"])
+        self.assertEqual(
+            seen["routes"],
+            [
+                ["api/v1/discovery/page", "PageView", ["post"]],
+                ["api/v1/discovery/interaction", "InteractionView", ["post"]],
+                ["api/v1/discovery/interaction/undo", "UndoView", ["post"]],
+                ["api/v1/matches/unmatch", "UnmatchView", ["post"]],
+                ["api/v1/matches/<uuid:match_id>", "MatchView", ["get"]],
+                ["api/v1/blocks", "BlockView", ["post"]],
+                ["api/v1/interactions/<uuid:profile_id>", "OwnVersionsView", ["get"]],
+            ],
+        )
+        declaring = sorted(
+            name
+            for name, tree in modules().items()
+            if any(
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "urlpatterns" for t in node.targets)
+                for node in tree.body
+            )
+        )
+        self.assertEqual(declaring, ["interaction_urls.py", "urls.py"])
 
 
 class KeyTests(unittest.TestCase):
@@ -95,9 +121,19 @@ print(json.dumps({
         self.assertEqual(seen["tie_break"], "gen_random_uuid()")
         self.assertTrue(seen["in_selection"])
         self.assertTrue(seen["ordered"])
+        # Stage B (D12, through D7's consumption): resurfacing's cutoff, an instant or NULL, is the
+        # one name added; still no key and no pad among them.
         self.assertEqual(
             seen["names"],
-            ["adult_states", "both_ways", "choices", "consent", "today", "viewer"],
+            [
+                "adult_states",
+                "both_ways",
+                "choices",
+                "consent",
+                "resurfaced_before",
+                "today",
+                "viewer",
+            ],
         )
         self.assertEqual(seen["bytes"], [])
         for gone in ("tie_break", "sql_pads", "TIE_BREAK_SALT", "BLOCK", "hashlib", "settings"):

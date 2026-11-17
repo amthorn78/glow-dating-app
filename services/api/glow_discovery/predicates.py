@@ -37,9 +37,12 @@ Each predicate is written for a member alias (``v``, the viewer; ``c``, the cand
   compared here and never selected.
 - **BLOCK:** no ``active`` block in either direction.
 - **Consumption** (D7; DM-60 Q5): no ``liked`` or ``passed`` row from the viewer to the candidate,
-  and no ``Match`` row for the pair in any state (``active``, ``restricted`` or ``unmatched``). It
-  is not an eligibility predicate (the adapter does not read it); the selection and every recheck
-  add it.
+  and no ``Match`` row for the pair in any state (``active``, ``restricted`` or ``unmatched``). A
+  ``withdrawn`` pass (D12's undo) excludes nothing. With D12's resurfacing on, a pass decided at or
+  before ``%(resurfaced_before)s`` (the transaction's clock less ``waiting_days``) excludes no
+  longer; off (the parameter NULL), every pass excludes. It is not an eligibility predicate (the
+  adapter does not read it); the selection, every recheck and the like's own check
+  (``UNCONSUMED``) add it.
 
 Every predicate fails closed: a missing row reads as NULL or as no row, and a NULL is not a pass
 (``IS TRUE``). No statement selects a birth date, a coordinate, an area ID or a distance.
@@ -172,11 +175,14 @@ def eligible(v: str = "v", c: str = "c") -> str:
 
 
 def unconsumed(v: str = "v", c: str = "c") -> str:
-    """D7's consumption: no like or pass from the viewer to the candidate, and no match row."""
+    """D7's consumption: no like or pass from the viewer to the candidate (but a pass resurfaced
+    under D12), and no match row."""
     return (
         "NOT EXISTS (SELECT 1 FROM glow_persistence_directionalinteraction i"
         f" WHERE i.actor_id = {v}.account_id AND i.target_id = {c}.account_id"
-        " AND i.state IN ('liked', 'passed'))"
+        " AND (i.state = 'liked' OR (i.state = 'passed'"
+        " AND (%(resurfaced_before)s::timestamptz IS NULL"
+        " OR i.decided_at > %(resurfaced_before)s::timestamptz))))"
         " AND NOT EXISTS (SELECT 1 FROM glow_persistence_match m"
         " WHERE m.state IN ('active', 'restricted', 'unmatched')"
         f" AND ((m.account_low_id = {v}.account_id AND m.account_high_id = {c}.account_id)"
@@ -234,7 +240,7 @@ TIE_BREAK = "gen_random_uuid()"
 VIEWER = f"""
 WITH v AS ({MEMBER} WHERE a.id = %(viewer)s)
 SELECT {member_states("v")}, v.eligibility_version, v.preferences_version, v.blocks_version,
-       v.distance_choice, {CHART_COLUMNS.format(name="chart")}
+       {CHART_COLUMNS.format(name="chart")}
 FROM v {CHART.format(alias="v", name="chart")}
 """
 
@@ -283,4 +289,12 @@ SELECT v.account_id, v.eligibility_version, v.preferences_version, v.blocks_vers
        {viewer_accepts()} AS viewer_accepts, {candidate_accepts()} AS candidate_accepts,
        {blocks("v", "c")} AS viewer_blocks, {blocks("c", "v")} AS candidate_blocks
 FROM (SELECT 1) AS one LEFT JOIN v ON true LEFT JOIN c ON true
+"""
+
+# The like's consumption check (D9; Stage B), under its account locks: D7's consumption for one
+# pair, the same text the selection and every recheck apply. True: the candidate is not consumed.
+UNCONSUMED = f"""
+SELECT {unconsumed()}
+FROM (SELECT %(viewer)s::uuid AS account_id) AS v
+CROSS JOIN (SELECT %(candidate)s::uuid AS account_id) AS c
 """
