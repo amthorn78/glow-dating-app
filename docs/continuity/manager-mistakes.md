@@ -196,6 +196,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-02 | 17 Nov 2026 | execution | Re-ran the proof's offline tests on an export of `proofs/` and `services/api` alone: 31 errors, from tests that read `packages/contracts` and the workflow. Caught before any record; the whole-tree export passed (`Ran 376 tests`, `OK`). The review prompt says to use a whole-tree copy | App Manager 12, reading the errors |
 | AM12-03 | 17 Nov 2026 | accuracy | Implementation Control's status, synced for `adf9a56`, said B-C6's run had "every row-lock count equal to B-C5's run"; the account-table counts are equal, but the ordering suite's statement and writer-lock totals differ from run to run (570,395 and 104,427 against 601,985 and 104,751) | App Manager 12, reading the page back |
 | AM12-04 | 17 Nov 2026 | follow-through | The same sync gave the Branches bullet's recount the time "01:20 UTC", not read from a clock; AM11-25's mechanism | App Manager 12, reading the page back |
+| AM12-05 | 17 Nov 2026 | prompt | B-C6's review prompt asked for "PR47's pull-request run on this prompt's commit or its parent": the parent had no run of its own, and the manager's push of `f30a4f8` cancelled the run on the prompt's commit, so only the child's run finished; the review read it and said so | B-C6's short review, in its report |
 
 ## App Manager 2
 
@@ -1144,6 +1145,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-05 — A review prompt named runs by kinship (prompt)
+
+- **What happened:** B-C6's review prompt, copied from B-C5's, asked the review to read "PR47's pull-request run on this prompt's commit or its parent, if one has finished". The parent, `a9dea5a`, was pushed together with the prompt's commit `adf9a56` and started no run; the manager then pushed `f30a4f8` before giving the prompt, which cancelled the run on `adf9a56` (43996869910). The only finished run was on the child, `f30a4f8` (43997200785).
+- **Caught by:** B-C6's short review, which read the child's run, checked that its non-Markdown paths are `adf9a56`'s, and reported the departure.
+- **Effect:** none on the evidence; the review's reading of the run was the one the prompt meant. The manager had read both gates' logs.
+- **Correction:** recorded in the evidence record's "Delta re-review of B-C6" and in DM-81 item 5.
+- **Prevention:** a review prompt names the run by what it must hold, not by its commit's place: the PR run on the latest manager-branch head whose non-Markdown paths equal the code head under review. And a records push after a review prompt's commit is made only once that commit's run has finished, or the prompt names the run that will.
 
 ### AM12-04 — A listing time not read from a clock (follow-through)
 
