@@ -203,6 +203,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-06 | 17 Nov 2026 | process | Disposed B-C6's review nit RN3, a Markdown record nit, as carried by the workflow's step 6 (b), in the record and the carried-items file, and recommended it in DM-81; the brief's own rule for SV3's record nits (its correction classes, from C4's section) corrects a Markdown one before the merge | Dev Manager 5, DM-81 section 4 |
 | AM12-07 | 17 Nov 2026 | follow-through | The handoff's SV3 bullet kept "Stage B with B-C1 to B-C5 is in PR47 (code head `0d784d4`)" through three records batches (`adf9a56`, `4a7015d`, `22b8d52`) after B-C6 was integrated; each batch's edit replaced the bullet's last sentences, not its whole text | App Manager 12, rewriting the handoff at PR47's receipt |
 | AM12-08 | 17 Nov 2026 | accuracy | The record's "Delta re-review of B-C6" linked its prompt as `../ephemeral/…`, copied from B-C5's section, which resolves to `docs/testing/ephemeral/`, a path that does not exist; both links were broken from the start | App Manager 12, its link check while pruning the prompts |
+| AM12-09 | 17 Nov 2026 | accuracy | Told Nathan that 17 links in Implementation Control through the manager branch to September and October prompts were dead, before checking: the files still exist on the branch, so the links resolve; caught by the next command, before any write. Breaks PF02-R57 | App Manager 12, finding the files' deletion commits |
 
 ## App Manager 2
 

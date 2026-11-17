@@ -459,7 +459,7 @@ Each rule gives:
 
 - **Rule:** An ID, a count or a result goes into any record, a PR description included, only after it is read; an item not yet checked stays unticked and says "pending". A merge commit's SHA comes from `git log --merges -1` after the merge, not from the batch's last commit.
 - **Check:** each ID in the record matches the tool output it was read from.
-- **Sources:** AM8-02, AM8-15.
+- **Sources:** AM8-02, AM8-15, AM12-09.
 - **Home:** PF02.
 
 #### PF02-R58 — Route every item a session addresses
@@ -599,8 +599,8 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - PF02's revision history records each change.
 - A batch that changes a passage a PF02 rule cites, in a governing home or in the next-manager start procedure, checks that rule's gist and "Home" line in the same batch, and corrects PF02 if they no longer hold; that correction, like any PF02 change, goes to the Dev Manager's read. The start procedure is not governing Markdown under the charter, so a change to a passage PF02 cites there reaches the Dev Manager only this way (DM-76).
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
-- **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
+- **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
 
 ## 9. Revision history
 
-1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-08, each into the rule it broke, as section 8 lists).
+1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists).

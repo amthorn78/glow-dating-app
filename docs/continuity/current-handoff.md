@@ -31,7 +31,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (17 November 2026, 08:54 UTC)
+## Branches and PRs (17 November 2026, 08:57 UTC)
 
 - **Open PRs:** PR48 alone, M08, from the manager branch. `main` is at `36a19f7` (PR47).
 - **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`0da7617`, merged at `af9bcf0`); M08's `claude/beautiful-pascal-7n0o9n` (`9a90bd8`), merged into the manager branch at `483cd05`; the cleanup deletes it when PR48 merges. The cleanup at PR47's merge deleted the seven Stage B session branches (the record's receipt).
