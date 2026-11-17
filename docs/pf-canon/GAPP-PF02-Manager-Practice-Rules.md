@@ -164,7 +164,7 @@ Each rule gives:
 #### PF02-R18 — A disposition and its governing text agree, part by part
 
 - **Rule:** A disposition and the governing text that applies it say the same thing: a rule awaiting Nathan is not written as in force. When a decision has parts with different conditions, record each part's condition separately in every home. A disposition applies the narrowest rule that governs it: the item's brief's own correction classes, and its rule for record nits, before the manager workflow's step 6 (b).
-- **Check:** the review log's disposition and each governing text carry the same state for each part.
+- **Check:** the review log's disposition and each governing text carry the same state for each part; a disposition of a review finding names the rule it applies, and the item's brief has no narrower rule for that kind of finding.
 - **Sources:** AM3-06, AM3-07, AM12-06.
 - **Changed:** AM12-06 added the narrowest rule: a Markdown record nit in SV3 was carried under step 6 (b), where the brief corrects one before the merge.
 - **Home:** PF02. The manager checks it before the records commit. A governing change also goes to the Dev Manager's read (the charter, "Read before it takes effect"), which may catch a mismatch but is not defined as this check.
@@ -304,7 +304,7 @@ Each rule gives:
 #### PF02-R37 — Name a run by its event
 
 - **Rule:** In every report and record, a run is named by the `event` field `get_workflow_run` returns, never by which jobs it skipped. A prompt names the run it must read by what that run holds (the PR run on the latest head whose non-Markdown paths equal the code head under review), never by its commit's place ("its commit or its parent").
-- **Check:** the run's `event` field quoted with its ID.
+- **Check:** the run's `event` field quoted with its ID; a prompt names its run by the head that run is on and what that head holds.
 - **Sources:** AM8-10, AM12-05.
 - **Changed:** AM12-05 added the prompt's naming: a review prompt asked for a run on its commit or its parent, where neither had one that finished.
 - **Home:** PF02, adding to the manager workflow, step 7, the pre-merge checklist (DM-30 4.3), which names the PR run by its event on the exact head.
@@ -312,7 +312,7 @@ Each rule gives:
 #### PF02-R38 — Run the classifier as written, with full SHAs
 
 - **Rule:** Run the trusted classifier from the manager workflow's command, with full 40-character SHAs from `git rev-parse` (cited). Run it in a clone with full history: when `git rev-parse --is-shallow-repository` prints `true`, run `git fetch --unshallow origin` first, since a shallow history gives a wrong merge base.
-- **Check:** the command line and its output.
+- **Check:** the command line and its output, after `git rev-parse --is-shallow-repository` printed `false`.
 - **Sources:** AM3-03, AM3-14, AM5-01, AM12-01.
 - **Changed:** AM12-01 added the full history: the classifier in a shallow clone gave the merge base `04b89d3` for `947576d`.
 - **Home:** PF02, adding to the manager workflow, "Classification (trusted base policy)" (the full history).
@@ -429,7 +429,7 @@ Each rule gives:
 #### PF02-R53 — Take every figure from command output over the whole source
 
 - **Rule:** Every count, diffstat, range or maximum in a record or in text sent to the scorer is derived from the whole source, never from a truncated listing (check the line count against the expected total). A diffstat or path count is pasted from command output (`git diff --numstat` or `--shortstat`; `git diff --name-status … | cut -c1 | sort | uniq -c`), and added or removed lines are counted from the diff's `+` and `-` lines, not from a reading of the file. A verification compares each of its own outputs with the figure the report gives for the same check, and says which job or step a line belongs to only after reading it there. A local re-run of a suite or a test set runs on a whole-tree copy of the head, since tests read paths outside their own folder.
-- **Check:** each figure traces to its whole source; diffstats and path counts are pasted command output.
+- **Check:** each figure traces to its whole source; diffstats and path counts are pasted command output; a local re-run names the whole-tree copy of the head it ran in.
 - **Sources:** AM4-06, AM5-12, AM6-02, AM8-09, AM8-21, AM10-03, AM11-06, AM12-02.
 - **Changed:** AM12-02 added the whole tree: the proof's offline tests, re-run on an export of two folders, gave 31 errors from tests that read the contracts package and the workflow.
 - **Home:** PF02, adding to the manager workflow, "Claims: a checklist" ("Check every count").
@@ -603,4 +603,4 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 
 ## 9. Revision history
 
-1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists).
+1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists), and the check lines of R18, R37, R38 and R53 extended to cover those additions at the Dev Manager's pre-merge read (DM-82, NN1 to NN4).
