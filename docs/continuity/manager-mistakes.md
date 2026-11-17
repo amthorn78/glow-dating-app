@@ -194,6 +194,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM11-33 | 16 Nov 2026 | follow-through | The Notion sync for `2e669c8` added B-C5's session branch to Implementation Control's "Branches" bullet and left its count, "nine", and its listing time, 18:07 UTC; the read-back checked the edited text, not the whole bullet. AM11-08's mechanism, repeated, though its prevention is a checklist item | Dev Manager 5 (DM-80 section 8) |
 | AM12-01 | 17 Nov 2026 | execution | Ran the trusted classifier for B-C6 in the session's shallow clone: the merge base came out as `04b89d3`, not `947576d`, and the path list as the whole of PR45 to PR47. Caught before any use; `git fetch --unshallow origin` and the re-run gave one merge base, `947576d`. The review prompt's start gate now says to unshallow first | App Manager 12, reading the path list |
 | AM12-02 | 17 Nov 2026 | execution | Re-ran the proof's offline tests on an export of `proofs/` and `services/api` alone: 31 errors, from tests that read `packages/contracts` and the workflow. Caught before any record; the whole-tree export passed (`Ran 376 tests`, `OK`). The review prompt says to use a whole-tree copy | App Manager 12, reading the errors |
+| AM12-03 | 17 Nov 2026 | accuracy | Implementation Control's status, synced for `adf9a56`, said B-C6's run had "every row-lock count equal to B-C5's run"; the account-table counts are equal, but the ordering suite's statement and writer-lock totals differ from run to run (570,395 and 104,427 against 601,985 and 104,751) | App Manager 12, reading the page back |
+| AM12-04 | 17 Nov 2026 | follow-through | The same sync gave the Branches bullet's recount the time "01:20 UTC", not read from a clock; AM11-25's mechanism | App Manager 12, reading the page back |
 
 ## App Manager 2
 
@@ -1140,6 +1142,24 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Effect:** none acted on; both texts stood from 8 November, 09:37 UTC, until App Manager 10 replaced them.
 - **Correction:** both replaced in DM-41's words; AM9-10's correction lists them.
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
+
+## App Manager 12
+
+### AM12-04 — A listing time not read from a clock (follow-through)
+
+- **What happened:** the Notion sync for `adf9a56` wrote that App Manager 12 recounted the branches at 01:20 UTC. The listing ran earlier in the session, and no clock was read for it.
+- **Caught by:** App Manager 12, reading the page back.
+- **Effect:** the wrong time stood in Notion for about two minutes.
+- **Correction:** the branches listed again with `git ls-remote` (eleven, the manager branch at `adf9a56`), the clock read (01:37 UTC), and the bullet corrected and read back.
+- **Prevention:** AM11-25's, already in force: a time comes from a clock read in an earlier call. A recount is re-run when its time was not taken.
+
+### AM12-03 — "Every row-lock count" for the account-table counts (accuracy)
+
+- **What happened:** Implementation Control's status for `adf9a56` said B-C6's run of record had "every row-lock count equal to B-C5's run". The brief's definition, the record and the manager's verification compare the account-table counts, which are equal; the ordering suite's statement and writer-lock totals vary with its stress phase (570,395 and 104,427 against 601,985 and 104,751).
+- **Caught by:** App Manager 12, reading the page back.
+- **Effect:** the overstatement stood in Notion for about two minutes; no repository record carried it.
+- **Correction:** the sentence now names what is equal: each suite's case count, row-lock verdict and account-table lock count.
+- **Prevention:** the claims checklist's first item: say *every* only after tracing each path. A summary written for Notion names the measure the source compares, in the source's words.
 
 ## App Manager 11
 
