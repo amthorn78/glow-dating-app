@@ -1,7 +1,7 @@
 # M08 evidence — the manager practice canon (GAPP-PF02)
 
 - **Work item:** M08, the manager practice canon (OD-66, 16 November 2026).
-- **Prompt:** revision 1, from commit `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` of the manager branch `claude/magical-wozniak-yfmmx2` (`docs/ephemeral/2026-11-16-m08-manager-practice-canon-prompt.md`).
+- **Prompt:** revision 1, from commit `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` of the manager branch `claude/magical-wozniak-yfmmx2` (`docs/ephemeral/2026-11-16-m08-manager-practice-canon-prompt.md`, pruned at PR48's receipt; [at `c7716e3`](https://github.com/amthorn78/glow-dating-app/blob/c7716e33a246d2dbcc6278ac24fbbd1c9bade241/docs/ephemeral/2026-11-16-m08-manager-practice-canon-prompt.md)).
 - **Session:** the documentation session for M08, started by Nathan in `Glow App - No Stream`. It is neither the manager nor a reviewer.
 - **Branch:** `claude/beautiful-pascal-7n0o9n`, from `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`. Its final head is named in the report Nathan relays (a record cannot name the commit that contains it).
 - **Changed paths:** `docs/pf-canon/GAPP-PF02-Manager-Practice-Rules.md` (new); `docs/pf-canon/GAPP-PF00-Canon-Index-and-Authority.md` (registry row, authority-map row, header revision and date, revision history 1.12); `docs/README.md` (the `docs/pf-canon/` row and one new "One home per fact" row); this record (new).
@@ -270,3 +270,14 @@ Status: complete
 - **Coverage after the fold-in,** by script: the log's summary holds 180 IDs, from AM2-01 to AM12-09; each appears in PF02, and PF02 names no ID outside the log.
 - **Classification expected:** ordinary documentation (every path Markdown, none under `.claude/`). The PR carries governing Markdown (PF00, PF02, the manager workflow), which the Dev Manager reads at a named commit before it merges (DM-76 section 9).
 - **Dev Manager 5's pre-merge read** (DM-82, `10710b2`, a read of `7a65210`; merged at `eb14f97`): nothing blocks the merge, on one condition, NN1 to NN4 (R18's, R37's, R38's and R53's check lines extended to cover their additions), applied by script with PF02's revision history line recording them; DM-76's HH1 to HH20 confirmed as applied; the five additions approved as written; coverage 180 of 180; DM-81's MM2 applied to the CI policy in the same batch.
+
+## 13. The merge receipt (App Manager 12, 17 November 2026, 09:57 UTC)
+
+- **PR48 merged** into `main` at `c7716e33a246d2dbcc6278ac24fbbd1c9bade241` (a merge commit, with the final head `72ffa4d` given as the expected head), after its pre-merge checklist: the PR run [44054843418](https://github.com/amthorn78/glow-dating-app/actions/runs/44054843418) on `72ffa4d` (ordinary documentation; the application jobs skipped by design); Codex's pass on `72ffa4d`, completed at 09:22:47 UTC with no findings; Dev Manager 5's read, DM-82, with NN1 to NN4 met. `main`'s parents are `36a19f7` and `72ffa4d`, and its tree is `72ffa4d`'s.
+- **`main`'s push run** [44059737430](https://github.com/amthorn78/glow-dating-app/actions/runs/44059737430): Change scope and the Foundation gate `success`, the six application jobs skipped, the gate printing `Ordinary documentation: application jobs intentionally skipped`.
+- **The cleanup** [44059737320](https://github.com/amthorn78/glow-dating-app/actions/runs/44059737320) (event `push`, delete mode; no open pull request): `claude/beautiful-pascal-7n0o9n` (`9a90bd8`) deleted, "merged into main"; `main`, the manager branch and `claude/dev-manager` kept by the keep-list.
+- **The remote at 09:55 UTC** (`git ls-remote`): three branches, `main` at `c7716e3`, the manager branch at `72ffa4d` and `claude/dev-manager` at `10710b2`. The manager branch was then fast-forwarded to `c7716e3` (DM-57).
+- **Pruned with this receipt,** each file's deletion condition met: M08's prompt and the DM-76 and DM-82 consultations. Their links are pinned at `c7716e3`: the review log's DM-76 and DM-82 rows, OD-66's row and this record's prompt line.
+- **After the merge:** AM12-10 (the watch for PR48 read PR47's Codex summary) folded into PF02-R42 as PF02's revision 1.1, for the Dev Manager's read before the pull request that carries it merges ("Deferred conditions").
+
+M08 is done.

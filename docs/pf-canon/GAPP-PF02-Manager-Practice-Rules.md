@@ -1,6 +1,6 @@
 # Glow Dating App — Manager Practice Rules
 
-**Identity:** GAPP-PF02 · **Revision:** 1.0 · **Recorded:** 16 November 2026
+**Identity:** GAPP-PF02 · **Revision:** 1.1 · **Recorded:** 17 November 2026
 **Scope:** the managers' practice in this application's manual relay. It does not govern the Glow HD engine or its canon.
 **Source:** the [managers' mistakes log](../continuity/manager-mistakes.md) at commit `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, from AM2-01 to AM11-29: 167 entries. Entries added after that commit are folded in under "Maintenance" below.
 
@@ -345,9 +345,10 @@ Each rule gives:
 
 #### PF02-R42 — End a wait only with a watch set
 
-- **Rule:** A turn that waits on CI or Codex for the manager's own pushes ends only after a background watch or a scheduled wake-up is set for it, and the message to Nathan names it and when it fires. A session's run of record is not watched (PF02-R36).
-- **Check:** the watch's or wake-up's identity and time, named in the message.
-- **Sources:** AM11-05.
+- **Rule:** A turn that waits on CI or Codex for the manager's own pushes ends only after a background watch or a scheduled wake-up is set for it, and the message to Nathan names it and when it fires. A session's run of record is not watched (PF02-R36). A watch finds what it waits for by the pull request and the head it is for (the run on that head; that pull request's Codex summary naming that head), never by an identifier carried from an earlier pull request.
+- **Check:** the watch's or wake-up's identity and time, named in the message, with the pull request and the head it reads.
+- **Sources:** AM11-05, AM12-10.
+- **Changed:** AM12-10 added what a watch reads: the watch for PR48 read PR47's Codex summary by that comment's ID, and timed out at 09:51 UTC, 28 minutes after PR48's pass had completed.
 - **Home:** PF02.
 
 ### 4.8 Messages to Nathan and turn endings
@@ -600,7 +601,10 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - A batch that changes a passage a PF02 rule cites, in a governing home or in the next-manager start procedure, checks that rule's gist and "Home" line in the same batch, and corrects PF02 if they no longer hold; that correction, like any PF02 change, goes to the Dev Manager's read. The start procedure is not governing Markdown under the charter, so a change to a passage PF02 cites there reaches the Dev Manager only this way (DM-76).
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
 - **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
+- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; the Dev Manager reads it before the pull request that carries it merges.
 
 ## 9. Revision history
 
 1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists), and the check lines of R18, R37, R38 and R53 extended to cover those additions at the Dev Manager's pre-merge read (DM-82, NN1 to NN4).
+
+1.1 — AM12-10 folded into PF02-R42 (App Manager 12, 17 November 2026, after PR48's merge at `c7716e3`): a watch finds what it waits for by the pull request and the head it is for; the check line covers it. For the Dev Manager's read before its pull request merges.
