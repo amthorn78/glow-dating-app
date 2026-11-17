@@ -134,11 +134,20 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to the next change to the proof's row-lock record (SV3's D14; B-C6's short review)
 
-D14's rules are frozen from `07d8de3` (DM-78). Three record nits from B-C6's short review (the [SV3 record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Delta re-review of B-C6"), none in a correction class, for the first later change that touches `proofs/postgres-ordering/glow_ordering_proof/row_locks.py` or the proof README's D14 limits:
+D14's rules are frozen from `07d8de3` (DM-78). Two record nits from B-C6's short review (the [SV3 record](../testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md), "Delta re-review of B-C6"), none in a correction class, for the first later change that touches `proofs/postgres-ordering/glow_ordering_proof/row_locks.py` (DM-81 section 4). The third, RN3, a Markdown record nit, was corrected before PR47's merge in DM-81's MM1 words.
 
 - **RN1:** the module docstring's "What it does not see" paragraph names S4 and F2's mechanism but not F1; it can point to the README's F1 limit as the rule paragraph above it does.
 - **RN2:** the comment in `judge` ("a FOR UPDATE that names no account table reads only those tables") gains "in the positions its reading binds", as `judge`'s docstring has.
-- **RN3:** the README's N1 sentence ("Django's ORM … quotes every column's name"): Django 5.2.17's `quote_name_unless_alias` leaves unquoted a column's name that is one of the query's aliases, an `extra_select` name or an external alias. The reach is unchanged, since `Join.as_sql` writes `ON (%s)`. Its words are the Dev Manager's (DM-80's LL4), unless DM-81 settles them before PR47 merges.
+
+## Carried to the CI policy's next change (DM-81's MM2)
+
+The CI policy's SV3 Stage B sentence (its Database proof checks paragraph) stands as written at PR47's merge: it understates what D14 refuses and claims nothing D14 does not do (DM-81 section 5). At the policy's next change, its clause is replaced in Dev Manager 5's words, and the Dev Manager reads the policy's final text then (a read covers one commit). Replace:
+
+> and fails before its verdict if a statement takes `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only, or if the migrated database defines a function, view or rule of its own;
+
+with:
+
+> and fails before its verdict if a statement fails D14's rule, which refuses above all a `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only (the proof README's D14 entry states the rule whole), or if a function, procedure, view or rule of the database's own exists when the check runs;
 
 ## Carried to P10 (pre-integration readiness evidence)
 

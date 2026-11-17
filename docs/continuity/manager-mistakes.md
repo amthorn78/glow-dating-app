@@ -197,6 +197,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-03 | 17 Nov 2026 | accuracy | Implementation Control's status, synced for `adf9a56`, said B-C6's run had "every row-lock count equal to B-C5's run"; the account-table counts are equal, but the ordering suite's statement and writer-lock totals differ from run to run (570,395 and 104,427 against 601,985 and 104,751) | App Manager 12, reading the page back |
 | AM12-04 | 17 Nov 2026 | follow-through | The same sync gave the Branches bullet's recount the time "01:20 UTC", not read from a clock; AM11-25's mechanism | App Manager 12, reading the page back |
 | AM12-05 | 17 Nov 2026 | prompt | B-C6's review prompt asked for "PR47's pull-request run on this prompt's commit or its parent": the parent had no run of its own, and the manager's push of `f30a4f8` cancelled the run on the prompt's commit, so only the child's run finished; the review read it and said so | B-C6's short review, in its report |
+| AM12-06 | 17 Nov 2026 | process | Disposed B-C6's review nit RN3, a Markdown record nit, as carried by the workflow's step 6 (b), in the record and the carried-items file, and recommended it in DM-81; the brief's own rule for SV3's record nits (its correction classes, from C4's section) corrects a Markdown one before the merge | Dev Manager 5, DM-81 section 4 |
 
 ## App Manager 2
 
@@ -1145,6 +1146,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-06 — A record nit disposed by the general rule, not the brief's narrower one (process)
+
+- **What happened:** recording B-C6's short review, the manager disposed of RN3 (the README's N1 sentence, Markdown) as a recorded follow-up under the manager workflow's step 6 (b), wrote it into the carried-items file, and recommended (b) to the Dev Manager in DM-81. SV3's brief states the correction classes every SV3 review has used since C4, and among them: a record nit is "corrected before the merge where it is Markdown, and at the next change to its file where it is a docstring (DM-70, DM-72)". The narrower rule governs.
+- **Caught by:** Dev Manager 5, DM-81 section 4.
+- **Effect:** none on `main`: RN3 is corrected before PR47's merge in MM1's words; the carried entry was removed in the same batch.
+- **Correction:** MM1 applied in the proof README; the record's note "After DM-81"; the carried-items section narrowed to RN1 and RN2.
+- **Prevention:** before disposing of a review finding, read the brief's own correction classes and its rule for record nits, not only the workflow's step 6, and apply the narrower.
 
 ### AM12-05 — A review prompt named runs by kinship (prompt)
 
