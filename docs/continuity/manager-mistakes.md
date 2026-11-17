@@ -198,6 +198,8 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-04 | 17 Nov 2026 | follow-through | The same sync gave the Branches bullet's recount the time "01:20 UTC", not read from a clock; AM11-25's mechanism | App Manager 12, reading the page back |
 | AM12-05 | 17 Nov 2026 | prompt | B-C6's review prompt asked for "PR47's pull-request run on this prompt's commit or its parent": the parent had no run of its own, and the manager's push of `f30a4f8` cancelled the run on the prompt's commit, so only the child's run finished; the review read it and said so | B-C6's short review, in its report |
 | AM12-06 | 17 Nov 2026 | process | Disposed B-C6's review nit RN3, a Markdown record nit, as carried by the workflow's step 6 (b), in the record and the carried-items file, and recommended it in DM-81; the brief's own rule for SV3's record nits (its correction classes, from C4's section) corrects a Markdown one before the merge | Dev Manager 5, DM-81 section 4 |
+| AM12-07 | 17 Nov 2026 | follow-through | The handoff's SV3 bullet kept "Stage B with B-C1 to B-C5 is in PR47 (code head `0d784d4`)" through three records batches (`adf9a56`, `4a7015d`, `22b8d52`) after B-C6 was integrated; each batch's edit replaced the bullet's last sentences, not its whole text | App Manager 12, rewriting the handoff at PR47's receipt |
+| AM12-08 | 17 Nov 2026 | accuracy | The record's "Delta re-review of B-C6" linked its prompt as `../ephemeral/…`, copied from B-C5's section, which resolves to `docs/testing/ephemeral/`, a path that does not exist; both links were broken from the start | App Manager 12, its link check while pruning the prompts |
 
 ## App Manager 2
 
@@ -1146,6 +1148,22 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-08 — A relative link copied without resolving it (accuracy)
+
+- **What happened:** the record's "Delta re-review of B-C6" opened with a link to its prompt as `../ephemeral/2026-11-17-…`, the form B-C5's section used. From `docs/testing/evidence/` that resolves to `docs/testing/ephemeral/`, which does not exist; both sections' links were broken from the start.
+- **Caught by:** App Manager 12, the link check run while pruning the closed prompts at PR47's receipt.
+- **Effect:** two dead links in the record from `adf9a56` (B-C5's from `3962900`) until the receipt.
+- **Correction:** both pinned to the prompts at `36a19f7`, where each file exists.
+- **Prevention:** a link written into a record is resolved from the file's own folder before the commit; the pruning script's check (every relative link to `docs/ephemeral/` resolves to a file) runs at each records batch, not only at a receipt.
+
+### AM12-07 — The handoff's SV3 bullet left one batch behind, three times (follow-through)
+
+- **What happened:** after B-C6 was integrated, the handoff's SV3 bullet still said "Stage B with B-C1 to B-C5 is in PR47 (code head `0d784d4`)" at `adf9a56`, `4a7015d` and `22b8d52`. Each batch replaced the bullet's last sentences by script and read back only what it replaced.
+- **Caught by:** App Manager 12, rewriting the handoff for PR47's receipt.
+- **Effect:** the handoff, which only routes, misstated the code head under review for about seven hours; the checkpoint and next actions were right, and no session read the line.
+- **Correction:** the handoff rewritten whole at the receipt.
+- **Prevention:** AM11-08's checklist item (read back every whole bullet an edit touches, and check each count and status word in it) applies to the handoff's own bullets too; a scripted replacement prints the whole bullet after it.
 
 ### AM12-06 — A record nit disposed by the general rule, not the brief's narrower one (process)
 
