@@ -69,13 +69,12 @@ that is not another lock clause. With the models' tables given (``RowLockRecord`
 Django's registry once it is ready), a statement that takes ``FOR UPDATE`` and does not name the
 account table fails too unless every relation name its reading binds (``_relations``), in any
 scope (each ``FROM``, ``JOIN``, ``USING``-list, ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a
-``WITH`` query's name read as one included, but not an item after a ``set`` or ``values`` that
-the reading takes as the end of the ``FROM`` list; the proof README's "Limits"), is one of those
-tables, written without a schema; a ``TABLE`` command, or parentheses it cannot read, fail it as
-well. So a ``FOR UPDATE`` through a name that is not one of the models' tables, in a position its
-reading binds, fails, whatever else the statement names (Codex on ``4c2f918``; DM-78; B-C4's
-delta re-review, F1; DM-79). A sub-query's and a function's own relations are read in turn; a
-function is not a relation.
+``WITH`` query's name read as one included; where the reading stops is in the proof README's
+"Limits"), is one of those tables, written without a schema; a ``TABLE`` command, or parentheses
+it cannot read, fail it as well. So a ``FOR UPDATE`` through a name that is not one of the models'
+tables, in a position its reading binds, fails, whatever else the statement names (Codex on
+``4c2f918``; DM-78; B-C4's delta re-review, F1; DM-79; B-C5's short review, R1; DM-80). A
+sub-query's and a function's own relations are read in turn; a function is not a relation.
 
 **How it resolves ``FOR UPDATE OF``** (``_resolve``; the exact-head review of Stage B, #5; DM-75):
 an ``OF`` name counts only where the statement binds it once, in any scope, as a table named in a
@@ -755,11 +754,10 @@ def _relations(tokens: list[_Token], tables: frozenset[str]) -> str | None:
     """The relations check (correction B-C4's item 3; Codex on 4c2f918; DM-78), for a statement
     that takes ``FOR UPDATE`` and does not name the account table, the models' tables given: every
     relation name its reading binds, in any scope (each ``FROM``, ``JOIN``, ``USING``-list,
-    ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a ``WITH`` query's name read as one; not an
-    item after a ``set`` or ``values`` read as the end of the ``FROM`` list, a stated limit:
-    B-C4's delta re-review, F1; DM-79), is one of ``tables``, written without a schema; a
-    ``TABLE`` command, or parentheses it cannot read, fail it. A sub-query's and a function's
-    own relations are read in turn; a function is not a relation."""
+    ``INTO``, ``UPDATE`` and ``DELETE FROM`` item, a ``WITH`` query's name read as one; where the
+    reading stops is in the proof README's "Limits"), is one of ``tables``, written without a
+    schema; a ``TABLE`` command, or parentheses it cannot read, fail it. A sub-query's and a
+    function's own relations are read in turn; a function is not a relation."""
     if any(_word(token, "table") for token in tokens):
         return TABLE_COMMAND
     reading = _bindings(tokens)
