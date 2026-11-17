@@ -36,7 +36,7 @@ Each rule gives:
 
 - **Rule:** Every time written into a record, the handoff or a Notion page comes from a clock reading. A scorer request's send time is the one the scoring skill prints in its reading ("Sent …"), never typed. In a shell command, take it from `date -u` through a variable inside the same command that writes it. In a tool call (a Notion or GitHub write), take it from a clock read in an earlier call whose output the write uses. Never type a time, write it from memory, or read the clock in a call sent in parallel with the write.
 - **Check:** the clock's printed line comes before the write and equals the time written; the read-back shows the same time.
-- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04.
+- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04, AM12-11.
 - **Changed:** AM9-04 had the records script take the time as an argument. AM10-17 and AM10-18 moved the clock into the writing command, with no typed time. AM11-25 extended the rule to tool writes and excluded a clock read sent alongside the write. AM2-05's own step, printing the UTC time beside each scorer request, is now done by the scoring skill, which prints the send time in its reading (DM-76).
 - **Home:** PF02.
 
@@ -601,10 +601,10 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - A batch that changes a passage a PF02 rule cites, in a governing home or in the next-manager start procedure, checks that rule's gist and "Home" line in the same batch, and corrects PF02 if they no longer hold; that correction, like any PF02 change, goes to the Dev Manager's read. The start procedure is not governing Markdown under the charter, so a change to a passage PF02 cites there reaches the Dev Manager only this way (DM-76).
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
 - **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
-- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; the Dev Manager reads it before the pull request that carries it merges.
+- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands. The Dev Manager reads them before the pull request that carries them merges.
 
 ## 9. Revision history
 
 1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists), and the check lines of R18, R37, R38 and R53 extended to cover those additions at the Dev Manager's pre-merge read (DM-82, NN1 to NN4).
 
-1.1 — AM12-10 folded into PF02-R42 (App Manager 12, 17 November 2026, after PR48's merge at `c7716e3`): a watch finds what it waits for by the pull request and the head it is for; the check line covers it. For the Dev Manager's read before its pull request merges.
+1.1 — AM12-10 folded into PF02-R42 (App Manager 12, 17 November 2026, after PR48's merge at `c7716e3`): a watch finds what it waits for by the pull request and the head it is for; the check line covers it. AM12-11 folded into R01 as a repeat. For the Dev Manager's read before its pull request merges.

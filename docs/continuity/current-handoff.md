@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (17 November 2026; M08 done, to the identity verification decision)
+# Current handoff — App Manager 12 (17 November 2026; M08 done; A05-V's brief at DM-83)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -17,17 +17,18 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1, SV2, SV3 and M08.
 - **Owner directions:** OD-01 to OD-67. **Review log:** DM-01 to DM-82, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (17 November 2026, 09:58 UTC, App Manager 12)
+## Waiting checkpoint (17 November 2026, 10:06 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nobody | — | App Manager 12 prepares the next action | — |
+| App Manager 12 | Dev Manager 5, through Nathan | DM-83: A05-V's brief, DM-82's deferred row, PF02's revision 1.1 | No A05-V prompt is written and PR49 is not merged |
+| App Manager 12 | GitHub | PR49's run and Codex on its head | PR49 stays open |
 
 ## Next actions (App Manager 12)
 
-1. **The decision message on the identity verification company and the photo check's service** (OD-61; DM-52 section 16): first the matrix's recheck of the rows it touches; then the message, in OD-32's form, read by the Dev Manager before Nathan receives it.
-2. **Then SV4**, named to Nathan before it starts.
-3. **The Dev Manager's next consultation** confirms DM-82's applied texts (NN1 to NN4; MM2) and reads PF02's revision 1.1.
+1. **DM-83's answer:** its records batch; PR49 (M08's receipt, PF02's revision 1.1, A05-V's brief) merged after its read, Codex and its checklist.
+2. **A05-V** ([brief](../planning/a05-v-verification-services.md)): the research for the decision message on the identity verification company and the photo check's service (OD-61; DM-52 section 16); its prompt, scored, to Nathan; then the decision message, read by the Dev Manager before Nathan.
+3. **Then SV4**, named to Nathan before it starts.
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
