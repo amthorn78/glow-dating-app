@@ -591,6 +591,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 |---|---|
 | AM5-20 | A scratch worktree restored with `git checkout -- .` kept staged reverted files; the unchanged control failed, the results were discarded and redone, and no record carried them. The entry's own control caught it, and it has no section or prevention (the log's rule for a slip its own tool caught). |
 | AM11-13 | A count error in a review prompt, seen before the prompt was given and given as written by choice, with Nathan told. Its section's prevention answers AM11-14 and AM11-15 only; the count is the kind PF02-R53 and the claims checklist already check. |
+| AM12-12 | A watch script was run once by a stray pipe while it was only being written; it made read-only requests, its output was discarded, and it stopped at once. Its own process check caught it, with no effect, and it has no section (the log's rule for a slip its own tool caught). |
 
 ## 8. Maintenance
 
@@ -601,10 +602,10 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - A batch that changes a passage a PF02 rule cites, in a governing home or in the next-manager start procedure, checks that rule's gist and "Home" line in the same batch, and corrects PF02 if they no longer hold; that correction, like any PF02 change, goes to the Dev Manager's read. The start procedure is not governing Markdown under the charter, so a change to a passage PF02 cites there reaches the Dev Manager only this way (DM-76).
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
 - **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
-- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands. The Dev Manager reads them before the pull request that carries them merges.
+- **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands; AM12-12 into section 7, an event with no standing rule. The Dev Manager reads them before the pull request that carries them merges.
 
 ## 9. Revision history
 
 1.0 — established from the mistakes log at `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, AM2-01 to AM11-29, 167 entries (M08; OD-66): 68 rules in 11 groups, 3 entries retired, 2 events with no standing rule; with the Dev Manager's read applied at integration (DM-76, a read of `9a90bd8`) and the log's later entries folded in (AM11-30, into PF02-R68; AM11-31 to AM12-09, each into the rule it broke, as section 8 lists), and the check lines of R18, R37, R38 and R53 extended to cover those additions at the Dev Manager's pre-merge read (DM-82, NN1 to NN4).
 
-1.1 — AM12-10 folded into PF02-R42 (App Manager 12, 17 November 2026, after PR48's merge at `c7716e3`): a watch finds what it waits for by the pull request and the head it is for; the check line covers it. AM12-11 folded into R01 as a repeat. For the Dev Manager's read before its pull request merges.
+1.1 — AM12-10 folded into PF02-R42 (App Manager 12, 17 November 2026, after PR48's merge at `c7716e3`): a watch finds what it waits for by the pull request and the head it is for; the check line covers it. AM12-11 folded into R01 as a repeat; AM12-12 into section 7. For the Dev Manager's read before its pull request merges.
