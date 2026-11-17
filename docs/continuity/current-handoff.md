@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (17 November 2026; A05-V2's research session; PR51)
+# Current handoff — App Manager 12 (17 November 2026; PR52)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -11,29 +11,28 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
 - **SV3 is done** (OD-49; PR45 to PR47, `36a19f7`; [the brief](../planning/sv3-eligibility-discovery-interactions.md)). A block's direction is carried to SV4, before P11 (DM-75); F7 to before P11 (OD-64).
 - **M08 is done** (OD-66; PR48, `c7716e3`; PF02's revision 1.1 in PR49, `cf0ac60`; its [record](../testing/evidence/2026-11-16-m08-manager-practice-canon.md), sections 12 to 14).
-- **A05-V is done** (PR50, `0a0c4fd`; its [record](../testing/evidence/2026-11-17-a05-v-verification-services.md)). **OD-68** then set ID verification aside for the MVP (a card check at signup; the photo check behind a toggle); **DM-84** sent two questions to Nathan, and **OD-69** answered: a paid plan and no free plan; a free trial at signup with a card; free accounts only by staff grant; the stores' billing with a Stripe link; the card check for all three purposes. A05-V2's [brief](../planning/a05-v2-card-check-and-paid-trial.md), revision 2, was approved in **DM-85**, with PF01's revision 1.18. One bounded change to SV2's requirements follows, before P10 (DM-84).
+- **A05-V is done** (PR50, `0a0c4fd`; its [record](../testing/evidence/2026-11-17-a05-v-verification-services.md)). **OD-68** then set ID verification aside for the MVP (a card check at signup; the photo check behind a toggle); **DM-84** sent two questions to Nathan, and **OD-69** answered: a paid plan and no free plan; a free trial at signup with a card; free accounts only by staff grant; the stores' billing with a Stripe link; the card check for all three purposes. A05-V2's [brief](../planning/a05-v2-card-check-and-paid-trial.md), revision 2, was approved in **DM-85**, with PF01's revision 1.18; both are in `main` with PR51 (`a316a3a`). **A05-V2's session** is verified and merged into the manager branch (`d046b0f`; its [record](../testing/evidence/2026-11-17-a05-v2-card-check-and-paid-trial.md), section 14): Stripe reviews a dating service before accepting it, and does not exclude it. **DM-86** approved the card-check decision message with SS1 to SS14; Nathan accepted it (**OD-70**) and added a founding-member offer (up to 1,000 members, $100 for life, ideally Stripe only); **DM-87** sent the offer to research, A05-V3. One bounded change to SV2's requirements follows, before P10 (DM-84).
 - **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1, SV2, SV3 and M08.
-- **Owner directions:** OD-01 to OD-69. **Review log:** DM-01 to DM-85, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
+- **Owner directions:** OD-01 to OD-70. **Review log:** DM-01 to DM-87, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (17 November 2026, 19:08 UTC, App Manager 12)
+## Waiting checkpoint (17 November 2026, 23:04 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | Nathan | The A05-V2 research session's report ([prompt](../ephemeral/2026-11-17-a05-v2-research-prompt.md)) | Nothing is integrated; no decision message |
-| App Manager 12 | GitHub | PR51's run and Codex on its final head | PR51 stays open |
+| App Manager 12 | GitHub | PR52's run and Codex's summary on its final head | PR52 is not merged |
 
 ## Next actions (App Manager 12)
 
-1. **PR51** (PR50's receipt, OD-69, PF01's revision 1.18, PF02's revision 1.3, A05-V2's brief and prompt, DM-85): its checklist, the merge and its receipt.
-2. **A05-V2:** verify the session's branch (the brief's review plan) and integrate it; if Stripe's pages exclude a dating service, take that to Nathan first (DM-85, RR15). Then the decision message on the card check and the trial, with DM-85 section 7's two staff questions, read by the Dev Manager before Nathan.
+1. **PR52** (A05-V2, PF02 1.4 and 1.5, DM-86, DM-87, the message and OD-70): merged after its run, Codex and the checklist; then its receipt and AM12-18 into PF02 (1.6).
+2. **A05-V3**, the founding-member offer's research: its brief to the Dev Manager first (DM-87's four added questions), then the prompt, the session and the verification, and the offer's decision message.
 3. **Then** the bounded change to SV2's requirements (its brief to the Dev Manager; full scope; before P10), and SV4, each named to Nathan before it starts (OD-29).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (17 November 2026, 18:09 UTC)
+## Branches and PRs (17 November 2026, 23:04 UTC)
 
-- **Open PRs:** none at the listing; PR51 follows this batch. `main` is at `0a0c4fd` (PR50).
-- **Remote branches, three:** `main`; the manager branch; `claude/dev-manager` (`05c469d`, merged at `2fd068c`).
+- **Open PRs:** PR52, from the manager branch, opened after this commit. `main` is at `a316a3a` (PR51).
+- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`b8e289c`, merged at `1213569`); A05-V2's `claude/a05-v2-glow-card-check-1ucpsx` (`e23829b`, merged at `d046b0f`).
