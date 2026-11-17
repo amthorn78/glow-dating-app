@@ -311,6 +311,8 @@ All facts are from each service's own pages read on 17 November 2026. The full f
 
 ### 7.2 Identity verification companies
 
+Stripe Identity is Stripe's verification product, which its use-cases page describes as usable *"as a stand-alone service"* (`idv-stripe-usecases-md`); it is separate from payments, so in-app billing through the stores does not bear on it.
+
 | Field | Stripe Identity | Veriff | Sumsub | Jumio |
 |---|---|---|---|---|
 | Price | $1.50 per verification; first 50 free; minimum and contract not published (`idv-stripe-pricing`, `idv-stripe-identity`) | $0.80, $1.39 or $1.89 per verification, with $49, $99 or $209 monthly minimums; 15-day trial; custom above 5,000 a month (`idv-veriff-pricing`) | $1.35 ($149 monthly minimum) or $1.85 ($299); 14-day trial with 50 checks (`idv-sumsub-pricing`) | No public price (pricing page 404) |
@@ -414,13 +416,19 @@ Pages that were redirects or JavaScript shells but whose content was read anothe
 - Section 9, Launch geography: "The comprehensive privacy laws read bind at thresholds Glow does not meet, except Texas's no-sale rule for small businesses (UST-45) and Colorado's minors duties (UST-41)" does not mention UST-55 (Colorado's biometric provision at any size), UST-57 (Connecticut from 1 July 2026), UST-58, UST-59 or UST-52 to UST-54, UST-56; and its list of app-store acts (UST-32 to UST-35) omits Alabama (UST-36). These sentences state rows whose requirement or status did not change, so they were left as they are.
 - Section 10's "Texas SB 2420's merits appeal is pending": no decision was found (web search only); left as it is.
 
-**Open questions:**
-- Whether identity verification at onboarding is "authentication" in DPLA §3.3.3(K) (AP-67), and who "collects" under BIPA, Texas §503.001 and Colorado §6-1-1314 when a verification company captures the selfie inside Glow's app: readings for counsel, whether to take it being Nathan's decision (DM-31).
-- Stripe Identity's eligibility for a dating app (dating is a Stripe restricted business; Identity names five restricted categories allowed without pre-approval, not dating).
-- Item 5 is already answered by OD-64; the decision message may cite it with AP-31 and UST-35's new precision.
-- Apple's ID Verifier APIs (DPLA §3.3.3(M)) and the Sensitive Content Analysis Framework (§3.3.3(N)) are routes the comparison did not cover.
-- New York A.8713-B (passed both houses, not shown signed) would set a 30-day return or destruction of a social referral service's personal material, including photographs (UST-25 is not in this recheck).
-- The federal Romance Scam Prevention Act is reported by secondary sources as Public Law 119-129; USF-18 holds it and was not in this recheck.
+**Two questions only counsel can answer** (whether to take advice is Nathan's decision, DM-31):
+- **Apple's word "authentication" (AP-67).** DPLA §3.3.3(K) says *"You may not use Face Data for authentication, advertising, or marketing purposes"* and does not define "authentication". Face Data includes a selfie. If the word means proving who someone is, a selfie matched to an ID could fall within it; if it means signing in, it would not. The text does not settle which.
+- **Who "collects" the face data (UST-51, UST-52, UST-55).** BIPA, Texas §503.001 and Colorado §6-1-1314 put their notice, written-release and retention duties on whoever collects, captures or possesses the face data. When a verification company's SDK takes the selfie inside Glow's app and the company computes the face template, the texts do not say whether that is Glow, the company or both. The answer decides who must show the notice and obtain the release; the companies differ (Stripe, Veriff and Sumsub show their own consent screens; through Jumio's API the customer presents it).
+
+**A fact for the decision message, not a question:**
+- **Stripe Identity is Stripe's identity verification product,** usable *"as a stand-alone service"* and priced per verification; it is not payment processing, and how Glow bills (through the stores, AP-39 to AP-45 and GP-38 to GP-45, if a paid launch is chosen, A06) does not change it. Stripe's public pages list dating as a restricted business, and Identity's unsupported uses include restricted businesses other than five named categories, so its pages do not show whether Stripe would accept Glow for Identity. Only Stripe can say, and no one asked it.
+
+**Not covered by this research, for the manager:**
+- **Apple's ID Verifier APIs** (DPLA §3.3.3(M)): an Apple API for verifying a user's age or ID. Not compared; being Apple's, it would not serve Android members on its own.
+- **Apple's Sensitive Content Analysis Framework** (DPLA §3.3.3(N)): its result may not leave the device, so it cannot supply the server-side photo approval OD-61 sets.
+- **New York A.8713-B** (passed both houses on 2 June 2026, not shown signed): if signed, a social referral service would return or destroy a member's personal material, including photographs, within 30 days of the contract ending. It belongs to UST-25 (paying members), which was not in this recheck.
+- **Item 5** is already answered by OD-64; the decision message may cite it with AP-31 and UST-35's new precision.
+- **The federal Romance Scam Prevention Act** is reported by secondary sources as Public Law 119-129; USF-18 holds it and was not in this recheck.
 
 ## 11. How this session checked the subagents' work
 
