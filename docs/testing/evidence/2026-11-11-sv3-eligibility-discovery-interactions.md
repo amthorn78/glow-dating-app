@@ -2957,3 +2957,22 @@ Zero: `git diff --stat 6970721 HEAD -- services/api` is empty. B-C6's paths are 
 - **LL1's old-passage count after** is 1, not 0: DM-80's new text begins with the old passage and adds B-C6's sentence after it.
 - **The lock scan's comparison** is against `0d784d4`'s export (B-C5's code head), not `07d8de3`'s; B-C5's record shows `0d784d4`'s output byte-identical to `07d8de3`'s.
 - **Not run:** the API tests (`services/api` unchanged), the four suites locally (no Docker and no local database run, by the prompt; the run of record runs them), the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command. No pull request, comment, re-run or Notion change.
+
+## Manager verification of B-C6
+
+App Manager 12, 17 November 2026 (01:35 UTC).
+
+- **Integrated** by a merge commit on the manager branch (`a9dea5a`), joining B-C6's records head `a965f3a` (code head `bf33fd0`; branch `claude/intelligent-ride-t4vdpj`) to the handover commit `69af405`; B-C6 started at `6970721`, before the handover commit. The merge's non-Markdown paths are byte-identical to `bf33fd0`.
+- **The diff** (`git diff 6970721 a965f3a`): four paths, 155 lines added and 17 removed: the proof README, `row_locks.py` (10 added and 12 removed, in two docstrings), this record and the P11 plan (its SV3 entry). No line in `services/api`. The trusted classifier from `main` (`--base 947576d --head a965f3a --merge-base`, one merge base) returns `full: true`.
+- **The AST identity,** by the manager's own script at `a965f3a`: `row_locks.py`'s code equals `07d8de3`'s with docstrings set aside; its longest line is 99 characters.
+- **DM-80's eleven texts,** read from its report by script: LL1 to LL7 each found once at B-C6's start (`6970721`) as old passages and once at `a965f3a` as new texts; LL8 to LL11 each found once at the head. Every old passage is gone, except LL1's, LL8's, LL10's and LL11's, whose new texts keep them.
+- **The run of record,** 43983435571 on `bf33fd0`, read from GitHub:
+  - all eight jobs `success`; every DM-41 retry step skipped; the gate's log prints `Application checks passed`;
+  - the Database proof checks job's whole log (2,655 lines), read with the GitHub tools: ordering 56/56, 115/115, 13/13 and 62/62; identity 49/49; profile 69/69; discovery 66/66 in 201.0 s, its phase 203 s;
+  - each suite's `ROW LOCKS (D14): PASS` with 0 refused and the database's own functions, views and rules 0, 0, 0;
+  - account-table writer locks 44,841, 127, 2,061 and 4,256, all `FOR NO KEY UPDATE`, equal to B-C5's run of record (43960479739);
+  - no line holds `refused (D14)`, `Traceback` or `##[error]`.
+- **Local re-runs at `a9dea5a`** (a whole-tree export, the proof's hash-locked venv, under `env -i`): the offline tests (`Ran 376 tests`, `OK`), Ruff, `ruff format --check` (71 files) and mypy (71 source files) clean; the lock scan (52 calls, 0 joining, 7 account locks, 0 not `FOR NO KEY UPDATE`), its output byte-identical to the scan at `0d784d4`.
+- **The phase times** (discovery 203 s against 135 s; the Database job 13 min 45 s against 9 min 44 s) are not a measure of the stop rule or of the run of record; with no code changed, they are the runner's. The discovery phase stays within the job's 30 minutes, and B-C4's run took 175 s.
+- **The session's departures,** all accepted: its venv outside the repository; the Database job's log downloaded from the link the GitHub tools returned, as its prompt allowed (AM11-32); the lock-scan comparison against `0d784d4`'s export, which B-C5's record shows byte-identical to `07d8de3`'s.
+- **For the short review** (DM-80; the brief's "B-C6's review"): the AST identity; DM-80's eleven texts as given; every sentence that says what the relations check reads or where it stops, against `_bindings`'s scan of each word of `_ENDS_FROM` in each position and the closing parenthesis; F1's limit and N1's sentence; B-C6's own records; class 1 from the run's D14 lines.
