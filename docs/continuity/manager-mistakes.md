@@ -212,6 +212,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-15 | 17 Nov 2026 | accuracy | Wrote in OD-68's State cell, in DM-84 and in Implementation Control's status that store billing "gives Glow no card details", citing the A05-V record's section 10 and AP-39 and GP-38; none of them says it. It was the A05-V session's own statement in its relayed message, unchecked. Corrected by DM-84's QQ1 in the register, and in Notion at this batch's sync. Breaks PF02-R54 (a repeat); its fold-in waits for the records batch after PR50's merge, so that PR50 merges on DM-84's read | Dev Manager 5, DM-84 section 4 |
 | AM12-16 | 17 Nov 2026 | execution | Twice sent an empty `update_content` call (no `content_updates`) to A05's Work Register row in Notion, alongside a meant property update: once in DM-83's sync (for `126cbfd`), beside the A05-V row's creation, and once in DM-85's sync (for `495d55b`). The tool refused each before any write; no effect. Found at the second refusal, before PR51's merge, and logged with its receipt. No PF02 rule fits: an event with no standing rule (PF02 section 7) | App Manager 12, the tool's refusal |
 | AM12-17 | 17 Nov 2026 | accuracy | The card-check decision message's revision 1, sent to the Dev Manager in DM-86, put four facts more strongly than the record: "one free trial per person" where the stores and Stripe limit a store account or a card; Stripe's check "confirms the card is valid" where the record says verification "isn't always performed"; C3's fee comparison without the record's open question on Google's fee for renewals; and "under either option" for the Android app honouring a link purchase, where the options differ. It also left out Colorado's renewal notice, which the record's facts table lists. Corrected by DM-86's SS2 to SS12 before the message reached Nathan. Breaks PF02-R59 (a repeat), folded in as PF02's revision 1.5 | Dev Manager 5, DM-86 section 3 |
+| AM12-18 | 17 Nov 2026 | accuracy | OD-70's row said the decision message "offered 'all as recommended' as a reply"; that wording was in App Manager 12's covering note in its session, not in the message's file. The same row wrote "a single payment of $100" for his "a one-time thing" without marking it as a reading. Both stood in the register and its Notion copy from `3298ce8` until DM-87's TT1 to TT3 were applied. Breaks PF02-R50 (the record of a direction matches its words; a repeat); its fold-in waits for the records batch after PR52's merge, so that PR52 merges on DM-87's read | Dev Manager 5, DM-87 section 3 |
 
 ## App Manager 2
 
@@ -1160,6 +1161,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-18 — An owner direction's row went beyond his words (accuracy)
+
+- **What happened:** OD-70's row described the card-check decision message as having "offered 'all as recommended' as a reply". The message's file has no reply wording; the phrase was in App Manager 12's covering note in its session. The row also recorded "a single payment of $100" for Nathan's "So it would be a one-time thing", a likely reading but not the only one (it could mean a one-time offer), without marking it as a reading.
+- **Caught by:** Dev Manager 5, DM-87 section 3.
+- **Effect:** both stood in the register and its Notion copy from `3298ce8` until this batch. Nothing was built on them.
+- **Correction:** DM-87's TT1 to TT3 applied as given. The covering note's offered reply is now recorded as the session's, in the Direction cell.
+- **Prevention:** PF02-R50 as it stands: the record of a direction matches its words, names where each quoted line was said, and marks the manager's reading of a phrase as a reading.
 
 ### AM12-17 — The decision message stated four facts more strongly than the record (accuracy)
 
