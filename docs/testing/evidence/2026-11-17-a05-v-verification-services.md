@@ -1874,3 +1874,12 @@ Against the brief's review plan (revision 2; PP9), on the session's head `085953
 - **Pruned with this receipt:** the DM-84 consultation, its deletion condition met; its link in the review log pinned at `0a0c4fd`.
 - **After the merge:** AM12-15 folded into PF02-R54 as PF02's revision 1.3, for the Dev Manager's next read.
 
+## 14. PR51's merge receipt (App Manager 12, 17 November 2026, 19:14 UTC)
+
+- **PR51 merged** into `main` at `a316a3aace9c7a0a6a2e7b0d9e80c1ac7312888c` at 19:12 UTC (a merge commit, with the final head `495d55b` given as the expected head). It carried section 13's receipt, OD-69, DM-85's texts, PF01's revision 1.18 (in the Dev Manager's words), PF02's revision 1.3, and A05-V2's brief (revision 2) and research prompt (at `b9534a9`). `main`'s parents are `0a0c4fd` and `495d55b`, and its tree is `495d55b`'s.
+- **Its pre-merge checklist:** the PR run [44155556453](https://github.com/amthorn78/glow-dating-app/actions/runs/44155556453) on `495d55b` (ordinary documentation, the application jobs skipped by design); Codex's pass on `495d55b` with no findings; Dev Manager 5's read, DM-85 (`05c469d`, a read of `8d272a4`).
+- **`main`'s push run** [44156121822](https://github.com/amthorn78/glow-dating-app/actions/runs/44156121822): Change scope and the Foundation gate `success`, the six application jobs skipped, the gate printing `Ordinary documentation: application jobs intentionally skipped`.
+- **The cleanup** [44156120517](https://github.com/amthorn78/glow-dating-app/actions/runs/44156120517) (event `push`, delete mode): nothing deleted; `main`, the manager branch and `claude/dev-manager` kept by the keep-list.
+- **The remote at 19:13 UTC** (`git ls-remote`): three branches, `main` at `a316a3a`, the manager branch at `495d55b` and `claude/dev-manager` at `05c469d`. The manager branch was then fast-forwarded to `a316a3a` (DM-57).
+- **Pruned with this receipt:** the DM-85 consultation, its deletion condition met; its link in the review log pinned at `a316a3a`.
+
