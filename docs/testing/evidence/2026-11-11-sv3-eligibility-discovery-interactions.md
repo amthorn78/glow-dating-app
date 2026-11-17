@@ -2817,3 +2817,143 @@ The short bounded delta re-review of B-C5 against `07d8de3`, under class 5 and c
 - **Codex:** its pass on `2e669c8` posted nothing new.
 - **Disposition:** to Dev Manager 5 as [DM-80](../../ephemeral/2026-11-16-dm-80-sv3-b-c5-review-dispositions.md): the words for R1 (the manager recommends that the four texts drop the listed exception and point to the README's "Limits", whose F1 limit then names the mechanism and R1's example), N1, and how they land (a records correction, B-C6, with a short review whose method checks every word of `_ENDS_FROM` in every position).
 - **Dispositions** ([DM-80](../../continuity/dev-manager/reviews/2026-11-16-dm-80-sv3-b-c5-review-dispositions.md), at `6e67c21`, a read of `3962900`; merged at `9cfe9ce`): R1 (b), the limit's detail in one home, the README's F1 limit, which states the mechanism and R1's example, the other texts pointing to it; N1 narrowed to the ORM's joins; a records correction B-C6, with a short review. The brief's revision 21 holds LL9 to LL11; LL8 is in "Manager verification of B-C4"; LL1 to LL7 go to B-C6.
+
+## Stage B, correction B-C6
+
+- **The session:** B-C6's implementation session, from the prompt's revision 1 at `697072119cffab42997070c23160651b077c431b` of `claude/magical-wozniak-yfmmx2` (environment `Glow App - No Stream`). Branch `claude/intelligent-ride-t4vdpj`, started at that commit. Code head `bf33fd097ef6012f3a07303be4a8c0a7aaeecc1d`; this section and the P11 plan's run of record are the records commit after it.
+- **Environment (names only):** none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`; no `STREAM_*` or `PG*` name. Of the AWS names, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_CA_BUNDLE` are present, not read and passed to no command. `GITHUB_TOKEN` and `GH_TOKEN` are present and not read. Toolchain: `python3.12 --version` printed `Python 3.12.14`. Every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus only `HTTPS_PROXY` and `PIP_CERT` for the hash-locked install, `HTTPS_PROXY` and `SSL_CERT_FILE` for `git push`, and `HTTPS_PROXY` for the job-log download, each passed by reference.
+- **Start gate:** every line held. `git rev-parse HEAD` printed `697072119cffab42997070c23160651b077c431b`; the commit is on the live manager branch (whose head was `6970721` itself); `git diff --quiet 0d784d4 HEAD -- . ':!*.md'` printed `B-C5's code`; the live branch changed no owned path since the commit (empty list); the brief's `Status: brief, revision 21,` and its "Stage B, correction B-C6" heading counted 1 each; this record's B-C6 heading counted 0; DM-80's report was present.
+
+### DM-80's seven pairs
+
+Applied in the order LL1 to LL7 by one script (`apply_dm80.py`, in the session's scratchpad, not committed; its text below) that reads each pair from DM-80's report's section 9 at the start (the content of each quoted code block, without the `> ` markers; never retyped), checks the old passage once before and the new text once after, and stops at the first miss. It ran from the repository root under `env -i` with `python3.12 -I`, and exited 0.
+
+| Pair | Target | Old passage, before | New text, before | New text, after | Old passage, after |
+|---|---|---|---|---|---|
+| LL1 | `proofs/postgres-ordering/README.md` (the SV3 paragraph) | 1 | 0 | 1 | 1 (the new text keeps the old passage and adds B-C6's sentence after it, as DM-80 gives it) |
+| LL2 | `proofs/postgres-ordering/README.md` (D14's entry) | 1 | 0 | 1 | 0 |
+| LL3 | `proofs/postgres-ordering/README.md` (the limits' heading) | 1 | 0 | 1 | 0 |
+| LL4 | `proofs/postgres-ordering/README.md` (F1's limit) | 1 | 0 | 1 | 0 |
+| LL5 | `proofs/postgres-ordering/glow_ordering_proof/row_locks.py` (the module docstring) | 1 | 0 | 1 | 0 |
+| LL6 | `row_locks.py` (`_relations`'s docstring) | 1 | 0 | 1 | 0 |
+| LL7 | this record (the relations check's account) | 1 | 0 | 1 | 0 |
+
+LL8 to LL11 were already applied by the manager and were not touched. LL1's new text holds B-C6's sentence for the README's SV3 paragraph; no other was written.
+
+The script's output:
+
+```
+LL1 proofs/postgres-ordering/README.md: old before 1, new before 0, new after 1, old after 1
+LL2 proofs/postgres-ordering/README.md: old before 1, new before 0, new after 1, old after 0
+LL3 proofs/postgres-ordering/README.md: old before 1, new before 0, new after 1, old after 0
+LL4 proofs/postgres-ordering/README.md: old before 1, new before 0, new after 1, old after 0
+LL5 proofs/postgres-ordering/glow_ordering_proof/row_locks.py: old before 1, new before 0, new after 1, old after 0
+LL6 proofs/postgres-ordering/glow_ordering_proof/row_locks.py: old before 1, new before 0, new after 1, old after 0
+LL7 docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md: old before 1, new before 0, new after 1, old after 0
+```
+
+The script:
+
+```python
+"""Apply DM-80's LL1 to LL7 from its report's section 9, in order; never retyped."""
+import re, sys
+REPORT = "docs/continuity/dev-manager/reviews/2026-11-16-dm-80-sv3-b-c5-review-dispositions.md"
+TARGETS = {
+    "LL1": "proofs/postgres-ordering/README.md",
+    "LL2": "proofs/postgres-ordering/README.md",
+    "LL3": "proofs/postgres-ordering/README.md",
+    "LL4": "proofs/postgres-ordering/README.md",
+    "LL5": "proofs/postgres-ordering/glow_ordering_proof/row_locks.py",
+    "LL6": "proofs/postgres-ordering/glow_ordering_proof/row_locks.py",
+    "LL7": "docs/testing/evidence/2026-11-11-sv3-eligibility-discovery-interactions.md",
+}
+text = open(REPORT, encoding="utf-8").read()
+sec9 = text.split("\n## 9. The words\n", 1)[1].split("\n## 10.", 1)[0]
+parts = re.split(r"^\*\*(LL\d+) — ", sec9, flags=re.M)
+pairs = {}
+for k in range(1, len(parts), 2):
+    blocks = []
+    cur = None
+    for line in parts[k + 1].split("\n"):
+        if line == "> ```":
+            if cur is None:
+                cur = []
+            else:
+                blocks.append("\n".join(cur)); cur = None
+        elif cur is not None:
+            assert line.startswith("> ") or line == ">", repr(line)
+            cur.append(line[2:] if line.startswith("> ") else "")
+    assert len(blocks) == 2, (parts[k], len(blocks))
+    pairs[parts[k]] = blocks
+for name, path in TARGETS.items():
+    old, new = pairs[name]
+    body = open(path, encoding="utf-8").read()
+    ob, nb = body.count(old), body.count(new)
+    if ob != 1:
+        print(f"{name} {path}: old passage found {ob} times before; STOP"); sys.exit(1)
+    body = body.replace(old, new, 1)
+    oa, na = body.count(old), body.count(new)
+    print(f"{name} {path}: old before {ob}, new before {nb}, new after {na}, old after {oa}")
+    if na != 1:
+        print(f"{name}: new text found {na} times after; STOP"); sys.exit(1)
+    open(path, "w", encoding="utf-8").write(body)
+```
+
+### The AST identity
+
+- The prompt's script, against `git show 07d8de3:proofs/postgres-ordering/glow_ordering_proof/row_locks.py` in a temporary directory outside the repository: `identical by AST, docstrings aside: True`.
+- `git diff --stat 07d8de3 HEAD -- . ':!*.md'`: `row_locks.py` alone (`1 file changed, 23 insertions(+), 20 deletions(-)`).
+- The docstrings that differ, compared node by node in walk order with `ast.get_docstring` (53 nodes at each head, the same names in the same order):
+  - from `0d784d4`'s: the module's and `_relations`'s, and no other;
+  - from `07d8de3`'s: the module's, `judge`'s (B-C5's) and `_relations`'s, and no other.
+- `row_locks.py`'s longest line is 99 characters (Ruff's limit is 100).
+
+### Commands
+
+| Command | Result |
+|---|---|
+| `python3.12 -I apply_dm80.py` (repository root) | the seven lines above; exit 0 |
+| the prompt's AST script (repository root) | `identical by AST, docstrings aside: True` |
+| `docdiff.py` against `0d784d4` and `07d8de3` | the differing docstrings above |
+| `python3.12 -m venv <scratchpad>/venv` (in `proofs/postgres-ordering`, as are the rest) | created (outside the repository: `.venv` is not git-ignored here) |
+| `pip install --require-hashes -r requirements-dev.lock` | exit 0 |
+| `pip check` | `No broken requirements found.` |
+| `python -m unittest discover -s tests -t .` | `Ran 376 tests in 27.475s`, `OK` |
+| `ruff check .` | `All checks passed!` |
+| `ruff format --check .` | `71 files already formatted` |
+| `mypy` | `Success: no issues found in 71 source files` |
+| `python -m glow_ordering_proof.account_lock_scan` | `select_for_update calls read: 52; locking a queryset that joins: 0`; `account locks found: 7; not FOR NO KEY UPDATE: 0`; its output byte-identical (`cmp`) to the same command on a `git archive` export of `0d784d4`'s `proofs/postgres-ordering` and `services/api` |
+| `git push -u origin claude/intelligent-ride-t4vdpj` (code head `bf33fd0`) | new branch pushed |
+
+### The run of record
+
+[43983435571](https://github.com/amthorn78/glow-dating-app/actions/runs/43983435571) on `bf33fd0` (`push`, attempt 1), read after it ended: the jobs and steps with the GitHub tools, the gate's and the change scope's logs with the GitHub tools, and the Database proof checks job's whole log (2,655 lines) downloaded from the download link those tools returned, then searched. The link is not recorded.
+
+- **All eight jobs `success`:** Change scope (`{"full": true, "reason": "missing-or-invalid-comparison"}`, a new branch's first push), Stream proof checks, Database proof checks (13 min 45 s), API artifact checks, API mobile smoke, API checks, Mobile checks, Foundation gate. The gate printed `Application checks passed`.
+- **No toolchain retry fired:** every DM-41 step (`Wait 60 s before the one retry of the Python install`, `Retry the Python install once`) was `skipped` in the four jobs that have one.
+- **The proof's offline tests:** `Ran 376 tests in 24.424s`, `OK`. PostgreSQL 17.11.
+- **The suites,** each `ROW LOCKS (D14): PASS` with `0 refused` and `the database's own functions 0, views 0, rules 0`. No line of the job's log contains `refused (D14)`, `Traceback` or `##[error]`. Each suite's second run on its used database (steps 17, 20, 24 and 28) succeeded.
+
+| Suite | Cases | D14's line | Account-table writer locks: B-C6 / B-C5 (43960479739) |
+|---|---|---|---|
+| ordering | reference 56/56, adapter 115/115, delivery 13/13, read 62/62; `VERDICT: PASS` | 570,395 statements (9 through the driver itself) on 10 connections in 5 threads; 104,427 writer's row locks | 44,841 / 44,841, all `FOR NO KEY UPDATE` |
+| identity | 49/49 in 39.9 s (phase 40 s) | 4,412 statements; 141 writer's row locks | 127 / 127, all `FOR NO KEY UPDATE` |
+| profile | 69/69 in 95.2 s (phase 96 s) | 78,038 statements; 7,606 writer's row locks | 2,061 / 2,061, all `FOR NO KEY UPDATE` |
+| discovery | **66/66 in 201.0 s; phase 203 s** (B-C5's run: 135 s) | 168,556 statements (68 through the driver itself) on 64 connections in 3 threads; 14,782 writer's row locks | 4,256 / 4,256, all `FOR NO KEY UPDATE` |
+
+- **Against B-C5's run of record:** the case counts, the D14 lines (`PASS`, 0 refused), the own-objects counts (0, 0, 0) and the account-table counts are the same in every suite. The ordering suite's statement and writer-lock totals (570,395 and 104,427, against 601,985 and 104,751) vary from run to run with its stress phase, as B-C4's and B-C5's records note; its account-table count does not. The discovery suite sent 168,556 statements on 64 connections, against 168,555 on 63; its writer-lock and account-table counts are the same.
+- **The phase times are longer** in this run (identity 40 s, profile 96 s, discovery 203 s, against 31 s, 64 s and 135 s; the Database job 13 min 45 s against 9 min 44 s). B-C6 changes no code, so this is the runner's time; the discovery phase is within the job's 30 minutes, and B-C4's run took 175 s.
+- **The scans:** identity, profile and discovery secret scans clean (754, 1,447 and 2,495 secrets held; 0 found); profile and discovery value scans clean (813 and 1,336 member values held; 0 found).
+- **`row_locks.driver_forms_are_seen`:** `PASS`, `the database's own functions, views and rules: 0, 0, 0`.
+
+### B-C6's lines in `services/api`
+
+Zero: `git diff --stat 6970721 HEAD -- services/api` is empty. B-C6's paths are the proof README, `row_locks.py` (two docstrings), this record and the P11 plan.
+
+### Deviations, readings and what could not be run
+
+- **The venv** was created in the session's scratchpad, not as `proofs/postgres-ordering/.venv` as the README shows, since `.venv` is not git-ignored there and would have left the tree unclean.
+- **The Database job's log** was downloaded with `curl` from the signed link the GitHub tools returned, as the prompt allows (AM11-32). Nothing else outside PyPI and GitHub was reached.
+- **LL1's old-passage count after** is 1, not 0: DM-80's new text begins with the old passage and adds B-C6's sentence after it.
+- **The lock scan's comparison** is against `0d784d4`'s export (B-C5's code head), not `07d8de3`'s; B-C5's record shows `0d784d4`'s output byte-identical to `07d8de3`'s.
+- **Not run:** the API tests (`services/api` unchanged), the four suites locally (no Docker and no local database run, by the prompt; the run of record runs them), the mobile and Stream jobs locally; no provider, HDE or `proofs/stream-chat` command. No pull request, comment, re-run or Notion change.
