@@ -260,3 +260,12 @@ The trusted policy from `main` (`947576d98b7c3103455a670c20fdba2734ff5053`), ext
 - **Limit:** the check of each rule against the governing homes was made at `553d9ed…`. A governing change on the manager branch after that commit is not reflected.
 
 Status: complete
+
+## 12. Manager integration (App Manager 12, 17 November 2026, 08:51 UTC)
+
+- **Merged** M08's branch `claude/beautiful-pascal-7n0o9n` (`9a90bd8`, from `553d9ed`) into the manager branch at `483cd05`, after PR47's merge (`36a19f7`) and with the branch fast-forwarded to it; the merge applied cleanly. M08 changed four paths: PF02 (new), PF00, the documentation map and this record.
+- **DM-76's HH1 to HH20** (Dev Manager 5, `ccf1e5a`, a read of `9a90bd8`; disposition at `973d8f7`), read from the report's section by script, never retyped: each old passage found once before and each new text not yet present; applied in order; each new text found once after. HH4, HH5, HH13, HH15, HH18 and HH19 keep their old passage inside the new text, as given; every other old passage is gone. The targets: PF02 (HH1 to HH7, HH12 to HH14), PF00 (HH8 to HH10), the manager workflow (HH11, HH15), the next-manager start procedure (HH16, HH17) and the mistakes log (HH18 to HH20).
+- **The handoff's process line,** by the supersession sweep, in DM-76 section 7's words: a new manager starts from the start procedure and reads GAPP-PF02 before the mistakes log. No other living document still sends a new manager to the log alone.
+- **The log's entries after `553d9ed`,** under PF02's maintenance rule (its section 8 lists each): AM11-30 into PF02-R68 (HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets, each with a "Changed" line; R38 gains a PF02 addition (the full history), so its "Home" line now reads "PF02, adding to" the workflow's classification section, and its label is no longer "cited".
+- **Coverage after the fold-in,** by script: the log's summary holds 179 IDs, from AM2-01 to AM12-08; each appears in PF02, and PF02 names no ID outside the log.
+- **Classification expected:** ordinary documentation (every path Markdown, none under `.claude/`). The PR carries governing Markdown (PF00, PF02, the manager workflow), which the Dev Manager reads at a named commit before it merges (DM-76 section 9).

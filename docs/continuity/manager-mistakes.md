@@ -4,9 +4,12 @@ Nathan's direction, 25 September 2026: *"I also want you to track your mistakes.
 
 Each Claude manager records its own mistakes here when they are found. A mistake can be found by Nathan, a reviewer, a check, a tool's guard or the manager itself. Each entry says what happened, what caught it, its effect, the correction and what prevents a repeat. The log is part of the record of this high-trust experiment. It does not replace the evidence records.
 
+**The standing rules are in [GAPP-PF02](../pf-canon/GAPP-PF02-Manager-Practice-Rules.md)** (OD-66): each prevention here that still applies is stated there once, as a rule with a check, traced to its entries. This log stays the dated record of what happened (OD-11): evidence, not authority.
+
 **Adding an entry**
 
 - Add the entry when the mistake is found, in the same change as its correction where possible, and add a row to the summary.
+- Name the PF02 rule the mistake broke, or propose a new or changed rule; the manager applies it to PF02 in its next records batch (PF02, "Maintenance").
 - Number entries per manager: `AM2-01`, `AM3-01`, and so on.
 - Choose one kind:
   - **process:** departed from the plan or the manual-relay process;
@@ -15,7 +18,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
   - **execution:** a wrong command or tool use.
 - Record what actually happened, including who caught it. Never soften an entry or leave one out.
 - **Every mistake gets a summary row. A full section is needed only when the mistake reached a record, a prompt, Nathan or `main`** (DM-01 P8, 25 September 2026). A slip that its own tool caught, with no effect, needs only its summary row.
-- **A repeated prevention becomes a checklist item.** When a mistake repeats one already logged, move its prevention into a checklist the manager actually runs, such as the manager workflow or a start prompt, and say where in the entry.
+- **A repeated prevention becomes a checklist item.** When a mistake repeats one already logged, move its prevention into a checklist the manager actually runs, such as a PF02 rule's check, the manager workflow or a start prompt, and say where in the entry.
 
 ## Summary
 
