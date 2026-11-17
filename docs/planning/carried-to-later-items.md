@@ -139,16 +139,6 @@ D14's rules are frozen from `07d8de3` (DM-78). Two record nits from B-C6's short
 - **RN1:** the module docstring's "What it does not see" paragraph names S4 and F2's mechanism but not F1; it can point to the README's F1 limit as the rule paragraph above it does.
 - **RN2:** the comment in `judge` ("a FOR UPDATE that names no account table reads only those tables") gains "in the positions its reading binds", as `judge`'s docstring has.
 
-## Carried to the CI policy's next change (DM-81's MM2)
-
-The CI policy's SV3 Stage B sentence (its Database proof checks paragraph) stands as written at PR47's merge: it understates what D14 refuses and claims nothing D14 does not do (DM-81 section 5). At the policy's next change, its clause is replaced in Dev Manager 5's words, and the Dev Manager reads the policy's final text then (a read covers one commit). Replace:
-
-> and fails before its verdict if a statement takes `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only, or if the migrated database defines a function, view or rule of its own;
-
-with:
-
-> and fails before its verdict if a statement fails D14's rule, which refuses above all a `FOR UPDATE` on the account table other than as `FOR UPDATE OF` other tables only (the proof README's D14 entry states the rule whole), or if a function, procedure, view or rule of the database's own exists when the check runs;
-
 ## Carried to P10 (pre-integration readiness evidence)
 
 - **From SV2's brief (DM-52) and Nathan's answers of 10 November 2026:** the birth form requires a time ("birth time is required at signup"); P04's fixture still accepts an unknown time. Onboarding adds the identity verification step before a profile can show, and the owner sees the completion read's missing requirements.

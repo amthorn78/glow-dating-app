@@ -6,7 +6,7 @@ All project documentation is Markdown (`.md`). The repository is the durable imp
 |---|---|---|
 | `docs/ephemeral/` | Single-use prompts and temporary handoff drafts | `YYYY-MM-DD-work-id-purpose.md`; record owner, scope and deletion condition. Promote unique decisions and evidence before pruning. Durable start procedures are not ephemeral; they live in `docs/planning/start-prompts/`. |
 | `docs/planning/` | Persistent plans, implementation briefs, dependency and decision summaries, the manager workflow and the [Dev Manager charter](planning/dev-manager.md) | Stable descriptive kebab-case filenames; dated observations use `YYYY-MM-DD`. Historical source snapshots live in `sources/` and are explicitly non-governing. The start procedures for new managers and Dev Manager sessions live in `start-prompts/`; each is kept current and never pruned. |
-| `docs/pf-canon/` | Existing application PF canon: GAPP-PF00 authority index and GAPP-PF01 sequence/constraints | Preserve document IDs, Markdown filenames and revision history. Separate from HDE canon. |
+| `docs/pf-canon/` | Existing application PF canon: GAPP-PF00 authority index, GAPP-PF01 sequence/constraints and GAPP-PF02 manager practice rules | Preserve document IDs, Markdown filenames and revision history. Separate from HDE canon. |
 | `docs/adr/` | Focused architecture decisions | Existing numbered `NNNN-description.md` convention. State supersession instead of erasing history. |
 | `docs/architecture/` | Component responsibilities, contracts and domain semantics | Stable descriptive names; distinguish implemented behavior from planned contracts. |
 | `docs/operations/` | Setup, configuration, ownership, CI/review and runbooks | Current commands and exact names grounded in code. No secrets. |
@@ -30,6 +30,7 @@ Each kind of fact has one home. Other documents link to it rather than copy it.
 | The reasoning-strength matrix (models and levels), its evidence and the history of requests v5 and v6 | The [reasoning-strength matrix](planning/reasoning-level-matrix.md), with the verified claim sets in the [evidence record](planning/reasoning-level-evidence.md); the reading is produced by Nathan's Claude skill `typesafe-scoring`; Notion's usage log carries a copy and the uses table; the request in force (v8.2) and its rule: the installed skill (OD-42) |
 | Dev Manager consultations, verdicts and dispositions | The [review log](continuity/dev-manager/README.md) |
 | Managers' mistakes | The [mistakes log](continuity/manager-mistakes.md) |
+| The managers' standing practice rules | [GAPP-PF02](pf-canon/GAPP-PF02-Manager-Practice-Rules.md), each rule traced to the mistakes log's entries; a rule a governing home already states is cited there |
 | The periodic status and State of the App | [A snapshot](continuity/state-of-the-app.md), refreshed only for a periodic review |
 | Model and reasoning-level readings | The prompt's header and the Notion usage log |
 | Live task state | The Notion Work Register row, which links here |

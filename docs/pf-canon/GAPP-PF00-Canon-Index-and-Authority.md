@@ -1,6 +1,6 @@
 # Glow Dating App — Canon Index and Authority
 
-**Identity:** GAPP-PF00 · **Revision:** 1.11 · **Recorded:** 26 October 2026
+**Identity:** GAPP-PF00 · **Revision:** 1.12 · **Recorded:** 16 November 2026
 **Scope:** the separate Glow dating application. This index does not govern or modify the Glow HD engine's PF canon.
 
 ## Start here
@@ -19,6 +19,7 @@ Nathan's standing directions, including which feature work is paused or resumed,
 |---|---|---|---|
 | GAPP-PF00 | Canon Index and Authority | This document in `amthorn78/glow-dating-app`, `docs/pf-canon/` | Established |
 | GAPP-PF01 | A-to-Z Implementation Plan | [Governing plan](GAPP-PF01-A-to-Z-Implementation-Plan.md) | Established; live execution status in Notion |
+| GAPP-PF02 | Manager Practice Rules | [Manager practice rules](GAPP-PF02-Manager-Practice-Rules.md), in `docs/pf-canon/` | Established (M08, OD-66; read by the Dev Manager, DM-76) |
 
 The plan owns the initial governing direction, phase acceptance, architectural boundaries, decisions, assumptions, autonomy and documentation-transfer procedure. This index routes to that authority without restating its rules. Additional GAPP-PF documents are created only when a specific concept requires its own canonical home; no empty numbered canon is being generated in advance.
 
@@ -30,6 +31,7 @@ The plan owns the initial governing direction, phase acceptance, architectural b
 | Nathan's standing directions, with dates and quotes | [Owner-direction register](../continuity/owner-directions.md); Notion carries a copy |
 | Operational guidance: the relay, review paths, one item at a time, records | Repository Markdown: `AGENTS.md`, `CLAUDE.md`, the manager workflow, the Dev Manager charter and the CI policy. Notion's Implementation Control carries a summary with links into the repository at a named commit (OD-26, as amended by OD-53); where they differ, the repository wins and Notion is corrected (OD-27) |
 | Governing implementation sequence and project-level constraints | Current GAPP-PF01 |
+| The managers' standing practice rules, and the dated record of their mistakes | [GAPP-PF02](GAPP-PF02-Manager-Practice-Rules.md) holds the standing rules, citing a governing home that already states one; where PF02 and a governing home differ, the home wins until the Dev Manager rules and the difference is corrected (PF02, section 1). The [mistakes log](../continuity/manager-mistakes.md) is the dated record of what happened (OD-11), evidence and not authority |
 | Implementation contracts, code, runtime configuration definitions, tests and runbooks | Application repository after recorded establishment |
 | Durable architectural rationale | Repository ADRs once established; initial decisions remain in GAPP-PF01 until transferred |
 | HDE behavior and contracts | HDE's own canonical sources and supported release; referenced, never rewritten by app documentation |
@@ -72,3 +74,5 @@ Use stable titles and document IDs for durable references. Record the concrete s
 1.10 — the current session authority adds that Nathan may direct a manager to create its successor (OD-31), as `AGENTS.md` does (DM-07, 29 September 2026). No other change to authority.
 
 1.11 — the authority map records that Notion's Implementation Control carries a summary of the operational guidance with links into the repository at a named commit, not a full copy (OD-53, S5; 26 October 2026). The repository still wins on any difference. No other change to authority.
+
+1.12 — GAPP-PF02, Manager Practice Rules, is created for the managers' standing practice rules (M08; OD-66; 16 November 2026), a specific concept that needs its own canonical home: the rules lived only as dated preventions in the mistakes log. The registry and the authority map gain its rows; the mistakes log stays the dated record (OD-11), and where PF02 and a governing home differ, the home wins. Verified by M08's record (every one of the log's 167 entries at `553d9ed` accounted for: 162 as rule sources, 3 retired, 2 events with no standing rule) and the Dev Manager's read (DM-76, of `9a90bd8`). No other change to authority.
