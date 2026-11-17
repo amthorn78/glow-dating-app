@@ -281,3 +281,12 @@ Status: complete
 - **After the merge:** AM12-10 (the watch for PR48 read PR47's Codex summary) folded into PF02-R42 as PF02's revision 1.1, for the Dev Manager's read before the pull request that carries it merges ("Deferred conditions").
 
 M08 is done.
+
+## 14. PR49's merge receipt: PF02's revision 1.1 (App Manager 12, 17 November 2026, 11:16 UTC)
+
+- **PR49 merged** into `main` at `cf0ac604da77cff5917e20dd9d1389c5c7448b0c` at 11:15 UTC (a merge commit, with the final head `13785bd` given as the expected head). It carried section 13's receipt, PF02's revision 1.1 (AM12-10 into R42, AM12-11 into R01, AM12-12 into section 7), A05-V's brief (revision 2) and DM-83 with its answer. `main`'s parents are `c7716e3` and `13785bd`, and its tree is `13785bd`'s.
+- **Its pre-merge checklist:** the PR run [44071821972](https://github.com/amthorn78/glow-dating-app/actions/runs/44071821972) on `13785bd` (ordinary documentation, the application jobs skipped by design); Codex's pass on `13785bd` with no findings; Dev Manager 5's read, DM-83 (`3c0a5fe`, a read of `8995d37`), approving PF02's revision 1.1 as written, coverage 183 of 183.
+- **`main`'s push run** [44072305012](https://github.com/amthorn78/glow-dating-app/actions/runs/44072305012): Change scope and the Foundation gate `success`, the six application jobs skipped, the gate printing `Ordinary documentation: application jobs intentionally skipped`.
+- **The cleanup** [44072305066](https://github.com/amthorn78/glow-dating-app/actions/runs/44072305066) (event `push`, delete mode; no open pull request): nothing deleted; `main`, the manager branch and `claude/dev-manager` kept by the keep-list.
+- **The remote at 11:16 UTC** (`git ls-remote`): three branches, `main` at `cf0ac60`, the manager branch at `13785bd` and `claude/dev-manager` at `3c0a5fe`. The manager branch was then fast-forwarded to `cf0ac60` (DM-57).
+- **Pruned with this receipt:** the DM-83 consultation, its deletion condition met; its link in the review log pinned at `cf0ac60`.
