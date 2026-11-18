@@ -349,3 +349,44 @@ Local results are this session's runs. The run of record is below.
 
   The first run of the new tests gave `75/77`, with `sv2r.toggle_on_the_check_decides_as_before` and `sv2r.the_recheck` each `ERROR: DoesNotExist`: my own setup, not the code. `_photo_snapshot` reads the member's profile row, and the two members those checks used (`ctx.member()`) had none yet. Each check now makes the member's profile first, through the member's route (`ctx.profile`), before its first snapshot. The run on the final tests: `[profile] cases: 77/77 passed in 150.7 s`, both scans clean (`1601 secrets held; 0 found`; `919 member values held ...; 0 found`), `PROFILE VERDICT: PASS`. Reversals A and B then ran on new databases in the same container (above).
 - **One offline test of mine failed while I wrote it,** before any commit: `_state_tests` began as a count of the text `asset.state` in each step's body, which also counts the `detail={'state': asset.state}` of each applied result (`AssertionError: 3 != 1` in both new tests). It now counts only comparisons on `asset.state`. The code was not the cause.
+
+### The run of record
+
+- **Run:** [44402994154](https://github.com/amthorn78/glow-dating-app/actions/runs/44402994154), Foundation #1344, event `push`, on `f4c93ea8ed17d26f29a01c5c7e75e910ab925b11`, attempt 1, read with the GitHub tools after it finished.
+- **Jobs**, each `success`:
+  - Change scope;
+  - API checks: `Ran 645 tests`, `OK (skipped=1)`; Ruff "All checks passed!", "165 files already formatted", mypy "no issues found in 95 source files"; the contract tests `Ran 53 tests`, `OK`;
+  - API mobile smoke;
+  - API artifact checks;
+  - Stream proof checks;
+  - Mobile checks;
+  - Database proof checks;
+  - Foundation gate: `Application checks passed`.
+- **Database proof checks:** started 21:35:24 and finished 21:46:53 UTC, **11 min 29 s** against its 30-minute timeout.
+  - The proof's offline tests: `Ran 377 tests`.
+  - **Ordering suite:** `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 14.3 s`, `== VERDICT: PASS ==`; a wrong marker and `dbshell` refused, and a second run refused on the used database.
+  - **Identity suite:** `[identity] cases: 49/49 passed in 34.7 s`, phase 35 s; `identity secret scan: clean (754 secrets held; 0 found ...)`; the job's secrets found in its output and JSON: 0 and 0; a second run refused.
+  - **Profile suite:** the profile database refused the other two markers, and the migrations applied from zero.
+    - `[profile] cases: 77/77 passed in 83.7 s`, phase **84 s**, `PROFILE VERDICT: PASS`.
+    - `profile secret scan: clean (1601 secrets held; 0 found in 978 log records, 190 writes and the results JSON)`.
+    - `profile value scan: clean (919 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`.
+    - The job's check: "the job's secrets found in the profile suite's output: 0" and "... in the profile results JSON: 0".
+    - A second run refused ("a setting was published beyond its launch default"), exit status 1, with its counts `143 143 109 72 1746 1087` before and after. The artifact `sv2-profile-results` was saved.
+    - **The extended cases,** each `PASS`:
+      - `sv2r.toggle_off_approves_without_the_check (SV2-R 3, D9, D10, OD-68) 1.4 s`;
+      - `sv2r.toggle_on_the_check_decides_as_before (SV2-R 4, D10, OD-68) 0.4 s`;
+      - `sv2r.the_recheck (SV2-R 5, D9, D10, OD-68) 2.1 s: ... restricted or removed: not the recheck's, no call and no change; ...`.
+    - The other five `sv2r.` cases each `PASS`, unchanged.
+  - **Discovery suite:** `[discovery] cases: 66/66 passed in 157.9 s`, phase 159 s, `DISCOVERY VERDICT: PASS`; its secret scan (2495 held, 0 found) and value scan (1336 held, 0 found) clean; the job's check found 0 and 0; a second run refused.
+- **Toolchain retry:** none fired. In each job that has them, "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" were `skipped`.
+- **No value in the log.** The Database proof checks job's log (2,677 lines, saved to my scratch directory and searched there, then deleted) holds none of the suites' fixed coordinates (`40.7123457`, `-74.0067891`, `40.735425`, `40.712`), the held birth time `04:13:27`, `BEGIN PRIVATE KEY` or `fixture-variant`: 0 hits each. Masked values show as `***` (3 lines). The suites' own scans report 0 found. The other jobs' logs were not searched for these values.
+
+### Deviations, limits and open questions
+
+- **No code changed,** and no new test failed against the code at `f4703a1`: neither stop applied. The two failures recorded under "The local checks" were my own test code before the commit, each corrected in the test, never in the code.
+- **N-a goes slightly beyond the entry's words:** `abulk_create` joins `CREATING` beside `bulk_create`; `_profile_creations` now reads `CREATING` rather than its own copy; and `_clones` also sees `id = None`, and a `force_insert` call with or without a cleared key. Each is a widening of the same guard, in the owned part of the file.
+- **The C1.1 and C1.2 database checks also pass a recording hold port** and assert it was not asked, beyond the brief's "check port not called". The case's own member in `sv2r.toggle_on_the_check_decides_as_before`, and the new member in `sv2r.the_recheck`, each get a profile through the member's route before the first snapshot, so that the snapshot can read it (see "The local checks").
+- **`test_sv2r_requirements.py`'s module docstring** gains a paragraph naming C1's tests. That is the new tests' own file.
+- **Not reversed on the database:** the N-a and N-d reversals, which are offline guards; the entry says the profile suite's `media.a_hold_stops_the_checks_approval` catches N-d's edit there.
+- **Limits:** the structural tests read `media.py`'s source as written: an equivalent refusal written another way (a helper, or the conditions split across statements) fails them, as the review's reversals A and B do; that is their purpose, and the database checks are the behavioural ones.
+- **Open questions:** none.
