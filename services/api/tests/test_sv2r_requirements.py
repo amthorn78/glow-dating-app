@@ -7,15 +7,20 @@ database.
   validation can return without a contract change;
 - D18's record, port, staff approval and setting stay;
 - the module's docstring says the requirement is set aside, and how a photo reaches ``approved``
-  in each state of the photo check's toggle (R3).
+  in each state of the photo check's toggle (R3);
+- correction C1 (the exact-head review's R1 and R2): the recheck's refusal ``not_awaiting_recheck``
+  holds for any photo that is not ``approved``, and ``run_check``'s refusal ``not_in_review`` for
+  any photo that is not ``review_pending``, each before any port call or write.
 
 The Django-dependent check runs in a fresh process under ``tests.profiles_offline_settings`` (the
 dummy database backend), as ``test_profiles_offline.py``'s do. The profile suite's ``sv2r.`` cases
 show completion without identity verification on the disposable PostgreSQL (acceptance checks 1
-and 2).
+and 2), and drive both refusals there (``sv2r.the_recheck``, ``sv2r.toggle_off_approves...`` and
+``sv2r.toggle_on_the_check_decides_as_before``).
 """
 
 import ast
+import re
 import unittest
 
 from glow_domain import profile_settings as ps
@@ -135,6 +140,116 @@ class IdentitySetAsideTests(unittest.TestCase):
         self.assertIn("while it is off", text)
         self.assertIn("while it is on, the automated check approves it", text)
         self.assertIn("media.photo_check", text)
+
+
+def _step_body(step: str) -> ast.FunctionDef:
+    """The transaction body of one step of ``media.py``."""
+    function = next(
+        node
+        for node in modules()["media.py"].body
+        if isinstance(node, ast.FunctionDef) and node.name == step
+    )
+    return next(
+        node for node in function.body if isinstance(node, ast.FunctionDef) and node.name == "body"
+    )
+
+
+# What a step's statements before a refusal must not hold: a port call, or any write the step can
+# make (an audit row, a transition, the recompute, a save, a creation, an update, an event).
+PORT_OR_WRITE = (
+    "adapters.",
+    "_decision_audit(",
+    "transition(",
+    "recompute.",
+    ".save(",
+    ".create(",
+    ".update(",
+    "bulk_create",
+    "events.emit(",
+    "delivery_reference(",
+)
+
+
+def _state_tests(step: str) -> list[str]:
+    """Every comparison in the step's body that tests the photo's state (``asset.state``)."""
+    return [
+        ast.unparse(node)
+        for node in ast.walk(_step_body(step))
+        if isinstance(node, ast.Compare)
+        and any(ast.unparse(part) == "asset.state" for part in (node.left, *node.comparators))
+    ]
+
+
+class StateRefusalTests(unittest.TestCase):
+    """Correction C1 (the exact-head review's R1 and R2). SV2-R's two transitions out of
+    ``approved`` mean F05's registry no longer refuses ``approve`` or ``reject`` from
+    ``approved``, so each step's refusal on the photo's state is what keeps it to its own photos.
+    The profile suite's ``sv2r.`` cases drive both refusals on PostgreSQL."""
+
+    def refusal(self, step: str, reason: str) -> tuple[int, ast.If]:
+        """The one ``if`` of the step's body whose one statement returns ``no_change`` with
+        ``reason``, and its index."""
+        body = _step_body(step)
+        found = [
+            (index, statement)
+            for index, statement in enumerate(body.body)
+            if isinstance(statement, ast.If)
+            and [ast.unparse(s) for s in statement.body]
+            == [f"return Result('no_change', reason={reason!r})"]
+        ]
+        self.assertEqual(len(found), 1, (step, reason))
+        index, statement = found[0]
+        self.assertEqual(statement.orelse, [])
+        return index, statement
+
+    def nothing_before(self, step: str, index: int) -> None:
+        earlier = "\n".join(ast.unparse(s) for s in _step_body(step).body[:index])
+        for call in PORT_OR_WRITE:
+            with self.subTest(step=step, call=call):
+                self.assertNotIn(call, earlier)
+
+    def test_the_recheck_refuses_a_photo_that_is_not_approved(self) -> None:
+        # R1: the refusal holds unless the photo is approved, whatever its review reference: a
+        # photo approved while the toggle was off and then restricted by staff keeps that
+        # reference in ``review_pending``, and F05 allows ``reject`` and ``approve`` from there.
+        index, refusal = self.refusal("recheck", "not_awaiting_recheck")
+        test = refusal.test
+        self.assertIsInstance(test, ast.BoolOp)
+        assert isinstance(test, ast.BoolOp)
+        self.assertIsInstance(test.op, ast.Or)
+        self.assertEqual(
+            [ast.unparse(value) for value in test.values],
+            [
+                "asset.state != md.APPROVED",
+                "not _approvals_while_off().filter(pk=asset.review_ref).exists()",
+            ],
+        )
+        # It comes before the check port, the hold port, every write and the recompute.
+        self.nothing_before("recheck", index)
+        statements = _step_body("recheck").body
+        later = "\n".join(ast.unparse(s) for s in statements[index + 1 :])
+        self.assertIn("adapters.check.decide(", later)
+        # It is the step's only test of the photo's state.
+        self.assertEqual(_state_tests("recheck"), ["asset.state != md.APPROVED"])
+
+    def test_run_check_refuses_a_photo_that_is_not_in_review(self) -> None:
+        # R2: the refusal admits only ``review_pending``, before the restriction check and the
+        # toggle's branch, so neither the check nor the off branch acts on an approved photo.
+        index, refusal = self.refusal("run_check", "not_in_review")
+        self.assertEqual(ast.unparse(refusal.test), "asset.state != md.REVIEW_PENDING")
+        self.nothing_before("run_check", index)
+        statements = _step_body("run_check").body
+        restriction, _ = self.refusal("run_check", "restricted")
+        branch = next(
+            position
+            for position, statement in enumerate(statements)
+            if isinstance(statement, ast.If) and ast.unparse(statement.test) == "checking"
+        )
+        self.assertLess(index, restriction)
+        self.assertLess(index, branch)
+        # It is the step's only test of the photo's state, and no other state is named.
+        self.assertEqual(_state_tests("run_check"), ["asset.state != md.REVIEW_PENDING"])
+        self.assertIsNone(re.search(r"\bmd\.APPROVED\b", ast.unparse(_step_body("run_check"))))
 
 
 if __name__ == "__main__":
