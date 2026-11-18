@@ -12,28 +12,28 @@ This file only routes: the current item, what happens next and who waits on whom
 - **SV3 is done** (OD-49; PR45 to PR47, `36a19f7`; [the brief](../planning/sv3-eligibility-discovery-interactions.md)). A block's direction is carried to SV4, before P11 (DM-75); F7 to before P11 (OD-64).
 - **M08 is done** (OD-66; PR48, `c7716e3`; PF02's revision 1.1 in PR49, `cf0ac60`; its [record](../testing/evidence/2026-11-16-m08-manager-practice-canon.md), sections 12 to 14).
 - **A05:** A05-V is done (PR50, `0a0c4fd`). **OD-68** set ID verification aside for the MVP; **OD-69** chose a paid plan with a free trial, staff grants and a Stripe link, and PF01 1.18 records it (PR51). A05-V2 is done (PR52, `d57da65`; its [record](../testing/evidence/2026-11-17-a05-v2-card-check-and-paid-trial.md)), and Nathan accepted its decision message (**OD-70**), adding a founding-member offer (up to 1,000 members, $100 for life, ideally Stripe only). A05-V3, the offer's research, is done (PR53, `15d54f6`; its [record](../testing/evidence/2026-11-18-a05-v3-founding-member-offer.md), sections 17 and 18), and Nathan answered the offer's decision message, all as recommended (**OD-71**). A05 stays open for its third message, before P07's brief.
-- **SV2-R,** the bounded change to SV2's requirements after OD-68 (DM-84 section 5; full scope; before P10): its [brief](../planning/sv2-r-od-68-requirements-change.md) and PF02 1.7 were approved in DM-91 to DM-93 (AM12-22, AM12-24). Built (code `f4703a1`) and merged; PR54 carries it with PF02 1.7. The exact-head review found the code right and two guards untested: correction C1 (the brief's revision 7) adds tests only and takes up three carried entries (AM12-26); P11 gets the recheck's notes (AM12-25). C1 is built (`f4c93ea`, run 44402994154 green), verified and merged. Next: its delta review, the merge.
+- **SV2-R,** the bounded change to SV2's requirements after OD-68 (DM-84 section 5; full scope; before P10): its [brief](../planning/sv2-r-od-68-requirements-change.md) and PF02 1.7 were approved in DM-91 to DM-93 (AM12-22, AM12-24). Built (code `f4703a1`) and merged; PR54 carries it with PF02 1.7. The exact-head review found the code right and two guards untested: correction C1 (the brief's revision 7) adds tests only and takes up three carried entries (AM12-26); P11 gets the recheck's notes (AM12-25). C1 is built (`f4c93ea`, run 44402994154 green) and merged; its delta review approved it with nits. Next: the merge.
 - **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
 - **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
 - **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
 - **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1, SV2, SV3 and M08.
 - **Owner directions:** OD-01 to OD-71. **Review log:** DM-01 to DM-93, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
 
-## Waiting checkpoint (18 November 2026, 22:02 UTC, App Manager 12)
+## Waiting checkpoint (18 November 2026, 22:35 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | GitHub, then Nathan | Codex's pass on the delta review prompt's commit (PF02-R39, R42); then the review's report | No prompt is given; no merge |
+| App Manager 12 | GitHub | PR54's run and Codex's pass on its final head, read at a scheduled wake-up (PF02-R39, R42) | No merge |
 
 ## Next actions (App Manager 12)
 
-1. **SV2-R's delta review of C1:** its [prompt](../ephemeral/2026-11-18-sv2-r-c1-delta-review-prompt.md) to Nathan once Codex has passed its commit; then the dispositions.
-2. **The merge,** which carries PF02 1.7 as DM-91 approved it; then AM12-22 into PF02 (1.8), for the Dev Manager's read.
+1. **PR54's merge,** which carries PF02 1.7 as DM-91 approved it (unchanged since `50a3e25`), once its run and Codex's pass on its final head are clean.
+2. **Then** the merge receipt and pruning; AM12-22 to AM12-28 into PF02 (1.8), for the Dev Manager's read.
 3. **Then** SV4, named to Nathan before it starts (OD-29).
 
 **Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
 
-## Branches and PRs (18 November 2026, 22:02 UTC)
+## Branches and PRs (18 November 2026, 22:35 UTC)
 
 - **Open PRs:** PR54 (SV2-R). `main` is at `15d54f6` (PR53).
 - **Remote branches, five:** `main`; the manager branch; `claude/dev-manager` (`adb769d`, merged at `d8e76e2`); SV2-R's session branches (`587f4a2`, merged at `d996ef6`; C1's `038282e`, at `5d8fab8`).
