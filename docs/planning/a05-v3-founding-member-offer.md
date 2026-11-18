@@ -102,4 +102,4 @@ The change is Markdown only, so no code review applies. The manager verifies: th
 
 ## Sessions
 
-None yet.
+- **The research session** (`claude/zealous-ride-v8tszx`, head `362edb0`, from `b4b96db`; 18 November 2026): the 24 rows rechecked (UST-23's "Asks of Glow" cell corrected from the statute; precisions to UST-22 to UST-28, AP-42, GP-38 and GP-39, ten rows), seven rows added (UST-62 to UST-66, five state dating-service contract laws; USF-23 and UST-67, "lifetime" claims), the two searches, the four questions, Stripe's one-time payment and the facts table; [its record](../testing/evidence/2026-11-18-a05-v3-founding-member-offer.md). Five laws bar a contract measured by the buyer's life, two with an online exception for terms of a year or less; Apple's proviso and Google's rule on honouring a web purchase are not settled by the pages read. Verified by the manager (the record, section 17) and merged into the manager branch at `d897720`. The offer's decision message goes to the Dev Manager next.

@@ -646,3 +646,21 @@ Facts and their sources only; no recommendation, no legal conclusion, and no pla
 - How to limit a Stripe sale to US buyers beyond testing a card's country, IP or address (section 11.6).
 
 **Research, not legal advice.**
+
+## 17. Manager verification (App Manager 12, 18 November 2026, 03:15 UTC)
+
+Against the brief's review plan (revision 2), on the session's head `362edb0` (from `b4b96db`), merged into the manager branch at `d897720`.
+
+- **Scope.** `git diff --name-only b4b96db 362edb0` prints the two owned paths only. In the matrix, outside the table rows, the branch changes the header's Rechecks entry, section 7's T8 cell and G-07's Rows cell (the new rows added): all within the owned parts. No sentence of sections 9 or 10 changed, and no row's requirement or status changed.
+- **IDs, by script** (the prompt's check, run here): 333 rows before, 340 after; none missing; none reordered; seven added (USF-23, UST-62 to UST-67). Each of the brief's 24 rows carries `rechecked 2026-11-18 (A05-V3)`, and no row outside the 24 changed.
+- **Fresh fetches** from 03:13 UTC, each into its own scratchpad directory, stripped by a script run with `-I` and searched as one continuous string: 25 quotations from 17 sources, all exact.
+  - **The new rows:** UST-62, R.C. 1345.42 (*"Not be measured by the life of the buyer"*, and the three-year duration) and 1345.41 (the social referral service definition); UST-63, G.S. Chapter 66 Article 21 (the three-year aggregate duration; *"pro rata cost of any unused services"*); UST-64, Minn. Stat. §325G.26 (the 18-month limit) and §325G.27 (*"renewed lifetime contract"*); UST-65, Conn. Gen. Stat. ch. 743p (the refund and the definition); UST-66, R.I. Gen. Laws §5-78-2 (the refund); USF-23, 16 CFR 239.4 (the disclosure of the life a "lifetime" claim refers to); UST-67, C.R.S. §6-1-105(1)(r) (the disclosure of the meaning of "life").
+  - **The life-measure bars:** Illinois, 815 ILCS 615 (*"measured by the life of the customer"*, and the three-year payment limit); Arizona, §44-7154 (*"shall not extend for the life of the customer"*); Colorado, §6-1-731(3)(d) (*"nor shall the term of any such contract be measured by the life of the buyer"*).
+  - **The stores:** Apple 3.1.3's US exception sentence and 3.1.3(b)'s proviso (`apple-arg`); Google's consumption-only and parity sentences (answer 10281818).
+  - **Stripe:** the Payments Terms' prepayment and "not immediately deliverable" clauses; the dispute window for a future service; Radar's `card_country`; Checkout's shipping-country list.
+  - **Hashes:** each statute page fetched here (Ohio, North Carolina, Minnesota, Rhode Island, Connecticut, Illinois, Arizona, Colorado, the eCFR) has the session's SHA-256.
+  - **Certificate chains:** `www.ilga.gov` and `www.cga.ct.gov` were completed with the intermediates named in their certificates' own AIA fields (Sectigo OV R40; GoDaddy G2), each checked with `openssl verify` against the system store (`OK`). Verification was never turned off.
+  - **Not re-fetched: UST-23** (Cal. Civ. Code §1694.3). The bulk file is 1.29 GB; UST-23's corrected cell is checked against the record's section 5.1 only, as A05-V2 read California.
+- **The corrected cell.** UST-23's "Asks of Glow" cell now quotes §1694.3(a)(2) and marks the correction, as UU3 asks, and section 5.1 records the old text.
+- **The counts** (the session's section 16). Section 1's Summary and the Contents still count 333 rows. By script at `362edb0`: 340 rows (Apple 69, Google Play 65, US federal 23, US states 67, UK 50, EU 66); 84 with no owner (unchanged); 95 whose State begins "Not applicable" (88 before; each new row does not apply now). The correction is outside the session's paths, and goes to the Dev Manager with the offer's decision message.
+- **The open questions** (section 16) stand, and the decision message carries them.
