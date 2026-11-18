@@ -3,6 +3,7 @@
 - **Owner:** App Manager 12. For Nathan, after Dev Manager 5 reads it (DM-89; OD-32).
 - **Revision 2, 18 November 2026,** with DM-89's VV1 to VV12 applied as given (Dev Manager 5, `292c7ba`, a read of `f61f65a`). Revision 1 was the text DM-89 read.
 - **Why:** OD-70 adds a founding-member offer: up to 1,000 members, a lifetime subscription for $100 paid once (the manager's reading of "a one-time thing"), ideally only through Stripe. A05-V3's research shows what the laws and the stores say about it ([its record](../testing/evidence/2026-11-18-a05-v3-founding-member-offer.md), sections 7 to 13; the manager's checks, section 17). DM-87 section 5 and DM-88 section 6 set the points this message puts to him. Row IDs below are the [requirements matrix](../planning/store-legal-safety-requirements.md)'s.
+- **Sent** to Nathan in the manager session on 18 November 2026, as revision 2, as written below. **Answered:** *"all as recommended"* (OD-71).
 - **Where the answer goes:** a new OD row; the carried-items file's P08.3 entry; the Work Register's A05 and A06 rows.
 - **Deletion condition:** prune after Nathan's answer is in the register and the Dev Manager's next consultation has read this message as sent.
 
